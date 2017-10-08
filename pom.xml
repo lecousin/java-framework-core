@@ -12,4 +12,20 @@
   <modules>
     <module>net.lecousin.core</module>
   </modules>
+  
+  <licenses>
+    <license>
+      <name>Apache 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+    
+  <developers>
+    <developer>
+    	<id>lecousin</id>
+    	<name>Guillaume Le Cousin</name>
+    </developer>
+  </developers>
+  
 </project>
