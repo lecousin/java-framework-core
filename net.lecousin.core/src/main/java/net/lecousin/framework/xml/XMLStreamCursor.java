@@ -1,0 +1,954 @@
+package net.lecousin.framework.xml;
+
+import java.io.EOFException;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.buffering.PreBufferedReadable;
+import net.lecousin.framework.io.encoding.DecimalNumber;
+import net.lecousin.framework.io.encoding.HexadecimalNumber;
+import net.lecousin.framework.io.encoding.INumberEncoding;
+import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
+import net.lecousin.framework.locale.LocalizableString;
+import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.UnprotectedString;
+import net.lecousin.framework.util.UnprotectedStringBuffer;
+
+/**
+ * Read an XML in a similar way as {@link javax.xml.stream.XMLStreamReader}: read-only, forward, event based.
+ * The method next() allows to move forward to the next event (such as start element, end element, comment, text...).
+ * It uses {@link UnprotectedString} to avoid allocating many character arrays.
+ * Charset is automatically detected by reading the beginning of the XML (either with auto-detection or with the specified encoding).
+ * TODO make a fully asynchronous implementation.
+ */
+public class XMLStreamCursor {
+
+	/** Initialize with the given IO. If it is not buffered, a {@link PreBufferedReadable} is created. */
+	public XMLStreamCursor(IO.Readable io) {
+		if (io instanceof IO.Readable.Buffered)
+			this.io = (IO.Readable.Buffered)io;
+		else
+			this.io = new PreBufferedReadable(io, 1024, io.getPriority(), 4096, (byte)(io.getPriority() - 1), 4);
+	}
+	
+	/** Type of event. */
+	public static enum Type {
+		PROCESSING_INSTRUCTION,
+		DOCTYPE,
+		COMMENT,
+		TEXT,
+		START_ELEMENT,
+		END_ELEMENT,
+		CDATA
+	}
+	
+	/** Type of current node. */
+	public Type type = null;
+	/** Text read, depending of the node type. <ul>
+	 *    <li>CDATA: content of the CDATA tag</li>
+	 *    <li>COMMENT: content of the comment tag</li>
+	 *    <li>DOCTYPE: type of document</li>
+	 *    <li>PROCESSING_INSTRUCTION: instruction name</li>
+	 *    <li>START_ELEMENT: element name</li>
+	 *    <li>TEXT: text</li>
+	 *  </ul>
+	 */
+	public UnprotectedStringBuffer text = null;
+	/** When type if START_ELEMENT, it specifies if it is an empty-element. */
+	public boolean isClosed = false;
+	/** When type if START_ELEMENT, it contains the list of attributes. */
+	public ArrayList<Pair<UnprotectedStringBuffer,UnprotectedStringBuffer>> attributes = null;
+	/** System specified in the DOCTYPE tag. */
+	@SuppressFBWarnings("URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD")
+	public UnprotectedStringBuffer system = null;
+	/** Public ID specified in the DOCTYPE tag. */
+	@SuppressFBWarnings("URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD")
+	public UnprotectedStringBuffer publicId = null;
+	/** Allows to specify a listener that will be called on each START_ELEMENT event. */
+	@SuppressFBWarnings("UWF_NULL_FIELD")
+	public Listener<XMLStreamCursor> onElement = null;
+	
+	/** Shortcut to get the value of the given attribute name as a String. */
+	public String getAttribute(String name) {
+		for (Pair<UnprotectedStringBuffer,UnprotectedStringBuffer> attr : attributes)
+			if (attr.getValue1().equals(name))
+				return attr.getValue2().toString();
+		return null;
+	}
+	
+	/** Remove an attribute from the list if it exists. */
+	public void removeAttribute(String name) {
+		for (Iterator<Pair<UnprotectedStringBuffer,UnprotectedStringBuffer>> it = attributes.iterator(); it.hasNext(); )
+			if (it.next().getValue1().equals(name)) {
+				it.remove();
+				break;
+			}
+	}
+	
+	private void reset() {
+		type = null;
+		text = null;
+		isClosed = false;
+		attributes = null;
+	}
+	
+	private IO.Readable.Buffered io;
+	private CharacterProvider cp;
+	
+	private abstract static class CharacterProvider {
+		public CharacterProvider(char... firstChars) {
+			this.firstChars = firstChars;
+			this.pos = firstChars.length > 0 ? 0 : -1;
+		}
+		
+		private char[] firstChars;
+		private int pos;
+		private char back;
+		private boolean hasBack = false;
+		private int lastLine = 0;
+		private int lastPosInLine = 0;
+		private boolean lastIsNewLine = true;
+		
+		public final char nextChar() throws IOException {
+			if (hasBack) {
+				hasBack = false;
+				return back;
+			}
+			if (pos >= 0) {
+				char c = firstChars[pos++];
+				if (pos == firstChars.length) pos = -1;
+				return updatePos(c);
+			}
+			return updatePos(getNextChar());
+		}
+		
+		public final void back(char c) {
+			hasBack = true;
+			back = c;
+		}
+		
+		protected abstract char getNextChar() throws IOException;
+		
+		private char updatePos(char c) {
+			if (lastIsNewLine) {
+				lastLine++;
+				lastPosInLine = 1;
+			} else
+				lastPosInLine++;
+			lastIsNewLine = (c == '\n');
+			return c;
+		}
+		
+		public final Pair<Integer,Integer> getPosition() {
+			return new Pair<>(Integer.valueOf(lastLine), Integer.valueOf(lastPosInLine));
+		}
+	}
+	
+	private class StartCharacterProvider extends CharacterProvider {
+		public StartCharacterProvider(char... firstChars) {
+			super(firstChars);
+		}
+		
+		@Override
+		protected char getNextChar() throws IOException {
+			int c = io.read();
+			if (c < 0) throw new EOFException();
+			return (char)c;
+		}
+	}
+	
+	private class CharacterStreamProvider extends CharacterProvider {
+		public CharacterStreamProvider(String charset, char... firstChars) {
+			super(firstChars);
+			stream = new BufferedReadableCharacterStream(io, Charset.forName(charset), 512, 32);
+		}
+		
+		private BufferedReadableCharacterStream stream;
+		
+		@Override
+		protected char getNextChar() throws IOException {
+			return stream.read();
+		}
+	}
+	
+	private void initCharacterProvider() throws XMLException, IOException {
+		// detect BOM
+		int c1 = io.read();
+		if (c1 < 0) throw new XMLException(null, "File is empty");
+		int c2 = io.read();
+		if (c2 < 0) throw new XMLException(null, "Not an XML file");
+		switch (c1) {
+		case 0xEF:
+			// it may be a UTF-8 BOM
+			if (c2 == 0xBB) {
+				int c3 = io.read();
+				if (c3 < 0) throw new XMLException(null, "Not an XML file");
+				if (c3 == 0xBF) {
+					// UTF-8 BOM
+					cp = new CharacterStreamProvider("UTF-8");
+					return;
+				}
+				cp = new StartCharacterProvider((char)c1, (char)c2, (char)c3);
+				return;
+			}
+			cp = new StartCharacterProvider((char)c1, (char)c2);
+			return;
+		case 0xFE:
+			// it may be a UTF-16 big-endian BOM
+			if (c2 == 0xFF) {
+				// UTF-16 big-endian
+				cp = new CharacterStreamProvider("UTF-16BE");
+				return;
+			}
+			cp = new StartCharacterProvider((char)c1, (char)c2);
+			return;
+		case 0xFF:
+			// it may be a BOM for UTF-16 little-endian or UTF-32 little-endian
+			if (c2 == 0xFE) {
+				int c3 = io.read();
+				if (c3 < 0) throw new XMLException(null, "Not an XML file");
+				if (c3 == 0x00) {
+					int c4 = io.read();
+					if (c4 < 0) throw new XMLException(null, "Not an XML file");
+					if (c4 == 0x00) {
+						// UTF-32 little-endian
+						cp = new CharacterStreamProvider("UTF-32LE");
+						return;
+					}
+					cp = new StartCharacterProvider((char)c1, (char)c2, (char)c3, (char)c4);
+					return;
+				}
+				// UTF-16 little-endian
+				cp = new CharacterStreamProvider("UTF-16LE", (char)c3);
+				return;
+			}
+			cp = new StartCharacterProvider((char)c1, (char)c2);
+			return;
+		case 0x00:
+			// it may be a UTF-32 big-endian BOM, but it may also be UTF-16 without BOM
+			if (c2 == 0x00) {
+				int c3 = io.read();
+				if (c3 < 0) throw new XMLException(null, "Not an XML file");
+				if (c3 == 0xFE) {
+					int c4 = io.read();
+					if (c4 < 0) throw new XMLException(null, "Not an XML file");
+					if (c4 == 0xFF) {
+						// UTF-32 big-endian
+						cp = new CharacterStreamProvider("UTF-32BE");
+						return;
+					}
+					cp = new StartCharacterProvider((char)c1, (char)c2, (char)c3, (char)c4);
+					return;
+				}
+				// UTF-16 without BOM
+				cp = new CharacterStreamProvider("UTF-16BE", (char)c1, (char)c2);
+				return;
+			}
+			cp = new StartCharacterProvider((char)c1, (char)c2);
+			return;
+		// TODO other BOM ? (https://en.wikipedia.org/wiki/Byte_order_mark#Representations_of_byte_order_marks_by_encoding)
+		default: break;
+		}
+		cp = new StartCharacterProvider((char)c1, (char)c2);
+	}
+	
+	/* Public methods */
+	
+	/** Start reading the XML to provide the first event.
+	 * If the first tag is a processing instruction XML it reads it and goes to the next event.
+	 */
+	public void start() throws XMLException, IOException {
+		try {
+			initCharacterProvider();
+			next();
+			if (Type.PROCESSING_INSTRUCTION.equals(type)) {
+				if (text.length() == 3) {
+					char c = text.charAt(0);
+					if (c == 'x' || c == 'X') {
+						c = text.charAt(1);
+						if (c == 'm' || c == 'M') {
+							c = text.charAt(2);
+							if (c == 'l' || c == 'L') {
+								// TODO
+								next();
+							}
+						}
+					}
+				}
+			}
+		} catch (EOFException e) {
+			throw new XMLException(null, "Invalid XML");
+		}
+	}
+	
+	/** Move forward to the next event. */
+	public void next() throws XMLException, IOException {
+		char c = cp.nextChar();
+		if (c == '<')
+			readTag();
+		else
+			readChars(c);
+	}
+	
+	/* Public utility methods */
+	
+	// TODO optimization: when searching for something, do not load every information in between
+	
+	/** Shortcut to move forward to the first START_ELEMENT event, skipping the header or comments. */
+	public void startRootElement() throws XMLException, IOException {
+		start();
+		while (!Type.START_ELEMENT.equals(type)) next();
+	}
+	
+	/** Shortcut to move forward to the next START_ELEMENT, return false if no START_ELEMENT event was found. */
+	public boolean nextStartElement() throws XMLException, IOException {
+		try {
+			do {
+				next();
+			} while (!Type.START_ELEMENT.equals(type));
+			return true;
+		} catch (EOFException e) {
+			return false;
+		}
+	}
+	
+	/** Go to the next inner element. Return true if one is found, false if the closing tag of the parent is found. */
+	public boolean nextInnerElement(String parentName) throws XMLException, IOException {
+		try {
+			if (Type.START_ELEMENT.equals(type) && text.equals(parentName) && isClosed)
+				return false; // we are one the opening tag of the parent, and it is closed, so it has no content
+			do {
+				next();
+				if (Type.END_ELEMENT.equals(type)) {
+					if (!text.equals(parentName))
+						throw new XMLException(cp.getPosition(), "Unexpected end element", text.asString());
+					return false;
+				}
+				if (Type.START_ELEMENT.equals(type))
+					return true;
+			} while (true);
+		} catch (EOFException e) {
+			return false;
+		}
+	}
+	
+	/** Go to the next inner element having the given name. Return true if one is found, false if the closing tag of the parent is found. */
+	public boolean nextInnerElement(String parentName, String childName) throws XMLException, IOException {
+		try {
+			do {
+				next();
+				if (Type.END_ELEMENT.equals(type)) {
+					if (!text.equals(parentName))
+						throw new XMLException(cp.getPosition(), "Unexpected end element", text.asString());
+					return false;
+				}
+				if (Type.START_ELEMENT.equals(type)) {
+					if (!text.equals(childName)) {
+						closeElement();
+						continue;
+					}
+					return true;
+				}
+			} while (true);
+		} catch (EOFException e) {
+			return false;
+		}
+	}
+	
+	/** Read inner text and close element. */
+	public UnprotectedStringBuffer readInnerText() throws XMLException, IOException {
+		if (!Type.START_ELEMENT.equals(type))
+			throw new IOException("Invalid call of readInnerText: it must be called on a start element");
+		if (isClosed) return new UnprotectedStringBuffer();
+		UnprotectedStringBuffer elementName = text;
+		UnprotectedStringBuffer innerText = new UnprotectedStringBuffer();
+		do {
+			try { next(); }
+			catch (EOFException e) {
+				throw new XMLException(cp.getPosition(), "Unexpected end", "readInnerText(" + elementName.toString() + ")");
+			}
+			if (Type.COMMENT.equals(type)) continue;
+			if (Type.TEXT.equals(type)) {
+				innerText.append(text);
+				continue;
+			}
+			if (Type.START_ELEMENT.equals(type)) {
+				closeElement();
+				continue;
+			}
+			if (Type.END_ELEMENT.equals(type)) {
+				if (!text.equals(elementName))
+					throw new XMLException(cp.getPosition(), "Unexpected end element", text.asString());
+				return innerText;
+			}
+		} while (true);
+	}
+	
+	/** Go the the END_ELEMENT event corresponding to the current START_ELEMENT (must be called with a current event to START_ELEMENT). */
+	public void closeElement() throws XMLException, IOException {
+		if (!Type.START_ELEMENT.equals(type))
+			throw new IOException("Invalid call of closeElement: it must be called on a start element");
+		if (isClosed) return;
+		UnprotectedStringBuffer elementName = text;
+		do {
+			try { next(); }
+			catch (EOFException e) {
+				throw new XMLException(cp.getPosition(), "Unexpected end", "closeElement(" + elementName.asString() + ")");
+			}
+			if (Type.END_ELEMENT.equals(type)) {
+				if (!text.equals(elementName))
+					throw new XMLException(cp.getPosition(), "Unexpected end element expected is",
+							text.asString(), elementName.asString());
+				return;
+			}
+			if (Type.START_ELEMENT.equals(type))
+				closeElement();
+		} while (true);
+	}
+	
+	/** Move forward until an element with the given name is found (whatever its depth).
+	 * @return true if found, false if the end of file is reached.
+	 */
+	public boolean searchElement(String elementName) throws XMLException, IOException {
+		try {
+			do {
+				if (Type.START_ELEMENT.equals(type)) {
+					if (text.equals(elementName))
+						return true;
+				}
+				next();
+			} while (true);
+		} catch (EOFException e) {
+			return false;
+		}
+	}
+	
+	/** Go successively into the given elements. */
+	public boolean goInto(String... innerElements) throws IOException, XMLException {
+		for (int i = 0; i < innerElements.length; ++i)
+			if (!goInto(innerElements[i]))
+				return false;
+		return true;
+	}
+	
+	/** Go to the given inner element. */
+	public boolean goInto(String innerElement) throws IOException, XMLException {
+		String parentName = text.toString();
+		return nextInnerElement(parentName, innerElement);
+	}
+	
+	/** Read all inner elements with their text, and return a mapping with the element's name as key and inner text as value. */
+	public Map<String,String> readInnerElementsText(String parentName) throws IOException, XMLException {
+		Map<String, String> texts = new HashMap<>();
+		while (nextInnerElement(parentName)) {
+			String name = text.toString();
+			texts.put(name, readInnerText().asString());
+		}
+		return texts;
+	}
+	
+	/* Private methods */
+	
+	private void readTag() throws XMLException, IOException {
+		try {
+			char c = cp.nextChar();
+			if (c == '!') {
+				readTagExclamation();
+			} else if (c == '?') {
+				readProcessingInstruction();
+			} else if (c == '/') {
+				readEndTag();
+			} else if (isNameStartChar(c)) {
+				readStartTag(c);
+			} else {
+				throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+			}
+		} catch (EOFException e) {
+			throw new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+					new LocalizableString("lc.xml.error", "in XML document"));
+		}
+	}
+	
+	private static char[] CDATA = new char[] { 'C','D','A','T','A','[' };
+	private static char[] OCTYPE = new char[] { 'O','C','T','Y','P','E' };
+	
+	private void readTagExclamation() throws XMLException, IOException {
+		// can be a comment, a CDATA, or a DOCTYPE
+		char c = cp.nextChar();
+		if (c == '-') {
+			// comment ?
+			c = cp.nextChar();
+			if (c == '-')
+				readComment();
+			else
+				throw new XMLException(cp.getPosition(), "Invalid XML");
+		} else if (c == '[') {
+			// CDATA ?
+			if (!readExpectedChars(CDATA))
+				throw new XMLException(cp.getPosition(), "Invalid XML");
+			readCData();
+		} else if (c == 'D') {
+			// DOCTYPE ?
+			if (!readExpectedChars(OCTYPE))
+				throw new XMLException(cp.getPosition(), "Invalid XML");
+			readDocType();
+		} else
+			throw new XMLException(cp.getPosition(), "Invalid XML");
+	}
+	
+	private static char[] YSTEM = new char[] { 'Y', 'S', 'T', 'E', 'M' };
+	private static char[] UBLIC = new char[] { 'U', 'B', 'L', 'I', 'C' };
+	
+	private void readDocType() throws XMLException, IOException {
+		reset();
+		type = Type.DOCTYPE;
+		text = new UnprotectedStringBuffer();
+		readSpace();
+		readName(text);
+		char c;
+		while (isSpaceChar(c = cp.nextChar()));
+		if (c == 'S') {
+			if (!readExpectedChars(YSTEM))
+				throw new XMLException(cp.getPosition(), "Invalid XML");
+			readSpace();
+			system = readSystemLiteral();
+			c = cp.nextChar();
+			while (isSpaceChar(c)) c = cp.nextChar();
+		} else if (c == 'P') {
+			if (!readExpectedChars(UBLIC))
+				throw new XMLException(cp.getPosition(), "Invalid XML");
+			readSpace();
+			publicId = readPublicIDLiteral();
+			readSpace();
+			system = readSystemLiteral();
+			c = cp.nextChar();
+			while (isSpaceChar(c)) c = cp.nextChar();
+		}
+		if (c == '[') {
+			readIntSubset();
+			c = cp.nextChar();
+			while (isSpaceChar(c)) c = cp.nextChar();
+		}
+		if (c != '>')
+			throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+	}
+	
+	private void readComment() throws XMLException, IOException {
+		reset();
+		type = Type.COMMENT;
+		text = new UnprotectedStringBuffer();
+		do {
+			char c;
+			try { c = cp.nextChar(); }
+			catch (EOFException e) {
+				throw new XMLException(cp.getPosition(),
+					new LocalizableString("lc.xml.error", "Unexpected end"),
+					new LocalizableString("lc.xml.error", "inside comment"));
+			}
+			if (c == '-') {
+				do {
+					try { c = cp.nextChar(); }
+					catch (EOFException e) {
+						throw new XMLException(cp.getPosition(),
+							new LocalizableString("lc.xml.error", "Unexpected end"),
+							new LocalizableString("lc.xml.error", "inside comment"));
+					}
+					if (c == '-') {
+						try { c = cp.nextChar(); }
+						catch (EOFException e) {
+							throw new XMLException(cp.getPosition(),
+								new LocalizableString("lc.xml.error", "Unexpected end"),
+								new LocalizableString("lc.xml.error", "inside comment"));
+						}
+						if (c == '>')
+							return;
+						text.append('-');
+						continue;
+					}
+					text.append('-');
+					break;
+				} while (true);
+				text.append('-');
+				continue;
+			}
+			text.append(c);
+		} while (true);
+	}
+	
+	private boolean readExpectedChars(char[] expected) throws IOException {
+		for (int i = 0; i < expected.length; ++i)
+			if (expected[i] != cp.nextChar())
+				return false;
+		return true;
+	}
+	
+	private void readCData() throws XMLException, IOException {
+		reset();
+		type = Type.CDATA;
+		text = new UnprotectedStringBuffer();
+		do {
+			char c;
+			try { c = cp.nextChar(); }
+			catch (EOFException e) {
+				throw new XMLException(cp.getPosition(),
+					new LocalizableString("lc.xml.error", "Unexpected end"),
+					new LocalizableString("lc.xml.error", "inside CDATA"));
+			}
+			if (c == ']') {
+				do {
+					try { c = cp.nextChar(); }
+					catch (EOFException e) {
+						throw new XMLException(cp.getPosition(),
+							new LocalizableString("lc.xml.error", "Unexpected end"),
+							new LocalizableString("lc.xml.error", "inside CDATA"));
+					}
+					if (c == ']') {
+						try { c = cp.nextChar(); }
+						catch (EOFException e) {
+							throw new XMLException(cp.getPosition(),
+								new LocalizableString("lc.xml.error", "Unexpected end"),
+								new LocalizableString("lc.xml.error", "inside CDATA"));
+						}
+						if (c == '>')
+							return;
+						text.append(']');
+						continue;
+					}
+					text.append(']');
+					break;
+				} while (true);
+				text.append(']');
+				continue;
+			}
+			text.append(c);
+		} while (true);
+	}
+	
+	private void readStartTag(char c) throws XMLException, IOException {
+		reset();
+		type = Type.START_ELEMENT;
+		attributes = new ArrayList<>();
+		text = new UnprotectedStringBuffer();
+		text.append(c);
+		continueReadName(text);
+		do {
+			while (isSpaceChar(c = cp.nextChar()));
+			if (c == '>') break;
+			if (c == '/') {
+				if (cp.nextChar() != '>')
+					throw new XMLException(cp.getPosition(), "Invalid XML");
+				isClosed = true;
+				break;
+			}
+			if (!isNameStartChar(c))
+				throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+			// attribute name
+			UnprotectedStringBuffer attrName = new UnprotectedStringBuffer();
+			attrName.append(c);
+			continueReadName(attrName);
+			// equal
+			while (isSpaceChar(c = cp.nextChar()));
+			if (c != '=')
+				throw new XMLException(cp.getPosition(), "Expected character", Character.valueOf(c), Character.valueOf('='));
+			// attribute value
+			while (isSpaceChar(c = cp.nextChar()));
+			UnprotectedStringBuffer attrValue = new UnprotectedStringBuffer();
+			if (c == '"' || c == '\'') readAttrValue(attrValue, c);
+			else throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+			attributes.add(new Pair<UnprotectedStringBuffer,UnprotectedStringBuffer>(attrName, attrValue));
+		} while (true);
+		if (onElement != null)
+			onElement.fire(this);
+	}
+	
+	private void readProcessingInstruction() throws XMLException, IOException {
+		reset();
+		type = Type.PROCESSING_INSTRUCTION;
+		attributes = new ArrayList<>();
+		text = new UnprotectedStringBuffer();
+		readName(text);
+		char c;
+		do {
+			while (isSpaceChar(c = cp.nextChar()));
+			if (c == '?') {
+				if (cp.nextChar() != '>')
+					throw new XMLException(cp.getPosition(), "Invalid XML");
+				isClosed = true;
+				return;
+			}
+			if (!isNameStartChar(c))
+				throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+			// attribute name
+			UnprotectedStringBuffer attrName = new UnprotectedStringBuffer();
+			attrName.append(c);
+			continueReadName(attrName);
+			// equal
+			while (isSpaceChar(c = cp.nextChar()));
+			if (c != '=')
+				throw new XMLException(cp.getPosition(), "Expected character", Character.valueOf(c), Character.valueOf('='));
+			// attribute value
+			while (isSpaceChar(c = cp.nextChar()));
+			UnprotectedStringBuffer attrValue = new UnprotectedStringBuffer();
+			if (c == '"' || c == '\'') readAttrValue(attrValue, c);
+			else throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+			attributes.add(new Pair<UnprotectedStringBuffer,UnprotectedStringBuffer>(attrName, attrValue));
+		} while (true);
+	}
+	
+	private void readAttrValue(UnprotectedStringBuffer value, char quote) throws XMLException, IOException {
+		do {
+			char c = cp.nextChar();
+			if (c == quote) break;
+			if (c == '<') throw new XMLException(cp.getPosition(),
+				new LocalizableString("lc.xml.error", "Unexpected character", Character.valueOf(c)),
+				new LocalizableString("lc.xml.error", "in attribute value"));
+			if (c == '&') c = readReference();
+			value.append(c);
+		} while (true);
+	}
+	
+	private void readChars(char c) throws XMLException, IOException {
+		reset();
+		type = Type.TEXT;
+		text = new UnprotectedStringBuffer();
+		do {
+			if (c == '&')
+				text.append(readReference());
+			else if (c == '<') {
+				cp.back(c);
+				break;
+			} else
+				text.append(c);
+			try {
+				c = cp.nextChar();
+			} catch (EOFException e) {
+				break;
+			}
+		} while (true);
+	}
+	
+	private char readReference() throws XMLException, IOException {
+		char c = cp.nextChar();
+		if (c == '#') return readCharRef();
+		UnprotectedStringBuffer name = new UnprotectedStringBuffer();
+		name.append(c);
+		continueReadName(name);
+		c = cp.nextChar();
+		if (c != ';')
+			throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+		return resolveEntityRef(name);
+	}
+	
+	private char readCharRef() throws XMLException, IOException {
+		char c = cp.nextChar();
+		INumberEncoding n;
+		if (c == 'x') {
+			n = new HexadecimalNumber();
+		} else {
+			n = new DecimalNumber();
+			if (!n.addChar(c))
+				throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+		}
+		do {
+			c = cp.nextChar();
+			if (c == ';') break;
+			if (!n.addChar(c)) throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+		} while (true);
+		return (char)n.getNumber();
+	}
+	
+	private char resolveEntityRef(UnprotectedStringBuffer name) throws XMLException {
+		int l = name.length();
+		if (l < 2) throw new XMLException(cp.getPosition(), "Invalid XML entity", name.toString());
+		char c = name.charAt(0);
+		if (c == 'a') {
+			if (l == 3) {
+				if (name.charAt(1) == 'm' && name.charAt(2) == 'p')
+					return '&';
+			} else if (l == 4) {
+				if (name.charAt(1) == 'p' && name.charAt(2) == 'o' && name.charAt(3) == 's')
+					return '\'';
+			}
+		} else if (c == 'l') {
+			if (l == 2 && name.charAt(1) == 't')
+				return '<';
+		} else if (c == 'g') {
+			if (l == 2 && name.charAt(1) == 't')
+				return '>';
+		} else if (c == 'q') {
+			if (l == 4 && name.charAt(1) == 'u' && name.charAt(2) == 'o' && name.charAt(3) == 't')
+				return '"';
+		}
+		throw new XMLException(cp.getPosition(), "Invalid XML entity", name.toString());
+	}
+	
+	private UnprotectedStringBuffer readSystemLiteral() throws XMLException, IOException {
+		char c = cp.nextChar();
+		if (c != '"') throw new XMLException(cp.getPosition(), "Expected character", Character.valueOf(c), Character.valueOf('"'));
+		UnprotectedStringBuffer literal = new UnprotectedStringBuffer();
+		do {
+			c = cp.nextChar();
+			if (c == '"') break;
+			literal.append(c);
+		} while (true);
+		return literal;
+	}
+
+	private UnprotectedStringBuffer readPublicIDLiteral() throws XMLException, IOException {
+		char quote = cp.nextChar();
+		if (quote != '"' && quote != '\'') throw new XMLException(cp.getPosition(), "Expected character", Character.valueOf(quote), "\",\'");
+		UnprotectedStringBuffer literal = new UnprotectedStringBuffer();
+		do {
+			char c = cp.nextChar();
+			if (c == quote) break;
+			literal.append(c);
+		} while (true);
+		return literal;
+	}
+	
+	private void readEndTag() throws XMLException, IOException {
+		reset();
+		type = Type.END_ELEMENT;
+		text = new UnprotectedStringBuffer();
+		readName(text);
+		do {
+			char c = cp.nextChar();
+			if (c == '>') return;
+			if (!isSpaceChar(c))
+				throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+		} while (true);
+	}
+	
+	private static void readIntSubset() throws IOException {
+		throw new IOException("Declaration in DOCTYPE not yet supported");
+	}
+	
+	
+	private void readName(UnprotectedStringBuffer name) throws XMLException, IOException {
+		char c = cp.nextChar();
+		if (!isNameStartChar(c)) throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+		name.append(c);
+		continueReadName(name);
+	}
+	
+	private void continueReadName(UnprotectedStringBuffer name) throws IOException {
+		do {
+			char c = cp.nextChar();
+			if (!isNameChar(c)) {
+				cp.back(c);
+				return;
+			}
+			name.append(c);
+		} while (true);
+	}
+	
+	private void readSpace() throws XMLException, IOException {
+		char c = cp.nextChar();
+		if (!isSpaceChar(c)) throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+		do {
+			c = cp.nextChar();
+			if (!isSpaceChar(c)) {
+				cp.back(c);
+				return;
+			}
+		} while (true);
+	}
+	
+
+	private static boolean[] isSpace = new boolean[] { true, true, false, false, true };
+	
+	private static boolean isSpaceChar(char c) {
+		if (c == 0x20) return true;
+		if (c > 0xD) return false;
+		if (c < 0x9) return false;
+		return isSpace[c - 9];
+	}
+	
+	private static boolean isNameStartChar(char c) {
+		if (c < 0xF8) {
+			if (c < 0x3A) return false; // :
+			if (c < 0xC0) {
+				if (c == ':' /*3A*/ || c == '_' /*5F*/) return true;
+				if (c >= 'a' && c <= 'z') return true; /*61-7A*/
+				if (c >= 'A' && c <= 'Z') return true; /*41-5A*/
+				return false;
+			}
+			if (c == 0xD7) return false;
+			if (c == 0xF7) return false;
+			return true;
+		}
+		if (c < 0x2000) {
+			if (c >= 0x300 && c <= 0x36F) return false;
+			if (c == 0x37E) return false;
+			return true;
+		}
+		if (c < 0xD800) {
+			if (c <= 0x3000) {
+				if (c < 0x2070)
+					return c != 0x200C && c != 0x200D;
+				if (c < 0x2190) return true;
+				if (c < 0x2C00) return false;
+				if (c > 0x2FEF) return false;
+			}
+			return true;
+		}
+		if (c >= 0xE000) {
+			if (c < 0xF900) return false;
+			if (c <= 0xFDCF) return true;
+			if (c < 0xFDF0) return false;
+			if (c <= 0xFFFD) return true;
+			return false;
+		}
+		if (c >= 0xDC00) return false;
+		return true;
+	}
+	
+	private static boolean isNameChar(char c) {
+		if (c < 0xF8) {
+			if (c < 0x3A) {
+				if (c < 0x2D) return false;
+				if (c == 0x2F) return false;
+				return true;
+			}
+			if (c < 0xC0) {
+				if (c == ':' /*3A*/ || c == '_' /*5F*/) return true;
+				if (c >= 'a' && c <= 'z') return true; /*61-7A*/
+				if (c >= 'A' && c <= 'Z') return true; /*41-5A*/
+				return c == 0xB7;
+			}
+			if (c == 0xD7) return false;
+			if (c == 0xF7) return false;
+			return true;
+		}
+		if (c < 0x2000) {
+			if (c == 0x37E) return false;
+			return true;
+		}
+		if (c < 0xD800) {
+			if (c <= 0x3000) {
+				if (c < 0x2070)
+					return c != 0x200C && c != 0x200D && c != 0x203F && c != 0x2040;
+				if (c < 0x2190) return true;
+				if (c < 0x2C00) return false;
+				if (c > 0x2FEF) return false;
+			}
+			return true;
+		}
+		if (c >= 0xE000) {
+			if (c < 0xF900) return false;
+			if (c <= 0xFDCF) return true;
+			if (c < 0xFDF0) return false;
+			if (c <= 0xFFFD) return true;
+			return false;
+		}
+		return true;
+	}
+
+}

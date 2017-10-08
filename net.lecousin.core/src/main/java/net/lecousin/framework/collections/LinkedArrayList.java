@@ -1,0 +1,590 @@
+package net.lecousin.framework.collections;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.NoSuchElementException;
+
+/**
+ * This implementation of List uses a linked list of array.
+ * This is typically used when a large number of items and operations are expected,
+ * mixing advantages of both LinkedList and ArrayList.
+ * It has the following advantages:<ul>
+ * <li>Efficient iteration, like a LinkedList or an ArrayList</li>
+ * <li>Less memory than a LinkedList</li>
+ * <li>Add and remove are a bit less efficient than a LinkedList (but generate less work for the garbage collection),
+ * 		but more efficient than an ArrayList because it is split into several ones, so moving elements
+ * 		forward or backward occurs only in a small array</li>
+ * <li>Access by index is much more efficient than a LinkedList, and close to the performance of an ArrayList</li>
+ * </ul>
+ * The size of arrays is doubled when the total size of this collection reached 100 * arraySize.
+ * @param <T> type of elements
+ */
+public class LinkedArrayList<T> implements List<T> {
+
+	/** Constructor. */
+	public LinkedArrayList(int arraySize) {
+		this.arraySize = arraySize;
+	}
+	
+	private int arraySize;
+	private Array<T> head = null;
+	private Array<T> tail = null;
+	private long size = 0;
+	
+	private static class Array<T> {
+		@SuppressWarnings("unchecked")
+		public Array(int size, Array<T> previous, Array<T> next) {
+			array = (T[])new Object[size];
+			this.previous = previous;
+			this.next = next;
+			if (previous != null)
+				previous.next = this;
+			if (next != null)
+				next.previous = this;
+		}
+		
+		private T[] array;
+		private int size = 0;
+		private Array<T> previous;
+		private Array<T> next;
+		
+		private void add(T o) {
+			array[size++] = o;
+		}
+		
+		private int indexOf(Object o) {
+			if (o == null) {
+				for (int i = 0; i < size; ++i)
+					if (array[i] == null)
+						return i;
+				return -1;				
+			}
+			for (int i = 0; i < size; ++i)
+				if (o.equals(array[i]))
+					return i;
+			return -1;
+		}
+		
+		private int lastIndexOf(Object o) {
+			if (o == null) {
+				for (int i = size - 1; i >= 0; --i)
+					if (array[i] == null)
+						return i;
+				return -1;
+			}
+			for (int i = size - 1; i >= 0; --i)
+				if (o.equals(array[i]))
+					return i;
+			return -1;
+		}
+	}
+	
+	private void double_size() {
+		Array<T> a = head;
+		do {
+			@SuppressWarnings("unchecked")
+			T[] na = (T[])new Object[arraySize * 2];
+			System.arraycopy(a.array, 0, na, 0, a.size);
+			a.array = na;
+			if (a.next != null) {
+				System.arraycopy(a.next.array, 0, a.array, a.size, a.next.size);
+				a.size += a.next.size;
+				a.next = a.next.next;
+				if (a.next != null)
+					a.next.previous = a;
+				else
+					tail = a;
+				a = a.next;
+			} else
+				break;
+		} while (a != null);
+		arraySize *= 2;
+	}
+	
+	@Override
+	public boolean add(T o) {
+		if (tail == null) {
+			head = tail = new Array<T>(arraySize, null, null);
+		} else if (tail.size == arraySize) {
+			tail = new Array<T>(arraySize, tail, null);
+		}
+		tail.add(o);
+		size++;
+		if (size > arraySize * 100) double_size();
+		return true;
+	}
+	
+	@Override
+	public void add(int index, T element) {
+		if (head == null) {
+			add(element);
+			return;
+		}
+		if (size + 1 > arraySize * 100) double_size();
+		if (index >= size) {
+			add(element, tail, tail.size, false);
+			return;
+		}
+		Array<T> a = head;
+		int i = 0;
+		while (i + a.size <= index && a.next != null) {
+			i += a.size;
+			a = a.next;
+		}
+		add(element, a, index - i, false);
+	}
+	
+	private void add(T element, Array<T> array, int index, boolean shifting) {
+		if (index > array.size) index = array.size;
+		if (index == array.size) {
+			if (index == arraySize) {
+				if (array.next == null) {
+					tail = new Array<T>(arraySize, array, null);
+					tail.add(element);
+					if (!shifting)
+						size++;
+					return;
+				}
+				throw new RuntimeException("Unexpected situation");
+				/*
+				add(element, array.next, 0);
+				return;*/
+			}
+			array.array[index] = element;
+			array.size++;
+			if (!shifting)
+				size++;
+			return;
+		}
+		// shift right
+		if (array.size == arraySize) {
+			if (array.next == null) {
+				tail = new Array<T>(arraySize, array, null);
+				tail.add(array.array[arraySize - 1]);
+			} else {
+				add(array.array[arraySize - 1], array.next, 0, true);
+			}
+			array.size--;
+		}
+		System.arraycopy(array.array, index, array.array, index + 1, array.size - index);
+		// insert
+		array.array[index] = element;
+		array.size++;
+		if (!shifting)
+			size++;
+	}
+	
+	/** Add an element using a long index. */
+	public void addlong(long index, T element) {
+		if (head == null) {
+			add(element);
+			return;
+		}
+		if (size + 1 > arraySize * 100) double_size();
+		if (index >= size) {
+			add(element, tail, tail.size, false);
+			return;
+		}
+		Array<T> a = head;
+		long i = 0;
+		while (i + a.size <= index && a.next != null) {
+			i += a.size;
+			a = a.next;
+		}
+		add(element, a, (int)(index - i), false);
+	}
+
+	@Override
+	public boolean addAll(Collection<? extends T> c) {
+		for (Iterator<? extends T> it = c.iterator(); it.hasNext(); )
+			add(it.next());
+		return true;
+	}
+	
+	@Override
+	public boolean addAll(int index, Collection<? extends T> c) {
+		for (Iterator<? extends T> it = c.iterator(); it.hasNext(); ++index)
+			add(index, it.next());
+		return true;
+	}
+	
+	@Override
+	public void clear() {
+		head = tail = null;
+		size = 0;
+	}
+	
+	@Override
+	public boolean contains(Object o) {
+		return indexOf(o) >= 0;
+	}
+	
+	@Override
+	public boolean containsAll(Collection<?> c) {
+		for (Iterator<?> it = c.iterator(); it.hasNext(); )
+			if (!contains(it.next())) return false;
+		return true;
+	}
+	
+	@Override
+	public T get(int index) {
+		if (head == null) throw new IndexOutOfBoundsException(Integer.toString(index));
+		if (index < 0) throw new IndexOutOfBoundsException(Integer.toString(index));
+		Array<T> a = head;
+		int i = 0;
+		while (i + a.size <= index && a.next != null) {
+			i += a.size;
+			a = a.next;
+		}
+		i = index - i;
+		if (i >= a.size)
+			throw new IndexOutOfBoundsException(Integer.toString(index));
+		return a.array[i];
+	}
+	
+	/** Get an element using a long index. */
+	public T getlong(long index) {
+		if (head == null) throw new IndexOutOfBoundsException(Long.toString(index));
+		if (index < 0) throw new IndexOutOfBoundsException(Long.toString(index));
+		Array<T> a = head;
+		long i = 0;
+		while (i + a.size <= index && a.next != null) {
+			i += a.size;
+			a = a.next;
+		}
+		i = index - i;
+		if (i >= a.size) throw new IndexOutOfBoundsException(Long.toString(index));
+		return a.array[(int)i];
+	}
+	
+	@Override
+	public int indexOf(Object o) {
+		int index = 0;
+		for (Array<T> a = head; a != null; index += a.size, a = a.next) {
+			int i = a.indexOf(o);
+			if (i >= 0) return i + index;
+		}
+		return -1;
+	}
+	
+	@Override
+	public boolean isEmpty() { return head == null; }
+	
+	private void shiftLeft(Array<T> a, int i) {
+		if (i >= a.size) return;
+		if (a.size == 1) {
+			if (head == a) {
+				if (tail == a)
+					tail = null;
+				else
+					head.next.previous = null;
+				head = head.next;
+			} else if (tail == a) {
+				tail.previous.next = null;
+				tail = tail.previous;
+			} else {
+				a.previous.next = a.next;
+				a.next.previous = a.previous;
+			}
+			return;
+		}
+		if (i < a.size - 1)
+			System.arraycopy(a.array, i + 1, a.array, i, a.size - i - 1);
+		a.array[a.size - 1] = null;
+		a.size--;
+	}
+	
+	@Override
+	public T remove(int index) {
+		if (head == null) throw new IndexOutOfBoundsException(Integer.toString(index));
+		if (index < 0) throw new IndexOutOfBoundsException(Integer.toString(index));
+		Array<T> a = head;
+		int i = 0;
+		while (i + a.size <= index && a.next != null) {
+			i += a.size;
+			a = a.next;
+		}
+		i = index - i;
+		if (i >= a.size) throw new IndexOutOfBoundsException(Integer.toString(index));
+		T element = a.array[i];
+		shiftLeft(a, i);
+		size--;
+		return element;
+	}
+	
+	@Override
+	public boolean remove(Object o) {
+		int i = indexOf(o);
+		if (i == -1) return false;
+		remove(i);
+		return true;
+	}
+	
+	/** Remove an element using a long index. */
+	public T removelong(long index) {
+		if (head == null) throw new IndexOutOfBoundsException(Long.toString(index));
+		if (index < 0) throw new IndexOutOfBoundsException(Long.toString(index));
+		Array<T> a = head;
+		long i = 0;
+		while (i + a.size <= index && a.next != null) {
+			i += a.size;
+			a = a.next;
+		}
+		i = index - i;
+		if (i >= a.size) throw new IndexOutOfBoundsException(Long.toString(index));
+		T element = a.array[(int)i];
+		shiftLeft(a, (int)i);
+		size--;
+		return element;
+	}
+	
+	@Override
+	public boolean removeAll(Collection<?> c) {
+		boolean changed = false;
+		for (Iterator<?> it = c.iterator(); it.hasNext(); )
+			changed |= remove(it.next());
+		return changed;
+	}
+	
+	/** Remove the last element and return it, or return null if empty. */
+	public T removeLast() {
+		if (tail == null) return null;
+		T element = tail.array[--tail.size];
+		if (--size == 0) {
+			head = tail = null;
+			return element;
+		}
+		if (tail.size == 0) {
+			tail.previous.next = null;
+			tail = tail.previous;
+		}
+		return element;
+	}
+	
+	/** Remove all elements from the first array, and return an array containing them. */
+	@SuppressWarnings("unchecked")
+	public T[] removeFirstArray() {
+		if (size == 0) return (T[])new Object[0];
+		T[] a = (T[])new Object[head.size];
+		System.arraycopy(head.array, 0, a, 0, head.size);
+		if (head == tail) {
+			head = tail = null;
+			size = 0;
+			return a;
+		}
+		size -= head.size;
+		head.next.previous = null;
+		head = head.next;
+		return a;
+	}
+	
+	/** Insert elements at the beginning of this collection. */
+	public void insertFirstArray(T[] array, int offset, int length) {
+		if (length == 0) return;
+		if (length > arraySize) {
+			insertFirstArray(array, offset + arraySize, length - arraySize);
+			insertFirstArray(array, offset, arraySize);
+			return;
+		}
+		Array<T> a = new Array<>(arraySize, null, head);
+		System.arraycopy(array, offset, a.array, 0, length);
+		a.size = length;
+		head = a;
+		size += length;
+	}
+	
+	@Override
+	public int size() { return (int)size; }
+	
+	/** Return the size as long. */
+	public long longsize() { return size; }
+	
+	@Override
+	public boolean retainAll(Collection<?> c) {
+		boolean changed = false;
+		for (ListIterator<T> it = listIterator(); it.hasNext(); ) {
+			T e = it.next();
+			if (!c.contains(e)) {
+				it.remove();
+				changed = true;
+			}
+		}
+		return changed;
+	}
+	
+	@Override
+	public ListIterator<T> listIterator(int index) {
+		return new LIterator(index);
+	}
+	
+	@Override
+	public ListIterator<T> listIterator() {
+		return listIterator(0);
+	}
+	
+	@Override
+	public Iterator<T> iterator() {
+		return listIterator();
+	}
+	
+	private class LIterator implements ListIterator<T> {
+		LIterator(int index) {
+			ptrNext = head;
+			posNext = 0;
+			nextIndex = 0;
+			while (nextIndex < index && ptrNext != null) {
+				if (index - nextIndex < ptrNext.size) {
+					posNext = index - nextIndex;
+					break;
+				}
+				nextIndex += ptrNext.size;
+				ptrNext = ptrNext.next;
+			}
+		}
+		
+		private Array<T> ptrNext;
+		private int posNext;
+		private int nextIndex;
+		
+		@Override
+		public boolean hasNext() {
+			if (head == null || ptrNext == null) return false;
+			return ptrNext != tail || posNext < ptrNext.size; 
+		}
+		
+		@Override
+		public boolean hasPrevious() {
+			if (head == null) return false;
+			if (ptrNext == null) return true;
+			return ptrNext != head || posNext > 0; 
+		}
+		
+		@Override
+		public T next() {
+			if (ptrNext == null || posNext == ptrNext.size) throw new NoSuchElementException();
+			T e = ptrNext.array[posNext++];
+			while (posNext >= ptrNext.size) {
+				ptrNext = ptrNext.next;
+				if (ptrNext == null) break;
+				posNext = 0;
+			}
+			nextIndex++;
+			return e;
+		}
+		
+		@Override
+		public int nextIndex() { return nextIndex; }
+		
+		@Override
+		public T previous() {
+			if (ptrNext == null) {
+				ptrNext = tail;
+				posNext = ptrNext.size;
+			}
+			T e;
+			if (posNext > 0) {
+				e = ptrNext.array[--posNext];
+			} else {
+				ptrNext = ptrNext.previous;
+				posNext = ptrNext.size - 1;
+				e = ptrNext.array[posNext];
+			}
+			nextIndex--;
+			return e;
+		}
+		
+		@Override
+		public int previousIndex() { return nextIndex - 1; }
+		
+		@Override
+		public void add(T o) {
+			LinkedArrayList.this.add(nextIndex, o);
+			// go to next one
+			posNext++;
+			while (posNext >= ptrNext.size) {
+				ptrNext = ptrNext.next;
+				if (ptrNext == null) break;
+				posNext = 0;
+			}
+			nextIndex++;
+		}
+		
+		@Override
+		public void remove() { 
+			LinkedArrayList.this.remove(--nextIndex);
+			if (posNext > 0) posNext--;
+		}
+		
+		@Override
+		public void set(T o) {
+			if (posNext > 0) {
+				ptrNext.array[posNext - 1] = o;
+			} else {
+				ptrNext.previous.array[arraySize - 1] = o;
+			}
+		}
+	}
+	
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T2> T2[] toArray(T2[] a) {
+        if (a.length < size())
+            a = (T2[])java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), size());
+        int i = 0;
+        for (Array<T> array = head; array != null; array = array.next) {
+        	System.arraycopy(array.array, 0, a, i, array.size);
+        	i += array.size;
+        }
+        return a;
+	}
+	
+	@Override
+	public Object[] toArray() {
+		Object[] a = new Object[size()];
+        int i = 0;
+        for (Array<T> array = head; array != null; array = array.next) {
+        	System.arraycopy(array.array, 0, a, i, array.size);
+        	i += array.size;
+        }
+		return a;
+	}
+	
+	@Override
+	public int lastIndexOf(Object o) {
+		int i = size();
+		for (Array<T> a = tail; a != null; a = a.previous) {
+			int index = a.lastIndexOf(o);
+			if (index >= 0) return i - a.size + index;
+			i -= a.size;
+		}
+		return -1;
+	}
+	
+	@Override
+	public T set(int index, T element) {
+		if (head == null) throw new IndexOutOfBoundsException(Integer.toString(index));
+		if (index < 0) throw new IndexOutOfBoundsException(Integer.toString(index));
+		Array<T> a = head;
+		int i = 0;
+		while (i + a.size <= index && a.next != null) {
+			i += a.size;
+			a = a.next;
+		}
+		i = index - i;
+		if (i >= a.size) throw new IndexOutOfBoundsException(Integer.toString(index));
+		T old = a.array[i];
+		a.array[i] = element;
+		return old;
+	}
+	
+	@Override
+	public List<T> subList(int fromIndex, int toIndex) {
+		List<T> result = new ArrayList<T>(toIndex - fromIndex);
+		for (int i = fromIndex; i < toIndex; ++i)
+			result.add(get(i));
+		return result;
+	}
+}

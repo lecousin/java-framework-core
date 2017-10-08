@@ -1,0 +1,2 @@
+en=anglais
+fr=français

@@ -1,0 +1,15 @@
+close=fermer
+created=créé
+false=faux
+file=fichier
+filename=nom du fichier
+invalid _={0} invalide: {1}
+last access=dernier accès
+last modified=dernière modification
+name=nom
+namespace=namespace
+open=ouvrir
+size=taille
+true=vrai
+the namespace=le namespace
+_ _ already exists={0} '{1}' existe déjà

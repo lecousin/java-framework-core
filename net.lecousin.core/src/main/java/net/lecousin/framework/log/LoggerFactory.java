@@ -1,0 +1,308 @@
+package net.lecousin.framework.log;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamReader;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.lecousin.framework.application.Application;
+import net.lecousin.framework.log.Logger.Level;
+import net.lecousin.framework.log.appenders.Appender;
+import net.lecousin.framework.log.appenders.ConsoleAppender;
+
+/** Provide logger for an application. */
+public class LoggerFactory {
+	
+	Application application;
+	LoggerThread thread;
+	private Appender defaultAppender;
+	private Map<String,Logger> loggers = new HashMap<>(50);
+	private Logger defaultLogger;
+	
+	/** Constructor. */
+	public LoggerFactory(Application app) {
+		application = app;
+		thread = new LoggerThread(app);
+		defaultAppender = new ConsoleAppender(this, app.isReleaseMode() ? Level.INFO : Level.DEBUG,
+			new LogPattern("%d{HH:mm:ss.SSS} [%level] <%logger{20}> %m"));
+		defaultLogger = new Logger(this, "default", defaultAppender);
+		loggers.put("default", defaultLogger);
+		
+		String filename = app.getProperty(Application.PROPERTY_LOGGING_CONFIGURATION_FILE);
+		if (filename != null)
+			configure(filename);
+	}
+	
+	public Application getApplication() {
+		return application;
+	}
+	
+	@SuppressFBWarnings("UG_SYNC_SET_UNSYNC_GET")
+	public Logger getDefault() {
+		return defaultLogger;
+	}
+	
+	/** Return the logger for the given class. */
+	public Logger getLogger(Class<?> cl) {
+		return getLogger(cl.getName());
+	}
+	
+	/** Return the logger with the given name. */
+	public synchronized Logger getLogger(String name) {
+		Logger l = loggers.get(name);
+		if (l != null)
+			return l;
+		l = new Logger(this, name, defaultAppender);
+		loggers.put(name, l);
+		return l;
+	}
+	
+	/** Set the default appender. */
+	public synchronized void setDefault(Appender appender) {
+		for (Logger l : loggers.values())
+			if (l.appender == defaultAppender)
+				l.appender = appender;
+		defaultAppender = appender;
+	}
+	
+	/** Configure a logger with an appender. */
+	public synchronized void configure(String name, Appender appender) {
+		Logger l = loggers.get(name);
+		if (l != null) {
+			l.appender = appender;
+			return;
+		}
+		l = new Logger(this, name, appender);
+		loggers.put(name, l);
+	}
+	
+	/** Load configuration from a file. */
+	public void configure(String filename) {
+		InputStream input = null;
+		try {
+			input = application.getClassLoader().getResourceAsStream(filename);
+			if (input == null)
+				input = new FileInputStream(new File(filename));
+			configure(input);
+		} catch (Exception e) {
+			application.getConsole().err("Error configuring logging system from file " + filename + ": " + e.getMessage());
+		} finally {
+			if (input != null) try { input.close(); } catch (Throwable t) { /* ignore */ }
+		}
+	}
+	
+	/** Load configuration from a file. */
+	@SuppressWarnings("resource")
+	public synchronized void configure(InputStream input) throws Exception {
+		configure(XMLInputFactory.newFactory().createXMLStreamReader(new PropertiesStream(application, input)));
+	}
+	
+	private static class PropertiesStream extends InputStream {
+		public PropertiesStream(Application app, InputStream input) throws IOException {
+			this.app = app;
+			this.input = input;
+			pos = 0;
+			nb = input.read(buffer);
+			if (nb <= 0) eof = true;
+		}
+		
+		private Application app;
+		private InputStream input;
+		private byte[] buffer = new byte[4096];
+		private int pos;
+		private int nb;
+		private boolean eof = false;
+		private LinkedList<Integer> back = new LinkedList<>();
+		
+		private int next() throws IOException {
+			if (!back.isEmpty()) return back.removeFirst().intValue();
+			if (pos == nb) {
+				if (eof) return -1;
+				pos = 0;
+				nb = input.read(buffer);
+				if (nb <= 0) {
+					eof = true;
+					return -1;
+				}
+			}
+			return buffer[pos++] & 0xFF;
+		}
+		
+		@Override
+		public int read() throws IOException {
+			int c1 = next();
+			if (c1 < 0) return -1;
+			if (c1 != '$') return c1;
+			int c2 = next();
+			if (c2 < 0) return c1;
+			if (c2 != '{') {
+				back.add(Integer.valueOf(c2));
+				return c1;
+			}
+			StringBuilder s = new StringBuilder();
+			do {
+				int c = next();
+				if (c < 0)
+					throw new IOException("Property starts with ${ but ending } is missing");
+				if (c == '}') {
+					String prop = app.getProperty(s.toString());
+					if (prop == null) {
+						app.getConsole().err("Unknown property " + s.toString() + " used in Logging configuration file");
+						return read();
+					}
+					byte[] bytes = prop.getBytes();
+					for (int i = 0; i < bytes.length; ++i)
+						back.add(Integer.valueOf(bytes[i] & 0xFF));
+					return read();
+				}
+				s.append((char)c);
+			} while (true);
+		}
+	}
+	
+	/** Load configuration from a file. */
+	public synchronized void configure(XMLStreamReader reader) throws Exception {
+		while (reader.hasNext()) {
+			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
+				if (!"LoggingConfiguration".equals(reader.getLocalName()))
+					throw new Exception("Root element must be LoggingConfiguration");
+				readLoggingConfiguration(reader);
+				return;
+			}
+		}
+		throw new Exception("No root element found in logging configuration file");
+	}
+	
+	private void readLoggingConfiguration(XMLStreamReader reader) throws Exception {
+		Map<String,Appender> appenders = new HashMap<String,Appender>();
+		reader.next();
+		while (reader.hasNext()) {
+			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
+				if ("Appender".equals(reader.getLocalName())) {
+					try { readAppender(reader, appenders); }
+					catch (Exception e) {
+						throw new Exception("Invalid appender definition in logging configuration file", e);
+					}
+				} else if ("Logger".equals(reader.getLocalName())) {
+					try { readLogger(reader, appenders); }
+					catch (Exception e) {
+						throw new Exception("Invalid logger definition in logging configuration file", e);
+					}
+				} else if ("Default".equals(reader.getLocalName())) {
+					try { readDefault(reader, appenders); }
+					catch (Exception e) {
+						throw new Exception("Invalid logger definition in logging configuration file", e);
+					}
+				} else
+					throw new Exception("Unknown element " + reader.getLocalName() + " in logging configuration file");
+			}
+			reader.next();
+		}
+	}
+	
+	private void readAppender(XMLStreamReader reader, Map<String,Appender> appenders) throws Exception {
+		String name = null;
+		Class<?> cl = null;
+		for (int i = 0; i < reader.getAttributeCount(); ++i) {
+			String attrName = reader.getAttributeLocalName(i);
+			String attrValue = reader.getAttributeValue(i);
+			if ("name".equals(attrName))
+				name = attrValue;
+			else if ("class".equals(attrName)) {
+				try { cl = Class.forName(attrValue); }
+				catch (ClassNotFoundException e) {
+					throw new Exception("Unknown class " + attrValue);
+				}
+			} else
+				throw new Exception("Unknown attribute " + attrName);
+		}
+		if (name == null)
+			throw new Exception("Missing attribute name on Appender");
+		if (cl == null)
+			throw new Exception("Missing attribute class on Appender");
+		if (!Appender.class.isAssignableFrom(cl))
+			throw new Exception("Class " + cl.getName() + " is not an Appender");
+		Constructor<?> ctor;
+		try { ctor = cl.getConstructor(LoggerFactory.class, XMLStreamReader.class, Map.class); }
+		catch (NoSuchMethodException e) {
+			throw new Exception("Class " + cl.getName()
+				+ " must have a constructor (LoggerFactory,XMLStreamReader,Map<String,Appender>)");
+		}
+		Appender appender;
+		try { appender = (Appender)ctor.newInstance(this, reader, appenders); }
+		catch (InvocationTargetException e) {
+			Throwable ex = e.getTargetException();
+			if (ex instanceof IOException) throw (IOException)ex;
+			if (ex instanceof Exception) throw (Exception)ex;
+			throw new Exception("Class constructor " + cl.getName() + " thrown an exception", ex);
+		}
+		appenders.put(name, appender);
+	}
+	
+	private void readLogger(XMLStreamReader reader, Map<String,Appender> appenders) throws Exception {
+		String name = null;
+		String appenderName = null;
+		for (int i = 0; i < reader.getAttributeCount(); ++i) {
+			String attrName = reader.getAttributeLocalName(i);
+			String attrValue = reader.getAttributeValue(i);
+			if ("name".equals(attrName))
+				name = attrValue;
+			else if ("appender".equals(attrName))
+				appenderName = attrValue;
+			else
+				throw new Exception("Unknown attribute " + attrName);
+		}
+		if (name == null) throw new Exception("Missing attribute name on Logger");
+		if (appenderName == null) throw new Exception("Missing attribute appender on Logger");
+
+		Appender appender = appenders.get(appenderName);
+		if (appender == null) throw new Exception("Unknown appender name " + appenderName + " for logger " + name);
+		configure(name, appender);
+		reader.next();
+		do {
+			if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)
+				break;
+			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
+				throw new Exception("Unexpected inner element " + reader.getLocalName());
+			}
+			reader.next();
+		} while (reader.hasNext());
+	}
+	
+	private void readDefault(XMLStreamReader reader, Map<String,Appender> appenders) throws Exception {
+		String appenderName = null;
+		for (int i = 0; i < reader.getAttributeCount(); ++i) {
+			String attrName = reader.getAttributeLocalName(i);
+			String attrValue = reader.getAttributeValue(i);
+			if ("appender".equals(attrName))
+				appenderName = attrValue;
+			else
+				throw new Exception("Unknown attribute " + attrName);
+		}
+
+		if (appenderName == null) throw new Exception("Missing attribute appender on Default");
+		Appender appender = appenders.get(appenderName);
+		if (appender == null) throw new Exception("Unknown appender name " + appenderName + " for default logger");
+		setDefault(appender);
+		reader.next();
+		do {
+			if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)
+				break;
+			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
+				throw new Exception("Unexpected inner element " + reader.getLocalName());
+			}
+			reader.next();
+		} while (reader.hasNext());
+	}
+	
+}
