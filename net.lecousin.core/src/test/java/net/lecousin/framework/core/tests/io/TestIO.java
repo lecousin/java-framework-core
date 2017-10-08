@@ -110,14 +110,18 @@ public abstract class TestIO extends LCCoreAbstractTest {
 		basicTests(io);
 		io.close();
 	}
+
+	protected boolean canSetPriority() { return true; }
 	
 	protected void basicTests(IO io) throws Exception {
 		// priority
-		byte p = io.getPriority();
-		io.setPriority(Task.PRIORITY_LOW);
-		Assert.assertEquals(Task.PRIORITY_LOW, io.getPriority());
-		io.setPriority(p);
-		Assert.assertEquals(p, io.getPriority());
+		if (canSetPriority()) {
+			byte p = io.getPriority();
+			io.setPriority(Task.PRIORITY_LOW);
+			Assert.assertEquals(Task.PRIORITY_LOW, io.getPriority());
+			io.setPriority(p);
+			Assert.assertEquals(p, io.getPriority());
+		}
 		// basic functions, only for test coverage
 		io.getTaskManager();
 		io.getSourceDescription();

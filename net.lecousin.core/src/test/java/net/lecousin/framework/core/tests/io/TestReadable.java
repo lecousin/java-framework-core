@@ -472,20 +472,28 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		Object lock = new Object();
 		MutableBoolean unlocked = new MutableBoolean(false);
 		SynchronizationPoint<NoException> started = new SynchronizationPoint<>();
+		MutableBoolean taskBusyDone = new MutableBoolean(false);
 		Task.OnFile<Void, NoException> busyTask = new Task.OnFile<Void, NoException>(tm, "test make busy", Task.PRIORITY_IMPORTANT) {
 			@Override
 			public Void run() {
+				long start = System.currentTimeMillis();
 				started.unblock();
 				synchronized (lock) {
-					while (!unlocked.get())
-						try { lock.wait(); }
+					while (!unlocked.get()) {
+						if (System.currentTimeMillis() - start > 20000)
+							return null;
+						try { lock.wait(20000); }
 						catch (InterruptedException e) { /* ignore */ }
+					}
 				}
+				taskBusyDone.set(true);
 				return null;
 			}
 		};
 		busyTask.start();
-		started.block(0);
+		started.block(10000);
+		if (!started.isUnblocked())
+			throw new Exception("Task to make disk manager busy didn't start after 10 seconds!");
 		FileIO.ReadOnly fio = openFile();
 		IO.Readable io = createReadableFromFile(fio, getFileSize());
 		ISynchronizationPoint<IOException> canStart = io.canStartReading();
@@ -494,8 +502,11 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		unlocked.set(true);
 		synchronized (lock) { lock.notifyAll(); }
 		canStart.block(10000);
-		if (!canStart.isUnblocked())
+		if (!canStart.isUnblocked()) {
+			if (!taskBusyDone.get())
+				throw new Exception("Task to make disk manager busy didn't exit after around 30 seconds!");
 			throw new Exception("Cannot start reading after 10 seconds");
+		}
 		fio.closeAsync();
 	}
 	

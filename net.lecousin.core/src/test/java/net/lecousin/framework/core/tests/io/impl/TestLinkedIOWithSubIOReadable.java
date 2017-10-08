@@ -41,4 +41,8 @@ public class TestLinkedIOWithSubIOReadable extends TestReadable {
 		return new LinkedIO.Readable("linked IO", ios);
 	}
 	
+	@Override
+	protected boolean canSetPriority() {
+		return !f.fragments.isEmpty() && f.nbBuf > 0;
+	}
 }
