@@ -193,7 +193,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends IO.Abstrac
 	// --- IO.Readable ---
 	
 	protected ISynchronizationPoint<IOException> canStartReading() {
-		return ((IO.Readable.Buffered)io).canStartReading();
+		return ((IO.Readable)io).canStartReading();
 	}
 
 	protected int readSync(ByteBuffer buffer) throws IOException {

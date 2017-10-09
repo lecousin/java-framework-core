@@ -27,13 +27,15 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 	 *     if false the buffer are kept but any modification of them outside of this class may lead to unexpected behavior.
 	 * @param description description
 	 */
-	public ByteBuffersIO(boolean copyBuffers, String description) {
+	public ByteBuffersIO(boolean copyBuffers, String description, byte priority) {
 		this.copyBuffers = copyBuffers;
 		this.description = description;
+		this.priority = priority;
 	}
 	
 	private boolean copyBuffers;
 	private String description;
+	private byte priority;
 	private LinkedArrayList<Triple<byte[],Integer,Integer>> buffers = new LinkedArrayList<>(10);
 	private int pos = 0;
 	private int bufferIndex = 0;
@@ -215,11 +217,12 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 
 	@Override
 	public byte getPriority() {
-		return Task.PRIORITY_NORMAL;
+		return priority;
 	}
 
 	@Override
 	public void setPriority(byte priority) {
+		this.priority = priority;
 	}
 
 	@Override

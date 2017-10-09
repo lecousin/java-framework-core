@@ -786,6 +786,7 @@ public abstract class LinkedIO extends AbstractIO {
 	}
 	
 	protected int getMaxBufferedSize() {
+		if (ios.isEmpty()) return 0;
 		if (ioIndex == ios.size())
 			return ((IO.Readable.Buffered)ios.get(0)).getMaxBufferedSize();
 		return ((IO.Readable.Buffered)ios.get(ioIndex)).getRemainingBufferedSize();

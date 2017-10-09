@@ -63,6 +63,14 @@ public abstract class TestReadableBuffered extends TestIO.UsingGeneratedTestFile
 	public void testReadableBufferedByteByByte() throws Exception {
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
 		for (int i = 0; i < nbBuf; ++i) {
+			if (nbBuf > 1000 && (i % 100) == 99) {
+				// make the test faster
+				int skipBuf = 50;
+				if (i + skipBuf > nbBuf) skipBuf = nbBuf - i;
+				io.skip(skipBuf * testBuf.length);
+				i += skipBuf - 1;
+				continue;
+			}
 			for (int j = 0; j < testBuf.length; ++j) {
 				if ((i + j) % 2 == 0) {
 					int b = io.read();

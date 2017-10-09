@@ -222,7 +222,8 @@ public class PreBufferedReadable extends IO.AbstractIO implements IO.Readable.Bu
 		int total = 0;
 		synchronized (this) {
 			if (current != null) total += current.remaining();
-			for (ByteBuffer b : buffersReady) total += b.remaining();
+			if (buffersReady != null)
+				for (ByteBuffer b : buffersReady) total += b.remaining();
 		}
 		return total;
 	}

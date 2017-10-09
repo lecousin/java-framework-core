@@ -44,6 +44,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		ArrayList<Integer> offsets = new ArrayList<Integer>(nbBuf);
 		for (int i = 0; i < nbBuf; ++i) offsets.add(Integer.valueOf(i));
 		while (!offsets.isEmpty()) {
+			if (nbBuf > 1000 && (offsets.size() % 100) == 99) {
+				// make the test faster
+				for (int skip = 0; skip < 70 && !offsets.isEmpty(); ++skip)
+					offsets.remove(rand.nextInt(offsets.size()));
+				continue;
+			}
 			int i = rand.nextInt(offsets.size());
 			Integer offset = offsets.remove(i);
 			for (int j = 0; j < testBuf.length; ++j) {
@@ -119,6 +125,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 						// read again to test we cannot read beyond the end of the file
 						offset.set(nbBuf-1);
 					} else {
+						if (nbBuf > 1000 && (offsets.size() % 100) == 99) {
+							// make the test faster
+							for (int skip = 0; skip < 70 && offsets.size() > 1; ++skip)
+								offsets.remove(rand.nextInt(offsets.size()));
+						}
+
 						offset.set(offsets.remove(rand.nextInt(offsets.size())).intValue());
 						j.set(0);
 					}
@@ -242,8 +254,9 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	@Test
 	public void testConcurrentAccessToSeekableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
-		ArrayList<Task<Void,Exception>> tasks = new ArrayList<>(20);
-		for (int t = 0; t < 20; ++t) {
+		int nbConc = Runtime.getRuntime().availableProcessors() * 5;
+		ArrayList<Task<Void,Exception>> tasks = new ArrayList<>(nbConc);
+		for (int t = 0; t < nbConc; ++t) {
 			Task<Void,Exception> task = new Task.Cpu<Void,Exception>("Test Concurrent access to IO.Readable.Seekable",Task.PRIORITY_NORMAL) {
 				@Override
 				public Void run() throws Exception {

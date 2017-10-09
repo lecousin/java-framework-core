@@ -9,13 +9,8 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
-import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -464,6 +459,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 
+	/* Should find a better way to test it
 	@SuppressWarnings("resource")
 	@Test
 	public void testCanStartReading() throws Exception {
@@ -483,7 +479,9 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 						if (System.currentTimeMillis() - start > 20000)
 							return null;
 						try { lock.wait(20000); }
-						catch (InterruptedException e) { /* ignore */ }
+						catch (InterruptedException e) {
+							// ignore
+						}
 					}
 				}
 				taskBusyDone.set(true);
@@ -508,6 +506,12 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 			throw new Exception("Cannot start reading after 10 seconds");
 		}
 		fio.closeAsync();
+	}*/
+	
+	@Override
+	protected void basicTests(IO io) throws Exception {
+		super.basicTests(io);
+		((IO.Readable)io).canStartReading();
 	}
 	
 	// TODO getSize if it implements DeterminedSize
