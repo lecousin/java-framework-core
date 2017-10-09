@@ -7,6 +7,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.tests.io.TestIO;
 import net.lecousin.framework.core.tests.io.TestReadable;
 import net.lecousin.framework.io.FileIO;
@@ -28,7 +29,7 @@ public class TestByteBuffersIOReadable extends TestReadable {
 	
 	@Override
 	protected ByteBuffersIO createReadableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
-		ByteBuffersIO io = new ByteBuffersIO(true, "test");
+		ByteBuffersIO io = new ByteBuffersIO(true, "test", Task.PRIORITY_NORMAL);
 		IOUtil.copy(file, io, fileSize, false, null, 0).block(0);
 		file.close();
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
