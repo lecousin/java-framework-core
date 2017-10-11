@@ -154,8 +154,6 @@ BufferedIO.ReadWrite.seekSync FROM_END and FROM_CURRENT
 BufferedIO.ReadWrite.seekAsync
 BufferedIO.ReadWrite.readAsync
 BufferedIO.ReadWrite.readNextBufferAsync
-BufferedIO.ReadWrite.readFullyAsync
-BufferedIO.ReadWrite.writeAsync beyond the end
 BufferedIO.ReadWrite.writeSync beyond the end
 
 write(byte)

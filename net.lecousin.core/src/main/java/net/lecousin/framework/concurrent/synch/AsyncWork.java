@@ -125,6 +125,66 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			}
 		});
 	}
+
+	/** Call one of the given listener depending on result. */ 
+	public void listenInline(Listener<T> onready, Listener<TError> onerror, Listener<CancelException> oncancel) {
+		listenInline(new AsyncWorkListener<T,TError>() {
+			@Override
+			public void ready(T result) {
+				onready.fire(result);
+			}
+			
+			@Override
+			public void error(TError error) {
+				onerror.fire(error);
+			}
+			
+			@Override
+			public void cancelled(CancelException event) {
+				oncancel.fire(event);
+			}
+		});
+	}
+	
+	/** Call onready on success, or forward error/cancellation to onErrorAndCancel. */
+	public void listenInline(Listener<T> onready, ISynchronizationPoint<TError> onErrorAndCancel) {
+		listenInline(new AsyncWorkListener<T,TError>() {
+			@Override
+			public void ready(T result) {
+				onready.fire(result);
+			}
+			
+			@Override
+			public void error(TError error) {
+				onErrorAndCancel.error(error);
+			}
+			
+			@Override
+			public void cancelled(CancelException event) {
+				onErrorAndCancel.cancel(event);
+			}
+		});
+	}
+
+	@Override
+	public void listenInline(Runnable onready, ISynchronizationPoint<TError> onErrorAndCancel) {
+		listenInline(new AsyncWorkListener<T,TError>() {
+			@Override
+			public void ready(T result) {
+				onready.run();
+			}
+			
+			@Override
+			public void error(TError error) {
+				onErrorAndCancel.error(error);
+			}
+			
+			@Override
+			public void cancelled(CancelException event) {
+				onErrorAndCancel.cancel(event);
+			}
+		});
+	}
 	
 	@Override
 	public void listenInline(Runnable r) {

@@ -62,6 +62,30 @@ public interface ISynchronizationPoint<TError extends Exception> {
 	/** Call listener when unblocked (whatever the result is successful, has error or is cancelled). */
 	void listenInline(Runnable listener);
 	
+	/** Call listeners when unblocked. */
+	default void listenInline(Runnable onReady, Listener<TError> onError, Listener<CancelException> onCancel) {
+		listenInline(new Runnable() {
+			@Override
+			public void run() {
+				if (hasError()) onError.fire(getError());
+				else if (isCancelled()) onCancel.fire(getCancelEvent());
+				else onReady.run();
+			}
+		});
+	}
+	
+	/** Call listener when unblocked, or forward error/cancellation to onErrorOrCancel. */
+	default void listenInline(Runnable onReady, ISynchronizationPoint<TError> onErrorOrCancel) {
+		listenInline(new Runnable() {
+			@Override
+			public void run() {
+				if (hasError()) onErrorOrCancel.error(getError());
+				else if (isCancelled()) onErrorOrCancel.cancel(getCancelEvent());
+				else onReady.run();
+			}
+		});
+	}
+	
 	/** Transfer the result of this blocking point to the given synchronization point:
 	 * unblock it on success, call error method on error, or call cancel method on cancellation.
 	 */

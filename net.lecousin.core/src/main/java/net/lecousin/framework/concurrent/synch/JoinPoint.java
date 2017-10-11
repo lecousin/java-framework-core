@@ -196,12 +196,14 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	
 	/**
 	 * Shortcut method to create a JoinPoint waiting for the given synchronization points, <b>the JoinPoint is started by this method.</b>
+	 * If some given synchronization points are null, they are just skipped.
 	 */
 	@SafeVarargs
 	public static <T extends Exception> JoinPoint<T> fromSynchronizationPointsSimilarError(ISynchronizationPoint<T>... synchPoints) {
 		JoinPoint<T> jp = new JoinPoint<>();
 		for (int i = 0; i < synchPoints.length; ++i)
-			jp.addToJoin(synchPoints[i]);
+			if (synchPoints[i] != null)
+				jp.addToJoin(synchPoints[i]);
 		jp.start();
 		return jp;
 	}
@@ -252,11 +254,13 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * Shortcut method to create a JoinPoint waiting for the given synchronization points, start the JoinPoint,
 	 * and add the given listener to be called when the JoinPoint is unblocked.
 	 * If any synchronization point has an error or is cancelled, the JoinPoint is immediately unblocked.
+	 * If some given synchronization points are null, they are just skipped.
 	 */
 	public static void listenInline(Runnable listener, ISynchronizationPoint<?>... synchPoints) {
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		for (int i = 0; i < synchPoints.length; ++i)
-			jp.addToJoin(synchPoints[i]);
+			if (synchPoints[i] != null)
+				jp.addToJoin(synchPoints[i]);
 		jp.start();
 		jp.listenInline(listener);
 	}

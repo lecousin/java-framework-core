@@ -272,7 +272,7 @@ public class ByteArrayIO extends AbstractIO
 	@Override
 	public int writeSync(long pos, ByteBuffer buffer) {
 		int len = buffer.remaining();
-		if (pos + len > size) {
+		if (pos + len > array.length) {
 			int newSize = array.length * 2;
 			while (newSize < pos + len) newSize *= 2;
 			byte[] a = new byte[newSize];

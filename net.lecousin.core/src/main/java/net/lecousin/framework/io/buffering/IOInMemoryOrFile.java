@@ -12,6 +12,7 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.FileIO;
@@ -31,7 +32,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * <br/>
  * This IO is writable and readable: the written data are readable.
  */
-public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seekable, IO.Writable.Seekable, IO.KnownSize {
+public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seekable, IO.Writable.Seekable, IO.KnownSize, IO.Resizable {
 
 	/** Constructor. */
 	public IOInMemoryOrFile(int maxSizeInMemory, byte priority, String sourceDescription) {
@@ -51,7 +52,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 	private long pos = 0;
 	private long size = 0;
 	private byte[][] memory;
-	private FileIO file = null;
+	private FileIO.ReadWrite file = null;
 	
 	@Override
 	public String getSourceDescription() { return sourceDescription; }
@@ -186,7 +187,9 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 	@Override
 	public int writeSync(long pos, ByteBuffer buffer) throws IOException {
 		if (pos < 0) pos = 0;
-		if (pos > size) pos = size; // TODO enlarge
+		if (pos > size) {
+			setSizeSync(pos);
+		}
 		int len = buffer.remaining();
 		if (pos < maxSizeInMemory) {
 			// some data will go to memory
@@ -238,7 +241,20 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 	@Override
 	public AsyncWork<Integer,IOException> writeAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		if (pos < 0) pos = 0;
-		if (pos > size) pos = size; // TODO enlarge
+		if (pos > size) {
+			AsyncWork<Void, IOException> resize = setSizeAsync(pos);
+			AsyncWork<Integer,IOException> result = new AsyncWork<>();
+			long p = pos;
+			resize.listenInline((res) -> {
+				writeAsync(p, buffer, ondone).listenInline(result);
+			}, (error) -> {
+				if (ondone != null) ondone.run(new Pair<>(null, error));
+				result.error(error);
+			}, (cancel) -> {
+				result.cancel(cancel);
+			});
+			return result;
+		}
 		int len = buffer.remaining();
 		if (pos < maxSizeInMemory) {
 			// some data will go to memory
@@ -317,6 +333,148 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 	@Override
 	public AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		return writeAsync(pos, buffer, ondone);
+	}
+
+	@Override
+	public void setSizeSync(long newSize) throws IOException {
+		if (newSize == size) return;
+		if (newSize < size) {
+			// shrink
+			if (newSize <= maxSizeInMemory) {
+				// only memory remaining
+				if (file != null) {
+					File f = file.getFile();
+					file.closeAsync().listenInline(() -> {
+						if (!f.delete())
+							LCCore.getApplication().getDefaultLogger()
+								.warn("Unable to remove temporary file " + f.getAbsolutePath());
+					});
+					file = null;
+				}
+				int nbBuf = (int)(newSize / BUFFER_SIZE);
+				if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
+				if (memory.length > nbBuf) {
+					byte[][] newMem = new byte[nbBuf][];
+					System.arraycopy(memory, 0, newMem, 0, nbBuf);
+					memory = newMem;
+				}
+			} else {
+				file.setSizeSync(newSize - maxSizeInMemory);
+			}
+			size = newSize;
+			if (pos > size) pos = size;
+			return;
+		}
+		// enlarge
+		if (size < maxSizeInMemory) {
+			// we need to enlarge memory
+			int nbBuf = (int)(newSize / BUFFER_SIZE);
+			if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
+			if (nbBuf > memory.length) {
+				byte[][] n = new byte[nbBuf][];
+				System.arraycopy(memory, 0, n, 0, memory.length);
+				memory = n;
+				for (int i = 0; i < memory.length; ++i)
+					if (memory[i] == null)
+						memory[i] = new byte[BUFFER_SIZE];
+			}
+		}
+		if (newSize > maxSizeInMemory) {
+			if (file == null)
+				createFile();
+			file.setSizeSync(newSize - maxSizeInMemory);
+		}
+		size = newSize;
+	}
+	
+	@Override
+	public AsyncWork<Void, IOException> setSizeAsync(long newSize) {
+		if (newSize == size) return new AsyncWork<>(null, null);
+		if (newSize < size) {
+			// shrink
+			if (newSize <= maxSizeInMemory) {
+				// only memory remaining
+				if (file != null) {
+					File f = file.getFile();
+					file.closeAsync().listenInline(() -> {
+						if (!f.delete())
+							LCCore.getApplication().getDefaultLogger()
+								.warn("Unable to remove temporary file " + f.getAbsolutePath());
+					});
+					file = null;
+				}
+				Task.Cpu<Void, IOException> task = new Task.Cpu<Void, IOException>(
+					"Shrink memory of IOInMemoryOrFile", getPriority()
+				) {
+					@Override
+					public Void run() {
+						int nbBuf = (int)(newSize / BUFFER_SIZE);
+						if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
+						if (memory.length > nbBuf) {
+							byte[][] newMem = new byte[nbBuf][];
+							System.arraycopy(memory, 0, newMem, 0, nbBuf);
+							memory = newMem;
+						}
+						size = newSize;
+						if (pos > size) pos = size;
+						return null;
+					}
+				};
+				task.start();
+				return task.getSynch();
+			}
+			AsyncWork<Void, IOException> result = new AsyncWork<>();
+			AsyncWork<Void, IOException> resize = file.setSizeAsync(newSize - maxSizeInMemory);
+			resize.listenInline(() -> {
+				if (resize.isSuccessful()) {
+					size = newSize;
+					if (pos > size) pos = size;
+					result.unblockSuccess(null);
+				} else if (resize.hasError())
+					result.unblockError(resize.getError());
+				else
+					result.unblockCancel(resize.getCancelEvent());
+			});
+			return result;
+		}
+		// enlarge
+		AsyncWork<Void, IOException> taskMemory = null;
+		if (size < maxSizeInMemory) {
+			// we need to enlarge memory
+			Task.Cpu<Void, IOException> task = new Task.Cpu<Void, IOException>(
+					"Enlarge memory of IOInMemoryOrFile", getPriority()
+				) {
+					@Override
+					public Void run() {
+						int nbBuf = (int)(newSize / BUFFER_SIZE);
+						if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
+						if (nbBuf > memory.length) {
+							byte[][] n = new byte[nbBuf][];
+							System.arraycopy(memory, 0, n, 0, memory.length);
+							memory = n;
+							for (int i = 0; i < memory.length; ++i)
+								if (memory[i] == null)
+									memory[i] = new byte[BUFFER_SIZE];
+						}
+						return null;
+					}
+			};
+			task.start();
+			taskMemory = task.getSynch();
+		}
+		AsyncWork<Void, IOException> taskFile = null;
+		if (newSize > maxSizeInMemory) {
+			if (file == null)
+				try { createFile(); }
+				catch (IOException e) { return new AsyncWork<>(null, e); }
+			taskFile = file.setSizeAsync(newSize - maxSizeInMemory);
+		}
+		AsyncWork<Void, IOException> result = new AsyncWork<>();
+		JoinPoint.fromSynchronizationPointsSimilarError(taskMemory, taskFile).listenInline(() -> {
+			size = newSize;
+			result.unblockSuccess(null);
+		}, (error) -> { result.error(error); }, (cancel) -> { result.cancel(cancel); });
+		return result;
 	}
 	
 	@Override

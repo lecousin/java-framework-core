@@ -200,7 +200,7 @@ public abstract class BufferedIO extends BufferingManaged {
 	@Override
 	AsyncWork<?,IOException> flushWrite(BufferingManager.Buffer buffer) {
 		long pos;
-		synchronized (buffers) {
+		synchronized (buffers) { // TODO may be null, and make background task to fail. Probably because a buffer is added while closing.
 			int i = buffers.indexOf(buffer);
 			if (i == 0) pos = 0;
 			else if (i == 1) pos = firstBufferSize;
@@ -776,6 +776,10 @@ public abstract class BufferedIO extends BufferingManaged {
 				if (buffer.error != null)
 					throw buffer.error;
 				int start = getBufferOffset(pos);
+				if (start >= buffer.len) {
+					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(0), null));
+					return Integer.valueOf(0);
+				}
 				int len = buf.remaining();
 				if (len > buffer.len - start) len = buffer.len - start;
 				buf.put(buffer.buffer, start, len);
@@ -920,7 +924,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			}
 		}
 		AsyncWork<Integer, IOException> done = new AsyncWork<Integer, IOException>();
-		Task<Void,IOException> task = new Task.Cpu<Void,IOException>("Read in BufferedIO", io.getPriority()) {
+		Task<Void,IOException> task = new Task.Cpu<Void,IOException>("Read in BufferedIO at " + pos, io.getPriority()) {
 			@Override
 			public Void run() throws IOException {
 				if (buffer.error != null) {
@@ -929,6 +933,11 @@ public abstract class BufferedIO extends BufferingManaged {
 					throw buffer.error;
 				}
 				int start = getBufferOffset(pos);
+				if (start >= buffer.len) {
+					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1),null));
+					done.unblockSuccess(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1));
+					return null;
+				}
 				int len = buf.remaining();
 				if (len > buffer.len - start) len = buffer.len - start;
 				buf.put(buffer.buffer, start, len);
