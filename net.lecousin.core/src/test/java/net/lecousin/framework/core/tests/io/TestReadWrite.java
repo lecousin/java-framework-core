@@ -43,7 +43,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			buf.position(0);
 			int nb = io.writeSync(buf);
 			if (nb != testBuf.length)
-				throw new Exception("Write only "+nb+" bytes");
+				throw new Exception("Write only " + nb + " bytes");
 		}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		byte[] b = new byte[testBuf.length];
@@ -52,12 +52,10 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			buf.clear();
 			int nb = io.readFullySync(buf);
 			if (nb != testBuf.length)
-				throw new Exception("Read only "+nb+" bytes at "+i);
-			if (!ArrayUtil.equals(b, testBuf)) {
-				System.out.println("Invalid read:");
-				System.out.println(new String(b, 0, nb));
-				throw new Exception("Invalid read at "+i);
-			}
+				throw new Exception("Read only " + nb + " bytes at buffer " + i);
+			if (!ArrayUtil.equals(b, testBuf))
+				throw new Exception("Invalid read at buffer " + i + ":\r\nRead is:\r\n" + new String(b)
+					+ "\r\nExpected is:\r\n" + new String(testBuf));
 		}
 		buf.clear();
 		if (io.readSync(buf) > 0)
@@ -80,7 +78,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			if (i < nbBuf - 1)
 				prevWrite = writeBuffer(io, prevWrite, buffersToWrite, buffersToRead);
 			prevRead = readBuffer(io, prevWrite, prevRead, buffersToRead);
-			// make some pauses to avoid stackoverflow
+			// make some pauses to avoid stack overflow
 			if ((i % 10) == 8) {
 				prevRead.block(0);
 				prevRead = null;
@@ -107,8 +105,9 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		io.close();
 	}
 	
-	private <T extends IO.Readable.Seekable & IO.Writable.Seekable>
-	ISynchronizationPoint<IOException> writeBuffer(T io, ISynchronizationPoint<IOException> prevWrite, List<Integer> buffersToWrite, List<Integer> buffersToRead) {
+	private <T extends IO.Readable.Seekable & IO.Writable.Seekable> ISynchronizationPoint<IOException> writeBuffer(
+		T io, ISynchronizationPoint<IOException> prevWrite, List<Integer> buffersToWrite, List<Integer> buffersToRead
+	) {
 		SynchronizationPoint<IOException> done = new SynchronizationPoint<>();
 		Runnable r = new Runnable() {
 			@Override
@@ -124,11 +123,12 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 				int index;
 				synchronized (buffersToRead) {
 					index = rand.nextInt(buffersToWrite.size());
-					buffersToRead.add(Integer.valueOf(index));
 					index = buffersToWrite.remove(index).intValue();
 				}
 				MutableBoolean ondoneCalled = new MutableBoolean(false);
-				AsyncWork<Integer, IOException> write = io.writeAsync(index * testBuf.length, ByteBuffer.wrap(testBuf), new RunnableWithParameter<Pair<Integer,IOException>>() {
+				int bufIndex = index;
+				AsyncWork<Integer, IOException> write = io.writeAsync(index * testBuf.length, ByteBuffer.wrap(testBuf),
+				new RunnableWithParameter<Pair<Integer,IOException>>() {
 					@Override
 					public void run(Pair<Integer, IOException> param) {
 						ondoneCalled.set(true);
@@ -138,6 +138,9 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 					if (!ondoneCalled.get()) {
 						done.error(new IOException("ondone not called by writeAsync"));
 						return;
+					}
+					synchronized (buffersToRead) {
+						buffersToRead.add(Integer.valueOf(bufIndex));
 					}
 					done.unblock();
 				}, done);
@@ -149,8 +152,9 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		return done;
 	}
 
-	private <T extends IO.Readable.Seekable & IO.Writable.Seekable>
-	ISynchronizationPoint<IOException> readBuffer(T io, ISynchronizationPoint<IOException> prevWrite, ISynchronizationPoint<IOException> prevRead, List<Integer> buffersToRead) {
+	private <T extends IO.Readable.Seekable & IO.Writable.Seekable> ISynchronizationPoint<IOException> readBuffer(
+		T io, ISynchronizationPoint<IOException> prevWrite, ISynchronizationPoint<IOException> prevRead, List<Integer> buffersToRead
+	) {
 		SynchronizationPoint<IOException> done = new SynchronizationPoint<>();
 		Runnable r = new Runnable() {
 			@Override
@@ -183,7 +187,8 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 				byte[] b = new byte[testBuf.length];
 				long pos = index * testBuf.length;
 				MutableBoolean ondoneCalled = new MutableBoolean(false);
-				AsyncWork<Integer, IOException> read = io.readFullyAsync(pos, ByteBuffer.wrap(b), new RunnableWithParameter<Pair<Integer,IOException>>() {
+				AsyncWork<Integer, IOException> read = io.readFullyAsync(pos, ByteBuffer.wrap(b),
+				new RunnableWithParameter<Pair<Integer,IOException>>() {
 					@Override
 					public void run(Pair<Integer, IOException> param) {
 						ondoneCalled.set(true);
@@ -206,7 +211,8 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 							return;
 						}
 						if (!ArrayUtil.equals(testBuf, b)) {
-							done.error(new IOException("Invalid data read at " + pos));
+							done.error(new IOException("Invalid data read at " + pos + ":\r\nRead is:\r\n" + new String(b)
+								+ "\r\nExpected is:\r\n" + new String(testBuf)));
 							return;
 						}
 						done.unblock();
@@ -252,14 +258,70 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		for (int i = 0; i < nbBuf; ++i) {
 			int nb = io.readFullySync(ByteBuffer.wrap(b));
 			if (nb != testBuf.length)
-				throw new Exception("Read only "+nb+" bytes at buffer "+i);
-			if (!ArrayUtil.equals(b, testBuf)) {
-				System.out.println("Invalid read:");
-				System.out.println(new String(b, 0, nb));
-				throw new Exception("Invalid read at buffer "+i);
-			}
+				throw new Exception("Read only " + nb + " bytes at buffer " + i);
+			if (!ArrayUtil.equals(b, testBuf))
+				throw new Exception("Invalid read at buffer " + i + ":\r\nRead is:\r\n" + new String(b)
+					+ "\r\nExpected is:\r\n" + new String(testBuf));
 		}
 		io.close();
+	}
+	
+	@Test
+	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testDichotomicWriteSeekSyncThenReverseReadSeekSync() throws Exception {
+		Assume.assumeTrue(nbBuf > 0);
+		T io = openReadWrite();
+		// make the file have its final size to be able to use SEEK_END
+		io.writeSync(nbBuf * testBuf.length - 1, ByteBuffer.wrap(testBuf, 0, 1));
+		// write
+		dichotomicWriteSync(io, 0, nbBuf - 1, SeekType.FROM_BEGINNING);
+		// read
+		byte[] b = new byte[testBuf.length];
+		for (int bufIndex = nbBuf - 1; bufIndex >= 0; bufIndex--) {
+			if ((bufIndex % 3) == 0)
+				io.seekSync(SeekType.FROM_BEGINNING, bufIndex * testBuf.length);
+			else if ((bufIndex % 3) == 1)
+				io.seekSync(SeekType.FROM_CURRENT, -2 * testBuf.length);
+			else
+				io.seekSync(SeekType.FROM_END, (nbBuf - bufIndex) * testBuf.length);
+			int nb = io.readSync(ByteBuffer.wrap(b));
+			if (nb != testBuf.length)
+				throw new AssertionError("Only " + nb + " byte(s) read at buffer " + bufIndex);
+			if (!ArrayUtil.equals(testBuf, b))
+				throw new AssertionError("Invalid read at buffer " + bufIndex + ":\r\nRead is:\r\n" + new String(b)
+						+ "\r\nExpected is:\r\n" + new String(testBuf));
+		}
+		io.close();
+	}
+	
+	private <T extends IO.Readable.Seekable & IO.Writable.Seekable>
+	void dichotomicWriteSync(T io, int bufStart, int bufEnd, SeekType seekType) throws IOException {
+		int bufIndex = bufStart + (bufEnd - bufStart) / 2;
+		// write the second half of the middle buffer
+		switch (seekType) {
+		default:
+		case FROM_BEGINNING: io.seekSync(SeekType.FROM_BEGINNING, bufIndex * testBuf.length + testBuf.length / 2); break;
+		case FROM_END: io.seekSync(SeekType.FROM_END, (nbBuf - bufIndex) * testBuf.length - testBuf.length / 2); break;
+		case FROM_CURRENT: io.seekSync(SeekType.FROM_CURRENT, bufIndex * testBuf.length + testBuf.length / 2 - io.getPosition()); break;
+		}
+		io.writeSync(ByteBuffer.wrap(testBuf, testBuf.length / 2, testBuf.length - testBuf.length / 2));
+		// write before
+		if (bufIndex > bufStart)
+			dichotomicWriteSync(io, bufStart, bufIndex - 1, 
+				(bufIndex % 3 == 0) ? SeekType.FROM_BEGINNING :
+				(bufIndex % 3 == 1) ? SeekType.FROM_CURRENT : SeekType.FROM_END);
+		// write after
+		if (bufIndex < bufEnd)
+			dichotomicWriteSync(io, bufIndex + 1, bufEnd,
+				(bufIndex % 3 == 0) ? SeekType.FROM_CURRENT :
+				(bufIndex % 3 == 1) ? SeekType.FROM_END : SeekType.FROM_BEGINNING);
+		// write the first half of the middle buffer
+		switch (seekType) {
+		default:
+		case FROM_BEGINNING: io.seekSync(SeekType.FROM_BEGINNING, bufIndex * testBuf.length); break;
+		case FROM_END: io.seekSync(SeekType.FROM_END, (nbBuf - bufIndex) * testBuf.length); break;
+		case FROM_CURRENT: io.seekSync(SeekType.FROM_CURRENT, bufIndex * testBuf.length - io.getPosition()); break;
+		}
+		io.writeSync(ByteBuffer.wrap(testBuf, 0, testBuf.length / 2));
 	}
 	
 	// TODO test with some seeking operations, sync and async, etc...
