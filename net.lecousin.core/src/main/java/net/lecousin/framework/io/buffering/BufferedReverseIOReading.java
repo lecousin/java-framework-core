@@ -201,7 +201,7 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 						readBufferForward();
 					continue;
 				}
-				int len = skip;
+				int len = skip - done;
 				if (len > maxInBuffer - posInBuffer) len = maxInBuffer - posInBuffer;
 				posInBuffer += len;
 				done += len;
