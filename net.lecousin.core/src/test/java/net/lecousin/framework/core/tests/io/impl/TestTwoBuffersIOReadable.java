@@ -15,8 +15,6 @@ import net.lecousin.framework.io.buffering.TwoBuffersIO;
 @RunWith(Parameterized.class)
 public class TestTwoBuffersIOReadable extends TestReadable {
 
-	// TODO add parameter to test FullyBufferedIO.DeterminedSize
-	
 	@Parameters(name = "nbBuf = {2}")
 	public static Collection<Object[]> parameters() {
 		return TestIO.UsingGeneratedTestFiles.generateTestCases();

@@ -452,7 +452,4 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		return result;
 	}
 	
-	// TODO test with some seeking operations, sync and async, etc...
-	// TODO flush
-	
 }
