@@ -147,8 +147,6 @@ TwoBuffersIO.DeterminedSize
 BufferedIO: increaseSize at the beginning
 BufferedIO.flush
 BufferedIO.getSizeSync
-BufferedIO.skip(int)
-BufferedIO.ReadWrite.skipSync
 BufferedIO.ReadWrite.skipAsync
 BufferedIO.ReadWrite.readNextBufferAsync
 
