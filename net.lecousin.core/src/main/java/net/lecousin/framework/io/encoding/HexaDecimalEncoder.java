@@ -1,5 +1,7 @@
 package net.lecousin.framework.io.encoding;
 
+import java.nio.charset.StandardCharsets;
+
 import net.lecousin.framework.util.StringUtil;
 
 /** Encode and decode bytes using hexadecimal digits. */
@@ -10,7 +12,7 @@ public class HexaDecimalEncoder implements IBytesEncoding {
 		StringBuilder s = new StringBuilder();
 		for (int i = 0; i < bytes.length; ++i)
 			s.append(StringUtil.encodeHexaDigit((bytes[i] & 0xF0) >> 4)).append(StringUtil.encodeHexaDigit(bytes[i] & 0xF));
-		return s.toString().getBytes();
+		return s.toString().getBytes(StandardCharsets.ISO_8859_1);
 	}
 	
 	@Override

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -160,7 +161,7 @@ public class LoggerFactory {
 						app.getConsole().err("Unknown property " + s.toString() + " used in Logging configuration file");
 						return read();
 					}
-					byte[] bytes = prop.getBytes();
+					byte[] bytes = prop.getBytes(StandardCharsets.ISO_8859_1);
 					for (int i = 0; i < bytes.length; ++i)
 						back.add(Integer.valueOf(bytes[i] & 0xFF));
 					return read();

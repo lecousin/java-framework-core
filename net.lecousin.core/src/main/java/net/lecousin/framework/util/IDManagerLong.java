@@ -1,5 +1,7 @@
 package net.lecousin.framework.util;
 
+import java.nio.charset.StandardCharsets;
+
 import net.lecousin.framework.io.encoding.IBytesEncoding;
 import net.lecousin.framework.io.util.DataUtil;
 import net.lecousin.framework.math.FragmentedRangeLong;
@@ -23,12 +25,12 @@ public class IDManagerLong implements IDManager {
 	@Override
 	public String allocate() {
 		Long id = free.removeFirstValue();
-		return new String(encoder.encode(DataUtil.getBytesLittleEndian(id.longValue())));
+		return new String(encoder.encode(DataUtil.getBytesLittleEndian(id.longValue())), StandardCharsets.ISO_8859_1);
 	}
 	
 	@Override
 	public void free(String id) {
-		long l = DataUtil.readLongLittleEndian(encoder.decode(id.getBytes()), 0);
+		long l = DataUtil.readLongLittleEndian(encoder.decode(id.getBytes(StandardCharsets.ISO_8859_1)), 0);
 		free.addValue(l);
 	}
 	

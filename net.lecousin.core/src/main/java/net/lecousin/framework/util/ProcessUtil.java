@@ -1,6 +1,7 @@
 package net.lecousin.framework.util;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.event.Listener;
 
@@ -51,7 +52,7 @@ public class ProcessUtil {
 				catch (Exception e) { break; }
 				if (nb < 0) break;
 				if (nb == 0) continue;
-				String s = new String(buffer, 0, nb);
+				String s = new String(buffer, 0, nb, StandardCharsets.ISO_8859_1);
 				while (s.length() > 0) {
 					int i = s.indexOf('\r');
 					int j = s.indexOf('\n');
