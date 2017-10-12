@@ -150,11 +150,7 @@ BufferedIO.getSizeSync
 BufferedIO.skip(int)
 BufferedIO.ReadWrite.skipSync
 BufferedIO.ReadWrite.skipAsync
-BufferedIO.ReadWrite.seekSync FROM_END and FROM_CURRENT
-BufferedIO.ReadWrite.seekAsync
-BufferedIO.ReadWrite.readAsync
 BufferedIO.ReadWrite.readNextBufferAsync
-BufferedIO.ReadWrite.writeSync beyond the end
 
 write(byte)
 write(byte[], int, int)
