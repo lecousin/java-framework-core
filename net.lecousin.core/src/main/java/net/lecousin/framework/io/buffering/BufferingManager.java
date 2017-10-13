@@ -83,6 +83,7 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 	
 	void newBuffer(Buffer buffer) {
 		synchronized (buffers) {
+			if (buffer.owner.closing) return;
 			buffers.add(buffer);
 			totalMemory += buffer.buffer.length;
 		}
@@ -102,7 +103,7 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 	
 	void removeBuffer(Buffer buffer) {
 		synchronized (buffers) {
-			buffers.remove(buffer);
+			if (!buffers.remove(buffer)) return;
 			if (buffer.buffer != null) {
 				totalMemory -= buffer.buffer.length;
 				if (buffer.markedAsToBeWritten)
@@ -124,6 +125,7 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 	}
 	
 	ISynchronizationPoint<IOException> close(BufferingManaged owner) {
+		owner.closing = true;
 		ArrayList<AsyncWork<?,?>> tasks = new ArrayList<>();
 		synchronized (buffers) {
 			for (Iterator<Buffer> it = buffers.iterator(); it.hasNext(); ) {
@@ -133,7 +135,9 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 					tasks.add(b.owner.flushWrite(b));
 					toBeWritten -= b.buffer.length;
 				}
-				if (b.flushing != null) tasks.addAll(b.flushing);
+				synchronized (b) {
+					if (b.flushing != null) tasks.addAll(b.flushing);
+				}
 				it.remove();
 				totalMemory -= b.buffer.length;
 				b.owner = null;
@@ -161,14 +165,16 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 					b.markedAsToBeWritten = false;
 					toBeWritten -= b.buffer.length;
 				}
-				if (b.flushing != null) {
-					while (!b.flushing.isEmpty() && b.flushing.getFirst().isUnblocked())
-						b.flushing.removeFirst();
-					if (b.flushing.isEmpty())
-						b.flushing = null;
-					else
-						for (AsyncWork<?,IOException> flush : b.flushing)
-							jp.addToJoin(flush);
+				synchronized (b) {
+					if (b.flushing != null) {
+						while (!b.flushing.isEmpty() && b.flushing.getFirst().isUnblocked())
+							b.flushing.removeFirst();
+						if (b.flushing.isEmpty())
+							b.flushing = null;
+						else
+							for (AsyncWork<?,IOException> flush : b.flushing)
+								jp.addToJoin(flush);
+					}
 				}
 			}
 		}

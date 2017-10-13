@@ -19,14 +19,14 @@ import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.buffering.ByteBuffersIO;
 
 @RunWith(Parameterized.class)
-public class TestByteBuffersIOWritable extends TestWritableToFile {
+public class TestByteBuffersIOWritableToFile extends TestWritableToFile {
 	
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
 		return TestIO.UsingTestData.generateTestCases();
 	}
 	
-	public TestByteBuffersIOWritable(byte[] testBuf, int nbBuf) {
+	public TestByteBuffersIOWritableToFile(byte[] testBuf, int nbBuf) {
 		super(testBuf, nbBuf);
 	}
 

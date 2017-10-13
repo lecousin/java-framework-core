@@ -200,7 +200,7 @@ public abstract class BufferedIO extends BufferingManaged {
 	@Override
 	AsyncWork<?,IOException> flushWrite(BufferingManager.Buffer buffer) {
 		long pos;
-		synchronized (buffers) { // TODO may be null, and make background task to fail. Probably because a buffer is added while closing.
+		synchronized (buffers) {
 			int i = buffers.indexOf(buffer);
 			if (i == 0) pos = 0;
 			else if (i == 1) pos = firstBufferSize;

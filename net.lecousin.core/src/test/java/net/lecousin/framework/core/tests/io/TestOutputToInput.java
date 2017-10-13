@@ -26,6 +26,13 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 	protected IO getIOForCommonTests() throws IOException {
 		return createOutputToInput();
 	}
+	
+	@Override
+	protected void basicTests(IO io) throws Exception {
+		super.basicTests(io);
+		if (((IO.OutputToInput)io).canStartReading().isUnblocked())
+			throw new AssertionError("OutputToInput.canStartReading returned an unblocked synchronization point, but nothing can be read yet because nothing has been written yet!");
+	}
 
 	@SuppressWarnings("resource")
 	@Test
@@ -149,7 +156,5 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		if (spRead.hasError()) throw spRead.getError();
 		o2i.closeAsync();
 	}
-	
-	// TODO
 	
 }

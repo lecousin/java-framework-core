@@ -13,6 +13,8 @@ public abstract class BufferingManaged extends AbstractIO {
 	abstract AsyncWork<?,IOException> flushWrite(Buffer buffer);
 	
 	abstract void removed(Buffer buffer);
+
+	boolean closing = false;
 	
 	abstract ISynchronizationPoint<IOException> closed();
 	

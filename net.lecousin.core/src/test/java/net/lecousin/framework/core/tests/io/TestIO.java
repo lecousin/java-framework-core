@@ -113,6 +113,7 @@ public abstract class TestIO extends LCCoreAbstractTest {
 
 	protected boolean canSetPriority() { return true; }
 	
+	@SuppressWarnings("unused")
 	protected void basicTests(IO io) throws Exception {
 		// priority
 		if (canSetPriority()) {
@@ -128,32 +129,4 @@ public abstract class TestIO extends LCCoreAbstractTest {
 		io.getWrappedIO();
 	}
 
-	/* TODO
-canStartWriting
-
-SizeKnown:
- - getSizeAsync
- 
-Resizable:
- - setSize with same size
- 
-Buffered:
- - skips
- - skip(int) that goes before the beginning
- 
-start to read quickly so bufferization is not yet done (use a task to avoid disk access for few seconds?)
-
-TwoBuffersIO.DeterminedSize
-BufferedIO: increaseSize at the beginning
-BufferedIO.flush
-BufferedIO.getSizeSync
-BufferedIO.ReadWrite.skipAsync
-BufferedIO.ReadWrite.readNextBufferAsync
-
-write(byte)
-write(byte[], int, int)
-setSize with much larger size
-
-test generating an error while reading ?
-	 */
 }

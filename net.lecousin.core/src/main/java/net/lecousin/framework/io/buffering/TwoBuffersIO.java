@@ -66,7 +66,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 			}
 			int max = buf1.length + (buf2 == null ? 0 : buf2.length);
 			if (pos + skip > max) skip = max - pos;
-			pos = max;
+			pos += skip;
 			return skip;
 		}
 
@@ -725,12 +725,12 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 
 	@Override
 	public int skip(int skip) throws IOException {
+		if (skip == 0) return 0;
 		if (skip < 0) {
 			if (-skip > pos) skip = -pos;
 			pos += skip;
 			return skip;
 		}
-		if (skip == 0) return 0;
 		if (nb1 < 0) {
 			if (!read1.isUnblocked()) read1.block(0);
 			if (!read1.isSuccessful()) {
