@@ -1,5 +1,6 @@
 package net.lecousin.framework.io.out2in;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -39,7 +40,7 @@ public class OutputToInput extends AbstractIO implements IO.OutputToInput, IO.Wr
 	@Override
 	public void endOfData() {
 		eof = true;
-		lock.unlock();
+		lock.error(new EOFException());
 	}
 	
 	@Override
@@ -101,21 +102,21 @@ public class OutputToInput extends AbstractIO implements IO.OutputToInput, IO.Wr
 	
 	@Override
 	public ISynchronizationPoint<IOException> canStartReading() {
+		if (eof) return new SynchronizationPoint<>(true);
 		if (lock.hasError()) return lock;
 		if (readPos < writePos) return new SynchronizationPoint<>(true);
-		if (eof) return new SynchronizationPoint<>(true);
 		return lock;
 	}
 	
 	@Override
 	public int readSync(ByteBuffer buffer) throws IOException {
-		if (lock.hasError())
+		if (lock.hasError() && !eof)
 			throw new IOException("An error occured during the transfer of data", lock.getError());
 		while (readPos >= writePos) {
 			if (eof) return -1;
-			if (lock.hasError())
+			if (lock.hasError() && !eof)
 				throw new IOException("An error occured during the transfer of data", lock.getError());
-			lock.lock(); // TODO if eof or error in the middle, we may stay locked!
+			lock.lock();
 		}
 		int nb;
 		lockIO.lock();
@@ -150,7 +151,7 @@ public class OutputToInput extends AbstractIO implements IO.OutputToInput, IO.Wr
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		readPos = pos;
-		if (lock.hasError()) {
+		if (lock.hasError() && !eof) {
 			IOException e = new IOException("An error occured during the transfer of data", lock.getError());
 			if (ondone != null) ondone.run(new Pair<>(null, e));
 			return new AsyncWork<Integer, IOException>(null, e);
@@ -223,7 +224,7 @@ public class OutputToInput extends AbstractIO implements IO.OutputToInput, IO.Wr
 	@Override
 	protected ISynchronizationPoint<IOException> closeIO() {
 		eof = true;
-		lock.unlock();
+		lock.error(new EOFException());
 		return new SynchronizationPoint<>(true);
 	}
 	
@@ -286,7 +287,7 @@ public class OutputToInput extends AbstractIO implements IO.OutputToInput, IO.Wr
 			readPos += move;
 			break;
 		case FROM_END:
-			if (lock.hasError()) {
+			if (lock.hasError() && !eof) {
 				IOException e = new IOException("An error occured during the transfer of data", lock.getError());
 				if (ondone != null) ondone.run(new Pair<>(null, e));
 				return new AsyncWork<Long, IOException>(null, e);
@@ -299,7 +300,7 @@ public class OutputToInput extends AbstractIO implements IO.OutputToInput, IO.Wr
 			lock.listenInline(new Runnable() {
 				@Override
 				public void run() {
-					if (lock.hasError()) {
+					if (lock.hasError() && !eof) {
 						IOException e = new IOException("An error occured during the transfer of data", lock.getError());
 						if (ondone != null) ondone.run(new Pair<>(null, e));
 						result.unblockError(e);

@@ -1,7 +1,5 @@
 package net.lecousin.framework.concurrent.synch;
 
-import java.io.Closeable;
-
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.event.Listener;
@@ -124,18 +122,6 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			@Override
 			public void run() {
 				sp.unblock();
-			}
-		});
-	}
-	
-	/** Call the close method of the given Closeable when this synchronization point is unblocked
-	 * (whatever the result is successful, has error or is cancelled).
-	 */
-	default void listenClose(Closeable toClose) {
-		listenInline(new Runnable() {
-			@Override
-			public void run() {
-				try { toClose.close(); } catch (Throwable t) { /* ignore */ } // TODO in a task?
 			}
 		});
 	}

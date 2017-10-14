@@ -33,6 +33,8 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 	public void lock() {
 		if (cancel != null)
 			return;
+		if (error != null)
+			return;
 		Thread t;
 		BlockedThreadHandler blockedHandler;
 		do {
