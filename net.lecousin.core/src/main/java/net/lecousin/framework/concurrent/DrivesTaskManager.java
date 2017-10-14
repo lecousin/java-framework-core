@@ -1,24 +1,15 @@
 package net.lecousin.framework.concurrent;
 
 import java.io.File;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 
-import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.application.Version;
-import net.lecousin.framework.application.VersionSpecification;
-import net.lecousin.framework.application.libraries.LibrariesManager;
-import net.lecousin.framework.application.libraries.Library;
 import net.lecousin.framework.collections.map.MapUtil;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.event.Listener;
-import net.lecousin.framework.exception.NoException;
-import net.lecousin.framework.mutable.Mutable;
+import net.lecousin.framework.util.Pair;
 
 /** Handle TaskManagers for a drives. */
 public class DrivesTaskManager {
@@ -43,98 +34,6 @@ public class DrivesTaskManager {
 			managers.put(resource, tm);
 			Threading.registerResource(resource, tm);
 		}
-		// then improve
-		Mutable<ClassLoader> clLoader = new Mutable<>(DrivesTaskManager.class.getClassLoader());
-		Task.Cpu<Void,NoException> improve = new Task.Cpu<Void,NoException>("Loading Drives information", Task.PRIORITY_RATHER_IMPORTANT) {
-			@Override
-			public Void run() {
-				System.out.println("Loading drives information to improve multi-threading");
-				Class<?> cl;
-				try { cl = Class.forName("net.lecousin.framework.system.hardware.Drives", true, clLoader.get()); }
-				catch (ClassNotFoundException e) {
-					System.out.println(
-						"Library net.lecousin.framework.system.impl is missing: threading on hard drives cannot be optimized"
-					);
-					return null;
-				}
-				try {
-					Class<?> clListener = Class.forName(
-						"net.lecousin.framework.system.hardware.Drives$DriveListener", true, clLoader.get());
-					Object drives = cl.getField("instance").get(null);
-					if (drives == null)
-						throw new Exception("Drives instance not initialized");
-					Method m = cl.getMethod("getDrivesAndListen", clListener);
-					Class<?> clListenerImpl = Class.forName(
-						"net.lecousin.framework.system.hardware.Drives$DriveListenerImpl", true, clLoader.get());
-					@SuppressWarnings("rawtypes")
-					Object listener = clListenerImpl.getConstructor(
-							Listener.class, Listener.class, Listener.class, Listener.class
-					).newInstance(new Listener() {
-						@Override
-						public void fire(Object event) {
-							System.out.println("Add task manager for new drive " + event);
-							newDrive(event);
-						}
-					}, new Listener() {
-						@Override
-						public void fire(Object event) {
-							System.out.println("Remove task manager for new drive " + event);
-							driveRemoved(event);
-						}
-					}, new Listener() {
-						@Override
-						public void fire(Object event) {
-							// TODO new partition (event is DiskPartition)
-							
-						}
-					}, new Listener() {
-						@Override
-						public void fire(Object event) {
-							// TODO partition removed (event is DiskPartition)
-							
-						}
-					});
-					m.invoke(drives, listener);
-					m = cl.getMethod("initialize");
-					m.invoke(drives);
-				} catch (Throwable t) {
-					System.err.println("Error loading drives information");
-					t.printStackTrace(System.err);
-				}
-				return null;
-			}
-		};
-		LibrariesManager libs = LCCore.get().getSystemLibraries();
-		libs.onLibrariesLoaded().listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (!libs.canLoadNewLibraries()) {
-					improve.start();
-					return;
-				}
-				// TODO get the version in another way
-				AsyncWork<Library,Exception> t = libs.loadNewLibrary(
-					"net.lecousin.framework", "system.impl", new VersionSpecification.SingleVersion(new Version("0.2")),
-					true, Task.PRIORITY_RATHER_IMPORTANT, null, 0);
-				t.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (t.getResult() == null) {
-							if (t.getError() != null)
-								Threading.logger.error("Error loading library net.lecousin.framework.system.impl",
-									t.getError());
-							else
-								Threading.logger.warn(
-					"Unable to load library net.lecousin.framework.system.impl: threading on hard drives cannot be optimized"
-								);
-							return;
-						}
-						clLoader.set(t.getResult().getClassLoader());
-						improve.start();
-					}
-				});
-			}
-		});
 	}
 	
 	private ThreadFactory threadFactory;
@@ -180,46 +79,48 @@ public class DrivesTaskManager {
 		return null;
 	}
 	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private void newDrive(Object drive) {
+	/** Interface to provide drives and partitions. */
+	public static interface DrivesProvider {
+		/** Register listeners. */
+		public void provide(
+			Listener<Pair<Object,List<File>>> onNewDrive,
+			Listener<Pair<Object,List<File>>> onDriveRemoved,
+			Listener<Pair<Object,File>> onNewPartition,
+			Listener<Pair<Object,File>> onPartitionRemoved
+		);
+	}
+	
+	private DrivesProvider drivesProvider = null;
+	
+	/** Set the drives provider.
+	 * @throws IllegalStateException in case a provider is already set
+	 */
+	public void setDrivesProvider(DrivesProvider provider) throws IllegalStateException {
+		synchronized (this) {
+			if (drivesProvider != null) throw new IllegalStateException();
+			drivesProvider = provider;
+		}
+		drivesProvider.provide(
+			(d) -> { newDrive(d); },
+			(d) -> { driveRemoved(d); },
+			(p) -> { newPartition(p); },
+			(p) -> { partitionRemoved(p); }
+		);
+	}
+	
+	private void newDrive(Pair<Object,List<File>> driveAndPartitions) {
+		Object drive = driveAndPartitions.getValue1();
 		MonoThreadTaskManager tm = new MonoThreadTaskManager("Drive " + drive.toString(), drive, threadFactory, taskPriorityManager);
 		tm.start();
 		synchronized (managers) {
 			managers.put(drive, tm);
 		}
 		Threading.registerResource(drive, tm);
-		List<File> mountPoints = null;
-		Class<?> cl = null;
-		try { cl = Class.forName("net.lecousin.framework.system.hardware.PhysicalDrive"); }
-		catch (Throwable t) { /* ignore */ }
-		if (cl != null && cl.isAssignableFrom(drive.getClass())) {
-			List partitions = null;
-			try { partitions = (List)drive.getClass().getMethod("getPartitions").invoke(drive); }
-			catch (Throwable t) {
-				Threading.logger.error("Error loading partitions from drive " + drive.toString(), t);
-			}
-			if (partitions != null) {
-				mountPoints = new LinkedList<>();
-				for (Object partition : partitions) {
-					try {
-						File mount = (File)partition.getClass().getMethod("getMountPoint").invoke(partition);
-						if (mount == null) continue;
-						mountPoints.add(mount);
-					} catch (Throwable t) {
-						Threading.logger.error("Error searching mount points for partition on drive " + drive.toString(), t);
-					}
-				}
-			}
-		} else {
-			try { mountPoints = (List<File>)drive.getClass().getMethod("getMountPoints").invoke(drive); }
-			catch (Throwable t) {
-				Threading.logger.error("Error loading mount points from drive " + drive.toString(), t);
-			}
-		}
 		
-		if (mountPoints == null || mountPoints.isEmpty()) return;
+		List<File> partitions = driveAndPartitions.getValue2();
+		if (partitions == null || partitions.isEmpty()) return;
 		ArrayList<String> paths = new ArrayList<>();
-		for (File mount : mountPoints) {
+		for (File mount : partitions) {
 			String path = mount.getAbsolutePath();
 			if (path.charAt(path.length() - 1) != File.separatorChar)
 				path += File.separatorChar;
@@ -253,7 +154,8 @@ public class DrivesTaskManager {
 		tm.autoCloseSpares();
 	}
 	
-	private void driveRemoved(Object drive) {
+	private void driveRemoved(Pair<Object,List<File>> driveAndPartitions) {
+		Object drive = driveAndPartitions.getValue1();
 		MonoThreadTaskManager tm;
 		synchronized (managers) {
 			tm = managers.remove(drive);
@@ -265,6 +167,50 @@ public class DrivesTaskManager {
 				MapUtil.removeValue(rootResources, drive);
 			}
 			tm.cancelAndStop();
+		}
+	}
+	
+	private void newPartition(Pair<Object,File> driveAndPartition) {
+		Object drive = driveAndPartition.getValue1();
+		File mount = driveAndPartition.getValue2();
+		String path = mount.getAbsolutePath();
+		if (path.charAt(path.length() - 1) != File.separatorChar)
+			path += File.separatorChar;
+		MonoThreadTaskManager tm;
+		synchronized (managers) {
+			tm = managers.get(drive);
+		}
+		if (tm == null) {
+			Threading.logger.error("Cannot handle partition " + mount.getAbsolutePath() + " because drive is unknown: " + drive);
+			return;
+		}
+		MonoThreadTaskManager previous;
+		synchronized (rootManagers) {
+			previous = rootManagers.get(path);
+			if (previous != null) {
+				Threading.unregisterResource(rootResources.get(path));
+				rootManagers.remove(path);
+				rootResources.remove(path);
+				rootManagers.put(path, tm);
+				rootResources.put(path, drive);
+			} else {
+				rootManagers.put(path, tm);
+				rootResources.put(path, drive);
+			}
+		}
+		if (previous != null)
+			previous.transferAndClose(tm);
+		Threading.logger.info("New partition added to DrivesTaskManager: " + mount.getAbsolutePath());
+	}
+	
+	private void partitionRemoved(Pair<Object,File> driveAndPartition) {
+		String path = driveAndPartition.getValue2().getAbsolutePath();
+		if (path.charAt(path.length() - 1) != File.separatorChar)
+			path += File.separatorChar;
+		synchronized (rootManagers) {
+			Threading.unregisterResource(rootResources.get(path));
+			rootManagers.remove(path);
+			rootResources.remove(path);
 		}
 	}
 	

@@ -123,6 +123,7 @@ public final class Threading {
 	
 	/** Register a resource. */
 	public static void registerResource(Object resource, TaskManager tm) {
+		if (resource == null) return;
 		synchronized (resources) {
 			resources.put(resource, tm);
 		}
@@ -130,6 +131,7 @@ public final class Threading {
 	
 	/** Unregister a resource. */
 	public static TaskManager unregisterResource(Object resource) {
+		if (resource == null) return null;
 		synchronized (resources) {
 			return resources.remove(resource);
 		}
