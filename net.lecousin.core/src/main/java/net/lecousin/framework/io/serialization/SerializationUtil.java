@@ -205,7 +205,7 @@ public final class SerializationUtil {
 					if (a.getter != null)
 						continue; // a getter overrides it in an upper class
 					if (!type.isAssignableFrom(a.type))
-						continue; // not compatible, TODO ?
+						continue; // not compatible
 					a.getter = m;
 				} else {
 					a = new Attribute(name, null, m, null, type, m.getGenericReturnType());
@@ -226,7 +226,7 @@ public final class SerializationUtil {
 					if (a.setter != null)
 						continue; // a setter overrides it in an upper class
 					if (!a.type.isAssignableFrom(paramsTypes[0]))
-						continue; // not compatible, TODO ?
+						continue; // not compatible
 					a.setter = m;
 				} else {
 					a = new Attribute(name, null, null, m, paramsTypes[0], m.getGenericParameterTypes()[0]);

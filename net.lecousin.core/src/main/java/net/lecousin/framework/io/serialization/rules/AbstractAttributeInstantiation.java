@@ -3,6 +3,7 @@ package net.lecousin.framework.io.serialization.rules;
 import java.util.ArrayList;
 import java.util.ListIterator;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationUtil;
 import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
 import net.lecousin.framework.util.Factory;
@@ -32,13 +33,13 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 			if (!name.equals(a.getOriginalName())) continue;
 			Attribute discr = SerializationUtil.getAttributeByOriginalName(attributes, discriminator);
 			if (discr == null || !discr.canGet()) {
-				// TODO log ?
+				LCCore.getApplication().getDefaultLogger().warn("Unable to get discriminator attribute " + discriminator);
 				continue;
 			}
 			try {
 				it.set(new InstantiationAttribute(a, discr, factory.newInstance()));
 			} catch (Throwable t) {
-				// TODO log ?
+				LCCore.getApplication().getDefaultLogger().error("Unable to replace attribute by an InstantiationAttribute", t);
 			}
 		}
 	}

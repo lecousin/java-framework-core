@@ -5,6 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
 import net.lecousin.framework.io.serialization.rules.IgnoreAttribute;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
@@ -29,7 +30,7 @@ public @interface Transient {
 			try {
 				return new IgnoreAttribute(attribute.getDeclaringClass(), attribute.getOriginalName());
 			} catch (Throwable t) {
-				// TODO ?
+				LCCore.getApplication().getDefaultLogger().error("Error creating IgnoreAttribute from annotation", t);
 				return null;
 			}
 		}

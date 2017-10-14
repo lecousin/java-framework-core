@@ -7,6 +7,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
 import net.lecousin.framework.io.serialization.rules.CustomAttributeSerializer;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
@@ -46,7 +47,9 @@ public @interface SerializationMethod {
 								Method m = attribute.getType().getMethod(annotation.value());
 								return m.getReturnType();
 							} catch (Throwable t) {
-								// TODO ?
+								LCCore.getApplication().getDefaultLogger()
+									.error("Error getting return type of method " + annotation.value()
+										+ " on class " + attribute.getType(), t);
 								return Object.class;
 							}
 						}
@@ -59,7 +62,9 @@ public @interface SerializationMethod {
 								Method m = attribute.getType().getMethod(annotation.value());
 								return m.invoke(src);
 							} catch (Throwable t) {
-								// TODO ?
+								LCCore.getApplication().getDefaultLogger()
+								.error("Error calling method " + annotation.value()
+									+ " on class " + attribute.getType(), t);
 								return null;
 							}
 						}
@@ -74,14 +79,15 @@ public @interface SerializationMethod {
 								Constructor ctor = cl.getConstructor(targetType());
 								return ctor.newInstance(src);
 							} catch (Throwable t) {
-								// TODO ?
+								LCCore.getApplication().getDefaultLogger()
+									.error("Error instantiating type " + sourceType(), t);
 								return null;
 							}
 						}
 					}
 				);
 			} catch (Throwable t) {
-				// TODO ?
+				LCCore.getApplication().getDefaultLogger().error("Error creating CustomAttributeSerialization from annotation", t);
 				return null;
 			}
 		}

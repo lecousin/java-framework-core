@@ -3,8 +3,12 @@ package net.lecousin.framework.log.bridges;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.log.Logger;
 
+/**
+ * Bridge between LC logging system and Apache commons logging.
+ */
 public class ApacheCommonsLogging implements org.apache.commons.logging.Log {
 
+	/** Create a bridge for the given log name. */
 	public ApacheCommonsLogging(String name) {
 		lc = LCCore.getApplication().getLoggerFactory().getLogger(name);
 	}
