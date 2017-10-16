@@ -5,7 +5,6 @@ package net.lecousin.framework.collections.map;
  * associates an ordered array.
  * The insert and remove operations are costly because we need to reallocate and order the arrays,
  * but the get operation is fast, while using reasonable amount of memory.
- * Note that this implementation does not support the remove operation for now. // TODO
  * @param <T> type of elements
  */
 public class HalfByteHashMap<T> implements ByteMap<T> {
@@ -42,10 +41,10 @@ public class HalfByteHashMap<T> implements ByteMap<T> {
 			if (key == array.bytes[m]) return array.elements[m];
 			if (key < array.bytes[m]) {
 				if (m == a) return null;
-				b = m - 1;
+				b = m;
 				continue;
 			}
-			if (m == b) return null;
+			if (m == b - 1) return null;
 			a = m + 1;
 		} while (true);
 	}
@@ -99,11 +98,11 @@ public class HalfByteHashMap<T> implements ByteMap<T> {
 					index = a;
 					break;
 				}
-				b = m - 1;
+				b = m;
 				continue;
 			}
-			if (m == b) {
-				index = b + 1;
+			if (m == b - 1) {
+				index = b;
 				break;
 			}
 			a = m + 1;
@@ -113,9 +112,9 @@ public class HalfByteHashMap<T> implements ByteMap<T> {
 		if (index > 0) {
 			System.arraycopy(array.bytes, 0, nb, 0, index);
 			System.arraycopy(array.elements, 0, ne, 0, index);
-			array.bytes[index] = key;
-			array.elements[index] = element;
 		}
+		nb[index] = key;
+		ne[index] = element;
 		if (index < array.bytes.length) {
 			System.arraycopy(array.bytes, index, nb, index + 1, array.bytes.length - index);
 			System.arraycopy(array.elements, index, ne, index + 1, array.bytes.length - index);
@@ -152,17 +151,62 @@ public class HalfByteHashMap<T> implements ByteMap<T> {
 			if (key == array.bytes[m]) return true;
 			if (key < array.bytes[m]) {
 				if (m == a) return false;
-				b = m - 1;
+				b = m;
 				continue;
 			}
-			if (m == b) return false;
+			if (m == b - 1) return false;
 			a = m + 1;
 		} while (true);
 	}
 	
+	// skip checkstyle: VariableDeclarationUsageDistance
 	@Override
 	public T remove(byte key) {
-		throw new UnsupportedOperationException();
+		HalfByteArray<T> array = hashmap[key & 0xF];
+		if (array == null) return null;
+		// dichotomy to find the key
+		int b = array.bytes.length;
+		if (b == 1) {
+			if (array.bytes[0] != key) return null;
+			T e = array.elements[0];
+			hashmap[key & 0xF] = null;
+			size--;
+			return e;
+		}
+		int a = 0;
+		int index = -1;
+		do {
+			int m = a + (b - a) / 2;
+			if (key == array.bytes[m]) {
+				index = m;
+				break;
+			}
+			if (key < array.bytes[m]) {
+				if (m == a) return null;
+				b = m;
+				continue;
+			}
+			if (m == b - 1) return null;
+			a = m + 1;
+		} while (true);
+		T e = array.elements[index];
+		byte[] nb = new byte[array.bytes.length - 1];
+		@SuppressWarnings("unchecked")
+		T[] ne = (T[])new Object[array.bytes.length - 1];
+		// copy before index
+		if (index > 0) {
+			System.arraycopy(array.bytes, 0, nb, 0, index);
+			System.arraycopy(array.elements, 0, ne, 0, index);
+		}
+		// copy after index
+		if (index < nb.length) {
+			System.arraycopy(array.bytes, index + 1, nb, index, nb.length - index);
+			System.arraycopy(array.elements, index + 1, ne, index, ne.length - index);
+		}
+		array.bytes = nb;
+		array.elements = ne;
+		size--;
+		return e;
 	}
 	
 }
