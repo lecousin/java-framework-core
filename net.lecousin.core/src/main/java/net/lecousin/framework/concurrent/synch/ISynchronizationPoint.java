@@ -161,4 +161,15 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		task.startOn(this, evenIfErrorOrCancel);
 	}
 	
+	/** Convert this synchronization point into an AsyncWork with Void result. */
+	default AsyncWork<Void, TError> toAsyncWorkVoid() {
+		AsyncWork<Void, TError> aw = new AsyncWork<>();
+		listenInline(() -> {
+			if (hasError()) aw.error(getError());
+			else if (isCancelled()) aw.cancel(getCancelEvent());
+			else aw.unblockSuccess(null);
+		});
+		return aw;
+	}
+	
 }
