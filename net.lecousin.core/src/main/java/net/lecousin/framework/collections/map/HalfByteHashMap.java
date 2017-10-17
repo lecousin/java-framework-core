@@ -2,9 +2,10 @@ package net.lecousin.framework.collections.map;
 
 /**
  * This class uses the 4 lower bits of a byte as a hash code, then for each hash code
- * associates an ordered array.
+ * associates an ordered array.<br/>
+ * In other words, it splits bytes over 16 buckets, each bucket containing up to 16 key-value pairs.<br/>
  * The insert and remove operations are costly because we need to reallocate and order the arrays,
- * but the get operation is fast, while using reasonable amount of memory.
+ * but the get operation is fast, while using reasonable amount of memory.<br/>
  * @param <T> type of elements
  */
 public class HalfByteHashMap<T> implements ByteMap<T> {

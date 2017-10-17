@@ -145,4 +145,47 @@ public class RedBlackTreeLongByRange<T> implements Sorted.AssociatedWithLong<T> 
 			return e;
 		}
 	}
+	
+	@Override
+	public Iterator<T> orderedIterator() {
+		return new OrderedIt();
+	}
+
+	private class OrderedIt implements Iterator<T> {
+		public OrderedIt() {
+			itRange = ranges.orderedIterator();
+			subIt = null;
+			forward();
+		}
+		
+		private Iterator<RedBlackTreeLong<T>> itRange;
+		private Iterator<T> subIt;
+		
+		private void forward() {
+			do {
+				if (subIt != null) {
+					if (subIt.hasNext()) return;
+					subIt = null;
+				}
+				if (itRange.hasNext()) {
+					RedBlackTreeLong<T> rbt = itRange.next();
+					subIt = rbt.orderedIterator();
+					continue;
+				}
+				break;
+			} while (true);
+		}
+		
+		@Override
+		public boolean hasNext() {
+			return subIt != null;
+		}
+		
+		@Override
+		public T next() {
+			T e = subIt.next();
+			if (!subIt.hasNext()) forward();
+			return e;
+		}
+	}
 }

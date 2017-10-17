@@ -1,6 +1,8 @@
-package net.lecousin.framework.collections;
+package net.lecousin.framework.collections.sort;
 
 import java.util.Iterator;
+
+import net.lecousin.framework.collections.ArrayIterator;
 
 /**
  * Sorted list of elements, each being associated with a date (timestamp).

@@ -66,11 +66,11 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 	}
 	
 	protected void put(byte b, ByteMap<Object> map, HashMap<Byte, Object> checkMap) {
-		try { map.put(b, Integer.valueOf(0)); }
+		try { map.put(b, Integer.valueOf(b & 0xFF)); }
 		catch (Throwable t) {
 			throw new RuntimeException("Error in put(" + b + ")", t);
 		}
-		checkMap.put(Byte.valueOf(b), Integer.valueOf(0));
+		checkMap.put(Byte.valueOf(b), Integer.valueOf(b & 0xFF));
 		checkMap(map, checkMap);
 	}
 	

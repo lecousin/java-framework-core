@@ -44,7 +44,7 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 			((IO.Readable.Buffered)input).canStartReading().listenInline(new Runnable() {
 				@Override
 				public void run() {
-					bufferize(); // TODO in a task ?
+					bufferize();
 				}
 			});
 		else
@@ -72,7 +72,8 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 	public String getSourceDescription() { return input.getSourceDescription(); }
 	
 	private void bufferize() {
-		bytes.compact();
+		if (bytes.position() > 0)
+			bytes.compact();
 		int remaining = bytes.remaining();
 		AsyncWork<Integer,IOException> readTask = input.readFullyAsync(bytes);
 		Task.Cpu<Void,NoException> decode = new Task.Cpu<Void,NoException>("Decode character stream", input.getPriority()) {

@@ -8,7 +8,7 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
 /**
- * This implementation of List uses a linked list of array.
+ * This implementation of List uses a linked list of arrays.
  * This is typically used when a large number of items and operations are expected,
  * mixing advantages of both LinkedList and ArrayList.
  * It has the following advantages:<ul>

@@ -34,6 +34,9 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
 		
 		/** Return the element hold by this node. */
 		public T getElement() { return element; }
+		
+		/** Replace the element hold by this node. */
+		public void setElement(T element) { this.element = element; }
 	}
 	
 	private Node<T> root = null;
@@ -322,21 +325,21 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
         if ((root.left == null || !root.left.red) && (root.right == null || !root.right.red))
             root.red = true;
 
-        root = removeMin(root);
+        root = removeMin(root, true);
         if (root != null) root.red = false;
         else first = last = null;
     }
 
     // delete the key-value pair with the minimum key rooted at h
-    private Node<T> removeMin(Node<T> h) { 
+    private Node<T> removeMin(Node<T> h, boolean updateFirst) { 
         if (h.left == null)
             return null;
 
         if (!h.left.red && (h.left.left == null || !h.left.left.red))
             h = moveRedLeft(h);
 
-        h.left = removeMin(h.left);
-        if (h.left == null)
+        h.left = removeMin(h.left, updateFirst);
+        if (h.left == null && updateFirst)
         	first = h;
         return balance(h);
     }
@@ -349,13 +352,13 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
         if ((root.left == null || !root.left.red) && (root.right == null || !root.right.red))
             root.red = true;
 
-        root = removeMax(root);
+        root = removeMax(root, true);
         if (root != null) root.red = false;
         else first = last = null;
     }
 
     // delete the key-value pair with the maximum key rooted at h
-    private Node<T> removeMax(Node<T> h) { 
+    private Node<T> removeMax(Node<T> h, boolean updateLast) { 
         if (h.left != null && h.left.red)
             h = rotateRight(h);
 
@@ -365,8 +368,8 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
         if (!h.right.red && (h.right.left == null || !h.right.left.red))
             h = moveRedRight(h);
 
-        h.right = removeMax(h.right);
-        if (h.right == null) last = h;
+        h.right = removeMax(h.right, updateLast);
+        if (h.right == null && updateLast) last = h;
         return balance(h);
     }
     
@@ -386,6 +389,7 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
 
         root = remove(root, node);
         if (root != null) root.red = false;
+        else first = last = null;
     }
 
     private Node<T> remove(Node<T> h, Node<T> node) { 
@@ -404,7 +408,7 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
                 Node<T> x = min(h.right);
                 h.value = x.value;
                 h.element = x.element;
-                h.right = removeMin(h.right);
+                h.right = removeMin(h.right, false);
             } else
             	h.right = remove(h.right, node);
         }
@@ -450,7 +454,7 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
                 Node<T> x = min(h.right);
                 h.value = x.value;
                 h.element = x.element;
-                h.right = removeMin(h.right);
+                h.right = removeMin(h.right, false);
             } else
             	h.right = remove(h.right, key, element);
         }
@@ -494,7 +498,7 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
                 Node<T> x = min(h.right);
                 h.value = x.value;
                 h.element = x.element;
-                h.right = removeMin(h.right);
+                h.right = removeMin(h.right, false);
             } else
             	h.right = removeKey(h.right, key);
         }
@@ -539,7 +543,7 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
                 Node<T> x = min(h.right);
                 h.value = x.value;
                 h.element = x.element;
-                h.right = removeMin(h.right);
+                h.right = removeMin(h.right, false);
             } else
             	h.right = removeInstance(h.right, key, instance);
         }
@@ -641,6 +645,9 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     
     public Iterator<Node<T>> nodeIteratorOrdered() { return new NodeIteratorOrdered<T>(root); }
     
+    @Override
+    public Iterator<T> orderedIterator() { return new IteratorOrdered<T>(root); }
+    
     private class RBTreeIterator implements Iterator<T> {
     	private RBTreeIterator(Node<T> node) {
     		this.node = node;
@@ -703,6 +710,7 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     				parents.add(next);
     				next = next.left;
     			}
+    			return res;
     		}
     		if (parents.isEmpty()) {
     			next = null;
@@ -713,4 +721,18 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     	}
     }
 
+    private static class IteratorOrdered<T> implements Iterator<T> {
+    	private IteratorOrdered(Node<T> root) {
+    		it = new NodeIteratorOrdered<>(root);
+    	}
+    	
+    	private NodeIteratorOrdered<T> it;
+    	
+    	@Override
+    	public boolean hasNext() { return it.hasNext(); }
+    	
+    	@Override
+    	public T next() { return it.next().getElement(); }
+    }
+    
 }

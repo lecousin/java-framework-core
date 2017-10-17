@@ -1,9 +1,12 @@
 package net.lecousin.framework.collections.sort;
 
+import java.util.Iterator;
+
 /**
- * This interface marks a list as being sorted.
- * It does not add any constraint except the it must be iterable.
- * Sub-interfaces may be used to force the way elements are added, removed...
+ * This interface marks a list as being sorted.<br/>
+ * It does not add any constraint except the it must be iterable.<br/>
+ * The iterator returned by the method iterator() does not return elements in the sorted order, the method orderedIterator must be used instead.
+ * Sub-interfaces may be used to force the way elements are added, removed...<br/>
  * @param <T> type of elements
  */
 public interface Sorted<T> extends Iterable<T> {
@@ -13,6 +16,9 @@ public interface Sorted<T> extends Iterable<T> {
 	
 	/** Return true if this collection is empty. */
 	public boolean isEmpty();
+	
+	/** Return an iterator that iterates on the correct order. */
+	public Iterator<T> orderedIterator();
 	
 	/** Interface for sorted list where elements are associated with long values to sort them.
 	 * @param <T> type of elements

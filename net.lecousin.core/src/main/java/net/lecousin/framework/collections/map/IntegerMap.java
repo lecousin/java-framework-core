@@ -24,6 +24,4 @@ public interface IntegerMap<ValueType> {
 	/** Return true if this map is empty. */
 	public default boolean isEmpty() { return size() == 0; }
 	
-	// TODO implementation with a Red-Black tree
-	
 }
