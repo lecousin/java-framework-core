@@ -3,6 +3,7 @@ package net.lecousin.framework.xml;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -26,17 +27,27 @@ import net.lecousin.framework.util.UnprotectedStringBuffer;
  * The method next() allows to move forward to the next event (such as start element, end element, comment, text...).
  * It uses {@link UnprotectedString} to avoid allocating many character arrays.
  * Charset is automatically detected by reading the beginning of the XML (either with auto-detection or with the specified encoding).
- * TODO make a fully asynchronous implementation.
  */
 public class XMLStreamCursor {
 
-	/** Initialize with the given IO. If it is not buffered, a {@link PreBufferedReadable} is created. */
-	public XMLStreamCursor(IO.Readable io) {
+	/** Initialize with the given IO.
+	 * If it is not buffered, a {@link PreBufferedReadable} is created.
+	 * If the charset is null, it will be automatically detected.
+	 */
+	public XMLStreamCursor(IO.Readable io, Charset forcedEncoding) {
 		if (io instanceof IO.Readable.Buffered)
 			this.io = (IO.Readable.Buffered)io;
 		else
 			this.io = new PreBufferedReadable(io, 1024, io.getPriority(), 4096, (byte)(io.getPriority() - 1), 4);
+		this.forcedCharset = forcedEncoding;
 	}
+	
+	/** Constructor, without charset. */
+	public XMLStreamCursor(IO.Readable io) {
+		this(io, null);
+	}
+	
+	private Charset forcedCharset;
 	
 	/** Type of event. */
 	public static enum Type {
@@ -165,9 +176,9 @@ public class XMLStreamCursor {
 	}
 	
 	private class CharacterStreamProvider extends CharacterProvider {
-		public CharacterStreamProvider(String charset, char... firstChars) {
+		public CharacterStreamProvider(Charset charset, char... firstChars) {
 			super(firstChars);
-			stream = new BufferedReadableCharacterStream(io, Charset.forName(charset), 512, 32);
+			stream = new BufferedReadableCharacterStream(io, charset, 512, 32);
 		}
 		
 		private BufferedReadableCharacterStream stream;
@@ -180,6 +191,7 @@ public class XMLStreamCursor {
 	
 	private void initCharacterProvider() throws XMLException, IOException {
 		// detect BOM
+		// even we have a forced charset given, we read the BOM but ignore its signification
 		int c1 = io.read();
 		if (c1 < 0) throw new XMLException(null, "File is empty");
 		int c2 = io.read();
@@ -192,7 +204,10 @@ public class XMLStreamCursor {
 				if (c3 < 0) throw new XMLException(null, "Not an XML file");
 				if (c3 == 0xBF) {
 					// UTF-8 BOM
-					cp = new CharacterStreamProvider("UTF-8");
+					if (forcedCharset == null)
+						cp = new CharacterStreamProvider(StandardCharsets.UTF_8);
+					else
+						cp = new CharacterStreamProvider(forcedCharset);
 					return;
 				}
 				cp = new StartCharacterProvider((char)c1, (char)c2, (char)c3);
@@ -204,7 +219,10 @@ public class XMLStreamCursor {
 			// it may be a UTF-16 big-endian BOM
 			if (c2 == 0xFF) {
 				// UTF-16 big-endian
-				cp = new CharacterStreamProvider("UTF-16BE");
+				if (forcedCharset == null)
+					cp = new CharacterStreamProvider(StandardCharsets.UTF_16BE);
+				else
+					cp = new CharacterStreamProvider(forcedCharset);
 				return;
 			}
 			cp = new StartCharacterProvider((char)c1, (char)c2);
@@ -219,14 +237,20 @@ public class XMLStreamCursor {
 					if (c4 < 0) throw new XMLException(null, "Not an XML file");
 					if (c4 == 0x00) {
 						// UTF-32 little-endian
-						cp = new CharacterStreamProvider("UTF-32LE");
+						if (forcedCharset == null)
+							cp = new CharacterStreamProvider(Charset.forName("UTF-32LE"));
+						else
+							cp = new CharacterStreamProvider(forcedCharset);
 						return;
 					}
 					cp = new StartCharacterProvider((char)c1, (char)c2, (char)c3, (char)c4);
 					return;
 				}
 				// UTF-16 little-endian
-				cp = new CharacterStreamProvider("UTF-16LE", (char)c3);
+				if (forcedCharset == null)
+					cp = new CharacterStreamProvider(StandardCharsets.UTF_16LE, (char)c3);
+				else
+					cp = new CharacterStreamProvider(forcedCharset);
 				return;
 			}
 			cp = new StartCharacterProvider((char)c1, (char)c2);
@@ -241,19 +265,26 @@ public class XMLStreamCursor {
 					if (c4 < 0) throw new XMLException(null, "Not an XML file");
 					if (c4 == 0xFF) {
 						// UTF-32 big-endian
-						cp = new CharacterStreamProvider("UTF-32BE");
+						if (forcedCharset == null)
+							cp = new CharacterStreamProvider(Charset.forName("UTF-32BE"));
+						else
+							cp = new CharacterStreamProvider(forcedCharset);
 						return;
 					}
 					cp = new StartCharacterProvider((char)c1, (char)c2, (char)c3, (char)c4);
 					return;
 				}
 				// UTF-16 without BOM
-				cp = new CharacterStreamProvider("UTF-16BE", (char)c1, (char)c2);
+				if (forcedCharset == null)
+					cp = new CharacterStreamProvider(StandardCharsets.UTF_16BE, (char)c1, (char)c2);
+				else
+					cp = new CharacterStreamProvider(forcedCharset);
 				return;
 			}
 			cp = new StartCharacterProvider((char)c1, (char)c2);
 			return;
 		// TODO other BOM ? (https://en.wikipedia.org/wiki/Byte_order_mark#Representations_of_byte_order_marks_by_encoding)
+		// TODO https://www.w3.org/TR/REC-xml/#sec-guessing
 		default: break;
 		}
 		cp = new StartCharacterProvider((char)c1, (char)c2);

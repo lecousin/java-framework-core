@@ -9,6 +9,7 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -72,8 +73,7 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 	public String getSourceDescription() { return input.getSourceDescription(); }
 	
 	private void bufferize() {
-		if (bytes.position() > 0)
-			bytes.compact();
+		bytes.compact();
 		int remaining = bytes.remaining();
 		AsyncWork<Integer,IOException> readTask = input.readFullyAsync(bytes);
 		Task.Cpu<Void,NoException> decode = new Task.Cpu<Void,NoException>("Decode character stream", input.getPriority()) {
@@ -87,6 +87,8 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 					canStartReading.error(readTask.getError());
 					return null;
 				}
+				if (bytes == null)
+					return null; // closed
 				try {
 					int nb = readTask.getResult().intValue();
 					bytes.flip();
@@ -135,6 +137,17 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 					return null;
 				} catch (IOException e) {
 					canStartReading.error(e);
+					if (!endReached)
+						nextReady.unblock();
+					return null;
+				} catch (NullPointerException e) {
+					// closed
+					return null;
+				} catch (Throwable t) {
+					canStartReading.error(new IOException("Unexpected error while buffering", t));
+					LCCore.getApplication().getDefaultLogger().error("Error while buffering", t);
+					if (!endReached)
+						nextReady.unblock();
 					return null;
 				} finally {
 					canStartReading.unblock();
@@ -169,6 +182,7 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 				chars = ready.pollFirst();
 				sp = nextReady;
 				if (chars == null && endReached) throw new EOFException();
+				if (canStartReading.hasError()) throw canStartReading.getError();
 			}
 			if (full && !endReached) bufferize();
 			if (chars != null) break;

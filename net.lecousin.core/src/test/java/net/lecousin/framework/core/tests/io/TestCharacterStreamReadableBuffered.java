@@ -30,7 +30,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 				char c;
 				try { c = s.read(); }
 				catch (IOException e) {
-					throw new Exception("Read character error at " + (i*testBuf.length+j), e);
+					throw new Exception("Read character error at " + (i*testBuf.length+j) + " in file " + testFile.getAbsolutePath(), e);
 				}
 				if (c != (char)(testBuf[j]&0xFF))
 					throw new Exception("Invalid character "+c+" at "+(i*testBuf.length+j));
