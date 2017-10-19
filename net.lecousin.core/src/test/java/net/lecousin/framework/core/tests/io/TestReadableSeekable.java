@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
+import net.lecousin.framework.collections.LinkedArrayList;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -46,7 +47,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		while (!offsets.isEmpty()) {
 			if (nbBuf > 1000 && (offsets.size() % 100) == 99) {
 				// make the test faster
-				for (int skip = 0; skip < 70 && !offsets.isEmpty(); ++skip)
+				for (int skip = 0; skip < 80 && !offsets.isEmpty(); ++skip)
 					offsets.remove(rand.nextInt(offsets.size()));
 				continue;
 			}
@@ -127,7 +128,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 					} else {
 						if (nbBuf > 1000 && (offsets.size() % 100) == 99) {
 							// make the test faster
-							for (int skip = 0; skip < 70 && offsets.size() > 1; ++skip)
+							for (int skip = 0; skip < 80 && offsets.size() > 1; ++skip)
 								offsets.remove(rand.nextInt(offsets.size()));
 						}
 
@@ -184,7 +185,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	private void _testSeekableBufferByBufferFullyAsync(IO.Readable.Seekable io) throws Exception {
 		byte[] b = new byte[testBuf.length];
 		ByteBuffer buffer = ByteBuffer.wrap(b);
-		ArrayList<Integer> offsets = new ArrayList<Integer>(nbBuf);
+		LinkedArrayList<Integer> offsets = new LinkedArrayList<Integer>(20);
 		for (int i = 0; i < nbBuf; ++i) offsets.add(Integer.valueOf(i));
 		
 		MutableInteger offset = new MutableInteger(nbBuf > 0 ? offsets.remove(rand.nextInt(offsets.size())).intValue() : 0);
@@ -555,6 +556,107 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		sp.block(0);
 		if (sp.hasError()) throw sp.getError();
 		io.close();
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
+	public void testSkipSync() throws Exception {
+		long size = getFileSize();
+		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), size);
+		long pos = 0;
+		byte[] b = new byte[testBuf.length * 3];
+		while (true) {
+			int nb = io.readFullySync(ByteBuffer.wrap(b));
+			if (nb < 0) nb = 0;
+			if (nb < b.length) {
+				if (pos + nb < size)
+					throw new AssertionError("Only " + nb + " byte(s) read at " + pos);
+				checkBuffer(b, 0, nb, pos);
+			}
+			pos += nb;
+			long skipped = io.skipSync(testBuf.length / 4);
+			if (skipped != testBuf.length / 4) {
+				if (pos + skipped != size)
+					throw new AssertionError(skipped + " byte(s) skipped at " + pos);
+			}
+			pos += skipped;
+			nb = io.readFullySync(ByteBuffer.wrap(b, 0, testBuf.length));
+			if (nb < 0) nb = 0;
+			if (nb < testBuf.length) {
+				if (pos + nb < size)
+					throw new AssertionError("Only " + nb + " byte(s) read at " + pos);
+				checkBuffer(b, 0, nb, pos);
+			}
+			pos += nb;
+			skipped = io.skipSync(-testBuf.length / 3);
+			if (skipped != -testBuf.length / 3) {
+				if (pos + skipped != 0)
+					throw new AssertionError(skipped + " byte(s) skipped at " + pos);
+			}
+			boolean isEnd = pos == size;
+			pos += skipped;
+			if (isEnd) break;
+		}
+		io.close();
+	}
+
+	@SuppressWarnings("resource")
+	@Test
+	public void testSkipAsync() throws Exception {
+		long size = getFileSize();
+		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), size);
+		long pos = 0;
+		byte[] b = new byte[testBuf.length * 3];
+		while (true) {
+			int nb = io.readFullySync(ByteBuffer.wrap(b));
+			if (nb < 0) nb = 0;
+			if (nb < b.length) {
+				if (pos + nb < size)
+					throw new AssertionError("Only " + nb + " byte(s) read at " + pos);
+				checkBuffer(b, 0, nb, pos);
+			}
+			pos += nb;
+			AsyncWork<Long, IOException> skipped = io.skipAsync(testBuf.length / 4);
+			skipped.block(0);
+			if (skipped.hasError()) throw skipped.getError();
+			if (skipped.isCancelled()) throw skipped.getCancelEvent();
+			if (skipped.getResult().longValue() != testBuf.length / 4) {
+				if (pos + skipped.getResult().longValue() != size)
+					throw new AssertionError(skipped.getResult().longValue() + " byte(s) skipped at " + pos);
+			}
+			pos += skipped.getResult().longValue();
+			nb = io.readFullySync(ByteBuffer.wrap(b, 0, testBuf.length));
+			if (nb < 0) nb = 0;
+			if (nb < testBuf.length) {
+				if (pos + nb < size)
+					throw new AssertionError("Only " + nb + " byte(s) read at " + pos);
+				checkBuffer(b, 0, nb, pos);
+			}
+			pos += nb;
+			skipped = io.skipAsync(-testBuf.length / 3);
+			skipped.block(0);
+			if (skipped.hasError()) throw skipped.getError();
+			if (skipped.isCancelled()) throw skipped.getCancelEvent();
+			if (skipped.getResult().longValue() != -testBuf.length / 3) {
+				if (pos + skipped.getResult().longValue() != 0)
+					throw new AssertionError(skipped.getResult().longValue() + " byte(s) skipped at " + pos);
+			}
+			boolean isEnd = pos == size;
+			pos += skipped.getResult().longValue();
+			if (isEnd) break;
+		}
+		io.close();
+	}
+	
+	private void checkBuffer(byte[] b, int off, int len, long pos) {
+		if (len == 0) return;
+		int i = (int)(pos % testBuf.length);
+		int l = testBuf.length - i;
+		if (l > len) l = len;
+		if (!ArrayUtil.equals(b, off, testBuf, i, l))
+			throw new AssertionError("Invalid read at " + pos);
+		if (l == len) return;
+		checkBuffer(b, off + l, len - l, pos + l);
 	}
 	
 	// TODO test read not fully sync+async

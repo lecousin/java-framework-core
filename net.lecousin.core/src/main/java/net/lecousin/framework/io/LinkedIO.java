@@ -527,6 +527,13 @@ public abstract class LinkedIO extends AbstractIO {
 				if (nb.intValue() <= 0) {
 					if (sizes.get(ioIndex) == null)
 						sizes.set(ioIndex, Long.valueOf(posInIO));
+					if (ioIndex == ios.size() - 1) {
+						ioIndex++;
+						posInIO = 0;
+						if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
+						result.unblockSuccess(Integer.valueOf(-1));
+						return;
+					}
 					nextIOAsync(new Runnable() {
 						@Override
 						public void run() {
@@ -575,6 +582,13 @@ public abstract class LinkedIO extends AbstractIO {
 				if (buf == null) {
 					if (sizes.get(ioIndex) == null)
 						sizes.set(ioIndex, Long.valueOf(posInIO));
+					if (ioIndex == ios.size() - 1) {
+						ioIndex++;
+						posInIO = 0;
+						if (ondone != null) ondone.run(new Pair<>(null, null));
+						result.unblockSuccess(null);
+						return;
+					}
 					nextIOAsync(new Runnable() {
 						@Override
 						public void run() {
@@ -621,19 +635,27 @@ public abstract class LinkedIO extends AbstractIO {
 			nextIOSync();
 			return nb + skipSync(n - nb);
 		}
-		if (ioIndex == 0)
+		if (!(this instanceof IO.Readable.Seekable))
 			return 0;
 		if (posInIO == 0) {
+			if (ioIndex == 0)
+				return 0;
 			previousIOSync();
 			return skipSync(n);
 		}
 		IO.Readable io = (IO.Readable)ios.get(ioIndex);
 		long nb = io.skipSync(n);
+		if (nb == 0)
+			return 0;
 		posInIO += nb;
 		pos += nb;
 		if (nb == n)
 			return n;
-		previousIOSync();
+		if (posInIO == 0) {
+			if (ioIndex == 0)
+				return nb;
+			previousIOSync();
+		}
 		return nb + skipSync(n - nb);
 	}
 
@@ -668,14 +690,16 @@ public abstract class LinkedIO extends AbstractIO {
 					if (sizes.get(ioIndex) == null)
 						sizes.set(ioIndex, Long.valueOf(posInIO));
 					AsyncWorkListener<Long, IOException> l = this;
+					if (ioIndex == ios.size() - 1) {
+						ioIndex++;
+						posInIO = 0;
+						if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done.get()), null));
+						result.unblockSuccess(Long.valueOf(done.get()));
+						return;
+					}
 					nextIOAsync(new Runnable() {
 						@Override
 						public void run() {
-							if (ioIndex == ios.size()) {
-								if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done.get()), null));
-								result.unblockSuccess(Long.valueOf(done.get()));
-								return;
-							}
 							((IO.Readable)ios.get(ioIndex)).skipAsync(n - done.get(), null).listenInline(l);
 						}
 					}, result, ondone);
@@ -694,12 +718,17 @@ public abstract class LinkedIO extends AbstractIO {
 			});
 			return result;
 		}
-		if (ioIndex == 0) {
+		if (!(this instanceof IO.Readable.Seekable)) {
 			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
 			result.unblockSuccess(Long.valueOf(0));
 			return result;
 		}
 		if (posInIO == 0) {
+			if (ioIndex == 0) {
+				if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
+				result.unblockSuccess(Long.valueOf(0));
+				return result;
+			}
 			previousIOAsync(new Runnable() {
 				@Override
 				public void run() {
