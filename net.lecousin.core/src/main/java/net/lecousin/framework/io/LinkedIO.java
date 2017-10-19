@@ -563,7 +563,6 @@ public abstract class LinkedIO extends AbstractIO {
 	}
 
 	protected AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		// TODO better
 		return IOUtil.readFullyAsynch((IO.Readable)this, buffer, ondone);
 	}
 	

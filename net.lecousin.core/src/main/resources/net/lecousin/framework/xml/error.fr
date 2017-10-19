@@ -6,6 +6,7 @@ unexpected character=caractère innatendu {0}
 unexpected end=fin innatendue {0}
 invalid XML=XML invalide
 in XML document=dans le document XML
+in internal subset declaration=dans la déclaration interne de DOCTYPE
 expected character=caractère innatendu {0}, celui attendu est {1}
 in attribute value=dans la valeur d'un attribut
 invalid XML entity=entité XML invalide &{0};

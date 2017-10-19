@@ -29,6 +29,14 @@ public class UnprotectedString implements IString {
 		end = -1;
 		usableEnd = initialCapacity - 1;
 	}
+	
+	/** Create a string with a single character. */
+	public UnprotectedString(char singleChar) {
+		chars = new char[] { singleChar };
+		start = 0;
+		end = 0;
+		usableEnd = 0;
+	}
 
 	/** Create an UnprotectedString based on an existing character array. */
 	@SuppressFBWarnings("EI_EXPOSE_REP2")

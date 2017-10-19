@@ -72,6 +72,10 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 	@Override
 	public String getSourceDescription() { return input.getSourceDescription(); }
 	
+	public Charset getCharset() {
+		return decoder.charset();
+	}
+	
 	private void bufferize() {
 		bytes.compact();
 		int remaining = bytes.remaining();
