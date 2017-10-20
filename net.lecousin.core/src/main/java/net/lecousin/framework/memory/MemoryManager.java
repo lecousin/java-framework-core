@@ -64,7 +64,6 @@ public class MemoryManager {
 					//lastGcForcedFailed = false;
 					if (now - lastGC[4] < 60000) {
 						logger.debug("5 garbage collections in less than 1 minute");
-						// TODO free some memory ?
 					}
 					System.arraycopy(lastGC, 0, lastGC, 1, 9);
 					System.arraycopy(lastGCAllocatedMemory, 0, lastGCAllocatedMemory, 1, 9);

@@ -221,7 +221,6 @@ public class TestXMLStreamCursorWithDOM extends LCCoreAbstractTest {
 		case END_ELEMENT:
 			Assert.assertFalse(openElements.isEmpty());
 			Assert.assertEquals(openElements.removeLast(), xml.text.asString());
-			// TODO check no more elements in DOM
 			break;
 		case TEXT:
 			if (xml.text.asString().trim().isEmpty() && node.getNodeType() != Node.TEXT_NODE) {
@@ -262,7 +261,6 @@ public class TestXMLStreamCursorWithDOM extends LCCoreAbstractTest {
 	
 	private static void checkProcessingInstruction(ProcessingInstruction node, XMLStreamCursor xml) throws Exception {
 		assertEquals("processing instruction target", node.getTarget(), xml.text);
-		// TODO check inside ? node.getData()
 		xml.next();
 	}
 	

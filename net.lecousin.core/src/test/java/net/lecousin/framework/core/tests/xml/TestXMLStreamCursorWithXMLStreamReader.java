@@ -16,6 +16,7 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.util.IString;
+import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLStreamCursor;
 
 import org.junit.Assert;
@@ -237,13 +238,30 @@ public class TestXMLStreamCursorWithXMLStreamReader extends LCCoreAbstractTest {
 			case START_ELEMENT:
 				Assert.assertEquals("START_ELEMENT ", XMLStreamConstants.START_ELEMENT, reader.getEventType());
 				assertEquals("START_ELEMENT: ", reader.getLocalName(), xml.text);
+				for (int i = 0; i < reader.getAttributeCount(); i++) {
+					String name = reader.getAttributeLocalName(i);
+					String value = reader.getAttributeValue(i);
+					UnprotectedStringBuffer ourValue = xml.removeAttribute(name);
+					if (ourValue == null)
+						throw new AssertionError("Missing attribute " + name + " on element " + reader.getLocalName());
+					String s = ourValue.asString();
+					if (!s.equals(value)) {
+						s = s.replace('\t', ' ');
+						if (!s.equals(value)) {
+							s = s.replaceAll("&.*;", "");
+							if (!s.equals(value)) {
+								assertEquals("attribute " + name + " on element " + reader.getLocalName(), value, ourValue);
+							}
+						}
+					}
+				}
+				Assert.assertTrue(xml.attributes.isEmpty());
 				if (!xml.isClosed) {
 					openElements.add(xml.text.asString());
 				} else {
 					Assert.assertEquals("START_ELEMENT closed ", XMLStreamConstants.END_ELEMENT, reader.next());
 					assertEquals("START_ELEMENT closed: ", reader.getLocalName(), xml.text);
 				}
-				// TODO check attributes
 				break;
 			case END_ELEMENT:
 				Assert.assertEquals("END_ELEMENT ", XMLStreamConstants.END_ELEMENT, reader.getEventType());
@@ -287,7 +305,6 @@ public class TestXMLStreamCursorWithXMLStreamReader extends LCCoreAbstractTest {
 			case PROCESSING_INSTRUCTION:
 				Assert.assertEquals("PROCESSING_INSTRUCTION ", XMLStreamConstants.PROCESSING_INSTRUCTION, reader.getEventType());
 				assertEquals("PROCESSING_INSTRUCTION target: ", reader.getPITarget(), xml.text);
-				// TODO check PIData
 				break;
 			}
 			if (!skipNextReader)
@@ -305,6 +322,6 @@ public class TestXMLStreamCursorWithXMLStreamReader extends LCCoreAbstractTest {
 			if (expected == null || expected.isEmpty()) return;
 			throw new AssertionError(message + ": expected <" + expected + ">, found is null");
 		}
-		Assert.assertEquals(expected, found.asString());
+		Assert.assertEquals(message, expected, found.asString());
 	}
 }

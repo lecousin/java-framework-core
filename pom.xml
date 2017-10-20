@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>net.lecousin</groupId>
   <artifactId>core-parent-pom</artifactId>
-  <version>0.8</version>
+  <version>0.8.0</version>
   <packaging>pom</packaging>
   <parent>
   	<groupId>net.lecousin</groupId>

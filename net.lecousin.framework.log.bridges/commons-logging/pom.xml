@@ -1,11 +1,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <artifactId>log.bridges.commons-logging</artifactId>
+  <version>0.1.0</version>
   
   <parent>
   	<groupId>net.lecousin.framework</groupId>
   	<artifactId>log.bridges</artifactId>
-    <version>0.8</version>
+    <version>0.1.0</version>
     <relativePath>..</relativePath>
   </parent>
   
@@ -19,7 +20,7 @@
   	<dependency>
   		<groupId>net.lecousin</groupId>
   		<artifactId>core</artifactId>
-  		<version>${project.version}</version>
+  		<version>0.8.0</version>
   	</dependency>
   </dependencies>
 </project>
