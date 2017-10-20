@@ -4,9 +4,12 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.ArrayList;
+
+import net.lecousin.framework.plugins.ExtensionPoint;
+import net.lecousin.framework.plugins.Plugin;
 
 /** Represent an integer unit. */
-// TODO review this, and create individual unit converters by using an extension point.
 public interface IntegerUnit {
 
 	/** Annotation to specify in which unit a field is expressed. */
@@ -29,100 +32,45 @@ public interface IntegerUnit {
 		
 	}
 	
-	/** Convert a value into this unit. */
-	public long convertFrom(long value, Class<? extends IntegerUnit> unit) throws UnitConversionException;
+	/** Convert a value. */
+	public static interface Converter extends Plugin {
+		/** Return true if the conversion is supported. */
+		boolean supportConversion(Class<? extends IntegerUnit> from, Class<? extends IntegerUnit> to);
+		
+		/** Convert a value. */
+		long convert(long value, Class<? extends IntegerUnit> from, Class<? extends IntegerUnit> to) throws UnitConversionException;
+	}
 	
-	/** Unit of time. */
-	public interface Time extends IntegerUnit {
+	/** Extension point from converters. */
+	public static class ConverterRegistry implements ExtensionPoint<Converter> {
+
+		/** Constructor. */
+		public ConverterRegistry() {
+			instance = this;
+			converters.add(new TimeUnit.Converter());
+		}
+
+		private static ConverterRegistry instance;
+		private ArrayList<Converter> converters = new ArrayList<>();
 		
-		/** Milliseconds time unit. */
-		public static class Millisecond implements Time {
-			@Override
-			public long convertFrom(long value, Class<? extends IntegerUnit> unit) throws UnitConversionException {
-				if (Millisecond.class.equals(unit))
-					return value;
-				if (Second.class.equals(unit))
-					return value * 1000;
-				if (Minute.class.equals(unit))
-					return value * 60 * 1000;
-				if (Hour.class.equals(unit))
-					return value * 60 * 60 * 1000;
-				if (Day.class.equals(unit))
-					return value * 24 * 60 * 60 * 1000;
-				throw new UnitConversionException(getClass(), unit, value);
-			}
+		@Override
+		public Class<Converter> getPluginClass() { return Converter.class; }
+
+		@Override
+		public void addPlugin(Converter plugin) { converters.add(plugin); }
+
+		@Override
+		public void allPluginsLoaded() {
+			// nothing to do
 		}
 		
-		/** Seconds time unit. */
-		public static class Second implements Time {
-			@Override
-			public long convertFrom(long value, Class<? extends IntegerUnit> unit) throws UnitConversionException {
-				if (Millisecond.class.equals(unit))
-					return value / 1000;
-				if (Second.class.equals(unit))
-					return value;
-				if (Minute.class.equals(unit))
-					return value * 60;
-				if (Hour.class.equals(unit))
-					return value * 60 * 60;
-				if (Day.class.equals(unit))
-					return value * 24 * 60 * 60;
-				throw new UnitConversionException(getClass(), unit, value);
-			}
-		}
-		
-		/** Minutes time unit. */
-		public static class Minute implements Time {
-			@Override
-			public long convertFrom(long value, Class<? extends IntegerUnit> unit) throws UnitConversionException {
-				if (Millisecond.class.equals(unit))
-					return value / (60 * 1000);
-				if (Second.class.equals(unit))
-					return value / 60;
-				if (Minute.class.equals(unit))
-					return value;
-				if (Hour.class.equals(unit))
-					return value * 60;
-				if (Day.class.equals(unit))
-					return value * 24 * 60;
-				throw new UnitConversionException(getClass(), unit, value);
-			}
-		}
-		
-		/** Hour time unit. */
-		public static class Hour implements Time {
-			@Override
-			public long convertFrom(long value, Class<? extends IntegerUnit> unit) throws UnitConversionException {
-				if (Millisecond.class.equals(unit))
-					return value / (60 * 60 * 1000);
-				if (Second.class.equals(unit))
-					return value / (60 * 60);
-				if (Minute.class.equals(unit))
-					return value / 60;
-				if (Hour.class.equals(unit))
-					return value;
-				if (Day.class.equals(unit))
-					return value * 24;
-				throw new UnitConversionException(getClass(), unit, value);
-			}
-		}
-		
-		/** Day time unit. */
-		public static class Day implements Time {
-			@Override
-			public long convertFrom(long value, Class<? extends IntegerUnit> unit) throws UnitConversionException {
-				if (Millisecond.class.equals(unit))
-					return value / (24 * 60 * 60 * 1000);
-				if (Second.class.equals(unit))
-					return value / (24 * 60 * 60);
-				if (Minute.class.equals(unit))
-					return value / (24 * 60);
-				if (Hour.class.equals(unit))
-					return value / 24;
-				if (Day.class.equals(unit))
-					return value;
-				throw new UnitConversionException(getClass(), unit, value);
-			}
+		/** Conversion. */
+		public static long convert(long value, Class<? extends IntegerUnit> from, Class<? extends IntegerUnit> to)
+		throws UnitConversionException {
+			for (Converter c : instance.converters)
+				if (c.supportConversion(from, to))
+					return c.convert(value, from, to);
+			throw new UnitConversionException(from, to, value);
 		}
 		
 	}

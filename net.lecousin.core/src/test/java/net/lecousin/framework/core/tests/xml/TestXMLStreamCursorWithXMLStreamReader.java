@@ -135,9 +135,9 @@ public class TestXMLStreamCursorWithXMLStreamReader extends LCCoreAbstractTest {
 		"xml-test-suite/xmltest/valid/sa/105.xml",
 		"xml-test-suite/xmltest/valid/sa/106.xml",
 		"xml-test-suite/xmltest/valid/sa/107.xml",
-		// TODO entity ref "xml-test-suite/xmltest/valid/sa/108.xml",
+		// entity ref "xml-test-suite/xmltest/valid/sa/108.xml",
 		"xml-test-suite/xmltest/valid/sa/109.xml",
-		// TODO entity ref "xml-test-suite/xmltest/valid/sa/110.xml",
+		// entity ref "xml-test-suite/xmltest/valid/sa/110.xml",
 		"xml-test-suite/xmltest/valid/sa/111.xml",
 		"xml-test-suite/xmltest/valid/sa/112.xml",
 		"xml-test-suite/xmltest/valid/sa/113.xml",
@@ -299,108 +299,6 @@ public class TestXMLStreamCursorWithXMLStreamReader extends LCCoreAbstractTest {
 			}
 		} while (true);
 	}
-	
-	/*
-	private static void checkNodeContent(XMLStreamReader reader, XMLStreamCursor xml, LinkedList<String> openElements) throws Exception {
-		NodeList list = node.getChildNodes();
-		for (int i = 0; i < list.getLength(); ++i) {
-			Node n = list.item(i);
-			checkNode(n, xml, openElements);
-		}
-	}
-	
-	private static void checkNode(Node node, XMLStreamCursor xml, LinkedList<String> openElements) throws Exception {
-		switch (xml.type) {
-		case COMMENT:
-			Assert.assertEquals(Node.COMMENT_NODE, node.getNodeType());
-			checkComment((Comment)node, xml);
-			break;
-		case CDATA:
-			Assert.assertEquals(Node.CDATA_SECTION_NODE, node.getNodeType());
-			checkCData((CDATASection)node, xml);
-			break;
-		case DOCTYPE:
-			Assert.assertEquals(Node.DOCUMENT_TYPE_NODE, node.getNodeType());
-			checkDocType((DocumentType)node, xml);
-			break;
-		case PROCESSING_INSTRUCTION:
-			Assert.assertEquals(Node.PROCESSING_INSTRUCTION_NODE, node.getNodeType());
-			checkProcessingInstruction((ProcessingInstruction)node, xml);
-			break;
-		case START_ELEMENT:
-			Assert.assertEquals(Node.ELEMENT_NODE, node.getNodeType());
-			checkElement((Element)node, xml, openElements);
-			break;
-		case END_ELEMENT:
-			Assert.assertFalse(openElements.isEmpty());
-			Assert.assertEquals(openElements.removeLast(), xml.text.asString());
-			// TODO check no more elements in DOM
-			break;
-		case TEXT:
-			if (xml.text.asString().trim().isEmpty() && node.getNodeType() != Node.TEXT_NODE) {
-				xml.next();
-				checkNode(node, xml, openElements);
-				return;
-			}
-			if (node.getNodeType() == Node.ENTITY_REFERENCE_NODE) {
-				node = node.getOwnerDocument().createTextNode("&" + ((EntityReference)node).getNodeName() + ";");
-				// TODO we should have entity reference in XMLStreamCursor as well
-			}
-			Assert.assertEquals("Expected text <" + xml.text.asString() + ">, but node " + node.getNodeType() + " found", Node.TEXT_NODE, node.getNodeType());
-			checkText((Text)node, xml);
-			break;
-		}
-	}
-	
-	private static void checkComment(Comment node, XMLStreamCursor xml) throws Exception {
-		assertEquals("Comment", node.getData(), xml.text);
-		xml.next();
-	}
-	
-	private static void checkCData(CDATASection node, XMLStreamCursor xml) throws Exception {
-		assertEquals("CDATA content", node.getData(), xml.text);
-		xml.next();
-	}
-	
-	private static void checkText(Text node, XMLStreamCursor xml) throws Exception {
-		assertEquals("text", node.getData(), xml.text);
-		xml.next();
-	}
-	
-	private static void checkDocType(DocumentType node, XMLStreamCursor xml) throws Exception {
-		assertEquals("DOCTYPE name", node.getName(), xml.text);
-		assertEquals("system id", node.getSystemId(), xml.system);
-		assertEquals("public id", node.getPublicId(), xml.publicId);
-		// TODO
-		xml.next();
-	}
-	
-	private static void checkProcessingInstruction(ProcessingInstruction node, XMLStreamCursor xml) throws Exception {
-		assertEquals("processing instruction target", node.getTarget(), xml.text);
-		// TODO check inside ? node.getData()
-		xml.next();
-	}
-	
-	private static void checkElement(Element node, XMLStreamCursor xml, LinkedList<String> openElements) throws Exception {
-		assertEquals("element name", node.getTagName(), xml.text);
-		NamedNodeMap attrs = node.getAttributes();
-		for (int i = 0; i < attrs.getLength(); ++i) {
-			Node attr = attrs.item(i);
-			String name = attr.getNodeName();
-			String value = attr.getNodeValue();
-			assertEquals("attribute " + name + " on element " + node.getNodeName(), value, xml.removeAttribute(name));
-		}
-		Assert.assertTrue(xml.attributes.isEmpty());
-		if (xml.isClosed) {
-			Assert.assertTrue(node.getFirstChild() == null);
-			xml.next();
-			return;
-		}
-		openElements.add(xml.text.asString());
-		xml.next();
-		checkNodeContent(node, xml, openElements);
-	}
-*/	
 	
 	private static void assertEquals(String message, String expected, IString found) {
 		if (found == null) {

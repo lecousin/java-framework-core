@@ -144,9 +144,9 @@ public class TestXMLStreamCursorWithDOM extends LCCoreAbstractTest {
 		"xml-test-suite/xmltest/valid/sa/105.xml",
 		"xml-test-suite/xmltest/valid/sa/106.xml",
 		"xml-test-suite/xmltest/valid/sa/107.xml",
-		// TODO entity ref "xml-test-suite/xmltest/valid/sa/108.xml",
+		// entity ref "xml-test-suite/xmltest/valid/sa/108.xml",
 		"xml-test-suite/xmltest/valid/sa/109.xml",
-		// TODO entity ref "xml-test-suite/xmltest/valid/sa/110.xml",
+		// entity ref "xml-test-suite/xmltest/valid/sa/110.xml",
 		//"xml-test-suite/xmltest/valid/sa/111.xml",
 		"xml-test-suite/xmltest/valid/sa/112.xml",
 		"xml-test-suite/xmltest/valid/sa/113.xml",
@@ -231,7 +231,6 @@ public class TestXMLStreamCursorWithDOM extends LCCoreAbstractTest {
 			}
 			if (node.getNodeType() == Node.ENTITY_REFERENCE_NODE) {
 				node = node.getOwnerDocument().createTextNode("&" + ((EntityReference)node).getNodeName() + ";");
-				// TODO we should have entity reference in XMLStreamCursor as well
 			}
 			Assert.assertEquals("Expected text <" + xml.text.asString() + ">, but node " + node.getNodeType() + " found", Node.TEXT_NODE, node.getNodeType());
 			checkText((Text)node, xml);
@@ -258,7 +257,6 @@ public class TestXMLStreamCursorWithDOM extends LCCoreAbstractTest {
 		assertEquals("DOCTYPE name", node.getName(), xml.text);
 		assertEquals("system id", node.getSystemId(), xml.system);
 		assertEquals("public id", node.getPublicId(), xml.publicId);
-		// TODO
 		xml.next();
 	}
 	

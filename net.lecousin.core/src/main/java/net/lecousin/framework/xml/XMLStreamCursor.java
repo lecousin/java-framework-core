@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
@@ -20,8 +22,6 @@ import net.lecousin.framework.locale.LocalizableString;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
-
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * Read an XML in a similar way as {@link javax.xml.stream.XMLStreamReader}: read-only, forward, event based.
@@ -192,9 +192,6 @@ public class XMLStreamCursor {
 			return stream.read();
 		}
 		
-//		private  Charset getCharset() {
-//			return stream.getCharset();
-//		}
 	}
 	
 	private void initCharacterProvider() throws XMLException, IOException {
@@ -320,7 +317,6 @@ public class XMLStreamCursor {
 								String encoding = getAttribute("encoding");
 								if (encoding != null)
 									cp = new CharacterStreamProvider(Charset.forName(encoding));
-								// TODO
 								next();
 							}
 						}
@@ -749,7 +745,6 @@ public class XMLStreamCursor {
 			}
 			if (!isNameStartChar(c))
 				continue;
-				//throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
 			// attribute name
 			UnprotectedStringBuffer attrName = new UnprotectedStringBuffer();
 			attrName.append(c);
@@ -924,6 +919,7 @@ public class XMLStreamCursor {
 		} while (true);
 	}
 	
+	// skip checkstyle: VariableDeclarationUsageDistance
 	private void readIntSubset() throws XMLException, IOException {
 		UnprotectedStringBuffer saveText = text;
 		Type saveType = type;
@@ -1053,7 +1049,6 @@ public class XMLStreamCursor {
 		cp.back(c);
 		UnprotectedStringBuffer name = new UnprotectedStringBuffer();
 		readName(name);
-		// TODO
 		c = cp.nextChar();
 		while (c != '>') c = cp.nextChar();
 	}
@@ -1061,7 +1056,6 @@ public class XMLStreamCursor {
 	private void readEntityDeclaration() throws IOException {
 		char c = cp.nextChar();
 		while (isSpaceChar(c)) c = cp.nextChar();
-		// TODO
 		boolean inString = false;
 		do {
 			c = cp.nextChar();
@@ -1080,7 +1074,6 @@ public class XMLStreamCursor {
 		cp.back(c);
 		UnprotectedStringBuffer name = new UnprotectedStringBuffer();
 		readName(name);
-		// TODO
 		c = cp.nextChar();
 		while (c != '>') c = cp.nextChar();
 	}
@@ -1091,7 +1084,6 @@ public class XMLStreamCursor {
 		cp.back(c);
 		UnprotectedStringBuffer name = new UnprotectedStringBuffer();
 		readName(name);
-		// TODO
 		c = cp.nextChar();
 		while (c != '>') c = cp.nextChar();
 	}
