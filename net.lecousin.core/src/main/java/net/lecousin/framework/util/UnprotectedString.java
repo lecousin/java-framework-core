@@ -46,6 +46,12 @@ public class UnprotectedString implements IString {
 		this.end = offset + len - 1;
 		this.usableEnd = offset + usableLength - 1;
 	}
+
+	/** Create an UnprotectedString based on an existing character array. */
+	@SuppressFBWarnings("EI_EXPOSE_REP2")
+	public UnprotectedString(char[] chars) {
+		this(chars, 0, chars.length, chars.length);
+	}
 	
 	/** Creates an UnprotectedString from the given String (a copy of characters is done). */
 	public UnprotectedString(String s) {

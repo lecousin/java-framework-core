@@ -34,7 +34,7 @@ import org.w3c.dom.Text;
 import org.xml.sax.InputSource;
 
 @RunWith(Parameterized.class)
-public class TestXMLStreamCursor extends LCCoreAbstractTest {
+public class TestXMLStreamCursorWithDOM extends LCCoreAbstractTest {
 
 	private static final String[] files = {
 		"xml-test-suite/xmltest/valid/sa/001.xml",
@@ -100,7 +100,7 @@ public class TestXMLStreamCursor extends LCCoreAbstractTest {
 		"xml-test-suite/xmltest/valid/sa/061.xml",
 		"xml-test-suite/xmltest/valid/sa/062.xml",
 		"xml-test-suite/xmltest/valid/sa/063.xml",
-		// TODO character reference unicode "xml-test-suite/xmltest/valid/sa/064.xml",
+		"xml-test-suite/xmltest/valid/sa/064.xml",
 		"xml-test-suite/xmltest/valid/sa/065.xml",
 		//"xml-test-suite/xmltest/valid/sa/066.xml",
 		"xml-test-suite/xmltest/valid/sa/067.xml",
@@ -166,7 +166,7 @@ public class TestXMLStreamCursor extends LCCoreAbstractTest {
 		return list;
 	}
 	
-	public TestXMLStreamCursor(String filepath) {
+	public TestXMLStreamCursorWithDOM(String filepath) {
 		this.filepath = filepath;
 	}
 	

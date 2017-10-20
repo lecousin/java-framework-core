@@ -736,14 +736,17 @@ public class XMLStreamCursor {
 		do {
 			while (isSpaceChar(c = cp.nextChar()));
 			if (c == '?') {
-				while (isSpaceChar(c = cp.nextChar()));
-				if (c != '>')
-					throw new XMLException(cp.getPosition(), "Invalid XML");
-				isClosed = true;
-				return;
+				c = cp.nextChar();
+				if (c == '>') {
+					isClosed = true;
+					return;
+				}
+				cp.back(c);
+				continue;
 			}
 			if (!isNameStartChar(c))
-				throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+				continue;
+				//throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
 			// attribute name
 			UnprotectedStringBuffer attrName = new UnprotectedStringBuffer();
 			attrName.append(c);
@@ -826,7 +829,7 @@ public class XMLStreamCursor {
 		return resolveEntityRef(name);
 	}
 	
-	private char readCharRef() throws XMLException, IOException {
+	private char[] readCharRef() throws XMLException, IOException {
 		char c = cp.nextChar();
 		INumberEncoding n;
 		if (c == 'x') {
@@ -841,9 +844,7 @@ public class XMLStreamCursor {
 			if (c == ';') break;
 			if (!n.addChar(c)) throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
 		} while (true);
-		long dec = n.getNumber();
-		// TODO if more than 0xFFFF... should use the Charset...
-		return (char)dec;
+		return Character.toChars((int)n.getNumber());
 	}
 	
 	private static CharSequence resolveEntityRef(UnprotectedStringBuffer name) {
