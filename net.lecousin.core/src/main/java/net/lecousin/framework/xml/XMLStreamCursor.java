@@ -317,6 +317,9 @@ public class XMLStreamCursor {
 						if (c == 'm' || c == 'M') {
 							c = text.charAt(2);
 							if (c == 'l' || c == 'L') {
+								String encoding = getAttribute("encoding");
+								if (encoding != null)
+									cp = new CharacterStreamProvider(Charset.forName(encoding));
 								// TODO
 								next();
 							}

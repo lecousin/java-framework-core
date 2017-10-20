@@ -147,6 +147,12 @@ public class TestXMLStreamCursorWithXMLStreamReader extends LCCoreAbstractTest {
 		// XMLStreamReader fails: "xml-test-suite/xmltest/valid/sa/117.xml",
 		// XMLStreamReader fails: "xml-test-suite/xmltest/valid/sa/118.xml",
 		"xml-test-suite/xmltest/valid/sa/119.xml",
+		"xml-test-suite/japanese/pr-xml-euc-jp.xml",
+		"xml-test-suite/japanese/pr-xml-iso-2022-jp.xml",
+		"xml-test-suite/japanese/pr-xml-little-endian.xml",
+		"xml-test-suite/japanese/pr-xml-shift_jis.xml",
+		"xml-test-suite/japanese/pr-xml-utf-16.xml",
+		"xml-test-suite/japanese/pr-xml-utf-8.xml",
 	};
 	
 	@Parameters(name = "file = {0}")
@@ -244,17 +250,36 @@ public class TestXMLStreamCursorWithXMLStreamReader extends LCCoreAbstractTest {
 				assertEquals("END_ELEMENT: ", reader.getLocalName(), xml.text);
 				Assert.assertEquals("END_ELEMENT ", openElements.removeLast(), xml.text.asString());
 				break;
-			case COMMENT:
+			case COMMENT: {
 				Assert.assertEquals("COMMENT ", XMLStreamConstants.COMMENT, reader.getEventType());
-				assertEquals("COMMENT: ", reader.getText(), xml.text);
+				String t = reader.getText();
+				if (!xml.text.equals(t)) {
+					String s = xml.text.asString();
+					s = s.replace("\r\n", "\n");
+					if (s.equals(t)) break;
+				}
+				assertEquals("COMMENT: ", t, xml.text);
 				break;
+			}
 			case CDATA:
 				if (reader.getEventType() == XMLStreamConstants.CDATA) {
-					assertEquals("CDATA: ", reader.getText(), xml.text);
+					String t = reader.getText();
+					if (!xml.text.equals(t)) {
+						String s = xml.text.asString();
+						s = s.replace("\r\n", "\n");
+						if (s.equals(t)) break;
+					}
+					assertEquals("CDATA: ", t, xml.text);
 					break;
 				}
 				if (reader.getEventType() == XMLStreamConstants.CHARACTERS) {
-					assertEquals("CDATA: ", reader.getText(), xml.text);
+					String t = reader.getText();
+					if (!xml.text.equals(t)) {
+						String s = xml.text.asString();
+						s = s.replace("\r\n", "\n");
+						if (s.equals(t)) break;
+					}
+					assertEquals("CDATA: ", t, xml.text);
 					break;
 				}
 				Assert.assertEquals("CDATA ", XMLStreamConstants.CDATA, reader.getEventType());
