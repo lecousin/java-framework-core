@@ -32,7 +32,7 @@ public class TestFragmentedSubIOReadable extends TestReadable {
 	
 	@Override
 	protected IO.Readable createReadableFromFile(FileIO.ReadOnly file, long fileSize) {
-		return new FragmentedSubIO(file, f.fragments, true, "fragmented IO");
+		return new FragmentedSubIO.Readable(file, f.fragments, true, "fragmented IO");
 	}
 	
 }

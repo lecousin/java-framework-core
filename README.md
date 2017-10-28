@@ -1,9 +1,9 @@
 
 # lecousin.net - Java core framework
 
-The core library provides:
+The core library provides mainly:
  * A Multi-Threading framework, allowing asynchronous programming
- * A new IO (Input/Output) model, flexible, and providing asynchronous operations
+ * A new IO (Input/Output) model, much more flexible, and supporting asynchronous operations
 
 It does not have any dependency, however the library [net.lecousin.framework.system](https://github.com/lecousin/java-framework-system "java-framework-system")
 is recommended for better performances on disk operations (detection of physical drives).
@@ -20,7 +20,7 @@ Branch 0.9: ![build status](https://travis-ci.org/lecousin/java-framework-core.s
 
 ## Multi-threading
 
-The multi-threading system of this library is based on _physical_ resources for better performance:
+The multi-threading system is based on _physical_ resources for better performance:
  * One thread by available processor (CPU)
  * One thread by physical drive
  
@@ -28,25 +28,39 @@ Each unit of work is a _Task_, that may succeed with a result, fail with an exce
 A task must use only one physical resource, so a process implying both CPU work and some operations on a drive
 must be split into several tasks.
 
+Because the multi-threading system allocates a single thread by CPU, if long running tasks are running, other
+tasks may wait for those tasks to finish if all CPUs are used. While this may be acceptable on a single application
+environment, it is recommended to split such long running tasks into smaller tasks. 
+
 A task should not, but is allowed to block. In this case the blocked thread is interrupted and a new thread
 is automatically launched to process other tasks for the same physical resource. Once the task is unblocked,
-the thread is resumed as soon as another thread is available and can be stopped.
-
-By default, the order tasks are executed is based on tasks' priority,
-then for the same priority in a first-in-first-out order.
-This may be changed by providing a new implementation of TaskPriorityManager.
+the thread is resumed as soon as another thread is available and can be stopped. For this, synchronized
+sections should be avoided as much as possible (or be very short), instead a _synchronization point_ should
+be used.
 
 Different kinds of _synchronization point_ are available in the package net.lecousin.framework.concurrent.synch,
 such as JoinPoint, SynchronizationPoint, AsyncWork... They allow to wait for one or more asynchronous operations
 to finish (successfully or not), by listening to them.
 
+By default, the order tasks are executed is based on tasks' priority,
+then for the same priority in a first-in-first-out order.
+This may be changed by providing a new implementation of TaskPriorityManager.
+
 ## IO Model
 
 The model provided by Java is very basic and mainly based on streams (reading or writing forward).
 
-Our model add two main additions:
- * Flexibility by using interfaces that define the capabilities of an Input/Output implementation such as Readable, Writable, Seekable, Resizable, Buffered...
- * Asynchronous operations allowing multi-threading
+Our model adds much more flexibility, by using interfaces that define the capabilities of an Input/Output
+implementation such as Readable, Writable, Seekable, Resizable, Buffered...
+By using those interfaces we can know which operations can be performed on an IO, but allow also a method
+to specify what are the minimum expected capabilities.
+
+For example a method that needs an IO on which it can write data, it can seek (move forward and backward),
+and it can resize the IO can be defined as follow:
+
+	public <T extends IO.Writable.Seekable & IO.Resizable> myMethod(T io) { ... }
+
+In addition, the model add asynchronous operations (non-blocking).
  
 ## Startup
 
@@ -60,13 +74,19 @@ as multiple applications may share the same environment, including the same mult
 
 ## Logging
 
-A logging system is also provided, in a similar way as other logging frameworks.
-TODO
+A logging system is also provided, in a similar way as other logging frameworks (using loggers and appenders).
+
+The reason to provide again another logging system is to have a logging system capable to use our
+multi-threading system and asynchronous IO operations.
+
+Each time something is logged, this is done by using asynchronous operations and tasks such as the code
+logging information is not blocked to avoid reducing performance because of logging. 
 
 ## Memory management
 
-TODO
+It often happens that data is kept in memory to improve performance, typically a cache. Such implementations
+can declare themselves to the MemoryManager. The MemoryManager is monitoring memory usage, so when available
+memory becomes low, it will ask the implementations to free some memory.
 
-## Locale
-
-TODO
+In addition, when an application is idle (doing almost nothing) since several minutes, the MemoryManager may
+decide to ask to free some memory to reduce the memory footprint of the application when it is idle.

@@ -31,7 +31,7 @@ public class TestFragmentedSubIOReadableSeekable extends TestReadableSeekable {
 
 	@Override
 	protected IO.Readable.Seekable createReadableSeekableFromFile(ReadOnly file, long fileSize) throws Exception {
-		return new FragmentedSubIO(file, f.fragments, true, "fragmented IO");
+		return new FragmentedSubIO.Readable(file, f.fragments, true, "fragmented IO");
 	}
 	
 }

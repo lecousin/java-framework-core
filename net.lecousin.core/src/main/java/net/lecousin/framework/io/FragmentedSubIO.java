@@ -15,13 +15,12 @@ import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * A fragmented sub-IO allows to specify a list of fragments inside a seekable IO, and does like those fragments are a contiguous IO.
- * TODO split it with Readable, Writable and ReadWrite
  * TODO improve perf by storing the fragment containing the current position ?
  */
-public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekable, IO.KnownSize {
+public abstract class FragmentedSubIO extends IO.AbstractIO implements IO.KnownSize, IO.Seekable {
 
 	/** Constructor. */
-	public FragmentedSubIO(IO.Readable.Seekable io, List<RangeLong> fragments, boolean closeParentIOOnClose, String description) {
+	public FragmentedSubIO(IO.Seekable io, List<RangeLong> fragments, boolean closeParentIOOnClose, String description) {
 		this.io = io;
 		this.fragments = fragments;
 		this.closeParentIOOnClose = closeParentIOOnClose;
@@ -30,22 +29,85 @@ public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekab
 		for (RangeLong r : fragments) size += r.max - r.min + 1;
 	}
 	
-	private IO.Readable.Seekable io;
-	private List<RangeLong> fragments;
-	private long pos = 0;
-	private long size;
-	private boolean closeParentIOOnClose;
-	private String description;
+	protected IO.Seekable io;
+	protected List<RangeLong> fragments;
+	protected long pos = 0;
+	protected long size;
+	protected boolean closeParentIOOnClose;
+	protected String description;
 	
 	@Override
 	protected ISynchronizationPoint<IOException> closeIO() {
 		if (closeParentIOOnClose) return io.closeAsync();
 		return new SynchronizationPoint<>(true);
 	}
-	
-	@Override
-	public ISynchronizationPoint<IOException> canStartReading() {
-		return io.canStartReading();
+
+	/** Readable fragmented IO. */
+	public static class Readable extends FragmentedSubIO implements IO.Readable.Seekable {
+		
+		/** Constructor. */
+		public Readable(IO.Readable.Seekable io, List<RangeLong> fragments, boolean closeParentIOOnClose, String description) {
+			super(io, fragments, closeParentIOOnClose, description);
+		}
+
+		@Override
+		public ISynchronizationPoint<IOException> canStartReading() {
+			return ((IO.Readable.Seekable)io).canStartReading();
+		}
+		
+		@Override
+		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+			return super.readAsync(pos, buffer, ondone);
+		}
+
+		@Override
+		public AsyncWork<Integer, IOException> readAsync(
+			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+		) {
+			return super.readAsync(pos, buffer, ondone);
+		}
+		
+		@Override
+		public int readSync(ByteBuffer buffer) throws IOException {
+			return super.readSync(pos, buffer);
+		}
+		
+		@Override
+		public int readSync(long pos, ByteBuffer buffer) throws IOException {
+			return super.readSync(pos, buffer);
+		}
+		
+		@Override
+		public int readFullySync(long pos, ByteBuffer buffer) throws IOException {
+			return super.readFullySync(pos, buffer);
+		}
+		
+		@Override
+		public int readFullySync(ByteBuffer buffer) throws IOException {
+			return super.readFullySync(pos, buffer);
+		}
+		
+		@Override
+		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+			return readFullyAsync(pos, buffer, ondone);
+		}
+		
+		@Override
+		public AsyncWork<Integer,IOException> readFullyAsync(
+			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		) {
+			return IOUtil.readFullyAsynch(this, pos, buffer, ondone);
+		}
+		
+		@Override
+		public long skipSync(long n) {
+			return super.skipSync(n);
+		}
+		
+		@Override
+		public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+			return super.skipAsync(n, ondone);
+		}
 	}
 	
 	@Override
@@ -90,13 +152,7 @@ public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekab
 		return sp;
 	}
 	
-	@Override
-	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return readAsync(pos, buffer, ondone);
-	}
-	
-	@Override
-	public AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	protected AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		Iterator<RangeLong> it = fragments.iterator();
 		long p = 0;
 		while (it.hasNext()) {
@@ -111,7 +167,8 @@ public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekab
 			if (start + len > s) {
 				int prevLimit = buffer.limit();
 				buffer.limit((int)(prevLimit - ((start + len) - s)));
-				return io.readAsync(r.min + start, buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
+				return ((IO.Readable.Seekable)io).readAsync(r.min + start, buffer,
+				new RunnableWithParameter<Pair<Integer,IOException>>() {
 					@Override
 					public void run(Pair<Integer, IOException> param) {
 						buffer.limit(prevLimit);
@@ -121,7 +178,7 @@ public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekab
 					}
 				});
 			}
-			return io.readAsync(r.min + start, buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
+			return ((IO.Readable.Seekable)io).readAsync(r.min + start, buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
 				@Override
 				public void run(Pair<Integer, IOException> param) {
 					if (param.getValue1() != null)
@@ -136,13 +193,7 @@ public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekab
 		return sp;
 	}
 	
-	@Override
-	public int readSync(ByteBuffer buffer) throws IOException {
-		return readSync(pos, buffer);
-	}
-	
-	@Override
-	public int readSync(long pos, ByteBuffer buffer) throws IOException {
+	protected int readSync(long pos, ByteBuffer buffer) throws IOException {
 		Iterator<RangeLong> it = fragments.iterator();
 		long p = 0;
 		while (it.hasNext()) {
@@ -157,10 +208,10 @@ public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekab
 			if (start + len > s) {
 				int prevLimit = buffer.limit();
 				buffer.limit((int)(prevLimit - ((start + len) - s)));
-				len = io.readSync(r.min + start, buffer);
+				len = ((IO.Readable.Seekable)io).readSync(r.min + start, buffer);
 				buffer.limit(prevLimit);
 			} else {
-				len = io.readSync(r.min + start, buffer);
+				len = ((IO.Readable.Seekable)io).readSync(r.min + start, buffer);
 			}
 			this.pos = pos + len;
 			return len;
@@ -168,13 +219,7 @@ public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekab
 		return 0;
 	}
 	
-	@Override
-	public int readFullySync(ByteBuffer buffer) throws IOException {
-		return readFullySync(pos, buffer);
-	}
-	
-	@Override
-	public int readFullySync(long pos, ByteBuffer buffer) throws IOException {
+	protected int readFullySync(long pos, ByteBuffer buffer) throws IOException {
 		Iterator<RangeLong> it = fragments.iterator();
 		long p = 0;
 		int done = 0;
@@ -190,10 +235,10 @@ public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekab
 			if (start + len > s) {
 				int prevLimit = buffer.limit();
 				buffer.limit((int)(prevLimit - ((start + len) - s)));
-				len = io.readFullySync(r.min + start, buffer);
+				len = ((IO.Readable.Seekable)io).readFullySync(r.min + start, buffer);
 				buffer.limit(prevLimit);
 			} else {
-				len = io.readFullySync(r.min + start, buffer);
+				len = ((IO.Readable.Seekable)io).readFullySync(r.min + start, buffer);
 			}
 			this.pos = pos + len;
 			done += len;
@@ -203,16 +248,6 @@ public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekab
 			p += s;
 		}
 		return done;
-	}
-	
-	@Override
-	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return readFullyAsync(pos, buffer, ondone);
-	}
-	
-	@Override
-	public AsyncWork<Integer,IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsynch(this, pos, buffer, ondone);
 	}
 	
 	@Override
@@ -234,8 +269,7 @@ public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekab
 		return pos;
 	}
 	
-	@Override
-	public long skipSync(long n) {
+	protected long skipSync(long n) {
 		long size = getSizeSync();
 		// skip checkstyle: VariableDeclarationUsageDistance
 		long prevPos = pos;
@@ -254,8 +288,7 @@ public class FragmentedSubIO extends IO.AbstractIO implements IO.Readable.Seekab
 		return sp;
 	}
 	
-	@Override
-	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+	protected AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
 		AsyncWork<Long,IOException> sp = new AsyncWork<>();
 		long skipped = skipSync(n);
 		if (ondone != null) ondone.run(new Pair<>(Long.valueOf(skipped), null));
