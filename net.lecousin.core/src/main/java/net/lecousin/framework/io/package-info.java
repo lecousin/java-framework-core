@@ -11,22 +11,24 @@
  * 
  * <h1>Interface defining capabilities</h1>
  * 
- * Each implementation defines its capabilities through a set of interfaces defined in {@link IO}:<ul>
- * <li>{@link IO.Readable} is similar to an InputStream: data can be read forward</li>
- * <li>{@link IO.Writable} is similar to an OutputStream: data can be written forward</li>
- * <li>{@link IO.Seekable} adds the capability to move backward or forward</li>
- * <li>{@link IO.Readable.Seekable} extends {@link IO.Readable}, {@link IO.Seekable} and add operations
+ * Each implementation defines its capabilities through a set of interfaces defined in {@link net.lecousin.framework.io.IO}:<ul>
+ * <li>{@link net.lecousin.framework.io.IO.Readable} is similar to an InputStream: data can be read forward</li>
+ * <li>{@link net.lecousin.framework.io.IO.Writable} is similar to an OutputStream: data can be written forward</li>
+ * <li>{@link net.lecousin.framework.io.IO.Seekable} adds the capability to move backward or forward</li>
+ * <li>{@link net.lecousin.framework.io.IO.Readable.Seekable}
+ * 		extends {@link net.lecousin.framework.io.IO.Readable}, {@link net.lecousin.framework.io.IO.Seekable} and add operations
  * to read data directly at a specific position</li>
- * <li>{@link IO.Writable.Seekable} extends {@link IO.Writable}, {@link IO.Seekable} and add operations
+ * <li>{@link net.lecousin.framework.io.IO.Writable.Seekable}
+ * 		extends {@link net.lecousin.framework.io.IO.Writable}, {@link net.lecousin.framework.io.IO.Seekable} and add operations
  * to write data directly at a specific position</li>
- * <li>{@link IO.PositionKnown} adds the capability to get the current position</li>
- * <li>{@link IO.Resizable} adds the capability to resize the IO</li>
- * <li>{@link IO.SizeKnown} adds the capability to know the current size of an IO</li>
- * <li>{@link IO.ReadableByteStream} adds the capability to read a single byte instead of a buffer</li>
- * <li>{@link IO.WritableByteStream} adds the capability to write a single byte instead of a buffer</li>
- * <li>{@link IO.Readable.Buffered} defines a buffered Readable and adds some operations that are
+ * <li>{@link net.lecousin.framework.io.IO.PositionKnown} adds the capability to get the current position</li>
+ * <li>{@link net.lecousin.framework.io.IO.Resizable} adds the capability to resize the IO</li>
+ * <li>{@link net.lecousin.framework.io.IO.KnownSize} adds the capability to know the current size of an IO</li>
+ * <li>{@link net.lecousin.framework.io.IO.ReadableByteStream} adds the capability to read a single byte instead of a buffer</li>
+ * <li>{@link net.lecousin.framework.io.IO.WritableByteStream} adds the capability to write a single byte instead of a buffer</li>
+ * <li>{@link net.lecousin.framework.io.IO.Readable.Buffered} defines a buffered Readable and adds some operations that are
  * efficient when buffered</li>
- * <li>{@link IO.Writable.Buffered} defines a buffered Writable and adds some operations that are
+ * <li>{@link net.lecousin.framework.io.IO.Writable.Buffered} defines a buffered Writable and adds some operations that are
  * efficient when buffered</li>
  * </ul>
  * 

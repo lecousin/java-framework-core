@@ -52,6 +52,20 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 	
+	<dependencies>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.12</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.github.spotbugs</groupId>
+			<artifactId>spotbugs-annotations</artifactId>
+			<scope>compile</scope>
+		</dependency>
+	</dependencies>
+	
 	<build>
 		<resources>
 			<resource>
@@ -192,17 +206,35 @@
 			</plugins>
 		</pluginManagement>
 	</build>
-	<dependencies>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.12</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.github.spotbugs</groupId>
-			<artifactId>spotbugs-annotations</artifactId>
-			<scope>compile</scope>
-		</dependency>
-	</dependencies>
+	
+  
+	<profiles>
+		<profile>
+	        <id>ossrh</id>
+	        <activation>
+	            <property>
+	                <name>ossrh</name>
+	                <value>true</value>
+	            </property>
+	        </activation>
+	        <build>
+	        	<plugins>
+			  		<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.5</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+	        	</plugins>
+	        </build>
+	    </profile>
+	</profiles>
 </project>

@@ -11,6 +11,7 @@
   </parent>
   <modules>
     <module>net.lecousin.core</module>
+    <module>net.lecousin.framework.log.bridges</module>
   </modules>
   
   <licenses>

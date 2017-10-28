@@ -10,6 +10,43 @@
     <relativePath>..</relativePath>
   </parent>
   
+	<name>lecousin.net logging system bridge for Apache commons-logging</name>
+	<description>Bridge from commons-logging to lecousin.net core logging system</description>
+	<url>https://github.com/lecousin/java-framework-core</url>
+
+	<licenses>
+		<license>
+			<name>Apache 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<id>lecousin</id>
+			<name>Guillaume Le Cousin</name>
+		</developer>
+	</developers>
+
+	<scm>
+		<connection>scm:git:https://github.com/lecousin/java-framework-core.git</connection>
+		<developerConnection>scm:git:ssh://git@github.com:lecousin/java-framework-core.git</developerConnection>
+		<url>https://github.com/lecousin/java-framework-core</url>
+		<tag>HEAD</tag>
+	</scm>
+
+	<distributionManagement>
+		<repository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+		</repository>
+		<snapshotRepository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</snapshotRepository>
+	</distributionManagement>
+  
   <dependencies>
   	<dependency>
   		<groupId>commons-logging</groupId>
@@ -23,4 +60,68 @@
   		<version>0.8.0</version>
   	</dependency>
   </dependencies>
+  
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>2.2.1</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar-no-fork</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>2.9.1</version>
+				<executions>
+					<execution>
+						<id>attach-javadocs</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+						<configuration>
+							<additionalparam>-Xdoclint:none</additionalparam>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+	
+	<profiles>
+		<profile>
+	        <id>ossrh</id>
+	        <activation>
+	            <property>
+	                <name>ossrh</name>
+	                <value>true</value>
+	            </property>
+	        </activation>
+	        <build>
+	        	<plugins>
+			  		<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.5</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+	        	</plugins>
+	        </build>
+	    </profile>
+	</profiles>	
 </project>
