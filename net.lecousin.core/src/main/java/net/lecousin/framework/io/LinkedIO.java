@@ -455,39 +455,31 @@ public abstract class LinkedIO extends AbstractIO {
 		((IO.Readable.Seekable)ios.get(ioIndex)).seekSync(SeekType.FROM_END, 0);
 	}
 
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void nextIOAsyncSeekable(Runnable ondone, ISynchronizationPoint<IOException> onerror, RunnableWithParameter rp) {
 		ioIndex++;
 		posInIO = 0;
 		AsyncWork<Long, IOException> seek = ((IO.Readable.Seekable)ios.get(ioIndex)).seekAsync(SeekType.FROM_BEGINNING, 0);
-		seek.listenInline(new Runnable() {
-			@SuppressWarnings("unchecked")
-			@Override
-			public void run() {
-				if (seek.hasError()) {
-					if (rp != null) rp.run(new Pair<Object,IOException>(null, seek.getError()));
-					onerror.error(seek.getError());
-				} else
-					ondone.run();
-			}
+		seek.listenInline(() -> {
+			if (seek.hasError()) {
+				if (rp != null) rp.run(new Pair<Object,IOException>(null, seek.getError()));
+				onerror.error(seek.getError());
+			} else
+				ondone.run();
 		});
 	}
 
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void previousIOAsyncSeekable(Runnable ondone, ISynchronizationPoint<IOException> onerror, RunnableWithParameter rp) {
 		ioIndex--;
 		posInIO = sizes.get(ioIndex).longValue();
 		AsyncWork<Long, IOException> seek = ((IO.Readable.Seekable)ios.get(ioIndex)).seekAsync(SeekType.FROM_END, 0);
-		seek.listenInline(new Runnable() {
-			@SuppressWarnings("unchecked")
-			@Override
-			public void run() {
-				if (seek.hasError()) {
-					if (rp != null) rp.run(new Pair<Object,IOException>(null, seek.getError()));
-					onerror.error(seek.getError());
-				} else
-					ondone.run();
-			}
+		seek.listenInline(() -> {
+			if (seek.hasError()) {
+				if (rp != null) rp.run(new Pair<Object,IOException>(null, seek.getError()));
+				onerror.error(seek.getError());
+			} else
+				ondone.run();
 		});
 	}
 

@@ -18,7 +18,7 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.Triple;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
-import net.lecousin.framework.xml.XMLStreamCursor;
+import net.lecousin.framework.xml.XMLStreamReader;
 
 /** XML deserialization. */
 public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
@@ -31,14 +31,14 @@ public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> T deserialize(Class<T> type, ParameterizedType ptype, Readable input, List<SerializationRule> rules) throws Exception {
-		XMLStreamCursor reader = new XMLStreamCursor(input);
+		XMLStreamReader reader = new XMLStreamReader(input, 4000);
 		reader.startRootElement();
 		return (T)deserializeObject(type, null, null, reader, rules);
 	}
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private Object deserializeObject(
-		Class<?> type, Attribute containerAttribute, Object containerInstance, XMLStreamCursor reader, List<SerializationRule> rules
+		Class<?> type, Attribute containerAttribute, Object containerInstance, XMLStreamReader reader, List<SerializationRule> rules
 	) throws Exception {
 		if (boolean.class.equals(type) || Boolean.class.equals(type)) {
 			if (reader.isClosed) return null;
@@ -137,7 +137,7 @@ public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
 		return obj;
 	}
 	
-	private static void deserializeAttributes(XMLStreamCursor reader, Object object, ArrayList<Attribute> attributes) throws Exception {
+	private static void deserializeAttributes(XMLStreamReader reader, Object object, ArrayList<Attribute> attributes) throws Exception {
 		for (Pair<UnprotectedStringBuffer,UnprotectedStringBuffer> attr : reader.attributes) {
 			String name = attr.getValue1().toString();
 			String value = attr.getValue2().toString();

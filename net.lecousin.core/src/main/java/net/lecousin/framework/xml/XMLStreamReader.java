@@ -11,7 +11,10 @@ import java.util.Map;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.encoding.DecimalNumber;
@@ -29,26 +32,28 @@ import net.lecousin.framework.util.UnprotectedStringBuffer;
  * It uses {@link UnprotectedString} to avoid allocating many character arrays.
  * Charset is automatically detected by reading the beginning of the XML (either with auto-detection or with the specified encoding).
  */
-public class XMLStreamCursor {
+public class XMLStreamReader {
 
 	/** Initialize with the given IO.
 	 * If it is not buffered, a {@link PreBufferedReadable} is created.
 	 * If the charset is null, it will be automatically detected.
 	 */
-	public XMLStreamCursor(IO.Readable io, Charset forcedEncoding) {
+	public XMLStreamReader(IO.Readable io, Charset forcedEncoding, int charactersBuffersSize) {
 		if (io instanceof IO.Readable.Buffered)
 			this.io = (IO.Readable.Buffered)io;
 		else
-			this.io = new PreBufferedReadable(io, 1024, io.getPriority(), 4096, (byte)(io.getPriority() - 1), 4);
+			this.io = new PreBufferedReadable(io, 1024, io.getPriority(), charactersBuffersSize, (byte)(io.getPriority() - 1), 4);
 		this.forcedCharset = forcedEncoding;
+		this.charactersBuffersSize = charactersBuffersSize;
 	}
 	
 	/** Constructor, without charset. */
-	public XMLStreamCursor(IO.Readable io) {
-		this(io, null);
+	public XMLStreamReader(IO.Readable io, int charactersBuffersSize) {
+		this(io, null, charactersBuffersSize);
 	}
 	
 	private Charset forcedCharset;
+	private int charactersBuffersSize;
 	
 	/** Type of event. */
 	public static enum Type {
@@ -85,7 +90,7 @@ public class XMLStreamCursor {
 	public UnprotectedStringBuffer publicId = null;
 	/** Allows to specify a listener that will be called on each START_ELEMENT event. */
 	@SuppressFBWarnings("UWF_NULL_FIELD")
-	public Listener<XMLStreamCursor> onElement = null;
+	public Listener<XMLStreamReader> onElement = null;
 	
 	/** Shortcut to get the value of the given attribute name as a String. */
 	public String getAttribute(String name) {
@@ -171,18 +176,60 @@ public class XMLStreamCursor {
 			super(firstChars);
 		}
 		
+		protected int nextUTF8 = -1;
+		
 		@Override
 		protected char getNextChar() throws IOException {
+			if (nextUTF8 != -1) {
+				char c = (char)nextUTF8;
+				nextUTF8 = -1;
+				return c;
+			}
 			int c = io.read();
 			if (c < 0) throw new EOFException();
-			return (char)c;
+			// UTF-8 decoding by default
+			if (c < 0x80)
+				return (char)c;
+			int up = c & 0xF0;
+			if (up == 0xC0) {
+				// two bytes
+				int c2 = io.read();
+				if (c2 < 0) return (char)c;
+				if ((c2 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
+				return (char)((c2 & 0x3F) | ((c & 0x1F) << 6));
+			}
+			if (up == 0xE0) {
+				// 3 bytes
+				int c2 = io.read();
+				if (c2 < 0) return (char)c;
+				int c3 = io.read();
+				if (c3 < 0) throw new IOException("Invalid UTF-8 character");
+				if ((c2 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
+				if ((c3 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
+				return (char)((c3 & 0x3F) | ((c2 & 0x3F) << 6) | ((c & 0xF) << 12));
+			}
+			// 4 bytes
+			if ((c & 0xF8) != 0xF0) throw new IOException("Invalid UTF-8 character");
+			int c2 = io.read();
+			if (c2 < 0) return (char)c;
+			if ((c2 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
+			int c3 = io.read();
+			if (c3 < 0) throw new IOException("Invalid UTF-8 character");
+			if ((c3 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
+			int c4 = io.read();
+			if (c4 < 0) throw new IOException("Invalid UTF-8 character");
+			if ((c4 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
+			int ch = (c4 & 0x3F) | ((c3 & 0x3F) << 6) | ((c2 & 0x3F) << 12) | (c & 0xF) << 18;
+			ch -= 0x010000;
+			nextUTF8 = (ch & 0x3FF) + 0xDC00;
+			return (char)(((ch & 0xFFC00) >> 10) + 0xD800);
 		}
 	}
 	
 	private class CharacterStreamProvider extends CharacterProvider {
 		public CharacterStreamProvider(Charset charset, char... firstChars) {
 			super(firstChars);
-			stream = new BufferedReadableCharacterStream(io, charset, 512, 32);
+			stream = new BufferedReadableCharacterStream(io, charset, charactersBuffersSize, 8);
 		}
 		
 		private BufferedReadableCharacterStream stream;
@@ -299,6 +346,88 @@ public class XMLStreamCursor {
 	
 	/* Public methods */
 	
+	/** Utility method that initialize a XMLStreamReader, initialize it, and
+	 * return an AsyncWork which is unblocked when characters are available to be read.
+	 */
+	public static AsyncWork<XMLStreamReader, Exception> start(IO.Readable.Buffered io, int charactersBufferSize) {
+		AsyncWork<XMLStreamReader, Exception> result = new AsyncWork<>();
+		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>(
+			"Start reading XML " + io.getSourceDescription(), io.getPriority()
+		) {
+			@Override
+			public Void run() {
+				XMLStreamReader reader = new XMLStreamReader(io, charactersBufferSize);
+				try {
+					reader.initCharacterProvider();
+				} catch (Exception e) {
+					result.unblockError(e);
+					return null;
+				}
+				if (reader.cp instanceof CharacterStreamProvider) {
+					((CharacterStreamProvider)reader.cp).stream.canStartReading().listenAsynch(
+					new Task.Cpu<Void, NoException>("Start reading XML" + io.getSourceDescription(), io.getPriority()) {
+						@Override
+						public Void run() {
+							try {
+								reader.next();
+								if (reader.checkFirstElement())
+									reader.next();
+								result.unblockSuccess(reader);
+							} catch (EOFException e) {
+								result.unblockError(new XMLException(null, "Invalid XML"));
+							} catch (Exception e) {
+								result.unblockError(e);
+							}
+							return null;
+						}
+					}, true);
+					return null;
+				}
+				try {
+					reader.next();
+					if (reader.checkFirstElement()) {
+						if (reader.cp instanceof CharacterStreamProvider) {
+							((CharacterStreamProvider)reader.cp).stream.canStartReading().listenAsynch(
+							new Task.Cpu<Void, NoException>(
+								"Start reading XML" + io.getSourceDescription(), io.getPriority()
+							) {
+								@Override
+								public Void run() {
+									try {
+										reader.next();
+										result.unblockSuccess(reader);
+									} catch (EOFException e) {
+										result.unblockError(new XMLException(null, "Invalid XML"));
+									} catch (Exception e) {
+										result.unblockError(e);
+									}
+									return null;
+								}
+							}, true);
+							return null;
+						}
+						reader.next();
+					}
+				} catch (EOFException e) {
+					result.unblockError(new XMLException(null, "Invalid XML"));
+					return null;
+				} catch (Exception e) {
+					result.unblockError(e);
+					return null;
+				}
+				if (reader.cp instanceof CharacterStreamProvider)
+					((CharacterStreamProvider)reader.cp).stream.canStartReading().listenInline(() -> {
+						result.unblockSuccess(reader);
+					});
+				else
+					result.unblockSuccess(reader);
+				return null;
+			}
+		};
+		task.startOn(io.canStartReading(), true);
+		return result;
+	}
+	
 	/** Start reading the XML to provide the first event.
 	 * If the first tag is a processing instruction XML it reads it and goes to the next event.
 	 */
@@ -306,26 +435,31 @@ public class XMLStreamCursor {
 		try {
 			initCharacterProvider();
 			next();
-			if (Type.PROCESSING_INSTRUCTION.equals(type)) {
-				if (text.length() == 3) {
-					char c = text.charAt(0);
-					if (c == 'x' || c == 'X') {
-						c = text.charAt(1);
-						if (c == 'm' || c == 'M') {
-							c = text.charAt(2);
-							if (c == 'l' || c == 'L') {
-								String encoding = getAttribute("encoding");
-								if (encoding != null)
-									cp = new CharacterStreamProvider(Charset.forName(encoding));
-								next();
-							}
+			if (checkFirstElement()) next();
+		} catch (EOFException e) {
+			throw new XMLException(null, "Invalid XML");
+		}
+	}
+	
+	private boolean checkFirstElement() {
+		if (Type.PROCESSING_INSTRUCTION.equals(type)) {
+			if (text.length() == 3) {
+				char c = text.charAt(0);
+				if (c == 'x' || c == 'X') {
+					c = text.charAt(1);
+					if (c == 'm' || c == 'M') {
+						c = text.charAt(2);
+						if (c == 'l' || c == 'L') {
+							String encoding = getAttribute("encoding");
+							if (encoding != null)
+								cp = new CharacterStreamProvider(Charset.forName(encoding));
+							return true;
 						}
 					}
 				}
 			}
-		} catch (EOFException e) {
-			throw new XMLException(null, "Invalid XML");
 		}
+		return false;
 	}
 	
 	/** Move forward to the next event. */
@@ -500,18 +634,12 @@ public class XMLStreamCursor {
 		try {
 			char c = cp.nextChar();
 			if (c == '!') {
-				if (cp instanceof StartCharacterProvider)
-					cp = new CharacterStreamProvider(StandardCharsets.UTF_8);
 				readTagExclamation();
 			} else if (c == '?') {
 				readProcessingInstruction();
 			} else if (c == '/') {
-				if (cp instanceof StartCharacterProvider)
-					cp = new CharacterStreamProvider(StandardCharsets.UTF_8);
 				readEndTag();
 			} else if (isNameStartChar(c)) {
-				if (cp instanceof StartCharacterProvider)
-					cp = new CharacterStreamProvider(StandardCharsets.UTF_8);
 				readStartTag(c);
 			} else {
 				throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));

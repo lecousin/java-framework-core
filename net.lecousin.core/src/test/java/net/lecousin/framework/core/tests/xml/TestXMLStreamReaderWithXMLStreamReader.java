@@ -9,7 +9,6 @@ import java.util.LinkedList;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
-import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
@@ -17,7 +16,7 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.util.IString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
-import net.lecousin.framework.xml.XMLStreamCursor;
+import net.lecousin.framework.xml.XMLStreamReader;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -26,7 +25,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
-public class TestXMLStreamCursorWithXMLStreamReader extends LCCoreAbstractTest {
+public class TestXMLStreamReaderWithXMLStreamReader extends LCCoreAbstractTest {
 
 	private static final String[] files = {
 		"xml-test-suite/xmltest/valid/sa/001.xml",
@@ -164,7 +163,7 @@ public class TestXMLStreamCursorWithXMLStreamReader extends LCCoreAbstractTest {
 		return list;
 	}
 	
-	public TestXMLStreamCursorWithXMLStreamReader(String filepath) {
+	public TestXMLStreamReaderWithXMLStreamReader(String filepath) {
 		this.filepath = filepath;
 	}
 	
@@ -178,9 +177,9 @@ public class TestXMLStreamCursorWithXMLStreamReader extends LCCoreAbstractTest {
 		factory.setProperty(XMLInputFactory.SUPPORT_DTD, Boolean.FALSE);
 		factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
 		factory.setProperty(XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, Boolean.FALSE);
-		XMLStreamReader reader = factory.createXMLStreamReader(in);
+		javax.xml.stream.XMLStreamReader reader = factory.createXMLStreamReader(in);
 		InputStream in2 = getClass().getClassLoader().getResourceAsStream(filepath);
-		XMLStreamCursor xml = new XMLStreamCursor(new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL));
+		XMLStreamReader xml = new XMLStreamReader(new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL), 1024);
 		reader.next();
 		xml.start();
 		check(reader, xml, new LinkedList<>());
@@ -188,7 +187,7 @@ public class TestXMLStreamCursorWithXMLStreamReader extends LCCoreAbstractTest {
 		in.close();
 	}
 
-	private static void check(XMLStreamReader reader, XMLStreamCursor xml, LinkedList<String> openElements) throws Exception {
+	private static void check(javax.xml.stream.XMLStreamReader reader, XMLStreamReader xml, LinkedList<String> openElements) throws Exception {
 		/*
 		System.out.println("XMLStreamReader:");
 		do {

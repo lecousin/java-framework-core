@@ -287,12 +287,9 @@ public final class Application {
 		
 		loading.start();
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		loading.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				app.rootClassLoader = librariesManager.start(app);
-				librariesManager.onLibrariesLoaded().listenInline(sp);
-			}
+		loading.listenInline(() -> {
+			app.rootClassLoader = librariesManager.start(app);
+			librariesManager.onLibrariesLoaded().listenInline(sp);
 		});
 		
 		return sp;
@@ -397,12 +394,7 @@ public final class Application {
 	private synchronized void savePreferences() {
 		if (savingPreferences != null && !savingPreferences.isUnblocked()) {
 			// we need to save again once done
-			savingPreferences.listenInline(new Runnable() {
-				@Override
-				public void run() {
-					savePreferences();
-				}
-			});
+			savingPreferences.listenInline(() -> { savePreferences(); });
 			return;
 		}
 		File f = new File(getProperty(PROPERTY_CONFIG_DIRECTORY));

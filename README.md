@@ -6,9 +6,7 @@ The core library provides:
  * A new IO (Input/Output) model, flexible, and providing asynchronous operations
 
 It does not have any dependency, however the library [net.lecousin.framework.system](https://github.com/lecousin/java-framework-system "java-framework-system")
-is recommended for better performances on disk operations.
-
-It needs to be started by using the net.lecousin.framework.application.Application#start method.
+is recommended for better performances on disk operations (detection of physical drives).
 
 ## Build status
 
@@ -16,7 +14,7 @@ Current version: 0.8.0
 
 Master: ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=master "Build Status")
 
-Branch 0.8: branch 0.8 ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.8 "Build Status")
+Branch 0.8: ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.8 "Build Status")
 
 Branch 0.9: ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.9 "Build Status") 
 
@@ -50,3 +48,25 @@ Our model add two main additions:
  * Flexibility by using interfaces that define the capabilities of an Input/Output implementation such as Readable, Writable, Seekable, Resizable, Buffered...
  * Asynchronous operations allowing multi-threading
  
+## Startup
+
+To start the framework, one of the _start_ method can be called on the Application class.
+This will initialize the environment for a single application.
+
+Once initialized, the application instance can be retrieved through the LCCore.getApplication() method.
+
+Multi-application environment implementations may come in the future, so the framework is designed such
+as multiple applications may share the same environment, including the same multi-threading system.
+
+## Logging
+
+A logging system is also provided, in a similar way as other logging frameworks.
+TODO
+
+## Memory management
+
+TODO
+
+## Locale
+
+TODO

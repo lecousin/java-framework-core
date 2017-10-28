@@ -204,15 +204,12 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends IO.Abstrac
 	}
 
 	protected AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-		return ((IO.Readable)io).readAsync(buffer, new RunnableWithParameter<Pair<Integer, IOException>>() {
-			@Override
-			public void run(Pair<Integer, IOException> param) {
-				Integer nb = param.getValue1();
-				if (nb != null && nb.intValue() > 0)
-					position += nb.intValue();
-				if (ondone != null)
-					ondone.run(param);
-			}
+		return ((IO.Readable)io).readAsync(buffer, (result) -> {
+			Integer nb = result.getValue1();
+			if (nb != null && nb.intValue() > 0)
+				position += nb.intValue();
+			if (ondone != null)
+				ondone.run(result);
 		});
 	}
 	
@@ -224,15 +221,12 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends IO.Abstrac
 	}
 	
 	protected AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-		return ((IO.Readable)io).readFullyAsync(buffer, new RunnableWithParameter<Pair<Integer, IOException>>() {
-			@Override
-			public void run(Pair<Integer, IOException> param) {
-				Integer nb = param.getValue1();
-				if (nb != null && nb.intValue() > 0)
-					position += nb.intValue();
-				if (ondone != null)
-					ondone.run(param);
-			}
+		return ((IO.Readable)io).readFullyAsync(buffer, (result) -> {
+			Integer nb = result.getValue1();
+			if (nb != null && nb.intValue() > 0)
+				position += nb.intValue();
+			if (ondone != null)
+				ondone.run(result);
 		});
 	}
 	
@@ -243,15 +237,12 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends IO.Abstrac
 	}
 
 	protected AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
-		return ((IO.Readable)io).skipAsync(n, new RunnableWithParameter<Pair<Long, IOException>>() {
-			@Override
-			public void run(Pair<Long, IOException> param) {
-				Long nb = param.getValue1();
-				if (nb != null)
-					position += nb.longValue();
-				if (ondone != null)
-					ondone.run(param);
-			}
+		return ((IO.Readable)io).skipAsync(n, (result) -> {
+			Long nb = result.getValue1();
+			if (nb != null)
+				position += nb.longValue();
+			if (ondone != null)
+				ondone.run(result);
 		});
 	}
 
@@ -292,15 +283,12 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends IO.Abstrac
 	}
 
 	protected AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
-		return ((IO.Readable.Buffered)io).readNextBufferAsync(new RunnableWithParameter<Pair<ByteBuffer, IOException>>() {
-			@Override
-			public void run(Pair<ByteBuffer, IOException> param) {
-				ByteBuffer buf = param.getValue1();
-				if (buf != null)
-					position += buf.remaining();
-				if (ondone != null)
-					ondone.run(param);
-			}
+		return ((IO.Readable.Buffered)io).readNextBufferAsync((result) -> {
+			ByteBuffer buf = result.getValue1();
+			if (buf != null)
+				position += buf.remaining();
+			if (ondone != null)
+				ondone.run(result);
 		});
 	}
 	

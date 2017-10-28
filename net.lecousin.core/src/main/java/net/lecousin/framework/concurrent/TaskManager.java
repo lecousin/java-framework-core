@@ -264,7 +264,7 @@ public abstract class TaskManager {
 	void imUnblocked(TaskWorker worker, long since) {
 		if (Threading.traceBlockingTasks) {
 			Threading.logger.error("Task " + worker.currentTask.description + " unblocked after "
-				+ (System.nanoTime() - since) / 1000000);
+				+ ((System.nanoTime() - since) / 1000000) + "ms.");
 		}
 		// pause the next worker as soon as it is done with its work
 		AsyncWork<TaskWorker,NoException> pause = new AsyncWork<>();
