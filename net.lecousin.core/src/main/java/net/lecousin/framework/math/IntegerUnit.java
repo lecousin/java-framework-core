@@ -6,6 +6,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.ArrayList;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import net.lecousin.framework.plugins.ExtensionPoint;
 import net.lecousin.framework.plugins.Plugin;
 
@@ -45,6 +47,7 @@ public interface IntegerUnit {
 	public static class ConverterRegistry implements ExtensionPoint<Converter> {
 
 		/** Constructor. */
+		@SuppressFBWarnings("ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD")
 		public ConverterRegistry() {
 			instance = this;
 			converters.add(new TimeUnit.Converter());
