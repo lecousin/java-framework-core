@@ -190,17 +190,18 @@ public class DrivesTaskManager {
 		synchronized (rootManagers) {
 			previous = rootManagers.get(path);
 			if (previous != null) {
-				Threading.unregisterResource(rootResources.get(path));
 				rootManagers.remove(path);
 				rootResources.remove(path);
 				rootManagers.put(path, tm);
-				rootResources.put(path, drive);
+				Object prevResource = rootResources.put(path, drive);
+				if (!rootResources.containsValue(prevResource))
+					Threading.unregisterResource(prevResource);
 			} else {
 				rootManagers.put(path, tm);
 				rootResources.put(path, drive);
 			}
 		}
-		if (previous != null)
+		if (previous != null && previous != tm)
 			previous.transferAndClose(tm);
 		Threading.logger.info("New partition added to DrivesTaskManager: " + mount.getAbsolutePath());
 	}
