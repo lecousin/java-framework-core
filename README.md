@@ -10,7 +10,16 @@ is recommended for better performances on disk operations (detection of physical
 
 ## Build status
 
-Current version: 0.8.0
+Current version: 
+ [0.8.0](https://github.com/lecousin/java-framework-core/releases/tag/0.8.0 "Download")
+ 
+Modules:
+ * core 0.8.0
+   [Javadoc](https://www.javadoc.io/doc/net.lecousin/core/0.8.0 "Javadoc")
+   [Maven Central Repository](http://search.maven.org/#artifactdetails%7Cnet.lecousin%7Ccore%7C0.8.0%7Cjar "Maven")
+ * log.bridges.commons-logging 0.1.0
+   [Javadoc](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.1.0 "Javadoc")
+   [Maven Central Repository](http://search.maven.org/#artifactdetails%7Cnet.lecousin.framework%7Clog.bridges.commons-logging%7C0.1.0%7Cjar "Maven")
 
 Master: ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=master "Build Status")
 
@@ -61,6 +70,8 @@ and it can resize the IO can be defined as follow:
 	public <T extends IO.Writable.Seekable & IO.Resizable> myMethod(T io) { ... }
 
 In addition, the model add asynchronous operations (non-blocking).
+
+See [Javadoc](https://static.javadoc.io/net.lecousin/core/0.8.0/net/lecousin/framework/io/package-summary.html "package io") for more information. 
  
 ## Startup
 
