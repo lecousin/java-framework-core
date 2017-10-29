@@ -55,6 +55,9 @@ By default, the order tasks are executed is based on tasks' priority,
 then for the same priority in a first-in-first-out order.
 This may be changed by providing a new implementation of TaskPriorityManager.
 
+The multi-threading system handles CPU and drives tasks, for network asynchronous operations you can
+use the library [net.lecousin.framework.network](https://github.com/lecousin/java-framework-network "java-framework-network").
+
 ## IO Model
 
 The model provided by Java is very basic and mainly based on streams (reading or writing forward).
