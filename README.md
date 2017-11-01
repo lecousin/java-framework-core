@@ -15,9 +15,9 @@ Master: ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?b
 Branch 0.8: ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.8 "Build Status")
 
 Modules with current version:
- * core 0.8.1
-   [Javadoc](https://www.javadoc.io/doc/net.lecousin/core/0.8.1 "Javadoc")
-   [Maven Central Repository](http://search.maven.org/#artifactdetails%7Cnet.lecousin%7Ccore%7C0.8.1%7Cjar "Maven")
+ * core 0.8.2
+   [Javadoc](https://www.javadoc.io/doc/net.lecousin/core/0.8.2 "Javadoc")
+   [Maven Central Repository](http://search.maven.org/#artifactdetails%7Cnet.lecousin%7Ccore%7C0.8.2%7Cjar "Maven")
  * log.bridges.commons-logging 0.1.0
    [Javadoc](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.1.0 "Javadoc")
    [Maven Central Repository](http://search.maven.org/#artifactdetails%7Cnet.lecousin.framework%7Clog.bridges.commons-logging%7C0.1.0%7Cjar "Maven")
