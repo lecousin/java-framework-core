@@ -8,9 +8,13 @@ import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.util.concurrent.ThreadFactory;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.util.DebugUtil;
 
+/** Monitoring of multi-threading system to avoid dead tasks. */
+@SuppressFBWarnings({"MS_CANNOT_BE_FINAL", "MS_SHOULD_BE_FINAL" })
 public final class TaskMonitoring {
 
 	public static boolean checkLocksOfBlockingTasks = false;
