@@ -60,7 +60,7 @@ public class RollingFileAppender implements Appender, Closeable {
 				size = attrValue;
 			else if ("files".equals(attrName))
 				files = attrValue;
-			else
+			else if (!"name".equals(attrName) && !"class".equals(attrName))
 				throw new Exception("Unknown attribute " + attrName);
 		}
 

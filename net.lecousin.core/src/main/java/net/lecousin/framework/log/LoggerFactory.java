@@ -97,6 +97,7 @@ public class LoggerFactory {
 			configure(input);
 		} catch (Exception e) {
 			application.getConsole().err("Error configuring logging system from file " + filename + ": " + e.getMessage());
+			application.getConsole().err(e);
 		} finally {
 			if (input != null) try { input.close(); } catch (Throwable t) { /* ignore */ }
 		}
@@ -114,7 +115,10 @@ public class LoggerFactory {
 			this.input = input;
 			pos = 0;
 			nb = input.read(buffer);
-			if (nb <= 0) eof = true;
+			if (nb <= 0) {
+				nb = 0;
+				eof = true;
+			}
 		}
 		
 		private Application app;
@@ -133,6 +137,7 @@ public class LoggerFactory {
 				nb = input.read(buffer);
 				if (nb <= 0) {
 					eof = true;
+					nb = 0;
 					return -1;
 				}
 			}
@@ -174,6 +179,7 @@ public class LoggerFactory {
 	/** Load configuration from a file. */
 	public synchronized void configure(XMLStreamReader reader) throws Exception {
 		while (reader.hasNext()) {
+			reader.next();
 			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
 				if (!"LoggingConfiguration".equals(reader.getLocalName()))
 					throw new Exception("Root element must be LoggingConfiguration");
@@ -224,8 +230,7 @@ public class LoggerFactory {
 				catch (ClassNotFoundException e) {
 					throw new Exception("Unknown class " + attrValue);
 				}
-			} else
-				throw new Exception("Unknown attribute " + attrName);
+			}
 		}
 		if (name == null)
 			throw new Exception("Missing attribute name on Appender");

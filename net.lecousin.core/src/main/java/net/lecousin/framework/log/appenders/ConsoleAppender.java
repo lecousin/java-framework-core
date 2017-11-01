@@ -35,7 +35,7 @@ public class ConsoleAppender implements Appender {
 				level = attrValue;
 			else if ("pattern".equals(attrName))
 				pattern = attrValue;
-			else
+			else if (!"name".equals(attrName) && !"class".equals(attrName))
 				throw new Exception("Unknown attribute " + attrName);
 		}
 		
