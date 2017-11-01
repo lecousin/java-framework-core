@@ -1,10 +1,5 @@
 package net.lecousin.framework.concurrent;
 
-import java.lang.management.LockInfo;
-import java.lang.management.ManagementFactory;
-import java.lang.management.MonitorInfo;
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -13,7 +8,6 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
-import net.lecousin.framework.util.DebugUtil;
 
 /**
  * Utilities to help debugging multi-threading applications.
@@ -206,33 +200,4 @@ public final class ThreadingDebugHelper {
 		t.start();
 	}
 	
-	/** Called in debugging mode when a TaskWorker is blocked. */
-	static void checkNoLockForWorker() {
-		ThreadMXBean bean = ManagementFactory.getThreadMXBean();
-		if (bean == null) return;
-		Thread t = Thread.currentThread();
-		ThreadInfo info = bean.getThreadInfo(t.getId());
-		if (info == null) return;
-		MonitorInfo[] monitors = info.getLockedMonitors();
-		LockInfo[] locks = info.getLockedSynchronizers();
-		if (monitors.length == 0 && locks.length == 0) return;
-		StringBuilder s = new StringBuilder(4096);
-		s.append("TaskWorker is blocked while locking objects:\r\n");
-		DebugUtil.createStackTrace(s, new Exception("Here"), false);
-		if (monitors.length > 0) {
-			s.append("\r\nLocked monitors:");
-			for (int i = 0; i < monitors.length; ++i) {
-				StackTraceElement trace = monitors[i].getLockedStackFrame();
-				s.append("\r\n - ").append(trace.getClassName()).append('#')
-					.append(trace.getMethodName()).append(':').append(trace.getLineNumber());
-			}
-		}
-		if (locks.length > 0) {
-			s.append("\r\nLocked synchronizers:");
-			for (int i = 0; i < locks.length; ++i) {
-				s.append("\r\n - ").append(locks[i].getClassName());
-			}
-		}
-		Threading.logger.error(s.toString());
-	}
 }

@@ -22,6 +22,7 @@ import net.lecousin.framework.application.libraries.DefaultLibrariesManager;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.concurrent.Console;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.TaskMonitoring;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
@@ -68,6 +69,7 @@ public final class Application {
 		this.librariesManager = librariesManager;
 		console = new Console(this);
 		toCloseSync.add(console);
+		if (debugMode) TaskMonitoring.checkLocksOfBlockingTasks = true;
 	}
 	
 	private long startTime;

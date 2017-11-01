@@ -1,5 +1,6 @@
 package net.lecousin.framework.concurrent;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -41,6 +42,7 @@ public final class Threading {
 		LCCore.get().toClose(new StopMultiThreading());
 		if (traceTasksNotDone)
 			ThreadingDebugHelper.traceTasksNotDone();
+		TaskMonitoring.start(threadFactory);
 		synchronized (resources) {
 			for (TaskManager tm : resources.values())
 				tm.autoCloseSpares();
@@ -140,6 +142,13 @@ public final class Threading {
 	/** Get the task manager for the given resource. */
 	public static TaskManager get(Object resource) {
 		return resources.get(resource);
+	}
+	
+	/** Return all current TaskManager. */
+	public static List<TaskManager> getAllTaskManagers() {
+		synchronized (resources) {
+			return new ArrayList<>(resources.values());
+		}
 	}
 	
 	private static Map<Thread, BlockedThreadHandler> blockedHandlers = new HashMap<>();

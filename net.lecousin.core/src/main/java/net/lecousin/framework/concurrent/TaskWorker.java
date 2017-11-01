@@ -21,12 +21,14 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 	TaskManager manager;
 	//boolean working = false;
 	Task<?,?> currentTask = null;
+	long currentTaskStart = -1;
 	long tasksDone = 0;
 	long workingTime = 0;
 	long waitingTime = 0;
 	long blockedTime = 0;
 	long lastUsed = -1;
 	Thread thread;
+	boolean aside = false;
 	
 	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	void forceStop() {
@@ -62,6 +64,7 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 			}
 			// take something to do
 			//working = false;
+			currentTaskStart = System.nanoTime();
 			currentTask = manager.peekNextOrWait(this);
 			if (currentTask == null) {
 				if (finish)
@@ -98,6 +101,10 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 				TaskScheduler.schedule(t);
 			} else {
 				workingTime += System.nanoTime() - start;
+			}
+			if (aside) {
+				manager.asideWorkerDone(this);
+				break;
 			}
 		}
 		Threading.unregisterBlockedThreadHandler(this.thread);

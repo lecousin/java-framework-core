@@ -1,5 +1,6 @@
 package net.lecousin.framework.concurrent;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -9,6 +10,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.util.DebugUtil;
 
 /**
  * Base class to implement a TaskManager, which is responsible to execute tasks in threads.
@@ -40,6 +42,7 @@ public abstract class TaskManager {
 	
 	private TurnArray<TaskWorker> spare;
 	private TurnArray<TaskWorker> blocked;
+	private LinkedList<TaskWorker> aside = new LinkedList<>();
 	private Object stopping = null;
 	private TaskManager transferredTo = null;
 	private boolean stopped = false;
@@ -228,8 +231,8 @@ public abstract class TaskManager {
 		if (Threading.traceBlockingTasks) {
 			Threading.logger.error("Task " + worker.currentTask.description + " blocked", new Exception());
 		}
-		if (Threading.logger.debug())
-			ThreadingDebugHelper.checkNoLockForWorker();
+		if (TaskMonitoring.checkLocksOfBlockingTasks)
+			TaskMonitoring.checkNoLockForWorker();
 		if (transferredTo != null) {
 			// we are in the process of being transferred, we cannot launch a spare
 			Threading.logger.info("Task blocked while transferring to a new TaskManager: " + worker.currentTask.description);
@@ -302,6 +305,51 @@ public abstract class TaskManager {
 			}
 		}
 		return false;
+	}
+	
+	List<TaskWorker> getAllActiveWorkers() {
+		TaskWorker[] workers = getWorkers();
+		ArrayList<TaskWorker> list = new ArrayList<>(workers.length + blocked.size() + aside.size());
+		for (TaskWorker w : workers)
+			list.add(w);
+		synchronized (blocked) {
+			list.addAll(blocked);
+		}
+		synchronized (aside) {
+			list.addAll(aside);
+		}
+		return list;
+	}
+	
+	void putWorkerAside(TaskWorker worker) {
+		TaskWorker newWorker = createWorker();
+		worker.aside = true;
+		synchronized (aside) {
+			aside.add(worker);
+			replaceWorkerBySpare(worker, newWorker);
+		}
+		newWorker.thread.start();
+	}
+	
+	@SuppressWarnings("deprecation")
+	void killWorker(TaskWorker worker) {
+		synchronized (aside) {
+			if (!aside.remove(worker)) return;
+		}
+		StackTraceElement[] stack = worker.thread.getStackTrace();
+		StringBuilder s = new StringBuilder(1024);
+		s.append("Task stopped at \r\n");
+		DebugUtil.createStackTrace(s, stack);
+		Threading.logger.error(s.toString());
+		worker.thread.stop();
+		if (worker.currentTask != null)
+			worker.currentTask.getSynch().cancel(new CancelException("Task was running since a too long time"));
+	}
+	
+	void asideWorkerDone(TaskWorker worker) {
+		synchronized (aside) {
+			aside.remove(worker);
+		}
 	}
 
 	/** Describe what threads are doing for debugging purpose. */

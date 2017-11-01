@@ -1,0 +1,109 @@
+package net.lecousin.framework.concurrent;
+
+import java.io.Closeable;
+import java.lang.management.LockInfo;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MonitorInfo;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
+import java.util.concurrent.ThreadFactory;
+
+import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.util.DebugUtil;
+
+public final class TaskMonitoring {
+
+	public static boolean checkLocksOfBlockingTasks = false;
+	
+	public static int MINUTES_BEFORE_TO_PUT_TASK_ASIDE = 5;
+	public static int MINUTES_BEFORE_KILL_TASK = 10;
+	
+	private static TaskMonitor monitor;
+	
+	static void start(ThreadFactory threadFactory) {
+		monitor = new TaskMonitor();
+		threadFactory.newThread(monitor);
+		LCCore.get().toClose(monitor);
+	}
+	
+	/** Called when a TaskWorker is blocked, if checkLocksOfBlockingTasks is true. */
+	static void checkNoLockForWorker() {
+		ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+		if (bean == null) return;
+		Thread t = Thread.currentThread();
+		ThreadInfo info = bean.getThreadInfo(t.getId());
+		if (info == null) return;
+		MonitorInfo[] monitors = info.getLockedMonitors();
+		LockInfo[] locks = info.getLockedSynchronizers();
+		if (monitors.length == 0 && locks.length == 0) return;
+		StringBuilder s = new StringBuilder(4096);
+		s.append("TaskWorker is blocked while locking objects:\r\n");
+		DebugUtil.createStackTrace(s, new Exception("Here"), false);
+		if (monitors.length > 0) {
+			s.append("\r\nLocked monitors:");
+			for (int i = 0; i < monitors.length; ++i) {
+				StackTraceElement trace = monitors[i].getLockedStackFrame();
+				s.append("\r\n - ").append(trace.getClassName()).append('#')
+					.append(trace.getMethodName()).append(':').append(trace.getLineNumber());
+			}
+		}
+		if (locks.length > 0) {
+			s.append("\r\nLocked synchronizers:");
+			for (int i = 0; i < locks.length; ++i) {
+				s.append("\r\n - ").append(locks[i].getClassName());
+			}
+		}
+		Threading.logger.error(s.toString());
+	}
+
+	private static class TaskMonitor implements Runnable, Closeable {
+		
+		private Object lock = new Object();
+		private boolean closed = false;
+		
+		@Override
+		public void run() {
+			while (!closed) {
+				synchronized (lock) {
+					try { lock.wait(60000); }
+					catch (InterruptedException e) { break; }
+					if (closed)
+						break;
+				}
+				for (TaskManager manager : Threading.getAllTaskManagers())
+					check(manager);
+			}
+		}
+		
+		@Override
+		public void close() {
+			closed = true;
+			synchronized (lock) {
+				lock.notifyAll();
+			}
+		}
+	}
+	
+	private static void check(TaskManager manager) {
+		for (TaskWorker worker : manager.getAllActiveWorkers())
+			check(worker);
+	}
+	
+	private static void check(TaskWorker worker) {
+		if (worker == null) return;
+		long now = System.nanoTime();
+		Task<?,?> task = worker.currentTask;
+		if (task == null) return;
+		long start = worker.currentTaskStart;
+		long minutes = (now - start) / (1000000L * 1000 * 60);
+		if (minutes < MINUTES_BEFORE_TO_PUT_TASK_ASIDE) return;
+		if (minutes < MINUTES_BEFORE_KILL_TASK) {
+			Threading.logger.warn("Task " + task + " is running since more than 5 minutes !");
+			worker.manager.putWorkerAside(worker);
+			return;
+		}
+		Threading.logger.error("Task " + task + " is running since more than 10 minutes ! kill it.");
+		worker.manager.killWorker(worker);
+	}
+	
+}
