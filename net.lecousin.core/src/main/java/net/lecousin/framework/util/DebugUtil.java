@@ -1,5 +1,7 @@
 package net.lecousin.framework.util;
 
+import java.nio.ByteBuffer;
+
 /** Utility methods for debugging. */
 public final class DebugUtil {
 	
@@ -50,5 +52,37 @@ public final class DebugUtil {
 			}
 		return s;
 	}
+
+	/** Create an hexadecimal dump of the given buffer. */
+	public static void dumpHex(StringBuilder s, byte[] buffer, int offset, int length) {
+		dumpHex(s, ByteBuffer.wrap(buffer, offset, length));
+	}
 	
+	/** Create an hexadecimal dump of the given buffer. */
+	public static void dumpHex(StringBuilder s, ByteBuffer buffer) {
+		int savePos = buffer.position();
+		int line = 0;
+		while (buffer.hasRemaining()) {
+			s.append(StringUtil.encodeHexaPadding(16L * line)).append(' ');
+			int l = buffer.remaining() >= 16 ? 16 : buffer.remaining();
+			byte[] b = new byte[l];
+			buffer.get(b);
+			for (int i = 0; i < 16; ++i) {
+				if (b.length <= i) s.append("   ");
+				else s.append(StringUtil.encodeHexa(b[i])).append(' ');
+			}
+			s.append("  ");
+			for (int i = 0; i < 16; ++i) {
+				if (b.length <= i) s.append(' ');
+				else {
+					char c = (char)(b[i] & 0xFF);
+					if (c < 0x20 || c > 0x7F) c = '.';
+					s.append(c);
+				}
+			}
+			s.append("\r\n");
+			line++;
+		}
+		buffer.position(savePos);
+	}	
 }
