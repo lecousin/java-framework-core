@@ -36,7 +36,7 @@ public abstract class TestIO extends LCCoreAbstractTest {
 		private static final int nbBuf1Tiny = 1;
 		private static final int nbBuf1Empty = 0;
 		
-		protected static List<Object[]> generateTestCases() {
+		public static List<Object[]> generateTestCases() {
 			LinkedList<Object[]> list = new LinkedList<>();
 			list.add(new Object[] { testBuf1, Integer.valueOf(nbBuf1Empty) });
 			list.add(new Object[] { testBuf1, Integer.valueOf(nbBuf1Tiny) });
@@ -59,7 +59,7 @@ public abstract class TestIO extends LCCoreAbstractTest {
 
 		protected File testFile;
 		
-		protected static synchronized List<Object[]> generateTestCases() {
+		public static synchronized List<Object[]> generateTestCases() {
 			List<Object[]> base = UsingTestData.generateTestCases();
 			if (files == null) {
 				files = new File[base.size()];

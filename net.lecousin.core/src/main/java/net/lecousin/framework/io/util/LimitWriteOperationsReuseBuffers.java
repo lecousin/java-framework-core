@@ -17,17 +17,33 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * usually read operations are faster than write operations, and we need to avoid having too much buffers in memory waiting
  * to write.
  */
-public class LimitWriteOperations {
+public class LimitWriteOperationsReuseBuffers {
 	
 	/** Constructor. */
-	public LimitWriteOperations(IO.Writable io, int maxOperations) {
+	public LimitWriteOperationsReuseBuffers(IO.Writable io, int bufferSize, int maxOperations) {
 		this.io = io;
+		buffers = new Buffers(bufferSize, maxOperations);
 		waiting = new TurnArray<>(maxOperations);
 	}
 	
 	private IO.Writable io;
+	private Buffers buffers;
 	private TurnArray<Pair<ByteBuffer,AsyncWork<Integer,IOException>>> waiting;
 	private SynchronizationPoint<NoException> lock = null;
+	
+	/**
+	 * @return a buffer to put data to write.
+	 */
+	public ByteBuffer getBuffer() {
+		return buffers.getBuffer();
+	}
+	
+	/** Must be called only if the user has not been used for a write operation,
+	 * else it will be automatically free when write operation is done.
+	 */
+	public void freeBuffer(ByteBuffer buffer) {
+		buffers.freeBuffer(buffer);
+	}
 	
 	/**
 	 * Queue the buffer to write. If there is no pending write, the write operation is started.
@@ -41,7 +57,7 @@ public class LimitWriteOperations {
 					return io.writeAsync(buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
 						@Override
 						public void run(Pair<Integer, IOException> param) {
-							writeDone();
+							writeDone(buffer);
 						}
 					});
 				}
@@ -58,7 +74,8 @@ public class LimitWriteOperations {
 		} while (true);
 	}
 	
-	private void writeDone() {
+	private void writeDone(ByteBuffer buffer) {
+		buffers.freeBuffer(buffer);
 		SynchronizationPoint<NoException> sp = null;
 		synchronized (waiting) {
 			Pair<ByteBuffer,AsyncWork<Integer,IOException>> b = waiting.pollFirst();
@@ -66,7 +83,7 @@ public class LimitWriteOperations {
 				io.writeAsync(b.getValue1(), new RunnableWithParameter<Pair<Integer,IOException>>() {
 					@Override
 					public void run(Pair<Integer, IOException> param) {
-						writeDone();
+						writeDone(b.getValue1());
 					}
 				}).listenInline(b.getValue2());
 				if (lock != null) {
