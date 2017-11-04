@@ -170,14 +170,17 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 		}
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
 			@Override
-			public ByteBuffer run() throws IOException {
+			public ByteBuffer run() throws IOException, CancelException {
 				if (pos == len) {
 					if (buffer == null) return null;
 					fill();
 					if (pos == len) return null;
 				}
 				ByteBuffer buf = ByteBuffer.allocate(len - pos);
-				buf.put(buffer, pos, len - pos);
+				try { buf.put(buffer, pos, len - pos); }
+				catch (NullPointerException e) {
+					throw new CancelException("IO closed");
+				}
 				pos = len;
 				buf.flip();
 				return buf;

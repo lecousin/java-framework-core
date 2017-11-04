@@ -206,7 +206,7 @@ public class OutputToInputBuffers extends AbstractIO implements IO.OutputToInput
 	
 	@Override
 	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return IOUtil.skipAsync(this, n, ondone).getSynch();
+		return IOUtil.skipAsyncUsingSync(this, n, ondone);
 	}
 	
 	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")

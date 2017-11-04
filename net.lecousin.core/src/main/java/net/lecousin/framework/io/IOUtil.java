@@ -24,6 +24,7 @@ import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
+import net.lecousin.framework.mutable.MutableLong;
 import net.lecousin.framework.progress.WorkProgress;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
@@ -365,7 +366,8 @@ public class IOUtil {
 	/**
 	 * Implement a synchronous skip using a synchronous read.
 	 */
-	public static long skipSync(IO.Readable io, long n) throws IOException {
+	public static long skipSyncByReading(IO.Readable io, long n) throws IOException {
+		if (n <= 0) return 0;
 		int l = n > 65536 ? 65536 : (int)n;
 		ByteBuffer b = ByteBuffer.allocate(l);
 		long total = 0;
@@ -384,16 +386,57 @@ public class IOUtil {
 	 * Implement an asynchronous skip using a task calling a synchronous skip.
 	 * This must be used only if the synchronous skip is using only CPU.
 	 */
-	public static Task<Long,IOException> skipAsync(IO.Readable io, long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public static AsyncWork<Long,IOException> skipAsyncUsingSync(IO.Readable io, long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+		// TODO this should be skipAsyncUsingSync, then we should implement a real skipAsync
 		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Skipping bytes", io.getPriority(), ondone) {
 			@Override
 			public Long run() throws IOException {
-				long total = skipSync(io, n);
+				long total = skipSyncByReading(io, n);
 				return Long.valueOf(total);
 			}
 		};
 		task.start();
-		return task;
+		return task.getSynch();
+	}
+	
+	public static AsyncWork<Long, IOException> skipAsyncByReading(IO.Readable io, long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+		if (n <= 0) {
+			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
+			return new AsyncWork<>(Long.valueOf(0), null);
+		}
+		ByteBuffer b = ByteBuffer.allocate(n > 65536 ? 65536 : (int)n);
+		MutableLong done = new MutableLong(0);
+		AsyncWork<Long, IOException> result = new AsyncWork<>();
+		io.readAsync(b).listenInline(new AsyncWorkListener<Integer, IOException>() {
+			@Override
+			public void ready(Integer nb) {
+				int read = nb.intValue();
+				if (read <= 0) {
+					if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done.get()), null));
+					result.unblockSuccess(Long.valueOf(done.get()));
+					return;
+				}
+				done.add(nb.intValue());
+				if (done.get() == n) {
+					if (ondone != null) ondone.run(new Pair<>(Long.valueOf(n), null));
+					result.unblockSuccess(Long.valueOf(n));
+					return;
+				}
+				b.clear();
+				if (n - done.get() < b.remaining())
+					b.limit((int)(n - done.get()));
+				io.readAsync(b).listenInline(this);
+			}
+			@Override
+			public void error(IOException error) {
+				result.error(error);
+			}
+			@Override
+			public void cancelled(CancelException event) {
+				result.cancel(event);
+			}
+		});
+		return result;
 	}
 	
 	/**

@@ -125,7 +125,7 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 
 	@Override
 	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return IOUtil.skipAsync(this, n, ondone).getSynch();
+		return IOUtil.skipAsyncByReading(this, n, ondone);
 	}
 
 	@Override
