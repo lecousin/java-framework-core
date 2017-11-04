@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import net.lecousin.framework.collections.TurnArray;
+import net.lecousin.framework.core.test.collections.TestDeque;
 
 public class TestTurnArray extends TestDeque {
 
