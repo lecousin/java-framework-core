@@ -387,7 +387,6 @@ public class IOUtil {
 	 * This must be used only if the synchronous skip is using only CPU.
 	 */
 	public static AsyncWork<Long,IOException> skipAsyncUsingSync(IO.Readable io, long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		// TODO this should be skipAsyncUsingSync, then we should implement a real skipAsync
 		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Skipping bytes", io.getPriority(), ondone) {
 			@Override
 			public Long run() throws IOException {
@@ -399,6 +398,9 @@ public class IOUtil {
 		return task.getSynch();
 	}
 	
+	/**
+	 * Implement an asynchronous skip using readAsync.
+	 */
 	public static AsyncWork<Long, IOException> skipAsyncByReading(IO.Readable io, long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
 		if (n <= 0) {
 			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
@@ -427,10 +429,12 @@ public class IOUtil {
 					b.limit((int)(n - done.get()));
 				io.readAsync(b).listenInline(this);
 			}
+			
 			@Override
 			public void error(IOException error) {
 				result.error(error);
 			}
+			
 			@Override
 			public void cancelled(CancelException event) {
 				result.cancel(event);
