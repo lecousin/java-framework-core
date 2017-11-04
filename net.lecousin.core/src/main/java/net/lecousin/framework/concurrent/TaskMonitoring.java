@@ -19,8 +19,9 @@ public final class TaskMonitoring {
 
 	public static boolean checkLocksOfBlockingTasks = false;
 	
-	public static int MINUTES_BEFORE_TO_PUT_TASK_ASIDE = 5;
-	public static int MINUTES_BEFORE_KILL_TASK = 10;
+	public static int MONITORING_INTERVAL = 60 * 1000;
+	public static int SECONDS_BEFORE_TO_PUT_TASK_ASIDE = 5 * 60;
+	public static int SECONDS_BEFORE_KILL_TASK = 10 * 60;
 	
 	private static TaskMonitor monitor;
 	
@@ -69,7 +70,7 @@ public final class TaskMonitoring {
 		public void run() {
 			while (!closed) {
 				synchronized (lock) {
-					try { lock.wait(60000); }
+					try { lock.wait(MONITORING_INTERVAL); }
 					catch (InterruptedException e) { break; }
 					if (closed)
 						break;
@@ -99,14 +100,14 @@ public final class TaskMonitoring {
 		Task<?,?> task = worker.currentTask;
 		if (task == null) return;
 		long start = worker.currentTaskStart;
-		long minutes = (now - start) / (1000000L * 1000 * 60);
-		if (minutes < MINUTES_BEFORE_TO_PUT_TASK_ASIDE) return;
-		if (minutes < MINUTES_BEFORE_KILL_TASK) {
-			Threading.logger.warn("Task " + task + " is running since more than 5 minutes !");
+		long seconds = (now - start) / (1000000L * 1000);
+		if (seconds < SECONDS_BEFORE_TO_PUT_TASK_ASIDE) return;
+		if (seconds < SECONDS_BEFORE_KILL_TASK) {
+			Threading.logger.warn("Task " + task + " is running since " + seconds + " seconds ! put it aside and start a new thread");
 			worker.manager.putWorkerAside(worker);
 			return;
 		}
-		Threading.logger.error("Task " + task + " is running since more than 10 minutes ! kill it.");
+		Threading.logger.error("Task " + task + " is running since " + seconds + " seconds ! kill it.");
 		worker.manager.killWorker(worker);
 	}
 	
