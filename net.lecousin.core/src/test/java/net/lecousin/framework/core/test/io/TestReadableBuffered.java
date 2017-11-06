@@ -33,9 +33,6 @@ public abstract class TestReadableBuffered extends TestIO.UsingGeneratedTestFile
 	@Override
 	protected void basicTests(IO io) throws Exception {
 		super.basicTests(io);
-		IO.Readable.Buffered bio = (IO.Readable.Buffered)io;
-		bio.getMaxBufferedSize();
-		bio.getRemainingBufferedSize();
 	}
 	
 	@SuppressWarnings({ "resource" })

@@ -31,11 +31,6 @@ public class BufferedToInputStream extends InputStream {
 	}
 	
 	@Override
-	public int available() {
-		return io.getRemainingBufferedSize();
-	}
-	
-	@Override
 	public long skip(long n) throws IOException {
 		return io.skipSync(n);
 	}

@@ -114,16 +114,6 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 	}
 	
 	@Override
-	public int getRemainingBufferedSize() {
-		return 0;
-	}
-	
-	@Override
-	public int getMaxBufferedSize() {
-		return buffered.getMaxBufferedSize();
-	}
-	
-	@Override
 	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	public long getSizeSync() throws IOException {
 		if (knownSize >= 0) return knownSize;

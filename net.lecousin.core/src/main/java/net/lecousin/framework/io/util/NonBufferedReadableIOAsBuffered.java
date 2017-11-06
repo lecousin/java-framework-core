@@ -103,16 +103,6 @@ public class NonBufferedReadableIOAsBuffered extends IO.AbstractIO implements IO
 	}
 
 	@Override
-	public int getRemainingBufferedSize() {
-		return 0;
-	}
-
-	@Override
-	public int getMaxBufferedSize() {
-		return 0;
-	}
-
-	@Override
 	public int readFully(byte[] buffer) throws IOException {
 		return io.readFullySync(ByteBuffer.wrap(buffer));
 	}

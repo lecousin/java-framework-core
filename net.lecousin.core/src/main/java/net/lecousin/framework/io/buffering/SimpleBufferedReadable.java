@@ -70,12 +70,6 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 	public void setPriority(byte priority) { io.setPriority(priority); }
 	
 	@Override
-	public int getMaxBufferedSize() { return buffer.length; }
-	
-	@Override
-	public int getRemainingBufferedSize() { return len - pos; }
-	
-	@Override
 	protected ISynchronizationPoint<IOException> closeIO() {
 		if (readTask != null) {
 			if (readTask instanceof Task.SyncDone)

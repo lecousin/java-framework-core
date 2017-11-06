@@ -181,14 +181,6 @@ public interface IO extends AutoCloseable, Closeable, AsyncCloseable<IOException
 
 		/** Indicates the IO is buffered, and add operations. */
 		public interface Buffered extends Readable, ReadableByteStream {
-			/** Return the number of bytes actually buffered and available to read starting from the current position.
-			 * This is similar to the {@link java.io.InputStream#available()} method.
-			 */
-			public int getRemainingBufferedSize();
-			
-			/** Return the maximum number of bytes buffered by the implementation. */
-			public int getMaxBufferedSize();
-			
 			/** Retrieve a buffer of bytes in the most efficient way depending on the implementation of Buffered.<br/>
 			 * This method is similar to readAsync, it read some bytes that are immediately available with a minimum of
 			 * operations. The problem with readAsync is that we have to give a buffer to fill. If there are more

@@ -214,20 +214,6 @@ public class PreBufferedReadable extends IO.AbstractIO implements IO.Readable.Bu
 	@Override
 	public void setPriority(byte priority) { this.priority = priority; }
 	
-	@Override
-	public int getMaxBufferedSize() { return maxBufferedSize; }
-	
-	@Override
-	public int getRemainingBufferedSize() {
-		int total = 0;
-		synchronized (this) {
-			if (current != null) total += current.remaining();
-			if (buffersReady != null)
-				for (ByteBuffer b : buffersReady) total += b.remaining();
-		}
-		return total;
-	}
-	
 	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	private void start(int firstBuffer, byte firstBufferPriority, int nextBuffer, byte nextBufferPriority, int maxNbNextBuffersReady) {
 		if (nextBuffer < 0)

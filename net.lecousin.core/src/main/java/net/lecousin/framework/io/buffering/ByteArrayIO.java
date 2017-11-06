@@ -93,16 +93,6 @@ public class ByteArrayIO extends AbstractIO
 	}
 	
 	@Override
-	public int getMaxBufferedSize() {
-		return array.length;
-	}
-	
-	@Override
-	public int getRemainingBufferedSize() {
-		return size - pos;
-	}
-	
-	@Override
 	public long getPosition() { return pos; }
 	
 	@Override

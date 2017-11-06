@@ -72,16 +72,6 @@ public class MemoryIO extends AbstractIO
 	public TaskManager getTaskManager() { return Threading.getCPUTaskManager(); }
 	
 	@Override
-	public int getMaxBufferedSize() {
-		return size;
-	}
-	
-	@Override
-	public int getRemainingBufferedSize() {
-		return size - pos;
-	}
-	
-	@Override
 	public int read() {
 		if (pos == size) return -1;
 		int c = buffers[pos / bufferSize][pos % bufferSize] & 0xFF;

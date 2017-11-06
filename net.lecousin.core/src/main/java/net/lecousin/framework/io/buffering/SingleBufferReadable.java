@@ -45,16 +45,6 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 		return new SynchronizationPoint<>(true);
 	}
 
-	@Override
-	public int getRemainingBufferedSize() {
-		return len - pos;
-	}
-
-	@Override
-	public int getMaxBufferedSize() {
-		return buffer.length;
-	}
-
 	private void fillBuffer() throws IOException {
 		AsyncWork<Integer,IOException> result;
 		if (useReadFully)

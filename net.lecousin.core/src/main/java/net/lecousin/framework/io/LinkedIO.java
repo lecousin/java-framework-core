@@ -182,16 +182,6 @@ public abstract class LinkedIO extends AbstractIO {
 			}
 			
 			@Override
-			public int getRemainingBufferedSize() {
-				return super.getRemainingBufferedSize();
-			}
-			
-			@Override
-			public int getMaxBufferedSize() {
-				return super.getMaxBufferedSize();
-			}
-			
-			@Override
 			public ISynchronizationPoint<IOException> canStartReading() {
 				return super.canStartReading();
 			}
@@ -341,16 +331,6 @@ public abstract class LinkedIO extends AbstractIO {
 				@Override
 				public int skip(int n) throws IOException {
 					return super.skip(n);
-				}
-				
-				@Override
-				public int getRemainingBufferedSize() {
-					return super.getRemainingBufferedSize();
-				}
-				
-				@Override
-				public int getMaxBufferedSize() {
-					return super.getMaxBufferedSize();
 				}
 				
 				@Override
@@ -797,19 +777,6 @@ public abstract class LinkedIO extends AbstractIO {
 	
 	protected int skip(int n) throws IOException {
 		return (int)skipSync(n);
-	}
-	
-	protected int getRemainingBufferedSize() {
-		if (ioIndex == ios.size())
-			return 0;
-		return ((IO.Readable.Buffered)ios.get(ioIndex)).getRemainingBufferedSize();
-	}
-	
-	protected int getMaxBufferedSize() {
-		if (ios.isEmpty()) return 0;
-		if (ioIndex == ios.size())
-			return ((IO.Readable.Buffered)ios.get(0)).getMaxBufferedSize();
-		return ((IO.Readable.Buffered)ios.get(ioIndex)).getRemainingBufferedSize();
 	}
 	
 	protected ISynchronizationPoint<IOException> canStartReading() {

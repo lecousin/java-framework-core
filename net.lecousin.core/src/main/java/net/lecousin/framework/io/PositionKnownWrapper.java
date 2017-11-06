@@ -129,16 +129,6 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends IO.Abstrac
 			}
 			
 			@Override
-			public int getRemainingBufferedSize() {
-				return super.getRemainingBufferedSize();
-			}
-
-			@Override
-			public int getMaxBufferedSize() {
-				return super.getMaxBufferedSize();
-			}
-
-			@Override
 			public int read() throws IOException {
 				return super.read();
 			}
@@ -248,14 +238,6 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends IO.Abstrac
 
 	// --- IO.Readable.Buffered
 	
-	protected int getRemainingBufferedSize() {
-		return ((IO.Readable.Buffered)io).getRemainingBufferedSize();
-	}
-
-	protected int getMaxBufferedSize() {
-		return ((IO.Readable.Buffered)io).getMaxBufferedSize();
-	}
-
 	protected int read() throws IOException {
 		int c = ((IO.Readable.Buffered)io).read();
 		if (c >= 0) position++;

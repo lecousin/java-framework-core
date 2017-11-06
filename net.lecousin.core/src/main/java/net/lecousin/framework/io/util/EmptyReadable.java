@@ -132,16 +132,6 @@ public class EmptyReadable extends IO.AbstractIO implements IO.Readable, IO.Know
 	}
 
 	@Override
-	public int getRemainingBufferedSize() {
-		return 0;
-	}
-
-	@Override
-	public int getMaxBufferedSize() {
-		return 0;
-	}
-
-	@Override
 	public int readFully(byte[] buffer) {
 		return 0;
 	}

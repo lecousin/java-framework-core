@@ -145,18 +145,6 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 	}
 	
 	@Override
-	public int getRemainingBufferedSize() {
-		if (nb1 < 0) return 0;
-		if (nb2 < 0) return nb1 - pos;
-		return nb1 + nb2 - pos;
-	}
-
-	@Override
-	public int getMaxBufferedSize() {
-		return buf1.length + (buf2 == null ? 0 : buf2.length);
-	}
-
-	@Override
 	public int read() throws IOException {
 		if (nb1 < 0) {
 			if (!read1.isUnblocked()) read1.block(0);

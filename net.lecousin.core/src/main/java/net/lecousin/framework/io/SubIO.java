@@ -323,16 +323,6 @@ public abstract class SubIO extends IO.AbstractIO {
 				}
 
 				@Override
-				public int getRemainingBufferedSize() {
-					return ((IO.Readable.Buffered)io).getRemainingBufferedSize();
-				}
-
-				@Override
-				public int getMaxBufferedSize() {
-					return ((IO.Readable.Buffered)io).getMaxBufferedSize();
-				}
-
-				@Override
 				public ISynchronizationPoint<IOException> canStartReading() {
 					return ((IO.Readable.Buffered)io).canStartReading();
 				}

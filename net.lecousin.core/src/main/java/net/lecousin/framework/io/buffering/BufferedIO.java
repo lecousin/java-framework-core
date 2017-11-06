@@ -415,17 +415,6 @@ public abstract class BufferedIO extends BufferingManaged {
 		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 			return super.readFullyAsync(pos, buf, 0, ondone);
 		}
-		
-		@Override
-		public int getRemainingBufferedSize() {
-			long l = size - pos;
-			return l > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)l;
-		}
-		
-		@Override
-		public int getMaxBufferedSize() {
-			return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)size;
-		}
 	}
 
 	/** Read and write implementation of BufferedIO. */
@@ -633,17 +622,6 @@ public abstract class BufferedIO extends BufferingManaged {
 		@Override
 		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 			return super.readFullyAsync(pos, buf, 0, ondone);
-		}
-		
-		@Override
-		public int getRemainingBufferedSize() {
-			long l = size - pos;
-			return l > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)l;
-		}
-		
-		@Override
-		public int getMaxBufferedSize() {
-			return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)size;
 		}
 		
 		@Override

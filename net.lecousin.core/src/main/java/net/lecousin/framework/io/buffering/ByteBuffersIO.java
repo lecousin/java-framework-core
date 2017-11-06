@@ -298,17 +298,6 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 		return new AsyncWork<>(r, null);
 	}
 
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
-	@Override
-	public int getRemainingBufferedSize() {
-		return totalSize - pos;
-	}
-
-	@Override
-	public int getMaxBufferedSize() {
-		return totalSize;
-	}
-
 	@Override
 	public int readFully(byte[] buffer) {
 		return read(buffer, 0, buffer.length);
