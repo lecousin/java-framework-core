@@ -27,7 +27,7 @@ public final class TaskMonitoring {
 	
 	static void start(ThreadFactory threadFactory) {
 		monitor = new TaskMonitor();
-		threadFactory.newThread(monitor);
+		threadFactory.newThread(monitor).start();
 		LCCore.get().toClose(monitor);
 	}
 	
@@ -103,11 +103,19 @@ public final class TaskMonitoring {
 		long seconds = (now - start) / (1000000L * 1000);
 		if (seconds < SECONDS_BEFORE_TO_PUT_TASK_ASIDE) return;
 		if (seconds < SECONDS_BEFORE_KILL_TASK) {
-			Threading.logger.warn("Task " + task + " is running since " + seconds + " seconds ! put it aside and start a new thread");
+			StringBuilder s = new StringBuilder(1024);
+			s.append("Task ").append(task).append(" is running since ").append(seconds)
+			 .append(" seconds ! put it aside and start a new thread, current stack:\r\n");
+			DebugUtil.createStackTrace(s, worker.thread.getStackTrace());
+			Threading.logger.warn(s.toString());
 			worker.manager.putWorkerAside(worker);
 			return;
 		}
-		Threading.logger.error("Task " + task + " is running since " + seconds + " seconds ! kill it.");
+		StringBuilder s = new StringBuilder(1024);
+		s.append("Task ").append(task).append(" is running since ").append(seconds)
+		 .append(" seconds ! kill it! current stack:\r\n");
+		DebugUtil.createStackTrace(s, worker.thread.getStackTrace());
+		Threading.logger.error(s.toString());
 		worker.manager.killWorker(worker);
 	}
 	
