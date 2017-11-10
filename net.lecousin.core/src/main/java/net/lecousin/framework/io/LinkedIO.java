@@ -16,7 +16,6 @@ import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO.AbstractIO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
-import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.mutable.MutableLong;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
@@ -800,32 +799,24 @@ public abstract class LinkedIO extends AbstractIO {
 	}
 	
 	protected AsyncWork<Long, IOException> getSizeAsync() {
+		@SuppressWarnings("unchecked")
+		AsyncWork<Long, IOException>[] sizes = new AsyncWork[ios.size()];
+		for (int i = 0; i < ios.size(); ++i)
+			sizes[i] = ((IO.KnownSize)ios.get(i)).getSizeAsync();
+		JoinPoint<IOException> jp = JoinPoint.fromSynchronizationPointsSimilarError(sizes);
 		AsyncWork<Long, IOException> result = new AsyncWork<Long, IOException>();
-		MutableLong total = new MutableLong(0);
-		MutableInteger index = new MutableInteger(0);
-		((IO.KnownSize)ios.get(0)).getSizeAsync().listenInline(new AsyncWorkListener<Long, IOException>() {
-			@Override
-			public void ready(Long size) {
-				total.add(size.longValue());
-				if (index.inc() == ios.size())
-					result.unblockSuccess(Long.valueOf(total.get()));
-				else
-					((IO.KnownSize)ios.get(index.get())).getSizeAsync().listenInline(this);
-			}
-			
-			@Override
-			public void error(IOException error) {
-				result.unblockError(error);
-			}
-			
-			@Override
-			public void cancelled(CancelException event) {
-				result.unblockCancel(event);
-			}
-		});
+		jp.listenInline(
+			() -> {
+				long total = 0;
+				for (int i = 0; i < sizes.length; ++i)
+					total += sizes[i].getResult().longValue();
+				result.unblockSuccess(Long.valueOf(total));
+			},
+			result
+		);
 		return result;
 	}
-
+	
 	
 	protected long getPosition() {
 		return pos;
