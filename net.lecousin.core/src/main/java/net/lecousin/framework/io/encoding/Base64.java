@@ -1,6 +1,7 @@
 package net.lecousin.framework.io.encoding;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /** Utility methods to encode and decode base 64. */
 public final class Base64 {
@@ -20,6 +21,34 @@ public final class Base64 {
 		outputBuffer[2] = (byte)(((v3 & 0x03) << 6) | v4);
 		return 3;
 	}
+
+	/** Decode the 4 input bytes of the inputBuffer, into the outputBuffer that must have at least 3 bytes remaining. */
+	public static int decode4BytesBase64(byte[] inputBuffer, byte[] outputBuffer, int outputOffset) throws IOException {
+		int v1 = decodeBase64Char(inputBuffer[0]);
+		int v2 = decodeBase64Char(inputBuffer[1]);
+		int v3 = decodeBase64Char(inputBuffer[2]);
+		outputBuffer[outputOffset] = (byte)((v1 << 2) | (v2 >>> 4));
+		if (v3 == 64) return 1;
+		int v4 = decodeBase64Char(inputBuffer[3]);
+		outputBuffer[outputOffset + 1] = (byte)(((v2 & 0x0F) << 4) | (v3 >>> 2));
+		if (v4 == 64) return 2;
+		outputBuffer[outputOffset + 2] = (byte)(((v3 & 0x03) << 6) | v4);
+		return 3;
+	}
+
+	/** Decode 4 input bytes of the inputBuffer, into the outputBuffer that must have at least 3 bytes remaining. */
+	public static int decode4BytesBase64(byte[] inputBuffer, int inputOffset, byte[] outputBuffer, int outputOffset) throws IOException {
+		int v1 = decodeBase64Char(inputBuffer[inputOffset]);
+		int v2 = decodeBase64Char(inputBuffer[inputOffset + 1]);
+		int v3 = decodeBase64Char(inputBuffer[inputOffset + 2]);
+		outputBuffer[outputOffset] = (byte)((v1 << 2) | (v2 >>> 4));
+		if (v3 == 64) return 1;
+		int v4 = decodeBase64Char(inputBuffer[3]);
+		outputBuffer[outputOffset + 1] = (byte)(((v2 & 0x0F) << 4) | (v3 >>> 2));
+		if (v4 == 64) return 2;
+		outputBuffer[outputOffset + 2] = (byte)(((v3 & 0x03) << 6) | v4);
+		return 3;
+	}
 	
 	/** Convert a base 64 character into its integer value. */
 	public static int decodeBase64Char(byte b) throws IOException {
@@ -30,6 +59,30 @@ public final class Base64 {
 		if (b == '/') return 63;
 		if (b == '=') return 64;
 		throw new IOException("Invalid Base64 character to decode: " + b);
+	}
+	
+	/** Decode the given input. */
+	public static byte[] decode(byte[] input) throws IOException {
+		int l = input.length;
+		if ((l % 4) != 0) l = (l / 4) * 4;
+		if (l == 0) return new byte[0];
+		int outLen = l * 3 / 4;
+		if (input[l - 1] == '=') {
+			if (input[l - 2] == '=')
+				outLen -= 2;
+			else
+				outLen -= 1;
+		}
+		byte[] decoded = new byte[outLen];
+		int pos = 0;
+		for (int i = 0; i < l; i += 4, pos += 3)
+			decode4BytesBase64(input, i, decoded, pos);
+		return decoded;
+	}
+	
+	/** Decode the given input. */
+	public static byte[] decode(String input) throws IOException {
+		return decode(input.getBytes(StandardCharsets.US_ASCII));
 	}
 	
 	/** Encode the 3 bytes from inputBuffer, into 4 bytes in the outputBuffer. */
