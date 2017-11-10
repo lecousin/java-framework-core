@@ -2,6 +2,7 @@ package net.lecousin.framework.io.encoding;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.util.StringUtil;
@@ -65,6 +66,55 @@ public final class QuotedPrintable {
 	/** Decode the given input. */
 	public static ByteBuffer decode(String input) throws IOException {
 		return decode(input.getBytes(StandardCharsets.US_ASCII));
+	}
+	
+	/** Encode the given input. */
+	public static ByteBuffer encode(String text, Charset charset) {
+		return encode(text.getBytes(charset));
+	}
+	
+	/** Encode the given input. */
+	public static ByteBuffer encode(byte[] input) {
+		int pos = input.length + input.length / 3;
+		if (pos < 64) pos = 64;
+		byte[] out = new byte[pos];
+		pos = 0;
+		int lineCount = 0;
+		for (int i = 0; i < input.length; ++i) {
+			byte b = input[i];
+			if ((b >= 33 && b <= 60) || (b >= 62 && b <= 126)) {
+				if (lineCount == 76) {
+					if (pos >= out.length - 3)
+						out = increaseBuffer(out, pos);
+					out[pos++] = '\r';
+					out[pos++] = '\n';
+					lineCount = 0;
+				} else
+					if (pos >= out.length - 1)
+						out = increaseBuffer(out, pos);
+				out[pos++] = b;
+				lineCount++;
+				continue;
+			}
+			// need to encode
+			if (lineCount >= 76 - 3) {
+				if (pos >= out.length - 6)
+					out = increaseBuffer(out, pos);
+				out[pos++] = '\r';
+				out[pos++] = '\n';
+				lineCount = 0;
+			}
+			out[pos++] = '=';
+			out[pos++] = (byte)StringUtil.encodeHexaDigit((b & 0xF0) >> 4);
+			out[pos++] = (byte)StringUtil.encodeHexaDigit(b & 0xF);
+		}
+		return ByteBuffer.wrap(out, 0, pos);
+	}
+	
+	private static byte[] increaseBuffer(byte[] b, int len) {
+		byte[] nb = new byte[b.length + b.length / 3];
+		System.arraycopy(b, 0, nb, 0, len);
+		return nb;
 	}
 	
 }
