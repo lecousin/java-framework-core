@@ -373,9 +373,9 @@ public class PreBufferedReadable extends IO.AbstractIO implements IO.Readable.Bu
 			"Async read on pre-buffered IO " + src.getSourceDescription(), getPriority(), ondone
 		) {
 			@Override
-			public Integer run() throws IOException {
+			public Integer run() throws IOException, CancelException {
 				if (error != null) throw error;
-				if (buffersReady == null) throw new IOException("IO Closed");
+				if (buffersReady == null) throw new CancelException("IO Closed");
 				if (current == null) {
 					if (endReached) return Integer.valueOf(-1);
 					throw new IOException("Unexpected error: current buffer is null but end is not reached");

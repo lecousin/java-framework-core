@@ -2,9 +2,11 @@ package net.lecousin.framework.concurrent.tasks.drives;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 
 import net.lecousin.framework.collections.sort.RedBlackTreeInteger;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.event.Listener;
@@ -22,7 +24,7 @@ class ReadFileTask extends Task.OnFile<Integer,IOException> {
 		FileAccess file, long pos, ByteBuffer buffer, boolean fully,
 		byte priority, RunnableWithParameter<Pair<Integer,IOException>> ondone
 	) {
-		super(file.manager, "Read from file " + file.path + " at " + pos, priority, ondone);
+		super(file.manager, "Read from file " + file.path + (pos >= 0 ? " at " + pos : ""), priority, ondone);
 		this.file = file;
 		this.pos = pos;
 		this.buffer = buffer;
@@ -66,13 +68,14 @@ class ReadFileTask extends Task.OnFile<Integer,IOException> {
 	}
 	
 	@Override
-	public Integer run() throws IOException {
+	public Integer run() throws IOException, CancelException {
 		try {
 			if (!file.openTask.isSuccessful())
 				throw file.openTask.getError();
 			nbRead = 0;
 			if (pos >= 0)
 				try { file.channel.position(pos); }
+				catch (ClosedChannelException e) { throw new CancelException("File has been closed"); }
 				catch (IOException e) {
 					throw new IOException("Unable to seek to position " + pos + " in file " + file.path, e);
 				}
@@ -82,7 +85,9 @@ class ReadFileTask extends Task.OnFile<Integer,IOException> {
 			} else {
 				nbRead = 0;
 				while (buffer.remaining() > 0) {
-					int nb = file.channel.read(buffer);
+					int nb;
+					try { nb = file.channel.read(buffer); }
+					catch (ClosedChannelException e) { throw new CancelException("File has been closed"); }
 					if (nb <= 0) break;
 					nbRead += nb;
 					callListeners();

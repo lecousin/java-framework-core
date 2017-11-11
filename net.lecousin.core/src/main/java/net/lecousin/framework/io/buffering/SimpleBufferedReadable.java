@@ -50,8 +50,9 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 	
 	@Override
 	public ISynchronizationPoint<IOException> canStartReading() {
-		if (readTask != null) return readTask;
-		return new SynchronizationPoint<>(true);
+		ISynchronizationPoint<IOException> sp = readTask;
+		if (sp == null) sp = new SynchronizationPoint<>(true);
+		return sp;
 	}
 	
 	@Override
@@ -71,11 +72,11 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 	
 	@Override
 	protected ISynchronizationPoint<IOException> closeIO() {
-		if (readTask != null) {
-			if (readTask instanceof Task.SyncDone)
-				((Task<Integer,?>.SyncDone)readTask).getTask().cancel(new CancelException("IO closed"));
+		AsyncWork<Integer,IOException> currentRead = readTask;
+		if (currentRead != null && !currentRead.isUnblocked()) {
+			currentRead.cancel(new CancelException("IO closed"));
 			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-			readTask.listenInline(new Runnable() {
+			currentRead.listenInline(new Runnable() {
 				@Override
 				public void run() {
 					readTask = null;
@@ -95,21 +96,24 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 	
 	/** Stop any pending read, and block until they are cancelled or done. */
 	public void stop() {
-		if (readTask != null) {
-			if (readTask instanceof Task.SyncDone)
-				((Task<Integer,?>.SyncDone)readTask).getTask().cancel(new CancelException("IO closed"));
-			readTask.block(0);
+		AsyncWork<Integer,IOException> currentRead = readTask;
+		if (currentRead != null && !currentRead.isUnblocked()) {
+			currentRead.cancel(new CancelException("SimpleBufferedReadable.stop"));
+			currentRead.block(0);
 		}
 	}
 	
 	private void fill() throws IOException {
-		readTask.block(0);
-		if (!readTask.isSuccessful()) {
-			Exception e = readTask.getError();
+		AsyncWork<Integer,IOException> currentRead = readTask;
+		if (currentRead == null)
+			return;
+		currentRead.block(0);
+		if (!currentRead.isSuccessful()) {
+			Exception e = currentRead.getError();
 			if (e instanceof IOException) throw (IOException)e;
 			throw new IOException(e);
 		}
-		int nb = readTask.getResult().intValue();
+		int nb = currentRead.getResult().intValue();
 		if (nb <= 0) {
 			buffer = null;
 			bb = null;
@@ -117,6 +121,7 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 			readTask = null;
 			return;
 		}
+		if (readTask == null) return;
 		buffer = readBuffer.array();
 		pos = 0;
 		len = readBuffer.position();
@@ -196,13 +201,16 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 			pos += (int)n;
 			return n;
 		}
-		readTask.block(0);
-		if (!readTask.isSuccessful()) {
-			Exception e = readTask.getError();
+		AsyncWork<Integer,IOException> currentRead = readTask;
+		if (currentRead == null)
+			return 0;
+		currentRead.block(0);
+		if (!currentRead.isSuccessful()) {
+			Exception e = currentRead.getError();
 			if (e instanceof IOException) throw (IOException)e;
 			throw new IOException(e);
 		}
-		int avail = readTask.getResult().intValue();
+		int avail = currentRead.getResult().intValue();
 		if (avail < 0) avail = 0;
 		if (n <= len - pos + avail) {
 			int i = len - pos;
@@ -229,12 +237,17 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(n), null));
 			return new AsyncWork<Long,IOException>(Long.valueOf(n),null);
 		}
+		AsyncWork<Integer,IOException> currentRead = readTask;
+		if (currentRead == null) {
+			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
+			return new AsyncWork<Long,IOException>(Long.valueOf(0),null);
+		}
 		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Skipping bytes", io.getPriority(), ondone) {
 			@Override
 			public Long run() throws IOException {
-				if (readTask.isCancelled()) return Long.valueOf(0);
-				if (!readTask.isSuccessful()) throw readTask.getError();
-				int avail = readTask.getResult().intValue();
+				if (currentRead.isCancelled()) return Long.valueOf(0);
+				if (!currentRead.isSuccessful()) throw currentRead.getError();
+				int avail = currentRead.getResult().intValue();
 				if (avail < 0) avail = 0;
 				if (n <= len - pos + avail) {
 					int i = len - pos;
