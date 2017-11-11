@@ -215,8 +215,14 @@ public abstract class Task<T,TError extends Exception> {
 			public void run() {
 				if (app.isDebugMode() && Threading.traceTaskDone)
 					Threading.logger.info("Task done: " + description);
-				if (result.isCancelled() && status < STATUS_RUNNING)
+				if (result.isCancelled() && status < STATUS_RUNNING) {
+					Logger logger = app.getLoggerFactory().getLogger("Threading");
+					if (logger.debug()) {
+						CancelException reason = result.getCancelEvent();
+						logger.debug("Task cancelled: " + description + " => " + (reason != null ? reason.getMessage() : "No reason given"));
+					}
 					cancel(result.getCancelEvent());
+				}
 				status = STATUS_DONE;
 			}
 		});
@@ -371,8 +377,6 @@ public abstract class Task<T,TError extends Exception> {
 	/** Cancel this task. */
 	public void cancel(CancelException reason) {
 		if (reason == null) reason = new CancelException("No reason given");
-		Logger logger = app.getLoggerFactory().getLogger("Threading");
-		if (logger.debug()) logger.debug("Task cancelled: " + description + " => " + reason.getMessage());
 		if (!result.isCancelled())
 			result.cancel(reason);
 		if (!TaskScheduler.cancel(this))

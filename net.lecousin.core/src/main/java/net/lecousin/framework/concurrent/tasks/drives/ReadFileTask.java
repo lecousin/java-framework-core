@@ -80,7 +80,8 @@ class ReadFileTask extends Task.OnFile<Integer,IOException> {
 					throw new IOException("Unable to seek to position " + pos + " in file " + file.path, e);
 				}
 			if (!fully) {
-				nbRead = file.channel.read(buffer);
+				try { nbRead = file.channel.read(buffer); }
+				catch (ClosedChannelException e) { throw new CancelException("File has been closed"); }
 				callListeners();
 			} else {
 				nbRead = 0;

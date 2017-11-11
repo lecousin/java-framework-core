@@ -1102,6 +1102,8 @@ public abstract class BufferedIO extends BufferingManaged {
 	protected AsyncWork<Integer, IOException> writeAsync(
 		long pos, ByteBuffer buf, int alreadyDone, RunnableWithParameter<Pair<Integer,IOException>> ondone)
 	{
+		if (closing)
+			return new AsyncWork<>(null, null, new CancelException("IO closed"));
 		if (pos > size) {
 			AsyncWork<Void,IOException> resize = increaseSize(pos);
 			size = pos;
@@ -1149,6 +1151,9 @@ public abstract class BufferedIO extends BufferingManaged {
 		if (pos < size || (size > 0 && getBufferIndex(size - 1) == bufferIndex))
 			buffer = useBufferAsync(bufferIndex);
 		else {
+			List<Buffer> buffers = this.buffers;
+			if (closing || buffers == null)
+				return new AsyncWork<>(null, null, new CancelException("IO closed"));
 			synchronized (buffers) {
 				if (bufferIndex == buffers.size()) {
 					buffer = new Buffer(this);
@@ -1174,6 +1179,10 @@ public abstract class BufferedIO extends BufferingManaged {
 				if (buffer.error != null) {
 					if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
 					done.unblockError(buffer.error);
+					return null;
+				}
+				if (closing) {
+					done.cancel(new CancelException("IO closed"));
 					return null;
 				}
 				int start = getBufferOffset(pos);
