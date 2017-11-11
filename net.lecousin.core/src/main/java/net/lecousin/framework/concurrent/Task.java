@@ -219,7 +219,8 @@ public abstract class Task<T,TError extends Exception> {
 					Logger logger = app.getLoggerFactory().getLogger("Threading");
 					if (logger.debug()) {
 						CancelException reason = result.getCancelEvent();
-						logger.debug("Task cancelled: " + description + " => " + (reason != null ? reason.getMessage() : "No reason given"));
+						logger.debug("Task cancelled: " + description + " => "
+							+ (reason != null ? reason.getMessage() : "No reason given"));
 					}
 					cancel(result.getCancelEvent());
 				}
