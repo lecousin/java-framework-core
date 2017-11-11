@@ -5,9 +5,16 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+import net.lecousin.framework.math.TimeUnit.Day;
+import net.lecousin.framework.math.TimeUnit.Hour;
+import net.lecousin.framework.math.TimeUnit.Millisecond;
+import net.lecousin.framework.math.TimeUnit.Minute;
+import net.lecousin.framework.math.TimeUnit.Second;
 import net.lecousin.framework.plugins.ExtensionPoint;
 import net.lecousin.framework.plugins.Plugin;
 
@@ -78,4 +85,32 @@ public interface IntegerUnit {
 		
 	}
 	
+	public static class ParserRegistry {
+		
+		private static final Map<String, Class<? extends IntegerUnit>> units = new HashMap<>();
+		
+		public static void register(String text, Class<? extends IntegerUnit> unit) {
+			units.put(text, unit);
+		}
+		
+		public static Class<? extends IntegerUnit> get(String text) {
+			return units.get(text);
+		}
+		
+		static {
+			ParserRegistry.register("ms", Millisecond.class);
+			ParserRegistry.register("millisecond", Millisecond.class);
+			ParserRegistry.register("milliseconds", Millisecond.class);
+			ParserRegistry.register("millis", Millisecond.class);
+			ParserRegistry.register("second", Second.class);
+			ParserRegistry.register("seconds", Second.class);
+			ParserRegistry.register("minute", Minute.class);
+			ParserRegistry.register("minutes", Minute.class);
+			ParserRegistry.register("h", Hour.class);
+			ParserRegistry.register("hour", Hour.class);
+			ParserRegistry.register("hours", Hour.class);
+			ParserRegistry.register("day", Day.class);
+			ParserRegistry.register("days", Day.class);
+		}
+	}
 }
