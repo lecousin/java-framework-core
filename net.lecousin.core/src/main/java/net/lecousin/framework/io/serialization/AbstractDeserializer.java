@@ -33,7 +33,8 @@ public abstract class AbstractDeserializer<In> implements Deserializer {
 	
 	/** Deserialize a type from the given input. */
 	public abstract <T> T deserialize(
-		Class<T> type, ParameterizedType ptype, In input, List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers
+		Class<T> type, ParameterizedType ptype, In input,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers
 	) throws Exception;
 	
 	protected abstract In adaptInput(IO.Readable input);

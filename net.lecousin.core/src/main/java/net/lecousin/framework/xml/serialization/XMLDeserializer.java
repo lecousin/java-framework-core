@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -41,13 +42,25 @@ public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
 		return new XMLDeserializer().deserialize(type, null, input, priority, new LinkedList<>(), new LinkedList<>());
 	}
 	
+	/** Constructor. */
+	public XMLDeserializer() {
+		this(null);
+	}
+	
+	/** Constructor. */
+	public XMLDeserializer(Charset encoding) {
+		this.forceEncoding = encoding;
+	}
+	
+	protected Charset forceEncoding;
+	
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> T deserialize(
 		Class<T> type, ParameterizedType ptype, IO.Readable input,
 		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers
 	) throws Exception {
-		XMLStreamReader reader = new XMLStreamReader(input, 4000);
+		XMLStreamReader reader = new XMLStreamReader(input, forceEncoding, 4000);
 		reader.startRootElement();
 		return (T)deserializeObject(type, null, null, reader, rules, customSerializers);
 	}
