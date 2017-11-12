@@ -14,7 +14,7 @@ public abstract class LCCoreAbstractTest {
 	@BeforeClass
 	public static synchronized void init() {
 		if (LCCore.get() != null) return;
-		Application.start(new Artifact("net.lecousin.framework.test", "test", new Version(LCCoreVersion.VERSION)), true);
+		Application.start(new Artifact("net.lecousin.framework.test", "test", new Version(LCCoreVersion.VERSION)), true).block(0);
 	}
 	
 	@AfterClass

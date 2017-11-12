@@ -12,6 +12,7 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO.Writable;
 import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
+import net.lecousin.framework.io.serialization.rules.CustomSerializer;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
 /**
@@ -21,7 +22,10 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 public abstract class AbstractSerializer<Out> implements Serializer {
 
 	@Override
-	public AsyncWork<Void, Exception> serialize(Object obj, List<SerializationRule> rules, Writable output, byte priority) {
+	public AsyncWork<Void, Exception> serialize(
+		Object obj, List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers,
+		Writable output, byte priority
+	) {
 		AsyncWork<Void,Exception> result = new AsyncWork<>();
 		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Serialization: " + getClass().getSimpleName(), priority) {
 			@Override
@@ -29,9 +33,10 @@ public abstract class AbstractSerializer<Out> implements Serializer {
 				Out out = adaptOutput(output);
 				Set<Object> alreadySerialized = new HashSet<Object>();
 				try {
-					startSerialization(obj, out, rules, alreadySerialized);
-					serializeValue(obj, "", out, rules, alreadySerialized);
-					ISynchronizationPoint<? extends Exception> flushing = endSerialization(obj, out, rules, alreadySerialized);
+					startSerialization(obj, out, rules, customSerializers, alreadySerialized);
+					serializeValue(obj, "", out, rules, customSerializers, alreadySerialized);
+					ISynchronizationPoint<? extends Exception> flushing =
+						endSerialization(obj, out, rules, customSerializers, alreadySerialized);
 					if (flushing == null)
 						result.unblockSuccess(null);
 					else
@@ -59,18 +64,22 @@ public abstract class AbstractSerializer<Out> implements Serializer {
 	protected abstract Out adaptOutput(Writable output);
 	
 	protected abstract void startSerialization(
-		Object rootObject, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object rootObject, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 	
 	/**
 	 * This method must flush any buffered output, to make sure everything has been written before to unblock the returned synchronization point.
 	 */
 	protected abstract ISynchronizationPoint<? extends Exception> endSerialization(
-		Object rootObject, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object rootObject, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void serializeObject(
-		Object obj, String path, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object obj, String path, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
 		if (obj == null) {
 			serializeNullValue(output);
@@ -82,6 +91,15 @@ public abstract class AbstractSerializer<Out> implements Serializer {
 		alreadySerialized.add(obj);
 		
 		Class<?> cl = obj.getClass();
+		
+		customSerializers = SerializationUtil.getNewSerializers(customSerializers, cl);
+		CustomSerializer custom = SerializationUtil.getCustomSerializer(cl, customSerializers);
+		if (custom != null) {
+			Object o = custom.serialize(obj);
+			serializeObject(o, path, output, rules, customSerializers, alreadySerialized);
+			return;
+		}
+
 		startObject(obj, cl, output);
 		ArrayList<Attribute> attributes = SerializationUtil.getAttributes(cl);
 		SerializationUtil.removeNonGettableAttributes(attributes);
@@ -91,7 +109,8 @@ public abstract class AbstractSerializer<Out> implements Serializer {
 			rule.apply(attributes);
 		SerializationUtil.removeIgnoredAttributes(attributes);
 		for (Attribute attribute : attributes)
-			serializeAttribute(attribute, obj, path + '.' + attribute.getOriginalName(), output, rules, alreadySerialized);
+			serializeAttribute(attribute, obj, path + '.' + attribute.getOriginalName(), output,
+				rules, customSerializers, alreadySerialized);
 		endObject(obj, cl, output);
 	}
 	
@@ -99,10 +118,20 @@ public abstract class AbstractSerializer<Out> implements Serializer {
 	
 	protected abstract void endObject(Object obj, Class<?> cl, Out output) throws Exception;
 	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void serializeAttribute(
-		Attribute attr, Object obj, String path, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute attr, Object obj, String path, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
 		Object value = attr.getValue(obj);
+		
+		customSerializers = SerializationUtil.getNewSerializers(customSerializers, attr.getType());
+		customSerializers = SerializationUtil.getNewSerializers(customSerializers, attr);
+		CustomSerializer custom = SerializationUtil.getCustomSerializer(attr.getType(), customSerializers);
+		if (custom != null) {
+			value = custom.serialize(value);
+			attr.type = custom.targetType();
+		}
 		
 		if (boolean.class.equals(attr.getType()) || Boolean.class.equals(attr.getType())) {
 			serializeBooleanAttribute(attr, (Boolean)value, output);
@@ -127,7 +156,7 @@ public abstract class AbstractSerializer<Out> implements Serializer {
 			return;
 		}
 		if (Collection.class.isAssignableFrom(attr.getType())) {
-			serializeCollection(attr, (Collection<?>)value, path, output, rules, alreadySerialized);
+			serializeCollection(attr, (Collection<?>)value, path, output, rules, customSerializers, alreadySerialized);
 			return;
 		}
 		if (attr.getType().isEnum()) {
@@ -136,11 +165,13 @@ public abstract class AbstractSerializer<Out> implements Serializer {
 		}
 		// TODO map
 		// TODO streams (IO, InputStream, File...)
-		serializeObjectAttribute(attr, value, path, output, rules, alreadySerialized);
+		serializeObjectAttribute(attr, value, path, output, rules, customSerializers, alreadySerialized);
 	}
 	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void serializeValue(
-		Object value, String path, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object value, String path, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
 		if (value == null) {
 			serializeNullValue(output);
@@ -150,6 +181,14 @@ public abstract class AbstractSerializer<Out> implements Serializer {
 			throw new RecursiveSerializationException(value, path);
 		Class<?> type = value.getClass();
 
+		
+		customSerializers = SerializationUtil.getNewSerializers(customSerializers, type);
+		CustomSerializer custom = SerializationUtil.getCustomSerializer(type, customSerializers);
+		if (custom != null) {
+			value = custom.serialize(value);
+			type = custom.targetType();
+		}
+		
 		if (boolean.class.equals(type) || Boolean.class.equals(type)) {
 			serializeBooleanValue((Boolean)value, output);
 			return;
@@ -173,7 +212,7 @@ public abstract class AbstractSerializer<Out> implements Serializer {
 			return;
 		}
 		if (Collection.class.isAssignableFrom(type)) {
-			serializeCollectionValue((Collection<?>)value, path, output, rules, alreadySerialized);
+			serializeCollectionValue((Collection<?>)value, path, output, rules, customSerializers, alreadySerialized);
 			return;
 		}
 		if (type.isEnum()) {
@@ -182,7 +221,7 @@ public abstract class AbstractSerializer<Out> implements Serializer {
 		}
 		// TODO map
 		// TODO streams (IO, InputStream, File...)
-		serializeObjectValue(value, path, output, rules, alreadySerialized);
+		serializeObjectValue(value, path, output, rules, customSerializers, alreadySerialized);
 	}
 	
 	protected abstract void serializeNullValue(Out output) throws Exception;
@@ -204,102 +243,115 @@ public abstract class AbstractSerializer<Out> implements Serializer {
 	protected abstract void serializeStringValue(CharSequence value, Out output) throws Exception;
 	
 	protected void serializeCollection(
-		Attribute attr, Collection<?> collection, String path, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute attr, Collection<?> collection, String path, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
-		startCollection(attr, collection, output, rules, alreadySerialized);
+		startCollection(attr, collection, output, rules, customSerializers, alreadySerialized);
 		if (collection != null) {
 			int index = 0;
 			int size = collection.size();
 			for (Object element : collection) {
-				serializeCollectionElement(attr, element, index, size, path, output, rules, alreadySerialized);
+				serializeCollectionElement(attr, element, index, size, path, output, rules, customSerializers, alreadySerialized);
 				index++;
 			}
 		}
-		endCollection(attr, collection, output, rules, alreadySerialized);
+		endCollection(attr, collection, output, rules, customSerializers, alreadySerialized);
 	}
 
 	protected void serializeCollectionValue(
-		Collection<?> collection, String path, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Collection<?> collection, String path, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
-		startCollectionValue(collection, output, rules, alreadySerialized);
+		startCollectionValue(collection, output, rules, customSerializers, alreadySerialized);
 		if (collection != null) {
 			int index = 0;
 			int size = collection.size();
 			for (Object element : collection) {
-				serializeCollectionValueElement(element, index, size, path, output, rules, alreadySerialized);
+				serializeCollectionValueElement(element, index, size, path, output, rules, customSerializers, alreadySerialized);
 				index++;
 			}
 		}
-		endCollectionValue(collection, output, rules, alreadySerialized);
+		endCollectionValue(collection, output, rules, customSerializers, alreadySerialized);
 	}
 	
 	protected abstract void startCollection(
-		Attribute attr, Collection<?> collection, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute attr, Collection<?> collection, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 	
 	protected void serializeCollectionElement(
 		Attribute attr, Object element, int index, int size, String collectionPath, Out output,
-		List<SerializationRule> rules, Set<Object> alreadySerialized
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
-		startCollectionElement(attr, element, index, size, output, rules, alreadySerialized);
+		startCollectionElement(attr, element, index, size, output, rules, customSerializers, alreadySerialized);
 		if (element == null) {
 			serializeNullValue(output);
 		} else {
 			if (alreadySerialized.contains(element))
 				throw new RecursiveSerializationException(element, collectionPath + '[' + index + ']');
-			serializeValue(element, collectionPath + '[' + index + ']', output, rules, alreadySerialized);
+			serializeValue(element, collectionPath + '[' + index + ']', output, rules, customSerializers, alreadySerialized);
 		}
-		endCollectionElement(attr, element, index, size, output, rules, alreadySerialized);
+		endCollectionElement(attr, element, index, size, output, rules, customSerializers, alreadySerialized);
 	}
 	
 	protected abstract void endCollection(
-		Attribute attr, Collection<?> collection, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute attr, Collection<?> collection, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 	
 	protected abstract void startCollectionElement(
-		Attribute attr, Object element, int index, int size, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute attr, Object element, int index, int size, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 	
 	protected abstract void endCollectionElement(
-		Attribute attr, Object element, int index, int size, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute attr, Object element, int index, int size, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 
 	protected abstract void startCollectionValue(
-		Collection<?> collection, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Collection<?> collection, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 	
 	protected void serializeCollectionValueElement(
-		Object element, int index, int size, String collectionPath, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object element, int index, int size, String collectionPath, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
-		startCollectionValueElement(element, index, size, output, rules, alreadySerialized);
+		startCollectionValueElement(element, index, size, output, rules, customSerializers, alreadySerialized);
 		if (element == null) {
 			serializeNullValue(output);
 		} else {
 			if (alreadySerialized.contains(element))
 				throw new RecursiveSerializationException(element, collectionPath + '[' + index + ']');
-			serializeValue(element, collectionPath + '[' + index + ']', output, rules, alreadySerialized);
+			serializeValue(element, collectionPath + '[' + index + ']', output, rules, customSerializers, alreadySerialized);
 		}
-		endCollectionValueElement(element, index, size, output, rules, alreadySerialized);
+		endCollectionValueElement(element, index, size, output, rules, customSerializers, alreadySerialized);
 	}
 	
 	protected abstract void endCollectionValue(
-		Collection<?> collection, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Collection<?> collection, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 	
 	protected abstract void startCollectionValueElement(
-		Object element, int index, int size, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object element, int index, int size, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 	
 	protected abstract void endCollectionValueElement(
-		Object element, int index, int size, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object element, int index, int size, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 	
 	protected abstract void serializeObjectAttribute(
-		Attribute attr, Object obj, String path, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute attr, Object obj, String path, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 	
 	protected abstract void serializeObjectValue(
-		Object obj, String path, Out output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object obj, String path, Out output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception;
 
 }

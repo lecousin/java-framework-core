@@ -1,19 +1,23 @@
 package net.lecousin.framework.xml.serialization;
 
+import java.io.FileNotFoundException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.IO.Readable;
 import net.lecousin.framework.io.serialization.AbstractDeserializer;
 import net.lecousin.framework.io.serialization.SerializationUtil;
 import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
+import net.lecousin.framework.io.serialization.rules.CustomSerializer;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.Triple;
@@ -23,23 +27,49 @@ import net.lecousin.framework.xml.XMLStreamReader;
 /** XML deserialization. */
 public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
 
-	@Override
-	protected Readable adaptInput(Readable input) {
-		return input;
+	/** Utility method to deserialize a given type from a resource XML file, without specific rule. */
+	@SuppressWarnings("resource")
+	public static <T> AsyncWork<T, Exception> deserializeResource(String filename, Class<T> type, byte priority) {
+		IO.Readable io = LCCore.getApplication().getResource(filename, priority);
+		if (io == null)
+			return new AsyncWork<>(null, new FileNotFoundException(filename));
+		return deserialize(io, type, priority);
+	}
+	
+	/** Utility method to deserialize a given type from an input without specific rule. */
+	public static <T> AsyncWork<T, Exception> deserialize(IO.Readable input, Class<T> type, byte priority) {
+		return new XMLDeserializer().deserialize(type, null, input, priority, new LinkedList<>(), new LinkedList<>());
 	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> T deserialize(Class<T> type, ParameterizedType ptype, Readable input, List<SerializationRule> rules) throws Exception {
+	public <T> T deserialize(
+		Class<T> type, ParameterizedType ptype, IO.Readable input,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers
+	) throws Exception {
 		XMLStreamReader reader = new XMLStreamReader(input, 4000);
 		reader.startRootElement();
-		return (T)deserializeObject(type, null, null, reader, rules);
+		return (T)deserializeObject(type, null, null, reader, rules, customSerializers);
 	}
 	
+	@Override
+	protected IO.Readable adaptInput(IO.Readable input) {
+		return input;
+	}
+	
+	/** Deserialize an object. */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private Object deserializeObject(
-		Class<?> type, Attribute containerAttribute, Object containerInstance, XMLStreamReader reader, List<SerializationRule> rules
+	public Object deserializeObject(
+		Class<?> type, Attribute containerAttribute, Object containerInstance, XMLStreamReader reader,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers
 	) throws Exception {
+		customSerializers = SerializationUtil.getNewSerializers(customSerializers, type);
+		CustomSerializer custom = SerializationUtil.getCustomSerializer(type, customSerializers);
+		if (custom != null) {
+			Class<?> newType = custom.targetType();
+			Object o = deserializeObject(newType, containerAttribute, containerInstance, reader, rules, customSerializers);
+			return custom.deserialize(o);
+		}
 		if (boolean.class.equals(type) || Boolean.class.equals(type)) {
 			if (reader.isClosed) return null;
 			return Boolean.valueOf(reader.readInnerText().trim().asString());
@@ -71,7 +101,7 @@ public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
 			return Character.valueOf(s.charAt(0));
 		}
 		if (String.class.isAssignableFrom(type))
-			return reader.readInnerText();
+			return reader.readInnerText().asString();
 		if (type.isEnum()) {
 			UnprotectedStringBuffer name = reader.readInnerText();
 			if (name.length() == 0) return null;
@@ -80,7 +110,10 @@ public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
 
 		Object obj;
 		if (containerInstance == null)
-			obj = type.newInstance();
+			try { obj = type.newInstance(); }
+			catch (Exception e) {
+				throw new Exception("Unable to instantiate an object of type " + type.getName(), e);
+			}
 		else {
 			obj = containerAttribute.instantiate(containerInstance);
 			type = obj.getClass();
@@ -93,7 +126,7 @@ public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
 			rule.apply(attributes);
 		SerializationUtil.removeIgnoredAttributes(attributes);
 		
-		deserializeAttributes(reader, obj, attributes);
+		deserializeAttributes(reader, obj, attributes, customSerializers);
 		if (reader.isClosed)
 			return obj;
 		String elementName = reader.text.toString();
@@ -108,50 +141,76 @@ public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
 					throw new Exception("Unknown attribute '" + name + "' in class " + type.getName());
 				if (!a.canSet())
 					throw new Exception("Attribute '" + name + "' in class " + type.getName() + " cannot be set");
-				
+
 				if (Collection.class.isAssignableFrom(a.getType())) {
 					// this is a new collection
-					Collection<Object> c = (Collection<Object>)a.getType().newInstance();
+					Collection<Object> c = SerializationUtil.instantiateCollection(a.getType());
 					a.setValue(obj, c);
 					Type gt = a.getGenericType();
 					if (!(gt instanceof ParameterizedType))
-						throw new Exception("Collection " + name + " is not parameterized in class " + type.getName());
+						throw new Exception("Collection " + name + " is not parameterized in class "
+							+ type.getName());
 					gt = ((ParameterizedType)gt).getActualTypeArguments()[0];
+					if (gt instanceof ParameterizedType)
+						gt = ((ParameterizedType)gt).getRawType();
 					if (!(gt instanceof Class))
 						throw new Exception(
-							"Collection " + name + " is incorrectly parameterized in class " + type.getName());
+							"Collection " + name + " is incorrectly parameterized in class " + type.getName()
+							+ ": found is " + gt + " (" + gt.getClass().getName() + ")");
 					col = new Triple<>(c,(Class<?>)gt,a);
 					collections.put(name, col);
 				} else {
 					// this is an object
-					Object o = deserializeObject(a.getType(), a, obj, reader, rules);
+					XMLCustomSerialization cs = a.getAnnotation(false, XMLCustomSerialization.class);
+					Object o;
+					if (cs != null)
+						o = cs.value().newInstance().deserialize(this, reader, rules, customSerializers);
+					else
+						o = deserializeObject(a.getType(), a, obj, reader, rules, customSerializers);
 					a.setValue(obj, o);
 				}
 			}
 			if (col != null) {
 				// collection element
-				Object element = deserializeObject(col.getValue2(), col.getValue3(), containerInstance, reader, rules);
+				XMLCustomSerialization cs = col.getValue3().getAnnotation(false, XMLCustomSerialization.class);
+				Object element;
+				if (cs != null)
+					element = cs.value().newInstance().deserialize(this, reader, rules, customSerializers);
+				else
+					element = deserializeObject(col.getValue2(), col.getValue3(), containerInstance, reader,
+							rules, SerializationUtil.getNewSerializers(customSerializers, col.getValue3()));
 				col.getValue1().add(element);
 			}
 		}
 		return obj;
 	}
 	
-	private static void deserializeAttributes(XMLStreamReader reader, Object object, ArrayList<Attribute> attributes) throws Exception {
+	private static void deserializeAttributes(
+		XMLStreamReader reader, Object object, ArrayList<Attribute> attributes, List<CustomSerializer<?,?>> customSerializers
+	) throws Exception {
 		for (Pair<UnprotectedStringBuffer,UnprotectedStringBuffer> attr : reader.attributes) {
 			String name = attr.getValue1().toString();
 			String value = attr.getValue2().toString();
-			setValue(object, name, value, attributes);
+			setValue(object, name, value, attributes, customSerializers);
 		}
 	}
 	
-	private static void setValue(Object obj, String name, String value, ArrayList<Attribute> attributes) throws Exception {
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private static void setValue(
+		Object obj, String name, String value, ArrayList<Attribute> attributes, List<CustomSerializer<?,?>> customSerializers
+	) throws Exception {
 		Attribute a = SerializationUtil.getAttributeByName(attributes, name);
 		if (a == null)
 			throw new Exception("Unknown attribute '" + name + "' in class " + obj.getClass().getName());
 		if (!a.canSet())
 			throw new Exception("Attribute '" + name + "' in class " + obj.getClass().getName() + " cannot be set");
-		Object val = parseValue(value, a.getType());
+		customSerializers = SerializationUtil.getNewSerializers(customSerializers, a);
+		CustomSerializer custom = SerializationUtil.getCustomSerializer(a.getType(), customSerializers);
+		Object val;
+		if (custom != null)
+			val = custom.deserialize(parseValue(value, custom.targetType()));
+		else
+			val = parseValue(value, a.getType());
 		a.setValue(obj, val);
 	}
 	

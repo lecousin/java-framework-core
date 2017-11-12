@@ -586,7 +586,7 @@ public class XMLStreamReader {
 				closeElement();
 		} while (true);
 	}
-	
+
 	/** Move forward until an element with the given name is found (whatever its depth).
 	 * @return true if found, false if the end of file is reached.
 	 */

@@ -9,7 +9,7 @@ import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
 public class CustomAttributeSerialization implements SerializationRule {
 
 	/** Constructor. */
-	public CustomAttributeSerialization(Class<?> cl, String name, CustomAttributeSerializer<?, ?> serializer) {
+	public CustomAttributeSerialization(Class<?> cl, String name, CustomSerializer<?, ?> serializer) {
 		this.cl = cl;
 		this.name = name;
 		this.serializer = serializer;
@@ -17,7 +17,7 @@ public class CustomAttributeSerialization implements SerializationRule {
 	
 	private Class<?> cl;
 	private String name;
-	private CustomAttributeSerializer<?, ?> serializer;
+	private CustomSerializer<?, ?> serializer;
 	
 	@Override
 	public void apply(ArrayList<Attribute> attributes) {
@@ -31,13 +31,13 @@ public class CustomAttributeSerialization implements SerializationRule {
 	
 	@SuppressWarnings("rawtypes")
 	private static class CustomAttribute extends Attribute {
-		public CustomAttribute(Attribute a, CustomAttributeSerializer serializer) {
+		public CustomAttribute(Attribute a, CustomSerializer serializer) {
 			super(a);
 			this.serializer = serializer;
 			type = serializer.targetType(); 
 		}
 		
-		private CustomAttributeSerializer serializer;
+		private CustomSerializer serializer;
 		
 		@SuppressWarnings("unchecked")
 		@Override

@@ -9,10 +9,10 @@ import java.lang.reflect.Method;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
-import net.lecousin.framework.io.serialization.rules.CustomAttributeSerializer;
+import net.lecousin.framework.io.serialization.rules.CustomSerializer;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
-/** Specify a method to use for serialization. */
+/** Specify a method to use for serialization in the current object. */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD,ElementType.METHOD})
 public @interface SerializationMethod {
@@ -35,7 +35,7 @@ public @interface SerializationMethod {
 				Class sourceType = attribute.getType();
 				return new net.lecousin.framework.io.serialization.rules.CustomAttributeSerialization(
 					attribute.getDeclaringClass(), attribute.getOriginalName(),
-					new CustomAttributeSerializer() {
+					new CustomSerializer() {
 						@Override
 						public Class sourceType() {
 							return sourceType;

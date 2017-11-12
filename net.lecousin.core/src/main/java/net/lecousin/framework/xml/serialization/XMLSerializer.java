@@ -11,6 +11,7 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.io.IO.Writable;
 import net.lecousin.framework.io.serialization.AbstractSerializer;
 import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
+import net.lecousin.framework.io.serialization.rules.CustomSerializer;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.io.text.BufferedWritableCharacterStream;
 import net.lecousin.framework.io.text.ICharacterStream;
@@ -79,7 +80,8 @@ public class XMLSerializer extends AbstractSerializer<ICharacterStream.Writable.
 	
 	@Override
 	protected void startSerialization(
-		Object rootObject, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object rootObject, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
 		output.write(xmlInstructionStart);
 		output.write(encoding.name());
@@ -98,9 +100,10 @@ public class XMLSerializer extends AbstractSerializer<ICharacterStream.Writable.
 	
 	@Override
 	protected ISynchronizationPoint<? extends Exception> endSerialization(
-		Object rootObject, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object rootObject, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
-		endElement(output, rules, alreadySerialized);
+		endElement(output, rules, customSerializers, alreadySerialized);
 		return output.flush();
 	}
 	
@@ -111,6 +114,24 @@ public class XMLSerializer extends AbstractSerializer<ICharacterStream.Writable.
 	@Override
 	protected void endObject(Object obj, Class<?> cl, Buffered output) {
 	}
+	
+	@SuppressWarnings("unchecked")
+	@Override
+	protected void serializeAttribute(
+		Attribute attr, Object obj, String path, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?, ?>> customSerializers, Set<Object> alreadySerialized
+	) throws Exception {
+		XMLCustomSerialization custom = attr.getAnnotation(true, XMLCustomSerialization.class);
+		if (custom == null) {
+			super.serializeAttribute(attr, obj, path, output, rules, customSerializers, alreadySerialized);
+			return;
+		}
+		// custom serializer
+		@SuppressWarnings("rawtypes")
+		XMLCustomSerializer s = custom.value().newInstance();
+		Object value = attr.getValue(obj);
+		s.serialize(value, this, output, rules, customSerializers, alreadySerialized);
+	}
 
 	private static void startAttribute(String name, Buffered output) throws Exception {
 		output.write(' ');
@@ -118,7 +139,9 @@ public class XMLSerializer extends AbstractSerializer<ICharacterStream.Writable.
 		output.write(sepAttrValue);
 	}
 	
-	private void endElement(Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized) throws Exception {
+	private void endElement(
+		Buffered output, List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
+	) throws Exception {
 		if (element.collections.isEmpty() && element.objects.isEmpty() && !element.contentStarted) {
 			output.write(endEmptyTag);
 			if (pretty) {
@@ -143,18 +166,18 @@ public class XMLSerializer extends AbstractSerializer<ICharacterStream.Writable.
 					output.write(a.getName());
 					elements.add(element);
 					element = new Element(a.getName());
-					super.serializeObject(o.getValue2(), o.getValue3(), output, rules, alreadySerialized);
-					endElement(output, rules, alreadySerialized);
+					super.serializeObject(o.getValue2(), o.getValue3(), output, rules, customSerializers, alreadySerialized);
+					endElement(output, rules, customSerializers, alreadySerialized);
 				}
 			}
 			for (Triple<Attribute,Collection<?>,String> collection : element.collections) {
 				Attribute a = collection.getValue1();
 				if (a != null)
 					super.serializeCollection(collection.getValue1(), collection.getValue2(), collection.getValue3(),
-						output, rules, alreadySerialized);
+						output, rules, customSerializers, alreadySerialized);
 				else
 					super.serializeCollectionValue(collection.getValue2(), collection.getValue3(),
-						output, rules, alreadySerialized);
+						output, rules, customSerializers, alreadySerialized);
 			}
 			if (pretty && !sameLine) {
 				indent--;
@@ -334,7 +357,8 @@ public class XMLSerializer extends AbstractSerializer<ICharacterStream.Writable.
 	
 	@Override
 	protected void serializeCollection(
-		Attribute a, Collection<?> collection, String path, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute a, Collection<?> collection, String path, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) {
 		if (collection != null && !collection.isEmpty())
 			element.collections.add(new Triple<>(a, collection, path));
@@ -342,7 +366,8 @@ public class XMLSerializer extends AbstractSerializer<ICharacterStream.Writable.
 	
 	@Override
 	protected void serializeCollectionValue(
-		Collection<?> collection, String path, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Collection<?> collection, String path, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) {
 		if (!collection.isEmpty())
 			element.collections.add(new Triple<>(null, collection, path));
@@ -350,27 +375,36 @@ public class XMLSerializer extends AbstractSerializer<ICharacterStream.Writable.
 	
 	@Override
 	protected void startCollection(
-		Attribute a, Collection<?> collection, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute a, Collection<?> collection, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) {
 	}
 	
 	@Override
 	protected void endCollection(
-		Attribute a, Collection<?> collection, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute a, Collection<?> collection, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) {
 	}
 	
 	@Override
-	protected void startCollectionValue(Collection<?> collection, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized) {
+	protected void startCollectionValue(
+		Collection<?> collection, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
+	) {
 	}
 	
 	@Override
-	protected void endCollectionValue(Collection<?> collection, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized) {
+	protected void endCollectionValue(
+		Collection<?> collection, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
+	) {
 	}
 	
 	@Override
 	protected void startCollectionElement(
-		Attribute a, Object element, int index, int size, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute a, Object element, int index, int size, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
 		if (pretty) {
 			indent(output);
@@ -383,14 +417,16 @@ public class XMLSerializer extends AbstractSerializer<ICharacterStream.Writable.
 	
 	@Override
 	protected void endCollectionElement(
-		Attribute a, Object element, int index, int size, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute a, Object element, int index, int size, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
-		endElement(output, rules, alreadySerialized);
+		endElement(output, rules, customSerializers, alreadySerialized);
 	}
 	
 	@Override
 	protected void startCollectionValueElement(
-		Object element, int index, int size, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object element, int index, int size, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
 		if (pretty) {
 			indent(output);
@@ -403,22 +439,25 @@ public class XMLSerializer extends AbstractSerializer<ICharacterStream.Writable.
 	
 	@Override
 	protected void endCollectionValueElement(
-		Object element, int index, int size, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object element, int index, int size, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
-		endElement(output, rules, alreadySerialized);
+		endElement(output, rules, customSerializers, alreadySerialized);
 	}
 	
 	@Override
 	protected void serializeObjectAttribute(
-		Attribute a, Object obj, String path, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Attribute a, Object obj, String path, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) {
 		element.objects.add(new Triple<>(a, obj, path));
 	}
 	
 	@Override
 	protected void serializeObjectValue(
-		Object obj, String path, Buffered output, List<SerializationRule> rules, Set<Object> alreadySerialized
+		Object obj, String path, Buffered output,
+		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers, Set<Object> alreadySerialized
 	) throws Exception {
-		super.serializeObject(obj, path, output, rules, alreadySerialized);
+		super.serializeObject(obj, path, output, rules, customSerializers, alreadySerialized);
 	}
 }

@@ -85,14 +85,17 @@ public interface IntegerUnit {
 		
 	}
 	
+	/** Registry to convert a string into an IntegerUnit. */
 	public static class ParserRegistry {
 		
 		private static final Map<String, Class<? extends IntegerUnit>> units = new HashMap<>();
 		
+		/** Register a text as an IntegerUnit. */
 		public static void register(String text, Class<? extends IntegerUnit> unit) {
 			units.put(text, unit);
 		}
 		
+		/** Get the unit from the text. */
 		public static Class<? extends IntegerUnit> get(String text) {
 			return units.get(text);
 		}

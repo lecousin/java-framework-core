@@ -7,16 +7,16 @@ import java.lang.annotation.Target;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
-import net.lecousin.framework.io.serialization.rules.CustomAttributeSerializer;
+import net.lecousin.framework.io.serialization.rules.CustomSerializer;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
-/** Specify a {@link CustomAttributeSerializer} for the field. */
+/** Specify a {@link CustomSerializer} for the field. */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD,ElementType.METHOD})
 public @interface CustomAttributeSerialization {
 
 	/** CustomAttributeSerializer to use. */
-	public Class<? extends CustomAttributeSerializer<?,?>> value();
+	public Class<? extends CustomSerializer<?,?>> value();
 	
 	/** Convert the annotation into a CustomAttributeSerialization rule. */
 	public static class ToRule implements AnnotationPlugin<CustomAttributeSerialization> {

@@ -4,7 +4,7 @@ package net.lecousin.framework.io.serialization.rules;
  * @param <SourceType> source type for serialization
  * @param <TargetType> target type for deserialization
  */
-public interface CustomAttributeSerializer<SourceType,TargetType> {
+public interface CustomSerializer<SourceType,TargetType> {
 
 	/** Source type. */
 	Class<SourceType> sourceType();

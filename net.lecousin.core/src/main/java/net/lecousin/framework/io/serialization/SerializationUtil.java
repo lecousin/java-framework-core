@@ -8,10 +8,14 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import net.lecousin.framework.io.serialization.annotations.AnnotationToRule;
+import net.lecousin.framework.io.serialization.annotations.TypeSerializer;
+import net.lecousin.framework.io.serialization.rules.CustomSerializer;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
 /** Utility methods for serialization. */
@@ -118,6 +122,26 @@ public final class SerializationUtil {
 					return ((Class<?>)t).newInstance();
 			}
 			return type.newInstance();
+		}
+		
+		/** Retrieve a specific annotation. */
+		public <T extends Annotation> T getAnnotation(boolean onGet, Class<T> annotationType) {
+			if (field != null) {
+				T a = field.getAnnotation(annotationType);
+				if (a != null)
+					return a;
+			}
+			if (onGet && getter != null) {
+				T a = getter.getAnnotation(annotationType);
+				if (a != null)
+					return a;
+			}
+			if (!onGet && setter != null) {
+				T a = setter.getAnnotation(annotationType);
+				if (a != null)
+					return a;
+			}
+			return null;
 		}
 	}
 	
@@ -306,4 +330,79 @@ public final class SerializationUtil {
 		}
 		return rules;
 	}
+	
+	/** Check if TypeSerializer annotations are present on the given type, or its super-class and interfaces, and return a new list. */
+	public static List<CustomSerializer<?,?>> getNewSerializers(List<CustomSerializer<?,?>> currentList, Class<?> type)
+	throws IllegalAccessException, InstantiationException {
+		LinkedList<CustomSerializer<?,?>> list = new LinkedList<>();
+		getCustomSerializers(type, list);
+		if (list.isEmpty())
+			return currentList;
+		ArrayList<CustomSerializer<?,?>> newList = new ArrayList<>(list.size() + currentList.size());
+		newList.addAll(list);
+		newList.addAll(currentList);
+		return newList;
+	}
+
+	/** Check if TypeSerializer annotations are present on the given attribute, and return a new list. */
+	public static List<CustomSerializer<?,?>> getNewSerializers(List<CustomSerializer<?,?>> currentList, Attribute attr)
+	throws IllegalAccessException, InstantiationException {
+		LinkedList<CustomSerializer<?,?>> list = new LinkedList<>();
+		if (attr.field != null) {
+			for (TypeSerializer s : attr.field.getAnnotationsByType(TypeSerializer.class))
+				list.add(s.value().newInstance());
+		}
+		if (list.isEmpty())
+			return currentList;
+		ArrayList<CustomSerializer<?,?>> newList = new ArrayList<>(list.size() + currentList.size());
+		newList.addAll(list);
+		newList.addAll(currentList);
+		return newList;
+	}
+	
+	private static void getCustomSerializers(Class<?> type, LinkedList<CustomSerializer<?,?>> list)
+	throws IllegalAccessException, InstantiationException {
+		for (Class<?> i : type.getInterfaces())
+			getCustomSerializers(i, list);
+		if (type.getSuperclass() != null)
+			getCustomSerializers(type.getSuperclass(), list);
+		TypeSerializer[] serializers = type.getAnnotationsByType(TypeSerializer.class);
+		for (TypeSerializer s : serializers) {
+			CustomSerializer<?,?> found = null;
+			for (CustomSerializer<?,?> cs : list)
+				if (cs.getClass().equals(s.value())) {
+					found = cs;
+					break;
+				}
+			if (found != null) {
+				// put it in front
+				list.remove(found);
+				list.addFirst(found);
+			} else
+				list.addFirst(s.value().newInstance());
+		}
+	}
+	
+	/** Search for a custom serializer. */
+	public static CustomSerializer<?,?> getCustomSerializer(Class<?> type, List<CustomSerializer<?,?>> serializers) {
+		for (CustomSerializer<?,?> s : serializers)
+			if (s.sourceType().equals(type))
+				return s;
+		return null;
+	}
+	
+	/** Instantiate a collection type. */
+	@SuppressWarnings("unchecked")
+	public static Collection<Object> instantiateCollection(Class<?> collectionType) throws IllegalAccessException, InstantiationException {
+		if ((collectionType.getModifiers() & Modifier.ABSTRACT) == 0 && !collectionType.isInterface())
+			return (Collection<Object>)collectionType.newInstance();
+		if (collectionType.isAssignableFrom(ArrayList.class))
+			return new ArrayList<>();
+		if (collectionType.isAssignableFrom(LinkedList.class))
+			return new LinkedList<>();
+		if (collectionType.isAssignableFrom(HashSet.class))
+			return new HashSet<>();
+		throw new InstantiationException("We don't know how to instantiate a collection of type " + collectionType.getName());
+	}
+	
 }
