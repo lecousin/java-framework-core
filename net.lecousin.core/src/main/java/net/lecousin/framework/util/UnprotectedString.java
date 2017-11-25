@@ -60,6 +60,11 @@ public class UnprotectedString implements IString {
 		end = chars.length - 1;
 		usableEnd = 0;
 	}
+
+	/** Creates an UnprotectedString from the given CharSequence (a copy of characters is done). */
+	public UnprotectedString(CharSequence s) {
+		this(s.toString());
+	}
 	
 	private char[] chars;
 	private int start;
@@ -222,6 +227,18 @@ public class UnprotectedString implements IString {
 			end--;
 	}
 	
+	@Override
+	public void removeEndChars(int nb) {
+		end -= nb;
+		if (end < start - 1) end = start - 1;
+	}
+	
+	@Override
+	public void removeStartChars(int nb) {
+		start += nb;
+		if (start > end) start = end + 1;
+	}
+	
 	/** Remove the given number of characters at the beginning of the string. */
 	public void moveForward(int skip) {
 		this.start += skip;
@@ -258,6 +275,26 @@ public class UnprotectedString implements IString {
 	public void toUpperCase() {
 		for (int i = start; i <= end; ++i)
 			chars[i] = Character.toUpperCase(chars[i]);
+	}
+	
+	@Override
+	public boolean startsWith(CharSequence start) {
+		int l = start.length();
+		if (end - this.start + 1 < l) return false;
+		for (int i = 0; i < l; ++i)
+			if (chars[this.start + i] != start.charAt(i))
+				return false;
+		return true;
+	}
+	
+	@Override
+	public boolean endsWith(CharSequence end) {
+		int l = end.length();
+		if (this.end - start + 1 < l) return false;
+		for (int i = 0; i < l; ++i)
+			if (chars[this.end - i] != end.charAt(l - 1 - i))
+				return false;
+		return true;
 	}
 	
 	@Override

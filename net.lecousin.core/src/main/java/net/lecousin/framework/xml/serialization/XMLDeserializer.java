@@ -23,7 +23,7 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.Triple;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
-import net.lecousin.framework.xml.XMLStreamReader;
+import net.lecousin.framework.xml.XMLStreamReaderAsync;
 
 /** XML deserialization. */
 public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
@@ -60,7 +60,7 @@ public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
 		Class<T> type, ParameterizedType ptype, IO.Readable input,
 		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers
 	) throws Exception {
-		XMLStreamReader reader = new XMLStreamReader(input, forceEncoding, 4000);
+		XMLStreamReaderAsync reader = new XMLStreamReaderAsync(input, forceEncoding, 4000);
 		reader.startRootElement();
 		return (T)deserializeObject(type, null, null, reader, rules, customSerializers);
 	}
@@ -73,7 +73,7 @@ public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
 	/** Deserialize an object. */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public Object deserializeObject(
-		Class<?> type, Attribute containerAttribute, Object containerInstance, XMLStreamReader reader,
+		Class<?> type, Attribute containerAttribute, Object containerInstance, XMLStreamReaderAsync reader,
 		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers
 	) throws Exception {
 		customSerializers = SerializationUtil.getNewSerializers(customSerializers, type);
@@ -199,7 +199,7 @@ public class XMLDeserializer extends AbstractDeserializer<IO.Readable> {
 	}
 	
 	private static void deserializeAttributes(
-		XMLStreamReader reader, Object object, ArrayList<Attribute> attributes, List<CustomSerializer<?,?>> customSerializers
+		XMLStreamReaderAsync reader, Object object, ArrayList<Attribute> attributes, List<CustomSerializer<?,?>> customSerializers
 	) throws Exception {
 		for (Pair<UnprotectedStringBuffer,UnprotectedStringBuffer> attr : reader.attributes) {
 			String name = attr.getValue1().toString();

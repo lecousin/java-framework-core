@@ -3,6 +3,7 @@ package net.lecousin.framework.io.buffering;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -39,49 +40,65 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 	private int pos;
 	private boolean useReadFully;
 	private boolean eof = false;
+	private AsyncWork<Integer, IOException> reading;
 	
 	@Override
 	public ISynchronizationPoint<IOException> canStartReading() {
 		return new SynchronizationPoint<>(true);
 	}
 
-	private void fillBuffer() throws IOException {
-		AsyncWork<Integer,IOException> result;
+	private void fillNextBuffer() {
 		if (useReadFully)
-			result = io.readFullyAsync(ByteBuffer.wrap(buffer));
+			reading = io.readFullyAsync(ByteBuffer.wrap(buffer), (result) -> {
+				if (result.getValue1() == null) return;
+				len = result.getValue1().intValue();
+				if (len <= 0) {
+					len = 0;
+					eof = true;
+				} else if (useReadFully && len < buffer.length)
+					eof = true;
+				pos = 0;
+			});
 		else
-			result = io.readAsync(ByteBuffer.wrap(buffer));
-		result.block(0);
-		if (result.hasError())
-			throw result.getError();
-		if (result.isCancelled())
-			throw new IOException("Operation cancelled", result.getCancelEvent());
-		len = result.getResult().intValue();
-		if (len <= 0) {
-			len = 0;
-			eof = true;
-		} else if (useReadFully && len < buffer.length)
-			eof = true;
-		pos = 0;
+			reading = io.readAsync(ByteBuffer.wrap(buffer));
+	}
+	
+	private void waitBufferSync() throws IOException {
+		reading.block(0);
+		if (reading.hasError()) throw reading.getError();
+		if (reading.isCancelled()) throw new IOException("Read cancelled", reading.getCancelEvent());
 	}
 
 	@Override
 	public int readSync(ByteBuffer buffer) throws IOException {
 		if (pos == len) {
 			if (eof) return 0;
-			fillBuffer();
+			waitBufferSync();
 			return readSync(buffer);
 		}
 		int l = buffer.remaining();
 		if (l > len - pos) l = len - pos;
 		buffer.put(this.buffer, pos, l);
 		pos += l;
+		if (pos == len)
+			fillNextBuffer();
 		return l;
 	}
 
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		return IOUtil.readAsyncUsingSync(this, buffer, ondone).getSynch();
+	}
+	
+	@Override
+	public int readAsync() {
+		if (pos == len) {
+			if (eof) return -1;
+			return -2;
+		}
+		int c = buffer[pos++] & 0xFF;
+		if (pos == len) fillNextBuffer();
+		return c;
 	}
 
 	@Override
@@ -102,13 +119,15 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 		while (n > 0) {
 			if (pos == len) {
 				if (eof) return nb;
-				fillBuffer();
+				waitBufferSync();
 			}
 			int l = len - pos;
 			if (l > n) l = (int)n;
 			pos += l;
 			nb += l;
 			n -= l;
+			if (pos == len)
+				fillNextBuffer();
 		}
 		return nb;
 	}
@@ -147,23 +166,26 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 	public int read() throws IOException {
 		if (pos == len) {
 			if (eof) return -1;
-			fillBuffer();
+			waitBufferSync();
 			return read();
 		}
-		return buffer[pos++] & 0xFF;
+		int c = buffer[pos++] & 0xFF;
+		if (pos == len) fillNextBuffer();
+		return c;
 	}
 
 	@Override
 	public int read(byte[] buffer, int offset, int len) throws IOException {
 		if (pos == this.len) {
 			if (eof) return 0;
-			fillBuffer();
+			waitBufferSync();
 			return read(buffer, offset, len);
 		}
 		int l = len;
 		if (l > this.len - pos) l = this.len - pos;
 		System.arraycopy(this.buffer, pos, buffer, offset, l);
 		pos += l;
+		if (pos == len) fillNextBuffer();
 		return l;
 	}
 
@@ -185,25 +207,26 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 		}
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
 			@Override
-			public ByteBuffer run() throws IOException {
-				while (pos == len) {
-					if (eof) return null;
-					fillBuffer();
-				}
+			public ByteBuffer run() throws IOException, CancelException {
+				if (reading.hasError()) throw reading.getError();
+				if (reading.isCancelled()) throw reading.getCancelEvent();
+				if (eof) return null;
 				ByteBuffer buf = ByteBuffer.allocate(len - pos);
 				buf.put(buffer, pos, len - pos);
 				pos = len;
+				fillNextBuffer();
 				buf.flip();
 				return buf;
 			}
 		};
-		task.start();
+		task.startOn(reading, true);
 		return task.getSynch();
 	}
 	
 	@Override
 	protected ISynchronizationPoint<IOException> closeIO() {
 		buffer = null;
+		if (!reading.isUnblocked()) reading.cancel(new CancelException("IO closed"));
 		ISynchronizationPoint<IOException> res = io.closeAsync();
 		io = null;
 		return res;

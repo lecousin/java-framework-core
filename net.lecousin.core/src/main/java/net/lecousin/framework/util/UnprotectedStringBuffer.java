@@ -322,6 +322,43 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	@Override
+	public void removeStartChars(int nb) {
+		while (strings != null) {
+			int l = strings[0].length();
+			if (nb < l) {
+				strings[0].removeStartChars(nb);
+				return;
+			}
+			if (lastUsed == 0) {
+				strings = null;
+				return;
+			}
+			System.arraycopy(strings, 1, strings, 0, lastUsed - 1);
+			strings[lastUsed] = null;
+			lastUsed--;
+			nb -= l;
+		}
+	}
+	
+	@Override
+	public void removeEndChars(int nb) {
+		while (strings != null) {
+			int l = strings[lastUsed].length();
+			if (nb < l) {
+				strings[lastUsed].removeEndChars(nb);
+				return;
+			}
+			if (lastUsed == 0) {
+				strings = null;
+				return;
+			}
+			strings[lastUsed] = null;
+			lastUsed--;
+			nb -= l;
+		}
+	}
+	
+	@Override
 	public LinkedList<UnprotectedStringBuffer> split(char sep) {
 		LinkedList<UnprotectedStringBuffer> list = new LinkedList<>();
 		if (strings == null) return list;
@@ -387,6 +424,18 @@ public class UnprotectedStringBuffer implements IString {
 		
 		strings = list.toArray(new UnprotectedString[list.size()]);
 		lastUsed = strings.length - 1;
+	}
+	
+	public void replace(CharSequence search, UnprotectedString replace) {
+		int pos = 0;
+		while ((pos = indexOf(search, pos)) >= 0) {
+			replace(pos, pos + search.length() - 1, replace);
+			pos = pos + replace.length();
+		}
+	}
+	
+	public void replace(CharSequence search, CharSequence replace) {
+		replace(search, new UnprotectedString(replace));
 	}
 	
 	/** Search for a starting string and a ending string, and replace them including the content with new content.
@@ -502,7 +551,169 @@ public class UnprotectedStringBuffer implements IString {
 		for (int i = 0; i <= lastUsed; ++i)
 			strings[i].toUpperCase();
 	}
+	
+	@Override
+	public boolean startsWith(CharSequence start) {
+		if (strings == null) return start.length() == 0;
+		int l = start.length();
+		int stringIndex = 0;
+		int stringPos = 0;
+		int stringLen = strings[0].length();
+		int i = 0;
+		while (i < l) {
+			if (strings[stringIndex].charAt(stringPos) != start.charAt(i))
+				return false;
+			if (i == l - 1) return true;
+			if (++stringPos == stringLen) {
+				if (++stringIndex > lastUsed)
+					return false;
+				stringPos = 0;
+				stringLen = strings[stringIndex].length();
+			}
+			i++;
+		}
+		return true;
+	}
+	
+	@Override
+	public boolean endsWith(CharSequence end) {
+		if (strings == null) return end.length() == 0;
+		int stringIndex = lastUsed;
+		int stringPos = strings[0].length() - 1;
+		int i = end.length();
+		while (i >= 0) {
+			if (strings[stringIndex].charAt(stringPos) != end.charAt(i))
+				return false;
+			if (i == 0) return true;
+			if (--stringPos < 0) {
+				if (--stringIndex < 0)
+					return false;
+				stringPos = strings[stringIndex].length() - 1;
+			}
+			i--;
+		}
+		return true;
+	}
+	
+	public void replace(int start, int end, char c) {
+		replace(start, end, new char[] { c });
+	}
+	
+	public void replace(int start, int end, char[] chars) {
+		replace(start, end, new UnprotectedString(chars));
+	}
+	
+	public void replace(int start, int end, UnprotectedString s) {
+		if (strings == null) return;
+		if (end < start) return;
+		int firstBufferIndex = 0;
+		int firstBufferPos = 0;
+		int firstBufferLen;
+		do {
+			firstBufferLen = strings[firstBufferIndex].length();
+			if (start < firstBufferPos + firstBufferLen) break;
+			firstBufferPos += firstBufferLen;
+			if (++firstBufferIndex > lastUsed) return;
+		} while (true);
+		int lastBufferIndex = firstBufferIndex;
+		int lastBufferPos = firstBufferPos;
+		int lastBufferLen = firstBufferLen;
+		while (end >= lastBufferPos + lastBufferLen) {
+			if (++lastBufferIndex > lastUsed) {
+				lastBufferIndex--;
+				end = lastBufferPos + lastBufferLen - 1;
+				break;
+			}
+			lastBufferPos += lastBufferLen;
+			lastBufferLen = strings[lastBufferIndex].length();
+		}
+		replaceStrings(firstBufferIndex, lastBufferIndex,
+			// remaining part on the fist buffer
+			start == firstBufferPos ? null : strings[firstBufferIndex].substring(0, start - firstBufferPos),
+			// remaining part of the last buffer
+			end == lastBufferPos + lastBufferLen - 1 ? null : strings[lastBufferIndex].substring(end - lastBufferPos + 1),
+			// to insert
+			1,
+			s
+		);
+	}
 
+	public void replace(int start, int end, UnprotectedStringBuffer s) {
+		if (strings == null) return;
+		if (strings == null) return;
+		if (end < start) return;
+		int firstBufferIndex = 0;
+		int firstBufferPos = 0;
+		int firstBufferLen;
+		do {
+			firstBufferLen = strings[firstBufferIndex].length();
+			if (start < firstBufferPos + firstBufferLen) break;
+			firstBufferPos += firstBufferLen;
+			if (++firstBufferIndex > lastUsed) return;
+		} while (true);
+		int lastBufferIndex = firstBufferIndex;
+		int lastBufferPos = firstBufferPos;
+		int lastBufferLen = firstBufferLen;
+		while (end >= lastBufferPos + lastBufferLen) {
+			if (++lastBufferIndex > lastUsed) {
+				lastBufferIndex--;
+				end = lastBufferPos + lastBufferLen - 1;
+				break;
+			}
+			lastBufferPos += lastBufferLen;
+			lastBufferLen = strings[lastBufferIndex].length();
+		}
+		replaceStrings(firstBufferIndex, lastBufferIndex,
+			// remaining part on the fist buffer
+			start == firstBufferPos ? null : strings[firstBufferIndex].substring(0, start - firstBufferPos),
+			// remaining part of the last buffer
+			end == lastBufferPos + lastBufferLen - 1 ? null : strings[lastBufferIndex].substring(end - lastBufferPos + 1),
+			// to insert
+			s.lastUsed + 1,
+			s.strings
+		);
+	}
+	
+	private void replaceStrings(int startIndex, int endIndex, UnprotectedString first, UnprotectedString last, int nbMiddle, UnprotectedString... middle) {
+		int nb = startIndex + (strings.length - endIndex) + (first != null ? 1 : 0) + (last != null ? 1 : 0) + nbMiddle;
+		if (nb <= strings.length) {
+			int pos;
+			// put the strings after endIndex
+			if (endIndex < lastUsed) {
+				System.arraycopy(strings, endIndex + 1, strings, nb - endIndex - 1, lastUsed - endIndex + 1);
+				pos = nb - (lastUsed - endIndex + 1) - 1;
+			} else
+				pos = nb - 1;
+			// put the last string
+			if (last != null)
+				strings[pos--] = last;
+			for (int i = nbMiddle - 1; i >= 0; --i)
+				strings[pos--] = middle[i];
+			if (first != null)
+				strings[pos] = first;
+			for (int i = nb; i <= lastUsed; ++i)
+				strings[i] = null;
+			lastUsed = nb - 1;
+			return;
+		}
+		UnprotectedString[] list = new UnprotectedString[nb];
+		int pos = 0;
+		if (startIndex > 0) {
+			System.arraycopy(strings, 0, list, 0, startIndex);
+			pos = startIndex;
+		}
+		if (first != null)
+			list[pos++] = first;
+		for (int i = 0; i < nbMiddle; ++i)
+			list[pos++] = middle[i];
+		if (last != null)
+			list[pos++] = last;
+		if (endIndex < lastUsed)
+			System.arraycopy(strings, endIndex + 1, list, pos, lastUsed - endIndex);
+		strings = list;
+		lastUsed = nb - 1;
+	}
+	
 	@Override
 	public String toString() {
 		if (strings == null) return "";
@@ -517,6 +728,8 @@ public class UnprotectedStringBuffer implements IString {
 		return new ICharacterStream.Readable.Buffered() {
 			private int buffer = 0;
 			private int bufferIndex = 0;
+			private byte priority = Task.PRIORITY_NORMAL;
+			
 			@Override
 			public String getSourceDescription() {
 				return "UnprotectedStringBuffer";
@@ -534,7 +747,7 @@ public class UnprotectedStringBuffer implements IString {
 			}
 			
 			@Override
-			public int read(char[] buf, int offset, int length) {
+			public int readSync(char[] buf, int offset, int length) {
 				if (strings == null) return -1;
 				int done = 0;
 				do {
@@ -552,6 +765,37 @@ public class UnprotectedStringBuffer implements IString {
 					if (length == 0)
 						return done;
 				} while (true);
+			}
+			
+			@Override
+			public int readAsync() {
+				if (strings == null) return -1;
+				while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
+					buffer++;
+					bufferIndex = 0;
+				}
+				if (buffer > lastUsed) return -1;
+				return strings[buffer].charAt(bufferIndex++);
+			}
+			
+			@Override
+			public AsyncWork<Integer, IOException> readAsync(char[] buf, int offset, int length) {
+				return new Task.Cpu<Integer, IOException>("UnprotectedStringBuffer.readAsync", priority) {
+					@Override
+					public Integer run() {
+						return Integer.valueOf(readSync(buf, offset, length));
+					}
+				}.start().getSynch();
+			}
+			
+			@Override
+			public byte getPriority() {
+				return priority;
+			}
+			
+			@Override
+			public void setPriority(byte priority) {
+				this.priority = priority;
 			}
 			
 			@Override

@@ -85,7 +85,9 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 	
 	@Override
 	public ISynchronizationPoint<IOException> canStartReading() {
-		return io.canStartReading();
+		if (pos < ioPos)
+			return buffered.canStartReading();
+		return buffering;
 	}
 	
 	@Override
@@ -334,6 +336,21 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 	@Override
 	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		return readAsync(pos, buffer, ondone);
+	}
+	
+	@Override
+	public int readAsync() throws IOException {
+		if (knownSize >= 0 && pos >= knownSize) return -1;
+		if (pos >= ioPos) return -2;
+		if (buffered.getPosition() == pos) {
+			int r = buffered.readAsync();
+			if (r >= 0) pos++;
+			return r;
+		}
+		byte[] b = new byte[1];
+		buffered.readSync(pos, ByteBuffer.wrap(b)); // TODO can we find a way to be not blocking ?
+		pos++;
+		return b[0] & 0xFF;
 	}
 	
 	@Override

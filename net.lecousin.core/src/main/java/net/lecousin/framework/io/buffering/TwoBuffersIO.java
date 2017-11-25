@@ -111,7 +111,17 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 	
 	@Override
 	public ISynchronizationPoint<IOException> canStartReading() {
-		return read1;
+		if (nb1 < 0 || pos < nb1 || buf2 == null)
+			return read1;
+		if (read2 == null) {
+			synchronized (buf1) {
+				while (read2 == null) {
+					try { buf1.wait(); }
+					catch (InterruptedException e) { /* ignore */ }
+				}
+			}
+		}
+		return read2;
 	}
 	
 	@Override
@@ -363,6 +373,51 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 		return l;
 	}
 
+	@Override
+	public int readAsync() throws IOException {
+		if (nb1 < 0) {
+			if (!read1.isUnblocked()) return -2;
+			if (!read1.isSuccessful()) {
+				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
+				throw read1.getError();
+			}
+			nb1 = read1.getResult().intValue();
+			if (nb1 < 0) nb1 = 0;
+			if (nb1 == 0)
+				return -1;
+		}
+		if (pos < nb1)
+			return buf1[pos++] & 0xFF;
+		if (buf2 == null) return -1;
+		if (nb2 < 0) {
+			if (!read1.isUnblocked()) return -2;
+			if (!read1.isSuccessful()) {
+				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
+				throw read1.getError();
+			}
+			if (read2 == null) {
+				synchronized (buf1) {
+					while (read2 == null) {
+						if (buf2 == null) return -1;
+						try { buf1.wait(); }
+						catch (InterruptedException e) { /* ignore */ }
+					}
+				}
+			}
+			if (!read2.isUnblocked()) return -2;
+			if (!read2.isSuccessful()) {
+				if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
+				throw read2.getError();
+			}
+			nb2 = read2.getResult().intValue();
+			if (nb2 < 0) nb2 = 0;
+			if (nb2 == 0)
+				return -1;
+		}
+		if (pos >= nb1 + nb2) return -1;
+		return buf2[(pos++) - nb1] & 0xFF;
+	}
+	
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		return readAsync(pos, buffer, ondone);

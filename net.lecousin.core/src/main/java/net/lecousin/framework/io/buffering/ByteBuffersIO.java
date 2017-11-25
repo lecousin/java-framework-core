@@ -248,6 +248,11 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 	public int read(byte[] buffer, int offset, int len) {
 		return readSync(ByteBuffer.wrap(buffer, offset, len));
 	}
+	
+	@Override
+	public int readAsync() {
+		return read();
+	}
 
 	@Override
 	public ISynchronizationPoint<IOException> canStartReading() {

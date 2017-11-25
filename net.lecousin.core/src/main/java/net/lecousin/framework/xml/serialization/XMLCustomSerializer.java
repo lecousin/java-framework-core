@@ -6,7 +6,7 @@ import java.util.Set;
 import net.lecousin.framework.io.serialization.rules.CustomSerializer;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.io.text.ICharacterStream;
-import net.lecousin.framework.xml.XMLStreamReader;
+import net.lecousin.framework.xml.XMLStreamReaderAsync;
 
 /** Custom serialization.
  * @param <T> type
@@ -15,7 +15,7 @@ public interface XMLCustomSerializer<T> {
 
 	/** Deserialization. */
 	public T deserialize(
-		XMLDeserializer deserializer, XMLStreamReader xml,
+		XMLDeserializer deserializer, XMLStreamReaderAsync xml,
 		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers
 	) throws Exception;
 	

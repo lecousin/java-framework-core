@@ -92,6 +92,11 @@ public class EmptyReadable extends IO.AbstractIO implements IO.Readable, IO.Know
 	public int readSync(ByteBuffer buffer) {
 		return 0;
 	}
+	
+	@Override
+	public int readAsync() {
+		return -1;
+	}
 
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {

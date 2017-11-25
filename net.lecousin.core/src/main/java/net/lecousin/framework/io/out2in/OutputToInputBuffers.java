@@ -199,6 +199,32 @@ public class OutputToInputBuffers extends AbstractIO implements IO.OutputToInput
 	}
 	
 	@Override
+	public int readAsync() throws IOException {
+		ByteBuffer b = null;
+		synchronized (this) {
+			if (!buffers.isEmpty())
+				b = buffers.get(0);
+			else if (eof)
+				return -1;
+			else if (!lock.isUnblocked())
+				return -2;
+			else if (lock.hasError())
+				throw new IOException("An error occured during the transfer of data", lock.getError());
+		}
+		int res = b.get() & 0xFF;
+		if (b.remaining() == 0) {
+			SynchronizationPoint<NoException> sp = null;
+			synchronized (this) {
+				buffers.removeFirst();
+				if (maxPendingBuffers > 0)
+					sp = lockMaxBuffers.pollFirst();
+			}
+			if (sp != null) sp.unblock();
+		}
+		return res;
+	}
+	
+	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		Task<Integer, IOException> task = new Task.Cpu<Integer, IOException>("OutputToInput.read", getPriority(), ondone) {
 			@Override

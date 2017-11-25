@@ -176,6 +176,11 @@ public abstract class LinkedIO extends AbstractIO {
 			}
 			
 			@Override
+			public int readAsync() throws IOException {
+				return super.readAsync();
+			}
+			
+			@Override
 			public int skip(int n) throws IOException {
 				return super.skip(n);
 			}
@@ -325,6 +330,11 @@ public abstract class LinkedIO extends AbstractIO {
 				@Override
 				public int readFully(byte[] buffer) throws IOException {
 					return super.readFully(buffer);
+				}
+				
+				@Override
+				public int readAsync() throws IOException {
+					return super.readAsync();
 				}
 				
 				@Override
@@ -481,6 +491,25 @@ public abstract class LinkedIO extends AbstractIO {
 	
 	protected int readFullySync(ByteBuffer buffer) throws IOException {
 		return IOUtil.readFully((IO.Readable)this, buffer);
+	}
+	
+	@SuppressWarnings("resource")
+	protected int readAsync() throws IOException {
+		if (ioIndex == ios.size())
+			return -1;
+		IO.Readable.Buffered io = (IO.Readable.Buffered)ios.get(ioIndex);
+		int i = io.readAsync();
+		if (i == -1) {
+			if (sizes.get(ioIndex) == null)
+				sizes.set(ioIndex, Long.valueOf(posInIO));
+			nextIOSync();
+			return readAsync();
+		}
+		if (i == -2)
+			return -2;
+		posInIO++;
+		pos++;
+		return i;
 	}
 
 	@SuppressWarnings("resource")

@@ -1,8 +1,7 @@
 package net.lecousin.framework.io.serialization.rules;
 
-import java.util.ArrayList;
-
-import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
+import net.lecousin.framework.io.serialization.SerializationClass;
+import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 
 /**
  * This rule change the name of a specific attribute in a class.
@@ -10,23 +9,24 @@ import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
 public class RenameAttribute implements SerializationRule {
 
 	/** Constructor. */
-	public RenameAttribute(Class<?> clazz, String name, String newName) {
-		this.clazz = clazz;
-		this.name = name;
+	public RenameAttribute(Class<?> type, String originalName, String newName) {
+		this.type = type;
+		this.originalName = originalName;
 		this.newName = newName;
 	}
 	
-	private Class<?> clazz;
-	private String name;
+	private Class<?> type;
+	private String originalName;
 	private String newName;
 	
 	@Override
-	public void apply(ArrayList<Attribute> attributes) {
-		for (Attribute a : attributes) {
-			if (!clazz.equals(a.getDeclaringClass())) continue;
-			if (!name.equals(a.getName())) continue;
-			a.rename(newName);
-		}
+	public void apply(SerializationClass type) {
+		if (!this.type.isAssignableFrom(type.getType().getBase()))
+			return;
+		Attribute a = type.getAttributeByOriginalName(originalName);
+		if (a == null || !this.type.equals(a.getDeclaringClass()))
+			return;
+		a.renameTo(newName);
 	}
 	
 }

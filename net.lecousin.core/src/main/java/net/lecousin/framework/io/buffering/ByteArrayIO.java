@@ -122,6 +122,11 @@ public class ByteArrayIO extends AbstractIO
 	}
 	
 	@Override
+	public int readAsync() {
+		return read();
+	}
+	
+	@Override
 	public int readFully(byte[] buffer) {
 		return read(buffer, 0, buffer.length);
 	}

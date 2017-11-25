@@ -5,7 +5,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import net.lecousin.framework.adapter.AdapterRegistry;
-import net.lecousin.framework.io.serialization.annotations.AnnotationToRule;
 import net.lecousin.framework.locale.LocaleExtensionPoint;
 import net.lecousin.framework.math.IntegerUnit;
 
@@ -21,7 +20,6 @@ public final class ExtensionPoints {
 	
 	static {
 		points.add(new AdapterRegistry());
-		points.add(new AnnotationToRule());
 		points.add(new IntegerUnit.ConverterRegistry());
 		customs.add(new LocaleExtensionPoint());
 	}

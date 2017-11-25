@@ -1,42 +1,37 @@
 package net.lecousin.framework.io.serialization;
 
-import java.lang.reflect.ParameterizedType;
+import java.nio.charset.Charset;
 import java.util.List;
 
-import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.serialization.rules.CustomSerializer;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
+import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
+import net.lecousin.framework.io.text.ICharacterStream;
 
-/**
- * Implement a Deserializer by creating a task that will execute a synchronous method.
- * @param <In> type of expected input
- */
-public abstract class AbstractDeserializer<In> implements Deserializer {
+public abstract class AbstractDeserializer<Input> implements Deserializer {
 
-	@Override
-	public <T> AsyncWork<T,Exception> deserialize(
-		Class<T> type, ParameterizedType ptype, IO.Readable input, byte priority,
-		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers
-	) {
-		Task.Cpu<T, Exception> task = new Task.Cpu<T, Exception>("Deserialization: " + getClass().getName(), priority) {
-			@Override
-			public T run() throws Exception, CancelException {
-				return deserialize(type, ptype, adaptInput(input), rules, customSerializers);
-			}
-		};
-		task.start();
-		return task.getSynch();
+	public static abstract class Text extends AbstractDeserializer<ICharacterStream.Readable.Buffered> {
+		
+		public Text(Charset charset, int bufferSize, int maxBuffers) {
+			this.charset = charset;
+			this.bufferSize = bufferSize;
+			this.maxBuffers = maxBuffers;
+		}
+		
+		private Charset charset;
+		private int bufferSize;
+		private int maxBuffers;
+		
+		@Override
+		public <T> AsyncWork<T, Exception> deserialize(Class<T> type, IO.Readable input, List<SerializationRule> rules) {
+			BufferedReadableCharacterStream in = new BufferedReadableCharacterStream(input, charset, bufferSize, maxBuffers);
+			return deserializeObject(type, in, rules);
+		}
 	}
 	
-	/** Deserialize a type from the given input. */
-	public abstract <T> T deserialize(
-		Class<T> type, ParameterizedType ptype, In input,
-		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers
-	) throws Exception;
+	public <T> AsyncWork<T, Exception> deserialize(Class<T> type, Input input, List<SerializationRule> rules) {
+		
+	}
 	
-	protected abstract In adaptInput(IO.Readable input);
-
 }

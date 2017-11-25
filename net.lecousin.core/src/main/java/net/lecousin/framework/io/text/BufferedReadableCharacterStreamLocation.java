@@ -3,7 +3,10 @@ package net.lecousin.framework.io.text;
 import java.io.EOFException;
 import java.io.IOException;
 
+import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.exception.NoException;
 
 /** Buffered readable character stream that calculate the line number and position on the current line while reading. */
 public class BufferedReadableCharacterStreamLocation implements ICharacterStream.Readable.Buffered {
@@ -26,6 +29,16 @@ public class BufferedReadableCharacterStreamLocation implements ICharacterStream
 	public String getSourceDescription() { return stream.getSourceDescription(); }
 	
 	@Override
+	public byte getPriority() {
+		return stream.getPriority();
+	}
+	
+	@Override
+	public void setPriority(byte priority) {
+		stream.setPriority(priority);
+	}
+	
+	@Override
 	public char read() throws EOFException, IOException {
 		char c = stream.read();
 		if (c == '\n') {
@@ -38,8 +51,8 @@ public class BufferedReadableCharacterStreamLocation implements ICharacterStream
 	}
 
 	@Override
-	public int read(char[] buf, int offset, int length) {
-		int nb = stream.read(buf, offset, length);
+	public int readSync(char[] buf, int offset, int length) throws IOException {
+		int nb = stream.readSync(buf, offset, length);
 		for (int i = 0; i < nb; ++i)
 			if (buf[offset + i] == '\n') {
 				line++;
@@ -58,6 +71,49 @@ public class BufferedReadableCharacterStreamLocation implements ICharacterStream
 		} else
 			pos--;
 		stream.back(c);
+	}
+	
+	@Override
+	public int readAsync() throws IOException {
+		int c = stream.readAsync();
+		if (c < 0) return c;
+		if (c == '\n') {
+			line++;
+			lastLinePos = pos;
+			pos = 0;
+		} else if (c != '\r')
+			pos++;
+		return c;
+	}
+	
+	@Override
+	public AsyncWork<Integer, IOException> readAsync(char[] buf, int offset, int length) {
+		AsyncWork<Integer, IOException> result = new AsyncWork<>();
+		AsyncWork<Integer, IOException> read = stream.readAsync(buf, offset, length);
+		read.listenAsynch(new Task.Cpu<Void, NoException>(
+			"Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority()
+		) {
+			@Override
+			public Void run() {
+				if (read.hasError())
+					result.error(read.getError());
+				else if (read.isCancelled())
+					result.cancel(read.getCancelEvent());
+				else {
+					int nb = read.getResult().intValue();
+					for (int i = 0; i < nb; ++i)
+						if (buf[offset + i] == '\n') {
+							line++;
+							lastLinePos = pos;
+							pos = 0;
+						} else if (buf[offset + i] != '\r')
+							pos++;
+					result.unblockSuccess(read.getResult());
+				}
+				return null;
+			}
+		}, true);
+		return result;
 	}
 	
 	@Override

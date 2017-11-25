@@ -13,7 +13,7 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.util.IString;
-import net.lecousin.framework.xml.XMLStreamReader;
+import net.lecousin.framework.xml.XMLStreamReaderAsync;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -181,14 +181,14 @@ public class TestXMLStreamReaderWithDOM extends LCCoreAbstractTest {
 		InputStream in = getClass().getClassLoader().getResourceAsStream(filepath);
 		Document doc = factory.newDocumentBuilder().parse(new InputSource(in));
 		InputStream in2 = getClass().getClassLoader().getResourceAsStream(filepath);
-		XMLStreamReader xml = new XMLStreamReader(new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL), 1024);
+		XMLStreamReaderAsync xml = new XMLStreamReaderAsync(new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL), 1024);
 		xml.start();
 		checkNodeContent(doc, xml, new LinkedList<>());
 		in2.close();
 		in.close();
 	}
 	
-	private static void checkNodeContent(Node node, XMLStreamReader xml, LinkedList<String> openElements) throws Exception {
+	private static void checkNodeContent(Node node, XMLStreamReaderAsync xml, LinkedList<String> openElements) throws Exception {
 		NodeList list = node.getChildNodes();
 		for (int i = 0; i < list.getLength(); ++i) {
 			Node n = list.item(i);
@@ -196,7 +196,7 @@ public class TestXMLStreamReaderWithDOM extends LCCoreAbstractTest {
 		}
 	}
 	
-	private static void checkNode(Node node, XMLStreamReader xml, LinkedList<String> openElements) throws Exception {
+	private static void checkNode(Node node, XMLStreamReaderAsync xml, LinkedList<String> openElements) throws Exception {
 		switch (xml.type) {
 		case COMMENT:
 			Assert.assertEquals(Node.COMMENT_NODE, node.getNodeType());
@@ -237,34 +237,34 @@ public class TestXMLStreamReaderWithDOM extends LCCoreAbstractTest {
 		}
 	}
 	
-	private static void checkComment(Comment node, XMLStreamReader xml) throws Exception {
+	private static void checkComment(Comment node, XMLStreamReaderAsync xml) throws Exception {
 		assertEquals("Comment", node.getData(), xml.text);
 		xml.next();
 	}
 	
-	private static void checkCData(CDATASection node, XMLStreamReader xml) throws Exception {
+	private static void checkCData(CDATASection node, XMLStreamReaderAsync xml) throws Exception {
 		assertEquals("CDATA content", node.getData(), xml.text);
 		xml.next();
 	}
 	
-	private static void checkText(Text node, XMLStreamReader xml) throws Exception {
+	private static void checkText(Text node, XMLStreamReaderAsync xml) throws Exception {
 		assertEquals("text", node.getData(), xml.text);
 		xml.next();
 	}
 	
-	private static void checkDocType(DocumentType node, XMLStreamReader xml) throws Exception {
+	private static void checkDocType(DocumentType node, XMLStreamReaderAsync xml) throws Exception {
 		assertEquals("DOCTYPE name", node.getName(), xml.text);
 		assertEquals("system id", node.getSystemId(), xml.system);
 		assertEquals("public id", node.getPublicId(), xml.publicId);
 		xml.next();
 	}
 	
-	private static void checkProcessingInstruction(ProcessingInstruction node, XMLStreamReader xml) throws Exception {
+	private static void checkProcessingInstruction(ProcessingInstruction node, XMLStreamReaderAsync xml) throws Exception {
 		assertEquals("processing instruction target", node.getTarget(), xml.text);
 		xml.next();
 	}
 	
-	private static void checkElement(Element node, XMLStreamReader xml, LinkedList<String> openElements) throws Exception {
+	private static void checkElement(Element node, XMLStreamReaderAsync xml, LinkedList<String> openElements) throws Exception {
 		assertEquals("element name", node.getTagName(), xml.text);
 		NamedNodeMap attrs = node.getAttributes();
 		for (int i = 0; i < attrs.getLength(); ++i) {

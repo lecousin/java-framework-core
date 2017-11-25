@@ -380,6 +380,11 @@ public abstract class BufferedIO extends BufferingManaged {
 		}
 		
 		@Override
+		public int readAsync() throws IOException {
+			return super.readAsync();
+		}
+		
+		@Override
 		public AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 			return super.readAsync(pos, buf, ondone);
 		}
@@ -588,6 +593,11 @@ public abstract class BufferedIO extends BufferingManaged {
 		}
 		
 		@Override
+		public int readAsync() throws IOException {
+			return super.readAsync();
+		}
+
+		@Override
 		public AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 			return super.readAsync(pos, buf, ondone);
 		}
@@ -731,6 +741,24 @@ public abstract class BufferedIO extends BufferingManaged {
 			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
 		}
 		return len;
+	}
+	
+	protected int readAsync() throws IOException {
+		if (pos == size) return -1;
+		int bufferIndex = getBufferIndex(pos);
+		Buffer buffer = useBufferAsync(bufferIndex);
+		SynchronizationPoint<NoException> sp = buffer.loading;
+		if (sp != null && !sp.isUnblocked()) return -2;
+		if (buffer.error != null) throw buffer.error;
+		buffer.lastRead = System.currentTimeMillis();
+		buffer.inUse--;
+		byte b = buffer.buffer[getBufferOffset(pos)];
+		pos++;
+		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
+			int nextIndex = getBufferIndex(pos);
+			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
+		}
+		return b & 0xFF;
 	}
 	
 	protected AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {

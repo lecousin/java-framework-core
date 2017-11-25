@@ -3,10 +3,14 @@ package net.lecousin.framework.io.text;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 
 /** Implement a non-buffered writable character stream using a writable IO. */
@@ -27,10 +31,40 @@ public class WritableCharacterStream implements ICharacterStream.Writable {
 	private CharsetEncoder encoder;
 	
 	@Override
-	public void write(char[] c, int off, int len) throws IOException {
+	public byte getPriority() {
+		return output.getPriority();
+	}
+	
+	@Override
+	public void setPriority(byte priority) {
+		output.setPriority(priority);
+	}
+	
+	@Override
+	public void writeSync(char[] c, int off, int len) throws IOException {
 		CharBuffer cb = CharBuffer.wrap(c, off, len);
 		ByteBuffer bb = encoder.encode(cb);
 		output.writeSync(bb);
+	}
+	
+	@Override
+	public ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length) {
+		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+		new Task.Cpu<Void, NoException>("Encoding characters", getPriority()) {
+			@Override
+			public Void run() {
+				CharBuffer cb = CharBuffer.wrap(c, offset, length);
+				ByteBuffer bb;
+				try { bb = encoder.encode(cb); }
+				catch (CharacterCodingException e) {
+					result.error(e);
+					return null;
+				}
+				output.writeAsync(bb).listenInline(result);
+				return null;
+			}
+		}.start();
+		return result;
 	}
 	
 	@Override

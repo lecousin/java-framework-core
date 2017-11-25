@@ -53,6 +53,12 @@ public interface IString extends CharSequence {
 		return this;
 	}
 	
+	/** Remove the given number of characters at the end. */
+	public void removeEndChars(int nb);
+	
+	/** Remove the given number of characters at the beginning. */
+	public void removeStartChars(int nb);
+	
 	/** Convert this string to lower case. */
 	public void toLowerCase();
 
@@ -68,6 +74,24 @@ public interface IString extends CharSequence {
 		if (s.length() != l) return false;
 		for (int i = 0; i < l; ++i)
 			if (s.charAt(i) != charAt(i))
+				return false;
+		return true;
+	}
+	
+	/** Return true if this string starts with the given one. */
+	public boolean startsWith(CharSequence start);
+	
+	/** Return true if this string ends with the given one. */
+	public boolean endsWith(CharSequence end);
+	
+	/** Return true if this string is a start for the given one.
+	 * This string's length must be less or equal to the start's length.
+	 */
+	public default boolean isStartOf(CharSequence s) {
+		int l = length();
+		if (l > s.length()) return false;
+		for (int i = 0; i < l; ++i)
+			if (charAt(i) != s.charAt(i))
 				return false;
 		return true;
 	}

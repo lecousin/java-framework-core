@@ -58,6 +58,11 @@ public class NonBufferedReadableIOAsBuffered extends IO.AbstractIO implements IO
 	}
 
 	@Override
+	public int readAsync() throws IOException {
+		return read();
+	}
+
+	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		return io.readAsync(buffer, ondone);
 	}

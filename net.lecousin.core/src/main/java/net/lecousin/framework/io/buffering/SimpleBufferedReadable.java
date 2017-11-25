@@ -289,6 +289,15 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 		pos += l;
 		return l;
 	}
+	
+	@Override
+	public int readAsync() {
+		if (pos == len) {
+			if (this.buffer == null) return -1;
+			return -2;
+		}
+		return buffer[pos++] & 0xFF;
+	}
 
 	@Override
 	public int readFully(byte[] buffer) throws IOException {

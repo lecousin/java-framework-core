@@ -192,7 +192,8 @@ public abstract class Task<T,TError extends Exception> {
 		}
 		
 		@Override
-		public void start() {
+		public Task<T,TError> start() {
+			return this;
 		}
 	}
 	
@@ -338,9 +339,9 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Ask to start the task. This does not start it immediately, but adds it to the queue of tasks to execute. */
-	public void start() {
+	public Task<T,TError> start() {
 		synchronized (this) {
-			if (result.isCancelled()) return;
+			if (result.isCancelled()) return this;
 			if (status != Task.STATUS_NOT_STARTED) {
 				if (status >= Task.STATUS_DONE)
 					throw new RuntimeException("Task already done: " + description
@@ -352,11 +353,12 @@ public abstract class Task<T,TError extends Exception> {
 				long now = System.currentTimeMillis();
 				if (nextExecution > now) {
 					TaskScheduler.schedule(this);
-					return;
+					return this;
 				}
 			}
 			// ready to be executed
 			sendToTaskManager();
+			return this;
 		}
 	}
 	

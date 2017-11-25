@@ -42,6 +42,16 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 	private ByteBuffer encodedBuffer;
 	private int pos = 0;
 	
+	@Override
+	public byte getPriority() {
+		return output.getPriority();
+	}
+	
+	@Override
+	public void setPriority(byte priority) {
+		output.setPriority(priority);
+	}
+	
 	private SynchronizationPoint<IOException> flushing = null;
 
 	private void encodeAndWrite() {
@@ -142,6 +152,38 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 			sp.block(0);
 		} while (true);
 	}
+
+	private SynchronizationPoint<IOException> flushBufferAsync() {
+		SynchronizationPoint<IOException> sp;
+		synchronized (output) {
+			if (flushing != null && flushing.isUnblocked()) {
+				if (flushing.hasError())
+					return new SynchronizationPoint<>(flushing.getError());
+				flushing = null;
+			}
+			if (flushing == null) {
+				char[] tmp1 = buffer2;
+				buffer2 = buffer;
+				buffer = tmp1;
+				CharBuffer tmp2 = cb2;
+				cb2 = cb;
+				cb = tmp2;
+				cb.clear();
+				flushing = new SynchronizationPoint<>();
+				cb2.limit(pos);
+				encodeAndWrite();
+				pos = 0;
+				return new SynchronizationPoint<>(true);
+			}
+			sp = flushing;
+		}
+		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+		sp.listenInline(
+			() -> { flushBufferAsync().listenInline(result); },
+			result
+		);
+		return result;
+	}
 	
 	@Override
 	public ISynchronizationPoint<IOException> flush() {
@@ -179,7 +221,7 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 	}
 	
 	@Override
-	public void write(char[] c, int off, int len) throws IOException {
+	public void writeSync(char[] c, int off, int len) throws IOException {
 		while (len > 0) {
 			int l = len > buffer.length - pos ? buffer.length - pos : len;
 			System.arraycopy(c, off, buffer, pos, l);
@@ -189,6 +231,38 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 			off += l;
 			len -= l;
 		}
+	}
+	
+	@Override
+	public ISynchronizationPoint<IOException> writeAsync(char[] c, int off, int len) {
+		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+		writeAsync(c, off, len, result);
+		return result;
+	}
+	
+	private void writeAsync(char[] c, int off, int len, SynchronizationPoint<IOException> result) {
+		new Task.Cpu<Void, NoException>("BufferedWritableCharacterStream.writeAsync", output.getPriority()) {
+			@Override
+			public Void run() {
+				int l = len > buffer.length - pos ? buffer.length - pos : len;
+				System.arraycopy(c, off, buffer, pos, l);
+				pos += l;
+				if (l == len) {
+					if (pos == buffer.length)
+						flushBufferAsync().listenInline(result);
+					else
+						result.unblock();
+					return null;
+				}
+				flushBufferAsync().listenInline(
+					() -> {
+						writeAsync(c, off + l, len - l, result);
+					},
+					result
+				);
+				return null;
+			}
+		}.start();
 	}
 	
 	@Override

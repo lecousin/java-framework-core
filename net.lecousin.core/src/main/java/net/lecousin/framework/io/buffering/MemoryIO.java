@@ -101,6 +101,11 @@ public class MemoryIO extends AbstractIO
 	}
 	
 	@Override
+	public int readAsync() {
+		return read();
+	}
+	
+	@Override
 	public int readFully(byte[] buffer) {
 		if (pos == size) return 0;
 		int index = pos / bufferSize;

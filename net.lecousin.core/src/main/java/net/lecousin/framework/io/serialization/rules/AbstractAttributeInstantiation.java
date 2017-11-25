@@ -1,11 +1,8 @@
 package net.lecousin.framework.io.serialization.rules;
 
-import java.util.ArrayList;
-import java.util.ListIterator;
-
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.io.serialization.SerializationUtil;
-import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
+import net.lecousin.framework.io.serialization.SerializationClass;
+import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.util.Factory;
 
 /** Base class specifying a rule on how to instantiate an attribute. */
@@ -26,21 +23,21 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 	private Class<? extends Factory> factory;
 	
 	@Override
-	public void apply(ArrayList<Attribute> attributes) {
-		for (ListIterator<Attribute> it = attributes.listIterator(); it.hasNext(); ) {
-			Attribute a = it.next();
-			if (!clazz.equals(a.getDeclaringClass())) continue;
-			if (!name.equals(a.getOriginalName())) continue;
-			Attribute discr = SerializationUtil.getAttributeByOriginalName(attributes, discriminator);
-			if (discr == null || !discr.canGet()) {
-				LCCore.getApplication().getDefaultLogger().warn("Unable to get discriminator attribute " + discriminator);
-				continue;
-			}
-			try {
-				it.set(new InstantiationAttribute(a, discr, factory.newInstance()));
-			} catch (Throwable t) {
-				LCCore.getApplication().getDefaultLogger().error("Unable to replace attribute by an InstantiationAttribute", t);
-			}
+	public void apply(SerializationClass type) {
+		if (!clazz.isAssignableFrom(type.getType().getBase()))
+			return;
+		Attribute a = type.getAttributeByOriginalName(name);
+		if (a == null || !clazz.equals(a.getDeclaringClass()))
+			return;
+		Attribute discr = type.getAttributeByOriginalName(discriminator);
+		if (discr == null || !discr.canGet()) {
+			LCCore.getApplication().getDefaultLogger().warn("Unable to get discriminator attribute " + discriminator);
+			return;
+		}
+		try {
+			type.replaceAttribute(a, new InstantiationAttribute(a, discr, factory.newInstance()));
+		} catch (Throwable t) {
+			LCCore.getApplication().getDefaultLogger().error("Unable to replace attribute by an InstantiationAttribute", t);
 		}
 	}
 	

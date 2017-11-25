@@ -11,6 +11,7 @@ import java.nio.charset.CodingErrorAction;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -61,16 +62,29 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 	private CharBuffer chars;
 	private boolean endReached = false;
 	private int back = -1;
-	private SynchronizationPoint<IOException> canStartReading = new SynchronizationPoint<>();
-	private SynchronizationPoint<NoException> nextReady = new SynchronizationPoint<>();
+	private SynchronizationPoint<IOException> nextReady = new SynchronizationPoint<>();
 	
 	@Override
 	public SynchronizationPoint<IOException> canStartReading() {
-		return canStartReading;
+		synchronized (ready) {
+			if (ready.isEmpty())
+				return nextReady;
+			return new SynchronizationPoint<>(true);
+		}
 	}
 	
 	@Override
 	public String getSourceDescription() { return input.getSourceDescription(); }
+	
+	@Override
+	public byte getPriority() {
+		return input.getPriority();
+	}
+	
+	@Override
+	public void setPriority(byte priority) {
+		input.setPriority(priority);
+	}
 	
 	public Charset getCharset() {
 		return decoder.charset();
@@ -84,11 +98,15 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 			@Override
 			public Void run() {
 				if (readTask.isCancelled()) {
-					canStartReading.cancel(readTask.getCancelEvent());
+					synchronized (ready) {
+						nextReady.cancel(readTask.getCancelEvent());
+					}
 					return null;
 				}
 				if (readTask.hasError()) {
-					canStartReading.error(readTask.getError());
+					synchronized (ready) {
+						nextReady.error(readTask.getError());
+					}
 					return null;
 				}
 				if (bytes == null)
@@ -127,7 +145,7 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 					}
 					buf.flip();
 					boolean full;
-					SynchronizationPoint<NoException> sp;
+					SynchronizationPoint<IOException> sp;
 					synchronized (ready) {
 						ready.addLast(buf);
 						full = ready.isFull();
@@ -140,21 +158,19 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 						bufferize();
 					return null;
 				} catch (IOException e) {
-					canStartReading.error(e);
-					if (!endReached)
-						nextReady.unblock();
+					synchronized (ready) {
+						nextReady.error(e);
+					}
 					return null;
 				} catch (NullPointerException e) {
 					// closed
 					return null;
 				} catch (Throwable t) {
-					canStartReading.error(new IOException("Unexpected error while buffering", t));
+					synchronized (ready) {
+						nextReady.error(IO.error(t));
+					}
 					LCCore.getApplication().getDefaultLogger().error("Error while buffering", t);
-					if (!endReached)
-						nextReady.unblock();
 					return null;
-				} finally {
-					canStartReading.unblock();
 				}
 			}
 		};
@@ -180,13 +196,13 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 		}
 		while (chars == null) {
 			boolean full;
-			SynchronizationPoint<NoException> sp;
+			SynchronizationPoint<IOException> sp;
 			synchronized (ready) {
 				full = ready.isFull();
 				chars = ready.pollFirst();
-				sp = nextReady;
 				if (chars == null && endReached) throw new EOFException();
-				if (canStartReading.hasError()) throw canStartReading.getError();
+				if (nextReady.hasError()) throw nextReady.getError();
+				sp = nextReady;
 			}
 			if (full && !endReached) bufferize();
 			if (chars != null) break;
@@ -205,7 +221,7 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 	}
 	
 	@Override
-	public int read(char[] buf, int offset, int length) {
+	public int readSync(char[] buf, int offset, int length) throws IOException {
 		if (length <= 0)
 			return 0;
 		int done = 0;
@@ -219,7 +235,7 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 		}
 		while (chars == null) {
 			boolean full;
-			SynchronizationPoint<NoException> sp;
+			SynchronizationPoint<IOException> sp;
 			synchronized (ready) {
 				full = ready.isFull();
 				chars = ready.pollFirst();
@@ -232,6 +248,8 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 			if (full && !endReached) bufferize();
 			if (chars != null) break;
 			sp.block(0);
+			if (sp.hasError()) throw sp.getError();
+			if (sp.isCancelled()) throw IO.error(sp.getCancelEvent());
 		}
 		int len = length;
 		if (len > chars.remaining()) len = chars.remaining();
@@ -248,6 +266,110 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 	}
 	
 	@Override
+	public int readAsync() throws IOException {
+		if (back != -1) {
+			char c = (char)back;
+			back = -1;
+			return c;
+		}
+		if (chars == null) {
+			boolean full;
+			synchronized (ready) {
+				full = ready.isFull();
+				chars = ready.pollFirst();
+				if (chars == null && endReached) return -1;
+				if (nextReady.hasError()) throw nextReady.getError();
+			}
+			if (full && !endReached) bufferize();
+			if (chars == null) return -2;
+		}
+		char c = chars.get();
+		if (!chars.hasRemaining()) {
+			boolean full;
+			synchronized (ready) {
+				full = ready.isFull();
+				chars = ready.pollFirst();
+			}
+			if (full && !endReached) bufferize();
+		}
+		return c;
+	}
+	
+	@Override
+	public AsyncWork<Integer, IOException> readAsync(char[] buf, int off, int len) {
+		if (len <= 0)
+			return new AsyncWork<>(Integer.valueOf(0), null);
+		AsyncWork<Integer, IOException> result = new AsyncWork<>();
+		new Task.Cpu<Void, NoException>("BufferedReadableCharacterStream.readAsync", input.getPriority()) {
+			@Override
+			public Void run() {
+				int done = 0;
+				int offset = off;
+				int length = len;
+				if (back != -1) {
+					buf[offset++] = (char)back;
+					back = -1;
+					length--;
+					if (length == 0) {
+						result.unblockSuccess(Integer.valueOf(1));
+						return null;
+					}
+					done = 1;
+				}
+				if (chars == null) {
+					boolean full;
+					SynchronizationPoint<IOException> sp;
+					synchronized (ready) {
+						full = ready.isFull();
+						chars = ready.pollFirst();
+						sp = nextReady;
+						if (chars == null && endReached) {
+							if (done > 0)
+								result.unblockSuccess(Integer.valueOf(done));
+							else
+								result.unblockSuccess(Integer.valueOf(-1));
+							return null;
+						}
+					}
+					if (full && !endReached) bufferize();
+					if (chars == null) {
+						int don = done;
+						readAsync(buf, offset + done, length - done).listenInline(
+							(nb) -> {
+								result.unblockSuccess(Integer.valueOf(don + nb.intValue()));
+							},
+							result
+						);
+						return null;
+					}
+					if (sp.hasError()) {
+						result.error(sp.getError());
+						return null;
+					}
+					if (sp.isCancelled()) {
+						result.cancel(sp.getCancelEvent());
+						return null;
+					}
+				}
+				int len = length;
+				if (len > chars.remaining()) len = chars.remaining();
+				chars.get(buf, offset, len);
+				if (!chars.hasRemaining()) {
+					boolean full;
+					synchronized (ready) {
+						full = ready.isFull();
+						chars = ready.pollFirst();
+					}
+					if (full && !endReached) bufferize();
+				}
+				result.unblockSuccess(Integer.valueOf(len + done));
+				return null;
+			}
+		}.startOn(canStartReading(), true);
+		return result;
+	}
+	
+	@Override
 	public void close() {
 		try { input.close(); }
 		catch (Throwable t) { /* ignore */ }
@@ -255,6 +377,9 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 		chars = null;
 		ready = null;
 		decoder = null;
+		synchronized (ready) {
+			nextReady.cancel(new CancelException("Closed"));
+		}
 	}
 	
 	@Override
@@ -263,6 +388,9 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 		chars = null;
 		ready = null;
 		decoder = null;
+		synchronized (ready) {
+			nextReady.cancel(new CancelException("Closed"));
+		}
 		return input.closeAsync();
 	}
 }

@@ -197,6 +197,11 @@ public interface IO extends AutoCloseable, Closeable, AsyncCloseable<IOException
 			
 			/** Equivalent to readNextBufferAsync(null). */
 			public default AsyncWork<ByteBuffer, IOException> readNextBufferAsync() { return readNextBufferAsync(null); }
+			
+			/** Read a single byte if possible.
+			 * @return the next byte, or -1 if the end of the IO has been reached, or -2 if no more byte is available.
+			 */
+			public int readAsync() throws IOException;
 		}
 	}
 	
@@ -280,7 +285,7 @@ public interface IO extends AutoCloseable, Closeable, AsyncCloseable<IOException
 	}
 	
 	/** Convert an Exception into an IOException. If thie given exception is already an IOException, it is directly returned. */
-	public static IOException error(Exception e) {
+	public static IOException error(Throwable e) {
 		if (e instanceof IOException) return (IOException)e;
 		return new IOException(e);
 	}

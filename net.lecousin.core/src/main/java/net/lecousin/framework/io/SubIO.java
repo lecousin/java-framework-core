@@ -354,6 +354,15 @@ public abstract class SubIO extends IO.AbstractIO {
 					int nb = readFullySync(b);
 					return nb;
 				}
+				
+				@Override
+				public int readAsync() throws IOException {
+					if (pos == size) return -1;
+					int res = ((IO.Readable.Buffered)io).readAsync();
+					if (res >= 0)
+						pos++;
+					return res;
+				}
 
 				@Override
 				public int skip(int skip) {

@@ -98,6 +98,11 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends IO.Abstrac
 			public int readSync(ByteBuffer buffer) throws IOException {
 				return super.readSync(buffer);
 			}
+			
+			@Override
+			public int readAsync() throws IOException {
+				return super.readAsync();
+			}
 
 			@Override
 			public AsyncWork<Integer, IOException> readAsync(
@@ -193,6 +198,12 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends IO.Abstrac
 		return nb;
 	}
 
+	protected int readAsync() throws IOException {
+		int c = ((IO.Readable.Buffered)io).readAsync();
+		if (c >= 0) position++;
+		return c;
+	}
+	
 	protected AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
 		return ((IO.Readable)io).readAsync(buffer, (result) -> {
 			Integer nb = result.getValue1();

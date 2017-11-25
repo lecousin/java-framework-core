@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.io.serialization.SerializationUtil.Attribute;
+import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.rules.AbstractAttributeInstantiation;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.util.Factory;
@@ -26,15 +26,10 @@ public @interface Instantiation {
 	public Class<? extends Factory> factory();
 	
 	/** Convert an annotation into an AttributeInstantiation rule. */
-	public static class ToRule implements AnnotationPlugin<Instantiation> {
+	public static class ToRule implements AttributeAnnotationToRule<Instantiation> {
 		
 		@Override
-		public Class<Instantiation> getAnnotationType() {
-			return Instantiation.class;
-		}
-		
-		@Override
-		public SerializationRule getRule(Attribute attribute, Instantiation annotation) {
+		public SerializationRule createRule(Instantiation annotation, Attribute attribute) {
 			try {
 				return new AbstractAttributeInstantiation(
 					attribute.getDeclaringClass(), attribute.getOriginalName(), annotation.discriminator(), annotation.factory()
