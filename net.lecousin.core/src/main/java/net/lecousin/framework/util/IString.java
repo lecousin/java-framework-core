@@ -1,5 +1,6 @@
 package net.lecousin.framework.util;
 
+import java.nio.CharBuffer;
 import java.util.List;
 
 /**
@@ -102,5 +103,13 @@ public interface IString extends CharSequence {
 		fill(chars);
 		return new String(chars);
 	}
+	
+	public default char[][] asCharacters() {
+		char[] chars = new char[length()];
+		fill(chars);
+		return new char[][] { chars };
+	}
+	
+	public CharBuffer[] asCharBuffers();
 	
 }

@@ -41,6 +41,16 @@ public class WritableCharacterStream implements ICharacterStream.Writable {
 	}
 	
 	@Override
+	public String getDescription() {
+		return output.getSourceDescription();
+	}
+	
+	@Override
+	public Charset getEncoding() {
+		return encoder.charset();
+	}
+	
+	@Override
 	public void writeSync(char[] c, int off, int len) throws IOException {
 		CharBuffer cb = CharBuffer.wrap(c, off, len);
 		ByteBuffer bb = encoder.encode(cb);

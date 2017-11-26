@@ -70,17 +70,14 @@ public class SavePropertiesFileTask extends Task.Cpu<Void,IOException> {
 	private ICharacterStream.Writable.Buffered output;
 	private boolean closeStreamAtEnd;
 	
-	private final char[] equal = { '=' };
-	private final char[] newLine = { '\n' };
-	
 	@Override
 	public Void run() throws IOException {
 		try {
 			for (Map.Entry<Object,Object> p : properties.entrySet()) {
-				output.write(p.getKey().toString());
-				output.write(equal);
-				output.write(p.getValue().toString());
-				output.write(newLine);
+				output.writeSync(p.getKey().toString());
+				output.writeSync('=');
+				output.writeSync(p.getValue().toString());
+				output.writeSync('\n');
 			}
 			return null;
 		} finally {

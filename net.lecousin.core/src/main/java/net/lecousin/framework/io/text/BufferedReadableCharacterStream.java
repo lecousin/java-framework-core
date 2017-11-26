@@ -74,7 +74,12 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 	}
 	
 	@Override
-	public String getSourceDescription() { return input.getSourceDescription(); }
+	public String getDescription() { return input.getSourceDescription(); }
+	
+	@Override
+	public Charset getEncoding() {
+		return decoder.charset();
+	}
 	
 	@Override
 	public byte getPriority() {
@@ -84,10 +89,6 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 	@Override
 	public void setPriority(byte priority) {
 		input.setPriority(priority);
-	}
-	
-	public Charset getCharset() {
-		return decoder.charset();
 	}
 	
 	private void bufferize() {

@@ -85,7 +85,7 @@ public class StringUtil {
 			data[i] = (byte)((decodeHexa(s.charAt(i * 2)) << 4) + decodeHexa(s.charAt(i * 2 + 1)));
 	}
 	
-	/** Return the integer value of the given hexadecimal digit. */
+	/** Return the integer value of the given hexadecimal digit, or -1 if it is not an hexadecimal digit. */
 	public static int decodeHexa(char c) {
 		if (c >= '0' && c <= '9') return c - '0';
 		if (c >= 'A' && c <= 'F') return c - 'A' + 10;

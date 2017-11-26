@@ -18,7 +18,7 @@ public class LoadLibraryPluginsFile extends FullReadLines<Void> {
 	
 	/** Constructor. */
 	public LoadLibraryPluginsFile(BufferedReadableCharacterStream stream, ApplicationClassLoader classLoader) {
-		super("Initializing plugins: " + stream.getSourceDescription(), stream, Task.PRIORITY_IMPORTANT, IO.OperationType.ASYNCHRONOUS);
+		super("Initializing plugins: " + stream.getDescription(), stream, Task.PRIORITY_IMPORTANT, IO.OperationType.ASYNCHRONOUS);
 		this.classLoader = classLoader;
 	}
 	

@@ -2,6 +2,7 @@ package net.lecousin.framework.io.text;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.nio.charset.Charset;
 
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -11,15 +12,17 @@ import net.lecousin.framework.util.AsyncCloseable;
 /** Character stream. */
 public interface ICharacterStream extends AutoCloseable, AsyncCloseable<IOException> {
 	
-	public byte getPriority();
+	byte getPriority();
 	
-	public void setPriority(byte priority);
+	void setPriority(byte priority);
 
+	/** Description. */
+	String getDescription();
+	
+	Charset getEncoding();
+	
 	/** Readable character stream. */
 	public interface Readable extends ICharacterStream {
-		/** Description. */
-		public String getSourceDescription();
-		
 		/** Read characters.
 		 * @return the number of character read which may be 0 or -1 in case the end of stream has been reached
 		 */
@@ -126,7 +129,10 @@ public interface ICharacterStream extends AutoCloseable, AsyncCloseable<IOExcept
 		/** Buffered writable character stream. */
 		public interface Buffered extends Writable {
 			/** Write one character. */
-			public void write(char c) throws IOException;
+			public void writeSync(char c) throws IOException;
+
+			/** Write one character. */
+			public ISynchronizationPoint<IOException> writeAsync(char c);
 			
 			/** Flush any buffered character. */
 			public ISynchronizationPoint<IOException> flush();

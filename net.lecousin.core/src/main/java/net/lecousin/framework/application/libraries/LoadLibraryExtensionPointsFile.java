@@ -19,7 +19,7 @@ public class LoadLibraryExtensionPointsFile extends FullReadLines<Void> {
 	
 	/** Constructor. */
 	public LoadLibraryExtensionPointsFile(BufferedReadableCharacterStream stream, ApplicationClassLoader classLoader) {
-		super("Initializing extension points: " + stream.getSourceDescription(), stream,
+		super("Initializing extension points: " + stream.getDescription(), stream,
 				Task.PRIORITY_IMPORTANT, IO.OperationType.ASYNCHRONOUS);
 		this.classLoader = classLoader;
 	}

@@ -52,6 +52,16 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 		output.setPriority(priority);
 	}
 	
+	@Override
+	public String getDescription() {
+		return output.getSourceDescription();
+	}
+	
+	@Override
+	public Charset getEncoding() {
+		return encoder.charset();
+	}
+	
 	private SynchronizationPoint<IOException> flushing = null;
 
 	private void encodeAndWrite() {
@@ -214,10 +224,18 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 	}
 	
 	@Override
-	public void write(char c) throws IOException {
+	public void writeSync(char c) throws IOException {
 		buffer[pos++] = c;
 		if (pos == buffer.length)
 			flushBuffer();
+	}
+	
+	@Override
+	public ISynchronizationPoint<IOException> writeAsync(char c) {
+		buffer[pos++] = c;
+		if (pos == buffer.length)
+			return flushBufferAsync();
+		return new SynchronizationPoint<>(true);
 	}
 	
 	@Override

@@ -3,8 +3,10 @@ package net.lecousin.framework.util;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -50,7 +52,14 @@ public class UnprotectedStringBuffer implements IString {
 		lastUsed = 0;
 		strings[0] = new UnprotectedString(s);
 	}
-	
+
+	/** Create a string with the given one. */
+	public UnprotectedStringBuffer(CharSequence s) {
+		strings = new UnprotectedString[1];
+		lastUsed = 0;
+		strings[0] = new UnprotectedString(s);
+	}
+
 	private UnprotectedString[] strings;
 	private int lastUsed;
 	
@@ -723,6 +732,26 @@ public class UnprotectedStringBuffer implements IString {
 		return new String(chars);
 	}
 	
+	@Override
+	public char[][] asCharacters() {
+		if (strings == null) return new char[][] {};
+		char[][] chars = new char[lastUsed + 1][];
+		for (int i = 0; i <= lastUsed; ++i) {
+			chars[i] = new char[strings[i].length()];
+			strings[i].fill(chars[i]);
+		}
+		return chars;
+	}
+	
+	@Override
+	public CharBuffer[] asCharBuffers() {
+		if (strings == null) return new CharBuffer[0];
+		CharBuffer[] chars = new CharBuffer[lastUsed + 1];
+		for (int i = 0; i <= lastUsed; ++i)
+			chars[i] = strings[i].asCharBuffer();
+		return chars;
+	}
+	
 	/** Create a readable CharacterStream from this string. */
 	public ICharacterStream.Readable.Buffered asCharacterStream() {
 		return new ICharacterStream.Readable.Buffered() {
@@ -731,8 +760,13 @@ public class UnprotectedStringBuffer implements IString {
 			private byte priority = Task.PRIORITY_NORMAL;
 			
 			@Override
-			public String getSourceDescription() {
+			public String getDescription() {
 				return "UnprotectedStringBuffer";
+			}
+			
+			@Override
+			public Charset getEncoding() {
+				return StandardCharsets.UTF_16;
 			}
 			
 			@Override

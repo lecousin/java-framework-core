@@ -308,6 +308,11 @@ public class UnprotectedString implements IString {
 		return CharBuffer.wrap(chars, start, end - start + 1);
 	}
 	
+	@Override
+	public CharBuffer[] asCharBuffers() {
+		return new CharBuffer[] { asCharBuffer() };
+	}
+	
 	/** Return the underlying character array. */
 	@SuppressFBWarnings("EI_EXPOSE_REP")
 	public char[] charArray() {

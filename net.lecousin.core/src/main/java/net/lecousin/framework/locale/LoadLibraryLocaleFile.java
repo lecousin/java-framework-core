@@ -16,7 +16,7 @@ public class LoadLibraryLocaleFile extends FullReadLines<Void> {
 	
 	/** Constructor. */
 	public LoadLibraryLocaleFile(BufferedReadableCharacterStream stream, ApplicationClassLoader classLoader) {
-		super("Initializing localized properties: " + stream.getSourceDescription(),
+		super("Initializing localized properties: " + stream.getDescription(),
 			stream, Task.PRIORITY_IMPORTANT, IO.OperationType.ASYNCHRONOUS);
 		this.classLoader = classLoader;
 	}

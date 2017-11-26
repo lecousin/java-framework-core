@@ -31,6 +31,10 @@ public class TypeDefinition {
 		return base;
 	}
 	
+	public List<TypeDefinition> getParameters() {
+		return parameters;
+	}
+	
 	@Override
 	public boolean equals(Object obj) {
 		if (!(obj instanceof TypeDefinition)) return false;

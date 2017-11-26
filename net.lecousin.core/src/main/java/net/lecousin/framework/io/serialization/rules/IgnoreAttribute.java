@@ -18,7 +18,7 @@ public class IgnoreAttribute implements SerializationRule {
 	private String name;
 	
 	@Override
-	public void apply(SerializationClass type) {
+	public void apply(SerializationClass type, Object containerInstance) {
 		if (!this.type.isAssignableFrom(type.getType().getBase()))
 			return;
 		if (name != null) {
@@ -32,4 +32,11 @@ public class IgnoreAttribute implements SerializationRule {
 					a.ignore(true);
 	}
 	
+	@Override
+	public boolean isEquivalent(SerializationRule rule) {
+		if (!(rule instanceof IgnoreAttribute)) return false;
+		IgnoreAttribute r = (IgnoreAttribute)rule;
+		return r.type.equals(type) && r.name.equals(name);
+	}
+
 }

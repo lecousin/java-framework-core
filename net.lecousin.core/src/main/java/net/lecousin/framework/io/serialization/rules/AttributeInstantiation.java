@@ -5,21 +5,20 @@ import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.util.Factory;
 
-/** Base class specifying a rule on how to instantiate an attribute. */
+/** Base class specifying a rule on how to instantiate an attribute by providing a factory which
+ * will be given the container instance as parameter to instantiate the attribute. */
 @SuppressWarnings("rawtypes")
-public class AbstractAttributeInstantiation implements SerializationRule {
+public class AttributeInstantiation implements SerializationRule {
 
 	/** Constructor. */
-	public AbstractAttributeInstantiation(Class<?> clazz, String name, String discriminator, Class<? extends Factory> factory) {
+	public AttributeInstantiation(Class<?> clazz, String name, Class<? extends Factory> factory) {
 		this.clazz = clazz;
 		this.name = name;
-		this.discriminator = discriminator;
 		this.factory = factory;
 	}
 	
 	private Class<?> clazz;
 	private String name;
-	private String discriminator;
 	private Class<? extends Factory> factory;
 	
 	@Override
@@ -29,13 +28,8 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 		Attribute a = type.getAttributeByOriginalName(name);
 		if (a == null || !clazz.equals(a.getDeclaringClass()))
 			return;
-		Attribute discr = type.getAttributeByOriginalName(discriminator);
-		if (discr == null || !discr.canGet()) {
-			LCCore.getApplication().getDefaultLogger().warn("Unable to get discriminator attribute " + discriminator);
-			return;
-		}
 		try {
-			type.replaceAttribute(a, new InstantiationAttribute(a, discr, factory.newInstance()));
+			type.replaceAttribute(a, new InstantiationAttribute(a, factory.newInstance()));
 		} catch (Throwable t) {
 			LCCore.getApplication().getDefaultLogger().error("Unable to replace attribute by an InstantiationAttribute", t);
 		}
@@ -43,25 +37,23 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 	
 	@Override
 	public boolean isEquivalent(SerializationRule rule) {
-		if (!(rule instanceof AbstractAttributeInstantiation)) return false;
-		AbstractAttributeInstantiation r = (AbstractAttributeInstantiation)rule;
-		return r.clazz.equals(clazz) && r.name.equals(name) && r.discriminator.equals(discriminator);
+		if (!(rule instanceof AttributeInstantiation)) return false;
+		AttributeInstantiation r = (AttributeInstantiation)rule;
+		return r.clazz.equals(clazz) && r.name.equals(name);
 	}
 	
 	private static class InstantiationAttribute extends Attribute {
-		public InstantiationAttribute(Attribute a, Attribute discriminator, Factory factory) {
+		public InstantiationAttribute(Attribute a, Factory factory) {
 			super(a);
-			this.discriminator = discriminator;
 			this.factory = factory;
 		}
 		
-		private Attribute discriminator;
 		private Factory factory;
 		
 		@SuppressWarnings("unchecked")
 		@Override
-		public Object instantiate(Object containerInstance) throws Exception {
-			return factory.create(discriminator.getValue(containerInstance));
+		public Object instantiate(Object containerInstance) {
+			return factory.create(containerInstance);
 		}
 	}
 	

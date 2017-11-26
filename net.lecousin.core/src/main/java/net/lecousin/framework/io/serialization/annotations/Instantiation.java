@@ -36,7 +36,7 @@ public @interface Instantiation {
 				);
 			} catch (Throwable t) {
 				LCCore.get().getApplication().getDefaultLogger()
-					.error("Error creating AbstractAttributeInstantiation from annotation", t);
+					.error("Error creating AbstractAttributeInstantiation from annotation Instantiation", t);
 				return null;
 			}
 		}

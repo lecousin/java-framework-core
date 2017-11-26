@@ -16,13 +16,22 @@ public class CustomTypeSerializer implements SerializationRule {
 	private CustomSerializer serializer;
 	
 	@Override
-	public void apply(SerializationClass type) {
+	public void apply(SerializationClass type, Object containerInstance) {
 		for (ListIterator<Attribute> it = type.getAttributes().listIterator(); it.hasNext(); ) {
 			Attribute a = it.next();
 			if (!a.getType().equals(serializer.sourceType()))
 				continue;
+			if ((a instanceof CustomAttribute) && ((CustomAttribute)a).getCustomSerializer().getClass().equals(serializer.getClass()))
+				continue;
 			it.set(new CustomAttribute(a, serializer));
 		}
+	}
+	
+	@Override
+	public boolean isEquivalent(SerializationRule rule) {
+		if (!(rule instanceof CustomTypeSerializer)) return false;
+		CustomTypeSerializer r = (CustomTypeSerializer)rule;
+		return r.serializer.getClass().equals(serializer.getClass());
 	}
 	
 }

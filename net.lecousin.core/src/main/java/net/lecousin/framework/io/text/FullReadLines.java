@@ -23,7 +23,7 @@ public abstract class FullReadLines<T> extends Task.Cpu<T,IOException> {
 	private IO.OperationType closeStreamAtEnd;
 	
 	public String getSourceDescription() {
-		return stream.getSourceDescription();
+		return stream.getDescription();
 	}
 	
 	@Override

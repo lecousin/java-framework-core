@@ -2,6 +2,7 @@ package net.lecousin.framework.io.text;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.nio.charset.Charset;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -12,11 +13,11 @@ import net.lecousin.framework.exception.NoException;
 public class BufferedReadableCharacterStreamLocation implements ICharacterStream.Readable.Buffered {
 
 	/** Constructor. */
-	public BufferedReadableCharacterStreamLocation(BufferedReadableCharacterStream stream) {
+	public BufferedReadableCharacterStreamLocation(ICharacterStream.Readable.Buffered stream) {
 		this.stream = stream;
 	}
 	
-	private BufferedReadableCharacterStream stream;
+	private ICharacterStream.Readable.Buffered stream;
 	private int line = 1;
 	private int pos = 0;
 	private int lastLinePos = 0;
@@ -26,7 +27,12 @@ public class BufferedReadableCharacterStreamLocation implements ICharacterStream
 	public int getPositionInLine() { return pos; }
 	
 	@Override
-	public String getSourceDescription() { return stream.getSourceDescription(); }
+	public String getDescription() { return stream.getDescription(); }
+	
+	@Override
+	public Charset getEncoding() {
+		return stream.getEncoding();
+	}
 	
 	@Override
 	public byte getPriority() {
@@ -117,7 +123,7 @@ public class BufferedReadableCharacterStreamLocation implements ICharacterStream
 	}
 	
 	@Override
-	public void close() {
+	public void close() throws Exception {
 		stream.close();
 	}
 	

@@ -6,6 +6,9 @@ import net.lecousin.framework.io.serialization.SerializationClass;
 public interface SerializationRule {
 
 	/** Apply the rule to the given type. */
-	void apply(SerializationClass type);
+	void apply(SerializationClass type, Object containerInstance);
+	
+	/** Check if this rule is equivalent to the given rule. */
+	boolean isEquivalent(SerializationRule rule);
 	
 }

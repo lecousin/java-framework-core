@@ -5,9 +5,16 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+
+import net.lecousin.framework.io.serialization.rules.SerializationRule;
+import net.lecousin.framework.io.serialization.rules.TypeFactory;
 
 public class SerializationClass {
 	
@@ -27,6 +34,13 @@ public class SerializationClass {
 		return attributes;
 	}
 	
+	public Attribute getAttributeByName(String name) {
+		for (Attribute a : attributes)
+			if (name.equals(a.getName()))
+				return a;
+		return null;
+	}
+	
 	public Attribute getAttributeByOriginalName(String name) {
 		for (Attribute a : attributes)
 			if (name.equals(a.getOriginalName()))
@@ -40,6 +54,11 @@ public class SerializationClass {
 				it.set(newAttribute);
 				break;
 			}
+	}
+	
+	public void apply(List<SerializationRule> rules, Object containerInstance) {
+		for (SerializationRule rule : rules)
+			rule.apply(this, containerInstance);
 	}
 	
 	public static class Attribute {
@@ -166,7 +185,7 @@ public class SerializationClass {
 		
 		/** Instantiate a new object of the type of this attribute. */
 		public Object instantiate(@SuppressWarnings("unused") Object containerInstance) throws Exception {
-			return type.getBase().newInstance();
+			return instantiate(type.getBase());
 		}
 		
 		/** Retrieve a specific annotation. */
@@ -187,6 +206,18 @@ public class SerializationClass {
 					return a;
 			}
 			return null;
+		}
+		
+		/** Retrieve all annotations. */
+		public List<Annotation> getAnnotations(boolean onGet) {
+			LinkedList<Annotation> list = new LinkedList<>();
+			if (field != null)
+				Collections.addAll(list, field.getAnnotations());
+			if (onGet && getter != null)
+				Collections.addAll(list, getter.getAnnotations());
+			if (!onGet && setter != null)
+				Collections.addAll(list, setter.getAnnotations());
+			return list;
 		}
 	}
 	
@@ -251,6 +282,29 @@ public class SerializationClass {
 			if (!a.canGet() && !a.canSet())
 				it.remove();
 		}
+	}
+	
+	@SuppressWarnings("rawtypes")
+	public static Object instantiate(Class<?> type) throws Exception {
+		if (type.isAssignableFrom(ArrayList.class))
+			return new ArrayList();
+		if (type.isAssignableFrom(LinkedList.class))
+			return new LinkedList();
+		if (type.isAssignableFrom(HashSet.class))
+			return new HashSet();
+		if (type.isAssignableFrom(HashMap.class))
+			return new HashMap();
+		return type.newInstance();
+	}
+	
+	public static Object instantiate(Class<?> type, List<SerializationRule> rules) throws Exception {
+		for (SerializationRule rule : rules)
+			if (rule instanceof TypeFactory) {
+				TypeFactory<?> factory = (TypeFactory<?>)rule;
+				if (type.isAssignableFrom(factory.getType()))
+					return factory.getFactory().provide();
+			}
+		return instantiate(type);
 	}
 	
 }

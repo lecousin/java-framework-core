@@ -25,7 +25,6 @@ import net.lecousin.framework.io.encoding.HexadecimalNumber;
 import net.lecousin.framework.io.encoding.INumberEncoding;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.locale.LocalizableString;
-import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
@@ -571,28 +570,30 @@ public class XMLStreamReaderAsync {
 	
 	/* Public methods */
 	
-	public static interface EventListener {
-		void onEvent(Exception error);
-	}
-	
 	/** Start reading the XML to provide the first event.
 	 * If the first tag is a processing instruction XML it reads it and goes to the next event.
 	 */
-	public void start(EventListener listener) {
+	public ISynchronizationPoint<Exception> start() {
 		try {
 			initCharacterProvider();
 		} catch (EOFException e) {
-			listener.onEvent(new XMLException(null, "Invalid XML"));
-			return;
+			return new SynchronizationPoint<>(new XMLException(null, "Invalid XML"));
 		} catch (Exception e) {
-			listener.onEvent(e);
-			return;
+			return new SynchronizationPoint<>(e);
 		}
-		next((error) -> {
-			if (error != null) listener.onEvent(error);
-			else if (checkFirstElement()) next(listener);
-			else listener.onEvent(null);
-		});
+		ISynchronizationPoint<Exception> next = next();
+		if (next.isUnblocked()) {
+			if (next.hasError()) return next;
+			if (checkFirstElement()) return next();
+			return next;
+		}
+		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
+		next.listenAsynch(new ParsingTask(() -> {
+			if (next.hasError()) result.error(next.getError());
+			else if (!checkFirstElement()) result.unblock();
+			else next().listenInline(result);
+		}), result);
+		return result;
 	}
 	
 	private boolean checkFirstElement() {
@@ -616,17 +617,61 @@ public class XMLStreamReaderAsync {
 		return false;
 	}
 	
-	/** Move forward to the next event. This method starts a new Task. */
-	public void next(EventListener listener) {
+	/** Move forward to the next event.
+	 * If the next event can be read synchronously, the result is unblocked, else the caller has to wait for it.
+	 */
+	public SynchronizationPoint<Exception> next() {
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		reset();
 		state = State.START;
-		new Task.Cpu<Void, NoException>("Parse next XML event", io.getPriority()) {
-			@Override
-			public Void run() {
-				nextChar(listener);
+		nextChar(sp);
+		return sp;
+	}
+	
+	private class ParsingTask extends Task.Cpu<Void, NoException> {
+		public ParsingTask(Runnable r) {
+			super("Parse XML", io.getPriority());
+			this.r = r;
+		}
+		
+		private Runnable r;
+		
+		@Override
+		public Void run() {
+			r.run();
+			return null;
+		}
+	}
+	
+	private class Next extends ParsingTask {
+		public Next(SynchronizationPoint<Exception> sp) {
+			super(null);
+			this.sp = sp;
+		}
+		
+		protected SynchronizationPoint<Exception> sp;
+		
+		@Override
+		public Void run() {
+			ISynchronizationPoint<Exception> next = next();
+			if (next.isUnblocked()) {
+				if (next.hasError()) sp.error(next.getError());
+				else onNext();
 				return null;
 			}
-		}.start();
+			next.listenAsynch(new Task.Cpu<Void, NoException>("Parse XML", getPriority()) {
+				@Override
+				public Void run() {
+					onNext();
+					return null;
+				}
+			}, sp);
+			return null;
+		}
+		
+		protected void onNext() {
+			sp.unblock();
+		}
 	}
 	
 	/* Public utility methods */
@@ -634,216 +679,309 @@ public class XMLStreamReaderAsync {
 	// TODO optimization: when searching for something, do not load every information in between
 	
 	/** Shortcut to move forward to the first START_ELEMENT event, skipping the header or comments. */
-	public void startRootElement(EventListener listener) {
-		start(new EventListener() {
+	public ISynchronizationPoint<Exception> startRootElement() {
+		ISynchronizationPoint<Exception> start = start();
+		if (start.isUnblocked()) {
+			if (start.hasError()) return start;
+			if (Type.START_ELEMENT.equals(type)) return start;
+			return nextStartElement();
+		}
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		start.listenAsynch(new Next(sp) {
 			@Override
-			public void onEvent(Exception error) {
-				if (error != null) listener.onEvent(error);
-				else if (Type.START_ELEMENT.equals(type)) listener.onEvent(null);
-				else next(this);
+			protected void onNext() {
+				if (Type.START_ELEMENT.equals(type)) sp.unblock();
+				nextStartElement().listenInline(sp);
 			}
-		});
-	}
-	
-	public static interface ElementListener {
-		/** name is null if no element was found. */
-		void onElement(UnprotectedStringBuffer name, Exception error);
+		}, sp);
+		return sp;
 	}
 	
 	/** Shortcut to move forward to the next START_ELEMENT. */
-	public void nextStartElement(ElementListener listener) {
-		next(new EventListener() {
-			@Override
-			public void onEvent(Exception error) {
-				if (error != null) listener.onElement(null, error);
-				if (Type.START_ELEMENT.equals(type)) listener.onElement(text, null);
-				else next(this);
-			}
-		});
-	}
-	
-	/** Go to the next inner element. The listener is called with a null name if the parent element has been closed. */
-	public void nextInnerElement(ElementListener listener) {
-		if (Type.START_ELEMENT.equals(type) && isClosed) {
-			listener.onElement(null, null);
-			return;
+	public ISynchronizationPoint<Exception> nextStartElement() {
+		ISynchronizationPoint<Exception> next = next();
+		if (next.isUnblocked()) {
+			if (next.hasError()) return next;
+			if (Type.START_ELEMENT.equals(type)) return next;
+			return nextStartElement();
 		}
-		next(new EventListener() {
-			@Override
-			public void onEvent(Exception error) {
-				if (error != null) {
-					listener.onElement(null, error);
-					return;
-				}
-				if (Type.END_ELEMENT.equals(type)) {
-					listener.onElement(null, error);
-					return;
-				}
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		next.listenInline(
+			() -> {
 				if (Type.START_ELEMENT.equals(type)) {
-					listener.onElement(text, null);
+					sp.unblock();
 					return;
 				}
-				next(this);
-			}
-		});
+				new Next(sp) {
+					@Override
+					protected void onNext() {
+						if (Type.START_ELEMENT.equals(type)) sp.unblock();
+						nextStartElement().listenInline(sp);
+					}
+				}.start();
+			},
+			sp
+		);
+		return sp;
 	}
 	
-	/** Go to the next inner element having the given name. The listener is called with a null name if the parent element has been closed. */
-	public void nextInnerElement(String childName, ElementListener listener) {
-		nextInnerElement(new ElementListener() {
-			@Override
-			public void onElement(UnprotectedStringBuffer name, Exception error) {
-				if (error != null || name == null || name.equals(childName)) {
-					listener.onElement(name, error);
-					return;
-				}
-				nextInnerElement(this);
+	/** Go to the next inner element. The result is false if the parent element has been closed. */
+	public AsyncWork<Boolean, Exception> nextInnerElement() {
+		if (Type.START_ELEMENT.equals(type) && isClosed)
+			return new AsyncWork<>(Boolean.FALSE, null);
+		ISynchronizationPoint<Exception> next = next();
+		do {
+			if (next.isUnblocked()) {
+				if (next.hasError()) return new AsyncWork<>(null, next.getError());
+				if (Type.END_ELEMENT.equals(type)) return new AsyncWork<>(Boolean.FALSE, null);
+				if (Type.START_ELEMENT.equals(type)) return new AsyncWork<>(Boolean.TRUE, null);
+				next = next();
+				continue;
 			}
-		});
+			break;
+		} while (true);
+		AsyncWork<Boolean, Exception> result = new AsyncWork<>();
+		ISynchronizationPoint<Exception> n = next;
+		next.listenInline(
+			() -> {
+				if (n.hasError()) result.error(n.getError());
+				else if (Type.END_ELEMENT.equals(type)) result.unblockSuccess(Boolean.FALSE);
+				else if (Type.START_ELEMENT.equals(type)) result.unblockSuccess(Boolean.TRUE);
+				else new ParsingTask(() -> {
+					nextInnerElement().listenInline(result);
+				}).start();
+			}, result
+		);
+		return result;
+	}
+	
+	/** Go to the next inner element having the given name. The result is false if the parent element has been closed. */
+	public AsyncWork<Boolean, Exception> nextInnerElement(String childName) {
+		AsyncWork<Boolean, Exception> next = nextInnerElement();
+		do {
+			if (next.isUnblocked()) {
+				if (next.hasError()) return next;
+				if (!next.getResult().booleanValue()) return next;
+				if (text.equals(childName)) return next;
+				next = nextInnerElement();
+				continue;
+			}
+			break;
+		} while (true);
+		AsyncWork<Boolean, Exception> result = new AsyncWork<>();
+		AsyncWork<Boolean, Exception> n = next;
+		next.listenInline(
+			() -> {
+				if (n.hasError()) result.error(n.getError());
+				else if (!n.getResult().booleanValue()) result.unblockSuccess(Boolean.FALSE);
+				else if (text.equals(childName)) result.unblockSuccess(Boolean.TRUE);
+				else new ParsingTask(() -> {
+					nextInnerElement(childName).listenInline(result);
+				}).start();
+			}, result
+		);
+		return result;
 	}
 	
 	/** Read inner text and close element. */
-	public void readInnerText(ElementListener listener) {
-		if (!Type.START_ELEMENT.equals(type)) {
-			listener.onElement(null, new IOException("Invalid call of readInnerText: it must be called on a start element"));
-			return;
-		}
-		if (isClosed) {
-			listener.onElement(new UnprotectedStringBuffer(), null);
-			return;
-		}
+	public AsyncWork<UnprotectedStringBuffer, Exception> readInnerText() {
+		if (!Type.START_ELEMENT.equals(type))
+			return new AsyncWork<>(null, new Exception("Invalid call of readInnerText: it must be called on a start element"));
+		if (isClosed)
+			return new AsyncWork<>(new UnprotectedStringBuffer(), null);
 		UnprotectedStringBuffer innerText = new UnprotectedStringBuffer();
-		next(new EventListener() {
-			@Override
-			public void onEvent(Exception error) {
-				if (error != null) {
-					listener.onElement(null, error);
+		AsyncWork<UnprotectedStringBuffer, Exception> result = new AsyncWork<>();
+		readInnerText(innerText, result);
+		return result;
+	}
+	
+	private void readInnerText(UnprotectedStringBuffer innerText, AsyncWork<UnprotectedStringBuffer, Exception> result) {
+		ISynchronizationPoint<Exception> next = next();
+		do {
+			if (next.isUnblocked()) {
+				if (next.hasError()) {
+					result.error(next.getError());
 					return;
 				}
 				if (Type.COMMENT.equals(type)) {
-					next(this);
-					return;
+					next = next();
+					continue;
 				}
 				if (Type.TEXT.equals(type)) {
 					innerText.append(text);
-					next(this);
-					return;
+					next = next();
+					continue;
 				}
 				if (Type.START_ELEMENT.equals(type)) {
-					if (isClosed)
-						next(this);
-					else {
-						EventListener that = this;
-						closeElement((err) -> { if (err != null) listener.onElement(null, err); else next(that); });
+					if (isClosed) {
+						next = next();
+						continue;
 					}
+					closeElement().listenAsynch(new ParsingTask(() -> {
+						readInnerText(innerText, result);
+					}), result);
 					return;
 				}
 				if (Type.END_ELEMENT.equals(type)) {
-					listener.onElement(innerText, null);
+					result.unblockSuccess(innerText);
 					return;
 				}
-				next(this);
+				next = next();
+				continue;
 			}
-		});
+			break;
+		} while (true);
+		next.listenInline(() -> {
+			if (Type.START_ELEMENT.equals(type)) {
+				if (isClosed) {
+					new ParsingTask(() -> { readInnerText(innerText, result); }).start();
+					return;
+				}
+				closeElement().listenAsynch(new ParsingTask(() -> {
+					readInnerText(innerText, result);
+				}), result);
+				return;
+			}
+			if (Type.COMMENT.equals(type)) {
+				new ParsingTask(() -> { readInnerText(innerText, result); }).start();
+				return;
+			}
+			if (Type.TEXT.equals(type)) {
+				innerText.append(text);
+				new ParsingTask(() -> { readInnerText(innerText, result); }).start();
+				return;
+			}
+			if (Type.END_ELEMENT.equals(type)) {
+				result.unblockSuccess(innerText);
+				return;
+			}
+			new ParsingTask(() -> { readInnerText(innerText, result); }).start();
+		}, result);
 	}
 	
 	/** Go the the END_ELEMENT event corresponding to the current START_ELEMENT (must be called with a current event to START_ELEMENT). */
-	public void closeElement(EventListener listener) {
-		if (!Type.START_ELEMENT.equals(type)) {
-			listener.onEvent(new IOException("Invalid call of closeElement: it must be called on a start element"));
-			return;
-		}
-		if (isClosed) {
-			listener.onEvent(null);
-			return;
-		}
-		nextInnerElement(new ElementListener() {
-			@Override
-			public void onElement(UnprotectedStringBuffer name, Exception error) {
-				if (error != null) {
-					listener.onEvent(error);
-					return;
-				}
-				if (name != null) {
-					nextInnerElement(this);
-					return;
-				}
-				listener.onEvent(null);
-			}
-		});
+	public ISynchronizationPoint<Exception> closeElement() {
+		if (!Type.START_ELEMENT.equals(type))
+			return new SynchronizationPoint<>(new Exception("Invalid call of closeElement: it must be called on a start element"));
+		if (isClosed)
+			return new SynchronizationPoint<>(true);
+		ISynchronizationPoint<Exception> next = next();
+		do {
+			if (!next.isUnblocked()) break;
+			if (next.hasError()) return next;
+			if (Type.END_ELEMENT.equals(type)) return next;
+			next = next();
+		} while (true);
+		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
+		ISynchronizationPoint<Exception> n = next;
+		next.listenInline(() -> {
+			if (n.hasError()) result.error(n.getError());
+			else if (Type.END_ELEMENT.equals(type)) result.unblock();
+			else new ParsingTask(() -> { closeElement().listenInline(result); }).start();
+		}, result);
+		return result;
 	}
 
 	/** Move forward until an element with the given name is found (whatever its depth).
-	 * @return true if found, false if the end of file is reached.
 	 */
-	public void searchElement(String elementName, ElementListener listener) {
-		next(new EventListener() {
-			@Override
-			public void onEvent(Exception error) {
-				if (error != null) {
-					listener.onElement(null, error);
-					return;
-				}
-				if (Type.START_ELEMENT.equals(type)) {
-					if (text.equals(elementName)) {
-						listener.onElement(text, null);
-						return;
-					}
-				}
-				next(this);
-			}
-		});
+	public ISynchronizationPoint<Exception> searchElement(String elementName) {
+		ISynchronizationPoint<Exception> next = next();
+		do {
+			if (!next.isUnblocked()) break;
+			if (next.hasError()) return next;
+			if (Type.START_ELEMENT.equals(type) && text.equals(elementName)) return next;
+			next = next();
+		} while (true);
+		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
+		ISynchronizationPoint<Exception> n = next;
+		next.listenInline(() -> {
+			if (n.hasError()) result.error(n.getError());
+			else if (Type.START_ELEMENT.equals(type) && text.equals(elementName)) result.unblock();
+			else new ParsingTask(() -> { searchElement(elementName).listenInline(result); }).start();
+		}, result);
+		return result;
 	}
 	
 	/** Go successively into the given elements. */
-	public void goInto(ElementListener listener, String... innerElements) {
-		MutableInteger i = new MutableInteger(0);
-		nextInnerElement(innerElements[0], new ElementListener() {
-			@Override
-			public void onElement(UnprotectedStringBuffer name, Exception error) {
-				if (error != null || name == null) {
-					listener.onElement(name, error);
-					return;
-				}
-				if (i.inc() == innerElements.length) {
-					listener.onElement(name, error);
-					return;
-				}
-				nextInnerElement(innerElements[i.get()], this);
-			}
-		});
+	public ISynchronizationPoint<Exception> goInto(String... innerElements) {
+		return goInto(0, innerElements);
+	}
+	private ISynchronizationPoint<Exception> goInto(int i, String... innerElements) {
+		ISynchronizationPoint<Exception> next = nextInnerElement(innerElements[0]);
+		do {
+			if (!next.isUnblocked()) break;
+			if (next.hasError()) return next;
+			i++;
+			if (i == innerElements.length) return next;
+			next = nextInnerElement(innerElements[i]);
+		} while (true);
+		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
+		ISynchronizationPoint<Exception> n = next;
+		int ii = i;
+		next.listenInline(() -> {
+			if (n.hasError()) result.error(n.getError());
+			else if (ii == innerElements.length - 1) result.unblock();
+			else new ParsingTask(() -> { goInto(ii + 1, innerElements).listenInline(result); }).start();
+		}, result);
+		return result;
 	}
 	
 	/** Read all inner elements with their text, and return a mapping with the element's name as key and inner text as value. */
 	public AsyncWork<Map<String,String>, Exception> readInnerElementsText() {
 		AsyncWork<Map<String,String>, Exception> result = new AsyncWork<>();
 		Map<String, String> texts = new HashMap<>();
-		nextInnerElement(new ElementListener() {
-			@Override
-			public void onElement(UnprotectedStringBuffer name, Exception error) {
-				if (error != null) {
-					result.error(error);
-					return;
-				}
-				if (name == null) {
-					result.unblockSuccess(texts);
-					return;
-				}
-				ElementListener that = this;
-				readInnerText(new ElementListener() {
-					@Override
-					public void onElement(UnprotectedStringBuffer text, Exception error) {
-						if (error != null) {
-							result.error(error);
-							return;
-						}
-						texts.put(name.asString(), text.asString());
-						nextInnerElement(that);
-					}
-				});
-			}
-		});
+		readInnerElementsText(texts, result);
 		return result;
+	}
+	
+	private void readInnerElementsText(Map<String, String> texts, AsyncWork<Map<String,String>, Exception> result) {
+		AsyncWork<Boolean, Exception> next = nextInnerElement();
+		do {
+			if (!next.isUnblocked()) break;
+			if (next.hasError()) {
+				result.error(next.getError());
+				return;
+			}
+			if (!next.getResult().booleanValue()) {
+				result.unblockSuccess(texts);
+				return;
+			}
+			String name = text.asString();
+			AsyncWork<UnprotectedStringBuffer, Exception> read = readInnerText();
+			if (read.isUnblocked()) {
+				if (read.hasError()) {
+					result.error(read.getError());
+					return;
+				}
+				texts.put(name, read.getResult().asString());
+				next = nextInnerElement();
+				continue;
+			}
+			read.listenInline((value) -> {
+				texts.put(name,  value.asString());
+				new ParsingTask(() -> { readInnerElementsText(texts, result); }).start();
+			}, result);
+			return;
+		} while (true);
+		next.listenInline(() -> {
+			String name = text.asString();
+			new ParsingTask(() -> {
+				AsyncWork<UnprotectedStringBuffer, Exception> read = readInnerText();
+				if (read.isUnblocked()) {
+					if (read.hasError()) {
+						result.error(read.getError());
+						return;
+					}
+					texts.put(name, read.getResult().asString());
+					readInnerElementsText(texts, result);
+					return;
+				}
+				read.listenInline((value) -> {
+					texts.put(name,  value.asString());
+					new ParsingTask(() -> { readInnerElementsText(texts, result); }).start();
+				}, result);
+			}).start();
+		}, result);
 	}
 	
 	/* Private methods */
@@ -882,24 +1020,16 @@ public class XMLStreamReaderAsync {
 	private State state;
 	private int statePos = 0;
 
-	private void nextChar(EventListener listener) {
+	private void nextChar(SynchronizationPoint<Exception> sp) {
 		do {
 			int c;
 			try { c = cp.nextChar(); }
 			catch (IOException e) {
-				listener.onEvent(e);
+				sp.error(e);
 				return;
 			}
 			if (c == -2) {
-				cp.onCharAvailable().listenAsynch(
-					new Task.Cpu<Void, NoException>("Parse next XML event", io.getPriority()) {
-						@Override
-						public Void run() {
-							nextChar(listener);
-							return null;
-						}
-					}, true
-				);
+				cp.onCharAvailable().listenAsynch(new ParsingTask(() -> { nextChar(sp); }), true);
 				return;
 			}
 			switch (state) {
@@ -907,7 +1037,7 @@ public class XMLStreamReaderAsync {
 				// start a new event
 				if (c == -1) {
 					// end of stream
-					listener.onEvent(new EOFException());
+					sp.error(new EOFException());
 					return;
 				}
 				if (c == '<') {
@@ -919,155 +1049,155 @@ public class XMLStreamReaderAsync {
 				state = State.CHARS;
 				type = Type.TEXT;
 				text = new UnprotectedStringBuffer();
-				if (!readChars(c, listener))
+				if (!readChars(c, sp))
 					return;
 				break;
 				
 			case TAG:
-				if (!readTag(c, listener))
+				if (!readTag(c, sp))
 					return;
 				break;
 			
 			case TAG_EXCLAMATION:
-				if (!readTagExclamation(c, listener))
+				if (!readTagExclamation(c, sp))
 					return;
 				break;
 				
 			case PROCESSING_INSTRUCTION:
-				if (!readProcessingInstruction(c, listener))
+				if (!readProcessingInstruction(c, sp))
 					return;
 				break;
 				
 			case PROCESSING_INSTRUCTION_CLOSED:
-				if (!readProcessingInstructionClosed(c, listener))
+				if (!readProcessingInstructionClosed(c, sp))
 					return;
 				break;
 				
 			case END_ELEMENT_NAME:
-				if (!readEndElementName(c, listener))
+				if (!readEndElementName(c, sp))
 					return;
 				break;
 				
 			case START_ELEMENT_NAME:
-				if (!readStartElementName(c, listener))
+				if (!readStartElementName(c, sp))
 					return;
 				break;
 				
 			case START_ELEMENT_SPACE:
-				if (!readStartElementSpace(c, listener))
+				if (!readStartElementSpace(c, sp))
 					return;
 				break;
 				
 			case START_ELEMENT_CLOSED:
-				if (!readStartElementClosed(c, listener))
+				if (!readStartElementClosed(c, sp))
 					return;
 				break;
 				
 			case ATTRIBUTE_NAME:
-				if (!readAttributeName(c, listener))
+				if (!readAttributeName(c, sp))
 					return;
 				break;
 				
 			case ATTRIBUTE_NAME_SPACE:
-				if (!readAttributeNameSpace(c, listener))
+				if (!readAttributeNameSpace(c, sp))
 					return;
 				break;
 				
 			case ATTRIBUTE_VALUE_SPACE:
-				if (!readAttributeValueSpace(c, listener))
+				if (!readAttributeValueSpace(c, sp))
 					return;
 				break;
 				
 			case ATTRIBUTE_VALUE:
-				if (!readAttributeValue(c, listener))
+				if (!readAttributeValue(c, sp))
 					return;
 				break;
 				
 			case COMMENT:
-				if (!readComment(c, listener))
+				if (!readComment(c, sp))
 					return;
 				break;
 				
 			case CDATA:
-				if (!readCData(c, listener))
+				if (!readCData(c, sp))
 					return;
 				break;
 				
 			case DOCTYPE:
-				if (!readDocType(c, listener))
+				if (!readDocType(c, sp))
 					return;
 				break;
 				
 			case DOCTYPE_NAME:
-				if (!readDocTypeName(c, listener))
+				if (!readDocTypeName(c, sp))
 					return;
 				break;
 
 			case DOCTYPE_SPACE:
-				if (!readDocTypeSpace(c, listener))
+				if (!readDocTypeSpace(c, sp))
 					return;
 				break;
 
 			case DOCTYPE_PUBLIC_NAME:
-				if (!readDocTypePublicName(c, listener))
+				if (!readDocTypePublicName(c, sp))
 					return;
 				break;
 
 			case DOCTYPE_PUBLIC_SPACE:
-				if (!readDocTypePublicSpace(c, listener))
+				if (!readDocTypePublicSpace(c, sp))
 					return;
 				break;
 
 			case DOCTYPE_PUBLIC_ID:
-				if (!readDocTypePublicId(c, listener))
+				if (!readDocTypePublicId(c, sp))
 					return;
 				break;
 
 			case DOCTYPE_SYSTEM_NAME:
-				if (!readDocTypeSystemName(c, listener))
+				if (!readDocTypeSystemName(c, sp))
 					return;
 				break;
 
 			case DOCTYPE_SYSTEM_SPACE:
-				if (!readDocTypeSystemSpace(c, listener))
+				if (!readDocTypeSystemSpace(c, sp))
 					return;
 				break;
 
 			case DOCTYPE_SYSTEM_VALUE:
-				if (!readDocTypeSystemValue(c, listener))
+				if (!readDocTypeSystemValue(c, sp))
 					return;
 				break;
 
 			case DOCTYPE_INTERNAL_SUBSET:
-				if (!readInternalSubset(c, listener))
+				if (!readInternalSubset(c, sp))
 					return;
 				break;
 
 			case DOCTYPE_INTERNAL_SUBSET_PEREFERENCE:
-				if (!readInternalSubsetPEReference(c, listener))
+				if (!readInternalSubsetPEReference(c, sp))
 					return;
 				break;
 
 			case DOCTYPE_INTERNAL_SUBSET_TAG:
-				if (!readInternalSubsetTag(c, listener))
+				if (!readInternalSubsetTag(c, sp))
 					return;
 				break;
 				
 			case CHARS:
-				if (!readChars(c, listener))
+				if (!readChars(c, sp))
 					return;
 				break;
 
 			default:
-				listener.onEvent(new Exception("Unexpected state " + state));
+				sp.error(new Exception("Unexpected state " + state));
 				return;
 			}
 		} while (true);
 	}
 	
-	private boolean readTag(int c, EventListener listener) {
+	private boolean readTag(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1095,13 +1225,13 @@ public class XMLStreamReaderAsync {
 			text.append((char)c);
 			return true;
 		}
-		listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 		return false;
 	}
 	
-	private boolean readTagExclamation(int c, EventListener listener) {
+	private boolean readTagExclamation(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1122,7 +1252,7 @@ public class XMLStreamReaderAsync {
 				text.append((char)c);
 				return true;
 			}
-			listener.onEvent(new XMLException(cp.getPosition(), "Invalid XML"));
+			sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
 			return false;
 		}
 		char c1 = text.charAt(0);
@@ -1135,7 +1265,7 @@ public class XMLStreamReaderAsync {
 				text = new UnprotectedStringBuffer();
 				return true;
 			}
-			listener.onEvent(new XMLException(cp.getPosition(), "Invalid XML"));
+			sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
 			return false;
 		}
 		// CDATA
@@ -1144,11 +1274,11 @@ public class XMLStreamReaderAsync {
 			if (text.length() < 7) {
 				if (text.isStartOf("[CDATA["))
 					return true;
-				listener.onEvent(new XMLException(cp.getPosition(), "Invalid XML"));
+				sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
 				return false;
 			}
 			if (!text.equals("[CDATA[")) {
-				listener.onEvent(new XMLException(cp.getPosition(), "Invalid XML"));
+				sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
 				return false;
 			}
 			state = State.CDATA;
@@ -1161,11 +1291,11 @@ public class XMLStreamReaderAsync {
 			text.append((char)c);
 			if (text.isStartOf("DOCTYPE"))
 				return true;
-			listener.onEvent(new XMLException(cp.getPosition(), "Invalid XML"));
+			sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
 			return false;
 		}
 		if (!isSpaceChar((char)c)) {
-			listener.onEvent(new XMLException(cp.getPosition(), "Invalid XML"));
+			sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
 			return false;
 		}
 		state = State.DOCTYPE;
@@ -1174,15 +1304,15 @@ public class XMLStreamReaderAsync {
 		return true;
 	}
 	
-	private boolean readDocType(int c, EventListener listener) {
+	private boolean readDocType(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (isSpaceChar((char)c)) return true;
 		if (!isNameStartChar((char)c)) {
-			listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		text.append((char)c);
@@ -1190,9 +1320,9 @@ public class XMLStreamReaderAsync {
 		return true;
 	}
 	
-	private boolean readDocTypeName(int c, EventListener listener) {
+	private boolean readDocTypeName(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1209,7 +1339,7 @@ public class XMLStreamReaderAsync {
 			return true;
 		}
 		if (c == '>') {
-			listener.onEvent(null);
+			sp.unblock();
 			return false;
 		}
 		if (c == 'P') {
@@ -1222,13 +1352,13 @@ public class XMLStreamReaderAsync {
 			statePos = 1;
 			return true;
 		}
-		listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 		return false;
 	}
 	
-	private boolean readDocTypeSpace(int c, EventListener listener) {
+	private boolean readDocTypeSpace(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1239,7 +1369,7 @@ public class XMLStreamReaderAsync {
 			return true;
 		}
 		if (c == '>') {
-			listener.onEvent(null);
+			sp.unblock();
 			return false;
 		}
 		if (c == 'P') {
@@ -1252,46 +1382,46 @@ public class XMLStreamReaderAsync {
 			statePos = 1;
 			return true;
 		}
-		listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 		return false;
 	}
 	
-	private boolean readDocTypePublicName(int c, EventListener listener) {
+	private boolean readDocTypePublicName(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (statePos < 6) {
 			if (c != "PUBLIC".charAt(statePos)) {
-				listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+				sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 				return false;
 			}
 			statePos++;
 			return true;
 		}
 		if (publicId.length() > 0) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Invalid XML")));
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Invalid XML")));
 			return false;
 		}			
 		if (!isSpaceChar((char)c)) {
-			listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_PUBLIC_SPACE;
 		return true;
 	}
 	
-	private boolean readDocTypePublicSpace(int c, EventListener listener) {
+	private boolean readDocTypePublicSpace(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (isSpaceChar((char)c))
 			return true;
 		if (c != '"' && c != '\'') {
-			listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_PUBLIC_ID;
@@ -1299,9 +1429,9 @@ public class XMLStreamReaderAsync {
 		return true;
 	}
 	
-	private boolean readDocTypePublicId(int c, EventListener listener) {
+	private boolean readDocTypePublicId(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1320,46 +1450,46 @@ public class XMLStreamReaderAsync {
 			publicId.append((char)c);
 			return true;
 		}
-		listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 		return false;
 	}
 	
-	private boolean readDocTypeSystemName(int c, EventListener listener) {
+	private boolean readDocTypeSystemName(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (statePos < 6) {
 			if (c != "SYSTEM".charAt(statePos)) {
-				listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+				sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 				return false;
 			}
 			statePos++;
 			return true;
 		}
 		if (system.length() > 0) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Invalid XML")));
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Invalid XML")));
 			return false;
 		}			
 		if (!isSpaceChar((char)c)) {
-			listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_SYSTEM_SPACE;
 		return true;
 	}
 
-	private boolean readDocTypeSystemSpace(int c, EventListener listener) {
+	private boolean readDocTypeSystemSpace(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (isSpaceChar((char)c))
 			return true;
 		if (c != '"' && c != '\'') {
-			listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_SYSTEM_VALUE;
@@ -1367,9 +1497,9 @@ public class XMLStreamReaderAsync {
 		return true;
 	}
 	
-	private boolean readDocTypeSystemValue(int c, EventListener listener) {
+	private boolean readDocTypeSystemValue(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1381,9 +1511,9 @@ public class XMLStreamReaderAsync {
 		return true;
 	}
 	
-	private boolean readComment(int c, EventListener listener) {
+	private boolean readComment(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(cp.getPosition(),
 				new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "inside comment")));
 			return false;
@@ -1391,15 +1521,15 @@ public class XMLStreamReaderAsync {
 		text.append((char)c);
 		if (text.endsWith("-->")) {
 			text.removeEndChars(3);
-			listener.onEvent(null);
+			sp.unblock();
 			return false;
 		}
 		return true;
 	}
 	
-	private boolean readCData(int c, EventListener listener) {
+	private boolean readCData(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(cp.getPosition(),
 				new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "inside CDATA")));
 			return false;
@@ -1407,15 +1537,15 @@ public class XMLStreamReaderAsync {
 		text.append((char)c);
 		if (text.endsWith("]]>")) {
 			text.removeEndChars(3);
-			listener.onEvent(null);
+			sp.unblock();
 			return false;
 		}
 		return true;
 	}
 	
-	private boolean readStartElementName(int i, EventListener listener) {
+	private boolean readStartElementName(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1439,25 +1569,25 @@ public class XMLStreamReaderAsync {
 			}
 			if (onElement != null)
 				onElement.fire(this);
-			listener.onEvent(null);
+			sp.unblock();
 			return false;
 		}
 		if (c == '/') {
 			state = State.START_ELEMENT_CLOSED;
 			return true;
 		}
-		listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 		return false;
 	}
 	
-	private boolean readStartElementClosed(int c, EventListener listener) {
+	private boolean readStartElementClosed(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (c != '>') {
-			listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		isClosed = true;
@@ -1471,13 +1601,13 @@ public class XMLStreamReaderAsync {
 		}
 		if (onElement != null)
 			onElement.fire(this);
-		listener.onEvent(null);
+		sp.unblock();
 		return false;
 	}
 	
-	private boolean readStartElementSpace(int i, EventListener listener) {
+	private boolean readStartElementSpace(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1501,7 +1631,7 @@ public class XMLStreamReaderAsync {
 			if (c == '>') {
 				if (onElement != null)
 					onElement.fire(this);
-				listener.onEvent(null);
+				sp.unblock();
 				return false;
 			}
 			if (c == '/') {
@@ -1509,13 +1639,13 @@ public class XMLStreamReaderAsync {
 				return true;
 			}
 		}
-		listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 		return false;
 	}
 	
-	private boolean readAttributeName(int i, EventListener listener) {
+	private boolean readAttributeName(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1534,12 +1664,12 @@ public class XMLStreamReaderAsync {
 			a.localName = a.text.substring(i + 1);
 		}
 		state = State.ATTRIBUTE_NAME_SPACE;
-		return readAttributeNameSpace(i, listener);
+		return readAttributeNameSpace(i, sp);
 	}
 	
-	private boolean readAttributeNameSpace(int i, EventListener listener) {
+	private boolean readAttributeNameSpace(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1550,13 +1680,13 @@ public class XMLStreamReaderAsync {
 			state = State.ATTRIBUTE_VALUE_SPACE;
 			return true;
 		}
-		listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 		return false;
 	}
 	
-	private boolean readAttributeValueSpace(int i, EventListener listener) {
+	private boolean readAttributeValueSpace(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1567,13 +1697,13 @@ public class XMLStreamReaderAsync {
 			state = State.ATTRIBUTE_VALUE;
 			return true;
 		}
-		listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 		return false;
 	}
 	
-	private boolean readAttributeValue(int i, EventListener listener) {
+	private boolean readAttributeValue(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1585,7 +1715,7 @@ public class XMLStreamReaderAsync {
 			return true;
 		}
 		if (c == '<') {
-			listener.onEvent(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(cp.getPosition(),
 				new LocalizableString("lc.xml.error", "Unexpected character", Character.valueOf(c)),
 				new LocalizableString("lc.xml.error", "in attribute value")));
 			return false;
@@ -1594,16 +1724,16 @@ public class XMLStreamReaderAsync {
 		return true;
 	}
 	
-	private boolean readProcessingInstruction(int i, EventListener listener) {
+	private boolean readProcessingInstruction(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		char c = (char)i;
 		if (text.length() == 0) {
 			if (!isNameStartChar(c)) {
-				listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+				sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 				return false;
 			}
 			text.append(c);
@@ -1614,28 +1744,28 @@ public class XMLStreamReaderAsync {
 			return true;
 		}
 		state = State.START_ELEMENT_SPACE;
-		return readStartElementSpace(i, listener);
+		return readStartElementSpace(i, sp);
 	}
 	
-	private boolean readProcessingInstructionClosed(int c, EventListener listener) {
+	private boolean readProcessingInstructionClosed(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (c != '>') {
-			listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
-		listener.onEvent(null);
+		sp.unblock();
 		return false;
 	}
 	
-	private boolean readChars(int i, EventListener listener) {
+	private boolean readChars(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
 			text.replace("\r\n", "\n");
 			resolveReferences(text);
-			listener.onEvent(null);
+			sp.unblock();
 			return false;
 		}
 		char c = (char)i;
@@ -1643,23 +1773,23 @@ public class XMLStreamReaderAsync {
 			cp.back(c);
 			text.replace("\r\n", "\n");
 			resolveReferences(text);
-			listener.onEvent(null);
+			sp.unblock();
 			return false;
 		}
 		text.append(c);
 		return true;
 	}
 	
-	private boolean readEndElementName(int i, EventListener listener) {
+	private boolean readEndElementName(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		char c = (char)i;
 		if (text.length() == 0) {
 			if (!isNameStartChar(c)) {
-				listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+				sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 				return false;
 			}
 			text.append(c);
@@ -1669,7 +1799,7 @@ public class XMLStreamReaderAsync {
 		if (c == '>') {
 			ElementContext ctx = context.getFirst();
 			if (!ctx.text.equals(text)) {
-				listener.onEvent(new XMLException(cp.getPosition(),
+				sp.error(new XMLException(cp.getPosition(),
 					"Unexpected end element expected is", text.asString(), ctx.text.asString()));
 				return false;
 			}
@@ -1681,7 +1811,7 @@ public class XMLStreamReaderAsync {
 				namespacePrefix = text.substring(0, i);
 				localName = text.substring(i + 1);
 			}
-			listener.onEvent(null);
+			sp.unblock();
 			return false;
 		}
 		if (isSpaceChar(c)) {
@@ -1689,7 +1819,7 @@ public class XMLStreamReaderAsync {
 			return true;
 		}
 		if (statePos != 0 || !isNameChar(c)) {
-			listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 			return false;
 		}
 		text.append(c);
@@ -1740,9 +1870,9 @@ public class XMLStreamReaderAsync {
 		}
 	}
 	
-	private boolean readInternalSubset(int i, EventListener listener) {
+	private boolean readInternalSubset(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(cp.getPosition(),
 				new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in internal subset declaration")));
 			return false;
@@ -1760,7 +1890,7 @@ public class XMLStreamReaderAsync {
 			return true;
 		}
 		if (c != '<') {
-			listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 			return false;
 		}
 		state = State.DOCTYPE_INTERNAL_SUBSET_TAG;
@@ -1768,9 +1898,9 @@ public class XMLStreamReaderAsync {
 		return true;
 	}
 	
-	private boolean readInternalSubsetPEReference(int i, EventListener listener) {
+	private boolean readInternalSubsetPEReference(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(cp.getPosition(),
 				new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in internal subset declaration")));
 			return false;
@@ -1778,7 +1908,7 @@ public class XMLStreamReaderAsync {
 		char c = (char)i;
 		if (statePos == 0) {
 			if (!isNameStartChar(c)) {
-				listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+				sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 				return false;
 			}
 			statePos = 1;
@@ -1795,7 +1925,7 @@ public class XMLStreamReaderAsync {
 				state = State.DOCTYPE_INTERNAL_SUBSET;
 				return true;
 			}
-			listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 			return false;
 		}
 		if (isSpaceChar(c))
@@ -1804,13 +1934,13 @@ public class XMLStreamReaderAsync {
 			state = State.DOCTYPE_INTERNAL_SUBSET;
 			return true;
 		}
-		listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 		return false;
 	}
 	
-	private boolean readInternalSubsetTag(int i, EventListener listener) {
+	private boolean readInternalSubsetTag(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			listener.onEvent(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(cp.getPosition(),
 					new LocalizableString("lc.xml.error", "Unexpected end"),
 					new LocalizableString("lc.xml.error", "in internal subset declaration")));
 				return false;
@@ -1825,7 +1955,7 @@ public class XMLStreamReaderAsync {
 				statePos = 10;
 				return true;
 			}
-			listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 			return false;
 		}
 		if (statePos == 1) {
@@ -1885,7 +2015,7 @@ public class XMLStreamReaderAsync {
 				statePos = 10;
 			return true;
 		}
-		listener.onEvent(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 		return false;
 	}
 
