@@ -298,13 +298,22 @@ public class SerializationClass {
 	}
 	
 	public static Object instantiate(Class<?> type, List<SerializationRule> rules) throws Exception {
+		Object instance = null;
 		for (SerializationRule rule : rules)
 			if (rule instanceof TypeFactory) {
 				TypeFactory<?> factory = (TypeFactory<?>)rule;
-				if (type.isAssignableFrom(factory.getType()))
-					return factory.getFactory().provide();
+				if (type.isAssignableFrom(factory.getType())) {
+					instance = factory.getFactory().provide();
+					if (instance != null)
+						break;
+				}
 			}
-		return instantiate(type);
+		if (instance == null)
+			instance = instantiate(type);
+		for (SerializationRule rule : rules)
+			if (rule instanceof SerializationRule.DeserializationInstanceListener)
+				((SerializationRule.DeserializationInstanceListener)rule).onInstantiation(instance);
+		return instance;
 	}
 	
 }

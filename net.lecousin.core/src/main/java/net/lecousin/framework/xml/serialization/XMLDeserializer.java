@@ -1,5 +1,6 @@
 package net.lecousin.framework.xml.serialization;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
@@ -15,6 +16,7 @@ import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.math.IntegerUnit;
+import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLStreamReaderAsync;
 import net.lecousin.framework.xml.XMLUtil;
@@ -107,11 +109,34 @@ public class XMLDeserializer extends AbstractDeserializer<XMLStreamReaderAsync> 
 		XMLStreamReaderAsync.Attribute a = input.getAttributeWithNamespaceURI(XMLUtil.XSI_NAMESPACE_URI, "nil");
 		if (a != null && a.value.equals("true"))
 			return new AsyncWork<>(null, null);
+		String attrName = "class";
+		while (hasAttribute(type.getBase(), attrName)) attrName = "_" + attrName;
+		a = input.getAttributeByLocalName(attrName);
+		if (a != null) {
+			String className = a.value.asString();
+			try {
+				Class<?> cl = Class.forName(className);
+				return new AsyncWork<>(SerializationClass.instantiate(cl, rules), null);
+			} catch (Exception e) {
+				return new AsyncWork<>(null, e);
+			}
+		}
 		try {
 			return new AsyncWork<>(SerializationClass.instantiate(type.getBase(), rules), null);
 		} catch (Exception e) {
 			return new AsyncWork<>(null, e);
 		}
+	}
+	
+	private boolean hasAttribute(Class<?> type, String name) {
+		for (Field f : type.getDeclaredFields())
+			if (f.getName().equals(name))
+				return true;
+		if (ClassUtil.getGetter(type, name) != null) return true;
+		if (ClassUtil.getSetter(type, name) != null) return true;
+		if (type.getSuperclass() != null)
+			return hasAttribute(type.getSuperclass(), name);
+		return false;
 	}
 	
 	@Override
