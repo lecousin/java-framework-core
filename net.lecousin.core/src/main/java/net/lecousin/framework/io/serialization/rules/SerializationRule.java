@@ -22,12 +22,12 @@ public interface SerializationRule {
 	}
 
 	/** Called if the method canInstantiate previously returned true during deserialization. */
-	default Object instantiate(TypeDefinition type, SerializationContext context) {
+	default Object instantiate(TypeDefinition type, SerializationContext context) throws Exception {
 		return null;
 	}
 	
 	/** Called each time a type is instantiated during deserialization. */
-	default void onInstantiation(TypeDefinition type, Object instance, SerializationContext context) {
+	default void onInstantiation(TypeDefinition type, Object instance, SerializationContext context) throws Exception {
 	}
 	
 }

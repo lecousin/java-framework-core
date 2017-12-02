@@ -36,7 +36,7 @@ public class LoggerFactory {
 		thread = new LoggerThread(app);
 		defaultAppender = new ConsoleAppender(this, app.isReleaseMode() ? Level.INFO : Level.DEBUG,
 			new LogPattern("%d{HH:mm:ss.SSS} [%level] <%logger{20}> %m"));
-		defaultLogger = new Logger(this, "default", defaultAppender);
+		defaultLogger = new Logger(this, "default", defaultAppender, null);
 		loggers.put("default", defaultLogger);
 		
 		String filename = app.getProperty(Application.PROPERTY_LOGGING_CONFIGURATION_FILE);
@@ -63,7 +63,7 @@ public class LoggerFactory {
 		Logger l = loggers.get(name);
 		if (l != null)
 			return l;
-		l = new Logger(this, name, defaultAppender);
+		l = new Logger(this, name, defaultAppender, null);
 		loggers.put(name, l);
 		return l;
 	}
@@ -77,13 +77,14 @@ public class LoggerFactory {
 	}
 	
 	/** Configure a logger with an appender. */
-	public synchronized void configure(String name, Appender appender) {
+	public synchronized void configure(String name, Appender appender, Level level) {
 		Logger l = loggers.get(name);
 		if (l != null) {
 			l.appender = appender;
+			l.setLevel(level);
 			return;
 		}
-		l = new Logger(this, name, appender);
+		l = new Logger(this, name, appender, level);
 		loggers.put(name, l);
 	}
 	
@@ -258,6 +259,7 @@ public class LoggerFactory {
 	private void readLogger(XMLStreamReader reader, Map<String,Appender> appenders) throws Exception {
 		String name = null;
 		String appenderName = null;
+		Level level = null;
 		for (int i = 0; i < reader.getAttributeCount(); ++i) {
 			String attrName = reader.getAttributeLocalName(i);
 			String attrValue = reader.getAttributeValue(i);
@@ -265,6 +267,11 @@ public class LoggerFactory {
 				name = attrValue;
 			else if ("appender".equals(attrName))
 				appenderName = attrValue;
+			else if ("level".equals(attrName))
+				try { level = Level.valueOf(attrValue); }
+				catch (Exception e) {
+					throw new Exception("Invalid Logger level: " + attrValue);
+				}
 			else
 				throw new Exception("Unknown attribute " + attrName);
 		}
@@ -273,7 +280,7 @@ public class LoggerFactory {
 
 		Appender appender = appenders.get(appenderName);
 		if (appender == null) throw new Exception("Unknown appender name " + appenderName + " for logger " + name);
-		configure(name, appender);
+		configure(name, appender, level);
 		reader.next();
 		do {
 			if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)

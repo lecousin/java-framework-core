@@ -8,6 +8,7 @@ import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.ThreadingDebugHelper;
+import net.lecousin.framework.log.Logger;
 
 /**
  * Simplest implementation of a synchronization point.
@@ -62,7 +63,8 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 			listenersInline = null;
 			if (listeners != null) {
 				Application app = LCCore.getApplication();
-				if (app.isReleaseMode())
+				Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
+				if (log == null || !log.debug())
 					for (int i = 0; i < listeners.size(); ++i)
 						try { listeners.get(i).run(); }
 						catch (Throwable t) {
@@ -79,8 +81,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 						}
 						long time = System.nanoTime() - start;
 						if (time > 1000000) // more than 1ms
-							app.getDefaultLogger()
-								.debug("Listener took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
+							log.debug("Listener took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
 					}
 			}
 			// notify after listeners

@@ -9,6 +9,7 @@ import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.log.Logger;
 
 /**
  * Same as a SynchronizationPoint, except that it contains a result.
@@ -234,7 +235,8 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listenersInline = null;
 			if (listeners != null) {
 				Application app = LCCore.getApplication();
-				if (app.isReleaseMode())
+				Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
+				if (log == null || !log.debug())
 					for (int i = 0; i < listeners.size(); ++i)
 						try { listeners.get(i).ready(result); }
 						catch (Throwable t) {
@@ -253,8 +255,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 						}
 						long time = System.nanoTime() - start;
 						if (time > 1000000) // more than 1ms
-							app.getDefaultLogger().debug(
-								"Listener ready took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
+							log.debug("Listener ready took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
 					}
 			}
 			// notify after listeners
@@ -273,7 +274,8 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listenersInline = null;
 			if (listeners != null) {
 				Application app = LCCore.getApplication();
-				if (app.isReleaseMode())
+				Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(ISynchronizationPoint.class);
+				if (log == null || !log.debug())
 					for (int i = 0; i < listeners.size(); ++i)
 						try { listeners.get(i).error(error); }
 						catch (Throwable t) {
@@ -304,8 +306,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 						}
 						long time = System.nanoTime() - start;
 						if (time > 1000000) // more than 1ms
-							app.getDefaultLogger()
-								.debug("Listener error took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
+							log.debug("Listener error took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
 					}
 			}
 			this.notifyAll();
@@ -331,7 +332,8 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			onCancel = null;
 			if (listeners != null) {
 				Application app = LCCore.getApplication();
-				if (app.isReleaseMode())
+				Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(ISynchronizationPoint.class);
+				if (log == null || !log.debug())
 					for (int i = 0; i < listeners.size(); ++i)
 						try { listeners.get(i).cancelled(event); }
 						catch (Throwable t) {
@@ -350,8 +352,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 						}
 						long time = System.nanoTime() - start;
 						if (time > 1000000) // more than 1ms
-							app.getDefaultLogger().debug(
-								"Listener cancelled took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
+							log.debug("Listener cancelled took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
 					}
 			}
 			this.notifyAll();

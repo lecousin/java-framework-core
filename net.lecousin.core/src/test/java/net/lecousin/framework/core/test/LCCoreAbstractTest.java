@@ -8,6 +8,8 @@ import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.Artifact;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.Version;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.log.Logger;
 
 public abstract class LCCoreAbstractTest {
 
@@ -15,6 +17,7 @@ public abstract class LCCoreAbstractTest {
 	public static synchronized void init() {
 		if (LCCore.get() != null) return;
 		Application.start(new Artifact("net.lecousin.framework.test", "test", new Version(LCCoreVersion.VERSION)), true).block(0);
+		LCCore.getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class).setLevel(Logger.Level.INFO);
 	}
 	
 	@AfterClass

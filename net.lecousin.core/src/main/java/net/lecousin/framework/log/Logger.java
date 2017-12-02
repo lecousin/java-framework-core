@@ -17,15 +17,22 @@ public class Logger {
 		OFF;
 	}
 
-	Logger(LoggerFactory factory, String name, Appender appender) {
+	Logger(LoggerFactory factory, String name, Appender appender, Level level) {
 		this.factory = factory;
 		this.name = name;
 		this.appender = appender;
+		this.level = level != null ? level.ordinal() : -1;
 	}
 	
 	private LoggerFactory factory;
 	private String name;
 	Appender appender;
+	private int level;
+	
+	/** Change the level of this Logger, or null to set it to the default level of its appender. */
+	public void setLevel(Level level) {
+		this.level = level != null ? level.ordinal() : -1;
+	}
 	
 	private void logMessage(Level level, String message, Throwable t) {
 		Log log = new Log();
@@ -45,99 +52,105 @@ public class Logger {
 		factory.thread.log(appender, log);
 	}
 	
+	private int getLevel() {
+		if (level == -1)
+			return appender.level();
+		return level;
+	}
+	
 	/** Log. */
 	public void log(Level level, String message) {
-		if (level.ordinal() < appender.level()) return;
+		if (level.ordinal() < getLevel()) return;
 		logMessage(level, message, null);
 	}
 
 	/** Log. */
 	public void log(Level level, String message, Throwable t) {
-		if (level.ordinal() < appender.level()) return;
+		if (level.ordinal() < getLevel()) return;
 		logMessage(level, message, t);
 	}
 	
-	public boolean trace() { return appender.level() <= Level.TRACE.ordinal(); }
+	public boolean trace() { return getLevel() <= Level.TRACE.ordinal(); }
 	
 	/** Log. */
 	public void trace(String message) {
-		if (appender.level() > Level.TRACE.ordinal()) return;
+		if (getLevel() > Level.TRACE.ordinal()) return;
 		logMessage(Level.TRACE, message, null);
 	}
 
 	/** Log. */
 	public void trace(String message, Throwable t) {
-		if (appender.level() > Level.TRACE.ordinal()) return;
+		if (getLevel() > Level.TRACE.ordinal()) return;
 		logMessage(Level.TRACE, message, t);
 	}
 	
-	public boolean debug() { return appender.level() <= Level.DEBUG.ordinal(); }
+	public boolean debug() { return getLevel() <= Level.DEBUG.ordinal(); }
 	
 	/** Log. */
 	public void debug(String message) {
-		if (appender.level() > Level.DEBUG.ordinal()) return;
+		if (getLevel() > Level.DEBUG.ordinal()) return;
 		logMessage(Level.DEBUG, message, null);
 	}
 
 	/** Log. */
 	public void debug(String message, Throwable t) {
-		if (appender.level() > Level.DEBUG.ordinal()) return;
+		if (getLevel() > Level.DEBUG.ordinal()) return;
 		logMessage(Level.DEBUG, message, t);
 	}
 	
-	public boolean info() { return appender.level() <= Level.INFO.ordinal(); }
+	public boolean info() { return getLevel() <= Level.INFO.ordinal(); }
 	
 	/** Log. */
 	public void info(String message) {
-		if (appender.level() > Level.INFO.ordinal()) return;
+		if (getLevel() > Level.INFO.ordinal()) return;
 		logMessage(Level.INFO, message, null);
 	}
 
 	/** Log. */
 	public void info(String message, Throwable t) {
-		if (appender.level() > Level.INFO.ordinal()) return;
+		if (getLevel() > Level.INFO.ordinal()) return;
 		logMessage(Level.INFO, message, t);
 	}
 	
-	public boolean warn() { return appender.level() <= Level.WARN.ordinal(); }
+	public boolean warn() { return getLevel() <= Level.WARN.ordinal(); }
 	
 	/** Log. */
 	public void warn(String message) {
-		if (appender.level() > Level.WARN.ordinal()) return;
+		if (getLevel() > Level.WARN.ordinal()) return;
 		logMessage(Level.WARN, message, null);
 	}
 
 	/** Log. */
 	public void warn(String message, Throwable t) {
-		if (appender.level() > Level.WARN.ordinal()) return;
+		if (getLevel() > Level.WARN.ordinal()) return;
 		logMessage(Level.WARN, message, t);
 	}
 	
-	public boolean error() { return appender.level() <= Level.ERROR.ordinal(); }
+	public boolean error() { return getLevel() <= Level.ERROR.ordinal(); }
 
 	/** Log. */
 	public void error(String message) {
-		if (appender.level() > Level.ERROR.ordinal()) return;
+		if (getLevel() > Level.ERROR.ordinal()) return;
 		logMessage(Level.ERROR, message, null);
 	}
 
 	/** Log. */
 	public void error(String message, Throwable t) {
-		if (appender.level() > Level.ERROR.ordinal()) return;
+		if (getLevel() > Level.ERROR.ordinal()) return;
 		logMessage(Level.ERROR, message, t);
 	}
 	
-	public boolean fatal() { return appender.level() <= Level.FATAL.ordinal(); }
+	public boolean fatal() { return getLevel() <= Level.FATAL.ordinal(); }
 
 	/** Log. */
 	public void fatal(String message) {
-		if (appender.level() > Level.FATAL.ordinal()) return;
+		if (getLevel() > Level.FATAL.ordinal()) return;
 		logMessage(Level.FATAL, message, null);
 	}
 
 	/** Log. */
 	public void fatal(String message, Throwable t) {
-		if (appender.level() > Level.FATAL.ordinal()) return;
+		if (getLevel() > Level.FATAL.ordinal()) return;
 		logMessage(Level.FATAL, message, t);
 	}
 	
