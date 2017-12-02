@@ -278,8 +278,14 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 						try { listeners.get(i).error(error); }
 						catch (Throwable t) {
 							app.getDefaultLogger().error(
-								"Exception thrown by an inline listener of AsyncWork: "
+								"Exception thrown by an inline listener of AsyncWork, cancel it: "
 								+ listeners.get(i), t);
+							try { listeners.get(i).cancelled(new CancelException("Error in listener", t)); }
+							catch (Throwable t2) {
+								app.getDefaultLogger().error(
+									"Exception thrown while cancelling inline listener of AsyncWork after error: "
+									+ listeners.get(i), t2);
+							}
 						}
 				else
 					for (int i = 0; i < listeners.size(); ++i) {
@@ -287,8 +293,14 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 						try { listeners.get(i).error(error); }
 						catch (Throwable t) {
 							app.getDefaultLogger().error(
-								"Exception thrown by an inline listener of AsyncWork: "
+								"Exception thrown by an inline listener of AsyncWork, cancel it: "
 								+ listeners.get(i), t);
+							try { listeners.get(i).cancelled(new CancelException("Error in listener", t)); }
+							catch (Throwable t2) {
+								app.getDefaultLogger().error(
+									"Exception thrown while cancelling inline listener of AsyncWork after error: "
+									+ listeners.get(i), t2);
+							}
 						}
 						long time = System.nanoTime() - start;
 						if (time > 1000000) // more than 1ms

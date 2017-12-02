@@ -387,11 +387,11 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 	public ISynchronizationPoint<IOException> closeAsync() {
 		bytes = null;
 		chars = null;
-		ready = null;
 		decoder = null;
 		synchronized (ready) {
 			nextReady.cancel(new CancelException("Closed"));
 		}
+		ready = null;
 		return input.closeAsync();
 	}
 }

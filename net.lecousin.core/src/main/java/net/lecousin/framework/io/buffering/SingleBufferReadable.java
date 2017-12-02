@@ -32,6 +32,7 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 		this.io = io;
 		this.buffer = new byte[bufferSize];
 		this.useReadFully = useReadFully;
+		fillNextBuffer();
 	}
 	
 	private IO.Readable io;
@@ -55,12 +56,19 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 				if (len <= 0) {
 					len = 0;
 					eof = true;
-				} else if (useReadFully && len < buffer.length)
+				} else if (len < buffer.length)
 					eof = true;
 				pos = 0;
 			});
 		else
-			reading = io.readAsync(ByteBuffer.wrap(buffer));
+			reading = io.readAsync(ByteBuffer.wrap(buffer), (result) -> {
+				len = result.getValue1().intValue();
+				if (len <= 0) {
+					len = 0;
+					eof = true;
+				}
+				pos = 0;
+			});
 	}
 	
 	private void waitBufferSync() throws IOException {
@@ -185,7 +193,7 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 		if (l > this.len - pos) l = this.len - pos;
 		System.arraycopy(this.buffer, pos, buffer, offset, l);
 		pos += l;
-		if (pos == len) fillNextBuffer();
+		if (pos == this.len) fillNextBuffer();
 		return l;
 	}
 
@@ -210,7 +218,7 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 			public ByteBuffer run() throws IOException, CancelException {
 				if (reading.hasError()) throw reading.getError();
 				if (reading.isCancelled()) throw reading.getCancelEvent();
-				if (eof) return null;
+				if (pos == len && eof) return null;
 				ByteBuffer buf = ByteBuffer.allocate(len - pos);
 				buf.put(buffer, pos, len - pos);
 				pos = len;

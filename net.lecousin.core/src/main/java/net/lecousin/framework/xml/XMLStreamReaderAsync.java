@@ -709,7 +709,7 @@ public class XMLStreamReaderAsync {
 			@Override
 			protected void onNext() {
 				if (Type.START_ELEMENT.equals(type)) sp.unblock();
-				nextStartElement().listenInline(sp);
+				else nextStartElement().listenInline(sp);
 			}
 		}, sp);
 		return sp;
@@ -734,7 +734,7 @@ public class XMLStreamReaderAsync {
 					@Override
 					protected void onNext() {
 						if (Type.START_ELEMENT.equals(type)) sp.unblock();
-						nextStartElement().listenInline(sp);
+						else nextStartElement().listenInline(sp);
 					}
 				}.start();
 			},
@@ -1229,6 +1229,7 @@ public class XMLStreamReaderAsync {
 			state = State.PROCESSING_INSTRUCTION;
 			text = new UnprotectedStringBuffer();
 			attributes = new LinkedList<>();
+			type = Type.PROCESSING_INSTRUCTION;
 			return true;
 		}
 		if (c == '/') {
@@ -1660,6 +1661,12 @@ public class XMLStreamReaderAsync {
 			namespacePrefix = text.substring(0, i);
 			localName = text.substring(i + 1);
 		}
+		ElementContext ctx = new ElementContext();
+		ctx.text = text;
+		ctx.namespacePrefix = namespacePrefix;
+		ctx.localName = localName;
+		ctx.namespaces = readNamespaces();
+		context.addFirst(ctx);
 		if (onElement != null)
 			onElement.fire(this);
 		sp.unblock();
@@ -1690,6 +1697,12 @@ public class XMLStreamReaderAsync {
 			}
 		} else {
 			if (c == '>') {
+				ElementContext ctx = new ElementContext();
+				ctx.text = text;
+				ctx.namespacePrefix = namespacePrefix;
+				ctx.localName = localName;
+				ctx.namespaces = readNamespaces();
+				context.addFirst(ctx);
 				if (onElement != null)
 					onElement.fire(this);
 				sp.unblock();
@@ -1702,6 +1715,25 @@ public class XMLStreamReaderAsync {
 		}
 		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
 		return false;
+	}
+	
+	private List<Pair<UnprotectedStringBuffer, UnprotectedStringBuffer>> readNamespaces() {
+		List<Pair<UnprotectedStringBuffer, UnprotectedStringBuffer>> list = new LinkedList<>();
+		for (Iterator<Attribute> it = attributes.iterator(); it.hasNext(); ) {
+			Attribute a = it.next();
+			if (a.namespacePrefix.length() == 0) {
+				if (a.localName.equals("xmlns")) {
+					list.add(new Pair<>(a.namespacePrefix, a.value));
+					it.remove();
+					continue;
+				}
+			} else if (a.namespacePrefix.equals("xmlns")) {
+				list.add(new Pair<>(a.localName, a.value));
+				it.remove();
+				continue;
+			}
+		}
+		return list;
 	}
 	
 	private boolean readAttributeName(int i, SynchronizationPoint<Exception> sp) {
@@ -1725,7 +1757,7 @@ public class XMLStreamReaderAsync {
 			a.localName = a.text.substring(i + 1);
 		}
 		state = State.ATTRIBUTE_NAME_SPACE;
-		return readAttributeNameSpace(i, sp);
+		return readAttributeNameSpace(c, sp);
 	}
 	
 	private boolean readAttributeNameSpace(int i, SynchronizationPoint<Exception> sp) {
@@ -1756,6 +1788,8 @@ public class XMLStreamReaderAsync {
 			return true;
 		if (c == '"') {
 			state = State.ATTRIBUTE_VALUE;
+			Attribute a = attributes.getLast();
+			a.value = new UnprotectedStringBuffer();
 			return true;
 		}
 		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));

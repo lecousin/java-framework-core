@@ -137,12 +137,16 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		read.get().listenInline(new Runnable() {
 			@Override
 			public void run() {
+				AsyncWork<Integer,IOException> res = read.get();
+				if (res.isCancelled()) {
+					done.error(new Exception("Operation cancelled", res.getCancelEvent()));
+					return;
+				}
 				if (!onDoneBefore.get()) {
 					done.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
 					return;
 				}
 				onDoneBefore.set(false);
-				AsyncWork<Integer,IOException> res = read.get();
 				if (res.hasError()) {
 					done.error(res.getError());
 					return;

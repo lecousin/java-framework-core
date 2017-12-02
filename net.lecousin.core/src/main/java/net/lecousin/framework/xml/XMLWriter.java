@@ -2,6 +2,7 @@ package net.lecousin.framework.xml;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -17,7 +18,7 @@ public class XMLWriter {
 
 	@SuppressWarnings("resource")
 	public XMLWriter(IO.Writable.Buffered output, Charset encoding, boolean includeXMLDeclaration) {
-		this(new BufferedWritableCharacterStream(output, encoding, 4096), includeXMLDeclaration);
+		this(new BufferedWritableCharacterStream(output, encoding != null ? encoding : StandardCharsets.UTF_8, 4096), includeXMLDeclaration);
 	}
 	
 	public XMLWriter(ICharacterStream.Writable.Buffered output, boolean includeXMLDeclaration) {
@@ -99,7 +100,8 @@ public class XMLWriter {
 			}
 		}
 		Context ctx = new Context();
-		ctx.namespaces = new HashMap<>(namespaces);
+		ctx.namespaces = new HashMap<>();
+		if (namespaces != null) ctx.namespaces.putAll(namespaces);
 		ctx.namespaceURI = rootNamespaceURI;
 		ctx.localName = rootLocalName;
 		ctx.open = true;
