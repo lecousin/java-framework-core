@@ -8,14 +8,16 @@ import java.util.List;
  */
 public interface IString extends CharSequence {
 
+	public void setCharAt(int index, char c) throws IllegalArgumentException;
+	
 	/** Append a character. */
-	public void append(char c);
+	public IString append(char c);
 	
 	/** Append characters. */
-	public void append(char[] chars, int offset, int len);
+	public IString append(char[] chars, int offset, int len);
 	
 	/** Append characters. */
-	public void append(CharSequence s);
+	public IString append(CharSequence s);
 	
 	/** Return the index of the first occurrence of the given character, starting at the given position, or -1 if not found. */
 	public int indexOf(char c, int start);
@@ -42,10 +44,10 @@ public interface IString extends CharSequence {
 	public default int fill(char[] chars) { return fill(chars, 0); }
 	
 	/** Remove spaces characters at the beginning of this string. */
-	public void trimBeginning();
+	public IString trimBeginning();
 
 	/** Remove spaces characters at the end of this string. */
-	public void trimEnd();
+	public IString trimEnd();
 
 	/** Remove spaces characters at the beginning and the end of this string, and return this instance. */
 	public default IString trim() {
@@ -53,18 +55,20 @@ public interface IString extends CharSequence {
 		trimEnd();
 		return this;
 	}
+
+	public IString replace(char oldChar, char newChar);
 	
 	/** Remove the given number of characters at the end. */
-	public void removeEndChars(int nb);
+	public IString removeEndChars(int nb);
 	
 	/** Remove the given number of characters at the beginning. */
-	public void removeStartChars(int nb);
+	public IString removeStartChars(int nb);
 	
 	/** Convert this string to lower case. */
-	public void toLowerCase();
+	public IString toLowerCase();
 
 	/** Convert this string to upper case. */
-	public void toUpperCase();
+	public IString toUpperCase();
 	
 	/** Return a list of strings, by splitting the current string using the given character as separator. */
 	public List<? extends IString> split(char sep);

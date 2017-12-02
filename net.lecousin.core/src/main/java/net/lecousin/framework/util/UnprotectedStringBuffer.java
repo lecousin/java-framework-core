@@ -95,38 +95,53 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	@Override
-	public void append(char c) {
+	public void setCharAt(int index, char c) throws IllegalArgumentException {
+		if (strings == null) throw new IllegalArgumentException("String is empty");
+		for (int i = 0; i <= lastUsed; ++i) {
+			int l = strings[i].length();
+			if (index < l) {
+				strings[i].setCharAt(index, c);
+				return;
+			}
+			index -= l;
+		}
+		throw new IllegalArgumentException("String is smaller than the given index");
+	}
+	
+	@Override
+	public UnprotectedStringBuffer append(char c) {
 		if (strings == null) {
 			strings = new UnprotectedString[8];
 			strings[0] = new UnprotectedString(64);
 			strings[0].append(c);
 			lastUsed = 0;
-			return;
+			return this;
 		}
 		if (strings[lastUsed].canAppendWithoutEnlarging() > 0) {
 			strings[lastUsed].append(c);
-			return;
+			return this;
 		}
 		if (lastUsed < strings.length - 1) {
 			strings[++lastUsed] = new UnprotectedString(64);
 			strings[lastUsed].append(c);
-			return;
+			return this;
 		}
 		UnprotectedString[] a = new UnprotectedString[lastUsed + 1 + 8];
 		System.arraycopy(strings, 0, a, 0, lastUsed + 1);
 		a[++lastUsed] = new UnprotectedString(64);
 		a[lastUsed].append(c);
 		strings = a;
+		return this;
 	}
 	
 	@Override
-	public void append(char[] chars, int offset, int len) {
+	public UnprotectedStringBuffer append(char[] chars, int offset, int len) {
 		if (strings == null) {
 			strings = new UnprotectedString[8];
 			strings[0] = new UnprotectedString(len > 50 ? len + 64 : 64);
 			strings[0].append(chars, offset, len);
 			lastUsed = 0;
-			return;
+			return this;
 		}
 		int l = strings[lastUsed].canAppendWithoutEnlarging();
 		if (l > 0) {
@@ -134,43 +149,44 @@ public class UnprotectedStringBuffer implements IString {
 			strings[lastUsed].append(chars, offset, l);
 			len -= l;
 			if (len == 0)
-				return;
+				return this;
 			offset += l;
 		}
 		if (lastUsed < strings.length - 1) {
 			strings[++lastUsed] = new UnprotectedString(len > 50 ? len + 64 : 64);
 			strings[lastUsed].append(chars, offset, len);
-			return;
+			return this;
 		}
 		UnprotectedString[] a = new UnprotectedString[lastUsed + 1 + 8];
 		System.arraycopy(strings, 0, a, 0, lastUsed + 1);
 		a[++lastUsed] = new UnprotectedString(len > 50 ? len + 64 : 64);
 		a[lastUsed].append(chars, offset, len);
 		strings = a;
+		return this;
 	}
 	
 	@Override
-	public void append(CharSequence s) {
+	public UnprotectedStringBuffer append(CharSequence s) {
 		if (s instanceof UnprotectedStringBuffer) {
 			UnprotectedStringBuffer us = (UnprotectedStringBuffer)s;
-			if (us.strings == null) return;
+			if (us.strings == null) return this;
 			if (strings == null) {
 				strings = new UnprotectedString[us.strings.length];
 				System.arraycopy(us.strings, 0, strings, 0, strings.length);
 				lastUsed = us.lastUsed;
-				return;
+				return this;
 			}
 			int i = 0;
 			while (lastUsed < strings.length - 1 && i <= us.lastUsed) {
 				strings[++lastUsed] = us.strings[i++];
 			}
-			if (i > us.lastUsed) return;
+			if (i > us.lastUsed) return this;
 			UnprotectedString[] a = new UnprotectedString[strings.length + (us.lastUsed - i + 1) + 8];
 			System.arraycopy(strings, 0, a, 0, strings.length);
 			System.arraycopy(us.strings, i, a, strings.length, us.lastUsed - i + 1);
 			lastUsed = strings.length + (us.lastUsed - i + 1) - 1;
 			strings = a;
-			return;
+			return this;
 		}
 		if (s instanceof UnprotectedString) {
 			UnprotectedString us = (UnprotectedString)s;
@@ -178,22 +194,51 @@ public class UnprotectedStringBuffer implements IString {
 				strings = new UnprotectedString[8];
 				strings[0] = us;
 				lastUsed = 0;
-				return;
+				return this;
 			}
 			if (lastUsed < strings.length - 1) {
 				strings[++lastUsed] = us;
-				return;
+				return this;
 			}
 			UnprotectedString[] a = new UnprotectedString[strings.length + 8];
 			System.arraycopy(strings, 0, a, 0, strings.length);
 			a[strings.length] = us;
 			lastUsed++;
 			strings = a;
-			return;
+			return this;
 		}
 		int l = s.length();
 		for (int i = 0; i < l; ++i)
 			append(s.charAt(i));
+		return this;
+	}
+	
+	public UnprotectedStringBuffer addFirst(CharSequence s) {
+		return addFirst(new UnprotectedString(s));
+	}
+	
+	public UnprotectedStringBuffer addFirst(UnprotectedString s) {
+		if (strings == null) {
+			strings = new UnprotectedString[] { s };
+			lastUsed = 0;
+			return this;
+		}
+		if (lastUsed < strings.length - 1) {
+			System.arraycopy(strings, 0, strings, 1, lastUsed + 1);
+			strings[0] = s;
+			lastUsed++;
+			return this;
+		}
+		UnprotectedString[] ns = new UnprotectedString[lastUsed + 8];
+		System.arraycopy(strings, 0, ns, 1, lastUsed + 1);
+		ns[0] = s;
+		strings = ns;
+		lastUsed++;
+		return this;
+	}
+	
+	public UnprotectedStringBuffer addFirst(char c) {
+		return addFirst(new UnprotectedString(c));
 	}
 	
 	@Override
@@ -319,52 +364,56 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	@Override
-	public void trimBeginning() {
-		if (strings == null) return;
-		strings[0].trimBeginning();
+	public UnprotectedStringBuffer trimBeginning() {
+		if (strings != null)
+			strings[0].trimBeginning();
+		return this;
 	}
 	
 	@Override
-	public void trimEnd() {
-		if (strings == null) return;
-		strings[lastUsed].trimEnd();
+	public UnprotectedStringBuffer trimEnd() {
+		if (strings != null)
+			strings[lastUsed].trimEnd();
+		return this;
 	}
 	
 	@Override
-	public void removeStartChars(int nb) {
+	public UnprotectedStringBuffer removeStartChars(int nb) {
 		while (strings != null) {
 			int l = strings[0].length();
 			if (nb < l) {
 				strings[0].removeStartChars(nb);
-				return;
+				return this;
 			}
 			if (lastUsed == 0) {
 				strings = null;
-				return;
+				return this;
 			}
 			System.arraycopy(strings, 1, strings, 0, lastUsed - 1);
 			strings[lastUsed] = null;
 			lastUsed--;
 			nb -= l;
 		}
+		return this;
 	}
 	
 	@Override
-	public void removeEndChars(int nb) {
+	public UnprotectedStringBuffer removeEndChars(int nb) {
 		while (strings != null) {
 			int l = strings[lastUsed].length();
 			if (nb < l) {
 				strings[lastUsed].removeEndChars(nb);
-				return;
+				return this;
 			}
 			if (lastUsed == 0) {
 				strings = null;
-				return;
+				return this;
 			}
 			strings[lastUsed] = null;
 			lastUsed--;
 			nb -= l;
 		}
+		return this;
 	}
 	
 	@Override
@@ -435,16 +484,42 @@ public class UnprotectedStringBuffer implements IString {
 		lastUsed = strings.length - 1;
 	}
 	
-	public void replace(CharSequence search, UnprotectedString replace) {
+	public UnprotectedStringBuffer replace(CharSequence search, UnprotectedString replace) {
 		int pos = 0;
 		while ((pos = indexOf(search, pos)) >= 0) {
 			replace(pos, pos + search.length() - 1, replace);
 			pos = pos + replace.length();
 		}
+		return this;
 	}
 	
-	public void replace(CharSequence search, CharSequence replace) {
-		replace(search, new UnprotectedString(replace));
+	public UnprotectedStringBuffer replace(CharSequence search, CharSequence replace) {
+		return replace(search, new UnprotectedString(replace));
+	}
+	
+	@Override
+	public UnprotectedStringBuffer replace(char oldChar, char newChar) {
+		if (strings != null)
+			for (int i = 0; i <= lastUsed; ++i)
+				strings[i].replace(oldChar, newChar);
+		return this;
+	}
+	
+	public UnprotectedStringBuffer replace(char oldChar, CharSequence replaceValue) {
+		return replace(oldChar, new UnprotectedString(replaceValue));
+	}
+
+	public UnprotectedStringBuffer replace(char oldChar, UnprotectedString replaceValue) {
+		if (replaceValue.length() == 1)
+			return replace(oldChar, replaceValue.charAt(0));
+		if (strings == null)
+			return this;
+		int pos = 0;
+		while ((pos = indexOf(oldChar, pos)) >= 0) {
+			replace(pos, pos, replaceValue);
+			pos = pos + replaceValue.length();
+		}
+		return this;
 	}
 	
 	/** Search for a starting string and a ending string, and replace them including the content with new content.
@@ -548,17 +623,19 @@ public class UnprotectedStringBuffer implements IString {
 	}
 
 	@Override
-	public void toLowerCase() {
-		if (strings == null) return;
-		for (int i = 0; i <= lastUsed; ++i)
-			strings[i].toLowerCase();
+	public UnprotectedStringBuffer toLowerCase() {
+		if (strings != null)
+			for (int i = 0; i <= lastUsed; ++i)
+				strings[i].toLowerCase();
+		return this;
 	}
 	
 	@Override
-	public void toUpperCase() {
-		if (strings == null) return;
-		for (int i = 0; i <= lastUsed; ++i)
-			strings[i].toUpperCase();
+	public UnprotectedStringBuffer toUpperCase() {
+		if (strings != null)
+			for (int i = 0; i <= lastUsed; ++i)
+				strings[i].toUpperCase();
+		return this;
 	}
 	
 	@Override

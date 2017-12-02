@@ -87,8 +87,9 @@ public class UnprotectedString implements IString {
 	}
 	
 	/** Set the character at the given index. */
-	public void setCharAt(int index, char c) {
-		if (index < 0 || index >= end - start) throw new ArrayIndexOutOfBoundsException(index);
+	@Override
+	public void setCharAt(int index, char c) throws IllegalArgumentException {
+		if (index < 0 || index >= end - start) throw new IllegalArgumentException("Character index " + index + " does not exist");
 		chars[start + index] = c;
 	}
 	
@@ -129,14 +130,15 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
-	public void append(char c) {
+	public UnprotectedString append(char c) {
 		if (end == usableEnd)
 			enlarge(chars.length < 1024 ? 512 : chars.length >> 1);
 		chars[++end] = c;
+		return this;
 	}
 	
 	@Override
-	public void append(char[] chars, int offset, int len) {
+	public UnprotectedString append(char[] chars, int offset, int len) {
 		if (usableEnd - end < len) {
 			int l = chars.length < 1024 ? 512 : chars.length >> 1;
 			if (l < len) l = len;
@@ -144,19 +146,20 @@ public class UnprotectedString implements IString {
 		}
 		System.arraycopy(chars, offset, this.chars, end + 1, len);
 		end += len;
+		return this;
 	}
 	
 	@Override
-	public void append(CharSequence s) {
+	public UnprotectedString append(CharSequence s) {
 		if (s instanceof UnprotectedString) {
 			UnprotectedString us = (UnprotectedString)s;
 			append(us.chars, us.start, us.end - us.start + 1);
-			return;
+			return this;
 		}
 		if (s instanceof UnprotectedStringBuffer) {
 			UnprotectedStringBuffer usb = (UnprotectedStringBuffer)s;
 			int l = usb.length();
-			if (l == 0) return;
+			if (l == 0) return this;
 			if (l >= usableEnd - end)
 				enlarge(l);
 			int i = 0;
@@ -165,11 +168,12 @@ public class UnprotectedString implements IString {
 				System.arraycopy(us.chars, us.start, chars, end + 1, us.length());
 				end += us.length();
 			} while (++i < usb.getNbUsableUnprotectedStrings());
-			return;
+			return this;
 		}
 		int l = s.length();
 		for (int i = 0; i < l; ++i)
 			append(s.charAt(i));
+		return this;
 	}
 	
 	@Override
@@ -216,27 +220,39 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
-	public void trimBeginning() {
+	public UnprotectedString trimBeginning() {
 		while (start <= end && Character.isWhitespace(chars[start]))
 			start++;
+		return this;
 	}
 	
 	@Override
-	public void trimEnd() {
+	public UnprotectedString trimEnd() {
 		while (end >= start && Character.isWhitespace(chars[end]))
 			end--;
+		return this;
 	}
 	
 	@Override
-	public void removeEndChars(int nb) {
+	public UnprotectedString replace(char oldChar, char newChar) {
+		for (int i = start; i <= end; ++i)
+			if (chars[i] == oldChar)
+				chars[i] = newChar;
+		return this;
+	}
+	
+	@Override
+	public UnprotectedString removeEndChars(int nb) {
 		end -= nb;
 		if (end < start - 1) end = start - 1;
+		return this;
 	}
 	
 	@Override
-	public void removeStartChars(int nb) {
+	public UnprotectedString removeStartChars(int nb) {
 		start += nb;
 		if (start > end) start = end + 1;
+		return this;
 	}
 	
 	/** Remove the given number of characters at the beginning of the string. */
@@ -266,15 +282,17 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
-	public void toLowerCase() {
+	public UnprotectedString toLowerCase() {
 		for (int i = start; i <= end; ++i)
 			chars[i] = Character.toLowerCase(chars[i]);
+		return this;
 	}
 	
 	@Override
-	public void toUpperCase() {
+	public UnprotectedString toUpperCase() {
 		for (int i = start; i <= end; ++i)
 			chars[i] = Character.toUpperCase(chars[i]);
+		return this;
 	}
 	
 	@Override

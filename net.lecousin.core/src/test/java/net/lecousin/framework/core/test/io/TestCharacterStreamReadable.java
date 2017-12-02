@@ -27,7 +27,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		ICharacterStream.Readable s = openStream(openFile());
 		char[] buf = new char[testBuf.length];
 		for (int i = 0; i < nbBuf; ++i) {
-			int nb = s.readFully(buf, 0, buf.length);
+			int nb = s.readFullySync(buf, 0, buf.length);
 			if (nb != testBuf.length)
 				throw new AssertionError("" + nb + " characters read at buffer " + i + ", expected is " + testBuf.length);
 			for (int j = 0; j < testBuf.length; ++j)
@@ -36,7 +36,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 			if (i < nbBuf - 1)
 				Assert.assertFalse(s.endReached());
 		}
-		Assert.assertTrue(s.readFully(buf, 0, buf.length) <= 0);
+		Assert.assertTrue(s.readFullySync(buf, 0, buf.length) <= 0);
 		Assert.assertTrue(s.endReached());
 		s.close();
 	}
@@ -48,7 +48,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		char[] buf = new char[testBuf.length * 3 - testBuf.length / 10];
 		int pos = 0;
 		while (pos < nbBuf * testBuf.length) {
-			int nb = s.read(buf, 0, buf.length);
+			int nb = s.readSync(buf, 0, buf.length);
 			if (nb <= 0)
 				throw new AssertionError("End of stream reached after " + pos + " characters, expected was "
 					+ (nbBuf * testBuf.length));
@@ -59,7 +59,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 			if (pos < nbBuf * testBuf.length)
 				Assert.assertFalse(s.endReached());
 		}
-		Assert.assertTrue(s.readFully(buf, 0, buf.length) <= 0);
+		Assert.assertTrue(s.readFullySync(buf, 0, buf.length) <= 0);
 		Assert.assertTrue(s.endReached());
 		s.close();
 	}

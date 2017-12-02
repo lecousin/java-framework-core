@@ -67,14 +67,14 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				String path = custom.getPluginConfigurationFilePath();
 				if (path == null) continue;
 				CustomExtensionPointLoader loader = new CustomExtensionPointLoader(custom, path);
-				tasks.getLast().listenAsynch(loader, false);
+				tasks.getLast().listenAsync(loader, false);
 				tasks.add(loader.getSynch());
 			}
 			
 			PluginsLoader plugins = new PluginsLoader();
-			tasks.getLast().listenAsynch(plugins, false);
+			tasks.getLast().listenAsync(plugins, false);
 			tasks.add(plugins.getSynch());
-			tasks.getLast().listenAsynch(new Task.Cpu<Void, NoException>("Finalize libraries loading", Task.PRIORITY_NORMAL) {
+			tasks.getLast().listenAsync(new Task.Cpu<Void, NoException>("Finalize libraries loading", Task.PRIORITY_NORMAL) {
 				@Override
 				public Void run() {
 					for (ISynchronizationPoint<Exception> task : tasks) {

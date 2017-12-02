@@ -1,21 +1,33 @@
 package net.lecousin.framework.io.serialization.rules;
 
 import net.lecousin.framework.io.serialization.SerializationClass;
+import net.lecousin.framework.io.serialization.SerializationContext;
+import net.lecousin.framework.io.serialization.TypeDefinition;
 
 /** Interface for a serialization rule. */
+@SuppressWarnings("unused")
 public interface SerializationRule {
 
-	/** Apply the rule to the given type. */
-	void apply(SerializationClass type, Object containerInstance);
+	/** Apply the rule to the given type, knowing the given context. */
+	void apply(SerializationClass type, SerializationContext context);
 	
 	/** Check if this rule is equivalent to the given rule. */
 	boolean isEquivalent(SerializationRule rule);
 	
-	/** If a SerializationRule implements this interface, it will be called each time a new instance is created during deserialization. */
-	interface DeserializationInstanceListener {
-		
-		void onInstantiation(Object instance);
-		
+	/** During deserialization, when a type needs to be instantiated, this method is called to know
+	 * if this rule is providing a custom way to instantiate the given type.
+	 */
+	default boolean canInstantiate(TypeDefinition type, SerializationContext context) {
+		return false;
+	}
+
+	/** Called if the method canInstantiate previously returned true during deserialization. */
+	default Object instantiate(TypeDefinition type, SerializationContext context) {
+		return null;
+	}
+	
+	/** Called each time a type is instantiated during deserialization. */
+	default void onInstantiation(TypeDefinition type, Object instance, SerializationContext context) {
 	}
 	
 }

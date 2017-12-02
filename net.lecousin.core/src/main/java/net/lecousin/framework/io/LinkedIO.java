@@ -563,7 +563,7 @@ public abstract class LinkedIO extends AbstractIO {
 	}
 
 	protected AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsynch((IO.Readable)this, buffer, ondone);
+		return IOUtil.readFullyAsync((IO.Readable)this, buffer, ondone);
 	}
 	
 	@SuppressWarnings("resource")
@@ -947,7 +947,7 @@ public abstract class LinkedIO extends AbstractIO {
 	protected AsyncWork<Integer, IOException> readFullyAsync(
 		long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 	) {
-		return IOUtil.readFullyAsynch((IO.Readable.Seekable)this, pos, buffer, ondone);
+		return IOUtil.readFullyAsync((IO.Readable.Seekable)this, pos, buffer, ondone);
 	}
 	
 }

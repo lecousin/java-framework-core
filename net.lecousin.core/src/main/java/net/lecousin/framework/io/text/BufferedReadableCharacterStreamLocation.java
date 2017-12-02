@@ -96,7 +96,7 @@ public class BufferedReadableCharacterStreamLocation implements ICharacterStream
 	public AsyncWork<Integer, IOException> readAsync(char[] buf, int offset, int length) {
 		AsyncWork<Integer, IOException> result = new AsyncWork<>();
 		AsyncWork<Integer, IOException> read = stream.readAsync(buf, offset, length);
-		read.listenAsynch(new Task.Cpu<Void, NoException>(
+		read.listenAsync(new Task.Cpu<Void, NoException>(
 			"Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority()
 		) {
 			@Override

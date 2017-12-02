@@ -16,7 +16,7 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.util.IString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
-import net.lecousin.framework.xml.XMLStreamReaderAsync;
+import net.lecousin.framework.xml.XMLStreamReader;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -179,7 +179,7 @@ public class TestXMLStreamReaderWithXMLStreamReader extends LCCoreAbstractTest {
 		factory.setProperty(XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, Boolean.FALSE);
 		javax.xml.stream.XMLStreamReader reader = factory.createXMLStreamReader(in);
 		InputStream in2 = getClass().getClassLoader().getResourceAsStream(filepath);
-		XMLStreamReaderAsync xml = new XMLStreamReaderAsync(new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL), 1024);
+		XMLStreamReader xml = new XMLStreamReader(new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL), 1024);
 		reader.next();
 		xml.start();
 		check(reader, xml, new LinkedList<>());
@@ -187,7 +187,7 @@ public class TestXMLStreamReaderWithXMLStreamReader extends LCCoreAbstractTest {
 		in.close();
 	}
 
-	private static void check(javax.xml.stream.XMLStreamReader reader, XMLStreamReaderAsync xml, LinkedList<String> openElements) throws Exception {
+	private static void check(javax.xml.stream.XMLStreamReader reader, XMLStreamReader xml, LinkedList<String> openElements) throws Exception {
 		/*
 		System.out.println("XMLStreamReader:");
 		do {

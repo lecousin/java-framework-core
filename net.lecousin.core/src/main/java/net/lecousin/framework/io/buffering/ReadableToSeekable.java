@@ -79,7 +79,7 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 		jp.addToJoin(io.closeAsync());
 		io = null;
 		jp.start();
-		jp.listenAsynch(new RemoveFileTask(file, Task.PRIORITY_LOW), true);
+		jp.listenAsync(new RemoveFileTask(file, Task.PRIORITY_LOW), true);
 		return jp;
 	}
 	
@@ -448,18 +448,18 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 		if (bufferize == null)
 			task.start();
 		else
-			bufferize.listenAsynch(task, true);
+			bufferize.listenAsync(task, true);
 		return result;
 	}
 	
 	@Override
 	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsynch(this, buffer, ondone);
+		return IOUtil.readFullyAsync(this, buffer, ondone);
 	}
 	
 	@Override
 	public AsyncWork<Integer,IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsynch(this, pos, buffer, ondone);
+		return IOUtil.readFullyAsync(this, pos, buffer, ondone);
 	}
 	
 	@Override

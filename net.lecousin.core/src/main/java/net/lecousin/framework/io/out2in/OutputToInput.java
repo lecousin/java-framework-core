@@ -162,7 +162,7 @@ public class OutputToInput extends AbstractIO implements IO.OutputToInput, IO.Wr
 				return new AsyncWork<Integer, IOException>(Integer.valueOf(-1), null);
 			}
 			AsyncWork<Integer, IOException> result = new AsyncWork<>();
-			lock.listenAsynch(new Task.Cpu<Integer, IOException>("OutputToInput.readAsync", io.getPriority()) {
+			lock.listenAsync(new Task.Cpu<Integer, IOException>("OutputToInput.readAsync", io.getPriority()) {
 				@Override
 				public Integer run() throws IOException {
 					try {
@@ -200,12 +200,12 @@ public class OutputToInput extends AbstractIO implements IO.OutputToInput, IO.Wr
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsynch(this, buffer, ondone);
+		return IOUtil.readFullyAsync(this, buffer, ondone);
 	}
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsynch(this, pos, buffer, ondone);
+		return IOUtil.readFullyAsync(this, pos, buffer, ondone);
 	}
 	
 	@Override

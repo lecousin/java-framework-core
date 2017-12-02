@@ -2,6 +2,8 @@ package net.lecousin.framework.io.serialization.rules;
 
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
+import net.lecousin.framework.io.serialization.SerializationContext;
+import net.lecousin.framework.io.serialization.SerializationContextPattern;
 
 /**
  * This rule change the name of a specific attribute in a class.
@@ -9,31 +11,31 @@ import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 public class RenameAttribute implements SerializationRule {
 
 	/** Constructor. */
-	public RenameAttribute(Class<?> type, String originalName, String newName) {
-		this.type = type;
-		this.originalName = originalName;
+	public RenameAttribute(SerializationContextPattern.OnClassAttribute contextPattern, String newName) {
+		this.contextPattern = contextPattern;
 		this.newName = newName;
 	}
+
+	/** Constructor. */
+	public RenameAttribute(Class<?> type, String originalName, String newName) {
+		this(new SerializationContextPattern.OnClassAttribute(type, originalName), newName);
+	}
 	
-	private Class<?> type;
-	private String originalName;
+	private SerializationContextPattern.OnClassAttribute contextPattern;
 	private String newName;
 	
 	@Override
-	public void apply(SerializationClass type, Object containerInstance) {
-		if (!this.type.isAssignableFrom(type.getType().getBase()))
-			return;
-		Attribute a = type.getAttributeByOriginalName(originalName);
-		if (a == null || !this.type.equals(a.getDeclaringClass()))
-			return;
-		a.renameTo(newName);
+	public void apply(SerializationClass type, SerializationContext context) {
+		Attribute a = contextPattern.getAttribute(type, context);
+		if (a != null)
+			a.renameTo(newName);
 	}
 	
 	@Override
 	public boolean isEquivalent(SerializationRule rule) {
 		if (!(rule instanceof RenameAttribute)) return false;
 		RenameAttribute r = (RenameAttribute)rule;
-		return r.type.equals(type) && r.originalName.equals(originalName);
+		return contextPattern.isEquivalent(r.contextPattern);
 	}
 	
 }

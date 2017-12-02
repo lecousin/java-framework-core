@@ -24,7 +24,7 @@ public @interface TypeSerializer {
 	/** The serializer to use. */
 	public Class<? extends CustomSerializer> value();
 	
-	public static class ToRule implements TypeAnnotationToRule<TypeSerializer>, AttributeAnnotationToRule<TypeSerializer> {
+	public static class ToRule implements TypeAnnotationToRule<TypeSerializer>, AttributeAnnotationToRuleOnAttribute<TypeSerializer> {
 		
 		@Override
 		public SerializationRule createRule(TypeSerializer annotation, Class<?> type) {

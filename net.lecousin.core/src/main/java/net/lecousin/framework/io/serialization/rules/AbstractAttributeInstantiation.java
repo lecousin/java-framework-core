@@ -2,6 +2,9 @@ package net.lecousin.framework.io.serialization.rules;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationClass;
+import net.lecousin.framework.io.serialization.SerializationContext;
+import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
+import net.lecousin.framework.io.serialization.SerializationContextPattern.OnClassAttribute;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.util.Factory;
 
@@ -10,24 +13,25 @@ import net.lecousin.framework.util.Factory;
 public class AbstractAttributeInstantiation implements SerializationRule {
 
 	/** Constructor. */
-	public AbstractAttributeInstantiation(Class<?> clazz, String name, String discriminator, Class<? extends Factory> factory) {
-		this.clazz = clazz;
-		this.name = name;
+	public AbstractAttributeInstantiation(OnClassAttribute pattern, String discriminator, Class<? extends Factory> factory) {
+		this.pattern = pattern;
 		this.discriminator = discriminator;
 		this.factory = factory;
 	}
+
+	/** Constructor. */
+	public AbstractAttributeInstantiation(Class<?> clazz, String name, String discriminator, Class<? extends Factory> factory) {
+		this(new OnClassAttribute(clazz, name), discriminator, factory);
+	}
 	
-	private Class<?> clazz;
-	private String name;
+	private OnClassAttribute pattern;
 	private String discriminator;
 	private Class<? extends Factory> factory;
 	
 	@Override
-	public void apply(SerializationClass type, Object containerInstance) {
-		if (!clazz.isAssignableFrom(type.getType().getBase()))
-			return;
-		Attribute a = type.getAttributeByOriginalName(name);
-		if (a == null || !clazz.equals(a.getDeclaringClass()))
+	public void apply(SerializationClass type, SerializationContext context) {
+		Attribute a = pattern.getAttribute(type, context);
+		if (a == null)
 			return;
 		Attribute discr = type.getAttributeByOriginalName(discriminator);
 		if (discr == null || !discr.canGet()) {
@@ -45,7 +49,7 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 	public boolean isEquivalent(SerializationRule rule) {
 		if (!(rule instanceof AbstractAttributeInstantiation)) return false;
 		AbstractAttributeInstantiation r = (AbstractAttributeInstantiation)rule;
-		return r.clazz.equals(clazz) && r.name.equals(name) && r.discriminator.equals(discriminator);
+		return r.pattern.isEquivalent(pattern) && r.discriminator.equals(discriminator);
 	}
 	
 	private static class InstantiationAttribute extends Attribute {
@@ -60,8 +64,8 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 		
 		@SuppressWarnings("unchecked")
 		@Override
-		public Object instantiate(Object containerInstance) throws Exception {
-			return factory.create(discriminator.getValue(containerInstance));
+		public Object instantiate(AttributeContext context) throws Exception {
+			return factory.create(discriminator.getValue(context.getParent().getInstance()));
 		}
 	}
 	

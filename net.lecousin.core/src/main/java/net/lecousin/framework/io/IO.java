@@ -205,9 +205,18 @@ public interface IO extends AutoCloseable, Closeable, AsyncCloseable<IOException
 		}
 	}
 	
+	/** Simple interface for something to which we can write buffers asynchronously. */
+	public interface WriterAsync {
+		
+		/** Write asynchronously all bytes available in the given buffer at the current position.
+		 * If not all bytes can be written, an error must be returned.
+		 * Return the number of bytes written.
+		 */
+		public AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer);
+	}
 	
 	/** Add the capability to write forward on an IO. */
-	public interface Writable extends IO {
+	public interface Writable extends IO, WriterAsync {
 		/** Return a synchronization point that is unblocked when data is ready to be written.
 		 * This allows to start writing operations only when we know it won't block.
 		 */
@@ -226,6 +235,7 @@ public interface IO extends AutoCloseable, Closeable, AsyncCloseable<IOException
 		public AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone);
 		
 		/** Equivalent to writeAsync(buffer, null). */
+		@Override
 		public default AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer) { return writeAsync(buffer, null); }
 		
 		/** Add operations to write at a specific position. */

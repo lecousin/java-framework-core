@@ -3,27 +3,30 @@ package net.lecousin.framework.io.serialization.rules;
 import net.lecousin.framework.io.serialization.CustomSerializer;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
+import net.lecousin.framework.io.serialization.SerializationContextPattern.OnClassAttribute;
+import net.lecousin.framework.io.serialization.SerializationContext;
 
 /** Rule to customize the serialization of an attribute. */
 public class CustomAttributeSerializer implements SerializationRule {
 	
 	/** Constructor. */
-	public CustomAttributeSerializer(Class<?> type, String name, CustomSerializer serializer) {
-		this.type = type;
-		this.name = name;
+	public CustomAttributeSerializer(OnClassAttribute pattern, CustomSerializer serializer) {
+		this.pattern = pattern;
 		this.serializer = serializer;
 	}
+
+	/** Constructor. */
+	public CustomAttributeSerializer(Class<?> type, String name, CustomSerializer serializer) {
+		this(new OnClassAttribute(type, name), serializer);
+	}
 	
-	private Class<?> type;
-	private String name;
+	private OnClassAttribute pattern;
 	private CustomSerializer serializer;
 	
 	@Override
-	public void apply(SerializationClass type, Object containerInstance) {
-		if (!this.type.isAssignableFrom(type.getType().getBase()))
-			return;
-		Attribute a = type.getAttributeByOriginalName(name);
-		if (a == null || !this.type.equals(a.getDeclaringClass()))
+	public void apply(SerializationClass type, SerializationContext context) {
+		Attribute a = pattern.getAttribute(type, context);
+		if (a == null)
 			return;
 		if ((a instanceof CustomAttribute) && ((CustomAttribute)a).getCustomSerializer().getClass().equals(serializer.getClass()))
 			return;
@@ -35,7 +38,7 @@ public class CustomAttributeSerializer implements SerializationRule {
 	public boolean isEquivalent(SerializationRule rule) {
 		if (!(rule instanceof CustomAttributeSerializer)) return false;
 		CustomAttributeSerializer r = (CustomAttributeSerializer)rule;
-		return r.type.equals(type) && r.name.equals(name) && r.serializer.getClass().equals(serializer.getClass());
+		return r.pattern.isEquivalent(pattern) && r.serializer.getClass().equals(serializer.getClass());
 	}
 	
 	public static class CustomAttribute extends Attribute {

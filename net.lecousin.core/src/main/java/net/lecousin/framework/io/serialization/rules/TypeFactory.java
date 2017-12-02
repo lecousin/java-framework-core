@@ -4,6 +4,8 @@ import java.util.ListIterator;
 
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
+import net.lecousin.framework.io.serialization.SerializationContext;
+import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.util.Provider;
 
 public class TypeFactory<T> implements SerializationRule {
@@ -25,13 +27,13 @@ public class TypeFactory<T> implements SerializationRule {
 	}
 	
 	@Override
-	public void apply(SerializationClass type, Object containerInstance) {
+	public void apply(SerializationClass type, SerializationContext context) {
 		for (ListIterator<Attribute> it = type.getAttributes().listIterator(); it.hasNext(); ) {
 			Attribute a = it.next();
 			if (!a.getOriginalType().equals(type)) continue;
 			it.set(new Attribute(a) {
 				@Override
-				public Object instantiate(Object containerInstance) {
+				public Object instantiate(AttributeContext context) {
 					return factory.provide();
 				}
 			});

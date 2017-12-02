@@ -1086,7 +1086,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		}
 		jp.start();
 		long ns = newSize;
-		jp.listenAsynch(new Task.Cpu<Void,NoException>("Decrease size of BufferedIO", getPriority()) {
+		jp.listenAsync(new Task.Cpu<Void,NoException>("Decrease size of BufferedIO", getPriority()) {
 			@Override
 			public Void run() {
 				Buffer lastBuffer = null;
@@ -1258,7 +1258,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		if (sp == null)
 			task.start();
 		else
-			sp.listenAsynch(task, true);
+			sp.listenAsync(task, true);
 		return done;
 	}
 	

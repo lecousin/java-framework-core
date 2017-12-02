@@ -238,7 +238,7 @@ public class OutputToInputBuffers extends AbstractIO implements IO.OutputToInput
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsynch(this, buffer, ondone);
+		return IOUtil.readFullyAsync(this, buffer, ondone);
 	}
 	
 	@Override

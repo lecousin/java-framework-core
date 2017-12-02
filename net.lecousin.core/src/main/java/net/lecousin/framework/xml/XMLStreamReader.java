@@ -364,7 +364,7 @@ public class XMLStreamReader {
 					return null;
 				}
 				if (reader.cp instanceof CharacterStreamProvider) {
-					((CharacterStreamProvider)reader.cp).stream.canStartReading().listenAsynch(
+					((CharacterStreamProvider)reader.cp).stream.canStartReading().listenAsync(
 					new Task.Cpu<Void, NoException>("Start reading XML" + io.getSourceDescription(), io.getPriority()) {
 						@Override
 						public Void run() {
@@ -387,7 +387,7 @@ public class XMLStreamReader {
 					reader.next();
 					if (reader.checkFirstElement()) {
 						if (reader.cp instanceof CharacterStreamProvider) {
-							((CharacterStreamProvider)reader.cp).stream.canStartReading().listenAsynch(
+							((CharacterStreamProvider)reader.cp).stream.canStartReading().listenAsync(
 							new Task.Cpu<Void, NoException>(
 								"Start reading XML" + io.getSourceDescription(), io.getPriority()
 							) {

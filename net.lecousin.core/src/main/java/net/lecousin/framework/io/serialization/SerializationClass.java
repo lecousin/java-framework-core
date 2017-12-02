@@ -13,8 +13,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 
+import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
-import net.lecousin.framework.io.serialization.rules.TypeFactory;
 
 public class SerializationClass {
 	
@@ -56,25 +56,29 @@ public class SerializationClass {
 			}
 	}
 	
-	public void apply(List<SerializationRule> rules, Object containerInstance) {
+	public void apply(List<SerializationRule> rules, SerializationContext context) {
 		for (SerializationRule rule : rules)
-			rule.apply(this, containerInstance);
+			rule.apply(this, context);
 	}
 	
 	public static class Attribute {
 		
-		public Attribute(String name, TypeDefinition type) {
+		public Attribute(SerializationClass parent, String name, TypeDefinition type) {
+			this.parent = parent;
 			this.name = this.originalName = name;
 			this.type = this.originalType = type;
 		}
 		
-		public Attribute(Field f) {
+		public Attribute(SerializationClass parent, Field f) {
+			this.parent = parent;
+			this.field = f;
 			this.name = this.originalName = f.getName();
 			this.type = this.originalType = new TypeDefinition(f.getGenericType());
 			if ((f.getModifiers() & Modifier.TRANSIENT) != 0) ignore = true;
 		}
 		
 		public Attribute(Attribute copy) {
+			this.parent = copy.parent;
 			this.name = copy.name;
 			this.originalName = copy.originalName;
 			this.field = copy.field;
@@ -85,6 +89,7 @@ public class SerializationClass {
 			this.ignore = copy.ignore;
 		}
 		
+		private SerializationClass parent;
 		private String name;
 		private String originalName;
 		private Field field;
@@ -93,6 +98,10 @@ public class SerializationClass {
 		private TypeDefinition type;
 		private TypeDefinition originalType;
 		private boolean ignore = false;
+		
+		public SerializationClass getparent() {
+			return parent;
+		}
 		
 		public String getName() {
 			return name;
@@ -184,8 +193,8 @@ public class SerializationClass {
 		}
 		
 		/** Instantiate a new object of the type of this attribute. */
-		public Object instantiate(@SuppressWarnings("unused") Object containerInstance) throws Exception {
-			return instantiate(type.getBase());
+		public Object instantiate(AttributeContext context) throws Exception {
+			return SerializationClass.instantiate(context.getAttribute().getType().getBase());
 		}
 		
 		/** Retrieve a specific annotation. */
@@ -227,11 +236,13 @@ public class SerializationClass {
 	}
 	
 	private void populateAttributes(Class<?> type) {
+		if (Object.class.equals(type))
+			return;
 		for (Field f : type.getDeclaredFields()) {
 			String name = f.getName();
 			Attribute a = getAttributeByOriginalName(name);
 			if (a == null) {
-				a = new Attribute(f);
+				a = new Attribute(this, f);
 				attributes.add(a);
 			}
 		}
@@ -246,7 +257,7 @@ public class SerializationClass {
 				if (returnType == null || Void.class.equals(returnType) || void.class.equals(returnType)) continue;
 				Attribute a = getAttributeByOriginalName(name);
 				if (a == null)
-					a = new Attribute(name, new TypeDefinition(m.getGenericReturnType()));
+					a = new Attribute(this, name, new TypeDefinition(m.getGenericReturnType()));
 				if (a.getter == null)
 					a.getter = m;
 			} else if (name.startsWith("is")) {
@@ -258,7 +269,7 @@ public class SerializationClass {
 				if (!returnType.equals(boolean.class) && !returnType.equals(Boolean.class)) continue;
 				Attribute a = getAttributeByOriginalName(name);
 				if (a == null)
-					a = new Attribute(name, new TypeDefinition(returnType));
+					a = new Attribute(this, name, new TypeDefinition(returnType));
 				if (a.getter == null)
 					a.getter = m;
 			} else if (name.startsWith("set")) {
@@ -267,7 +278,7 @@ public class SerializationClass {
 				if (m.getParameterCount() != 1) continue;
 				Attribute a = getAttributeByOriginalName(name);
 				if (a == null)
-					a = new Attribute(name, new TypeDefinition(m.getGenericParameterTypes()[0]));
+					a = new Attribute(this, name, new TypeDefinition(m.getGenericParameterTypes()[0]));
 				if (a.setter == null)
 					a.setter = m;
 			}
@@ -297,22 +308,21 @@ public class SerializationClass {
 		return type.newInstance();
 	}
 	
-	public static Object instantiate(Class<?> type, List<SerializationRule> rules) throws Exception {
+	public static Object instantiate(TypeDefinition type, SerializationContext context, List<SerializationRule> rules) throws Exception {
 		Object instance = null;
 		for (SerializationRule rule : rules)
-			if (rule instanceof TypeFactory) {
-				TypeFactory<?> factory = (TypeFactory<?>)rule;
-				if (type.isAssignableFrom(factory.getType())) {
-					instance = factory.getFactory().provide();
-					if (instance != null)
-						break;
-				}
+			if (rule.canInstantiate(type, context)) {
+				instance = rule.instantiate(type, context);
+				break;
 			}
-		if (instance == null)
-			instance = instantiate(type);
+		if (instance == null) {
+			if (context instanceof AttributeContext)
+				instance = ((AttributeContext)context).getAttribute().instantiate((AttributeContext)context);
+			else
+				instance = instantiate(type.getBase());
+		}
 		for (SerializationRule rule : rules)
-			if (rule instanceof SerializationRule.DeserializationInstanceListener)
-				((SerializationRule.DeserializationInstanceListener)rule).onInstantiation(instance);
+			rule.onInstantiation(type, instance, context);
 		return instance;
 	}
 	

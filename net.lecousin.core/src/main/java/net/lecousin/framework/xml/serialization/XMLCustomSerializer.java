@@ -1,27 +1,21 @@
 package net.lecousin.framework.xml.serialization;
 
 import java.util.List;
-import java.util.Set;
 
-import net.lecousin.framework.io.serialization.rules.CustomSerializer;
+import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
-import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.xml.XMLStreamReaderAsync;
+import net.lecousin.framework.xml.XMLWriter;
 
 /** Custom serialization.
  * @param <T> type
  */
-public interface XMLCustomSerializer<T> {
+public interface XMLCustomSerializer {
 
 	/** Deserialization. */
-	public T deserialize(
-		XMLDeserializer deserializer, XMLStreamReaderAsync xml,
-		List<SerializationRule> rules, List<CustomSerializer<?,?>> customSerializers
-	) throws Exception;
+	public AsyncWork<?, Exception> deserialize(XMLDeserializer deserializer, XMLStreamReaderAsync xml, List<SerializationRule> rules);
 	
 	/** Serialization. */
-	public void serialize(
-		T value, XMLSerializer serializer, ICharacterStream.Writable.Buffered output,
-		List<SerializationRule> rules, List<CustomSerializer<?, ?>> customSerializers, Set<Object> alreadySerialized
-	) throws Exception;
+	public ISynchronizationPoint<? extends Exception> serialize(Object value, XMLSerializer serializer, XMLWriter output, List<SerializationRule> rules);
 }

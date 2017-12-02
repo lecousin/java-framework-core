@@ -28,7 +28,7 @@ public @interface TypeSerializationMethod {
 	public String value();
 	
 	/** Convert an annotation into a CustomAttributeSerialization rule. */
-	public static class ToRule implements AttributeAnnotationToRule<TypeSerializationMethod> {
+	public static class ToRule implements AttributeAnnotationToRuleOnType<TypeSerializationMethod> {
 		
 		@Override
 		public SerializationRule createRule(TypeSerializationMethod annotation, Attribute attribute) {

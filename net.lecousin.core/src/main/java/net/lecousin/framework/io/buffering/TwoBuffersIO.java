@@ -428,7 +428,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 		if (nb1 < 0) {
 			if (!read1.isUnblocked()) {
 				AsyncWork<Integer, IOException> sp = new AsyncWork<>();
-				read1.listenAsynch(new Task.Cpu<Void,NoException>("FullyBufferedIO.readAsync", io.getPriority()) {
+				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.readAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -491,7 +491,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 		if (nb2 < 0) {
 			if (!read1.isUnblocked() || read2 == null) {
 				AsyncWork<Integer, IOException> sp = new AsyncWork<>();
-				read1.listenAsynch(new Task.Cpu<Void,NoException>("FullyBufferedIO.readAsync", io.getPriority()) {
+				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.readAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -516,7 +516,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 			}
 			if (!read2.isUnblocked()) {
 				AsyncWork<Integer, IOException> sp = new AsyncWork<>();
-				read2.listenAsynch(new Task.Cpu<Void,NoException>("FullyBufferedIO.readAsync", io.getPriority()) {
+				read2.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.readAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read2.isSuccessful()) {
@@ -623,7 +623,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 		
 		if (nb1 < 0) {
 			if (!read1.isUnblocked()) {
-				read1.listenAsynch(task, true);
+				read1.listenAsync(task, true);
 				return task.getSynch();
 			}
 			if (read1.hasError()) {
@@ -649,7 +649,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 		}
 		if (nb2 < 0) {
 			if (!read1.isUnblocked()) {
-				read1.listenAsynch(task, true);
+				read1.listenAsync(task, true);
 				return task.getSynch();
 			}
 			if (read1.hasError()) {
@@ -663,7 +663,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 				return task.getSynch();
 			}
 			if (!read2.isUnblocked()) {
-				read2.listenAsynch(task, true);
+				read2.listenAsync(task, true);
 				return task.getSynch();
 			}
 			if (read2.hasError()) {
@@ -753,12 +753,12 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsynch(this, buffer, 0, ondone);
+		return IOUtil.readFullyAsync(this, buffer, 0, ondone);
 	}
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsynch(this, pos, buffer, ondone);
+		return IOUtil.readFullyAsync(this, pos, buffer, ondone);
 	}
 
 	@Override
@@ -847,7 +847,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 			if (!read1.isUnblocked()) {
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
 				long s = skip;
-				read1.listenAsynch(new Task.Cpu<Void,NoException>("FullyBufferedIO.skipAsync", io.getPriority()) {
+				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.skipAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -903,7 +903,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 			if (!read1.isUnblocked() || read2 == null) {
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
 				long s = skip;
-				read1.listenAsynch(new Task.Cpu<Void,NoException>("FullyBufferedIO.skipAsync", io.getPriority()) {
+				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.skipAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -937,7 +937,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
 				long s = skip;
 				int d = done;
-				read2.listenAsynch(new Task.Cpu<Void,NoException>("FullyBufferedIO.skipAsync", io.getPriority()) {
+				read2.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.skipAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read2.isSuccessful()) {
@@ -1036,7 +1036,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 		if (nb1 < 0) {
 			if (!read1.isUnblocked()) {
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				read1.listenAsynch(new Task.Cpu<Void,NoException>("FullyBufferedIO.getSizeAsync", io.getPriority()) {
+				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.getSizeAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -1064,7 +1064,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 		if (nb2 < 0) {
 			if (!read1.isUnblocked() || read2 == null) {
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				read1.listenAsynch(new Task.Cpu<Void,NoException>("FullyBufferedIO.getSizeAsync", io.getPriority()) {
+				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.getSizeAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -1085,7 +1085,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 			}
 			if (!read2.isUnblocked()) {
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				read2.listenAsynch(new Task.Cpu<Void,NoException>("FullyBufferedIO.getSizeAsync", io.getPriority()) {
+				read2.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.getSizeAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read2.isSuccessful()) {

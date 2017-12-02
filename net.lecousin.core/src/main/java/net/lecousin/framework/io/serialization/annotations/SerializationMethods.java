@@ -31,7 +31,7 @@ public @interface SerializationMethods {
 	public String deserialization();
 	
 	/** Convert an annotation into a CustomAttributeSerialization rule. */
-	public static class ToRule implements AttributeAnnotationToRule<SerializationMethods> {
+	public static class ToRule implements AttributeAnnotationToRuleOnType<SerializationMethods> {
 		
 		@Override
 		public SerializationRule createRule(SerializationMethods annotation, Attribute attribute) {

@@ -26,7 +26,7 @@ public @interface Instantiation {
 	public Class<? extends Factory> factory();
 	
 	/** Convert an annotation into an AttributeInstantiation rule. */
-	public static class ToRule implements AttributeAnnotationToRule<Instantiation> {
+	public static class ToRule implements AttributeAnnotationToRuleOnType<Instantiation> {
 		
 		@Override
 		public SerializationRule createRule(Instantiation annotation, Attribute attribute) {

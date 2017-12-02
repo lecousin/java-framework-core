@@ -108,7 +108,7 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsynch(this, buffer, ondone);
+		return IOUtil.readFullyAsync(this, buffer, ondone);
 	}
 
 	@Override

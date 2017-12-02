@@ -4,60 +4,79 @@ import java.io.InputStream;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
-import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRule;
+import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
+import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
+import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnAttribute;
+import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnType;
 import net.lecousin.framework.io.serialization.annotations.TypeAnnotationToRule;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
-public abstract class AbstractSerializer<Output> implements Serializer {
+public abstract class AbstractSerializer implements Serializer {
 
 	protected byte priority;
 	
-	protected abstract AsyncWork<Output, Exception> initializeOutput(IO.Writable output);
+	protected abstract ISynchronizationPoint<? extends Exception> initializeSerialization(IO.Writable output);
 	
-	protected abstract ISynchronizationPoint<? extends Exception> finalizeOutput(Output output);
+	protected abstract ISynchronizationPoint<? extends Exception> finalizeSerialization();
+	
+	protected class SerializationTask extends Task.Cpu<Void, NoException> {
+		public SerializationTask(Runnable r) {
+			super("Serialization", priority);
+			this.r = r;
+		}
+		
+		private Runnable r;
+		
+		@Override
+		public Void run() {
+			r.run();
+			return null;
+		}
+	}
 	
 	@Override
 	public ISynchronizationPoint<Exception> serialize(Object object, IO.Writable output, List<SerializationRule> rules) {
 		priority = output.getPriority();
-		AsyncWork<Output, Exception> init = initializeOutput(output);
+		ISynchronizationPoint<? extends Exception> init = initializeSerialization(output);
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
-		init.listenAsynch(
-			new Task.Cpu<Void, NoException>("Serialization", priority) {
-				@Override
-				public Void run() {
-					Output out = init.getResult();
-					ISynchronizationPoint<Exception> sp = serializeValue(object, "", out, rules);
-					sp.listenInline(() -> {
-						finalizeOutput(out).listenInlineSP(result);
-					}, result);
-					return null;
-				}
-			},
-			result
-		);
+		init.listenAsyncSP(new SerializationTask(() -> {
+			ISynchronizationPoint<? extends Exception> sp = serializeValue(null, object, "", rules);
+			sp.listenInlineSP(() -> {
+				finalizeSerialization().listenInlineSP(result);
+			}, result);
+		}), result);
 		return result;
 	}
 	
-	public ISynchronizationPoint<Exception> serializeValue(
-		Object value, String path, Output output, List<SerializationRule> rules
+	
+	protected List<SerializationRule> addRulesForType(SerializationClass type, List<SerializationRule> currentList) {
+		currentList = TypeAnnotationToRule.addRules(type.getType().getBase(), currentList);
+		currentList = AttributeAnnotationToRuleOnType.addRules(type, true, currentList);
+		return currentList;
+	}
+	
+	protected List<SerializationRule> addRulesForAttribute(Attribute a, List<SerializationRule> currentList) {
+		return AttributeAnnotationToRuleOnAttribute.addRules(a, true, currentList);
+	}
+	
+	public ISynchronizationPoint<? extends Exception> serializeValue(
+		SerializationContext context, Object value, String path, List<SerializationRule> rules
 	) {
 		if (value == null)
-			return serializeNullValue(output);
+			return serializeNullValue();
 		Class<?> type = value.getClass();
 
 		if (boolean.class.equals(type) || Boolean.class.equals(type))
-			return serializeBooleanValue(((Boolean)value).booleanValue(), output);
+			return serializeBooleanValue(((Boolean)value).booleanValue());
 		
 		if (byte.class.equals(type) ||
 			short.class.equals(type) ||
@@ -66,78 +85,88 @@ public abstract class AbstractSerializer<Output> implements Serializer {
 			float.class.equals(type) ||
 			double.class.equals(type) ||
 			Number.class.isAssignableFrom(type))
-			return serializeNumericValue((Number)value, output);
+			return serializeNumericValue((Number)value);
 		
 		if (char.class.equals(type) || Character.class.equals(type))
-			return serializeCharacterValue(((Character)value).charValue(), output);
+			return serializeCharacterValue(((Character)value).charValue());
 		
 		if (CharSequence.class.isAssignableFrom(type))
-			return serializeStringValue((CharSequence)value, output);
+			return serializeStringValue((CharSequence)value);
 
 		if (type.isEnum())
-			return serializeStringValue(((Enum<?>)value).name(), output);
+			return serializeStringValue(((Enum<?>)value).name());
 
 		if (Collection.class.isAssignableFrom(type))
-			return serializeCollectionValue((Collection<?>)value, path, output, rules);
+			return serializeCollectionValue(context, (Collection<?>)value, path, rules);
 
+		/*
 		if (Map.class.isAssignableFrom(type))
-			return serializeMapValue((Map<?,?>)value, path, output, rules);
+			return serializeMapValue(context, (Map<?,?>)value, path, rules);
+		*/
 		
 		if (InputStream.class.isAssignableFrom(type))
-			return serializeInputStreamValue((InputStream)value, path, output, rules);
+			return serializeInputStreamValue(context, (InputStream)value, path, rules);
 		
 		if (IO.Readable.class.isAssignableFrom(type))
-			return serializeIOReadableValue((IO.Readable)value, path, output, rules);
+			return serializeIOReadableValue(context, (IO.Readable)value, path, rules);
 
-		return serializeObjectValue(value, path, output, rules);
+		return serializeObjectValue(context, value, path, rules);
 	}
 	
 	// *** null ***
 	
-	protected abstract ISynchronizationPoint<Exception> serializeNullValue(Output output);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeNullValue();
 	
-	protected abstract ISynchronizationPoint<Exception> serializeNullAttribute(Attribute a, String path, Output output);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeNullAttribute(AttributeContext context, String path);
 
 	// *** boolean ***
 	
-	protected abstract ISynchronizationPoint<Exception> serializeBooleanValue(boolean value, Output output);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeBooleanValue(boolean value);
 
-	protected abstract ISynchronizationPoint<Exception> serializeBooleanAttribute(boolean value, Attribute a, String path, Output output);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeBooleanAttribute(AttributeContext context, boolean value, String path);
 	
 	// *** numeric ***
 	
-	protected abstract ISynchronizationPoint<Exception> serializeNumericValue(Number value, Output output);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeNumericValue(Number value);
 
-	protected abstract ISynchronizationPoint<Exception> serializeNumericAttribute(Number value, Attribute a, String path, Output output);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeNumericAttribute(AttributeContext context, Number value, String path);
 
 	// *** character ***
 	
-	protected abstract ISynchronizationPoint<Exception> serializeCharacterValue(char value, Output output);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeCharacterValue(char value);
 
-	protected abstract ISynchronizationPoint<Exception> serializeCharacterAttribute(char value, Attribute a, String path, Output output);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeCharacterAttribute(AttributeContext context, char value, String path);
 
 	// *** string ***
 	
-	protected abstract ISynchronizationPoint<Exception> serializeStringValue(CharSequence value, Output output);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeStringValue(CharSequence value);
 
-	protected abstract ISynchronizationPoint<Exception> serializeStringAttribute(CharSequence value, Attribute a, String path, Output output);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeStringAttribute(AttributeContext context, CharSequence value, String path);
 	
 	// *** Object ***
 	
-	protected ISynchronizationPoint<Exception> serializeObjectValue(Object value, String path, Output output, List<SerializationRule> rules) {
+	protected ISynchronizationPoint<? extends Exception> serializeObjectValue(SerializationContext context, Object value, String path, List<SerializationRule> rules) {
 		Class<?> type = value.getClass();
 		SerializationClass sc = new SerializationClass(new TypeDefinition(type));
-		rules = TypeAnnotationToRule.addRules(type, rules);
-		sc.apply(rules, value);
-		return serializeObjectValue(sc, value, path, output, rules);
+		ObjectContext ctx = new ObjectContext(context, value, sc);
+		rules = addRulesForType(sc, rules);
+		sc.apply(rules, ctx);
+		return serializeObjectValue(ctx, path, rules);
 	}
 	
-	protected ISynchronizationPoint<Exception> serializeObjectValue(
-		SerializationClass sc, Object value, String path, Output output, List<SerializationRule> rules
+	protected ISynchronizationPoint<? extends Exception> serializeObjectValue(
+		ObjectContext context, String path, List<SerializationRule> rules
 	) {
-		List<Attribute> attributes = sortAttributes(sc.getAttributes());
+		List<Attribute> attributes = sortAttributes(context.getSerializationClass().getAttributes());
+		ISynchronizationPoint<? extends Exception> start = startObjectValue(context, path, rules);
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
-		serializeAttribute(attributes, 0, value, path, output, rules, result);
+		if (start.isUnblocked()) {
+			if (start.hasError()) return start;
+			serializeAttribute(attributes, 0, context, path, rules, result);
+		} else
+			start.listenAsyncSP(new SerializationTask(() -> {
+				serializeAttribute(attributes, 0, context, path, rules, result);
+			}), result);
 		return result;
 	}
 	
@@ -145,57 +174,62 @@ public abstract class AbstractSerializer<Output> implements Serializer {
 		return attributes;
 	}
 	
+	protected abstract ISynchronizationPoint<? extends Exception> startObjectValue(ObjectContext context, String path, List<SerializationRule> rules);
+
+	protected abstract ISynchronizationPoint<? extends Exception> endObjectValue(ObjectContext context, String path, List<SerializationRule> rules);
+	
 	protected void serializeAttribute(
-		List<Attribute> attributes, int attributeIndex, Object containerInstance, String containerPath,
-		Output output, List<SerializationRule> rules, SynchronizationPoint<Exception> result
+		List<Attribute> attributes, int attributeIndex, ObjectContext context, String containerPath,
+		List<SerializationRule> rules, SynchronizationPoint<Exception> result
 	) {
 		if (attributeIndex >= attributes.size()) {
-			result.unblock();
+			endObjectValue(context, containerPath, rules).listenInlineSP(result);
 			return;
 		}
 		Attribute a = attributes.get(attributeIndex);
 		if (a.ignore() || !a.canGet()) {
-			serializeAttribute(attributes, attributeIndex + 1, containerInstance, containerPath, output, rules, result);
+			serializeAttribute(attributes, attributeIndex + 1, context, containerPath, rules, result);
 			return;
 		}
-		List<SerializationRule> newRules = AttributeAnnotationToRule.addRules(a, true, rules);
-		ISynchronizationPoint<Exception> sp = serializeAttribute(
-			a, containerPath + '.' + a.getOriginalName(), containerInstance, output, newRules);
+		AttributeContext ctx = new AttributeContext(context, a);
+		List<SerializationRule> newRules = addRulesForAttribute(a, rules);
+		ISynchronizationPoint<? extends Exception> sp = serializeAttribute(
+			ctx, containerPath + '.' + a.getOriginalName(), newRules);
 		if (sp.isUnblocked()) {
 			if (sp.hasError()) result.error(sp.getError());
 			else if (sp.isCancelled()) result.cancel(sp.getCancelEvent());
-			else serializeAttribute(attributes, attributeIndex + 1, containerInstance, containerPath, output, rules, result);
+			else serializeAttribute(attributes, attributeIndex + 1, context, containerPath, rules, result);
 			return;
 		}
-		sp.listenAsynch(new Task.Cpu<Void, NoException>("Serialization", priority) {
+		sp.listenAsync(new Task.Cpu<Void, NoException>("Serialization", priority) {
 			@Override
 			public Void run() {
 				if (sp.hasError()) result.error(sp.getError());
 				else if (sp.isCancelled()) result.cancel(sp.getCancelEvent());
-				else serializeAttribute(attributes, attributeIndex + 1, containerInstance, containerPath, output, rules, result);
+				else serializeAttribute(attributes, attributeIndex + 1, context, containerPath, rules, result);
 				return null;
 			}
 		}, true);
 	}
 	
-	protected ISynchronizationPoint<Exception> serializeAttribute(
-		Attribute a, String path, Object containerInstance, Output output, List<SerializationRule> rules
+	protected ISynchronizationPoint<? extends Exception> serializeAttribute(
+		AttributeContext context, String path, List<SerializationRule> rules
 	) {
 		Object value;
-		try { value = a.getValue(containerInstance); }
+		try { value = context.getAttribute().getValue(context.getParent().getInstance()); }
 		catch (Exception e) {
 			return new SynchronizationPoint<>(
-				new Exception("Unable to get value of attribute " + a.getOriginalName()
-					+ " on " + a.getOriginalType().getClass().getName(), e));
+				new Exception("Unable to get value of attribute " + context.getAttribute().getOriginalName()
+					+ " on " + context.getAttribute().getOriginalType().getClass().getName(), e));
 		}
 		
 		if (value == null)
-			return serializeNullAttribute(a, path, output);
+			return serializeNullAttribute(context, path);
 		
 		Class<?> type = value.getClass();
 		
 		if (boolean.class.equals(type) || Boolean.class.equals(type))
-			return serializeBooleanAttribute(((Boolean)value).booleanValue(), a, path, output);
+			return serializeBooleanAttribute(context, ((Boolean)value).booleanValue(), path);
 		
 		if (byte.class.equals(type) ||
 			short.class.equals(type) ||
@@ -204,103 +238,148 @@ public abstract class AbstractSerializer<Output> implements Serializer {
 			float.class.equals(type) ||
 			double.class.equals(type) ||
 			Number.class.isAssignableFrom(type))
-			return serializeNumericAttribute((Number)value, a, path, output);
+			return serializeNumericAttribute(context, (Number)value, path);
 		
 		if (char.class.equals(type) || Character.class.equals(type))
-			return serializeCharacterAttribute(((Character)value).charValue(), a, path, output);
+			return serializeCharacterAttribute(context, ((Character)value).charValue(), path);
 		
 		if (CharSequence.class.isAssignableFrom(type))
-			return serializeStringAttribute((CharSequence)value, a, path, output);
+			return serializeStringAttribute(context, (CharSequence)value, path);
 
 		if (type.isEnum())
-			return serializeStringAttribute(((Enum<?>)value).name(), a, path, output);
+			return serializeStringAttribute(context, ((Enum<?>)value).name(), path);
 
 		if (Collection.class.isAssignableFrom(type))
-			return serializeCollectionAttribute((Collection<?>)value, a, path, output, rules);
+			return serializeCollectionAttribute(context, (Collection<?>)value, path, rules);
 
+		/*
 		if (Map.class.isAssignableFrom(type))
-			return serializeMapAttribute((Map<?,?>)value, a, path, output, rules);
+			return serializeMapAttribute(context, (Map<?,?>)value, path, rules);
+		*/
 		
 		if (InputStream.class.isAssignableFrom(type))
-			return serializeInputStreamAttribute((InputStream)value, a, path, output, rules);
+			return serializeInputStreamAttribute(context, (InputStream)value, path, rules);
 		
 		if (IO.Readable.class.isAssignableFrom(type))
-			return serializeIOReadableAttribute((IO.Readable)value, a, path, output, rules);
+			return serializeIOReadableAttribute(context, (IO.Readable)value, path, rules);
 
-		return serializeObjectAttribute(value, a, path, output, rules);
+		return serializeObjectAttribute(context, value, path, rules);
 	}
 	
-	protected abstract ISynchronizationPoint<Exception> serializeObjectAttribute(
-		Object value, Attribute a, String path, Output output, List<SerializationRule> rules);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeObjectAttribute(
+		AttributeContext context, Object value, String path, List<SerializationRule> rules);
 	
 	// *** Collection ***
 	
-	protected ISynchronizationPoint<Exception> serializeCollectionValue(
-		Collection<?> col, String path, Output output, List<SerializationRule> rules
+	protected ISynchronizationPoint<? extends Exception> serializeCollectionValue(
+		SerializationContext context, Collection<?> col, String path, List<SerializationRule> rules
 	) {
+		ISynchronizationPoint<? extends Exception> start = startCollectionValue(context, col, path, rules);
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
-		serializeCollectionElement(col.iterator(), 0, path, output, rules, result);
+		if (start.isUnblocked()) {
+			serializeCollectionElement(context, col.iterator(), 0, path, rules, result);
+			return result;
+		}
+		start.listenAsyncSP(new SerializationTask(() -> {
+			serializeCollectionElement(context, col.iterator(), 0, path, rules, result);
+		}), result);
 		return result;
 	}
 	
+	protected abstract ISynchronizationPoint<? extends Exception> startCollectionValue(
+		SerializationContext context, Collection<?> col, String path, List<SerializationRule> rules
+	);
+
+	protected abstract ISynchronizationPoint<? extends Exception> endCollectionValue(
+		SerializationContext context, String path, List<SerializationRule> rules
+	);
+
+	protected abstract ISynchronizationPoint<? extends Exception> startCollectionValueElement(
+		SerializationContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules
+	);
+
+	protected abstract ISynchronizationPoint<? extends Exception> endCollectionValueElement(
+		SerializationContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules
+	);
+	
 	protected void serializeCollectionElement(
-		Iterator<?> it, int elementIndex, String colPath, Output output, List<SerializationRule> rules, SynchronizationPoint<Exception> result
+		SerializationContext context, Iterator<?> it, int elementIndex, String colPath, List<SerializationRule> rules, SynchronizationPoint<Exception> result
 	) {
 		if (!it.hasNext()) {
-			result.unblock();
+			endCollectionValue(context, colPath, rules).listenInlineSP(result);
 			return;
 		}
 		Object element = it.next();
-		ISynchronizationPoint<Exception> sp = serializeValue(element, colPath + '[' + elementIndex + ']', output, rules);
-		if (sp.isUnblocked()) {
-			if (sp.hasError()) result.error(sp.getError());
-			else if (sp.isCancelled()) result.cancel(sp.getCancelEvent());
-			else serializeCollectionElement(it, elementIndex + 1, colPath, output, rules, result);
+		String elementPath = colPath + '[' + elementIndex + ']';
+		
+		ISynchronizationPoint<? extends Exception> start = startCollectionValueElement(context, element, elementIndex, elementPath, rules);
+		
+		SynchronizationPoint<Exception> value = new SynchronizationPoint<>();
+		if (start.isUnblocked()) {
+			if (start.hasError()) value.error(start.getError());
+			else serializeValue(context, element, elementPath, rules).listenInlineSP(value);
+		} else {
+			start.listenAsyncSP(new SerializationTask(() -> {
+				serializeValue(context, element, elementPath, rules).listenInlineSP(value);
+			}), value);
+		}
+		
+		SynchronizationPoint<Exception> next = new SynchronizationPoint<>();
+		if (value.isUnblocked()) {
+			if (value.hasError()) next.error(value.getError());
+			else endCollectionValueElement(context, element, elementIndex, elementPath, rules).listenInlineSP(next);
+		} else {
+			value.listenAsyncSP(new SerializationTask(() -> {
+				endCollectionValueElement(context, element, elementIndex, elementPath, rules).listenInlineSP(next);
+			}), next);
+		}
+		
+		if (next.isUnblocked()) {
+			if (next.hasError()) result.error(next.getError());
+			else serializeCollectionElement(context, it, elementIndex + 1, colPath, rules, result);
 			return;
 		}
-		sp.listenAsynch(new Task.Cpu<Void, NoException>("Serialization", priority) {
-			@Override
-			public Void run() {
-				if (sp.hasError()) result.error(sp.getError());
-				else if (sp.isCancelled()) result.cancel(sp.getCancelEvent());
-				else serializeCollectionElement(it, elementIndex + 1, colPath, output, rules, result);
-				return null;
-			}
-		}, true);
+		next.listenAsync(new SerializationTask(() -> {
+			if (next.hasError()) result.error(next.getError());
+			else serializeCollectionElement(context, it, elementIndex + 1, colPath, rules, result);
+		}), result);
 	}
 
-	protected abstract ISynchronizationPoint<Exception> serializeCollectionAttribute(
-		Collection<?> col, Attribute a, String path, Output output, List<SerializationRule> rules);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeCollectionAttribute(
+		AttributeContext context, Collection<?> col, String path, List<SerializationRule> rules);
 	
 	// *** Map ***
 	
-	protected abstract ISynchronizationPoint<Exception> serializeMapValue(
-		Map<?,?> map, String path, Output output, List<SerializationRule> rules);
+	/*
+	protected abstract ISynchronizationPoint<? extends Exception> serializeMapValue(
+		SerializationContext context, Map<?,?> map, String path, List<SerializationRule> rules);
 	
-	protected abstract ISynchronizationPoint<Exception> serializeMapAttribute(
-		Map<?,?> map, Attribute a, String path, Output output, List<SerializationRule> rules);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeMapAttribute(
+		AttributeContext context, Map<?,?> map, String path, List<SerializationRule> rules);
+		*/
 
 	// *** InputStream ***
 
 	@SuppressWarnings("resource")
-	protected ISynchronizationPoint<Exception> serializeInputStreamValue(
-		InputStream in, String path, Output output, List<SerializationRule> rules) {
-		return serializeIOReadableValue(new IOFromInputStream(in, in.toString(), Threading.getCPUTaskManager(), priority),
-			path, output, rules);
+	protected ISynchronizationPoint<? extends Exception> serializeInputStreamValue(
+		SerializationContext context, InputStream in, String path, List<SerializationRule> rules) {
+		return serializeIOReadableValue(context, new IOFromInputStream(in, in.toString(), Threading.getCPUTaskManager(), priority),
+			path, rules);
 	}
 
 	@SuppressWarnings("resource")
-	protected ISynchronizationPoint<Exception> serializeInputStreamAttribute(
-		InputStream in, Attribute a, String path, Output output, List<SerializationRule> rules) {
-		return serializeIOReadableAttribute(new IOFromInputStream(in, in.toString(), Threading.getCPUTaskManager(), priority),
-			a, path, output, rules);
+	protected ISynchronizationPoint<? extends Exception> serializeInputStreamAttribute(
+		AttributeContext context, InputStream in, String path, List<SerializationRule> rules) {
+		return serializeIOReadableAttribute(context, 
+			new IOFromInputStream(in, in.toString(), Threading.getCPUTaskManager(), priority),
+			path, rules);
 	}
 	
 	// *** IOReadable ***
 
-	protected abstract ISynchronizationPoint<Exception> serializeIOReadableValue(
-		IO.Readable io, String path, Output output, List<SerializationRule> rules);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeIOReadableValue(
+		SerializationContext context, IO.Readable io, String path, List<SerializationRule> rules);
 
-	protected abstract ISynchronizationPoint<Exception> serializeIOReadableAttribute(
-		IO.Readable io, Attribute a, String path, Output output, List<SerializationRule> rules);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeIOReadableAttribute(
+		AttributeContext context, IO.Readable io, String path, List<SerializationRule> rules);
 }

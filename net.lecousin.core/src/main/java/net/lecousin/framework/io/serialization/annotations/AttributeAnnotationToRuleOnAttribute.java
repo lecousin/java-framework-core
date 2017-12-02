@@ -10,7 +10,7 @@ import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.util.Pair;
 
-public interface AttributeAnnotationToRule<TAnnotation extends Annotation> {
+public interface AttributeAnnotationToRuleOnAttribute<TAnnotation extends Annotation> {
 
 	SerializationRule createRule(TAnnotation annotation, Attribute attribute);
 	
@@ -18,7 +18,7 @@ public interface AttributeAnnotationToRule<TAnnotation extends Annotation> {
 	public static List<SerializationRule> addRules(Attribute attr, boolean onGet, List<SerializationRule> rules) {
 		List<SerializationRule> newRules = new LinkedList<>();
 		for (Annotation a : attr.getAnnotations(onGet)) {
-			for (AttributeAnnotationToRule toRule : getAnnotationToRules(a)) {
+			for (AttributeAnnotationToRuleOnAttribute toRule : getAnnotationToRules(a)) {
 				SerializationRule rule;
 				try { rule = toRule.createRule(a, attr); }
 				catch (Throwable t) {
@@ -54,18 +54,18 @@ public interface AttributeAnnotationToRule<TAnnotation extends Annotation> {
 		return newList;
 	}
 	
-	public static List<AttributeAnnotationToRule<?>> getAnnotationToRules(Annotation a) {
-		LinkedList<AttributeAnnotationToRule<?>> list = new LinkedList<>();
+	public static List<AttributeAnnotationToRuleOnAttribute<?>> getAnnotationToRules(Annotation a) {
+		LinkedList<AttributeAnnotationToRuleOnAttribute<?>> list = new LinkedList<>();
 		for (Class<?> c : a.annotationType().getDeclaredClasses()) {
-			if (!AttributeAnnotationToRule.class.isAssignableFrom(c)) continue;
-			try { list.add((AttributeAnnotationToRule<?>)c.newInstance()); }
+			if (!AttributeAnnotationToRuleOnAttribute.class.isAssignableFrom(c)) continue;
+			try { list.add((AttributeAnnotationToRuleOnAttribute<?>)c.newInstance()); }
 			catch (Throwable t) {
 				LCCore.getApplication().getDefaultLogger().error(
 					"Error creating AttributeAnnotationToRule " + a.annotationType().getName(), t);
 				continue;
 			}
 		}
-		for (Pair<Class<? extends Annotation>, AttributeAnnotationToRule<?>> p : Registry.registry)
+		for (Pair<Class<? extends Annotation>, AttributeAnnotationToRuleOnAttribute<?>> p : Registry.registry)
 			if (p.getValue1().equals(a.annotationType()))
 				list.add(p.getValue2());
 		return list;
@@ -73,9 +73,9 @@ public interface AttributeAnnotationToRule<TAnnotation extends Annotation> {
 	
 	public static class Registry {
 
-		private static List<Pair<Class<? extends Annotation>, AttributeAnnotationToRule<?>>> registry = new ArrayList<>();
+		private static List<Pair<Class<? extends Annotation>, AttributeAnnotationToRuleOnAttribute<?>>> registry = new ArrayList<>();
 
-		public static <T extends Annotation> void register(Class<T> annotationType, AttributeAnnotationToRule<T> toRule) {
+		public static <T extends Annotation> void register(Class<T> annotationType, AttributeAnnotationToRuleOnAttribute<T> toRule) {
 			registry.add(new Pair<>(annotationType, toRule));
 		}
 	}

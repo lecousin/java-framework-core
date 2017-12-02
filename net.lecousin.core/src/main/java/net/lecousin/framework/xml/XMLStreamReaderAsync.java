@@ -57,6 +57,8 @@ public class XMLStreamReaderAsync {
 	
 	private Charset forcedCharset;
 	private int charactersBuffersSize;
+	private int maxTextSize = -1;
+	private int maxCDataSize = -1;
 	
 	/** Type of event. */
 	public static enum Type {
@@ -120,6 +122,22 @@ public class XMLStreamReaderAsync {
 		public UnprotectedStringBuffer namespacePrefix;
 		public UnprotectedStringBuffer localName;
 		public UnprotectedStringBuffer value;
+	}
+	
+	public int getMaximumTextSize() {
+		return maxTextSize;
+	}
+	
+	public void setMaximumTextSize(int max) {
+		maxTextSize = max;
+	}
+	
+	public int getMaximumCDataSize() {
+		return maxCDataSize;
+	}
+	
+	public void setMaximumCDataSize(int max) {
+		maxCDataSize = max;
 	}
 	
 	public UnprotectedStringBuffer getNamespaceURI(CharSequence namespacePrefix) {
@@ -588,7 +606,7 @@ public class XMLStreamReaderAsync {
 			return next;
 		}
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
-		next.listenAsynch(new ParsingTask(() -> {
+		next.listenAsync(new ParsingTask(() -> {
 			if (next.hasError()) result.error(next.getError());
 			else if (!checkFirstElement()) result.unblock();
 			else next().listenInline(result);
@@ -659,7 +677,7 @@ public class XMLStreamReaderAsync {
 				else onNext();
 				return null;
 			}
-			next.listenAsynch(new Task.Cpu<Void, NoException>("Parse XML", getPriority()) {
+			next.listenAsync(new Task.Cpu<Void, NoException>("Parse XML", getPriority()) {
 				@Override
 				public Void run() {
 					onNext();
@@ -687,7 +705,7 @@ public class XMLStreamReaderAsync {
 			return nextStartElement();
 		}
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		start.listenAsynch(new Next(sp) {
+		start.listenAsync(new Next(sp) {
 			@Override
 			protected void onNext() {
 				if (Type.START_ELEMENT.equals(type)) sp.unblock();
@@ -817,7 +835,7 @@ public class XMLStreamReaderAsync {
 						next = next();
 						continue;
 					}
-					closeElement().listenAsynch(new ParsingTask(() -> {
+					closeElement().listenAsync(new ParsingTask(() -> {
 						readInnerText(innerText, result);
 					}), result);
 					return;
@@ -837,7 +855,7 @@ public class XMLStreamReaderAsync {
 					new ParsingTask(() -> { readInnerText(innerText, result); }).start();
 					return;
 				}
-				closeElement().listenAsynch(new ParsingTask(() -> {
+				closeElement().listenAsync(new ParsingTask(() -> {
 					readInnerText(innerText, result);
 				}), result);
 				return;
@@ -906,6 +924,7 @@ public class XMLStreamReaderAsync {
 	public ISynchronizationPoint<Exception> goInto(String... innerElements) {
 		return goInto(0, innerElements);
 	}
+	
 	private ISynchronizationPoint<Exception> goInto(int i, String... innerElements) {
 		ISynchronizationPoint<Exception> next = nextInnerElement(innerElements[0]);
 		do {
@@ -1029,7 +1048,7 @@ public class XMLStreamReaderAsync {
 				return;
 			}
 			if (c == -2) {
-				cp.onCharAvailable().listenAsynch(new ParsingTask(() -> { nextChar(sp); }), true);
+				cp.onCharAvailable().listenAsync(new ParsingTask(() -> { nextChar(sp); }), true);
 				return;
 			}
 			switch (state) {
@@ -1518,6 +1537,27 @@ public class XMLStreamReaderAsync {
 				new LocalizableString("lc.xml.error", "inside comment")));
 			return false;
 		}
+		if (maxTextSize > 0 && text.length() >= maxTextSize) {
+			if (text.charAt(text.length() - 1) == '-') {
+				if (text.charAt(text.length() - 2) == '-') {
+					if (c == '>') {
+						text.removeEndChars(2);
+						sp.unblock();
+						return false;
+					}
+					text.setCharAt(text.length() - 1, (char)c);
+					return true;
+				}
+				if (c != '-') {
+					text.setCharAt(text.length() - 1, (char)c);
+					return true;
+				}
+				text.setCharAt(text.length() - 2, (char)c);
+				return true;
+			}
+			text.setCharAt(text.length() - 1, (char)c);
+			return true;
+		}
 		text.append((char)c);
 		if (text.endsWith("-->")) {
 			text.removeEndChars(3);
@@ -1533,6 +1573,27 @@ public class XMLStreamReaderAsync {
 				new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "inside CDATA")));
 			return false;
+		}
+		if (maxCDataSize > 0 && text.length() >= maxCDataSize) {
+			if (text.charAt(text.length() - 1) == ']') {
+				if (text.charAt(text.length() - 2) == ']') {
+					if (c == '>') {
+						text.removeEndChars(2);
+						sp.unblock();
+						return false;
+					}
+					text.setCharAt(text.length() - 1, (char)c);
+					return true;
+				}
+				if (c != ']') {
+					text.setCharAt(text.length() - 1, (char)c);
+					return true;
+				}
+				text.setCharAt(text.length() - 2, (char)c);
+				return true;
+			}
+			text.setCharAt(text.length() - 1, (char)c);
+			return true;
 		}
 		text.append((char)c);
 		if (text.endsWith("]]>")) {
@@ -1777,6 +1838,12 @@ public class XMLStreamReaderAsync {
 			return false;
 		}
 		text.append(c);
+		if (maxTextSize > 0 && text.length() >= maxTextSize) {
+			text.replace("\r\n", "\n");
+			resolveReferences(text);
+			sp.unblock();
+			return false;
+		}
 		return true;
 	}
 	

@@ -19,7 +19,7 @@ public @interface Instantiate {
 	@SuppressWarnings("rawtypes")
 	public Class<? extends Factory> factory();
 	
-	public static class ToRule implements AttributeAnnotationToRule<Instantiate> {
+	public static class ToRule implements AttributeAnnotationToRuleOnType<Instantiate> {
 		
 		@Override
 		public SerializationRule createRule(Instantiate annotation, Attribute attribute) {

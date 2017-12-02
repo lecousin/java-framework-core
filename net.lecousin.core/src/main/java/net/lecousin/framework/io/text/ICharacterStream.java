@@ -98,21 +98,7 @@ public interface ICharacterStream extends AutoCloseable, AsyncCloseable<IOExcept
 		}
 	}
 	
-	/** Writable character stream. */
-	public interface Writable extends ICharacterStream {
-		/** Write characters. */
-		public void writeSync(char[] c, int offset, int length) throws IOException;
-		
-		/** Write characters. */
-		public default void writeSync(char[] c) throws IOException {
-			writeSync(c, 0, c.length);
-		}
-		
-		/** Write characters of the given string. */
-		public default void writeSync(String s) throws IOException {
-			writeSync(s.toCharArray());
-		}
-		
+	public interface WriterAsync {
 		/** Write characters. */
 		public ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length);
 		
@@ -124,6 +110,22 @@ public interface ICharacterStream extends AutoCloseable, AsyncCloseable<IOExcept
 		/** Write characters of the given string. */
 		public default ISynchronizationPoint<IOException> writeAsync(String s) {
 			return writeAsync(s.toCharArray());
+		}
+	}
+	
+	/** Writable character stream. */
+	public interface Writable extends ICharacterStream, WriterAsync {
+		/** Write characters. */
+		public void writeSync(char[] c, int offset, int length) throws IOException;
+		
+		/** Write characters. */
+		public default void writeSync(char[] c) throws IOException {
+			writeSync(c, 0, c.length);
+		}
+		
+		/** Write characters of the given string. */
+		public default void writeSync(String s) throws IOException {
+			writeSync(s.toCharArray());
 		}
 		
 		/** Buffered writable character stream. */

@@ -96,7 +96,7 @@ public abstract class FragmentedSubIO extends IO.AbstractIO implements IO.KnownS
 		public AsyncWork<Integer,IOException> readFullyAsync(
 			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 		) {
-			return IOUtil.readFullyAsynch(this, pos, buffer, ondone);
+			return IOUtil.readFullyAsync(this, pos, buffer, ondone);
 		}
 		
 		@Override

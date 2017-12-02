@@ -18,7 +18,7 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 public @interface Transient {
 
 	/** Convert a Transient annotation on a field to a {@link SerializationRule}. */
-	public static class ToRule implements AttributeAnnotationToRule<Transient> {
+	public static class ToRule implements AttributeAnnotationToRuleOnType<Transient> {
 		
 		@Override
 		public SerializationRule createRule(Transient annotation, Attribute attribute) {

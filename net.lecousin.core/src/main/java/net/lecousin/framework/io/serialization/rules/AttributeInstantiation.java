@@ -3,30 +3,34 @@ package net.lecousin.framework.io.serialization.rules;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
+import net.lecousin.framework.io.serialization.SerializationContext;
+import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
+import net.lecousin.framework.io.serialization.SerializationContextPattern.OnClassAttribute;
 import net.lecousin.framework.util.Factory;
 
 /** Base class specifying a rule on how to instantiate an attribute by providing a factory which
- * will be given the container instance as parameter to instantiate the attribute. */
+ * will be given the context as parameter to instantiate the attribute. */
 @SuppressWarnings("rawtypes")
 public class AttributeInstantiation implements SerializationRule {
 
 	/** Constructor. */
-	public AttributeInstantiation(Class<?> clazz, String name, Class<? extends Factory> factory) {
-		this.clazz = clazz;
-		this.name = name;
+	public AttributeInstantiation(OnClassAttribute pattern, Class<? extends Factory> factory) {
+		this.pattern = pattern;
 		this.factory = factory;
 	}
+
+	/** Constructor. */
+	public AttributeInstantiation(Class<?> clazz, String name, Class<? extends Factory> factory) {
+		this(new OnClassAttribute(clazz, name), factory);
+	}
 	
-	private Class<?> clazz;
-	private String name;
+	private OnClassAttribute pattern;
 	private Class<? extends Factory> factory;
 	
 	@Override
-	public void apply(SerializationClass type, Object containerInstance) {
-		if (!clazz.isAssignableFrom(type.getType().getBase()))
-			return;
-		Attribute a = type.getAttributeByOriginalName(name);
-		if (a == null || !clazz.equals(a.getDeclaringClass()))
+	public void apply(SerializationClass type, SerializationContext context) {
+		Attribute a = pattern.getAttribute(type, context);
+		if (a == null)
 			return;
 		try {
 			type.replaceAttribute(a, new InstantiationAttribute(a, factory.newInstance()));
@@ -39,7 +43,7 @@ public class AttributeInstantiation implements SerializationRule {
 	public boolean isEquivalent(SerializationRule rule) {
 		if (!(rule instanceof AttributeInstantiation)) return false;
 		AttributeInstantiation r = (AttributeInstantiation)rule;
-		return r.clazz.equals(clazz) && r.name.equals(name);
+		return r.pattern.isEquivalent(pattern);
 	}
 	
 	private static class InstantiationAttribute extends Attribute {
@@ -52,8 +56,8 @@ public class AttributeInstantiation implements SerializationRule {
 		
 		@SuppressWarnings("unchecked")
 		@Override
-		public Object instantiate(Object containerInstance) {
-			return factory.create(containerInstance);
+		public Object instantiate(AttributeContext context) {
+			return factory.create(context);
 		}
 	}
 	

@@ -114,10 +114,10 @@ public class IOUtil {
 	 * @param ondone a listener to call before to return the result
 	 * @return the number of bytes read, which is less than the remaining bytes of the buffer only if the end of the IO is reached.
 	 */
-	public static AsyncWork<Integer,IOException> readFullyAsynch(
+	public static AsyncWork<Integer,IOException> readFullyAsync(
 		IO.Readable io, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 	) {
-		return readFullyAsynch(io,buffer,0,ondone);
+		return readFullyAsync(io,buffer,0,ondone);
 	}
 	
 	/**
@@ -128,7 +128,7 @@ public class IOUtil {
 	 * @param ondone a listener to call before to return the result
 	 * @return the number of bytes read, which is less than the remaining bytes of the buffer only if the end of the IO is reached.
 	 */
-	public static AsyncWork<Integer,IOException> readFullyAsynch(
+	public static AsyncWork<Integer,IOException> readFullyAsync(
 		IO.Readable io, ByteBuffer buffer, int done, RunnableWithParameter<Pair<Integer,IOException>> ondone
 	) {
 		AsyncWork<Integer,IOException> read = io.readAsync(buffer);
@@ -157,7 +157,7 @@ public class IOUtil {
 				if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(done), null));
 				return new AsyncWork<>(Integer.valueOf(done), null);
 			}
-			return readFullyAsynch(io, buffer, read.getResult().intValue() + done, ondone);
+			return readFullyAsync(io, buffer, read.getResult().intValue() + done, ondone);
 		}
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 		MutableInteger total = new MutableInteger(done);
@@ -211,7 +211,7 @@ public class IOUtil {
 	 * @param ondone a listener to call before to return the result
 	 * @return the number of bytes read, which is less than the remaining bytes of the buffer only if the end of the IO is reached.
 	 */
-	public static AsyncWork<Integer,IOException> readFullyAsynch(
+	public static AsyncWork<Integer,IOException> readFullyAsync(
 		IO.Readable.Seekable io, long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 	) {
 		AsyncWork<Integer,IOException> read = io.readAsync(pos, buffer);
