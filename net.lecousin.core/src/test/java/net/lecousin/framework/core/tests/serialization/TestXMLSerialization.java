@@ -15,7 +15,7 @@ public class TestXMLSerialization extends TestSerialization {
 	
 	@Override
 	protected Deserializer createDeserializer() {
-		return new XMLDeserializer();
+		return new XMLDeserializer(null, "test");
 	}
 	
 }

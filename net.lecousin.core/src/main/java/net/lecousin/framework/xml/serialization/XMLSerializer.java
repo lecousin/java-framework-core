@@ -2,7 +2,6 @@ package net.lecousin.framework.xml.serialization;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -17,6 +16,7 @@ import net.lecousin.framework.io.serialization.AbstractSerializer;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
+import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.io.text.ICharacterStream;
@@ -108,22 +108,22 @@ public class XMLSerializer extends AbstractSerializer {
 	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> startCollectionValue(SerializationContext context, Collection<?> col, String path, List<SerializationRule> rules) {
+	protected ISynchronizationPoint<IOException> startCollectionValue(CollectionContext context, String path, List<SerializationRule> rules) {
 		return output.endOfAttributes();
 	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> startCollectionValueElement(SerializationContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules) {
+	protected ISynchronizationPoint<IOException> startCollectionValueElement(CollectionContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules) {
 		return output.openElement(null, "element", null);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<? extends Exception> endCollectionValueElement(SerializationContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules) {
+	protected ISynchronizationPoint<? extends Exception> endCollectionValueElement(CollectionContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules) {
 		return output.closeElement();
 	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> endCollectionValue(SerializationContext context, String path, List<SerializationRule> rules) {
+	protected ISynchronizationPoint<IOException> endCollectionValue(CollectionContext context, String path, List<SerializationRule> rules) {
 		return new SynchronizationPoint<>(true);
 	}
 	
@@ -200,21 +200,22 @@ public class XMLSerializer extends AbstractSerializer {
 	}
 	
 	@Override
-	protected ISynchronizationPoint<? extends Exception> serializeCollectionAttribute(AttributeContext context, Collection<?> col, String path, List<SerializationRule> rules) {
+	protected ISynchronizationPoint<? extends Exception> serializeCollectionAttribute(CollectionContext context, String path, List<SerializationRule> rules) {
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
-		serializeCollectionAttributeElement(context, col.iterator(), 0, path + '.' + context.getAttribute().getName(), rules, result);
+		serializeCollectionAttributeElement(context, context.getCollection().iterator(), 0, path + '.' + ((AttributeContext)context.getParent()).getAttribute().getName(), rules, result);
 		return result;
 	}
 	
-	protected void serializeCollectionAttributeElement(AttributeContext context, Iterator<?> it, int elementIndex, String colPath, List<SerializationRule> rules, SynchronizationPoint<Exception> result) {
+	protected void serializeCollectionAttributeElement(CollectionContext context, Iterator<?> it, int elementIndex, String colPath, List<SerializationRule> rules, SynchronizationPoint<Exception> result) {
 		if (!it.hasNext()) {
 			result.unblock();
 			return;
 		}
 		Object element = it.next();
 		String elementPath = colPath + '[' + elementIndex + ']';
-		output.openElement(null, context.getAttribute().getName(), null);
-		ISynchronizationPoint<? extends Exception> value = serializeValue(context, element, elementPath, rules);
+		Attribute colAttr = ((AttributeContext)context.getParent()).getAttribute();
+		output.openElement(null, colAttr.getName(), null);
+		ISynchronizationPoint<? extends Exception> value = serializeValue(context, element, context.getElementType(), elementPath, rules);
 		if (value.isUnblocked()) {
 			if (value.hasError()) result.error(value.getError());
 			else serializeCollectionAttributeElement(context, it, elementIndex + 1, colPath, rules, result);

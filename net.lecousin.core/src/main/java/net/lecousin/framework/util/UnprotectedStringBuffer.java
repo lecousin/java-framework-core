@@ -761,7 +761,7 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	private void replaceStrings(int startIndex, int endIndex, UnprotectedString first, UnprotectedString last, int nbMiddle, UnprotectedString... middle) {
-		int nb = startIndex + (strings.length - endIndex) + (first != null ? 1 : 0) + (last != null ? 1 : 0) + nbMiddle;
+		int nb = startIndex + (lastUsed - endIndex) + (first != null ? 1 : 0) + (last != null ? 1 : 0) + nbMiddle;
 		if (nb <= strings.length) {
 			int pos;
 			// put the strings after endIndex
@@ -782,7 +782,7 @@ public class UnprotectedStringBuffer implements IString {
 			lastUsed = nb - 1;
 			return;
 		}
-		UnprotectedString[] list = new UnprotectedString[nb];
+		UnprotectedString[] list = new UnprotectedString[nb + 3];
 		int pos = 0;
 		if (startIndex > 0) {
 			System.arraycopy(strings, 0, list, 0, startIndex);

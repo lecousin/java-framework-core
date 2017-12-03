@@ -14,6 +14,7 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
+import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
 import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnAttribute;
 import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnType;
@@ -44,12 +45,12 @@ public abstract class AbstractSerializer implements Serializer {
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> serialize(Object object, IO.Writable output, List<SerializationRule> rules) {
+	public ISynchronizationPoint<Exception> serialize(Object object, TypeDefinition typeDef, IO.Writable output, List<SerializationRule> rules) {
 		priority = output.getPriority();
 		ISynchronizationPoint<? extends Exception> init = initializeSerialization(output);
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
 		init.listenAsyncSP(new SerializationTask(() -> {
-			ISynchronizationPoint<? extends Exception> sp = serializeValue(null, object, "", rules);
+			ISynchronizationPoint<? extends Exception> sp = serializeValue(null, object, typeDef, "", rules);
 			sp.listenInlineSP(() -> {
 				finalizeSerialization().listenInlineSP(result);
 			}, result);
@@ -69,12 +70,16 @@ public abstract class AbstractSerializer implements Serializer {
 	}
 	
 	public ISynchronizationPoint<? extends Exception> serializeValue(
-		SerializationContext context, Object value, String path, List<SerializationRule> rules
+		SerializationContext context, Object value, TypeDefinition typeDef, String path, List<SerializationRule> rules
 	) {
 		if (value == null)
 			return serializeNullValue();
-		Class<?> type = value.getClass();
+		
+		for (SerializationRule rule : rules)
+			value = rule.convertSerializationValue(value, typeDef, context);
 
+		Class<?> type = value.getClass();
+				
 		if (boolean.class.equals(type) || Boolean.class.equals(type))
 			return serializeBooleanValue(((Boolean)value).booleanValue());
 		
@@ -96,8 +101,15 @@ public abstract class AbstractSerializer implements Serializer {
 		if (type.isEnum())
 			return serializeStringValue(((Enum<?>)value).name());
 
-		if (Collection.class.isAssignableFrom(type))
-			return serializeCollectionValue(context, (Collection<?>)value, path, rules);
+		if (Collection.class.isAssignableFrom(type)) {
+			TypeDefinition elementType;
+			if (typeDef.getParameters().isEmpty())
+				elementType = null;
+			else
+				elementType = typeDef.getParameters().get(0);
+			CollectionContext ctx = new CollectionContext(context, (Collection<?>)value, elementType);
+			return serializeCollectionValue(ctx, path, rules);
+		}
 
 		/*
 		if (Map.class.isAssignableFrom(type))
@@ -249,8 +261,15 @@ public abstract class AbstractSerializer implements Serializer {
 		if (type.isEnum())
 			return serializeStringAttribute(context, ((Enum<?>)value).name(), path);
 
-		if (Collection.class.isAssignableFrom(type))
-			return serializeCollectionAttribute(context, (Collection<?>)value, path, rules);
+		if (Collection.class.isAssignableFrom(type)) {
+			TypeDefinition elementType;
+			if (context.getAttribute().getType().getParameters().isEmpty())
+				elementType = null;
+			else
+				elementType = context.getAttribute().getType().getParameters().get(0);
+			CollectionContext ctx = new CollectionContext(context, (Collection<?>)value, elementType);
+			return serializeCollectionAttribute(ctx, path, rules);
+		}
 
 		/*
 		if (Map.class.isAssignableFrom(type))
@@ -272,38 +291,38 @@ public abstract class AbstractSerializer implements Serializer {
 	// *** Collection ***
 	
 	protected ISynchronizationPoint<? extends Exception> serializeCollectionValue(
-		SerializationContext context, Collection<?> col, String path, List<SerializationRule> rules
+		CollectionContext context, String path, List<SerializationRule> rules
 	) {
-		ISynchronizationPoint<? extends Exception> start = startCollectionValue(context, col, path, rules);
+		ISynchronizationPoint<? extends Exception> start = startCollectionValue(context, path, rules);
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
 		if (start.isUnblocked()) {
-			serializeCollectionElement(context, col.iterator(), 0, path, rules, result);
+			serializeCollectionElement(context, context.getCollection().iterator(), 0, path, rules, result);
 			return result;
 		}
 		start.listenAsyncSP(new SerializationTask(() -> {
-			serializeCollectionElement(context, col.iterator(), 0, path, rules, result);
+			serializeCollectionElement(context, context.getCollection().iterator(), 0, path, rules, result);
 		}), result);
 		return result;
 	}
 	
 	protected abstract ISynchronizationPoint<? extends Exception> startCollectionValue(
-		SerializationContext context, Collection<?> col, String path, List<SerializationRule> rules
+		CollectionContext context, String path, List<SerializationRule> rules
 	);
 
 	protected abstract ISynchronizationPoint<? extends Exception> endCollectionValue(
-		SerializationContext context, String path, List<SerializationRule> rules
+		CollectionContext context, String path, List<SerializationRule> rules
 	);
 
 	protected abstract ISynchronizationPoint<? extends Exception> startCollectionValueElement(
-		SerializationContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules
+		CollectionContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules
 	);
 
 	protected abstract ISynchronizationPoint<? extends Exception> endCollectionValueElement(
-		SerializationContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules
+		CollectionContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules
 	);
 	
 	protected void serializeCollectionElement(
-		SerializationContext context, Iterator<?> it, int elementIndex, String colPath, List<SerializationRule> rules, SynchronizationPoint<Exception> result
+		CollectionContext context, Iterator<?> it, int elementIndex, String colPath, List<SerializationRule> rules, SynchronizationPoint<Exception> result
 	) {
 		if (!it.hasNext()) {
 			endCollectionValue(context, colPath, rules).listenInlineSP(result);
@@ -317,10 +336,10 @@ public abstract class AbstractSerializer implements Serializer {
 		SynchronizationPoint<Exception> value = new SynchronizationPoint<>();
 		if (start.isUnblocked()) {
 			if (start.hasError()) value.error(start.getError());
-			else serializeValue(context, element, elementPath, rules).listenInlineSP(value);
+			else serializeValue(context, element, context.getElementType(), elementPath, rules).listenInlineSP(value);
 		} else {
 			start.listenAsyncSP(new SerializationTask(() -> {
-				serializeValue(context, element, elementPath, rules).listenInlineSP(value);
+				serializeValue(context, element, context.getElementType(), elementPath, rules).listenInlineSP(value);
 			}), value);
 		}
 		
@@ -346,7 +365,7 @@ public abstract class AbstractSerializer implements Serializer {
 	}
 
 	protected abstract ISynchronizationPoint<? extends Exception> serializeCollectionAttribute(
-		AttributeContext context, Collection<?> col, String path, List<SerializationRule> rules);
+		CollectionContext context, String path, List<SerializationRule> rules);
 	
 	// *** Map ***
 	

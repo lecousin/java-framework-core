@@ -1,12 +1,17 @@
 package net.lecousin.framework.io.serialization;
 
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
+import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
+import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
+import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
 
 public interface SerializationContextPattern {
 
 	boolean matches(SerializationClass type, SerializationContext context);
 
 	boolean matches(SerializationClass type, SerializationContext context, Attribute attribute);
+	
+	boolean matches(SerializationContext context);
 	
 	boolean isEquivalent(SerializationContextPattern p);
 	
@@ -28,6 +33,18 @@ public interface SerializationContextPattern {
 		@Override
 		public boolean matches(SerializationClass type, SerializationContext context, Attribute attribute) {
 			return clazz.equals(attribute.getDeclaringClass());
+		}
+		
+		@Override
+		public boolean matches(SerializationContext context) {
+			if (context == null) return false;
+			if (context instanceof CollectionContext)
+				return matches(((CollectionContext)context).getParent());
+			if (context instanceof AttributeContext)
+				return ((AttributeContext)context).getAttribute().getDeclaringClass().equals(clazz);
+			if (context instanceof ObjectContext)
+				return clazz.isAssignableFrom(((ObjectContext)context).getSerializationClass().getType().getBase());
+			return false;
 		}
 		
 		@Override
@@ -58,6 +75,18 @@ public interface SerializationContextPattern {
 			if (!matches(type, context, a))
 				return null;
 			return a;
+		}
+		
+		@Override
+		public boolean matches(SerializationContext context) {
+			if (context == null) return false;
+			if (context instanceof CollectionContext)
+				return matches(((CollectionContext)context).getParent());
+			if (context instanceof AttributeContext) {
+				Attribute a = ((AttributeContext)context).getAttribute();
+				return a.getDeclaringClass().equals(clazz) && a.getOriginalName().equals(attributeName);
+			}
+			return false;
 		}
 		
 		@Override

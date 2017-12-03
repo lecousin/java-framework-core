@@ -1,6 +1,8 @@
 package net.lecousin.framework.core.test.serialization;
 
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
@@ -45,10 +47,56 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		check(b, b2);
 	}
 	
+	public static class TestNumbers {
+		public byte b1 = 2;
+		public Byte b2 = Byte.valueOf((byte)-11);
+		public short s1 = 51;
+		public Short s2 = Short.valueOf((short)-23);
+		public int i1 = -111;
+		public Integer i2 = Integer.valueOf(222);
+		public long l1 = 1234567L;
+		public Long l2 = Long.valueOf(-987654321L);
+		public float f1 = 0.0123f;
+		public Float f2 = Float.valueOf(-9.87654321f);
+		public double d1 = -1.112233d;
+		public Double d2 = Double.valueOf(9.887766d);
+		public BigInteger bi1 = new BigInteger("1234567890");
+		public BigInteger bi2 = new BigInteger("-987654321");
+		public BigDecimal bd1 = new BigDecimal("0.112233445566778899");
+		public BigDecimal bd2 = new BigDecimal("-1.998877665544332211");
+	}
+
+	@SuppressWarnings("resource")
+	@Test
+	public void testNumbers() throws Exception {
+		TestNumbers n = new TestNumbers();
+		n.b1 = -45;
+		n.b2 = Byte.valueOf((byte)67);
+		n.s1 = -15;
+		n.s2 = Short.valueOf((short)32);
+		n.i1 = 333;
+		n.i2 = Integer.valueOf(-444);
+		n.l1 = -1234567890L;
+		n.l2 = Long.valueOf(9876543210L);
+		n.f1 = -0.00112233f;
+		n.f2 = Float.valueOf(9.88776655f);
+		n.d1 = 2.33445566d;
+		n.d2 = Double.valueOf(-99.88777666d);
+		n.bi1 = new BigInteger("-9876543210");
+		n.bi2 = new BigInteger("51234567890");
+		n.bd1 = new BigDecimal("-0.00112233445566778899");
+		n.bd2 = new BigDecimal("3.998877665544332211");
+		MemoryIO io = serialize(n);
+		print(io, n);
+		TestNumbers n2 = deserialize(io, TestNumbers.class);
+		check(n, n2);
+	}
+	
+	
 	protected MemoryIO serialize(Object o) throws Exception {
 		MemoryIO io = new MemoryIO(1024, "test");
 		Serializer s = createSerializer();
-		ISynchronizationPoint<Exception> res = s.serialize(o, io, new ArrayList<>(0));
+		ISynchronizationPoint<Exception> res = s.serialize(o, new TypeDefinition(o.getClass()), io, new ArrayList<>(0));
 		res.block(0);
 		if (res.hasError()) throw res.getError();
 		io.seekSync(SeekType.FROM_BEGINNING, 0);

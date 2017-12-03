@@ -591,6 +591,19 @@ public class IOUtil {
 	}
 	
 	/**
+	 * Read all bytes from the given Readable and append them to the given StringBuilder using the given charset encoding.
+	 */
+	public static void readFullyAsStringSync(IO.Readable io, Charset charset, StringBuilder s) throws IOException {
+		byte[] buf = new byte[1024];
+		do {
+			int nb = io.readFullySync(ByteBuffer.wrap(buf));
+			if (nb <= 0) break;
+			s.append(new String(buf, 0, nb, charset));
+			if (nb < 1024) break;
+		} while (true);
+	}
+
+	/**
 	 * Read all bytes from the given Readable and convert it as a String using the given charset encoding.
 	 */
 	public static String readFullyAsStringSync(IO.Readable io, Charset charset) throws IOException {
@@ -599,14 +612,8 @@ public class IOUtil {
 			io.readFullySync(ByteBuffer.wrap(bytes));
 			return new String(bytes, charset);
 		}
-		StringBuilder s = new StringBuilder();
-		byte[] buf = new byte[1024];
-		do {
-			int nb = io.readFullySync(ByteBuffer.wrap(buf));
-			if (nb <= 0) break;
-			s.append(new String(buf, 0, nb, charset));
-			if (nb < 1024) break;
-		} while (true);
+		StringBuilder s = new StringBuilder(1024);
+		readFullyAsStringSync(io, charset, s);
 		return s.toString();
 	}
 	

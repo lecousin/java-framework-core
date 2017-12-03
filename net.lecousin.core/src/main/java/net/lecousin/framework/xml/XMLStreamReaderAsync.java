@@ -1234,6 +1234,7 @@ public class XMLStreamReaderAsync {
 		}
 		if (c == '/') {
 			state = State.END_ELEMENT_NAME;
+			type = Type.END_ELEMENT;
 			text = new UnprotectedStringBuffer();
 			return true;
 		}
@@ -1629,6 +1630,12 @@ public class XMLStreamReaderAsync {
 				namespacePrefix = text.substring(0, i);
 				localName = text.substring(i + 1);
 			}
+			ElementContext ctx = new ElementContext();
+			ctx.text = text;
+			ctx.namespacePrefix = namespacePrefix;
+			ctx.localName = localName;
+			ctx.namespaces = readNamespaces();
+			context.addFirst(ctx);
 			if (onElement != null)
 				onElement.fire(this);
 			sp.unblock();
@@ -1898,7 +1905,12 @@ public class XMLStreamReaderAsync {
 			return true;
 		}
 		if (c == '>') {
-			ElementContext ctx = context.getFirst();
+			ElementContext ctx = context.peekFirst();
+			if (ctx == null) {
+				sp.error(new XMLException(cp.getPosition(),
+					"Unexpected end element", text.asString()));
+				return false;
+			}
 			if (!ctx.text.equals(text)) {
 				sp.error(new XMLException(cp.getPosition(),
 					"Unexpected end element expected is", text.asString(), ctx.text.asString()));

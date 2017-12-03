@@ -4,8 +4,10 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.ListIterator;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -15,6 +17,7 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOAsInputStream;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
+import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
 import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnAttribute;
 import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnType;
@@ -70,8 +73,50 @@ public abstract class AbstractDeserializer implements Deserializer {
 		}
 	}
 	
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings("unchecked")
 	public <T> AsyncWork<T, Exception> deserializeValue(SerializationContext context, TypeDefinition type, List<SerializationRule> rules) {
+		TypeDefinition newType = type;
+		List<TypeDefinition> rulesTypes = new ArrayList<>(rules.size());
+		for (SerializationRule rule : rules) {
+			rulesTypes.add(newType);
+			newType = rule.getDeserializationType(newType, context);
+		}
+		
+		AsyncWork<?, Exception> value = deserializeValueType(context, newType, rules);
+		AsyncWork<T, Exception> result = new AsyncWork<>();
+		if (value.isUnblocked()) {
+			if (value.hasError()) result.error(value.getError());
+			else {
+				Object o = value.getResult();
+				ListIterator<TypeDefinition> itType = rulesTypes.listIterator(rules.size());
+				ListIterator<SerializationRule> itRule = rules.listIterator(rules.size());
+				while (itRule.hasPrevious())
+					try { o = itRule.previous().getDeserializationValue(o, itType.previous(), context); }
+					catch (Exception e) {
+						result.error(e);
+						return result;
+					}
+				result.unblockSuccess((T)o);
+			}
+			return result;
+		}
+		value.listenAsync(new DeserializationTask(() -> {
+			Object o = value.getResult();
+			ListIterator<TypeDefinition> itType = rulesTypes.listIterator(rules.size());
+			ListIterator<SerializationRule> itRule = rules.listIterator(rules.size());
+			while (itRule.hasPrevious())
+				try { o = itRule.next().getDeserializationValue(o, itType.next(), context); }
+				catch (Exception e) {
+					result.error(e);
+					return;
+				}
+			result.unblockSuccess((T)o);
+		}), result);
+		return result;
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private <T> AsyncWork<T, Exception> deserializeValueType(SerializationContext context, TypeDefinition type, List<SerializationRule> rules) {
 		Class<?> c = type.getBase();
 		if (void.class.equals(c) || Void.class.equals(c))
 			return new AsyncWork<>(null, null);
@@ -181,6 +226,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	
 	protected abstract AsyncWork<Boolean, Exception> deserializeBooleanValue(boolean nullable);
 
+	@SuppressWarnings("unused")
 	protected AsyncWork<Boolean, Exception> deserializeBooleanAttributeValue(AttributeContext context, boolean nullable) {
 		return deserializeBooleanValue(nullable);
 	}
@@ -307,7 +353,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	
 	protected abstract AsyncWork<? extends CharSequence, Exception> deserializeStringValue();
 	
-	protected AsyncWork<? extends CharSequence, Exception> deserializeStringAttributeValue(AttributeContext context) {
+	protected AsyncWork<? extends CharSequence, Exception> deserializeStringAttributeValue(@SuppressWarnings("unused") AttributeContext context) {
 		return deserializeStringValue();
 	}
 	
@@ -327,7 +373,8 @@ public abstract class AbstractDeserializer implements Deserializer {
 			if (type.getParameters().isEmpty())
 				return new AsyncWork<>(null, new Exception("Cannot deserialize collection without an element type specified"));
 			elementType = type.getParameters().get(0);
-			deserializeNextCollectionValueElement(context, col, elementType, 0, rules, result);
+			CollectionContext ctx = new CollectionContext(context, col, elementType);
+			deserializeNextCollectionValueElement(ctx, 0, rules, result);
 		} else {
 			TypeDefinition elementType;
 			if (type.getParameters().isEmpty())
@@ -336,7 +383,8 @@ public abstract class AbstractDeserializer implements Deserializer {
 			start.listenAsync(new DeserializationTask(() -> {
 				try {
 					Collection<?> col = (Collection<?>)SerializationClass.instantiate(type, context, rules);
-					deserializeNextCollectionValueElement(context, col, elementType, 0, rules, result);
+					CollectionContext ctx = new CollectionContext(context, col, elementType);
+					deserializeNextCollectionValueElement(ctx, 0, rules, result);
 				} catch (Exception e) {
 					result.error(e);
 				}
@@ -349,8 +397,8 @@ public abstract class AbstractDeserializer implements Deserializer {
 	protected abstract AsyncWork<Boolean, Exception> startCollectionValue();
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	protected void deserializeNextCollectionValueElement(SerializationContext context, Collection<?> col, TypeDefinition elementType, int elementIndex, List<SerializationRule> rules, AsyncWork<Collection<?>, Exception> result) {
-		AsyncWork<Pair<Object, Boolean>, Exception> next = deserializeCollectionValueElement(context, elementType, elementIndex, rules);
+	protected void deserializeNextCollectionValueElement(CollectionContext context, int elementIndex, List<SerializationRule> rules, AsyncWork<Collection<?>, Exception> result) {
+		AsyncWork<Pair<Object, Boolean>, Exception> next = deserializeCollectionValueElement(context, elementIndex, rules);
 		if (next.isUnblocked()) {
 			if (next.hasError()) {
 				result.error(next.getError());
@@ -359,16 +407,16 @@ public abstract class AbstractDeserializer implements Deserializer {
 			Pair<Object, Boolean> p = next.getResult();
 			if (!p.getValue2().booleanValue()) {
 				// end of collection
-				result.unblockSuccess(col);
+				result.unblockSuccess(context.getCollection());
 				return;
 			}
 			Object element = p.getValue1();
-			if (element != null && !elementType.getBase().isAssignableFrom(element.getClass())) {
-				result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + elementType.getBase().getName()));
+			if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+				result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
 				return;
 			}
-			((Collection)col).add(element);
-			deserializeNextCollectionValueElement(context, col, elementType, elementIndex + 1, rules, result);
+			((Collection)context.getCollection()).add(element);
+			deserializeNextCollectionValueElement(context, elementIndex + 1, rules, result);
 			return;
 		}
 		next.listenInline(() -> {
@@ -380,24 +428,24 @@ public abstract class AbstractDeserializer implements Deserializer {
 				Pair<Object, Boolean> p = next.getResult();
 				if (!p.getValue2().booleanValue()) {
 					// end of collection
-					result.unblockSuccess(col);
+					result.unblockSuccess(context.getCollection());
 					return;
 				}
 				new DeserializationTask(() -> {
 					Object element = p.getValue1();
-					if (element != null && !elementType.getBase().isAssignableFrom(element.getClass())) {
-						result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + elementType.getBase().getName()));
+					if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+						result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
 						return;
 					}
-					((Collection)col).add(element);
-					deserializeNextCollectionValueElement(context, col, elementType, elementIndex + 1, rules, result);
+					((Collection)context.getCollection()).add(element);
+					deserializeNextCollectionValueElement(context, elementIndex + 1, rules, result);
 				}).start();
 			}
 		});
 	}
 	
 	/** Return the element (possibly null) with true if an element is found, or null with false if the end of the collection has been reached. */
-	protected abstract AsyncWork<Pair<Object, Boolean>, Exception> deserializeCollectionValueElement(SerializationContext context, TypeDefinition elementType, int elementIndex, List<SerializationRule> rules);
+	protected abstract AsyncWork<Pair<Object, Boolean>, Exception> deserializeCollectionValueElement(CollectionContext context, int elementIndex, List<SerializationRule> rules);
 	
 	protected AsyncWork<Collection<?>, Exception> deserializeCollectionAttributeValue(AttributeContext context, List<SerializationRule> rules) {
 		AsyncWork<Boolean, Exception> start = startCollectionAttributeValue(context);
@@ -414,7 +462,8 @@ public abstract class AbstractDeserializer implements Deserializer {
 			if (colType.getParameters().isEmpty())
 				return new AsyncWork<>(null, new Exception("Cannot deserialize collection without an element type specified"));
 			elementType = colType.getParameters().get(0);
-			deserializeNextCollectionAttributeValueElement(context, col, elementType, 0, rules, result);
+			CollectionContext ctx = new CollectionContext(context, col, elementType);
+			deserializeNextCollectionAttributeValueElement(ctx, 0, rules, result);
 		} else {
 			TypeDefinition colType = context.getAttribute().getType();
 			TypeDefinition elementType;
@@ -424,7 +473,8 @@ public abstract class AbstractDeserializer implements Deserializer {
 			start.listenAsync(new DeserializationTask(() -> {
 				try {
 					Collection<?> col = (Collection<?>)SerializationClass.instantiate(colType, context, rules);
-					deserializeNextCollectionAttributeValueElement(context, col, elementType, 0, rules, result);
+					CollectionContext ctx = new CollectionContext(context, col, elementType);
+					deserializeNextCollectionAttributeValueElement(ctx, 0, rules, result);
 				} catch (Exception e) {
 					result.error(e);
 				}
@@ -434,13 +484,13 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	/** Return true if the start has been found, false if null has been found, or an error. */
-	protected AsyncWork<Boolean, Exception> startCollectionAttributeValue(AttributeContext context) {
+	protected AsyncWork<Boolean, Exception> startCollectionAttributeValue(@SuppressWarnings("unused") AttributeContext context) {
 		return startCollectionValue();
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	protected void deserializeNextCollectionAttributeValueElement(AttributeContext context, Collection<?> col, TypeDefinition elementType, int elementIndex, List<SerializationRule> rules, AsyncWork<Collection<?>, Exception> result) {
-		AsyncWork<Pair<Object, Boolean>, Exception> next = deserializeCollectionAttributeValueElement(context, elementType, elementIndex, rules);
+	protected void deserializeNextCollectionAttributeValueElement(CollectionContext context, int elementIndex, List<SerializationRule> rules, AsyncWork<Collection<?>, Exception> result) {
+		AsyncWork<Pair<Object, Boolean>, Exception> next = deserializeCollectionAttributeValueElement(context, elementIndex, rules);
 		if (next.isUnblocked()) {
 			if (next.hasError()) {
 				result.error(next.getError());
@@ -449,16 +499,16 @@ public abstract class AbstractDeserializer implements Deserializer {
 			Pair<Object, Boolean> p = next.getResult();
 			if (!p.getValue2().booleanValue()) {
 				// end of collection
-				result.unblockSuccess(col);
+				result.unblockSuccess(context.getCollection());
 				return;
 			}
 			Object element = p.getValue1();
-			if (element != null && !elementType.getBase().isAssignableFrom(element.getClass())) {
-				result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + elementType.getBase().getName()));
+			if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+				result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
 				return;
 			}
-			((Collection)col).add(element);
-			deserializeNextCollectionAttributeValueElement(context, col, elementType, elementIndex, rules, result);
+			((Collection)context.getCollection()).add(element);
+			deserializeNextCollectionAttributeValueElement(context, elementIndex + 1, rules, result);
 			return;
 		}
 		next.listenInline(() -> {
@@ -470,25 +520,25 @@ public abstract class AbstractDeserializer implements Deserializer {
 				Pair<Object, Boolean> p = next.getResult();
 				if (!p.getValue2().booleanValue()) {
 					// end of collection
-					result.unblockSuccess(col);
+					result.unblockSuccess(context.getCollection());
 					return;
 				}
 				new DeserializationTask(() -> {
 					Object element = p.getValue1();
-					if (element != null && !elementType.getBase().isAssignableFrom(element.getClass())) {
-						result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + elementType.getBase().getName()));
+					if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+						result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
 						return;
 					}
-					((Collection)col).add(element);
-					deserializeNextCollectionAttributeValueElement(context, col, elementType, elementIndex, rules, result);
+					((Collection)context.getCollection()).add(element);
+					deserializeNextCollectionAttributeValueElement(context, elementIndex + 1, rules, result);
 				}).start();
 			}
 		});
 	}
 	
 	/** Return the element with true if an element is found, or null with false if the end of the collection has been reached. */
-	protected AsyncWork<Pair<Object, Boolean>, Exception> deserializeCollectionAttributeValueElement(AttributeContext context, TypeDefinition elementType, int elementIndex, List<SerializationRule> rules) {
-		return deserializeCollectionValueElement(context, elementType, elementIndex, rules);
+	protected AsyncWork<Pair<Object, Boolean>, Exception> deserializeCollectionAttributeValueElement(CollectionContext context, int elementIndex, List<SerializationRule> rules) {
+		return deserializeCollectionValueElement(context, elementIndex, rules);
 	}
 	
 	// *** Map ***

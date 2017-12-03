@@ -49,7 +49,7 @@ public class XMLWriter {
 		return null;
 	}
 	
-	private static String toAttribute(CharSequence s) {
+	public static String toAttribute(CharSequence s) {
 		return s.toString()
 			.replace("&", "&amp;")
 			.replace("\"", "&quot;")

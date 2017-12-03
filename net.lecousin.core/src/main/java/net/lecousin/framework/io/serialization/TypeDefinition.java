@@ -3,6 +3,7 @@ package net.lecousin.framework.io.serialization;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import net.lecousin.framework.collections.CollectionsUtil;
@@ -22,6 +23,11 @@ public class TypeDefinition {
 				parameters.add(new TypeDefinition(p));
 		} else
 			throw new IllegalArgumentException("Unexpected type " + type.getClass() + ": " + type.toString());
+	}
+	
+	public TypeDefinition(Class<?> base, TypeDefinition... parameters) {
+		this.base = base;
+		this.parameters = Arrays.asList(parameters);
 	}
 
 	private Class<?> base;

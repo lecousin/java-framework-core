@@ -9,12 +9,17 @@ import java.lang.annotation.Target;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.CustomSerializer;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
+import net.lecousin.framework.io.serialization.SerializationContextPattern;
+import net.lecousin.framework.io.serialization.SerializationContextPattern.OnClass;
+import net.lecousin.framework.io.serialization.SerializationContextPattern.OnClassAttribute;
 import net.lecousin.framework.io.serialization.rules.CustomTypeSerializer;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
 /**
- * When declared on a class or interface, it means that when serializing or deserializing
- * objects this specified serializer should be used if the type matches.
+ * If isGeneral is true, the custom serializer will be applied generally, else
+ * when declared on a class or interface the attributes of this class will use
+ * the specified serializer if the type matches, and when declared on an
+ * an attribute it applies only on this attribute.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.FIELD, ElementType.METHOD})
@@ -24,21 +29,23 @@ public @interface TypeSerializer {
 	/** The serializer to use. */
 	public Class<? extends CustomSerializer> value();
 	
+	public boolean isGeneral() default false;
+	
 	public static class ToRule implements TypeAnnotationToRule<TypeSerializer>, AttributeAnnotationToRuleOnAttribute<TypeSerializer> {
 		
 		@Override
 		public SerializationRule createRule(TypeSerializer annotation, Class<?> type) {
-			return createRule(annotation.value());
+			return createRule(annotation.value(), annotation.isGeneral() ? null : new OnClass(type));
 		}
 		
 		@Override
 		public SerializationRule createRule(TypeSerializer annotation, Attribute attribute) {
-			return createRule(annotation.value());
+			return createRule(annotation.value(), annotation.isGeneral() ? null : new OnClassAttribute(attribute.getDeclaringClass(), attribute.getOriginalName()));
 		}
 		
-		private static SerializationRule createRule(Class<? extends CustomSerializer> custom) {
+		private static SerializationRule createRule(Class<? extends CustomSerializer> custom, SerializationContextPattern context) {
 			try {
-				return new CustomTypeSerializer(custom.newInstance());
+				return new CustomTypeSerializer(custom.newInstance(), context);
 			} catch (Throwable t) {
 				LCCore.getApplication().getDefaultLogger().error(
 					"Error instantiating custom serializer " + custom.getName(), t

@@ -14,6 +14,19 @@ public interface SerializationRule {
 	/** Check if this rule is equivalent to the given rule. */
 	boolean isEquivalent(SerializationRule rule);
 	
+	/** Before to serialize a value, this method is called in order to give the opportunity to convert to another value. */
+	default Object convertSerializationValue(Object value, TypeDefinition type, SerializationContext context) {
+		return value;
+	}
+	
+	default TypeDefinition getDeserializationType(TypeDefinition type, SerializationContext context) {
+		return type;
+	}
+	
+	default Object getDeserializationValue(Object value, TypeDefinition type, SerializationContext context) throws Exception {
+		return value;
+	}
+	
 	/** During deserialization, when a type needs to be instantiated, this method is called to know
 	 * if this rule is providing a custom way to instantiate the given type.
 	 */
