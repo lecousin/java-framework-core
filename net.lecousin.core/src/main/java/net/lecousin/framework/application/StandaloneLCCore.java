@@ -49,6 +49,8 @@ public class StandaloneLCCore implements LCCore.Environment {
 		throw new IllegalStateException("Cannot add several application on a standalone LCCore environment");
 	}
 	
+	public static long logThreadingInterval = 30000;
+	
 	@Override
 	public void start() {
 		// start multi-threading system
@@ -68,7 +70,7 @@ public class StandaloneLCCore implements LCCore.Environment {
 				public void run() {
 					do {
 						synchronized (this) {
-							try { this.wait(30000); }
+							try { this.wait(logThreadingInterval); }
 							catch (InterruptedException e) { return; }
 						}
 						if (closed) return;

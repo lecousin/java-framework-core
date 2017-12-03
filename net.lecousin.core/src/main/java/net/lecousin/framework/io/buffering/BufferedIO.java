@@ -3,6 +3,7 @@ package net.lecousin.framework.io.buffering;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import net.lecousin.framework.collections.LinkedArrayList;
@@ -1019,6 +1020,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			}
 			firstIndex++;
 		}
+		LinkedList<Buffer> newBuffers = new LinkedList<>();
 		synchronized (buffers) {
 			while (firstIndex > buffers.size())
 				buffers.add(new Buffer(this));
@@ -1027,11 +1029,13 @@ public abstract class BufferedIO extends BufferingManaged {
 				b.buffer = new byte[firstIndex > 0 ? bufferSize : firstBufferSize];
 				b.len = firstIndex < lastIndex ? b.buffer.length : (int)(newSize - getBufferStart(firstIndex));
 				b.lastRead = System.currentTimeMillis();
-				manager.newBuffer(b);
+				newBuffers.add(b);
 				buffers.add(b);
 				firstIndex++;
 			}
 		}
+		while (!newBuffers.isEmpty())
+			manager.newBuffer(newBuffers.removeFirst());
 		AsyncWork<Void, IOException> sp = new AsyncWork<>();
 		SynchronizationPoint<NoException> lb = lastBuffer;
 		resize.listenInline(new AsyncWorkListener<Void, IOException>() {
@@ -1090,14 +1094,17 @@ public abstract class BufferedIO extends BufferingManaged {
 			@Override
 			public Void run() {
 				Buffer lastBuffer = null;
+				LinkedList<Buffer> removed = new LinkedList<>();
 				synchronized (buffers) {
 					while (buffers.size() > lastBufferIndex + 1) {
 						Buffer buffer = buffers.remove(buffers.size() - 1);
 						if (buffer.buffer != null)
-							manager.removeBuffer(buffer);
+							removed.add(buffer);
 					}
 					if (ns > 0) lastBuffer = buffers.get(lastBufferIndex);
 				}
+				while (!removed.isEmpty())
+					manager.removeBuffer(removed.removeFirst());
 				// decrease size of last buffer if any
 				if (lastBuffer != null) {
 					int lastBufferSize;

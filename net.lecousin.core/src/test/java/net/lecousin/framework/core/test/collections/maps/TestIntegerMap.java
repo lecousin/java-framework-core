@@ -36,7 +36,7 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 		LinkedList<Integer> integers = new LinkedList<>();
 		Random rand = new Random();
 		int value = 0;
-		for (int i = 0; i < 5000; ++i) {
+		for (int i = 0; i < 2500; ++i) {
 			value += rand.nextInt(20);
 			integers.add(Integer.valueOf(value));
 		}

@@ -98,7 +98,10 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 		Task.Cpu<Void,NoException> decode = new Task.Cpu<Void,NoException>("Decode character stream", input.getPriority()) {
 			@Override
 			public Void run() {
+				if (nextReady.isCancelled()) return null; // closed
 				if (readTask.isCancelled()) {
+					if (bytes == null)
+						return null; // closed
 					synchronized (ready) {
 						nextReady.cancel(readTask.getCancelEvent());
 					}
@@ -110,8 +113,7 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 					}
 					return null;
 				}
-				if (bytes == null)
-					return null; // closed
+				if (nextReady.isCancelled()) return null; // closed
 				try {
 					int nb = readTask.getResult().intValue();
 					bytes.flip();
@@ -128,12 +130,14 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 						end = true;
 					} else
 						end = false;
+					if (nextReady.isCancelled()) return null; // closed
 					CharBuffer buf = CharBuffer.allocate(bufferSize);
 					CoderResult cr = decoder.decode(bytes, buf, endReached);
 					if (cr.isOverflow()) {
 						if (buf.position() == 0)
 							cr.throwException();
 					}
+					if (nextReady.isCancelled()) return null; // closed
 					if (buf.position() == 0) {
 						if (end) {
 							synchronized (ready) {
@@ -159,17 +163,19 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 						bufferize();
 					return null;
 				} catch (IOException e) {
-					synchronized (ready) {
-						nextReady.error(e);
-					}
+					if (!nextReady.isUnblocked())
+						synchronized (ready) {
+							nextReady.error(e);
+						}
 					return null;
 				} catch (NullPointerException e) {
 					// closed
 					return null;
 				} catch (Throwable t) {
-					synchronized (ready) {
-						nextReady.error(IO.error(t));
-					}
+					if (!nextReady.isUnblocked())
+						synchronized (ready) {
+							nextReady.error(IO.error(t));
+						}
 					LCCore.getApplication().getDefaultLogger().error("Error while buffering", t);
 					return null;
 				}
@@ -372,26 +378,29 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 	
 	@Override
 	public void close() {
+		synchronized (ready) {
+			nextReady.cancel(new CancelException("Closed"));
+		}
 		try { input.close(); }
 		catch (Throwable t) { /* ignore */ }
 		bytes = null;
 		chars = null;
 		ready = null;
 		decoder = null;
-		synchronized (ready) {
-			nextReady.cancel(new CancelException("Closed"));
-		}
 	}
 	
 	@Override
 	public ISynchronizationPoint<IOException> closeAsync() {
-		bytes = null;
-		chars = null;
-		decoder = null;
 		synchronized (ready) {
 			nextReady.cancel(new CancelException("Closed"));
 		}
-		ready = null;
-		return input.closeAsync();
+		ISynchronizationPoint<IOException> close = input.closeAsync();
+		close.listenInline(() -> {
+			bytes = null;
+			chars = null;
+			decoder = null;
+			ready = null;
+		});
+		return close;
 	}
 }

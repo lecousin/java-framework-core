@@ -274,7 +274,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listenersInline = null;
 			if (listeners != null) {
 				Application app = LCCore.getApplication();
-				Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(ISynchronizationPoint.class);
+				Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
 				if (log == null || !log.debug())
 					for (int i = 0; i < listeners.size(); ++i)
 						try { listeners.get(i).error(error); }
@@ -332,7 +332,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			onCancel = null;
 			if (listeners != null) {
 				Application app = LCCore.getApplication();
-				Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(ISynchronizationPoint.class);
+				Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
 				if (log == null || !log.debug())
 					for (int i = 0; i < listeners.size(); ++i)
 						try { listeners.get(i).cancelled(event); }

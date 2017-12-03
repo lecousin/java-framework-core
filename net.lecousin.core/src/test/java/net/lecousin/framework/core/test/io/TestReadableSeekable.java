@@ -5,15 +5,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
-import org.junit.Test;
-
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.collections.LinkedArrayList;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -22,6 +21,8 @@ import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
+
+import org.junit.Test;
 
 public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFiles {
 
@@ -44,6 +45,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		ByteBuffer buffer = ByteBuffer.wrap(b);
 		ArrayList<Integer> offsets = new ArrayList<Integer>(nbBuf);
 		for (int i = 0; i < nbBuf; ++i) offsets.add(Integer.valueOf(i));
+		boolean faster = false;
 		while (!offsets.isEmpty()) {
 			if (nbBuf > 1000 && (offsets.size() % 100) == 99) {
 				// make the test faster
@@ -51,9 +53,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 					offsets.remove(rand.nextInt(offsets.size()));
 				continue;
 			}
+			if (nbBuf > 1000 && !faster && nbBuf - offsets.size() > 1000)
+				faster = true;
 			int i = rand.nextInt(offsets.size());
 			Integer offset = offsets.remove(i);
 			for (int j = 0; j < testBuf.length; ++j) {
+				if (faster && (j%((i%5)+1)) == 1) continue;
 				buffer.clear();
 				if (io.readSync(offset.intValue()*testBuf.length+j, buffer) != 1)
 					throw new Exception("Unexpected end of stream at " + (i*testBuf.length+j));
@@ -176,13 +181,16 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		io.close();
 	}
 	
+	@SuppressWarnings("resource")
 	@Test
 	public void testSeekableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
-		_testSeekableBufferByBufferFullyAsync(io);
+		SynchronizationPoint<Exception> sp = _testSeekableBufferByBufferFullyAsync(io);
+		sp.block(0);
+		if (sp.hasError()) throw sp.getError();
 		io.close();
 	}
-	private void _testSeekableBufferByBufferFullyAsync(IO.Readable.Seekable io) throws Exception {
+	private SynchronizationPoint<Exception> _testSeekableBufferByBufferFullyAsync(IO.Readable.Seekable io) {
 		byte[] b = new byte[testBuf.length];
 		ByteBuffer buffer = ByteBuffer.wrap(b);
 		LinkedArrayList<Integer> offsets = new LinkedArrayList<Integer>(20);
@@ -246,9 +254,8 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		
 		read.set(io.readFullyAsync(offset.get()*testBuf.length, buffer, ondone));
 		read.get().listenInline(listener);
-
-		sp.block(0);
-		if (sp.hasError()) throw sp.getError();
+		
+		return sp;
 	}
 	
 
@@ -256,23 +263,24 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	public void testConcurrentAccessToSeekableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
 		int nbConc = Runtime.getRuntime().availableProcessors() * 5;
-		ArrayList<Task<Void,Exception>> tasks = new ArrayList<>(nbConc);
+		JoinPoint<Exception> jp = new JoinPoint<>();
+		jp.addToJoin(nbConc);
 		for (int t = 0; t < nbConc; ++t) {
-			Task<Void,Exception> task = new Task.Cpu<Void,Exception>("Test Concurrent access to IO.Readable.Seekable",Task.PRIORITY_NORMAL) {
+			Task<Void,NoException> task = new Task.Cpu<Void,NoException>("Test Concurrent access to IO.Readable.Seekable",Task.PRIORITY_NORMAL) {
 				@Override
-				public Void run() throws Exception {
-					_testSeekableBufferByBufferFullyAsync(io);
+				public Void run() {
+					SynchronizationPoint<Exception> sp = _testSeekableBufferByBufferFullyAsync(io);
+					jp.addToJoin(sp);
+					jp.joined();
 					return null;
 				}
 			};
 			task.start();
-			tasks.add(task);
 		}
-		Threading.waitFinished(tasks);
+		jp.start();
+		jp.block(0);
+		if (jp.hasError()) throw jp.getError();
 		io.close();
-		for (Task<Void,Exception> task : tasks)
-			if (!task.isSuccessful())
-				throw task.getError();
 	}
 	
 	@Test

@@ -232,6 +232,7 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 				for (Iterator<Buffer> it = buffers.iterator(); it.hasNext(); ) {
 					Buffer b = it.next();
 					synchronized (b) {
+						if (b.owner.closing) continue;
 						if (b.flushing != null) {
 							while (!b.flushing.isEmpty() && b.flushing.getFirst().isUnblocked())
 								b.flushing.removeFirst();
@@ -257,17 +258,20 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 				}
 			}
 			if (oldestToBeWritten != null)
-				for (Buffer b : oldestToBeWritten) {
-					synchronized (b) {
-						if (b.inUse > 0) continue;
-						if (b.lastWrite <= 0) continue;
-						if (b.flushing == null) b.flushing = new LinkedList<>();
-						b.flushing.add(b.owner.flushWrite(b));
-						if (b.lastRead < b.lastWrite)
-							b.lastRead = b.lastWrite;
-						b.lastWrite = 0;
-						b.markedAsToBeWritten = false;
-						toBeWritten -= b.buffer.length;
+				synchronized (buffers) {
+					for (Buffer b : oldestToBeWritten) {
+						synchronized (b) {
+							if (b.owner.closing) continue;
+							if (b.inUse > 0) continue;
+							if (b.lastWrite <= 0) continue;
+							if (b.flushing == null) b.flushing = new LinkedList<>();
+							b.flushing.add(b.owner.flushWrite(b));
+							if (b.lastRead < b.lastWrite)
+								b.lastRead = b.lastWrite;
+							b.lastWrite = 0;
+							b.markedAsToBeWritten = false;
+							toBeWritten -= b.buffer.length;
+						}
 					}
 				}
 			if (now - lastFree > 5 * 60 * 1000)
