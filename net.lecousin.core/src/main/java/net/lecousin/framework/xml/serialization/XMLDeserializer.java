@@ -29,6 +29,7 @@ import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
+import net.lecousin.framework.xml.XMLStreamEventsAsync;
 import net.lecousin.framework.xml.XMLStreamReaderAsync;
 import net.lecousin.framework.xml.XMLUtil;
 
@@ -46,10 +47,19 @@ public class XMLDeserializer extends AbstractDeserializer {
 		this.forceEncoding = encoding;
 	}
 	
+	/** Create a deserializer using a given XMLStreamEventsAsync, which must be positionned on the root element for the deserialization.
+	 * Because we give directly a XMLStreamEventsAsync, the method to call must be deserializeValue instead of the usual deserialize.
+	 */
+	public XMLDeserializer(XMLStreamEventsAsync input, String expectedRootNamespaceURI, String expectedRootLocalName) {
+		this.input = input;
+		this.expectedRootNamespaceURI = expectedRootNamespaceURI;
+		this.expectedRootLocalName = expectedRootLocalName;
+	}
+	
 	protected String expectedRootNamespaceURI;
 	protected String expectedRootLocalName;
 	protected Charset forceEncoding;
-	protected XMLStreamReaderAsync input;
+	protected XMLStreamEventsAsync input;
 	
 	@SuppressWarnings({ "unchecked", "resource" })
 	public static <T> AsyncWork<T, Exception> deserializeResource(String resourcePath, Class<T> type, byte priority) {
@@ -68,10 +78,11 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	@Override
 	protected ISynchronizationPoint<Exception> initializeDeserialization(IO.Readable input) {
-		this.input = new XMLStreamReaderAsync(input, forceEncoding, 8192);
-		this.input.setMaximumTextSize(16384);
-		this.input.setMaximumCDataSize(16384);
-		ISynchronizationPoint<Exception> start = this.input.startRootElement();
+		XMLStreamReaderAsync reader = new XMLStreamReaderAsync(input, forceEncoding, 8192);
+		this.input = reader;
+		reader.setMaximumTextSize(16384);
+		reader.setMaximumCDataSize(16384);
+		ISynchronizationPoint<Exception> start = reader.startRootElement();
 		if (start.isUnblocked()) {
 			if (start.hasError()) return start;
 			if (this.expectedRootLocalName != null && !this.input.event.localName.equals(this.expectedRootLocalName))
