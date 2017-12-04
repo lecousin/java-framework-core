@@ -218,8 +218,7 @@ public class UnprotectedString implements IString {
 	
 	@Override
 	public UnprotectedString substring(int start, int end) {
-		if (end <= start)
-			throw new IllegalArgumentException("Cannot create substring from " + start + " to " + end);
+		if (end <= start) return new UnprotectedString(0);
 		return new UnprotectedString(chars, this.start + start, end - start, end - start);
 	}
 	
