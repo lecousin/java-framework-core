@@ -28,8 +28,8 @@ import net.lecousin.framework.math.IntegerUnit;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 import net.lecousin.framework.xml.XMLStreamReaderAsync;
-import net.lecousin.framework.xml.XMLStreamReaderAsync.Type;
 import net.lecousin.framework.xml.XMLUtil;
 
 public class XMLDeserializer extends AbstractDeserializer {
@@ -74,18 +74,18 @@ public class XMLDeserializer extends AbstractDeserializer {
 		ISynchronizationPoint<Exception> start = this.input.startRootElement();
 		if (start.isUnblocked()) {
 			if (start.hasError()) return start;
-			if (this.expectedRootLocalName != null && !this.input.localName.equals(this.expectedRootLocalName))
-				return new SynchronizationPoint<>(new Exception("Expected root XML element is " + this.expectedRootLocalName + ", found is " + this.input.localName.asString()));
-			if (this.expectedRootNamespaceURI != null && !this.expectedRootNamespaceURI.equals(this.input.getNamespaceURI(this.input.namespacePrefix)))
-				return new SynchronizationPoint<>(new Exception("Expected root XML element namespace is " + this.expectedRootNamespaceURI + ", found is " + this.input.getNamespaceURI(this.input.namespacePrefix)));
+			if (this.expectedRootLocalName != null && !this.input.event.localName.equals(this.expectedRootLocalName))
+				return new SynchronizationPoint<>(new Exception("Expected root XML element is " + this.expectedRootLocalName + ", found is " + this.input.event.localName.asString()));
+			if (this.expectedRootNamespaceURI != null && !this.expectedRootNamespaceURI.equals(this.input.getNamespaceURI(this.input.event.namespacePrefix)))
+				return new SynchronizationPoint<>(new Exception("Expected root XML element namespace is " + this.expectedRootNamespaceURI + ", found is " + this.input.getNamespaceURI(this.input.event.namespacePrefix)));
 			return start;
 		}
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		start.listenInline(() -> {
-			if (this.expectedRootLocalName != null && !this.input.localName.equals(this.expectedRootLocalName))
-				sp.error(new Exception("Expected root XML element is " + this.expectedRootLocalName + ", found is " + this.input.localName.asString()));
-			else if (this.expectedRootNamespaceURI != null && !this.expectedRootNamespaceURI.equals(this.input.getNamespaceURI(this.input.namespacePrefix)))
-				sp.error(new Exception("Expected root XML element namespace is " + this.expectedRootNamespaceURI + ", found is " + this.input.getNamespaceURI(this.input.namespacePrefix)));
+			if (this.expectedRootLocalName != null && !this.input.event.localName.equals(this.expectedRootLocalName))
+				sp.error(new Exception("Expected root XML element is " + this.expectedRootLocalName + ", found is " + this.input.event.localName.asString()));
+			else if (this.expectedRootNamespaceURI != null && !this.expectedRootNamespaceURI.equals(this.input.getNamespaceURI(this.input.event.namespacePrefix)))
+				sp.error(new Exception("Expected root XML element namespace is " + this.expectedRootNamespaceURI + ", found is " + this.input.getNamespaceURI(this.input.event.namespacePrefix)));
 			else
 				sp.unblock();
 		}, sp);
@@ -204,8 +204,8 @@ public class XMLDeserializer extends AbstractDeserializer {
 			return res;
 		}
 		ObjectContext ctx = new ObjectContext();
-		ctx.attributes = input.attributes;
-		ctx.endOfAttributes = input.isClosed;
+		ctx.attributes = input.event.attributes;
+		ctx.endOfAttributes = input.event.isClosed;
 		objects.addFirst(ctx);
 		String attrName = "class";
 		while (hasAttribute(type.getBase(), attrName)) attrName = "_" + attrName;
@@ -257,7 +257,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 		AsyncWork<String, Exception> result = new AsyncWork<>();
 		next.listenInline((ok) -> {
 			if (ok.booleanValue())
-				result.unblockSuccess(input.text.asString());
+				result.unblockSuccess(input.event.text.asString());
 			else
 				result.unblockSuccess(null);
 		}, result);
@@ -339,7 +339,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 					result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
 					return result;
 				}
-				if (!input.text.equals(colAttr.getName())) {
+				if (!input.event.text.equals(colAttr.getName())) {
 					ctx.onNextAttribute = true;
 					result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
 					return result;
@@ -351,7 +351,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 						result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
 						return;
 					}
-					if (!input.text.equals(colAttr.getName())) {
+					if (!input.event.text.equals(colAttr.getName())) {
 						ctx.onNextAttribute = true;
 						result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
 						return;
@@ -418,22 +418,22 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	private void readBase64(Base64Decoder decoder, IOInMemoryOrFile io, AsyncWork<IO.Readable, Exception> result) {
-		if (Type.TEXT.equals(input.type)) {
-			if (input.text.length() == 0) {
+		if (Type.TEXT.equals(input.event.type)) {
+			if (input.event.text.length() == 0) {
 				readNextBase64(decoder, io, result);
 				return;
 			}
-			CharBuffer[] buffers = input.text.asCharBuffers();
+			CharBuffer[] buffers = input.event.text.asCharBuffers();
 			decodeBase64(decoder, io, result, buffers, 0);
 			return;
 		}
-		if (Type.START_ELEMENT.equals(input.type)) {
+		if (Type.START_ELEMENT.equals(input.event.type)) {
 			input.closeElement().listenAsync(new DeserializationTask(() -> {
 				readNextBase64(decoder, io, result);
 			}), result);
 			return;
 		}
-		if (Type.END_ELEMENT.equals(input.type)) {
+		if (Type.END_ELEMENT.equals(input.event.type)) {
 			decoder.flush().listenInlineSP(() -> { result.unblockSuccess(io); }, result);
 			return;
 		}

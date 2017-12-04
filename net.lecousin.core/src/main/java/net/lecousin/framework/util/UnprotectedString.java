@@ -61,6 +61,15 @@ public class UnprotectedString implements IString {
 		usableEnd = 0;
 	}
 
+	/** Creates an UnprotectedString from the given String (a copy of characters is done). */
+	public UnprotectedString(IString s) {
+		chars = new char[s.length()];
+		s.fill(chars);
+		start = 0;
+		end = chars.length - 1;
+		usableEnd = 0;
+	}
+
 	/** Creates an UnprotectedString from the given CharSequence (a copy of characters is done). */
 	public UnprotectedString(CharSequence s) {
 		this(s.toString());

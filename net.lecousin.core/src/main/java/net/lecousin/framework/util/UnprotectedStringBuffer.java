@@ -59,6 +59,13 @@ public class UnprotectedStringBuffer implements IString {
 		lastUsed = 0;
 		strings[0] = new UnprotectedString(s);
 	}
+	
+	/** Create a string with the given one. */
+	public UnprotectedStringBuffer(IString s) {
+		strings = new UnprotectedString[1];
+		lastUsed = 0;
+		strings[0] = new UnprotectedString(s);
+	}
 
 	private UnprotectedString[] strings;
 	private int lastUsed;

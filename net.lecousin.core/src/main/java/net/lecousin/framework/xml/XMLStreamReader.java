@@ -4,16 +4,10 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.util.LinkedList;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
@@ -25,6 +19,7 @@ import net.lecousin.framework.locale.LocalizableString;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 
 /**
  * Read an XML in a similar way as {@link javax.xml.stream.XMLStreamReader}: read-only, forward, event based.
@@ -32,7 +27,7 @@ import net.lecousin.framework.util.UnprotectedStringBuffer;
  * It uses {@link UnprotectedString} to avoid allocating many character arrays.
  * Charset is automatically detected by reading the beginning of the XML (either with auto-detection or with the specified encoding).
  */
-public class XMLStreamReader {
+public class XMLStreamReader extends XMLStreamEventsSync {
 
 	/** Initialize with the given IO.
 	 * If it is not buffered, a {@link PreBufferedReadable} is created.
@@ -54,71 +49,6 @@ public class XMLStreamReader {
 	
 	private Charset forcedCharset;
 	private int charactersBuffersSize;
-	
-	/** Type of event. */
-	public static enum Type {
-		PROCESSING_INSTRUCTION,
-		DOCTYPE,
-		COMMENT,
-		TEXT,
-		START_ELEMENT,
-		END_ELEMENT,
-		CDATA
-	}
-	
-	/** Type of current node. */
-	public Type type = null;
-	/** Text read, depending of the node type. <ul>
-	 *    <li>CDATA: content of the CDATA tag</li>
-	 *    <li>COMMENT: content of the comment tag</li>
-	 *    <li>DOCTYPE: type of document</li>
-	 *    <li>PROCESSING_INSTRUCTION: instruction name</li>
-	 *    <li>START_ELEMENT: element name</li>
-	 *    <li>TEXT: text</li>
-	 *  </ul>
-	 */
-	public UnprotectedStringBuffer text = null;
-	/** When type if START_ELEMENT, it specifies if it is an empty-element. */
-	public boolean isClosed = false;
-	/** When type if START_ELEMENT, it contains the list of attributes. */
-	public ArrayList<Pair<UnprotectedStringBuffer,UnprotectedStringBuffer>> attributes = null;
-	/** System specified in the DOCTYPE tag. */
-	@SuppressFBWarnings("URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD")
-	public UnprotectedStringBuffer system = null;
-	/** Public ID specified in the DOCTYPE tag. */
-	@SuppressFBWarnings("URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD")
-	public UnprotectedStringBuffer publicId = null;
-	/** Allows to specify a listener that will be called on each START_ELEMENT event. */
-	@SuppressFBWarnings("UWF_NULL_FIELD")
-	public Listener<XMLStreamReader> onElement = null;
-	
-	/** Shortcut to get the value of the given attribute name as a String. */
-	public String getAttribute(String name) {
-		for (Pair<UnprotectedStringBuffer,UnprotectedStringBuffer> attr : attributes)
-			if (attr.getValue1().equals(name))
-				return attr.getValue2().toString();
-		return null;
-	}
-	
-	/** Remove an attribute from the list if it exists. */
-	public UnprotectedStringBuffer removeAttribute(String name) {
-		for (Iterator<Pair<UnprotectedStringBuffer,UnprotectedStringBuffer>> it = attributes.iterator(); it.hasNext(); ) {
-			Pair<UnprotectedStringBuffer,UnprotectedStringBuffer> attr = it.next();
-			if (attr.getValue1().equals(name)) {
-				it.remove();
-				return attr.getValue2();
-			}
-		}
-		return null;
-	}
-	
-	private void reset() {
-		type = null;
-		text = null;
-		isClosed = false;
-		attributes = null;
-	}
-	
 	private IO.Readable.Buffered io;
 	private CharacterProvider cp;
 	
@@ -442,17 +372,17 @@ public class XMLStreamReader {
 	}
 	
 	private boolean checkFirstElement() {
-		if (Type.PROCESSING_INSTRUCTION.equals(type)) {
-			if (text.length() == 3) {
-				char c = text.charAt(0);
+		if (Type.PROCESSING_INSTRUCTION.equals(event.type)) {
+			if (event.text.length() == 3) {
+				char c = event.text.charAt(0);
 				if (c == 'x' || c == 'X') {
-					c = text.charAt(1);
+					c = event.text.charAt(1);
 					if (c == 'm' || c == 'M') {
-						c = text.charAt(2);
+						c = event.text.charAt(2);
 						if (c == 'l' || c == 'L') {
-							String encoding = getAttribute("encoding");
+							UnprotectedStringBuffer encoding = getAttributeValueByLocalName("encoding");
 							if (encoding != null)
-								cp = new CharacterStreamProvider(Charset.forName(encoding));
+								cp = new CharacterStreamProvider(Charset.forName(encoding.asString()));
 							return true;
 						}
 					}
@@ -463,7 +393,9 @@ public class XMLStreamReader {
 	}
 	
 	/** Move forward to the next event. */
+	@Override
 	public void next() throws XMLException, IOException {
+		reset();
 		char c = cp.nextChar();
 		if (c == '<')
 			readTag();
@@ -471,162 +403,17 @@ public class XMLStreamReader {
 			readChars(c);
 	}
 	
-	/* Public utility methods */
-	
-	// TODO optimization: when searching for something, do not load every information in between
+	@Override
+	public Pair<Integer, Integer> getPosition() {
+		return cp.getPosition();
+	}
 	
 	/** Shortcut to move forward to the first START_ELEMENT event, skipping the header or comments. */
 	public void startRootElement() throws XMLException, IOException {
 		start();
-		while (!Type.START_ELEMENT.equals(type)) next();
+		while (!Type.START_ELEMENT.equals(event.type)) next();
 	}
 	
-	/** Shortcut to move forward to the next START_ELEMENT, return false if no START_ELEMENT event was found. */
-	public boolean nextStartElement() throws XMLException, IOException {
-		try {
-			do {
-				next();
-			} while (!Type.START_ELEMENT.equals(type));
-			return true;
-		} catch (EOFException e) {
-			return false;
-		}
-	}
-	
-	/** Go to the next inner element. Return true if one is found, false if the closing tag of the parent is found. */
-	public boolean nextInnerElement(String parentName) throws XMLException, IOException {
-		try {
-			if (Type.START_ELEMENT.equals(type) && text.equals(parentName) && isClosed)
-				return false; // we are one the opening tag of the parent, and it is closed, so it has no content
-			do {
-				next();
-				if (Type.END_ELEMENT.equals(type)) {
-					if (!text.equals(parentName))
-						throw new XMLException(cp.getPosition(), "Unexpected end element", text.asString());
-					return false;
-				}
-				if (Type.START_ELEMENT.equals(type))
-					return true;
-			} while (true);
-		} catch (EOFException e) {
-			return false;
-		}
-	}
-	
-	/** Go to the next inner element having the given name. Return true if one is found, false if the closing tag of the parent is found. */
-	public boolean nextInnerElement(String parentName, String childName) throws XMLException, IOException {
-		try {
-			do {
-				next();
-				if (Type.END_ELEMENT.equals(type)) {
-					if (!text.equals(parentName))
-						throw new XMLException(cp.getPosition(), "Unexpected end element", text.asString());
-					return false;
-				}
-				if (Type.START_ELEMENT.equals(type)) {
-					if (!text.equals(childName)) {
-						closeElement();
-						continue;
-					}
-					return true;
-				}
-			} while (true);
-		} catch (EOFException e) {
-			return false;
-		}
-	}
-	
-	/** Read inner text and close element. */
-	public UnprotectedStringBuffer readInnerText() throws XMLException, IOException {
-		if (!Type.START_ELEMENT.equals(type))
-			throw new IOException("Invalid call of readInnerText: it must be called on a start element");
-		if (isClosed) return new UnprotectedStringBuffer();
-		UnprotectedStringBuffer elementName = text;
-		UnprotectedStringBuffer innerText = new UnprotectedStringBuffer();
-		do {
-			try { next(); }
-			catch (EOFException e) {
-				throw new XMLException(cp.getPosition(), "Unexpected end", "readInnerText(" + elementName.toString() + ")");
-			}
-			if (Type.COMMENT.equals(type)) continue;
-			if (Type.TEXT.equals(type)) {
-				innerText.append(text);
-				continue;
-			}
-			if (Type.START_ELEMENT.equals(type)) {
-				closeElement();
-				continue;
-			}
-			if (Type.END_ELEMENT.equals(type)) {
-				if (!text.equals(elementName))
-					throw new XMLException(cp.getPosition(), "Unexpected end element", text.asString());
-				return innerText;
-			}
-		} while (true);
-	}
-	
-	/** Go the the END_ELEMENT event corresponding to the current START_ELEMENT (must be called with a current event to START_ELEMENT). */
-	public void closeElement() throws XMLException, IOException {
-		if (!Type.START_ELEMENT.equals(type))
-			throw new IOException("Invalid call of closeElement: it must be called on a start element");
-		if (isClosed) return;
-		UnprotectedStringBuffer elementName = text;
-		do {
-			try { next(); }
-			catch (EOFException e) {
-				throw new XMLException(cp.getPosition(), "Unexpected end", "closeElement(" + elementName.asString() + ")");
-			}
-			if (Type.END_ELEMENT.equals(type)) {
-				if (!text.equals(elementName))
-					throw new XMLException(cp.getPosition(), "Unexpected end element expected is",
-							text.asString(), elementName.asString());
-				return;
-			}
-			if (Type.START_ELEMENT.equals(type))
-				closeElement();
-		} while (true);
-	}
-
-	/** Move forward until an element with the given name is found (whatever its depth).
-	 * @return true if found, false if the end of file is reached.
-	 */
-	public boolean searchElement(String elementName) throws XMLException, IOException {
-		try {
-			do {
-				if (Type.START_ELEMENT.equals(type)) {
-					if (text.equals(elementName))
-						return true;
-				}
-				next();
-			} while (true);
-		} catch (EOFException e) {
-			return false;
-		}
-	}
-	
-	/** Go successively into the given elements. */
-	public boolean goInto(String... innerElements) throws IOException, XMLException {
-		for (int i = 0; i < innerElements.length; ++i)
-			if (!goInto(innerElements[i]))
-				return false;
-		return true;
-	}
-	
-	/** Go to the given inner element. */
-	public boolean goInto(String innerElement) throws IOException, XMLException {
-		String parentName = text.toString();
-		return nextInnerElement(parentName, innerElement);
-	}
-	
-	/** Read all inner elements with their text, and return a mapping with the element's name as key and inner text as value. */
-	public Map<String,String> readInnerElementsText(String parentName) throws IOException, XMLException {
-		Map<String, String> texts = new HashMap<>();
-		while (nextInnerElement(parentName)) {
-			String name = text.toString();
-			texts.put(name, readInnerText().asString());
-		}
-		return texts;
-	}
 	
 	/* Private methods */
 	
@@ -681,27 +468,26 @@ public class XMLStreamReader {
 	private static char[] UBLIC = new char[] { 'U', 'B', 'L', 'I', 'C' };
 	
 	private void readDocType() throws XMLException, IOException {
-		reset();
-		type = Type.DOCTYPE;
-		text = new UnprotectedStringBuffer();
+		event.type = Type.DOCTYPE;
+		event.text = new UnprotectedStringBuffer();
 		readSpace();
-		readName(text);
+		readName(event.text);
 		char c;
 		while (isSpaceChar(c = cp.nextChar()));
 		if (c == 'S') {
 			if (!readExpectedChars(YSTEM))
 				throw new XMLException(cp.getPosition(), "Invalid XML");
 			readSpace();
-			system = readSystemLiteral();
+			event.system = readSystemLiteral();
 			c = cp.nextChar();
 			while (isSpaceChar(c)) c = cp.nextChar();
 		} else if (c == 'P') {
 			if (!readExpectedChars(UBLIC))
 				throw new XMLException(cp.getPosition(), "Invalid XML");
 			readSpace();
-			publicId = readPublicIDLiteral();
+			event.publicId = readPublicIDLiteral();
 			readSpace();
-			system = readSystemLiteral();
+			event.system = readSystemLiteral();
 			c = cp.nextChar();
 			while (isSpaceChar(c)) c = cp.nextChar();
 		}
@@ -715,9 +501,8 @@ public class XMLStreamReader {
 	}
 	
 	private void readComment() throws XMLException, IOException {
-		reset();
-		type = Type.COMMENT;
-		text = new UnprotectedStringBuffer();
+		event.type = Type.COMMENT;
+		event.text = new UnprotectedStringBuffer();
 		do {
 			char c;
 			try { c = cp.nextChar(); }
@@ -734,8 +519,8 @@ public class XMLStreamReader {
 						new LocalizableString("lc.xml.error", "inside comment"));
 				}
 				if (c != '-') {
-					text.append('-');
-					text.append(c);
+					event.text.append('-');
+					event.text.append(c);
 					continue;
 				}
 				do {
@@ -748,16 +533,16 @@ public class XMLStreamReader {
 					if (c == '>')
 						return;
 					if (c == '-') {
-						text.append('-');
+						event.text.append('-');
 						continue;
 					}
-					text.append('-');
-					text.append('-');
+					event.text.append('-');
+					event.text.append('-');
 					break;
 				} while (true);
 				continue;
 			}
-			text.append(c);
+			event.text.append(c);
 		} while (true);
 	}
 	
@@ -769,9 +554,8 @@ public class XMLStreamReader {
 	}
 	
 	private void readCData() throws XMLException, IOException {
-		reset();
-		type = Type.CDATA;
-		text = new UnprotectedStringBuffer();
+		event.type = Type.CDATA;
+		event.text = new UnprotectedStringBuffer();
 		do {
 			char c;
 			try { c = cp.nextChar(); }
@@ -788,8 +572,8 @@ public class XMLStreamReader {
 						new LocalizableString("lc.xml.error", "inside CDATA"));
 				}
 				if (c != ']') {
-					text.append(']');
-					text.append(c);
+					event.text.append(']');
+					event.text.append(c);
 					continue;
 				}
 				do {
@@ -802,70 +586,79 @@ public class XMLStreamReader {
 					if (c == '>')
 						return;
 					if (c == ']') {
-						text.append(']');
+						event.text.append(']');
 						continue;
 					}
-					text.append(']');
-					text.append(']');
-					text.append(c);
+					event.text.append(']');
+					event.text.append(']');
+					event.text.append(c);
 					break;
 				} while (true);
 				continue;
 			}
-			text.append(c);
+			event.text.append(c);
 		} while (true);
 	}
 	
 	private void readStartTag(char c) throws XMLException, IOException {
-		reset();
-		type = Type.START_ELEMENT;
-		attributes = new ArrayList<>();
-		text = new UnprotectedStringBuffer();
-		text.append(c);
-		continueReadName(text);
+		event.type = Type.START_ELEMENT;
+		event.attributes = new LinkedList<>();
+		event.text = new UnprotectedStringBuffer();
+		event.text.append(c);
+		continueReadName(event.text);
 		do {
 			while (isSpaceChar(c = cp.nextChar()));
 			if (c == '>') break;
 			if (c == '/') {
 				if (cp.nextChar() != '>')
 					throw new XMLException(cp.getPosition(), "Invalid XML");
-				isClosed = true;
+				event.isClosed = true;
 				break;
 			}
 			if (!isNameStartChar(c))
 				throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
+			Attribute a = new Attribute();
+			
 			// attribute name
-			UnprotectedStringBuffer attrName = new UnprotectedStringBuffer();
-			attrName.append(c);
-			continueReadName(attrName);
+			a.text = new UnprotectedStringBuffer();
+			a.text.append(c);
+			continueReadName(a.text);
+			int i = a.text.indexOf(':');
+			if (i < 0) {
+				a.namespacePrefix = new UnprotectedStringBuffer();
+				a.localName = a.text;
+			} else {
+				a.namespacePrefix = a.text.substring(0, i);
+				a.localName = a.text.substring(i + 1);
+			}
+			
 			// equal
 			while (isSpaceChar(c = cp.nextChar()));
 			if (c != '=')
 				throw new XMLException(cp.getPosition(), "Expected character", Character.valueOf(c), Character.valueOf('='));
+			
 			// attribute value
 			while (isSpaceChar(c = cp.nextChar()));
-			UnprotectedStringBuffer attrValue = new UnprotectedStringBuffer();
-			if (c == '"' || c == '\'') readAttrValue(attrValue, c);
+			a.value = new UnprotectedStringBuffer();
+			if (c == '"' || c == '\'') readAttrValue(a.value, c);
 			else throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
-			attributes.add(new Pair<UnprotectedStringBuffer,UnprotectedStringBuffer>(attrName, attrValue));
+			event.attributes.add(a);
 		} while (true);
-		if (onElement != null)
-			onElement.fire(this);
+		onStartElement();
 	}
 	
 	private void readProcessingInstruction() throws XMLException, IOException {
-		reset();
-		type = Type.PROCESSING_INSTRUCTION;
-		attributes = new ArrayList<>();
-		text = new UnprotectedStringBuffer();
-		readName(text);
+		event.type = Type.PROCESSING_INSTRUCTION;
+		event.attributes = new LinkedList<>();
+		event.text = new UnprotectedStringBuffer();
+		readName(event.text);
 		char c;
 		do {
 			while (isSpaceChar(c = cp.nextChar()));
 			if (c == '?') {
 				c = cp.nextChar();
 				if (c == '>') {
-					isClosed = true;
+					event.isClosed = true;
 					return;
 				}
 				cp.back(c);
@@ -873,24 +666,34 @@ public class XMLStreamReader {
 			}
 			if (!isNameStartChar(c))
 				continue;
+			Attribute a = new Attribute();
 			// attribute name
-			UnprotectedStringBuffer attrName = new UnprotectedStringBuffer();
-			attrName.append(c);
-			continueReadName(attrName);
+			a.text = new UnprotectedStringBuffer();
+			a.text.append(c);
+			continueReadName(a.text);
+			int i = a.text.indexOf(':');
+			if (i < 0) {
+				a.namespacePrefix = new UnprotectedStringBuffer();
+				a.localName = a.text;
+			} else {
+				a.namespacePrefix = a.text.substring(0, i);
+				a.localName = a.text.substring(i + 1);
+			}
+
 			// equal
 			while (isSpaceChar(c = cp.nextChar()));
 			if (c != '=') {
 				// empty attribute
-				attributes.add(new Pair<UnprotectedStringBuffer,UnprotectedStringBuffer>(attrName, new UnprotectedStringBuffer()));
+				event.attributes.add(a);
 				cp.back(c);
 				continue;
 			}
 			// attribute value
 			while (isSpaceChar(c = cp.nextChar()));
-			UnprotectedStringBuffer attrValue = new UnprotectedStringBuffer();
-			if (c == '"' || c == '\'') readAttrValue(attrValue, c);
+			a.value = new UnprotectedStringBuffer();
+			if (c == '"' || c == '\'') readAttrValue(a.value, c);
 			else throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
-			attributes.add(new Pair<UnprotectedStringBuffer,UnprotectedStringBuffer>(attrName, attrValue));
+			event.attributes.add(a);
 		} while (true);
 	}
 	
@@ -909,12 +712,11 @@ public class XMLStreamReader {
 	}
 	
 	private void readChars(char c) throws XMLException, IOException {
-		reset();
-		type = Type.TEXT;
-		text = new UnprotectedStringBuffer();
+		event.type = Type.TEXT;
+		event.text = new UnprotectedStringBuffer();
 		do {
 			if (c == '&')
-				text.append(readReference());
+				event.text.append(readReference());
 			else if (c == '<') {
 				cp.back(c);
 				break;
@@ -923,17 +725,17 @@ public class XMLStreamReader {
 					try {
 						c = cp.nextChar();
 					} catch (EOFException e) {
-						text.append(c);
+						event.text.append(c);
 						break;
 					}
 					if (c == '\n')
-						text.append(c);
+						event.text.append(c);
 					else {
-						text.append('\r');
+						event.text.append('\r');
 						continue;
 					}
 				} else
-					text.append(c);
+					event.text.append(c);
 			}
 			try {
 				c = cp.nextChar();
@@ -1035,23 +837,33 @@ public class XMLStreamReader {
 	}
 	
 	private void readEndTag() throws XMLException, IOException {
-		reset();
-		type = Type.END_ELEMENT;
-		text = new UnprotectedStringBuffer();
-		readName(text);
+		event.type = Type.END_ELEMENT;
+		event.text = new UnprotectedStringBuffer();
+		readName(event.text);
 		do {
 			char c = cp.nextChar();
-			if (c == '>') return;
+			if (c == '>') break;
 			if (!isSpaceChar(c))
 				throw new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c));
 		} while (true);
+		ElementContext ctx = event.context.peekFirst();
+		if (ctx == null)
+			throw new XMLException(cp.getPosition(), "Unexpected end element", event.text.asString());
+		if (!ctx.text.equals(event.text))
+			throw new XMLException(cp.getPosition(), "Unexpected end element expected is", event.text.asString(), ctx.text.asString());
+		int i = event.text.indexOf(':');
+		if (i < 0) {
+			event.namespacePrefix = new UnprotectedStringBuffer();
+			event.localName = event.text;
+		} else {
+			event.namespacePrefix = event.text.substring(0, i);
+			event.localName = event.text.substring(i + 1);
+		}
 	}
 	
 	// skip checkstyle: VariableDeclarationUsageDistance
 	private void readIntSubset() throws XMLException, IOException {
-		UnprotectedStringBuffer saveText = text;
-		Type saveType = type;
-		ArrayList<Pair<UnprotectedStringBuffer,UnprotectedStringBuffer>> saveAttributes = attributes;
+		Event save = event.copy();
 		
 		do {
 			char c;
@@ -1073,9 +885,7 @@ public class XMLStreamReader {
 			readIntSubsetTag();
 		} while (true);
 		
-		text = saveText;
-		type = saveType;
-		attributes = saveAttributes;
+		event = save;
 	}
 	
 	private void readIntSubsetPEReference() throws XMLException, IOException {

@@ -14,6 +14,7 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.util.IString;
 import net.lecousin.framework.xml.XMLStreamReader;
+import net.lecousin.framework.xml.XMLStreamEvents.Attribute;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -197,7 +198,7 @@ public class TestXMLStreamReaderWithDOM extends LCCoreAbstractTest {
 	}
 	
 	private static void checkNode(Node node, XMLStreamReader xml, LinkedList<String> openElements) throws Exception {
-		switch (xml.type) {
+		switch (xml.event.type) {
 		case COMMENT:
 			Assert.assertEquals(Node.COMMENT_NODE, node.getNodeType());
 			checkComment((Comment)node, xml);
@@ -220,10 +221,10 @@ public class TestXMLStreamReaderWithDOM extends LCCoreAbstractTest {
 			break;
 		case END_ELEMENT:
 			Assert.assertFalse(openElements.isEmpty());
-			Assert.assertEquals(openElements.removeLast(), xml.text.asString());
+			Assert.assertEquals(openElements.removeLast(), xml.event.text.asString());
 			break;
 		case TEXT:
-			if (xml.text.asString().trim().isEmpty() && node.getNodeType() != Node.TEXT_NODE) {
+			if (xml.event.text.asString().trim().isEmpty() && node.getNodeType() != Node.TEXT_NODE) {
 				xml.next();
 				checkNode(node, xml, openElements);
 				return;
@@ -231,55 +232,57 @@ public class TestXMLStreamReaderWithDOM extends LCCoreAbstractTest {
 			if (node.getNodeType() == Node.ENTITY_REFERENCE_NODE) {
 				node = node.getOwnerDocument().createTextNode("&" + ((EntityReference)node).getNodeName() + ";");
 			}
-			Assert.assertEquals("Expected text <" + xml.text.asString() + ">, but node " + node.getNodeType() + " found", Node.TEXT_NODE, node.getNodeType());
+			Assert.assertEquals("Expected text <" + xml.event.text.asString() + ">, but node " + node.getNodeType() + " found", Node.TEXT_NODE, node.getNodeType());
 			checkText((Text)node, xml);
 			break;
 		}
 	}
 	
 	private static void checkComment(Comment node, XMLStreamReader xml) throws Exception {
-		assertEquals("Comment", node.getData(), xml.text);
+		assertEquals("Comment", node.getData(), xml.event.text);
 		xml.next();
 	}
 	
 	private static void checkCData(CDATASection node, XMLStreamReader xml) throws Exception {
-		assertEquals("CDATA content", node.getData(), xml.text);
+		assertEquals("CDATA content", node.getData(), xml.event.text);
 		xml.next();
 	}
 	
 	private static void checkText(Text node, XMLStreamReader xml) throws Exception {
-		assertEquals("text", node.getData(), xml.text);
+		assertEquals("text", node.getData(), xml.event.text);
 		xml.next();
 	}
 	
 	private static void checkDocType(DocumentType node, XMLStreamReader xml) throws Exception {
-		assertEquals("DOCTYPE name", node.getName(), xml.text);
-		assertEquals("system id", node.getSystemId(), xml.system);
-		assertEquals("public id", node.getPublicId(), xml.publicId);
+		assertEquals("DOCTYPE name", node.getName(), xml.event.text);
+		assertEquals("system id", node.getSystemId(), xml.event.system);
+		assertEquals("public id", node.getPublicId(), xml.event.publicId);
 		xml.next();
 	}
 	
 	private static void checkProcessingInstruction(ProcessingInstruction node, XMLStreamReader xml) throws Exception {
-		assertEquals("processing instruction target", node.getTarget(), xml.text);
+		assertEquals("processing instruction target", node.getTarget(), xml.event.text);
 		xml.next();
 	}
 	
 	private static void checkElement(Element node, XMLStreamReader xml, LinkedList<String> openElements) throws Exception {
-		assertEquals("element name", node.getTagName(), xml.text);
+		assertEquals("element name", node.getTagName(), xml.event.text);
 		NamedNodeMap attrs = node.getAttributes();
 		for (int i = 0; i < attrs.getLength(); ++i) {
 			Node attr = attrs.item(i);
 			String name = attr.getNodeName();
 			String value = attr.getNodeValue();
-			assertEquals("attribute " + name + " on element " + node.getNodeName(), value, xml.removeAttribute(name));
+			Attribute a = xml.removeAttributeByLocalName(name);
+			IString val = a == null ? null : a.value;
+			assertEquals("attribute " + name + " on element " + node.getNodeName(), value, val);
 		}
-		Assert.assertTrue(xml.attributes.isEmpty());
-		if (xml.isClosed) {
+		Assert.assertTrue(xml.event.attributes.isEmpty());
+		if (xml.event.isClosed) {
 			Assert.assertTrue(node.getFirstChild() == null);
 			xml.next();
 			return;
 		}
-		openElements.add(xml.text.asString());
+		openElements.add(xml.event.text.asString());
 		xml.next();
 		checkNodeContent(node, xml, openElements);
 	}

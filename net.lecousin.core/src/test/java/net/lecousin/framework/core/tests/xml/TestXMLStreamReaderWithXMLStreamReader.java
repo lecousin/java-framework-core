@@ -10,19 +10,20 @@ import java.util.LinkedList;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.util.IString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.xml.XMLStreamEvents.Attribute;
 import net.lecousin.framework.xml.XMLStreamReader;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 public class TestXMLStreamReaderWithXMLStreamReader extends LCCoreAbstractTest {
@@ -205,20 +206,20 @@ public class TestXMLStreamReaderWithXMLStreamReader extends LCCoreAbstractTest {
 		} while (true);*/
 		do {
 			boolean skipNextReader = false;
-			switch (xml.type) {
+			switch (xml.event.type) {
 			case DOCTYPE:
 				Assert.assertEquals("DOCTYPE ", XMLStreamConstants.DTD, reader.getEventType());
 				break;
 			case TEXT:
 				if (reader.getEventType() != XMLStreamConstants.CHARACTERS &&
 					reader.getEventType() != XMLStreamConstants.ENTITY_REFERENCE) {
-					if (xml.text.asString().trim().length() == 0) {
+					if (xml.event.text.asString().trim().length() == 0) {
 						skipNextReader = true;
 						break;
 					}
-					throw new AssertionError("XMLStreamCursor has text \"" + xml.text.asString() + "\" but XMLStreamReader has event " + reader.getEventType());
+					throw new AssertionError("XMLStreamCursor has text \"" + xml.event.text.asString() + "\" but XMLStreamReader has event " + reader.getEventType());
 				}
-				String ourText = xml.text.asString();
+				String ourText = xml.event.text.asString();
 				String theirText = "";
 				do {
 					int nextEvent = reader.getEventType();
@@ -236,11 +237,12 @@ public class TestXMLStreamReaderWithXMLStreamReader extends LCCoreAbstractTest {
 				break;
 			case START_ELEMENT:
 				Assert.assertEquals("START_ELEMENT ", XMLStreamConstants.START_ELEMENT, reader.getEventType());
-				assertEquals("START_ELEMENT: ", reader.getLocalName(), xml.text);
+				assertEquals("START_ELEMENT: ", reader.getLocalName(), xml.event.text);
 				for (int i = 0; i < reader.getAttributeCount(); i++) {
 					String name = reader.getAttributeLocalName(i);
 					String value = reader.getAttributeValue(i);
-					UnprotectedStringBuffer ourValue = xml.removeAttribute(name);
+					Attribute a = xml.removeAttributeByLocalName(name);
+					UnprotectedStringBuffer ourValue = a == null ? null : a.value;
 					if (ourValue == null)
 						throw new AssertionError("Missing attribute " + name + " on element " + reader.getLocalName());
 					String s = ourValue.asString();
@@ -254,56 +256,56 @@ public class TestXMLStreamReaderWithXMLStreamReader extends LCCoreAbstractTest {
 						}
 					}
 				}
-				Assert.assertTrue(xml.attributes.isEmpty());
-				if (!xml.isClosed) {
-					openElements.add(xml.text.asString());
+				Assert.assertTrue(xml.event.attributes.isEmpty());
+				if (!xml.event.isClosed) {
+					openElements.add(xml.event.text.asString());
 				} else {
 					Assert.assertEquals("START_ELEMENT closed ", XMLStreamConstants.END_ELEMENT, reader.next());
-					assertEquals("START_ELEMENT closed: ", reader.getLocalName(), xml.text);
+					assertEquals("START_ELEMENT closed: ", reader.getLocalName(), xml.event.text);
 				}
 				break;
 			case END_ELEMENT:
 				Assert.assertEquals("END_ELEMENT ", XMLStreamConstants.END_ELEMENT, reader.getEventType());
-				assertEquals("END_ELEMENT: ", reader.getLocalName(), xml.text);
-				Assert.assertEquals("END_ELEMENT ", openElements.removeLast(), xml.text.asString());
+				assertEquals("END_ELEMENT: ", reader.getLocalName(), xml.event.text);
+				Assert.assertEquals("END_ELEMENT ", openElements.removeLast(), xml.event.text.asString());
 				break;
 			case COMMENT: {
 				Assert.assertEquals("COMMENT ", XMLStreamConstants.COMMENT, reader.getEventType());
 				String t = reader.getText();
-				if (!xml.text.equals(t)) {
-					String s = xml.text.asString();
+				if (!xml.event.text.equals(t)) {
+					String s = xml.event.text.asString();
 					s = s.replace("\r\n", "\n");
 					if (s.equals(t)) break;
 				}
-				assertEquals("COMMENT: ", t, xml.text);
+				assertEquals("COMMENT: ", t, xml.event.text);
 				break;
 			}
 			case CDATA:
 				if (reader.getEventType() == XMLStreamConstants.CDATA) {
 					String t = reader.getText();
-					if (!xml.text.equals(t)) {
-						String s = xml.text.asString();
+					if (!xml.event.text.equals(t)) {
+						String s = xml.event.text.asString();
 						s = s.replace("\r\n", "\n");
 						if (s.equals(t)) break;
 					}
-					assertEquals("CDATA: ", t, xml.text);
+					assertEquals("CDATA: ", t, xml.event.text);
 					break;
 				}
 				if (reader.getEventType() == XMLStreamConstants.CHARACTERS) {
 					String t = reader.getText();
-					if (!xml.text.equals(t)) {
-						String s = xml.text.asString();
+					if (!xml.event.text.equals(t)) {
+						String s = xml.event.text.asString();
 						s = s.replace("\r\n", "\n");
 						if (s.equals(t)) break;
 					}
-					assertEquals("CDATA: ", t, xml.text);
+					assertEquals("CDATA: ", t, xml.event.text);
 					break;
 				}
 				Assert.assertEquals("CDATA ", XMLStreamConstants.CDATA, reader.getEventType());
 				break;
 			case PROCESSING_INSTRUCTION:
 				Assert.assertEquals("PROCESSING_INSTRUCTION ", XMLStreamConstants.PROCESSING_INSTRUCTION, reader.getEventType());
-				assertEquals("PROCESSING_INSTRUCTION target: ", reader.getPITarget(), xml.text);
+				assertEquals("PROCESSING_INSTRUCTION target: ", reader.getPITarget(), xml.event.text);
 				break;
 			}
 			if (!skipNextReader)
