@@ -49,7 +49,7 @@ public class TestXMLStreamReaderWithDOM extends LCCoreAbstractTest {
 		"xml-test-suite/xmltest/valid/sa/009.xml",
 		"xml-test-suite/xmltest/valid/sa/010.xml",
 		"xml-test-suite/xmltest/valid/sa/011.xml",
-		"xml-test-suite/xmltest/valid/sa/012.xml",
+		// name with a semi-colon is not allowed by latest version of XML "xml-test-suite/xmltest/valid/sa/012.xml",
 		"xml-test-suite/xmltest/valid/sa/013.xml",
 		"xml-test-suite/xmltest/valid/sa/014.xml",
 		"xml-test-suite/xmltest/valid/sa/015.xml",
@@ -266,15 +266,19 @@ public class TestXMLStreamReaderWithDOM extends LCCoreAbstractTest {
 	}
 	
 	private static void checkElement(Element node, XMLStreamReader xml, LinkedList<String> openElements) throws Exception {
-		assertEquals("element name", node.getTagName(), xml.event.text);
+		assertEquals("element name", node.getTagName(), xml.event.localName);
+		assertEquals("element prefix", node.getPrefix() == null ? "" : node.getPrefix(), xml.event.namespacePrefix);
 		NamedNodeMap attrs = node.getAttributes();
 		for (int i = 0; i < attrs.getLength(); ++i) {
 			Node attr = attrs.item(i);
+			String prefix = attr.getPrefix();
+			if (prefix == null) prefix = "";
 			String name = attr.getNodeName();
 			String value = attr.getNodeValue();
-			Attribute a = xml.removeAttributeByLocalName(name);
-			IString val = a == null ? null : a.value;
-			assertEquals("attribute " + name + " on element " + node.getNodeName(), value, val);
+			Attribute a = xml.removeAttributeWithPrefix(prefix, name);
+			if (a == null)
+				throw new AssertionError("Missing attribute '" + name + "' and prefix '" + prefix + "' on element " + node.getNodeName());
+			assertEquals("value of attribute '" + name + "' on element " + node.getNodeName(), value, a.value);
 		}
 		Assert.assertTrue(xml.event.attributes.isEmpty());
 		if (xml.event.isClosed) {

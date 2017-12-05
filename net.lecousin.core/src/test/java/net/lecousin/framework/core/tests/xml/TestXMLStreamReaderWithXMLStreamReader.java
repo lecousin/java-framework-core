@@ -40,7 +40,7 @@ public class TestXMLStreamReaderWithXMLStreamReader extends LCCoreAbstractTest {
 		"xml-test-suite/xmltest/valid/sa/009.xml",
 		"xml-test-suite/xmltest/valid/sa/010.xml",
 		"xml-test-suite/xmltest/valid/sa/011.xml",
-		"xml-test-suite/xmltest/valid/sa/012.xml",
+		// name with a semi-colon is not allowed by latest version of XML "xml-test-suite/xmltest/valid/sa/012.xml",
 		"xml-test-suite/xmltest/valid/sa/013.xml",
 		"xml-test-suite/xmltest/valid/sa/014.xml",
 		"xml-test-suite/xmltest/valid/sa/015.xml",
@@ -239,12 +239,15 @@ public class TestXMLStreamReaderWithXMLStreamReader extends LCCoreAbstractTest {
 				Assert.assertEquals("START_ELEMENT ", XMLStreamConstants.START_ELEMENT, reader.getEventType());
 				assertEquals("START_ELEMENT: ", reader.getLocalName(), xml.event.text);
 				for (int i = 0; i < reader.getAttributeCount(); i++) {
+					String prefix = reader.getAttributePrefix(i);
 					String name = reader.getAttributeLocalName(i);
 					String value = reader.getAttributeValue(i);
-					Attribute a = xml.removeAttributeByLocalName(name);
-					UnprotectedStringBuffer ourValue = a == null ? null : a.value;
+					Attribute a = xml.removeAttributeWithPrefix(prefix, name);
+					if (a == null)
+						throw new AssertionError("Missing attribute '" + name + "' with prefix '" + prefix + "' on element " + reader.getLocalName());
+					UnprotectedStringBuffer ourValue = a.value;
 					if (ourValue == null)
-						throw new AssertionError("Missing attribute " + name + " on element " + reader.getLocalName());
+						throw new AssertionError("Attribute '" + name + "' has no value on element " + reader.getLocalName());
 					String s = ourValue.asString();
 					if (!s.equals(value)) {
 						s = s.replace('\t', ' ');
