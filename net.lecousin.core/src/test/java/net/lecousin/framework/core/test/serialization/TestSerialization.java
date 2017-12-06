@@ -34,13 +34,19 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public Boolean attr5 = Boolean.FALSE;
 	}
 	
-	@Test
-	public void testBooleans() throws Exception {
+	public static TestBooleans createBooleans() {
 		TestBooleans b = new TestBooleans();
 		b.attr1 = true;
 		b.attr2 = false;
 		b.attr3 = Boolean.TRUE;
 		b.attr4 = Boolean.FALSE;
+		return b;
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
+	public void testBooleans() throws Exception {
+		TestBooleans b = createBooleans();
 		MemoryIO io = serialize(b);
 		print(io, b);
 		TestBooleans b2 = deserialize(io, TestBooleans.class);
@@ -65,10 +71,8 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public BigDecimal bd1 = new BigDecimal("0.112233445566778899");
 		public BigDecimal bd2 = new BigDecimal("-1.998877665544332211");
 	}
-
-	@SuppressWarnings("resource")
-	@Test
-	public void testNumbers() throws Exception {
+	
+	public static TestNumbers createNumbers() {
 		TestNumbers n = new TestNumbers();
 		n.b1 = -45;
 		n.b2 = Byte.valueOf((byte)67);
@@ -86,12 +90,82 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		n.bi2 = new BigInteger("51234567890");
 		n.bd1 = new BigDecimal("-0.00112233445566778899");
 		n.bd2 = new BigDecimal("3.998877665544332211");
+		return n;
+	}
+
+	@SuppressWarnings("resource")
+	@Test
+	public void testNumbers() throws Exception {
+		TestNumbers n = createNumbers();
 		MemoryIO io = serialize(n);
 		print(io, n);
 		TestNumbers n2 = deserialize(io, TestNumbers.class);
 		check(n, n2);
 	}
 	
+	
+	public static class TestString {
+		public String str = "1";
+	}
+	
+	public void testString(String s) throws Exception {
+		TestString ts = new TestString();
+		ts.str = s;
+		MemoryIO io = serialize(ts);
+		print(io, ts);
+		TestString ts2 = deserialize(io, TestString.class);
+		check(ts, ts2);
+	}
+	
+	@Test
+	public void testStrings() throws Exception {
+		testString("hello");
+		testString("123");
+		testString("a\tb\rc\nd\be\\fg\"hi\'jk&#{([-|_@)]=+}£$*%!:/;.,?<012>34");
+	}
+	
+	
+	public static class TestChar {
+		public char c = '1';
+		public Character C = Character.valueOf('2');
+	}
+	
+	public void testChar(char c) throws Exception {
+		TestChar tc = new TestChar();
+		tc.c = c;
+		tc.C = c;
+		MemoryIO io = serialize(tc);
+		print(io, tc);
+		TestChar tc2 = deserialize(io, TestChar.class);
+		check(tc, tc2);
+	}
+	
+	@Test
+	public void testChars() throws Exception {
+		testChar('0');
+		testChar('3');
+		testChar('c');
+		testChar('R');
+		testChar('&');
+		testChar('#');
+		testChar('\'');
+		testChar('"');
+		testChar('\\');
+		testChar('$');
+		testChar('%');
+		testChar('.');
+		testChar('?');
+		testChar(':');
+		testChar('/');
+		testChar('<');
+		testChar('>');
+		testChar('!');
+		testChar('\n');
+		testChar('\r');
+		testChar('\t');
+		testChar('\b');
+		testChar('\f');
+	}
 	
 	protected MemoryIO serialize(Object o) throws Exception {
 		MemoryIO io = new MemoryIO(1024, "test");

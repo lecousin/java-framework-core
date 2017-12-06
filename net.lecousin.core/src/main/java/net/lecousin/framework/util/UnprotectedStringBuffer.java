@@ -773,8 +773,8 @@ public class UnprotectedStringBuffer implements IString {
 			int pos;
 			// put the strings after endIndex
 			if (endIndex < lastUsed) {
-				System.arraycopy(strings, endIndex + 1, strings, nb - endIndex - 1, lastUsed - endIndex + 1);
-				pos = nb - (lastUsed - endIndex + 1) - 1;
+				System.arraycopy(strings, endIndex + 1, strings, nb - (lastUsed - endIndex), lastUsed - endIndex);
+				pos = nb - (lastUsed - endIndex) - 1;
 			} else
 				pos = nb - 1;
 			// put the last string
