@@ -224,10 +224,14 @@ public class XMLSerializer extends AbstractSerializer {
 		ISynchronizationPoint<? extends Exception> value = serializeValue(context, element, context.getElementType(), elementPath, rules);
 		if (value.isUnblocked()) {
 			if (value.hasError()) result.error(value.getError());
-			else serializeCollectionAttributeElement(context, it, elementIndex + 1, colPath, rules, result);
+			else {
+				output.closeElement();
+				serializeCollectionAttributeElement(context, it, elementIndex + 1, colPath, rules, result);
+			}
 			return;
 		}
 		value.listenAsyncSP(new SerializationTask(() -> {
+			output.closeElement();
 			serializeCollectionAttributeElement(context, it, elementIndex + 1, colPath, rules, result);
 		}), result);
 	}

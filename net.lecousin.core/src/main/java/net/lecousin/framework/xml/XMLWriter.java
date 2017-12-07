@@ -129,7 +129,7 @@ public class XMLWriter {
 	}
 	
 	public ISynchronizationPoint<IOException> addAttribute(CharSequence name, CharSequence value) {
-		Context ctx = context.getFirst();
+		Context ctx = context.peekFirst();
 		if (ctx == null)
 			return new SynchronizationPoint<>(new IOException("XML document closed"));
 		if (!ctx.open)
@@ -142,7 +142,7 @@ public class XMLWriter {
 	}
 	
 	public ISynchronizationPoint<IOException> endOfAttributes() {
-		Context ctx = context.getFirst();
+		Context ctx = context.peekFirst();
 		if (ctx == null)
 			return new SynchronizationPoint<>(new IOException("XML document closed"));
 		if (!ctx.open)
@@ -152,7 +152,7 @@ public class XMLWriter {
 	}
 	
 	public ISynchronizationPoint<IOException> openElement(String namespaceURI, String localName, Map<String, String> namespaces) {
-		Context ctx = context.getFirst();
+		Context ctx = context.peekFirst();
 		if (ctx == null)
 			return new SynchronizationPoint<>(new IOException("XML document closed"));
 		if (ctx.open) {
@@ -175,7 +175,7 @@ public class XMLWriter {
 	}
 	
 	public ISynchronizationPoint<IOException> closeElement() {
-		Context ctx = context.getFirst();
+		Context ctx = context.peekFirst();
 		if (ctx == null)
 			return new SynchronizationPoint<>(new IOException("XML document closed"));
 		if (ctx.open) {
@@ -194,7 +194,7 @@ public class XMLWriter {
 	}
 	
 	public ISynchronizationPoint<IOException> addText(CharSequence text) {
-		Context ctx = context.getFirst();
+		Context ctx = context.peekFirst();
 		if (ctx == null)
 			return new SynchronizationPoint<>(new IOException("XML document closed"));
 		if (ctx.open) {
@@ -205,7 +205,7 @@ public class XMLWriter {
 	}
 	
 	public ISynchronizationPoint<IOException> addCData(CharSequence data) {
-		Context ctx = context.getFirst();
+		Context ctx = context.peekFirst();
 		if (ctx == null)
 			return new SynchronizationPoint<>(new IOException("XML document closed"));
 		if (ctx.open) {
@@ -218,7 +218,7 @@ public class XMLWriter {
 	}
 	
 	public ISynchronizationPoint<IOException> addComment(CharSequence comment) {
-		Context ctx = context.getFirst();
+		Context ctx = context.peekFirst();
 		if (ctx != null && ctx.open) {
 			ctx.open = false;
 			writer.write('>');

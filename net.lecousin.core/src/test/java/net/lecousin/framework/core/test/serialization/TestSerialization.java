@@ -5,6 +5,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -43,7 +46,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		return b;
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testBooleans() throws Exception {
 		test(createBooleans(), TestBooleans.class);
@@ -89,7 +91,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		return n;
 	}
 
-	@SuppressWarnings("resource")
 	@Test
 	public void testNumbers() throws Exception {
 		test(createNumbers(), TestNumbers.class);
@@ -182,7 +183,30 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(o, TestSimpleObjects.class);
 	}
 	
+	public static class TestLists {
+		public List<Boolean> booleans;
+		public List<Integer> integers;
+		public List<Float> floats;
+		public List<String> strings;
+		public List<Character> characters;
+		public List<TestBooleans> testBooleans;
+	}
+	
+	@Test
+	public void testLists() throws Exception {
+		TestLists t;
+		t = new TestLists();
+		t.booleans = Arrays.asList(Boolean.TRUE, Boolean.TRUE, Boolean.FALSE, Boolean.TRUE, Boolean.FALSE, Boolean.FALSE, Boolean.FALSE, Boolean.TRUE);
+		t.integers = Arrays.asList(Integer.valueOf(12), Integer.valueOf(-98), Integer.valueOf(18347));
+		t.floats = Arrays.asList(Float.valueOf(0.1234f), Float.valueOf(-823.674f), Float.valueOf(11.22f));
+		t.strings = Arrays.asList("hello", "world", "!!!");
+		t.characters = Arrays.asList(Character.valueOf('H'), Character.valueOf('e'), Character.valueOf('L'), Character.valueOf('l'), Character.valueOf('O'));
+		t.testBooleans = Arrays.asList(createBooleans(), new TestBooleans(), null);
+		test(t, TestLists.class);
+	}
+	
 	protected <T> void test(T object, Class<T> type) throws Exception {
+		@SuppressWarnings("resource")
 		MemoryIO io = serialize(object);
 		print(io, object);
 		T o2 = deserialize(io, type);
@@ -223,11 +247,23 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 				CharSequence.class.isAssignableFrom(type) ||
 				Boolean.class.equals(type) ||
 				Character.class.equals(type)) {
-				Assert.assertEquals(f.get(expected), f.get(found));
+				Assert.assertEquals(o1, o2);
+				continue;
+			}
+			if (List.class.isAssignableFrom(type)) {
+				checkList((List<?>)o1, (List<?>)o2);
 				continue;
 			}
 			check(o1, o2);
 		}
+	}
+	
+	protected void checkList(List<?> l1, List<?> l2) throws Exception {
+		Assert.assertEquals(l1.size(), l2.size());
+		Iterator<?> it1 = l1.iterator();
+		Iterator<?> it2 = l2.iterator();
+		while (it1.hasNext())
+			check(it1.next(), it2.next());
 	}
 	
 	protected void print(MemoryIO io, Object o) throws Exception {
