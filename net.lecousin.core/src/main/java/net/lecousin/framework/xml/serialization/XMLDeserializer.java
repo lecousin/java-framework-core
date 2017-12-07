@@ -159,8 +159,17 @@ public class XMLDeserializer extends AbstractDeserializer {
 		return input.readInnerText();
 	}
 	
+	private static class CollectionValueContext {
+		public String parentName;
+	}
+	
+	private LinkedList<CollectionValueContext> colValueContext = new LinkedList<>();
+	
 	@Override
 	protected AsyncWork<Boolean, Exception> startCollectionValue() {
+		CollectionValueContext ctx = new CollectionValueContext();
+		ctx.parentName = input.event.text.asString();
+		colValueContext.addFirst(ctx);
 		// there is no specific start for a collection value
 		return new AsyncWork<>(Boolean.TRUE, null);
 	}
@@ -169,10 +178,14 @@ public class XMLDeserializer extends AbstractDeserializer {
 	protected AsyncWork<Pair<Object, Boolean>, Exception> deserializeCollectionValueElement(
 		CollectionContext context, int elementIndex, List<SerializationRule> rules
 	) {
-		AsyncWork<Boolean, Exception> read = input.nextInnerElement("element");
+		CollectionValueContext ctx = colValueContext.getFirst();
+		AsyncWork<Boolean, Exception> read = input.nextInnerElement(ctx.parentName, "element");
 		if (read.isUnblocked()) {
 			if (read.hasError()) return new AsyncWork<>(null, read.getError());
-			if (!read.getResult().booleanValue()) return new AsyncWork<>(new Pair<>(null, Boolean.FALSE), null);
+			if (!read.getResult().booleanValue()) {
+				colValueContext.removeFirst();
+				return new AsyncWork<>(new Pair<>(null, Boolean.FALSE), null);
+			}
 			Object element;
 			try { element = SerializationClass.instantiate(context.getElementType(), context, rules); }
 			catch (Exception e) { return new AsyncWork<>(null, e); }
@@ -181,6 +194,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 		AsyncWork<Pair<Object, Boolean>, Exception> result = new AsyncWork<>();
 		read.listenAsync(new DeserializationTask(() -> {
 			if (!read.getResult().booleanValue()) {
+				colValueContext.removeFirst();
 				result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
 				return;
 			}
@@ -193,6 +207,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 
 	private static class ObjectContext {
+		private String elementName;
 		private int attributeIndex = 0;
 		private List<XMLStreamReaderAsync.Attribute> attributes;
 		private boolean endOfAttributes = false;
@@ -215,6 +230,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 			return res;
 		}
 		ObjectContext ctx = new ObjectContext();
+		ctx.elementName = input.event.text.asString();
 		ctx.attributes = input.event.attributes;
 		ctx.endOfAttributes = input.event.isClosed;
 		objects.addFirst(ctx);
@@ -264,7 +280,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 			next = new AsyncWork<>(Boolean.TRUE, null);
 			ctx.onNextAttribute = false;
 		} else
-			next = input.nextInnerElement();
+			next = input.nextInnerElement(ctx.elementName);
 		AsyncWork<String, Exception> result = new AsyncWork<>();
 		next.listenInline((ok) -> {
 			if (ok.booleanValue())
@@ -339,7 +355,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 		AsyncWork<Pair<Object, Boolean>, Exception> result = new AsyncWork<>();
 		if (elementIndex > 0) {
 			// we need to go to the next element
-			AsyncWork<Boolean, Exception> next = input.nextInnerElement();
+			AsyncWork<Boolean, Exception> next = input.nextInnerElement(ctx.elementName);
 			if (next.isUnblocked()) {
 				if (next.hasError()) {
 					result.error(next.getError());

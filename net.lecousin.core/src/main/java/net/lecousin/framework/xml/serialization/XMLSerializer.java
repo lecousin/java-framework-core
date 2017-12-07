@@ -3,6 +3,7 @@ package net.lecousin.framework.xml.serialization;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import net.lecousin.framework.io.serialization.SerializationContext.ObjectContex
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.util.UnprotectedString;
+import net.lecousin.framework.xml.XMLUtil;
 import net.lecousin.framework.xml.XMLWriter;
 
 public class XMLSerializer extends AbstractSerializer {
@@ -70,6 +72,10 @@ public class XMLSerializer extends AbstractSerializer {
 		else
 			bout = new SimpleBufferedWritable(output, bufferSize);
 		this.output = new XMLWriter(bout, encoding, includeXMLDeclaration);
+		if (namespaces == null)
+			namespaces = new HashMap<>();
+		if (!namespaces.containsKey(XMLUtil.XSI_NAMESPACE_URI))
+			namespaces.put(XMLUtil.XSI_NAMESPACE_URI, "xsi");
 		return this.output.start(rootNamespaceURI, rootLocalName, namespaces);
 	}
 	

@@ -72,6 +72,13 @@ public class XMLWriter {
 	public static final char[] START_COMMENT = new char[] { '<', '!', '-', '-', ' ' };
 	public static final char[] END_COMMENT = new char[] { ' ', '-', '-', '>' };
 	
+	/**
+	 * 
+	 * @param rootNamespaceURI
+	 * @param rootLocalName
+	 * @param namespaces mapping from namespace URI and prefix, prefix may be empty for default namespace
+	 * @return
+	 */
 	public ISynchronizationPoint<IOException> start(String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces) {
 		if (includeXMLDeclaration) {
 			writer.write(XML_DECLARATION_START);

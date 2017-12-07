@@ -6,6 +6,9 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -16,9 +19,6 @@ import net.lecousin.framework.io.serialization.Deserializer;
 import net.lecousin.framework.io.serialization.Serializer;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.util.ClassUtil;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 public abstract class TestSerialization extends LCCoreAbstractTest {
 
@@ -46,11 +46,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	@SuppressWarnings("resource")
 	@Test
 	public void testBooleans() throws Exception {
-		TestBooleans b = createBooleans();
-		MemoryIO io = serialize(b);
-		print(io, b);
-		TestBooleans b2 = deserialize(io, TestBooleans.class);
-		check(b, b2);
+		test(createBooleans(), TestBooleans.class);
 	}
 	
 	public static class TestNumbers {
@@ -96,11 +92,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	@SuppressWarnings("resource")
 	@Test
 	public void testNumbers() throws Exception {
-		TestNumbers n = createNumbers();
-		MemoryIO io = serialize(n);
-		print(io, n);
-		TestNumbers n2 = deserialize(io, TestNumbers.class);
-		check(n, n2);
+		test(createNumbers(), TestNumbers.class);
 	}
 	
 	
@@ -111,10 +103,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	public void testString(String s) throws Exception {
 		TestString ts = new TestString();
 		ts.str = s;
-		MemoryIO io = serialize(ts);
-		print(io, ts);
-		TestString ts2 = deserialize(io, TestString.class);
-		check(ts, ts2);
+		test(ts, TestString.class);
 	}
 	
 	@Test
@@ -134,10 +123,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		TestChar tc = new TestChar();
 		tc.c = c;
 		tc.C = c;
-		MemoryIO io = serialize(tc);
-		print(io, tc);
-		TestChar tc2 = deserialize(io, TestChar.class);
-		check(tc, tc2);
+		test(tc, TestChar.class);
 	}
 	
 	@Test
@@ -167,6 +153,42 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testChar('\f');
 	}
 	
+	public static class TestSimpleObjects {
+		public TestBooleans booleans;
+		public int i = 51;
+		public TestNumbers numbers;
+		public String s = "hello";
+		public TestString string;
+		public TestChar ch;
+	}
+	
+	@Test
+	public void testSimpleObjects() throws Exception {
+		TestSimpleObjects o = new TestSimpleObjects();
+		o.booleans = createBooleans();
+		o.i = 52;
+		o.numbers = createNumbers();
+		o.s = "world";
+		o.string = new TestString();
+		o.string.str = "a string";
+		o.ch = new TestChar();
+		o.ch.c = 'o';
+		o.ch.C = Character.valueOf('p');
+		test(o, TestSimpleObjects.class);
+		// test with null values
+		o = new TestSimpleObjects();
+		o.i = 53;
+		o.s = "s";
+		test(o, TestSimpleObjects.class);
+	}
+	
+	protected <T> void test(T object, Class<T> type) throws Exception {
+		MemoryIO io = serialize(object);
+		print(io, object);
+		T o2 = deserialize(io, type);
+		check(object, o2);
+	}
+	
 	protected MemoryIO serialize(Object o) throws Exception {
 		MemoryIO io = new MemoryIO(1024, "test");
 		Serializer s = createSerializer();
@@ -189,7 +211,22 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	protected void check(Object expected, Object found) throws Exception {
 		Assert.assertEquals(expected.getClass(), found.getClass());
 		for (Field f : ClassUtil.getAllFields(expected.getClass())) {
-			Assert.assertEquals(f.get(expected), f.get(found));
+			Object o1 = f.get(expected);
+			Object o2 = f.get(found);
+			if (o1 == null || o2 == null) {
+				Assert.assertEquals(f.get(expected), f.get(found));
+				continue;
+			}
+			Class<?> type = o1.getClass();
+			if (type.isPrimitive() ||
+				Number.class.isAssignableFrom(type) ||
+				CharSequence.class.isAssignableFrom(type) ||
+				Boolean.class.equals(type) ||
+				Character.class.equals(type)) {
+				Assert.assertEquals(f.get(expected), f.get(found));
+				continue;
+			}
+			check(o1, o2);
 		}
 	}
 	
