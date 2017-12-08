@@ -86,6 +86,7 @@ public abstract class XMLStreamEvents {
 		public UnprotectedStringBuffer text;
 		public UnprotectedStringBuffer namespacePrefix;
 		public UnprotectedStringBuffer localName;
+		/** List of pair prefix/uri. */
 		public List<Pair<UnprotectedStringBuffer, UnprotectedStringBuffer>> namespaces = new LinkedList<>();
 	}
 	

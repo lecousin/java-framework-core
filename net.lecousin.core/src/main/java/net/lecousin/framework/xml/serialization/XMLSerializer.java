@@ -163,7 +163,7 @@ public class XMLSerializer extends AbstractSerializer {
 	
 	@Override
 	protected ISynchronizationPoint<IOException> endObjectValue(ObjectContext context, String path, List<SerializationRule> rules) {
-		return output.closeElement();
+		return new SynchronizationPoint<>(true);
 	}
 	
 	@Override
@@ -202,7 +202,16 @@ public class XMLSerializer extends AbstractSerializer {
 	@Override
 	protected ISynchronizationPoint<? extends Exception> serializeObjectAttribute(AttributeContext context, Object value, String path, List<SerializationRule> rules) {
 		output.openElement(null, context.getAttribute().getName(), null);
-		return serializeObjectValue(context, value, path + '.' + context.getAttribute().getName(), rules);
+		ISynchronizationPoint<? extends Exception> s = serializeObjectValue(context, value, path + '.' + context.getAttribute().getName(), rules);
+		if (s.isUnblocked()) {
+			if (s.hasError()) return s;
+			return output.closeElement();
+		}
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		s.listenAsyncSP(new SerializationTask(() -> {
+			output.closeElement().listenInlineSP(sp);
+		}), sp);
+		return sp;
 	}
 	
 	@Override

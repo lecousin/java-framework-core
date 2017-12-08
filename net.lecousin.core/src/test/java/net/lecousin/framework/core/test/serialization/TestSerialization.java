@@ -1,6 +1,7 @@
 package net.lecousin.framework.core.test.serialization;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -232,29 +233,34 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		return (T)res.getResult();
 	}
 	
+	protected void checkValue(Object expected, Object found) throws Exception {
+		if (expected == null || found == null) {
+			Assert.assertEquals(expected, found);
+			return;
+		}
+		Class<?> type = expected.getClass();
+		if (type.isPrimitive() ||
+			Number.class.isAssignableFrom(type) ||
+			CharSequence.class.isAssignableFrom(type) ||
+			Boolean.class.equals(type) ||
+			Character.class.equals(type)) {
+			Assert.assertEquals(expected, found);
+			return;
+		}
+		if (List.class.isAssignableFrom(type)) {
+			checkList((List<?>)expected, (List<?>)found);
+			return;
+		}
+		check(expected, found);
+	}
+	
 	protected void check(Object expected, Object found) throws Exception {
 		Assert.assertEquals(expected.getClass(), found.getClass());
 		for (Field f : ClassUtil.getAllFields(expected.getClass())) {
+			if ((f.getModifiers() & Modifier.STATIC) != 0) continue;
 			Object o1 = f.get(expected);
 			Object o2 = f.get(found);
-			if (o1 == null || o2 == null) {
-				Assert.assertEquals(f.get(expected), f.get(found));
-				continue;
-			}
-			Class<?> type = o1.getClass();
-			if (type.isPrimitive() ||
-				Number.class.isAssignableFrom(type) ||
-				CharSequence.class.isAssignableFrom(type) ||
-				Boolean.class.equals(type) ||
-				Character.class.equals(type)) {
-				Assert.assertEquals(o1, o2);
-				continue;
-			}
-			if (List.class.isAssignableFrom(type)) {
-				checkList((List<?>)o1, (List<?>)o2);
-				continue;
-			}
-			check(o1, o2);
+			checkValue(o1, o2);
 		}
 	}
 	
@@ -263,7 +269,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		Iterator<?> it1 = l1.iterator();
 		Iterator<?> it2 = l2.iterator();
 		while (it1.hasNext())
-			check(it1.next(), it2.next());
+			checkValue(it1.next(), it2.next());
 	}
 	
 	protected void print(MemoryIO io, Object o) throws Exception {
