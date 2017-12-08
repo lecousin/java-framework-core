@@ -322,6 +322,7 @@ public abstract class TaskManager {
 	}
 	
 	void putWorkerAside(TaskWorker worker) {
+		if (worker.aside) return;
 		TaskWorker newWorker = createWorker();
 		worker.aside = true;
 		synchronized (aside) {

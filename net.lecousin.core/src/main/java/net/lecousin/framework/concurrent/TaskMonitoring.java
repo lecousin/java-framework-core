@@ -26,6 +26,7 @@ public final class TaskMonitoring {
 	private static TaskMonitor monitor;
 	
 	static void start(ThreadFactory threadFactory) {
+		if (monitor != null) return;
 		monitor = new TaskMonitor();
 		threadFactory.newThread(monitor).start();
 		LCCore.get().toClose(monitor);
@@ -44,6 +45,12 @@ public final class TaskMonitoring {
 		StringBuilder s = new StringBuilder(4096);
 		s.append("TaskWorker is blocked while locking objects:\r\n");
 		DebugUtil.createStackTrace(s, new Exception("Here"), false);
+		append(s, monitors);
+		append(s, locks);
+		Threading.logger.error(s.toString());
+	}
+	
+	private static void append(StringBuilder s, MonitorInfo[] monitors) {
 		if (monitors.length > 0) {
 			s.append("\r\nLocked monitors:");
 			for (int i = 0; i < monitors.length; ++i) {
@@ -52,13 +59,26 @@ public final class TaskMonitoring {
 					.append(trace.getMethodName()).append(':').append(trace.getLineNumber());
 			}
 		}
+	}
+	
+	private static void append(StringBuilder s, LockInfo[] locks) {
 		if (locks.length > 0) {
 			s.append("\r\nLocked synchronizers:");
 			for (int i = 0; i < locks.length; ++i) {
 				s.append("\r\n - ").append(locks[i].getClassName());
 			}
 		}
-		Threading.logger.error(s.toString());
+	}
+	
+	private static void appendLocks(StringBuilder s, Thread t) {
+		ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+		if (bean == null) return;
+		ThreadInfo info = bean.getThreadInfo(t.getId());
+		if (info == null) return;
+		MonitorInfo[] monitors = info.getLockedMonitors();
+		LockInfo[] locks = info.getLockedSynchronizers();
+		append(s, monitors);
+		append(s, locks);
 	}
 
 	private static class TaskMonitor implements Runnable, Closeable {
@@ -107,6 +127,7 @@ public final class TaskMonitoring {
 			s.append("Task ").append(task).append(" is running since ").append(seconds)
 			 .append(" seconds ! put it aside and start a new thread, current stack:\r\n");
 			DebugUtil.createStackTrace(s, worker.thread.getStackTrace());
+			appendLocks(s, worker.thread);
 			Threading.logger.warn(s.toString());
 			worker.manager.putWorkerAside(worker);
 			return;
@@ -115,6 +136,7 @@ public final class TaskMonitoring {
 		s.append("Task ").append(task).append(" is running since ").append(seconds)
 		 .append(" seconds ! kill it! current stack:\r\n");
 		DebugUtil.createStackTrace(s, worker.thread.getStackTrace());
+		appendLocks(s, worker.thread);
 		Threading.logger.error(s.toString());
 		worker.manager.killWorker(worker);
 	}
