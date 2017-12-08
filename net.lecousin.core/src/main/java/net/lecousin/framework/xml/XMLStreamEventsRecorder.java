@@ -7,14 +7,17 @@ import java.util.LinkedList;
 
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.xml.XMLStreamEvents.Event;
 
 public interface XMLStreamEventsRecorder {
 
-	public void startRecording();
+	public void startRecording(boolean recordCurrentEvent);
 	
 	public void stopRecording();
 	
 	public void replay();
+	
+	public Event getFirstRecordedEvent();
 	
 	
 	public static class Sync extends XMLStreamEventsSync implements XMLStreamEventsRecorder {
@@ -35,6 +38,11 @@ public interface XMLStreamEventsRecorder {
 		}
 		
 		@Override
+		public Event getFirstRecordedEvent() {
+			return record != null && !record.isEmpty() ? record.getFirst() : null;
+		}
+		
+		@Override
 		public void next() throws XMLException, IOException {
 			if (replaying != null) {
 				if (!replaying.hasNext())
@@ -49,9 +57,11 @@ public interface XMLStreamEventsRecorder {
 		}
 		
 		@Override
-		public void startRecording() {
+		public void startRecording(boolean recordCurrentEvent) {
 			recording = true;
 			record = new LinkedList<>();
+			if (recordCurrentEvent)
+				record.add(stream.event.copy());
 		}
 		
 		@Override
@@ -81,6 +91,11 @@ public interface XMLStreamEventsRecorder {
 		public byte getPriority() {
 			return stream.getPriority();
 		}
+		
+		@Override
+		public Event getFirstRecordedEvent() {
+			return record != null && !record.isEmpty() ? record.getFirst() : null;
+		}
 
 		@Override
 		public SynchronizationPoint<Exception> next() {
@@ -102,9 +117,11 @@ public interface XMLStreamEventsRecorder {
 		}
 		
 		@Override
-		public void startRecording() {
+		public void startRecording(boolean recordCurrentEvent) {
 			recording = true;
 			record = new LinkedList<>();
+			if (recordCurrentEvent)
+				record.add(stream.event.copy());
 		}
 		
 		@Override

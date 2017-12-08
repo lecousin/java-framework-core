@@ -56,6 +56,10 @@ public class XMLSerializer extends AbstractSerializer {
 		this.includeXMLDeclaration = includeXMLDeclaration;
 	}
 	
+	public XMLSerializer(XMLWriter writer) {
+		this.output = writer;
+	}
+	
 	protected String rootNamespaceURI;
 	protected String rootLocalName;
 	protected Map<String, String> namespaces;

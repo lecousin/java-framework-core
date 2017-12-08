@@ -41,6 +41,9 @@ public abstract class XMLStreamEvents {
 		/** On START_ELEMENT or END_ELEMENT events, it contains the namespace part of the text. */
 		public UnprotectedStringBuffer namespacePrefix = null;
 		
+		/** On START_ELEMENT or END_ELEMENT events, it contains the namespace URI correpsonding to the prefix. */
+		public UnprotectedStringBuffer namespaceURI = null;
+		
 		/** On START_ELEMENT or END_ELEMENT events, it contains the local name part of the text. */
 		public UnprotectedStringBuffer localName = null;
 		
@@ -72,6 +75,7 @@ public abstract class XMLStreamEvents {
 			event.text = text;
 			event.namespacePrefix = namespacePrefix;
 			event.localName = localName;
+			event.namespaceURI = namespaceURI;
 			event.isClosed = isClosed;
 			if (attributes != null)
 				event.attributes = new LinkedList<>(attributes);
@@ -244,6 +248,7 @@ public abstract class XMLStreamEvents {
 			event.namespacePrefix = event.text.substring(0, i);
 			event.localName = event.text.substring(i + 1);
 		}
+		event.namespaceURI = getNamespaceURI(event.namespacePrefix);
 		ElementContext ctx = new ElementContext();
 		ctx.text = event.text;
 		ctx.namespacePrefix = event.namespacePrefix;
