@@ -27,8 +27,10 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 		io.getSizeAsync().listenInline(new AsyncWorkListener<Long, IOException>() {
 			@Override
 			public void ready(Long result) {
-				fileSize = bufferPosInFile = result.longValue();
-				readBufferBack();
+				synchronized (BufferedReverseIOReading.this) {
+					fileSize = bufferPosInFile = result.longValue();
+					readBufferBack();
+				}
 			}
 			
 			@Override
@@ -257,8 +259,8 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 						minInBuffer -= nb;
 					}
 					currentRead = null;
-					canRead.unblock();
 				}
+				canRead.unblock();
 			}
 		});
 	}
@@ -302,8 +304,8 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 						maxInBuffer += nb;
 					}
 					currentRead = null;
-					canRead.unblock();
 				}
+				canRead.unblock();
 			}
 		});
 	}
