@@ -117,14 +117,16 @@ public class XMLWriter {
 	}
 	
 	public ISynchronizationPoint<IOException> end() {
-		ISynchronizationPoint<IOException> write = null;
 		while (!context.isEmpty())
-			write = closeElement();
-		if (write != null) {
+			closeElement();
+		ISynchronizationPoint<IOException> write = writer.flush();
+		if (!write.isUnblocked()) {
 			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
 			write.listenInline(() -> { output.flush().listenInline(sp); }, sp);
 			return sp;
 		}
+		if (write.hasError())
+			return write;
 		return output.flush();
 	}
 	

@@ -90,6 +90,7 @@ public class LoggerFactory {
 	
 	/** Load configuration from a file. */
 	public void configure(String filename) {
+		application.getConsole().out("Configuring logging from " + filename);
 		InputStream input = null;
 		try {
 			input = application.getClassLoader().getResourceAsStream(filename);

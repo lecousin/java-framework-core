@@ -80,6 +80,7 @@ public interface XMLStreamEventsRecorder {
 		
 		public Async(XMLStreamEventsAsync stream) {
 			this.stream = stream;
+			this.event = stream.event;
 		}
 		
 		protected XMLStreamEventsAsync stream;

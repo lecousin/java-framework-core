@@ -49,15 +49,32 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 	}
 	
 	/** Go to the next inner element. The result is false if the parent element has been closed. */
-	public AsyncWork<Boolean, Exception> nextInnerElement(String parentName) {
-		if (Type.START_ELEMENT.equals(event.type) && event.isClosed && event.text.equals(parentName))
+	public AsyncWork<Boolean, Exception> nextInnerElement(ElementContext parent) {
+		if (event.context.isEmpty())
 			return new AsyncWork<>(Boolean.FALSE, null);
+		if (Type.START_ELEMENT.equals(event.type) && event.context.getFirst() == parent && event.isClosed)
+			return new AsyncWork<>(Boolean.FALSE, null);
+		if (Type.END_ELEMENT.equals(event.type) && event.context.getFirst() == parent)
+			return new AsyncWork<>(Boolean.FALSE, null);
+		boolean parentPresent = false;
+		for (ElementContext ctx : event.context)
+			if (ctx == parent) {
+				parentPresent = true;
+				break;
+			}
+		if (!parentPresent)
+			return new AsyncWork<>(null, new Exception("Invalid context: parent element " + parent.localName + " is not in the current context"));
 		ISynchronizationPoint<Exception> next = next();
 		do {
 			if (next.isUnblocked()) {
 				if (next.hasError()) return new AsyncWork<>(null, next.getError());
-				if (Type.END_ELEMENT.equals(event.type)) return new AsyncWork<>(Boolean.FALSE, null);
-				if (Type.START_ELEMENT.equals(event.type)) return new AsyncWork<>(Boolean.TRUE, null);
+				if (Type.END_ELEMENT.equals(event.type)) {
+					if (event.context.getFirst() == parent)
+						return new AsyncWork<>(Boolean.FALSE, null);
+				} else if (Type.START_ELEMENT.equals(event.type)) {
+					if (event.context.size() > 1 && event.context.get(1) == parent)
+						return new AsyncWork<>(Boolean.TRUE, null);
+				}
 				next = next();
 				continue;
 			}
@@ -68,10 +85,14 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		next.listenInline(
 			() -> {
 				if (n.hasError()) result.error(n.getError());
-				else if (Type.END_ELEMENT.equals(event.type)) result.unblockSuccess(Boolean.FALSE);
-				else if (Type.START_ELEMENT.equals(event.type)) result.unblockSuccess(Boolean.TRUE);
-				else new ParsingTask(() -> {
-					nextInnerElement(parentName).listenInline(result);
+				else if (Type.END_ELEMENT.equals(event.type)) {
+					if (event.context.getFirst() == parent)
+						result.unblockSuccess(Boolean.FALSE);
+				} else if (Type.START_ELEMENT.equals(event.type)) {
+					if (event.context.size() > 1 && event.context.get(1) == parent)
+						result.unblockSuccess(Boolean.TRUE);
+				} else new ParsingTask(() -> {
+					nextInnerElement(parent).listenInline(result);
 				}).start();
 			}, result
 		);
@@ -79,14 +100,14 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 	}
 	
 	/** Go to the next inner element having the given name. The result is false if the parent element has been closed. */
-	public AsyncWork<Boolean, Exception> nextInnerElement(String parentName, String childName) {
-		AsyncWork<Boolean, Exception> next = nextInnerElement(parentName);
+	public AsyncWork<Boolean, Exception> nextInnerElement(ElementContext parent, String childName) {
+		AsyncWork<Boolean, Exception> next = nextInnerElement(parent);
 		do {
 			if (next.isUnblocked()) {
 				if (next.hasError()) return next;
 				if (!next.getResult().booleanValue()) return next;
 				if (event.text.equals(childName)) return next;
-				next = nextInnerElement(parentName);
+				next = nextInnerElement(parent);
 				continue;
 			}
 			break;
@@ -99,7 +120,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				else if (!n.getResult().booleanValue()) result.unblockSuccess(Boolean.FALSE);
 				else if (event.text.equals(childName)) result.unblockSuccess(Boolean.TRUE);
 				else new ParsingTask(() -> {
-					nextInnerElement(parentName, childName).listenInline(result);
+					nextInnerElement(parent, childName).listenInline(result);
 				}).start();
 			}, result
 		);
@@ -188,19 +209,35 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 			return new SynchronizationPoint<>(new Exception("Invalid call of closeElement: it must be called on a start element"));
 		if (event.isClosed)
 			return new SynchronizationPoint<>(true);
+		ElementContext ctx = event.context.getFirst();
+		return closeElement(ctx);
+	}
+	
+	public ISynchronizationPoint<Exception> closeElement(ElementContext ctx) {
 		ISynchronizationPoint<Exception> next = next();
 		do {
 			if (!next.isUnblocked()) break;
 			if (next.hasError()) return next;
-			if (Type.END_ELEMENT.equals(event.type)) return next;
+			if (Type.END_ELEMENT.equals(event.type)) {
+				if (event.context.getFirst() == ctx)
+					return next;
+			}
 			next = next();
 		} while (true);
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
 		ISynchronizationPoint<Exception> n = next;
 		next.listenInline(() -> {
-			if (n.hasError()) result.error(n.getError());
-			else if (Type.END_ELEMENT.equals(event.type)) result.unblock();
-			else new ParsingTask(() -> { closeElement().listenInline(result); }).start();
+			if (n.hasError()) {
+				result.error(n.getError());
+				return;
+			}
+			if (Type.END_ELEMENT.equals(event.type)) {
+				if (event.context.getFirst() == ctx) {
+					result.unblock();
+					return;
+				}
+			}
+			new ParsingTask(() -> { closeElement(ctx).listenInline(result); }).start();
 		}, result);
 		return result;
 	}
@@ -226,19 +263,19 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 	}
 	
 	/** Go successively into the given elements. */
-	public ISynchronizationPoint<Exception> goInto(String... innerElements) {
-		return goInto(0, innerElements);
+	public ISynchronizationPoint<Exception> goInto(ElementContext rootContext, String... innerElements) {
+		return goInto(rootContext, 0, innerElements);
 	}
 	
-	private ISynchronizationPoint<Exception> goInto(int i, String... innerElements) {
-		String parentName = event.text.asString();
-		ISynchronizationPoint<Exception> next = nextInnerElement(parentName, innerElements[0]);
+	private ISynchronizationPoint<Exception> goInto(ElementContext parent, int i, String... innerElements) {
+		ISynchronizationPoint<Exception> next = nextInnerElement(parent, innerElements[i]);
 		do {
 			if (!next.isUnblocked()) break;
 			if (next.hasError()) return next;
 			i++;
 			if (i == innerElements.length) return next;
-			next = nextInnerElement(innerElements[i - 1], innerElements[i]);
+			parent = event.context.getFirst();
+			next = nextInnerElement(parent, innerElements[i]);
 		} while (true);
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
 		ISynchronizationPoint<Exception> n = next;
@@ -246,7 +283,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		next.listenInline(() -> {
 			if (n.hasError()) result.error(n.getError());
 			else if (ii == innerElements.length - 1) result.unblock();
-			else new ParsingTask(() -> { goInto(ii + 1, innerElements).listenInline(result); }).start();
+			else new ParsingTask(() -> { goInto(event.context.getFirst(), ii + 1, innerElements).listenInline(result); }).start();
 		}, result);
 		return result;
 	}
@@ -255,13 +292,12 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 	public AsyncWork<Map<String,String>, Exception> readInnerElementsText() {
 		AsyncWork<Map<String,String>, Exception> result = new AsyncWork<>();
 		Map<String, String> texts = new HashMap<>();
-		String parentName = event.text.asString();
-		readInnerElementsText(parentName, texts, result);
+		readInnerElementsText(event.context.getFirst(), texts, result);
 		return result;
 	}
 	
-	private void readInnerElementsText(String parentName, Map<String, String> texts, AsyncWork<Map<String,String>, Exception> result) {
-		AsyncWork<Boolean, Exception> next = nextInnerElement(parentName);
+	private void readInnerElementsText(ElementContext parent, Map<String, String> texts, AsyncWork<Map<String,String>, Exception> result) {
+		AsyncWork<Boolean, Exception> next = nextInnerElement(parent);
 		do {
 			if (!next.isUnblocked()) break;
 			if (next.hasError()) {
@@ -280,12 +316,12 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 					return;
 				}
 				texts.put(name, read.getResult().asString());
-				next = nextInnerElement(parentName);
+				next = nextInnerElement(parent);
 				continue;
 			}
 			read.listenInline((value) -> {
 				texts.put(name,  value.asString());
-				new ParsingTask(() -> { readInnerElementsText(parentName, texts, result); }).start();
+				new ParsingTask(() -> { readInnerElementsText(parent, texts, result); }).start();
 			}, result);
 			return;
 		} while (true);
@@ -299,12 +335,12 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 						return;
 					}
 					texts.put(name, read.getResult().asString());
-					readInnerElementsText(parentName, texts, result);
+					readInnerElementsText(parent, texts, result);
 					return;
 				}
 				read.listenInline((value) -> {
 					texts.put(name,  value.asString());
-					new ParsingTask(() -> { readInnerElementsText(parentName, texts, result); }).start();
+					new ParsingTask(() -> { readInnerElementsText(parent, texts, result); }).start();
 				}, result);
 			}).start();
 		}, result);

@@ -30,19 +30,23 @@ public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 	}
 	
 	/** Go to the next inner element. Return true if one is found, false if the closing tag of the parent is found. */
-	public boolean nextInnerElement(String parentName) throws XMLException, IOException {
+	public boolean nextInnerElement(ElementContext parent) throws XMLException, IOException {
+		if (event.context.isEmpty()) return false;
+		if (Type.START_ELEMENT.equals(event.type) && event.context.getFirst() == parent && event.isClosed)
+			return false; // we are one the opening tag of the parent, and it is closed, so it has no content
+		if (Type.END_ELEMENT.equals(event.type) && event.context.getFirst() == parent)
+			return false;
 		try {
-			if (Type.START_ELEMENT.equals(event.type) && event.text.equals(parentName) && event.isClosed)
-				return false; // we are one the opening tag of the parent, and it is closed, so it has no content
 			do {
 				next();
 				if (Type.END_ELEMENT.equals(event.type)) {
-					if (!event.text.equals(parentName))
-						throw new XMLException(getPosition(), "Unexpected end element", event.text.asString());
-					return false;
+					if (event.context.getFirst() == parent)
+						return false;
 				}
-				if (Type.START_ELEMENT.equals(event.type))
-					return true;
+				if (Type.START_ELEMENT.equals(event.type)) {
+					if (event.context.size() > 1 && event.context.get(1) == parent)
+						return true;
+				}
 			} while (true);
 		} catch (EOFException e) {
 			return false;
@@ -50,26 +54,12 @@ public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 	}
 	
 	/** Go to the next inner element having the given name. Return true if one is found, false if the closing tag of the parent is found. */
-	public boolean nextInnerElement(String parentName, String childName) throws XMLException, IOException {
-		try {
-			do {
-				next();
-				if (Type.END_ELEMENT.equals(event.type)) {
-					if (!event.text.equals(parentName))
-						throw new XMLException(getPosition(), "Unexpected end element", event.text.asString());
-					return false;
-				}
-				if (Type.START_ELEMENT.equals(event.type)) {
-					if (!event.text.equals(childName)) {
-						closeElement();
-						continue;
-					}
-					return true;
-				}
-			} while (true);
-		} catch (EOFException e) {
-			return false;
+	public boolean nextInnerElement(ElementContext parent, String childName) throws XMLException, IOException {
+		while (nextInnerElement(parent)) {
+			if (event.text.equals(childName))
+				return true;
 		}
+		return false;
 	}
 	
 	/** Read inner text and close element. */
@@ -106,20 +96,16 @@ public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 		if (!Type.START_ELEMENT.equals(event.type))
 			throw new IOException("Invalid call of closeElement: it must be called on a start element");
 		if (event.isClosed) return;
-		UnprotectedStringBuffer elementName = event.text;
+		ElementContext ctx = event.context.getFirst();
 		do {
 			try { next(); }
 			catch (EOFException e) {
-				throw new XMLException(getPosition(), "Unexpected end", "closeElement(" + elementName.asString() + ")");
+				throw new XMLException(getPosition(), "Unexpected end", "closeElement(" + ctx.text.asString() + ")");
 			}
 			if (Type.END_ELEMENT.equals(event.type)) {
-				if (!event.text.equals(elementName))
-					throw new XMLException(getPosition(), "Unexpected end element expected is",
-						event.text.asString(), elementName.asString());
-				return;
+				if (event.context.getFirst() == ctx)
+					return;
 			}
-			if (Type.START_ELEMENT.equals(event.type))
-				closeElement();
 		} while (true);
 	}
 
@@ -141,23 +127,20 @@ public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 	}
 	
 	/** Go successively into the given elements. */
-	public boolean goInto(String... innerElements) throws IOException, XMLException {
-		for (int i = 0; i < innerElements.length; ++i)
-			if (!goInto(innerElements[i]))
+	public boolean goInto(ElementContext rootContext, String... innerElements) throws IOException, XMLException {
+		ElementContext parent = rootContext;
+		for (int i = 0; i < innerElements.length; ++i) {
+			if (!nextInnerElement(parent, innerElements[i]))
 				return false;
+			parent = event.context.getFirst();
+		}
 		return true;
 	}
 	
-	/** Go to the given inner element. */
-	public boolean goInto(String innerElement) throws IOException, XMLException {
-		String parentName = event.text.toString();
-		return nextInnerElement(parentName, innerElement);
-	}
-	
 	/** Read all inner elements with their text, and return a mapping with the element's name as key and inner text as value. */
-	public Map<String,String> readInnerElementsText(String parentName) throws IOException, XMLException {
+	public Map<String,String> readInnerElementsText(ElementContext parent) throws IOException, XMLException {
 		Map<String, String> texts = new HashMap<>();
-		while (nextInnerElement(parentName)) {
+		while (nextInnerElement(parent)) {
 			String name = event.text.toString();
 			texts.put(name, readInnerText().asString());
 		}

@@ -72,5 +72,8 @@ public class CharacterStreamWritePool {
 		return write(s.toString());
 	}
 	
+	public ISynchronizationPoint<IOException> flush() {
+		return lastWrite;
+	}
 	
 }
