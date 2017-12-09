@@ -87,7 +87,7 @@ public class XMLElement extends XMLNode implements Element {
 	
 	@Override
 	public String getPrefix() {
-		return prefix;
+		return prefix == null || prefix.length() == 0 ? null : prefix;
 	}
 	
 	@Override
@@ -497,8 +497,13 @@ public class XMLElement extends XMLNode implements Element {
 	public String getTextContent() {
 		if (children.isEmpty()) return "";
 		StringBuilder s = new StringBuilder();
-		for (XMLNode child : children)
+		for (XMLNode child : children) {
+			if (child instanceof XMLComment) continue;
+			if (child instanceof XMLText) {
+				if (((XMLText)child).isElementContentWhitespace()) continue;
+			}
 			s.append(child.getTextContent());
+		}
 		return s.toString();
 	}
 	
@@ -551,6 +556,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	public void parseContent(XMLStreamEventsSync stream) throws XMLException, IOException {
+		if (stream.event.isClosed) return;
 		do {
 			stream.next();
 			switch (stream.event.type) {
@@ -568,6 +574,9 @@ public class XMLElement extends XMLNode implements Element {
 			case COMMENT:
 				appendChild(new XMLComment(doc, stream.event.text.asString()));
 				break;
+			case PROCESSING_INSTRUCTION:
+				// TODO
+				break;
 			default:
 				// TODO XMLException
 				throw new IOException("Unexpected XML event " + stream.event.type + " in an element");
@@ -576,6 +585,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	public ISynchronizationPoint<Exception> parseContent(XMLStreamEventsAsync stream) {
+		if (stream.event.isClosed) return new SynchronizationPoint<>(true);
 		return parseContent(stream, null);
 	}
 	
@@ -583,6 +593,7 @@ public class XMLElement extends XMLNode implements Element {
 		do {
 			ISynchronizationPoint<Exception> next = s != null ? s : stream.next();
 			if (next.isUnblocked()) {
+				if (next.hasError()) return next;
 				switch (stream.event.type) {
 				case START_ELEMENT: {
 					AsyncWork<XMLElement, Exception> child = create(doc, stream);
@@ -612,6 +623,9 @@ public class XMLElement extends XMLNode implements Element {
 					break;
 				case COMMENT:
 					appendChild(new XMLComment(doc, stream.event.text.asString()));
+					break;
+				case PROCESSING_INSTRUCTION:
+					// TODO
 					break;
 				default:
 					// TODO XMLException

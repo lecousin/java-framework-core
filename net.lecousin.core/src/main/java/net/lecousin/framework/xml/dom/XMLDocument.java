@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.xml.XMLException;
 import net.lecousin.framework.xml.XMLStreamEventsAsync;
@@ -70,10 +71,6 @@ public class XMLDocument extends XMLNode implements Document {
 	public static XMLDocument create(XMLStreamEventsSync stream) throws XMLException, IOException {
 		XMLDocument doc = new XMLDocument();
 		do {
-			try { stream.next(); }
-			catch (EOFException e) {
-				break;
-			}
 			switch (stream.event.type) {
 			case DOCTYPE:
 				if (doc.docType != null)
@@ -87,6 +84,10 @@ public class XMLDocument extends XMLNode implements Document {
 				break;
 			default: break;
 			}
+			try { stream.next(); }
+			catch (EOFException e) {
+				break;
+			}
 		} while (true);
 		return doc;
 	}
@@ -94,7 +95,7 @@ public class XMLDocument extends XMLNode implements Document {
 	public static AsyncWork<XMLDocument, Exception> create(XMLStreamEventsAsync stream) {
 		XMLDocument doc = new XMLDocument();
 		AsyncWork<XMLDocument, Exception> result = new AsyncWork<>();
-		create(doc, stream, result, null);
+		create(doc, stream, result, new SynchronizationPoint<>(true));
 		return result;
 	}
 	

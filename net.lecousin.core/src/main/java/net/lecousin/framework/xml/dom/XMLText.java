@@ -50,12 +50,18 @@ public class XMLText extends XMLCharacterData implements Text {
 
 	@Override
 	public boolean isElementContentWhitespace() {
-		for (int i = 0; i < text.length(); ++i) {
-			char c = text.charAt(i);
-			if (c == ' ' || c == '\t' || c == '\r' || c == '\n')
-				return true;
-		}
-		return false;
+		for (int i = 0; i < text.length(); ++i)
+			if (!isXMLSpace(text.charAt(i)))
+				return false;
+		return true;
+	}
+	
+	public static boolean isXMLSpace(char c) {
+    	return (c <= 0x0020) &&
+    			(((((1L << 0x0009) |
+    			(1L << 0x000A) |
+    			(1L << 0x000D) |
+    			(1L << 0x0020)) >> c) & 1L) != 0);
 	}
 
 	@Override

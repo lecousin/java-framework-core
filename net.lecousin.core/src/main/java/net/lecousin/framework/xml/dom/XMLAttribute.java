@@ -34,7 +34,7 @@ public class XMLAttribute extends XMLNode implements Attr {
 	
 	@Override
 	public String getPrefix() {
-		return prefix;
+		return prefix == null || prefix.length() == 0 ? null : prefix;
 	}
 	
 	@Override
@@ -95,6 +95,7 @@ public class XMLAttribute extends XMLNode implements Attr {
 	@Override
 	public String getNamespaceURI() {
 		if (parent == null) return null;
+		if (((XMLElement)parent).prefixToURI == null) return null;
 		return ((XMLElement)parent).prefixToURI.get(prefix);
 	}
 
@@ -105,7 +106,7 @@ public class XMLAttribute extends XMLNode implements Attr {
 	
 	@Override
 	public String getTextContent() {
-		return "";
+		return value != null ? value : "";
 	}
 	
 	@Override
