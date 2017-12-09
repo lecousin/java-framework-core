@@ -22,6 +22,7 @@ import net.lecousin.framework.io.buffering.MemoryIO;
 import net.lecousin.framework.io.serialization.Deserializer;
 import net.lecousin.framework.io.serialization.Serializer;
 import net.lecousin.framework.io.serialization.TypeDefinition;
+import net.lecousin.framework.io.serialization.annotations.Transient;
 import net.lecousin.framework.util.ClassUtil;
 
 public abstract class TestSerialization extends LCCoreAbstractTest {
@@ -191,6 +192,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public List<String> strings;
 		public List<Character> characters;
 		public List<TestBooleans> testBooleans;
+		public List<TestNumbers> testNumbers;
 	}
 	
 	@Test
@@ -203,7 +205,51 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		t.strings = Arrays.asList("hello", "world", "!!!");
 		t.characters = Arrays.asList(Character.valueOf('H'), Character.valueOf('e'), Character.valueOf('L'), Character.valueOf('l'), Character.valueOf('O'));
 		t.testBooleans = Arrays.asList(createBooleans(), new TestBooleans(), null);
+		t.testNumbers = Arrays.asList(createNumbers(), new TestNumbers(), null, createNumbers());
 		test(t, TestLists.class);
+	}
+	
+	public static class TestWithTransient {
+		public boolean b1 = true;
+		public transient boolean b2 = false;
+		public int i1 = 10;
+		@Transient
+		public int i2 = 20;
+	}
+	public static class TestWithoutTransient {
+		public boolean b1 = true;
+		public boolean b2 = false;
+		public int i1 = 10;
+		public int i2 = 20;
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
+	public void testTransient() throws Exception {
+		TestWithTransient t1 = new TestWithTransient();
+		t1.b1 = false;
+		t1.b2 = true;
+		t1.i1 = 99;
+		t1.i2 = 88;
+		MemoryIO io = serialize(t1);
+		print(io, t1);
+		TestWithTransient t2 = deserialize(io, TestWithTransient.class);
+		Assert.assertFalse(t2.b1);
+		Assert.assertFalse(t2.b2);
+		Assert.assertEquals(99, t2.i1);
+		Assert.assertEquals(20, t2.i2);
+		TestWithoutTransient t3 = new TestWithoutTransient();
+		t3.b1 = false;
+		t3.b2 = true;
+		t3.i1 = 99;
+		t3.i2 = 88;
+		io = serialize(t3);
+		print(io, t3);
+		TestWithTransient t4 = deserialize(io, TestWithTransient.class);
+		Assert.assertFalse(t4.b1);
+		Assert.assertFalse(t4.b2);
+		Assert.assertEquals(99, t4.i1);
+		Assert.assertEquals(20, t4.i2);
 	}
 	
 	protected <T> void test(T object, Class<T> type) throws Exception {

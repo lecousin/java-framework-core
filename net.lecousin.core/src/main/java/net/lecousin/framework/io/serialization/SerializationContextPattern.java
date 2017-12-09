@@ -78,6 +78,15 @@ public interface SerializationContextPattern {
 		}
 		
 		@Override
+		public boolean matches(SerializationClass type, SerializationContext context, Attribute attribute) {
+			if (!super.matches(type, context, attribute))
+				return false;
+			if (!attribute.getOriginalName().equals(attributeName))
+				return false;
+			return true;
+		}
+		
+		@Override
 		public boolean matches(SerializationContext context) {
 			if (context == null) return false;
 			if (context instanceof CollectionContext)

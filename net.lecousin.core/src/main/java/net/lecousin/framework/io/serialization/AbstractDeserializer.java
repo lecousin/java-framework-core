@@ -689,22 +689,24 @@ public abstract class AbstractDeserializer implements Deserializer {
 				return;
 			}
 			Object val = value.getResult();
-			try { a.setValue(context.getInstance(), val); }
-			catch (Exception e) {
-				result.error(e);
-				return;
-			}
+			if (!a.ignore())
+				try { a.setValue(context.getInstance(), val); }
+				catch (Exception e) {
+					result.error(e);
+					return;
+				}
 			deserializeNextObjectAttribute(context, rules, result);
 			return;
 		}
 		value.listenInline(
 			(val) -> {
 				new DeserializationTask(() -> {
-					try { a.setValue(context.getInstance(), val); }
-					catch (Exception e) {
-						result.error(e);
-						return;
-					}
+					if (!a.ignore())
+						try { a.setValue(context.getInstance(), val); }
+						catch (Exception e) {
+							result.error(e);
+							return;
+						}
 					deserializeNextObjectAttribute(context, rules, result);
 				}).start();
 			}, result
