@@ -12,6 +12,7 @@ import java.util.ListIterator;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOAsInputStream;
@@ -398,29 +399,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void deserializeNextCollectionValueElement(CollectionContext context, int elementIndex, List<SerializationRule> rules, AsyncWork<Collection<?>, Exception> result) {
-		AsyncWork<Pair<Object, Boolean>, Exception> next = deserializeCollectionValueElement(context, elementIndex, rules);
-		if (next.isUnblocked()) {
-			if (next.hasError()) {
-				result.error(next.getError());
-				return;
-			}
-			Pair<Object, Boolean> p = next.getResult();
-			if (!p.getValue2().booleanValue()) {
-				// end of collection
-				result.unblockSuccess(context.getCollection());
-				return;
-			}
-			Object element = p.getValue1();
-			if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-				result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
-				return;
-			}
-			((Collection)context.getCollection()).add(element);
-			deserializeNextCollectionValueElement(context, elementIndex + 1, rules, result);
-			return;
-		}
-		next.listenInline(() -> {
-			if (next.hasError()) {
+		do {
+			AsyncWork<Pair<Object, Boolean>, Exception> next = deserializeCollectionValueElement(context, elementIndex, rules);
+			if (next.isUnblocked()) {
 				if (next.hasError()) {
 					result.error(next.getError());
 					return;
@@ -431,17 +412,41 @@ public abstract class AbstractDeserializer implements Deserializer {
 					result.unblockSuccess(context.getCollection());
 					return;
 				}
-				new DeserializationTask(() -> {
-					Object element = p.getValue1();
-					if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-						result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
+				Object element = p.getValue1();
+				if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+					result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
+					return;
+				}
+				((Collection)context.getCollection()).add(element);
+				elementIndex++;
+				continue;
+			}
+			int currentIndex = elementIndex;
+			next.listenInline(() -> {
+				if (next.hasError()) {
+					if (next.hasError()) {
+						result.error(next.getError());
 						return;
 					}
-					((Collection)context.getCollection()).add(element);
-					deserializeNextCollectionValueElement(context, elementIndex + 1, rules, result);
-				}).start();
-			}
-		});
+					Pair<Object, Boolean> p = next.getResult();
+					if (!p.getValue2().booleanValue()) {
+						// end of collection
+						result.unblockSuccess(context.getCollection());
+						return;
+					}
+					new DeserializationTask(() -> {
+						Object element = p.getValue1();
+						if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+							result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
+							return;
+						}
+						((Collection)context.getCollection()).add(element);
+						deserializeNextCollectionValueElement(context, currentIndex + 1, rules, result);
+					}).start();
+				}
+			});
+			return;
+		} while (true);
 	}
 	
 	/** Return the element (possibly null) with true if an element is found, or null with false if the end of the collection has been reached. */
@@ -490,29 +495,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void deserializeNextCollectionAttributeValueElement(CollectionContext context, int elementIndex, List<SerializationRule> rules, AsyncWork<Collection<?>, Exception> result) {
-		AsyncWork<Pair<Object, Boolean>, Exception> next = deserializeCollectionAttributeValueElement(context, elementIndex, rules);
-		if (next.isUnblocked()) {
-			if (next.hasError()) {
-				result.error(next.getError());
-				return;
-			}
-			Pair<Object, Boolean> p = next.getResult();
-			if (!p.getValue2().booleanValue()) {
-				// end of collection
-				result.unblockSuccess(context.getCollection());
-				return;
-			}
-			Object element = p.getValue1();
-			if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-				result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
-				return;
-			}
-			((Collection)context.getCollection()).add(element);
-			deserializeNextCollectionAttributeValueElement(context, elementIndex + 1, rules, result);
-			return;
-		}
-		next.listenInline(() -> {
-			if (next.hasError()) {
+		do {
+			AsyncWork<Pair<Object, Boolean>, Exception> next = deserializeCollectionAttributeValueElement(context, elementIndex, rules);
+			if (next.isUnblocked()) {
 				if (next.hasError()) {
 					result.error(next.getError());
 					return;
@@ -523,17 +508,41 @@ public abstract class AbstractDeserializer implements Deserializer {
 					result.unblockSuccess(context.getCollection());
 					return;
 				}
-				new DeserializationTask(() -> {
-					Object element = p.getValue1();
-					if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-						result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
+				Object element = p.getValue1();
+				if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+					result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
+					return;
+				}
+				((Collection)context.getCollection()).add(element);
+				elementIndex++;
+				continue;
+			}
+			int currentIndex = elementIndex;
+			next.listenInline(() -> {
+				if (next.hasError()) {
+					if (next.hasError()) {
+						result.error(next.getError());
 						return;
 					}
-					((Collection)context.getCollection()).add(element);
-					deserializeNextCollectionAttributeValueElement(context, elementIndex + 1, rules, result);
-				}).start();
-			}
-		});
+					Pair<Object, Boolean> p = next.getResult();
+					if (!p.getValue2().booleanValue()) {
+						// end of collection
+						result.unblockSuccess(context.getCollection());
+						return;
+					}
+					new DeserializationTask(() -> {
+						Object element = p.getValue1();
+						if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+							result.error(new Exception("Invalid collection element type " + element.getClass().getName() + ", expected is " + context.getElementType().getBase().getName()));
+							return;
+						}
+						((Collection)context.getCollection()).add(element);
+						deserializeNextCollectionAttributeValueElement(context, currentIndex + 1, rules, result);
+					}).start();
+				}
+			});
+			return;
+		} while (true);
 	}
 	
 	/** Return the element with true if an element is found, or null with false if the end of the collection has been reached. */
@@ -632,31 +641,14 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	protected void deserializeNextObjectAttribute(ObjectContext context, List<SerializationRule> rules, AsyncWork<Object, Exception> result) {
-		AsyncWork<String, Exception> name = deserializeObjectAttributeName();
-		if (name.isUnblocked()) {
-			if (name.hasError()) {
-				result.error(name.getError());
-				return;
-			}
-			String n = name.getResult();
-			if (n == null) {
-				result.unblockSuccess(context.getInstance());
-				return;
-			}
-			Attribute a = context.getSerializationClass().getAttributeByName(n);
-			if (a == null) {
-				result.error(new Exception("Unknown attribute " + n + " for type " + context.getInstance().getClass().getName()));
-				return;
-			}
-			if (!a.canSet()) {
-				result.error(new Exception("Attribute " + n + " cannot be set on type " + context.getInstance().getClass().getName()));
-				return;
-			}
-			deserializeObjectAttributeValue(context, a, rules, result);
-			return;
-		}
-		name.listenInline(
-			(n) -> {
+		do {
+			AsyncWork<String, Exception> name = deserializeObjectAttributeName();
+			if (name.isUnblocked()) {
+				if (name.hasError()) {
+					result.error(name.getError());
+					return;
+				}
+				String n = name.getResult();
 				if (n == null) {
 					result.unblockSuccess(context.getInstance());
 					return;
@@ -670,47 +662,86 @@ public abstract class AbstractDeserializer implements Deserializer {
 					result.error(new Exception("Attribute " + n + " cannot be set on type " + context.getInstance().getClass().getName()));
 					return;
 				}
-				new DeserializationTask(() -> {
-					deserializeObjectAttributeValue(context, a, rules, result);
-				}).start();
-			}, result
-		);
+				ISynchronizationPoint<Exception> val = deserializeObjectAttributeValue(context, a, rules);
+				if (val.isUnblocked()) {
+					if (val.hasError()) {
+						result.error(val.getError());
+						return;
+					}
+					continue;
+				}
+				val.listenAsync(new DeserializationTask(() -> {
+					deserializeNextObjectAttribute(context, rules, result);
+				}), result);
+				return;
+			}
+			name.listenInline(
+				(n) -> {
+					if (n == null) {
+						result.unblockSuccess(context.getInstance());
+						return;
+					}
+					Attribute a = context.getSerializationClass().getAttributeByName(n);
+					if (a == null) {
+						result.error(new Exception("Unknown attribute " + n + " for type " + context.getInstance().getClass().getName()));
+						return;
+					}
+					if (!a.canSet()) {
+						result.error(new Exception("Attribute " + n + " cannot be set on type " + context.getInstance().getClass().getName()));
+						return;
+					}
+					new DeserializationTask(() -> {
+						ISynchronizationPoint<Exception> val = deserializeObjectAttributeValue(context, a, rules);
+						if (val.isUnblocked()) {
+							if (val.hasError()) {
+								result.error(val.getError());
+								return;
+							}
+							deserializeNextObjectAttribute(context, rules, result);
+							return;
+						}
+						val.listenAsync(new DeserializationTask(() -> {
+							deserializeNextObjectAttribute(context, rules, result);
+						}), result);
+					}).start();
+				}, result
+			);
+			return;
+		} while (true);
 	}
 	
 	/** Return the name of the attribute read, or null if the object is closed. */
 	protected abstract AsyncWork<String, Exception> deserializeObjectAttributeName();
 	
-	protected void deserializeObjectAttributeValue(ObjectContext context, Attribute a, List<SerializationRule> rules, AsyncWork<Object, Exception> result) {
+	protected ISynchronizationPoint<Exception> deserializeObjectAttributeValue(ObjectContext context, Attribute a, List<SerializationRule> rules) {
 		AttributeContext ctx = new AttributeContext(context, a);
 		AsyncWork<?, Exception> value = deserializeObjectAttributeValue(ctx, rules);
 		if (value.isUnblocked()) {
-			if (value.hasError()) {
-				result.error(value.getError());
-				return;
-			}
+			if (value.hasError())
+				return value;
 			Object val = value.getResult();
 			if (!a.ignore())
 				try { a.setValue(context.getInstance(), val); }
 				catch (Exception e) {
-					result.error(e);
-					return;
+					return new SynchronizationPoint<>(e);
 				}
-			deserializeNextObjectAttribute(context, rules, result);
-			return;
+			return value;
 		}
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		value.listenInline(
 			(val) -> {
 				new DeserializationTask(() -> {
 					if (!a.ignore())
 						try { a.setValue(context.getInstance(), val); }
 						catch (Exception e) {
-							result.error(e);
+							sp.error(e);
 							return;
 						}
-					deserializeNextObjectAttribute(context, rules, result);
+					sp.unblock();
 				}).start();
-			}, result
+			}, sp
 		);
+		return sp;
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

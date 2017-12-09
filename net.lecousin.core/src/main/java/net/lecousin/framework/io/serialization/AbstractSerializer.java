@@ -194,34 +194,41 @@ public abstract class AbstractSerializer implements Serializer {
 		List<Attribute> attributes, int attributeIndex, ObjectContext context, String containerPath,
 		List<SerializationRule> rules, SynchronizationPoint<Exception> result
 	) {
-		if (attributeIndex >= attributes.size()) {
-			endObjectValue(context, containerPath, rules).listenInlineSP(result);
-			return;
-		}
-		Attribute a = attributes.get(attributeIndex);
-		if (a.ignore() || !a.canGet()) {
-			serializeAttribute(attributes, attributeIndex + 1, context, containerPath, rules, result);
-			return;
-		}
-		AttributeContext ctx = new AttributeContext(context, a);
-		List<SerializationRule> newRules = addRulesForAttribute(a, rules);
-		ISynchronizationPoint<? extends Exception> sp = serializeAttribute(
-			ctx, containerPath + '.' + a.getOriginalName(), newRules);
-		if (sp.isUnblocked()) {
-			if (sp.hasError()) result.error(sp.getError());
-			else if (sp.isCancelled()) result.cancel(sp.getCancelEvent());
-			else serializeAttribute(attributes, attributeIndex + 1, context, containerPath, rules, result);
-			return;
-		}
-		sp.listenAsync(new Task.Cpu<Void, NoException>("Serialization", priority) {
-			@Override
-			public Void run() {
+		do {
+			if (attributeIndex >= attributes.size()) {
+				endObjectValue(context, containerPath, rules).listenInlineSP(result);
+				return;
+			}
+			Attribute a = attributes.get(attributeIndex);
+			if (a.ignore() || !a.canGet()) {
+				attributeIndex++;
+				continue;
+			}
+			AttributeContext ctx = new AttributeContext(context, a);
+			List<SerializationRule> newRules = addRulesForAttribute(a, rules);
+			ISynchronizationPoint<? extends Exception> sp = serializeAttribute(
+				ctx, containerPath + '.' + a.getOriginalName(), newRules);
+			if (sp.isUnblocked()) {
 				if (sp.hasError()) result.error(sp.getError());
 				else if (sp.isCancelled()) result.cancel(sp.getCancelEvent());
-				else serializeAttribute(attributes, attributeIndex + 1, context, containerPath, rules, result);
-				return null;
+				else {
+					attributeIndex++;
+					continue;
+				}
+				return;
 			}
-		}, true);
+			int nextIndex = attributeIndex + 1;
+			sp.listenAsync(new Task.Cpu<Void, NoException>("Serialization", priority) {
+				@Override
+				public Void run() {
+					if (sp.hasError()) result.error(sp.getError());
+					else if (sp.isCancelled()) result.cancel(sp.getCancelEvent());
+					else serializeAttribute(attributes, nextIndex, context, containerPath, rules, result);
+					return null;
+				}
+			}, true);
+			return;
+		} while (true);
 	}
 	
 	protected ISynchronizationPoint<? extends Exception> serializeAttribute(
@@ -324,44 +331,51 @@ public abstract class AbstractSerializer implements Serializer {
 	protected void serializeCollectionElement(
 		CollectionContext context, Iterator<?> it, int elementIndex, String colPath, List<SerializationRule> rules, SynchronizationPoint<Exception> result
 	) {
-		if (!it.hasNext()) {
-			endCollectionValue(context, colPath, rules).listenInlineSP(result);
+		do {
+			if (!it.hasNext()) {
+				endCollectionValue(context, colPath, rules).listenInlineSP(result);
+				return;
+			}
+			Object element = it.next();
+			String elementPath = colPath + '[' + elementIndex + ']';
+			
+			ISynchronizationPoint<? extends Exception> start = startCollectionValueElement(context, element, elementIndex, elementPath, rules);
+			
+			SynchronizationPoint<Exception> value = new SynchronizationPoint<>();
+			if (start.isUnblocked()) {
+				if (start.hasError()) value.error(start.getError());
+				else serializeValue(context, element, context.getElementType(), elementPath, rules).listenInlineSP(value);
+			} else {
+				start.listenAsyncSP(new SerializationTask(() -> {
+					serializeValue(context, element, context.getElementType(), elementPath, rules).listenInlineSP(value);
+				}), value);
+			}
+			
+			SynchronizationPoint<Exception> next = new SynchronizationPoint<>();
+			int currentIndex = elementIndex;
+			if (value.isUnblocked()) {
+				if (value.hasError()) next.error(value.getError());
+				else endCollectionValueElement(context, element, elementIndex, elementPath, rules).listenInlineSP(next);
+			} else {
+				value.listenAsyncSP(new SerializationTask(() -> {
+					endCollectionValueElement(context, element, currentIndex, elementPath, rules).listenInlineSP(next);
+				}), next);
+			}
+			
+			if (next.isUnblocked()) {
+				if (next.hasError()) {
+					result.error(next.getError());
+					return;
+				}
+				elementIndex++;
+				continue;
+			}
+			next.listenAsync(new SerializationTask(() -> {
+				if (next.hasError()) result.error(next.getError());
+				else serializeCollectionElement(context, it, currentIndex + 1, colPath, rules, result);
+			}), result);
 			return;
-		}
-		Object element = it.next();
-		String elementPath = colPath + '[' + elementIndex + ']';
-		
-		ISynchronizationPoint<? extends Exception> start = startCollectionValueElement(context, element, elementIndex, elementPath, rules);
-		
-		SynchronizationPoint<Exception> value = new SynchronizationPoint<>();
-		if (start.isUnblocked()) {
-			if (start.hasError()) value.error(start.getError());
-			else serializeValue(context, element, context.getElementType(), elementPath, rules).listenInlineSP(value);
-		} else {
-			start.listenAsyncSP(new SerializationTask(() -> {
-				serializeValue(context, element, context.getElementType(), elementPath, rules).listenInlineSP(value);
-			}), value);
-		}
-		
-		SynchronizationPoint<Exception> next = new SynchronizationPoint<>();
-		if (value.isUnblocked()) {
-			if (value.hasError()) next.error(value.getError());
-			else endCollectionValueElement(context, element, elementIndex, elementPath, rules).listenInlineSP(next);
-		} else {
-			value.listenAsyncSP(new SerializationTask(() -> {
-				endCollectionValueElement(context, element, elementIndex, elementPath, rules).listenInlineSP(next);
-			}), next);
-		}
-		
-		if (next.isUnblocked()) {
-			if (next.hasError()) result.error(next.getError());
-			else serializeCollectionElement(context, it, elementIndex + 1, colPath, rules, result);
-			return;
-		}
-		next.listenAsync(new SerializationTask(() -> {
-			if (next.hasError()) result.error(next.getError());
-			else serializeCollectionElement(context, it, elementIndex + 1, colPath, rules, result);
-		}), result);
+		} while (true);
 	}
 
 	protected abstract ISynchronizationPoint<? extends Exception> serializeCollectionAttribute(
