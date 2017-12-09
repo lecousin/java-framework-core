@@ -72,11 +72,15 @@ public class XMLElement extends XMLNode implements Element {
 	
 	@Override
 	public String getNodeName() {
+		if (prefix != null && prefix.length() > 0)
+			return prefix + ':' + localName;
 		return localName;
 	}
 	
 	@Override
 	public String getTagName() {
+		if (prefix != null && prefix.length() > 0)
+			return prefix + ':' + localName;
 		return localName;
 	}
 	
@@ -97,7 +101,8 @@ public class XMLElement extends XMLNode implements Element {
 	
 	@Override
 	public String getNamespaceURI() {
-		return prefixToURI == null ? null : prefixToURI.get(prefix);
+		return lookupNamespaceURI(prefix);
+		//return prefixToURI == null ? null : prefixToURI.get(prefix);
 	}
 	
 	@Override

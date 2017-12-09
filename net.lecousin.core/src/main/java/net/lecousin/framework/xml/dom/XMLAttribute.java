@@ -59,6 +59,8 @@ public class XMLAttribute extends XMLNode implements Attr {
 	
 	@Override
 	public String getNodeName() {
+		if (prefix != null && prefix.length() > 0)
+			return prefix + ':' + localName;
 		return localName;
 	}
 	

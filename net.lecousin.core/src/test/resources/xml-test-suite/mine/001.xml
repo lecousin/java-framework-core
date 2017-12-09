@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE my001>
+<hello ns1:a1="1" a1="2" ns2:a1="3" xmlns="http://test" xmlns:ns1="http://testns1"  xmlns:ns2="http://testns2">
+	<ns1:world ns2:b="1" c="2"></ns1:world>
+</hello>

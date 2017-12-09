@@ -26,6 +26,7 @@ import org.junit.Test;
 public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLStreamEvents> extends LCCoreAbstractTest {
 
 	private static final String[] files = {
+		"xml-test-suite/mine/001.xml",
 		"xml-test-suite/xmltest/valid/sa/001.xml",
 		"xml-test-suite/xmltest/valid/sa/002.xml",
 		"xml-test-suite/xmltest/valid/sa/003.xml",
@@ -237,7 +238,9 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 				break;
 			case START_ELEMENT:
 				Assert.assertEquals("START_ELEMENT ", XMLStreamConstants.START_ELEMENT, reader.getEventType());
-				assertEquals("START_ELEMENT: ", reader.getLocalName(), xml.event.text);
+				assertEquals("START_ELEMENT local name: ", reader.getLocalName(), xml.event.localName);
+				assertEquals("START_ELEMENT prefix: ", reader.getPrefix(), xml.event.namespacePrefix);
+				assertEquals("START_ELEMENT namespace URI: ", reader.getNamespaceURI(), xml.event.namespaceURI);
 				for (int i = 0; i < reader.getAttributeCount(); i++) {
 					String prefix = reader.getAttributePrefix(i);
 					String name = reader.getAttributeLocalName(i);
@@ -269,7 +272,9 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 				break;
 			case END_ELEMENT:
 				Assert.assertEquals("END_ELEMENT ", XMLStreamConstants.END_ELEMENT, reader.getEventType());
-				assertEquals("END_ELEMENT: ", reader.getLocalName(), xml.event.text);
+				assertEquals("END_ELEMENT local name: ", reader.getLocalName(), xml.event.localName);
+				assertEquals("END_ELEMENT prefix: ", reader.getPrefix(), xml.event.namespacePrefix);
+				assertEquals("END_ELEMENT namespace URI: ", reader.getNamespaceURI(), xml.event.namespaceURI);
 				Assert.assertEquals("END_ELEMENT ", openElements.removeLast(), xml.event.text.asString());
 				break;
 			case COMMENT: {
@@ -326,6 +331,8 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 			if (expected == null || expected.isEmpty()) return;
 			throw new AssertionError(message + ": expected <" + expected + ">, found is null");
 		}
+		if (expected == null)
+			if (found.length() == 0) return;
 		Assert.assertEquals(message, expected, found.asString());
 	}
 }

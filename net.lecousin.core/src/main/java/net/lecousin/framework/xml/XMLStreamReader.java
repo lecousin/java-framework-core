@@ -859,6 +859,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			event.namespacePrefix = event.text.substring(0, i);
 			event.localName = event.text.substring(i + 1);
 		}
+		event.namespaceURI = getNamespaceURI(event.namespacePrefix);
 	}
 	
 	// skip checkstyle: VariableDeclarationUsageDistance

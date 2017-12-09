@@ -35,6 +35,7 @@ import org.xml.sax.InputSource;
 public abstract class TestXMLStreamEventsWithDOM<EVENTS extends XMLStreamEvents> extends LCCoreAbstractTest {
 
 	private static final String[] files = {
+		"xml-test-suite/mine/001.xml",
 		"xml-test-suite/xmltest/valid/sa/001.xml",
 		"xml-test-suite/xmltest/valid/sa/002.xml",
 		"xml-test-suite/xmltest/valid/sa/003.xml",
@@ -179,6 +180,7 @@ public abstract class TestXMLStreamEventsWithDOM<EVENTS extends XMLStreamEvents>
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		factory.setValidating(false);
 		factory.setExpandEntityReferences(false);
+		factory.setNamespaceAware(true);
 		InputStream in = getClass().getClassLoader().getResourceAsStream(filepath);
 		Document doc = factory.newDocumentBuilder().parse(new InputSource(in));
 		InputStream in2 = getClass().getClassLoader().getResourceAsStream(filepath);
@@ -266,14 +268,18 @@ public abstract class TestXMLStreamEventsWithDOM<EVENTS extends XMLStreamEvents>
 	}
 	
 	private void checkElement(Element node, EVENTS xml, LinkedList<String> openElements) throws Exception {
-		assertEquals("element name", node.getTagName(), xml.event.localName);
-		assertEquals("element prefix", node.getPrefix() == null ? "" : node.getPrefix(), xml.event.namespacePrefix);
+		assertEquals("element name", node.getTagName(), xml.event.text);
+		assertEquals("element local name", node.getLocalName(), xml.event.localName);
+		assertEquals("element prefix", node.getPrefix(), xml.event.namespacePrefix);
+		assertEquals("element namespace URI", node.getNamespaceURI(), xml.event.namespaceURI);
 		NamedNodeMap attrs = node.getAttributes();
 		for (int i = 0; i < attrs.getLength(); ++i) {
 			Node attr = attrs.item(i);
+			String aname = attr.getNodeName();
+			if (aname.equals("xmlns") || aname.startsWith("xmlns:")) continue;
 			String prefix = attr.getPrefix();
 			if (prefix == null) prefix = "";
-			String name = attr.getNodeName();
+			String name = attr.getLocalName();
 			String value = attr.getNodeValue();
 			Attribute a = xml.removeAttributeWithPrefix(prefix, name);
 			if (a == null)
@@ -296,6 +302,8 @@ public abstract class TestXMLStreamEventsWithDOM<EVENTS extends XMLStreamEvents>
 			if (expected == null || expected.isEmpty()) return;
 			throw new AssertionError(message + ": expected <" + expected + ">, found is null");
 		}
+		if (expected == null)
+			if (found.length() == 0) return;
 		Assert.assertEquals(expected, found.asString());
 	}
 	
