@@ -53,6 +53,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 
 	/** Pause the current thread to wait for this synchronization point to be unblocked. */
 	void block(long timeout);
+	
+	default void blockException(long timeout) throws TError {
+		block(timeout);
+		if (hasError()) throw getError();
+	}
 
 	/** Really block, using wait method (used by threading system to know when a thread can be resumed). */
 	void blockPause(long logWarningAfterMillis);

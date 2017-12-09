@@ -672,8 +672,8 @@ public class UnprotectedStringBuffer implements IString {
 	public boolean endsWith(CharSequence end) {
 		if (strings == null) return end.length() == 0;
 		int stringIndex = lastUsed;
-		int stringPos = strings[0].length() - 1;
-		int i = end.length();
+		int stringPos = strings[stringIndex].length() - 1;
+		int i = end.length() - 1;
 		while (i >= 0) {
 			if (strings[stringIndex].charAt(stringPos) != end.charAt(i))
 				return false;

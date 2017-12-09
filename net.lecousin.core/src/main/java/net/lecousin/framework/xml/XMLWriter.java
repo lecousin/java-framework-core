@@ -64,7 +64,10 @@ public class XMLWriter {
 			.replace("\"", "&quot;")
 			.replace("'", "&apos;")
 			.replace("<", "&lt;")
-			.replace(">", "&gt;");
+			.replace(">", "&gt;")
+			.replace("\n", "&#10;")
+			.replace("\r", "&#13;")
+			.replace("\t", "&#9;");
 	}
 	
 	public static final char[] XML_DECLARATION_START = new char[] {

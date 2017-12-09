@@ -950,6 +950,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			statePos++;
 			return true;
 		}
+		if (event.system == null)
+			event.system = new UnprotectedStringBuffer();
 		if (event.system.length() > 0) {
 			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Invalid XML")));
 			return false;
@@ -1128,12 +1130,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			state = State.ATTRIBUTE_NAME;
 			return true;
 		}
-		if (Type.PROCESSING_INSTRUCTION.equals(event.type)) {
-			if (c == '?') {
-				state = State.PROCESSING_INSTRUCTION_CLOSED;
-				return true;
-			}
-		} else {
+		if (!Type.PROCESSING_INSTRUCTION.equals(event.type)) {
 			if (c == '>') {
 				onStartElement();
 				sp.unblock();
@@ -1143,9 +1140,15 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				state = State.START_ELEMENT_CLOSED;
 				return true;
 			}
+			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+			return false;
 		}
-		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
-		return false;
+		if (c == '?') {
+			state = State.PROCESSING_INSTRUCTION_CLOSED;
+			return true;
+		}
+		// skip any other character
+		return true;
 	}
 	
 	private boolean readAttributeName(int i, SynchronizationPoint<Exception> sp) {
@@ -1185,8 +1188,10 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			state = State.ATTRIBUTE_VALUE_SPACE;
 			return true;
 		}
-		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
-		return false;
+		// no equals, we accept the attribute without value
+		state = State.START_ELEMENT_SPACE;
+		cp.back(c);
+		return true;
 	}
 	
 	private boolean readAttributeValueSpace(int i, SynchronizationPoint<Exception> sp) {
@@ -1200,6 +1205,14 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		if (c == '"') {
 			state = State.ATTRIBUTE_VALUE;
+			statePos = 1;
+			Attribute a = event.attributes.getLast();
+			a.value = new UnprotectedStringBuffer();
+			return true;
+		}
+		if (c == '\'') {
+			state = State.ATTRIBUTE_VALUE;
+			statePos = 2;
 			Attribute a = event.attributes.getLast();
 			a.value = new UnprotectedStringBuffer();
 			return true;
@@ -1216,7 +1229,12 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		}
 		char c = (char)i;
 		Attribute a = event.attributes.getLast();
-		if (c == '"') {
+		if (c == '"' && statePos == 1) {
+			resolveReferences(a.value);
+			state = State.START_ELEMENT_SPACE;
+			return true;
+		}
+		if (c == '\'' && statePos == 2) {
 			resolveReferences(a.value);
 			state = State.START_ELEMENT_SPACE;
 			return true;
@@ -1227,7 +1245,9 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				new LocalizableString("lc.xml.error", "in attribute value")));
 			return false;
 		}
-		a.value.append(c);
+		if (c == '\n') a.value.append(' ');
+		else if (c == '\r') return true;
+		else a.value.append(c);
 		return true;
 	}
 	
@@ -1261,8 +1281,10 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return false;
 		}
 		if (c != '>') {
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
-			return false;
+			// accept a unuseful ? alone
+			cp.back((char)c);
+			state = State.START_ELEMENT_SPACE;
+			return true;
 		}
 		sp.unblock();
 		return false;
@@ -1353,6 +1375,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			if (s.charAt(i + 1) == '#') {
 				// character reference
 				INumberEncoding n;
+				pos = i;
 				if (s.charAt(i + 2) == 'x') {
 					n = new HexadecimalNumber();
 					i = i + 3;
@@ -1363,8 +1386,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				while (i < j)
 					n.addChar(s.charAt(i++));
 				char[] chars = Character.toChars((int)n.getNumber());
-				s.replace(i, j, chars);
-				pos = i + chars.length;
+				s.replace(pos, j, chars);
+				pos = pos + chars.length;
 				continue;
 			}
 			UnprotectedStringBuffer name = s.substring(i + 1, j);
