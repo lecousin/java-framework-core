@@ -248,13 +248,13 @@ public abstract class XMLStreamEvents {
 			event.namespacePrefix = event.text.substring(0, i);
 			event.localName = event.text.substring(i + 1);
 		}
-		event.namespaceURI = getNamespaceURI(event.namespacePrefix);
 		ElementContext ctx = new ElementContext();
 		ctx.text = event.text;
 		ctx.namespacePrefix = event.namespacePrefix;
 		ctx.localName = event.localName;
 		ctx.namespaces = readNamespaces();
 		event.context.addFirst(ctx);
+		event.namespaceURI = getNamespaceURI(event.namespacePrefix);
 	}
 	
 	protected List<Pair<UnprotectedStringBuffer, UnprotectedStringBuffer>> readNamespaces() {

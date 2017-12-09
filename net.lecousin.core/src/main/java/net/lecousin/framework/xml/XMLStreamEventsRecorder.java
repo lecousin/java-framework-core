@@ -133,6 +133,10 @@ public interface XMLStreamEventsRecorder {
 		@Override
 		public void replay() {
 			replaying = record.iterator();
+			if (!replaying.hasNext())
+				event = null;
+			else
+				event = replaying.next();
 		}
 		
 	}

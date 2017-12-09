@@ -1,5 +1,6 @@
 package net.lecousin.framework.xml.serialization;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -283,14 +284,23 @@ public class XMLDeserializer extends AbstractDeserializer {
 		} else
 			next = input.nextInnerElement(ctx.element);
 		AsyncWork<String, Exception> result = new AsyncWork<>();
-		next.listenInline((ok) -> {
-			if (ok.booleanValue())
+		next.listenInline(() -> {
+			if (next.hasError()) {
+				if (next.getError() instanceof EOFException) {
+					objects.removeFirst();
+					result.unblockSuccess(null);
+					return;
+				}
+				result.error(next.getError());
+				return;
+			}
+			if (next.getResult().booleanValue())
 				result.unblockSuccess(input.event.text.asString());
 			else {
 				objects.removeFirst();
 				result.unblockSuccess(null);
 			}
-		}, result);
+		});
 		return result;
 	}
 	
