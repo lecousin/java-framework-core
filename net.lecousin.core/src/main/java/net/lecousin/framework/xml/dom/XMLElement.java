@@ -97,7 +97,7 @@ public class XMLElement extends XMLNode implements Element {
 	
 	@Override
 	public String getNamespaceURI() {
-		return prefixToURI.get(prefix);
+		return prefixToURI == null ? null : prefixToURI.get(prefix);
 	}
 	
 	@Override

@@ -44,7 +44,11 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 		ISynchronizationPoint<? extends Exception> init = initializeSpecWriter(output);
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
 		init.listenAsyncSP(new SpecTask(() -> {
-			ISynchronizationPoint<? extends Exception> sp = specifyValue(null, new TypeDefinition(type), rules);
+			ISynchronizationPoint<? extends Exception> sp;
+			if (type != null)
+				sp = specifyValue(null, new TypeDefinition(type), rules);
+			else
+				sp = specifyAnyValue(null);
 			sp.listenInlineSP(() -> {
 				finalizeSpecWriter().listenInlineSP(result);
 			}, result);
@@ -61,6 +65,8 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	protected List<SerializationRule> addRulesForAttribute(Attribute a, List<SerializationRule> currentList) {
 		return AttributeAnnotationToRuleOnAttribute.addRules(a, true, currentList);
 	}
+	
+	protected abstract ISynchronizationPoint<? extends Exception> specifyAnyValue(SerializationContext context);
 	
 	protected ISynchronizationPoint<? extends Exception> specifyValue(SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules) {
 		Class<?> type = typeDef.getBase();

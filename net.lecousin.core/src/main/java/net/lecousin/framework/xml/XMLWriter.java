@@ -7,12 +7,21 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.BufferedWritableCharacterStream;
 import net.lecousin.framework.io.text.CharacterStreamWritePool;
 import net.lecousin.framework.io.text.ICharacterStream;
+
+import org.w3c.dom.CDATASection;
+import org.w3c.dom.Comment;
+import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Text;
 
 public class XMLWriter {
 
@@ -228,6 +237,70 @@ public class XMLWriter {
 		writer.write(START_COMMENT);
 		writer.write(comment);
 		return writer.write(END_COMMENT);
+	}
+	
+	public ISynchronizationPoint<IOException> write(Element element) {
+		String name = element.getLocalName();
+		String uri = element.getNamespaceURI();
+		String prefix = element.getPrefix();
+		Map<String, String> namespaces = null;
+		if (uri != null) {
+			namespaces = new HashMap<>(5);
+			namespaces.put(uri, prefix);
+		}
+		openElement(uri, name, namespaces);
+		NamedNodeMap attrs = element.getAttributes();
+		if (attrs != null)
+			for (int i = 0; i < attrs.getLength(); ++i) {
+				Node a = attrs.item(i);
+				addAttribute(a.getNodeName(), a.getNodeValue());
+			}
+		NodeList children = element.getChildNodes();
+		if (children.getLength() == 0)
+			return closeElement();
+		ISynchronizationPoint<IOException> open = endOfAttributes();
+		if (open.isUnblocked()) {
+			if (open.hasError()) return open;
+			return writeChild(children, 0);
+		}
+		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+		open.listenAsync(new Task.Cpu.FromRunnable("Write DOM", output.getPriority(), () -> {
+			writeChild(children, 0).listenInline(sp);
+		}), sp);
+		return sp;
+	}
+	
+	private ISynchronizationPoint<IOException> writeChild(NodeList children, int childIndex) {
+		do {
+			Node child = children.item(childIndex);
+			ISynchronizationPoint<IOException> sp;
+			if (child instanceof Element)
+				sp = write((Element)child);
+			else if (child instanceof Comment)
+				sp = addComment(((Comment)child).getData());
+			else if (child instanceof CDATASection)
+				sp = addCData(((CDATASection)child).getData());
+			else if (child instanceof Text)
+				sp = addText(((Text)child).getData());
+			else
+				sp = new SynchronizationPoint<>(true);
+			if (sp.isUnblocked()) {
+				if (sp.hasError()) return sp;
+				childIndex++;
+				if (childIndex == children.getLength()) return sp;
+				continue;
+			}
+			SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+			int nextIndex = childIndex + 1;
+			sp.listenAsync(new Task.Cpu.FromRunnable("Write DOM", output.getPriority(), () -> {
+				if (nextIndex == children.getLength()) {
+					result.unblock();
+					return;
+				}
+				writeChild(children, nextIndex).listenInline(result);
+			}), result);
+			return result;
+		} while (true);
 	}
 	
 }

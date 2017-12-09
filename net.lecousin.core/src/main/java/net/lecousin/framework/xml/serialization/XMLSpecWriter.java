@@ -137,6 +137,19 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	}
 	
 	protected LinkedList<TypeContext> typesContext = new LinkedList<>();
+
+	@Override
+	protected ISynchronizationPoint<? extends Exception> specifyAnyValue(SerializationContext context) {
+		output.endOfAttributes();
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "complexType", null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "sequence", null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "any", null);
+		output.addAttribute("minOccurs", "0");
+		output.closeElement();
+		output.closeElement();
+		output.closeElement();
+		return output.closeElement();
+	}
 	
 	@Override
 	protected ISynchronizationPoint<? extends Exception> specifyTypedValue(ObjectContext context, List<SerializationRule> rules) {
