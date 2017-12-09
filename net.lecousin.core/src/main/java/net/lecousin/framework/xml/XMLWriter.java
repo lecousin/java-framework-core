@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -185,7 +186,19 @@ public class XMLWriter {
 			writer.write(ns);
 			writer.write(':');
 		}
-		return writer.write(localName);
+		if (namespaces == null || namespaces.isEmpty())
+			return writer.write(localName);
+		writer.write(localName);
+		Iterator<Map.Entry<String,String>> it = namespaces.entrySet().iterator();
+		do {
+			Map.Entry<String,String> e = it.next();
+			String name = "xmlns";
+			if (!e.getValue().isEmpty())
+				name = name + ':' + e.getValue();
+			if (!it.hasNext())
+				return addAttribute(name, e.getKey());
+			addAttribute(name, e.getKey());
+		} while (true);
 	}
 	
 	public ISynchronizationPoint<IOException> closeElement() {
