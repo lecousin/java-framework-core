@@ -903,7 +903,7 @@ public abstract class LinkedIO extends AbstractIO {
 	}
 
 	protected AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return IOUtil.seekAsyncUsingSync((IO.Readable.Seekable)this, type, move, ondone).getSynch();
+		return IOUtil.seekAsyncUsingSync((IO.Readable.Seekable)this, type, move, ondone).getOutput();
 	}
 
 	// skip checkstyle: OverloadMethodsDeclarationOrder
@@ -937,7 +937,7 @@ public abstract class LinkedIO extends AbstractIO {
 		long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 	) {
 		// TODO better
-		return IOUtil.readAsyncUsingSync((IO.Readable.Seekable)this, pos, buffer, ondone).getSynch();
+		return IOUtil.readAsyncUsingSync((IO.Readable.Seekable)this, pos, buffer, ondone).getOutput();
 	}
 
 	protected int readFullySync(long pos, ByteBuffer buffer) throws IOException {

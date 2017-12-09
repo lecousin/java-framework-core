@@ -903,7 +903,7 @@ public class UnprotectedStringBuffer implements IString {
 					public Integer run() {
 						return Integer.valueOf(readSync(buf, offset, length));
 					}
-				}.start().getSynch();
+				}.start().getOutput();
 			}
 			
 			@Override
@@ -955,6 +955,6 @@ public class UnprotectedStringBuffer implements IString {
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 }

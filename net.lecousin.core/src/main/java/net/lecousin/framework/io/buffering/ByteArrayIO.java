@@ -169,7 +169,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	@Override
@@ -181,7 +181,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	@Override
@@ -215,7 +215,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	/** Convert the content of the buffer into a String encoded with the given charset. */
@@ -289,7 +289,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	@Override
@@ -301,7 +301,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	@Override
@@ -329,7 +329,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	@Override

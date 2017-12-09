@@ -185,8 +185,8 @@ public class PreBufferedReadable extends IO.AbstractIO implements IO.Readable.Bu
 			nextRead = nextReadTask;
 		}
 		if (nextRead != null && !nextRead.isUnblocked()) {
-			if (nextRead instanceof Task.SyncDone)
-				((Task<?,?>.SyncDone)nextRead).getTask().cancel(new CancelException("IO closed"));
+			if (nextRead instanceof Task.Output)
+				((Task<?,?>.Output)nextRead).getTask().cancel(new CancelException("IO closed"));
 			else
 				nextRead.unblockCancel(new CancelException("IO closed"));
 		}
@@ -318,7 +318,7 @@ public class PreBufferedReadable extends IO.AbstractIO implements IO.Readable.Bu
 				}
 			};
 			prepare.start();
-			nextReadTask = task.getSynch();
+			nextReadTask = task.getOutput();
 			jpNextRead.start();
 			jpNextRead.listenAsync(task, true);
 		}
@@ -396,10 +396,10 @@ public class PreBufferedReadable extends IO.AbstractIO implements IO.Readable.Bu
 		};
 		if (sp == null) {
 			t.start();
-			return t.getSynch();
+			return t.getOutput();
 		}
 		t.startOn(sp, false);
-		return t.getSynch();
+		return t.getOutput();
 	}
 	
 	@Override
@@ -494,7 +494,7 @@ public class PreBufferedReadable extends IO.AbstractIO implements IO.Readable.Bu
 				}
 			};
 			t.start();
-			return t.getSynch();
+			return t.getOutput();
 		}
 	}
 	
@@ -700,7 +700,7 @@ public class PreBufferedReadable extends IO.AbstractIO implements IO.Readable.Bu
 					}
 				};
 				task.start();
-				return task.getSynch();
+				return task.getOutput();
 			}
 			if (endReached) {
 				if (ondone != null) ondone.run(new Pair<>(null, null));

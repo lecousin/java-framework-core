@@ -62,18 +62,18 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			extensionpoints.start();
 			
 			LinkedList<ISynchronizationPoint<Exception>> tasks = new LinkedList<>();
-			tasks.add(extensionpoints.getSynch());
+			tasks.add(extensionpoints.getOutput());
 			for (CustomExtensionPoint custom : ExtensionPoints.getCustomExtensionPoints()) {
 				String path = custom.getPluginConfigurationFilePath();
 				if (path == null) continue;
 				CustomExtensionPointLoader loader = new CustomExtensionPointLoader(custom, path);
 				tasks.getLast().listenAsync(loader, false);
-				tasks.add(loader.getSynch());
+				tasks.add(loader.getOutput());
 			}
 			
 			PluginsLoader plugins = new PluginsLoader();
 			tasks.getLast().listenAsync(plugins, false);
-			tasks.add(plugins.getSynch());
+			tasks.add(plugins.getOutput());
 			tasks.getLast().listenAsync(new Task.Cpu<Void, NoException>("Finalize libraries loading", Task.PRIORITY_NORMAL) {
 				@Override
 				public Void run() {
@@ -213,7 +213,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 				LoadLibraryExtensionPointsFile load = new LoadLibraryExtensionPointsFile(stream, acl);
 				load.startOn(stream.canStartReading(), false);
-				load.getSynch().block(0);
+				load.getOutput().block(0);
 			}
 			return null;
 		}
@@ -238,7 +238,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 				LoadLibraryPluginsFile load = new LoadLibraryPluginsFile(stream, acl);
 				load.startOn(stream.canStartReading(), false);
-				load.getSynch().block(0);
+				load.getOutput().block(0);
 			}
 			return null;
 		}

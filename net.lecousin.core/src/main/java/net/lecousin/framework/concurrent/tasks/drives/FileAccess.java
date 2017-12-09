@@ -53,7 +53,7 @@ public class FileAccess implements AutoCloseable {
 	public void setPriority(byte priority) { this.priority = priority; }
 
 	public void open() throws IOException {
-		openTask.getSynch().block(0);
+		openTask.getOutput().block(0);
 		if (!openTask.isSuccessful()) throw openTask.getError();
 	}
 	
@@ -73,7 +73,7 @@ public class FileAccess implements AutoCloseable {
 	}
 	
 	public long getSize() throws IOException {
-		openTask.getSynch().block(0);
+		openTask.getOutput().block(0);
 		if (!openTask.isSuccessful()) throw openTask.getError();
 		return size;
 	}
@@ -88,12 +88,12 @@ public class FileAccess implements AutoCloseable {
 					sp.unblockError(openTask.getError());
 			}
 		};
-		openTask.getSynch().listenInline(ready);
+		openTask.getOutput().listenInline(ready);
 	}
 	
 	public void setSize(long newSize) throws IOException {
 		SetFileSizeTask t = new SetFileSizeTask(this, newSize, priority);
-		t.getSynch().block(0);
+		t.getOutput().block(0);
 		if (!t.isSuccessful()) throw t.getError();
 	}
 	
@@ -103,7 +103,7 @@ public class FileAccess implements AutoCloseable {
 	
 	public int read(long pos, ByteBuffer buffer) throws IOException {
 		ReadFileTask task = new ReadFileTask(this, pos, buffer, false, priority, null);
-		task.getSynch().block(0);
+		task.getOutput().block(0);
 		if (task.isSuccessful())
 			return task.getCurrentNbRead();
 		throw task.getError();
@@ -115,7 +115,7 @@ public class FileAccess implements AutoCloseable {
 	
 	public int readFully(long pos, ByteBuffer buffer) throws IOException {
 		ReadFileTask task = new ReadFileTask(this, pos, buffer, true, priority, null);
-		task.getSynch().block(0);
+		task.getOutput().block(0);
 		if (task.isSuccessful())
 			return task.getCurrentNbRead();
 		throw task.getError();
@@ -127,7 +127,7 @@ public class FileAccess implements AutoCloseable {
 	
 	public long seek(SeekType type, long move, boolean allowAfterEnd) throws IOException {
 		SeekFileTask task = new SeekFileTask(this, type, move, allowAfterEnd, true, priority, null);
-		task.getSynch().block(0);
+		task.getOutput().block(0);
 		if (task.isSuccessful())
 			return task.getResult().longValue();
 		throw task.getError();
@@ -141,7 +141,7 @@ public class FileAccess implements AutoCloseable {
 	
 	public long skip(long move) throws IOException {
 		SeekFileTask task = new SeekFileTask(this, SeekType.FROM_CURRENT, move, false, false, priority, null);
-		task.getSynch().block(0);
+		task.getOutput().block(0);
 		if (task.isSuccessful())
 			return task.getResult().longValue();
 		throw task.getError();
@@ -153,7 +153,7 @@ public class FileAccess implements AutoCloseable {
 	
 	public int write(long pos, ByteBuffer buffer) throws IOException {
 		WriteFileTask task = new WriteFileTask(this, pos, buffer, priority, null);
-		task.getSynch().block(0);
+		task.getOutput().block(0);
 		if (task.hasError())
 			throw task.getError();
 		return task.getResult().intValue();

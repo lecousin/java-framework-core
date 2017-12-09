@@ -1,5 +1,8 @@
 package net.lecousin.framework.concurrent;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
@@ -89,6 +92,12 @@ public abstract class Task<T,TError extends Exception> {
 			
 			/** Constructor. */
 			public FromRunnable(Runnable runnable, String description, byte priority) {
+				super(description, priority);
+				this.runnable = runnable;
+			}
+
+			/** Constructor. */
+			public FromRunnable(String description, byte priority, Runnable runnable) {
 				super(description, priority);
 				this.runnable = runnable;
 			}
@@ -252,7 +261,8 @@ public abstract class Task<T,TError extends Exception> {
 	byte status;
 	
 	// result of execution
-	SyncDone result = new SyncDone();
+	Output result = new Output();
+	CancelException cancelling = null;
 	RunnableWithParameter<Pair<T,TError>> ondone = null;
 	
 	// timing and info
@@ -260,6 +270,9 @@ public abstract class Task<T,TError extends Exception> {
 	byte priority;
 	long executeEvery;
 	long nextExecution;
+	
+	// hold synchronization points
+	private List<ISynchronizationPoint<?>> holdSP = null;
 	
 	public byte getStatus() { return status; }
 	
@@ -279,35 +292,51 @@ public abstract class Task<T,TError extends Exception> {
 	
 	@SuppressWarnings("unchecked")
 	void execute() {
+		if (cancelling != null) {
+			status = STATUS_DONE;
+			result.cancelled(cancelling);
+			checkSP();
+			return;
+		}
 		T res;
 		try { res = run(); }
 		catch (CancelException e) {
 			status = STATUS_DONE;
-			result.unblockCancel(e);
+			cancelling = e;
+			result.cancelled(e);
+			checkSP();
 			return;
-		}
-		catch (Throwable t) {
+		} catch (Throwable t) {
 			status = STATUS_DONE;
-			if (!result.isCancelled()) { // if cancelled, the error is probably due to the cancellation
+			if (cancelling != null) {
+				if (!result.isCancelled()) result.cancelled(cancelling);
+				if (app.isDebugMode())
+					app.getDefaultLogger()
+						.warn("Task " + description + " error while trying to cancel it: " + t.getMessage()
+						+ ", cancellation reason is " + result.getCancelEvent().getMessage(), t);
+			} else if (!result.isCancelled()) {
 				if (app.isDebugMode()) app.getDefaultLogger().error("Task " + description + " error: " + t.getMessage(), t);
 				try {
 					TError error = (TError)t;
 					if (ondone != null) ondone.run(new Pair<>(null, error));
 					result.unblockError(error);
 				} catch (ClassCastException e) {
-					result.unblockCancel(new CancelException("Unexpected exception thrown", t));
+					cancelling = new CancelException("Unexpected exception thrown", t);
+					result.cancelled(cancelling);
 				}
 			} else
 				if (app.isDebugMode())
 					app.getDefaultLogger()
 						.warn("Task " + description + " error after being cancelled: " + t.getMessage()
 						+ ", cancellation reason is " + result.getCancelEvent().getMessage(), t);
+			checkSP();
 			return;
 		}
 		if (taskJoin == null) {
 			status = STATUS_DONE;
 			if (ondone != null) ondone.run(new Pair<>(res, null));
 			result.unblockSuccess(res);
+			checkSP();
 			return;
 		}
 		status = STATUS_EXECUTED;
@@ -315,9 +344,10 @@ public abstract class Task<T,TError extends Exception> {
 			@Override
 			public void run() {
 				status = STATUS_DONE;
-				if (taskJoin.isCancelled())
-					result.unblockCancel(taskJoin.getCancelEvent());
-				else if (taskJoin.hasError()) {
+				if (taskJoin.isCancelled()) {
+					cancelling = taskJoin.getCancelEvent();
+					result.cancelled(cancelling);
+				} else if (taskJoin.hasError()) {
 					if (ondone != null) ondone.run(new Pair<>(null, taskJoin.getError()));
 					result.unblockError(taskJoin.getError());
 				} else {
@@ -325,6 +355,7 @@ public abstract class Task<T,TError extends Exception> {
 					result.unblockSuccess(res);
 				}
 				taskJoin = null;
+				checkSP();
 			}
 		});
 		if (app.isDebugMode()) {
@@ -338,8 +369,17 @@ public abstract class Task<T,TError extends Exception> {
 		}
 	}
 	
+	private void checkSP() {
+		if (holdSP == null) return;
+		for (ISynchronizationPoint<?> sp : holdSP)
+			if (!sp.isUnblocked())
+				sp.cancel(new CancelException("Task " + description + " done without unblock this synchronization point"));
+		holdSP = null;
+	}
+	
 	/** Ask to start the task. This does not start it immediately, but adds it to the queue of tasks to execute. */
 	public Task<T,TError> start() {
+		if (cancelling != null) result.cancelled(cancelling);
 		synchronized (this) {
 			if (result.isCancelled()) return this;
 			if (status != Task.STATUS_NOT_STARTED) {
@@ -379,12 +419,20 @@ public abstract class Task<T,TError extends Exception> {
 	}*/
 	/** Cancel this task. */
 	public void cancel(CancelException reason) {
+		if (cancelling != null)
+			return;
 		if (reason == null) reason = new CancelException("No reason given");
-		if (!result.isCancelled())
-			result.cancel(reason);
-		if (!TaskScheduler.cancel(this))
-			manager.remove(this);
-		status = Task.STATUS_DONE;
+		cancelling = reason;
+		if (TaskScheduler.cancel(this)) {
+			status = Task.STATUS_DONE;
+			result.cancelled(reason);
+			return;
+		}
+		if (manager.remove(this)) {
+			status = Task.STATUS_DONE;
+			result.cancelled(reason);
+			return;
+		}
 	}
 	
 	/** Cancel this task only if not yet started. */
@@ -406,6 +454,10 @@ public abstract class Task<T,TError extends Exception> {
 		return status == STATUS_DONE && result.isSuccessful();
 	}
 	
+	public boolean isCancelling() {
+		return cancelling != null || result.isCancelled();
+	}
+	
 	public boolean isCancelled() {
 		return result.isCancelled();
 	}
@@ -422,7 +474,7 @@ public abstract class Task<T,TError extends Exception> {
 	
 	public TError getError() { return result.getError(); }
 	
-	public CancelException getCancelEvent() { return result.getCancelEvent(); }
+	public CancelException getCancelEvent() { return cancelling != null ? cancelling : result.getCancelEvent(); }
 	
 	public boolean hasError() { return result.hasError(); }
 	
@@ -444,7 +496,20 @@ public abstract class Task<T,TError extends Exception> {
 		this.priority = priority;
 	}
 	
-	public SyncDone getSynch() { return result; }
+	public Output getOutput() { return result; }
+	
+	public Task<T,TError> ensureUnblocked(ISynchronizationPoint<?>... sp) {
+		if (status == STATUS_DONE) {
+			for (int i = 0; i < sp.length; ++i)
+				if (!sp[i].isUnblocked())
+					sp[i].cancel(new CancelException("Task " + description + " done without unblock this synchronization point"));
+			return this;
+		}
+		if (holdSP == null) holdSP = new ArrayList<>(sp.length + 2);
+		for (int i = 0; i < sp.length; ++i)
+			holdSP.add(sp[i]);
+		return this;
+	}
 	
 	/** Execute this task at the given time. */
 	public void executeAt(long time) {
@@ -586,11 +651,20 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Synchronization point holding the result or error of this task. */
-	public class SyncDone extends AsyncWork<T, TError> {
-		private SyncDone() {}
+	public class Output extends AsyncWork<T, TError> {
+		private Output() {}
 		
 		public Task<T,TError> getTask() {
 			return Task.this;
+		}
+		
+		@Override
+		public void cancel(CancelException reason) {
+			Task.this.cancel(reason);
+		}
+		
+		private void cancelled(CancelException reason) {
+			super.cancel(reason);
 		}
 		
 		@Override

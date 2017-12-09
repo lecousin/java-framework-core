@@ -35,7 +35,7 @@ public class TestProduction extends LCCoreAbstractTest {
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		jp.addToJoin(2);
 		jp.start();
-		writer.getSynch().listenInline(new Runnable() {
+		writer.getOutput().listenInline(new Runnable() {
 			@Override
 			public void run() {
 				System.out.println("Writer done");

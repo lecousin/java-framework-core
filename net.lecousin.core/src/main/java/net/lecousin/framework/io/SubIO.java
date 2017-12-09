@@ -295,7 +295,7 @@ public abstract class SubIO extends IO.AbstractIO {
 			
 			@Override
 			public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-				return IOUtil.seekAsyncUsingSync(this, type, move, ondone).getSynch();
+				return IOUtil.seekAsyncUsingSync(this, type, move, ondone).getOutput();
 			}
 			
 			@Override

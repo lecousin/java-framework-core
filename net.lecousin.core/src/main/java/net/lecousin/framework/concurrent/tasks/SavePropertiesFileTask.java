@@ -55,7 +55,7 @@ public class SavePropertiesFileTask extends Task.Cpu<Void,IOException> {
 	) {
 		SavePropertiesFileTask task = new SavePropertiesFileTask(properties, output, priority, closeStreamAtEnd);
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 
 	/** Constructor. */

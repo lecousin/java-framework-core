@@ -25,7 +25,7 @@ public interface ApplicationBootstrap {
 		RunInMain t = new RunInMain(startup);
 		t.startOn(start, false);
 		start.block(0);
-		t.getSynch().block(0);
+		t.getOutput().block(0);
 		t.getResult().block(0);
 		LCCore.stop(true);
 	}

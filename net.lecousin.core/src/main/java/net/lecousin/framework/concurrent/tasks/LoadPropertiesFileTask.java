@@ -50,7 +50,7 @@ public class LoadPropertiesFileTask extends PropertiesReader<Properties> {
 	) {
 		LoadPropertiesFileTask task = new LoadPropertiesFileTask(stream, priority, closeStreamAtEnd, onDone);
 		task.startOn(stream.canStartReading(), false);
-		return task.getSynch();
+		return task.getOutput();
 	}
 
 	/** Constructor. */

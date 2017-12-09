@@ -63,8 +63,8 @@ public final class ThreadingDebugHelper {
 								ISynchronizationPoint<?> sp = j.toJoinSP.get(k);
 								if (sp.isUnblocked()) continue;
 								s.append("    + ");
-								if (sp instanceof Task.SyncDone)
-									s.append("Task [").append(((Task<?,?>.SyncDone)sp).getTask().getDescription())
+								if (sp instanceof Task.Output)
+									s.append("Task [").append(((Task<?,?>.Output)sp).getTask().getDescription())
 										.append("], ");
 								s.append("creation at\r\n");
 								for (StackTraceElement e : j.toJoinTraces.get(k))
@@ -118,7 +118,7 @@ public final class ThreadingDebugHelper {
 	
 	static void newTask(Task<?,?> task) {
 		synchronized (tasks) { tasks.add(new MonitoredTask(task)); }
-		task.getSynch().listenInline(new Runnable() {
+		task.getOutput().listenInline(new Runnable() {
 			@Override
 			public void run() {
 				synchronized (tasks) {
@@ -156,7 +156,7 @@ public final class ThreadingDebugHelper {
 
 	/** Indicate a task is waiting for another one to start. */
 	static void waitingFor(Task<?,?> task, Task<?,?> waitingFor) {
-		waitingFor(task, waitingFor.getSynch());
+		waitingFor(task, waitingFor.getOutput());
 	}
 	
 	

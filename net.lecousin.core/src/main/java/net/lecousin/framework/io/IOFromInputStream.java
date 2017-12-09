@@ -125,7 +125,7 @@ public class IOFromInputStream extends IO.AbstractIO implements IO.Readable {
 			}
 		};
 		t.start();
-		return t.getSynch();
+		return t.getOutput();
 	}
 	
 	@Override
@@ -144,7 +144,7 @@ public class IOFromInputStream extends IO.AbstractIO implements IO.Readable {
 			}
 		};
 		t.start();
-		return t.getSynch();
+		return t.getOutput();
 	}
 	
 	
@@ -170,7 +170,7 @@ public class IOFromInputStream extends IO.AbstractIO implements IO.Readable {
 			}
 		};
 		t.start();
-		return t.getSynch();
+		return t.getOutput();
 	}
 	
 }

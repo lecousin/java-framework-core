@@ -79,7 +79,7 @@ public class IOFromOutputStream extends IO.AbstractIO implements IO.Writable {
 	
 	@Override
 	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-		return IOUtil.writeAsyncUsingSync(this, buffer, ondone).getSynch();
+		return IOUtil.writeAsyncUsingSync(this, buffer, ondone).getOutput();
 	}
 	
 	@Override

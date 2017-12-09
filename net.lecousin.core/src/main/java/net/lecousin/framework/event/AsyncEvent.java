@@ -48,7 +48,7 @@ public class AsyncEvent implements SimpleListenable {
 		private Fire() {
 			super("Fire AsyncEvent listeners", Task.PRIORITY_NORMAL);
 			if (current != null)
-				current.getSynch().listenAsync(this, true);
+				current.getOutput().listenAsync(this, true);
 			else
 				start();
 		}

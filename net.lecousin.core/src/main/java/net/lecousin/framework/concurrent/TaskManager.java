@@ -344,7 +344,7 @@ public abstract class TaskManager {
 		Threading.logger.error(s.toString());
 		worker.thread.stop();
 		if (worker.currentTask != null)
-			worker.currentTask.getSynch().cancel(new CancelException("Task was running since a too long time"));
+			worker.currentTask.cancel(new CancelException("Task was running since a too long time"));
 	}
 	
 	void asideWorkerDone(TaskWorker worker) {

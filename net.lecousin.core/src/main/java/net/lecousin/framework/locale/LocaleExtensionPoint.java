@@ -30,12 +30,12 @@ public class LocaleExtensionPoint implements CustomExtensionPoint {
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 				LoadLibraryLocaleFile load = new LoadLibraryLocaleFile(stream, classLoader);
 				load.startOn(stream.canStartReading(), false);
-				load.getSynch().block(0);
+				load.getOutput().block(0);
 				return null;
 			}
 		};
 		task.startOn(false, startOn);
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 }

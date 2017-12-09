@@ -306,7 +306,7 @@ public final class Application {
 			}
 		};
 		loadLocale.startOn(loadPref, true);
-		loading.addToJoin(loadLocale.getSynch());
+		loading.addToJoin(loadLocale.getOutput());
 		
 		loading.start();
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();

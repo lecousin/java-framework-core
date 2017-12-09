@@ -161,7 +161,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	

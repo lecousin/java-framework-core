@@ -244,7 +244,7 @@ public class LocalizedProperties implements IMemoryManageable {
 			}
 		};
 		reader.startOn(cs.canStartReading(), false);
-		reader.getSynch().listenInlineSP(lang.loading);
+		reader.getOutput().listenInlineSP(lang.loading);
 	}
 
 	/** Localization. */

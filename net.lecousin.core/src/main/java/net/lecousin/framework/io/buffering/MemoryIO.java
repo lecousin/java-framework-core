@@ -184,22 +184,22 @@ public class MemoryIO extends AbstractIO
 	
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readAsyncUsingSync(this, buffer, ondone).getSynch();
+		return IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput();
 	}
 	
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readAsyncUsingSync(this, pos, buffer, ondone).getSynch();
+		return IOUtil.readAsyncUsingSync(this, pos, buffer, ondone).getOutput();
 	}
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsyncUsingSync(this, buffer, ondone).getSynch();
+		return IOUtil.readFullyAsyncUsingSync(this, buffer, ondone).getOutput();
 	}
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsyncUsingSync(this, pos, buffer, ondone).getSynch();
+		return IOUtil.readFullyAsyncUsingSync(this, pos, buffer, ondone).getOutput();
 	}
 
 	@Override
@@ -224,7 +224,7 @@ public class MemoryIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	@Override
@@ -400,12 +400,12 @@ public class MemoryIO extends AbstractIO
 	
 	@Override
 	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.writeAsyncUsingSync(this, buffer, ondone).getSynch();
+		return IOUtil.writeAsyncUsingSync(this, buffer, ondone).getOutput();
 	}
 	
 	@Override
 	public AsyncWork<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.writeAsyncUsingSync(this, pos, buffer, ondone).getSynch();
+		return IOUtil.writeAsyncUsingSync(this, pos, buffer, ondone).getOutput();
 	}
 	
 	@Override
@@ -438,7 +438,7 @@ public class MemoryIO extends AbstractIO
 	
 	@Override
 	public AsyncWork<Void, IOException> setSizeAsync(long newSize) {
-		return IOUtil.setSizeAsyncUsingSync(this, newSize, priority).getSynch();
+		return IOUtil.setSizeAsyncUsingSync(this, newSize, priority).getOutput();
 	}
 	
 	/** Create a MemoryIO and fill it with the content of the given Readable.

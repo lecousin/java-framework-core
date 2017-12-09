@@ -175,7 +175,7 @@ public final class Threading {
 	/** Wait for the given tasks to be done. */
 	public static void waitFinished(Collection<? extends Task<?,?>> tasks) throws Exception {
 		for (Task<?,?> t : tasks) {
-			t.getSynch().block(0);
+			t.getOutput().block(0);
 			if (t.isCancelled()) throw t.getCancelEvent();
 			if (!t.isSuccessful()) throw t.getError();
 		}
@@ -191,12 +191,12 @@ public final class Threading {
 	public static void waitOneFinished(List<? extends Task<?,?>> tasks) {
 		if (tasks.isEmpty()) return;
 		if (tasks.size() == 1)
-			try { tasks.get(0).getSynch().block(0); }
+			try { tasks.get(0).getOutput().block(0); }
 			catch (Throwable e) { /* ignore */ }
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		for (Task<?,?> t : tasks) {
 			if (t.isDone()) return;
-			t.getSynch().synchWithNoError(sp);
+			t.getOutput().synchWithNoError(sp);
 		}
 		sp.block(0);
 	}

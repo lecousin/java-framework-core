@@ -72,7 +72,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * Equivalent to addToJoin(task.getSynch())
 	 */
 	public synchronized void addToJoin(Task<?,? extends TError> task) {
-		addToJoin(task.getSynch());
+		addToJoin(task.getOutput());
 	}
 
 	/**
@@ -214,7 +214,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 */
 	public static JoinPoint<Exception> fromTasks(Task<?,?>... tasks) {
 		JoinPoint<Exception> jp = new JoinPoint<>();
-		for (Task<?,?> task : tasks) jp.addToJoin(task.getSynch());
+		for (Task<?,?> task : tasks) jp.addToJoin(task.getOutput());
 		jp.start();
 		return jp;
 	}
@@ -225,7 +225,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 */
 	public static JoinPoint<Exception> fromTasks(Collection<? extends Task<?,?>> tasks) {
 		JoinPoint<Exception> jp = new JoinPoint<>();
-		for (Task<?,?> task : tasks) jp.addToJoin(task.getSynch());
+		for (Task<?,?> task : tasks) jp.addToJoin(task.getOutput());
 		jp.start();
 		return jp;
 	}
@@ -246,7 +246,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 		};
 		jp.start();
 		for (Task<?,?> t : tasks)
-			t.getSynch().listenInline(jpr);
+			t.getOutput().listenInline(jpr);
 		return jp;
 	}
 	

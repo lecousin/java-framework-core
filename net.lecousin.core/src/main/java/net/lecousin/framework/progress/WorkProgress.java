@@ -84,7 +84,7 @@ public interface WorkProgress {
 	 * one of the done, error or cancel method is called.
 	 */
 	public static void linkTo(WorkProgress progress, Task<?,?> task) {
-		linkTo(progress, task.getSynch());
+		linkTo(progress, task.getOutput());
 	}
 	
 	/** Once the given sub-task is done, the given amount of work is added to the progress. */

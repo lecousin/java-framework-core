@@ -803,7 +803,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		};
 		if (sp == null) task.start();
 		else task.startOn(sp, true);
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	protected AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
@@ -856,7 +856,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			}
 		};
 		task.startOn(sp, true);
-		return task.getSynch();
+		return task.getOutput();
 	}
 
 	protected int readFully(byte[] buf) throws IOException {

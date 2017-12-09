@@ -504,7 +504,7 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	@Override
@@ -574,7 +574,7 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 
 }

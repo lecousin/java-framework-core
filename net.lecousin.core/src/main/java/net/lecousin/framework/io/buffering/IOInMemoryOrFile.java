@@ -264,7 +264,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 				this.pos = pos + len;
 				if (pos + len > size) size = pos + len;
 				task.start();
-				return task.getSynch();
+				return task.getOutput();
 			}
 			// some other will go to file
 			Task<Integer,IOException> mem = new WriteInMemory((int)pos, buffer, (int)(maxSizeInMemory - pos), null);
@@ -279,7 +279,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 			Mutable<AsyncWork<Integer,IOException>> fil = new Mutable<>(null);
 			this.pos = pos + len;
 			if (pos + len > size) size = pos + len;
-			mem.getSynch().listenInline(new Runnable() {
+			mem.getOutput().listenInline(new Runnable() {
 				@Override
 				public void run() {
 					if (mem.isCancelled()) {
@@ -421,7 +421,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 					}
 				};
 				task.start();
-				return task.getSynch();
+				return task.getOutput();
 			}
 			AsyncWork<Void, IOException> result = new AsyncWork<>();
 			AsyncWork<Void, IOException> resize = file.setSizeAsync(newSize - maxSizeInMemory);
@@ -460,7 +460,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 					}
 			};
 			task.start();
-			taskMemory = task.getSynch();
+			taskMemory = task.getOutput();
 		}
 		AsyncWork<Void, IOException> taskFile = null;
 		if (newSize > maxSizeInMemory) {
@@ -555,7 +555,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 			ReadInMemory task = new ReadInMemory((int)pos, len, buffer, ondone);
 			this.pos = pos + len;
 			task.start();
-			return task.getSynch();
+			return task.getOutput();
 		}
 		// data in file
 		AsyncWork<Integer,IOException> task;
@@ -616,7 +616,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 				mem = new ReadInMemory((int)pos, len, buffer, ondone);
 				this.pos = pos + len;
 				mem.start();
-				return mem.getSynch();
+				return mem.getOutput();
 			}
 		}
 		// data in file
@@ -625,7 +625,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 		AsyncWork<Integer,IOException> sp = new AsyncWork<Integer,IOException>();
 		final int l = len;
 		Mutable<AsyncWork<Integer,IOException>> fil = new Mutable<>(null);
-		mem.getSynch().listenInline(new AsyncWorkListener<Integer, IOException>() {
+		mem.getOutput().listenInline(new AsyncWorkListener<Integer, IOException>() {
 			@Override
 			public void cancelled(CancelException event) {
 				sp.unblockCancel(event);

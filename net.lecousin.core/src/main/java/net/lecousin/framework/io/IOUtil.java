@@ -395,7 +395,7 @@ public class IOUtil {
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	/**
@@ -1021,7 +1021,7 @@ public class IOUtil {
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	/** Read the content of a file and return a byte array. */

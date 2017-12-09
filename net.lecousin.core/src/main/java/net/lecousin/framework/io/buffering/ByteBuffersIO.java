@@ -102,7 +102,7 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readAsyncUsingSync(this, buffer, ondone).getSynch();
+		return IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput();
 	}
 
 	@Override
@@ -114,7 +114,7 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	@Override
@@ -136,7 +136,7 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 
 	@Override
@@ -332,7 +332,7 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 			if (ondone != null) ondone.run(new Pair<>(r, null));
 			return new AsyncWork<>(r, null);
 		}
-		return IOUtil.writeAsyncUsingSync(this, buffer, ondone).getSynch();
+		return IOUtil.writeAsyncUsingSync(this, buffer, ondone).getOutput();
 	}
 	
 }

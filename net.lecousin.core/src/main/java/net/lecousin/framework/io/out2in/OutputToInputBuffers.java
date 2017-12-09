@@ -129,7 +129,7 @@ public class OutputToInputBuffers extends AbstractIO implements IO.OutputToInput
 		};
 		SynchronizationPoint<NoException> sp = null;
 		synchronized (this) {
-			lastWrite = task.getSynch();
+			lastWrite = task.getOutput();
 			if (maxPendingBuffers > 0) {
 				if (buffers.size() >= maxPendingBuffers) {
 					sp = new SynchronizationPoint<>();
@@ -141,7 +141,7 @@ public class OutputToInputBuffers extends AbstractIO implements IO.OutputToInput
 			task.start();
 		else
 			task.startOn(sp, true);
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	@Override
@@ -233,7 +233,7 @@ public class OutputToInputBuffers extends AbstractIO implements IO.OutputToInput
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	@Override
@@ -445,6 +445,6 @@ public class OutputToInputBuffers extends AbstractIO implements IO.OutputToInput
 			}
 		};
 		task.startOn(canStartReading(), true);
-		return task.getSynch();
+		return task.getOutput();
 	}
 }

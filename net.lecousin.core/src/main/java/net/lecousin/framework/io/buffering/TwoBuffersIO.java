@@ -482,7 +482,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 				}
 			};
 			task.start();
-			return task.getSynch();
+			return task.getOutput();
 		}
 		if (buf2 == null) {
 			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
@@ -568,7 +568,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 			}
 		};
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 
 	@Override
@@ -624,7 +624,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 		if (nb1 < 0) {
 			if (!read1.isUnblocked()) {
 				read1.listenAsync(task, true);
-				return task.getSynch();
+				return task.getOutput();
 			}
 			if (read1.hasError()) {
 				if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
@@ -641,7 +641,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 		}
 		if (pos < nb1) {
 			task.start();
-			return task.getSynch();
+			return task.getOutput();
 		}
 		if (buf2 == null) {
 			if (ondone != null) ondone.run(new Pair<>(null, null));
@@ -650,7 +650,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 		if (nb2 < 0) {
 			if (!read1.isUnblocked()) {
 				read1.listenAsync(task, true);
-				return task.getSynch();
+				return task.getOutput();
 			}
 			if (read1.hasError()) {
 				if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
@@ -660,11 +660,11 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 				return new AsyncWork<>(null, null, read1.getCancelEvent());
 			if (read2 == null) {
 				task.start();
-				return task.getSynch();
+				return task.getOutput();
 			}
 			if (!read2.isUnblocked()) {
 				read2.listenAsync(task, true);
-				return task.getSynch();
+				return task.getOutput();
 			}
 			if (read2.hasError()) {
 				if (ondone != null) ondone.run(new Pair<>(null, read2.getError()));
@@ -684,7 +684,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 			return new AsyncWork<>(null, null);
 		}
 		task.start();
-		return task.getSynch();
+		return task.getOutput();
 	}
 	
 	@Override
@@ -1132,7 +1132,7 @@ public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered,
 
 	@Override
 	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return IOUtil.seekAsyncUsingSync(this, type, move, ondone).getSynch();
+		return IOUtil.seekAsyncUsingSync(this, type, move, ondone).getOutput();
 	}
 	
 }
