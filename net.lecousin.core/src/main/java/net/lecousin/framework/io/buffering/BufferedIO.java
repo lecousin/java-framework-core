@@ -63,7 +63,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		this.bufferSize = bufferSize;
 		this.size = size;
 		this.startReadSecondBufferWhenFirstBufferFullyRead = startReadSecondBufferWhenFirstBufferFullyRead;
-		int nbBuffers = (int)((size - firstBufferSize) / bufferSize) + 1;
+		int nbBuffers = (int)((size - firstBufferSize) / bufferSize) + 2;
 		if (nbBuffers <= 10)
 			buffers = new ArrayList<>(nbBuffers);
 		else {
@@ -445,7 +445,9 @@ public abstract class BufferedIO extends BufferingManaged {
 		
 		@Override
 		public ISynchronizationPoint<IOException> canStartReading() {
-			Buffer b = buffers.get(getBufferIndex(pos));
+			int i = getBufferIndex(pos);
+			if (i >= buffers.size()) i = 0;
+			Buffer b = buffers.get(i);
 			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
 			if (b.error != null) {
 				sp.error(b.error);

@@ -186,7 +186,13 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 	
 	@Override
 	public boolean endReached() {
-		return endReached && chars == null;
+		if (endReached && chars == null) {
+			synchronized (ready) {
+				if (endReached && chars == null && ready.isEmpty())
+					return true;
+			}
+		}
+		return false;
 	}
 	
 	@Override
