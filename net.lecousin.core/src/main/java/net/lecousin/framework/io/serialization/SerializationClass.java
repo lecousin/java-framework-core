@@ -256,8 +256,10 @@ public class SerializationClass {
 				Class<?> returnType = m.getReturnType();
 				if (returnType == null || Void.class.equals(returnType) || void.class.equals(returnType)) continue;
 				Attribute a = getAttributeByOriginalName(name);
-				if (a == null)
+				if (a == null) {
 					a = new Attribute(this, name, new TypeDefinition(m.getGenericReturnType()));
+					attributes.add(a);
+				}
 				if (a.getter == null)
 					a.getter = m;
 			} else if (name.startsWith("is")) {
@@ -268,8 +270,10 @@ public class SerializationClass {
 				if (returnType == null || Void.class.equals(returnType) || void.class.equals(returnType)) continue;
 				if (!returnType.equals(boolean.class) && !returnType.equals(Boolean.class)) continue;
 				Attribute a = getAttributeByOriginalName(name);
-				if (a == null)
+				if (a == null) {
 					a = new Attribute(this, name, new TypeDefinition(returnType));
+					attributes.add(a);
+				}
 				if (a.getter == null)
 					a.getter = m;
 			} else if (name.startsWith("set")) {

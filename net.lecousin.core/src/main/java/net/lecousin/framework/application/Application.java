@@ -48,7 +48,7 @@ import net.lecousin.framework.util.Pair;
  */
 public final class Application {
 	
-	public static final String PROPERTY_LOGGING_CONFIGURATION_FILE = "net.lecousin.logging.ConfigurationFile";
+	public static final String PROPERTY_LOGGING_CONFIGURATION_URL = "net.lecousin.logging.configuration.url";
 	public static final String PROPERTY_INSTALLATION_DIRECTORY = "net.lecousin.application.install.directory";
 	public static final String PROPERTY_CONFIG_DIRECTORY = "net.lecousin.application.config.directory";
 	public static final String PROPERTY_LOG_DIRECTORY = "net.lecousin.application.log.directory";
@@ -74,7 +74,6 @@ public final class Application {
 		this.threadFactory = threadFactory;
 		this.librariesManager = librariesManager;
 		console = new Console(this);
-		toCloseSync.add(console);
 		if (debugMode) TaskMonitoring.checkLocksOfBlockingTasks = true;
 	}
 	
@@ -365,6 +364,8 @@ public final class Application {
 				break;
 			}
 		} while (true);
+		
+		console.close();
 
 		// in a multi-app environment, we may need to close remaining application's threads here
 		

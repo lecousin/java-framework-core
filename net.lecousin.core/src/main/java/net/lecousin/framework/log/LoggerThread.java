@@ -1,17 +1,18 @@
 package net.lecousin.framework.log;
 
-import java.io.Closeable;
-
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.collections.TurnArray;
+import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.appenders.Appender;
+import net.lecousin.framework.util.AsyncCloseable;
 import net.lecousin.framework.util.Pair;
 
 class LoggerThread {
 
-	@SuppressWarnings("resource")
 	LoggerThread(Application app) {
+		SynchronizationPoint<Exception> stopped = new SynchronizationPoint<>();
 		thread = app.getThreadFactory().newThread(new Runnable() {
 			@Override
 			public void run() {
@@ -32,18 +33,21 @@ class LoggerThread {
 						app.getConsole().err(t);
 					}
 				}
+				System.out.println("Logger Thread stopped.");
+				stopped.unblock();
 			}
 		});
 		thread.setName("Logger for " + app.getGroupId() + "." + app.getArtifactId() + " " + app.getVersion().toString());
 		if (app.isStopping()) return;
 		thread.start();
-		app.toClose(new Closeable() {
+		app.toClose(new AsyncCloseable<Exception>() {
 			@Override
-			public void close() {
+			public ISynchronizationPoint<Exception> closeAsync() {
 				stop = true;
 				synchronized (logs) {
 					logs.notify();
 				}
+				return stopped;
 			}
 		});
 	}

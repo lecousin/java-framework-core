@@ -6,6 +6,7 @@ import java.io.PrintStream;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.collections.TurnArray;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 
 /**
  * This class handles printing to the console in a separate thread,
@@ -76,6 +77,8 @@ public class Console implements Closeable {
 					Console.this.err.println(stderr.removeFirst());
 				while (!stdout.isEmpty())
 					Console.this.out.println(stdout.removeFirst());
+				System.out.println("Console stopped for " + app.getGroupId() + '/' + app.getArtifactId());
+				stopped.unblock();
 			}
 		});
 		thread.setName("Console for " + app.getGroupId() + "." + app.getArtifactId() + " " + app.getVersion().toString());
@@ -86,6 +89,7 @@ public class Console implements Closeable {
 	private TurnArray<Object> stderr = new TurnArray<>(50);
 	private Thread thread;
 	private boolean stop = false;
+	private SynchronizationPoint<Exception> stopped = new SynchronizationPoint<>();
 	private PrintStream out;
 	private PrintStream err;
 	
@@ -94,6 +98,7 @@ public class Console implements Closeable {
 	public void close() {
 		stop = true;
 		synchronized (this) { this.notify(); }
+		stopped.block(0);
 	}
 	
 }

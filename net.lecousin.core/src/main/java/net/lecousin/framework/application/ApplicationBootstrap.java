@@ -26,7 +26,8 @@ public interface ApplicationBootstrap {
 		t.startOn(start, false);
 		start.block(0);
 		t.getOutput().block(0);
-		t.getResult().block(0);
+		if (t.getOutput().isSuccessful())
+			t.getResult().block(0);
 		LCCore.stop(true);
 	}
 	

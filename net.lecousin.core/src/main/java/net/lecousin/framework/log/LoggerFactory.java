@@ -1,11 +1,10 @@
 package net.lecousin.framework.log;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -16,6 +15,7 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.appenders.Appender;
@@ -39,9 +39,9 @@ public class LoggerFactory {
 		defaultLogger = new Logger(this, "default", defaultAppender, null);
 		loggers.put("default", defaultLogger);
 		
-		String filename = app.getProperty(Application.PROPERTY_LOGGING_CONFIGURATION_FILE);
-		if (filename != null)
-			configure(filename);
+		String url = app.getProperty(Application.PROPERTY_LOGGING_CONFIGURATION_URL);
+		if (url != null)
+			configure(url);
 	}
 	
 	public Application getApplication() {
@@ -89,16 +89,14 @@ public class LoggerFactory {
 	}
 	
 	/** Load configuration from a file. */
-	public void configure(String filename) {
-		application.getConsole().out("Configuring logging from " + filename);
+	public void configure(String url) {
+		application.getConsole().out("Configuring logging " + url);
 		InputStream input = null;
 		try {
-			input = application.getClassLoader().getResourceAsStream(filename);
-			if (input == null)
-				input = new FileInputStream(new File(filename));
+			input = new URL(url).openStream();
 			configure(input);
 		} catch (Exception e) {
-			application.getConsole().err("Error configuring logging system from file " + filename + ": " + e.getMessage());
+			application.getConsole().err("Error configuring logging system from " + url + ": " + e.getMessage());
 			application.getConsole().err(e);
 		} finally {
 			if (input != null) try { input.close(); } catch (Throwable t) { /* ignore */ }
