@@ -22,7 +22,9 @@ public class BufferedToInputStream extends InputStream {
 	
 	@Override
 	public int read(byte[] b, int off, int len) throws IOException {
-		return io.read(b, off, len);
+		int nb = io.read(b, off, len);
+		if (nb == 0 && len > 0) return -1;
+		return nb;
 	}
 	
 	@Override

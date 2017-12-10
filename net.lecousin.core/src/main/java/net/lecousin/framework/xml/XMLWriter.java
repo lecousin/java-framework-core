@@ -60,19 +60,23 @@ public class XMLWriter {
 	}
 	
 	public static String toAttribute(CharSequence s) {
-		return s.toString()
-			.replace("&", "&amp;")
-			.replace("\"", "&quot;")
-			.replace("'", "&apos;")
-			.replace("<", "&lt;")
-			.replace(">", "&gt;")
-			.replace("\n", "&#10;")
-			.replace("\r", "&#13;")
-			.replace("\t", "&#9;");
+		StringBuilder str = new StringBuilder();
+		int len = s.length();
+		for (int i = 0; i < len; ++i) {
+			char c = s.charAt(i);
+			if (c == '&') str.append("&amp;");
+			else if (c == '"') str.append("&quot;");
+			else if (c == '\'') str.append("&apos;");
+			else if (c == '>') str.append("&gt;");
+			else if (c == '<') str.append("&lt;");
+			else if (c < 32) str.append("&#").append((int)c).append(';');
+			else str.append(c);
+		}
+		return str.toString();
 	}
-	
+
 	public static final char[] XML_DECLARATION_START = new char[] {
-		'<', '?', 'x', 'm', 'l', ' ', 'v', 'e', 'r', 's', 'i', 'o', 'n', '=', '"', '1', '.', '0', '"',
+		'<', '?', 'x', 'm', 'l', ' ', 'v', 'e', 'r', 's', 'i', 'o', 'n', '=', '"', '1', '.', '1', '"',
 		' ', 'e', 'n', 'c', 'o', 'd', 'i', 'n', 'g', '=', '"'
 	};
 	public static final char[] XML_DECLARATION_END = new char[] { '"', '?', '>', '\n' };

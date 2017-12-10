@@ -66,7 +66,7 @@ public class IOAsInputStream extends InputStream {
 	public int read(byte[] b, int off, int len) throws IOException {
 		ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
 		int nb = io.readSync(buffer);
-		if (nb == 0) return -1;
+		if (nb == 0 && len > 0) return -1;
 		return nb;
 	}
 	

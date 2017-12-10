@@ -5,6 +5,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 import net.lecousin.framework.collections.ListOfArrays;
 
@@ -150,6 +152,15 @@ public final class ClassUtil {
 			if (m.getName().equals(name) && m.getParameterTypes().length == nbParameters)
 				return m;
 		return null;
+	}
+
+	/** Search for a method with a name and a specific number of parameters. */
+	public static List<Method> getMethods(Class<?> cl, String name, int nbParameters) {
+		List<Method> list = new LinkedList<>();
+		for (Method m : cl.getMethods())
+			if (m.getName().equals(name) && m.getParameterTypes().length == nbParameters)
+				list.add(m);
+		return list;
 	}
 	
 	/** Set a value to a field, using a path. The path is a list of fields separated by dot. */
