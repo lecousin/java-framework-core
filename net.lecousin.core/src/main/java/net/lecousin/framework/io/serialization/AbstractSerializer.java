@@ -79,6 +79,12 @@ public abstract class AbstractSerializer implements Serializer {
 			value = rule.convertSerializationValue(value, typeDef, context);
 
 		Class<?> type = value.getClass();
+		
+		if (type.isArray()) {
+			Class<?> elementType = type.getComponentType();
+			CollectionContext ctx = new CollectionContext(context, value, typeDef, new TypeDefinition(elementType));
+			return serializeCollectionValue(ctx, path, rules);
+		}
 				
 		if (boolean.class.equals(type) || Boolean.class.equals(type))
 			return serializeBooleanValue(((Boolean)value).booleanValue());
@@ -107,7 +113,7 @@ public abstract class AbstractSerializer implements Serializer {
 				elementType = null;
 			else
 				elementType = typeDef.getParameters().get(0);
-			CollectionContext ctx = new CollectionContext(context, (Collection<?>)value, elementType);
+			CollectionContext ctx = new CollectionContext(context, value, typeDef, elementType);
 			return serializeCollectionValue(ctx, path, rules);
 		}
 
@@ -247,6 +253,12 @@ public abstract class AbstractSerializer implements Serializer {
 		
 		Class<?> type = value.getClass();
 		
+		if (type.isArray()) {
+			Class<?> elementType = type.getComponentType();
+			CollectionContext ctx = new CollectionContext(context, value, new TypeDefinition(type), new TypeDefinition(elementType));
+			return serializeCollectionAttribute(ctx, path, rules);
+		}
+		
 		if (boolean.class.equals(type) || Boolean.class.equals(type))
 			return serializeBooleanAttribute(context, ((Boolean)value).booleanValue(), path);
 		
@@ -274,7 +286,7 @@ public abstract class AbstractSerializer implements Serializer {
 				elementType = null;
 			else
 				elementType = context.getAttribute().getType().getParameters().get(0);
-			CollectionContext ctx = new CollectionContext(context, (Collection<?>)value, elementType);
+			CollectionContext ctx = new CollectionContext(context, value, new TypeDefinition(type), elementType);
 			return serializeCollectionAttribute(ctx, path, rules);
 		}
 
@@ -303,11 +315,11 @@ public abstract class AbstractSerializer implements Serializer {
 		ISynchronizationPoint<? extends Exception> start = startCollectionValue(context, path, rules);
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
 		if (start.isUnblocked()) {
-			serializeCollectionElement(context, context.getCollection().iterator(), 0, path, rules, result);
+			serializeCollectionElement(context, context.getIterator(), 0, path, rules, result);
 			return result;
 		}
 		start.listenAsyncSP(new SerializationTask(() -> {
-			serializeCollectionElement(context, context.getCollection().iterator(), 0, path, rules, result);
+			serializeCollectionElement(context, context.getIterator(), 0, path, rules, result);
 		}), result);
 		return result;
 	}

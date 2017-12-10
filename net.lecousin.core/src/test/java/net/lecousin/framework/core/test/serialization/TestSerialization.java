@@ -1,5 +1,6 @@
 package net.lecousin.framework.core.test.serialization;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
@@ -209,6 +210,37 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(t, TestLists.class);
 	}
 	
+	public static class TestArrays {
+		public boolean[] b1;
+		public Boolean[] b2;
+		public Integer[] i;
+		public long[] l;
+		public Float[] f;
+		public double[] d;
+		public String[] strings;
+		public char[] chars;
+		public byte[] bytes;
+		public TestBooleans[] testBooleans;
+		public TestNumbers[] testNumbers;
+	}
+	
+	@Test
+	public void testArrays() throws Exception {
+		TestArrays t = new TestArrays();
+		t.b1 = new boolean[] { true, true, false, true, false, false };
+		t.b2 = new Boolean[] { Boolean.FALSE, Boolean.TRUE };
+		t.i = new Integer[] { Integer.valueOf(55), Integer.valueOf(-123), Integer.valueOf(12345) };
+		t.l = new long[] { 1111, -2222, 345, -678 };
+		t.f = new Float[] { Float.valueOf(-0.01234f), Float.valueOf(9.87654f) };
+		t.d = new double[] { 11.223344d, -99.887766 };
+		t.strings = new String[] { "Hello", "World", "!", "Salut\ntoi" };
+		t.chars = new char[] { 'Q', '&', '<', '=', '"', '\n', '\'', ']' };
+		t.bytes = new byte[] { 1, 2, 3, 4, 5, 6 };
+		t.testBooleans = new TestBooleans[] { new TestBooleans(), createBooleans() };
+		t.testNumbers = new TestNumbers[] { createNumbers(), new TestNumbers() };
+		test(t, TestArrays.class);
+	}
+	
 	public static class TestWithTransient {
 		public boolean b1 = true;
 		public transient boolean b2 = false;
@@ -285,6 +317,10 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 			return;
 		}
 		Class<?> type = expected.getClass();
+		if (type.isArray()) {
+			checkArray(expected, found);
+			return;
+		}
 		if (type.isPrimitive() ||
 			Number.class.isAssignableFrom(type) ||
 			CharSequence.class.isAssignableFrom(type) ||
@@ -316,6 +352,13 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		Iterator<?> it2 = l2.iterator();
 		while (it1.hasNext())
 			checkValue(it1.next(), it2.next());
+	}
+	
+	protected void checkArray(Object expected, Object found) throws Exception {
+		Assert.assertEquals(Array.getLength(expected), Array.getLength(found));
+		int l = Array.getLength(expected);
+		for (int i = 0; i < l; ++i)
+			checkValue(Array.get(expected, i), Array.get(found, i));
 	}
 	
 	protected void print(MemoryIO io, Object o) throws Exception {

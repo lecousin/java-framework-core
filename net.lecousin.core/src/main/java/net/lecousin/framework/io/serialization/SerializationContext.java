@@ -1,7 +1,9 @@
 package net.lecousin.framework.io.serialization;
 
 import java.util.Collection;
+import java.util.Iterator;
 
+import net.lecousin.framework.collections.ArrayIterator;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 
 public abstract class SerializationContext {
@@ -71,17 +73,30 @@ public abstract class SerializationContext {
 	
 	public static class CollectionContext extends SerializationContext {
 		
-		public CollectionContext(SerializationContext parent, Collection<?> col, TypeDefinition elementType) {
+		public CollectionContext(SerializationContext parent, Object col, TypeDefinition colType, TypeDefinition elementType) {
 			super(parent);
 			this.col = col;
+			this.colType = colType;
 			this.elementType = elementType;
 		}
 		
-		private Collection<?> col;
+		private Object col;
+		private TypeDefinition colType;
 		private TypeDefinition elementType;
 		
-		public Collection<?> getCollection() {
+		public Object getCollection() {
 			return col;
+		}
+		
+		@SuppressWarnings("rawtypes")
+		public Iterator<?> getIterator() {
+			if (Collection.class.isAssignableFrom(col.getClass()))
+				return ((Collection)col).iterator();
+			return new ArrayIterator.Generic(col);
+		}
+		
+		public TypeDefinition getCollectionType() {
+			return colType;
 		}
 		
 		public TypeDefinition getElementType() {

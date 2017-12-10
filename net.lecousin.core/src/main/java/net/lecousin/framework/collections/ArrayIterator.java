@@ -1,5 +1,6 @@
 package net.lecousin.framework.collections;
 
+import java.lang.reflect.Array;
 import java.util.NoSuchElementException;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -19,7 +20,12 @@ public class ArrayIterator<T> implements java.util.Iterator<T> {
 		this.array = array;
 		this.max = max;
 	}
-	
+
+	public ArrayIterator(T[] array) {
+		this.array = array;
+		this.max = array.length;
+	}
+
 	private T[] array;
 	private int max;
 	private int cursor = 0;
@@ -31,6 +37,29 @@ public class ArrayIterator<T> implements java.util.Iterator<T> {
 	public T next() {
 		if (cursor >= max) throw new NoSuchElementException();
 		return array[cursor++];
+	}
+	
+	public static class Generic implements java.util.Iterator {
+
+		public Generic(Object array) {
+			this.array = array;
+		}
+		
+		private Object array;
+		private int pos = 0;
+		
+		@Override
+		public boolean hasNext() {
+			if (array == null) return false;
+			if (pos >= Array.getLength(array)) return false;
+			return true;
+		}
+		
+		@Override
+		public Object next() {
+			return Array.get(array, pos++);
+		}
+		
 	}
 
 }

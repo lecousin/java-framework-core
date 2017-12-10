@@ -59,7 +59,7 @@ public class XMLWriter {
 		return null;
 	}
 	
-	public static String toAttribute(CharSequence s) {
+	public static String escape(CharSequence s) {
 		StringBuilder str = new StringBuilder();
 		int len = s.length();
 		for (int i = 0; i < len; ++i) {
@@ -119,7 +119,7 @@ public class XMLWriter {
 					writer.write(ns.getValue());
 				}
 				writer.write(ATTRIBUTE_EQUALS);
-				writer.write(toAttribute(ns.getKey()));
+				writer.write(escape(ns.getKey()));
 				result = writer.write('"');
 			}
 		}
@@ -156,7 +156,7 @@ public class XMLWriter {
 		writer.write(' ');
 		writer.write(name);
 		writer.write(ATTRIBUTE_EQUALS);
-		writer.write(toAttribute(value));
+		writer.write(escape(value));
 		return writer.write('"');
 	}
 	
@@ -232,7 +232,7 @@ public class XMLWriter {
 			ctx.open = false;
 			writer.write('>');
 		}
-		return writer.write(text);
+		return writer.write(escape(text));
 	}
 	
 	public ISynchronizationPoint<IOException> addCData(CharSequence data) {

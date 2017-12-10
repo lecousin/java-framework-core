@@ -221,7 +221,7 @@ public class XMLSerializer extends AbstractSerializer {
 	@Override
 	protected ISynchronizationPoint<? extends Exception> serializeCollectionAttribute(CollectionContext context, String path, List<SerializationRule> rules) {
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
-		serializeCollectionAttributeElement(context, context.getCollection().iterator(), 0, path + '.' + ((AttributeContext)context.getParent()).getAttribute().getName(), rules, result);
+		serializeCollectionAttributeElement(context, context.getIterator(), 0, path + '.' + ((AttributeContext)context.getParent()).getAttribute().getName(), rules, result);
 		return result;
 	}
 	
