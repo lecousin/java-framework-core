@@ -19,6 +19,7 @@ public @interface TypeInstantiation {
 	@SuppressWarnings("rawtypes")
 	public Class<? extends Provider> factory();
 	
+	/** Convert an annotation into a rule. */
 	public static class ToRule implements TypeAnnotationToRule<TypeInstantiation> {
 		
 		@SuppressWarnings({ "rawtypes", "unchecked" })

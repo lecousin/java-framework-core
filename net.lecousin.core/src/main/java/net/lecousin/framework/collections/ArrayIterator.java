@@ -13,7 +13,7 @@ public class ArrayIterator<T> implements java.util.Iterator<T> {
 	
 	/** Creates an iterator from an array.
 	 * @param array the array
-	 * @param max number of elements in the array
+	 * @param max number of elements in the array to iterate on
 	 */
 	@SuppressFBWarnings("EI_EXPOSE_REP2")
 	public ArrayIterator(T[] array, int max) {
@@ -21,6 +21,7 @@ public class ArrayIterator<T> implements java.util.Iterator<T> {
 		this.max = max;
 	}
 
+	/** Constructor. */
 	public ArrayIterator(T[] array) {
 		this.array = array;
 		this.max = array.length;
@@ -39,8 +40,13 @@ public class ArrayIterator<T> implements java.util.Iterator<T> {
 		return array[cursor++];
 	}
 	
+	/**
+	 * Iterate on an array of any type by using the reflection methods (java.lang.reflect.Array).
+	 */
+	@SuppressWarnings("rawtypes")
 	public static class Generic implements java.util.Iterator {
 
+		/** Constructor. */
 		public Generic(Object array) {
 			this.array = array;
 		}

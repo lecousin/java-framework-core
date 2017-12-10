@@ -2,10 +2,10 @@ package net.lecousin.framework.io.serialization.rules;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationClass;
+import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.SerializationContextPattern.OnClassAttribute;
-import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.util.Factory;
 
 /** Base class specifying a rule on how to instantiate an attribute. */

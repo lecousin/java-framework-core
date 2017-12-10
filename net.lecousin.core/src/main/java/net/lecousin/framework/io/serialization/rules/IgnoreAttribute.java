@@ -1,9 +1,9 @@
 package net.lecousin.framework.io.serialization.rules;
 
 import net.lecousin.framework.io.serialization.SerializationClass;
+import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContextPattern;
-import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 
 /**
  * This rule ignore a specific attribute or all attributes in a class.

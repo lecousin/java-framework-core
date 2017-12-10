@@ -8,8 +8,12 @@ import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.util.Provider;
 
+/** A factory to instantiate a specific type during deserialization.
+ * @param <T> type
+ */
 public class TypeFactory<T> implements SerializationRule {
 
+	/** Constructor. */
 	public TypeFactory(Class<T> type, Provider<T> factory) {
 		this.type = type;
 		this.factory = factory;

@@ -101,11 +101,6 @@ public class MemoryIO extends AbstractIO
 	}
 	
 	@Override
-	public int readAsync() {
-		return read();
-	}
-	
-	@Override
 	public int readFully(byte[] buffer) {
 		if (pos == size) return 0;
 		int index = pos / bufferSize;
@@ -182,6 +177,11 @@ public class MemoryIO extends AbstractIO
 		} while (true);
 	}
 	
+	@Override
+	public int readAsync() {
+		return read();
+	}
+
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		return IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput();

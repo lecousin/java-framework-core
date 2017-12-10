@@ -10,10 +10,17 @@ import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.util.Pair;
 
+/** Convert an annotation on an attribute into a SerializationRule on this attribute.
+ * @param <TAnnotation> type of annotation
+ */
 public interface AttributeAnnotationToRuleOnAttribute<TAnnotation extends Annotation> {
 
+	/** Create a rule from an annotation. */
 	SerializationRule createRule(TAnnotation annotation, Attribute attribute);
 	
+	/** Search for annotations on the given attributes, and try to convert them into
+	 * serialization rules.
+	 */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static List<SerializationRule> addRules(Attribute attr, boolean onGet, List<SerializationRule> rules) {
 		List<SerializationRule> newRules = new LinkedList<>();
@@ -54,6 +61,10 @@ public interface AttributeAnnotationToRuleOnAttribute<TAnnotation extends Annota
 		return newList;
 	}
 	
+	/** Search for implementations to convert the given annotation into a rule.
+	 * It looks first on the annotation class if there is an inner class implementing AttributeAnnotationToRuleOnAttribute.
+	 * If none is found, it looks into the registry.
+	 */
 	public static List<AttributeAnnotationToRuleOnAttribute<?>> getAnnotationToRules(Annotation a) {
 		LinkedList<AttributeAnnotationToRuleOnAttribute<?>> list = new LinkedList<>();
 		for (Class<?> c : a.annotationType().getDeclaredClasses()) {
@@ -71,10 +82,12 @@ public interface AttributeAnnotationToRuleOnAttribute<TAnnotation extends Annota
 		return list;
 	}
 	
+	/** Registry of converters between annotations and serialization rules. */
 	public static class Registry {
 
 		private static List<Pair<Class<? extends Annotation>, AttributeAnnotationToRuleOnAttribute<?>>> registry = new ArrayList<>();
 
+		/** Register a converter. */
 		public static <T extends Annotation> void register(Class<T> annotationType, AttributeAnnotationToRuleOnAttribute<T> toRule) {
 			registry.add(new Pair<>(annotationType, toRule));
 		}

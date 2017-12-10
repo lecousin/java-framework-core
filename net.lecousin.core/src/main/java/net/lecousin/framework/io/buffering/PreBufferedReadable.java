@@ -351,6 +351,26 @@ public class PreBufferedReadable extends IO.AbstractIO implements IO.Readable.Bu
 		moveNextBuffer(true);
 		return nb;
 	}
+	
+	@Override
+	public int readAsync() throws IOException {
+		synchronized (this) {
+			if (error != null) throw error;
+			if (current != null) {
+				if (!current.hasRemaining() && endReached)
+					return -1;
+			} else {
+				if (endReached) return -1;
+				if (dataReady == null) dataReady = new SynchronizationPoint<>();
+				if (!dataReady.isUnblocked())
+					return -2;
+			}
+		}
+		int res = current.get() & 0xFF;
+		if (!current.hasRemaining())
+			moveNextBuffer(true);
+		return res;
+	}
 
 	@Override
 	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
@@ -619,26 +639,6 @@ public class PreBufferedReadable extends IO.AbstractIO implements IO.Readable.Bu
 		current.get(buffer, offset, len);
 		moveNextBuffer(true);
 		return len;
-	}
-	
-	@Override
-	public int readAsync() throws IOException {
-		synchronized (this) {
-			if (error != null) throw error;
-			if (current != null) {
-				if (!current.hasRemaining() && endReached)
-					return -1;
-			} else {
-				if (endReached) return -1;
-				if (dataReady == null) dataReady = new SynchronizationPoint<>();
-				if (!dataReady.isUnblocked())
-					return -2;
-			}
-		}
-		int res = current.get() & 0xFF;
-		if (!current.hasRemaining())
-			moveNextBuffer(true);
-		return res;
 	}
 	
 	@Override

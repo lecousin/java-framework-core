@@ -9,10 +9,17 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.util.Pair;
 
+/** Convert an annotation into a SerializationRule.
+ * @param <TAnnotation> type of annotation
+ */
 public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 
+	/** Create a rule from an annotation. */
 	SerializationRule createRule(TAnnotation annotation, Class<?> type);
 	
+	/** Search for annotations on the given type, and try to convert them into
+	 * serialization rules.
+	 */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static List<SerializationRule> addRules(Class<?> clazz, List<SerializationRule> rules) {
 		List<SerializationRule> newRules = new LinkedList<>();
@@ -52,6 +59,10 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 		return newList;
 	}
 	
+	/** Search for implementations to convert the given annotation into a rule.
+	 * It looks first on the annotation class if there is an inner class implementing AttributeAnnotationToRuleOnAttribute.
+	 * If none is found, it looks into the registry.
+	 */
 	public static List<TypeAnnotationToRule<?>> getAnnotationToRules(Annotation a) {
 		LinkedList<TypeAnnotationToRule<?>> list = new LinkedList<>();
 		for (Class<?> c : a.annotationType().getDeclaredClasses()) {
@@ -69,10 +80,12 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 		return list;
 	}
 	
+	/** Registry of converters between annotations and serialization rules. */
 	public static class Registry {
 
 		private static List<Pair<Class<? extends Annotation>, TypeAnnotationToRule<?>>> registry = new ArrayList<>();
 
+		/** Register a converter. */
 		public static <T extends Annotation> void register(Class<T> annotationType, TypeAnnotationToRule<T> toRule) {
 			registry.add(new Pair<>(annotationType, toRule));
 		}

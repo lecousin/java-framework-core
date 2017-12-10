@@ -99,6 +99,11 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 			skipSync(pos - this.pos);
 		return readSync(buffer);
 	}
+	
+	@Override
+	public int readAsync() {
+		return read();
+	}
 
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
@@ -247,11 +252,6 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 	@Override
 	public int read(byte[] buffer, int offset, int len) {
 		return readSync(ByteBuffer.wrap(buffer, offset, len));
-	}
-	
-	@Override
-	public int readAsync() {
-		return read();
 	}
 
 	@Override

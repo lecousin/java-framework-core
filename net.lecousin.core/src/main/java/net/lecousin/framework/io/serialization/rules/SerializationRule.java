@@ -19,10 +19,16 @@ public interface SerializationRule {
 		return value;
 	}
 	
+	/** Can be used to change a type during deserialization, in a similar way as the method
+	 * convertSerializationValue during serialization.
+	 */
 	default TypeDefinition getDeserializationType(TypeDefinition type, SerializationContext context) {
 		return type;
 	}
 	
+	/** Can be used to change the deserialization, in a similar way as the method
+	 * convertSerializationValue during serialization.
+	 */
 	default Object getDeserializationValue(Object value, TypeDefinition type, SerializationContext context) throws Exception {
 		return value;
 	}

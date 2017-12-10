@@ -220,10 +220,12 @@ public class UnprotectedStringBuffer implements IString {
 		return this;
 	}
 	
+	/** Add the given string at the beginning. */
 	public UnprotectedStringBuffer addFirst(CharSequence s) {
 		return addFirst(new UnprotectedString(s));
 	}
 	
+	/** Add the given string at the beginning. */
 	public UnprotectedStringBuffer addFirst(UnprotectedString s) {
 		if (strings == null) {
 			strings = new UnprotectedString[] { s };
@@ -244,6 +246,7 @@ public class UnprotectedStringBuffer implements IString {
 		return this;
 	}
 	
+	/** Add the given string at the beginning. */
 	public UnprotectedStringBuffer addFirst(char c) {
 		return addFirst(new UnprotectedString(c));
 	}
@@ -491,6 +494,7 @@ public class UnprotectedStringBuffer implements IString {
 		lastUsed = strings.length - 1;
 	}
 	
+	/** Replace all occurrences of search into replace. */
 	public UnprotectedStringBuffer replace(CharSequence search, UnprotectedString replace) {
 		int pos = 0;
 		while ((pos = indexOf(search, pos)) >= 0) {
@@ -500,6 +504,7 @@ public class UnprotectedStringBuffer implements IString {
 		return this;
 	}
 	
+	/** Replace all occurrences of search into replace. */
 	public UnprotectedStringBuffer replace(CharSequence search, CharSequence replace) {
 		return replace(search, new UnprotectedString(replace));
 	}
@@ -512,10 +517,12 @@ public class UnprotectedStringBuffer implements IString {
 		return this;
 	}
 	
+	/** Replace all occurrences of oldChar into replaceValue. */
 	public UnprotectedStringBuffer replace(char oldChar, CharSequence replaceValue) {
 		return replace(oldChar, new UnprotectedString(replaceValue));
 	}
 
+	/** Replace all occurrences of oldChar into replaceValue. */
 	public UnprotectedStringBuffer replace(char oldChar, UnprotectedString replaceValue) {
 		if (replaceValue.length() == 1)
 			return replace(oldChar, replaceValue.charAt(0));
@@ -529,6 +536,130 @@ public class UnprotectedStringBuffer implements IString {
 		return this;
 	}
 	
+	/** Remove characters from start to end (inclusive), and replace them by the given single character. */
+	public void replace(int start, int end, char c) {
+		replace(start, end, new char[] { c });
+	}
+	
+	/** Remove characters from start to end (inclusive), and replace them by the given characters. */
+	public void replace(int start, int end, char[] chars) {
+		replace(start, end, new UnprotectedString(chars));
+	}
+	
+	/** Remove characters from start to end (inclusive), and replace them by the given string. */
+	public void replace(int start, int end, UnprotectedString s) {
+		if (strings == null) return;
+		if (end < start) return;
+		int firstBufferIndex = 0;
+		int firstBufferPos = 0;
+		int firstBufferLen;
+		do {
+			firstBufferLen = strings[firstBufferIndex].length();
+			if (start < firstBufferPos + firstBufferLen) break;
+			firstBufferPos += firstBufferLen;
+			if (++firstBufferIndex > lastUsed) return;
+		} while (true);
+		int lastBufferIndex = firstBufferIndex;
+		int lastBufferPos = firstBufferPos;
+		int lastBufferLen = firstBufferLen;
+		while (end >= lastBufferPos + lastBufferLen) {
+			if (++lastBufferIndex > lastUsed) {
+				lastBufferIndex--;
+				end = lastBufferPos + lastBufferLen - 1;
+				break;
+			}
+			lastBufferPos += lastBufferLen;
+			lastBufferLen = strings[lastBufferIndex].length();
+		}
+		replaceStrings(firstBufferIndex, lastBufferIndex,
+			// remaining part on the fist buffer
+			start == firstBufferPos ? null : strings[firstBufferIndex].substring(0, start - firstBufferPos),
+			// remaining part of the last buffer
+			end == lastBufferPos + lastBufferLen - 1 ? null : strings[lastBufferIndex].substring(end - lastBufferPos + 1),
+			// to insert
+			1,
+			s
+		);
+	}
+
+	/** Remove characters from start to end (inclusive), and replace them by the given string. */
+	public void replace(int start, int end, UnprotectedStringBuffer s) {
+		if (strings == null) return;
+		if (strings == null) return;
+		if (end < start) return;
+		int firstBufferIndex = 0;
+		int firstBufferPos = 0;
+		int firstBufferLen;
+		do {
+			firstBufferLen = strings[firstBufferIndex].length();
+			if (start < firstBufferPos + firstBufferLen) break;
+			firstBufferPos += firstBufferLen;
+			if (++firstBufferIndex > lastUsed) return;
+		} while (true);
+		int lastBufferIndex = firstBufferIndex;
+		int lastBufferPos = firstBufferPos;
+		int lastBufferLen = firstBufferLen;
+		while (end >= lastBufferPos + lastBufferLen) {
+			if (++lastBufferIndex > lastUsed) {
+				lastBufferIndex--;
+				end = lastBufferPos + lastBufferLen - 1;
+				break;
+			}
+			lastBufferPos += lastBufferLen;
+			lastBufferLen = strings[lastBufferIndex].length();
+		}
+		replaceStrings(firstBufferIndex, lastBufferIndex,
+			// remaining part on the fist buffer
+			start == firstBufferPos ? null : strings[firstBufferIndex].substring(0, start - firstBufferPos),
+			// remaining part of the last buffer
+			end == lastBufferPos + lastBufferLen - 1 ? null : strings[lastBufferIndex].substring(end - lastBufferPos + 1),
+			// to insert
+			s.lastUsed + 1,
+			s.strings
+		);
+	}
+	
+	private void replaceStrings(int startIndex, int endIndex,
+		UnprotectedString first, UnprotectedString last, int nbMiddle, UnprotectedString... middle) {
+		int nb = startIndex + (lastUsed - endIndex) + (first != null ? 1 : 0) + (last != null ? 1 : 0) + nbMiddle;
+		if (nb <= strings.length) {
+			int pos;
+			// put the strings after endIndex
+			if (endIndex < lastUsed) {
+				System.arraycopy(strings, endIndex + 1, strings, nb - (lastUsed - endIndex), lastUsed - endIndex);
+				pos = nb - (lastUsed - endIndex) - 1;
+			} else
+				pos = nb - 1;
+			// put the last string
+			if (last != null)
+				strings[pos--] = last;
+			for (int i = nbMiddle - 1; i >= 0; --i)
+				strings[pos--] = middle[i];
+			if (first != null)
+				strings[pos] = first;
+			for (int i = nb; i <= lastUsed; ++i)
+				strings[i] = null;
+			lastUsed = nb - 1;
+			return;
+		}
+		UnprotectedString[] list = new UnprotectedString[nb + 3];
+		int pos = 0;
+		if (startIndex > 0) {
+			System.arraycopy(strings, 0, list, 0, startIndex);
+			pos = startIndex;
+		}
+		if (first != null)
+			list[pos++] = first;
+		for (int i = 0; i < nbMiddle; ++i)
+			list[pos++] = middle[i];
+		if (last != null)
+			list[pos++] = last;
+		if (endIndex < lastUsed)
+			System.arraycopy(strings, endIndex + 1, list, pos, lastUsed - endIndex);
+		strings = list;
+		lastUsed = nb - 1;
+	}
+
 	/** Search for a starting string and a ending string, and replace them including the content with new content.
 	 * This may be typically used to replace variables such as ${xxx} with their values.
 	 */
@@ -686,125 +817,6 @@ public class UnprotectedStringBuffer implements IString {
 			i--;
 		}
 		return true;
-	}
-	
-	public void replace(int start, int end, char c) {
-		replace(start, end, new char[] { c });
-	}
-	
-	public void replace(int start, int end, char[] chars) {
-		replace(start, end, new UnprotectedString(chars));
-	}
-	
-	public void replace(int start, int end, UnprotectedString s) {
-		if (strings == null) return;
-		if (end < start) return;
-		int firstBufferIndex = 0;
-		int firstBufferPos = 0;
-		int firstBufferLen;
-		do {
-			firstBufferLen = strings[firstBufferIndex].length();
-			if (start < firstBufferPos + firstBufferLen) break;
-			firstBufferPos += firstBufferLen;
-			if (++firstBufferIndex > lastUsed) return;
-		} while (true);
-		int lastBufferIndex = firstBufferIndex;
-		int lastBufferPos = firstBufferPos;
-		int lastBufferLen = firstBufferLen;
-		while (end >= lastBufferPos + lastBufferLen) {
-			if (++lastBufferIndex > lastUsed) {
-				lastBufferIndex--;
-				end = lastBufferPos + lastBufferLen - 1;
-				break;
-			}
-			lastBufferPos += lastBufferLen;
-			lastBufferLen = strings[lastBufferIndex].length();
-		}
-		replaceStrings(firstBufferIndex, lastBufferIndex,
-			// remaining part on the fist buffer
-			start == firstBufferPos ? null : strings[firstBufferIndex].substring(0, start - firstBufferPos),
-			// remaining part of the last buffer
-			end == lastBufferPos + lastBufferLen - 1 ? null : strings[lastBufferIndex].substring(end - lastBufferPos + 1),
-			// to insert
-			1,
-			s
-		);
-	}
-
-	public void replace(int start, int end, UnprotectedStringBuffer s) {
-		if (strings == null) return;
-		if (strings == null) return;
-		if (end < start) return;
-		int firstBufferIndex = 0;
-		int firstBufferPos = 0;
-		int firstBufferLen;
-		do {
-			firstBufferLen = strings[firstBufferIndex].length();
-			if (start < firstBufferPos + firstBufferLen) break;
-			firstBufferPos += firstBufferLen;
-			if (++firstBufferIndex > lastUsed) return;
-		} while (true);
-		int lastBufferIndex = firstBufferIndex;
-		int lastBufferPos = firstBufferPos;
-		int lastBufferLen = firstBufferLen;
-		while (end >= lastBufferPos + lastBufferLen) {
-			if (++lastBufferIndex > lastUsed) {
-				lastBufferIndex--;
-				end = lastBufferPos + lastBufferLen - 1;
-				break;
-			}
-			lastBufferPos += lastBufferLen;
-			lastBufferLen = strings[lastBufferIndex].length();
-		}
-		replaceStrings(firstBufferIndex, lastBufferIndex,
-			// remaining part on the fist buffer
-			start == firstBufferPos ? null : strings[firstBufferIndex].substring(0, start - firstBufferPos),
-			// remaining part of the last buffer
-			end == lastBufferPos + lastBufferLen - 1 ? null : strings[lastBufferIndex].substring(end - lastBufferPos + 1),
-			// to insert
-			s.lastUsed + 1,
-			s.strings
-		);
-	}
-	
-	private void replaceStrings(int startIndex, int endIndex, UnprotectedString first, UnprotectedString last, int nbMiddle, UnprotectedString... middle) {
-		int nb = startIndex + (lastUsed - endIndex) + (first != null ? 1 : 0) + (last != null ? 1 : 0) + nbMiddle;
-		if (nb <= strings.length) {
-			int pos;
-			// put the strings after endIndex
-			if (endIndex < lastUsed) {
-				System.arraycopy(strings, endIndex + 1, strings, nb - (lastUsed - endIndex), lastUsed - endIndex);
-				pos = nb - (lastUsed - endIndex) - 1;
-			} else
-				pos = nb - 1;
-			// put the last string
-			if (last != null)
-				strings[pos--] = last;
-			for (int i = nbMiddle - 1; i >= 0; --i)
-				strings[pos--] = middle[i];
-			if (first != null)
-				strings[pos] = first;
-			for (int i = nb; i <= lastUsed; ++i)
-				strings[i] = null;
-			lastUsed = nb - 1;
-			return;
-		}
-		UnprotectedString[] list = new UnprotectedString[nb + 3];
-		int pos = 0;
-		if (startIndex > 0) {
-			System.arraycopy(strings, 0, list, 0, startIndex);
-			pos = startIndex;
-		}
-		if (first != null)
-			list[pos++] = first;
-		for (int i = 0; i < nbMiddle; ++i)
-			list[pos++] = middle[i];
-		if (last != null)
-			list[pos++] = last;
-		if (endIndex < lastUsed)
-			System.arraycopy(strings, endIndex + 1, list, pos, lastUsed - endIndex);
-		strings = list;
-		lastUsed = nb - 1;
 	}
 	
 	@Override

@@ -8,6 +8,7 @@ import java.util.List;
  */
 public interface IString extends CharSequence {
 
+	/** Set a character. */
 	public void setCharAt(int index, char c) throws IllegalArgumentException;
 	
 	/** Append a character. */
@@ -56,6 +57,7 @@ public interface IString extends CharSequence {
 		return this;
 	}
 
+	/** Replace all occurrences of oldChar into newChar. */
 	public IString replace(char oldChar, char newChar);
 	
 	/** Remove the given number of characters at the end. */
@@ -108,12 +110,14 @@ public interface IString extends CharSequence {
 		return new String(chars);
 	}
 	
+	/** Convert into an array of character arrays. */
 	public default char[][] asCharacters() {
 		char[] chars = new char[length()];
 		fill(chars);
 		return new char[][] { chars };
 	}
 	
+	/** Convert into an array of character buffers. */
 	public CharBuffer[] asCharBuffers();
 	
 }

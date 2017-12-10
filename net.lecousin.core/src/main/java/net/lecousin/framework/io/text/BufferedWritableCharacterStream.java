@@ -231,14 +231,6 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> writeAsync(char c) {
-		buffer[pos++] = c;
-		if (pos == buffer.length)
-			return flushBufferAsync();
-		return new SynchronizationPoint<>(true);
-	}
-	
-	@Override
 	public void writeSync(char[] c, int off, int len) throws IOException {
 		while (len > 0) {
 			int l = len > buffer.length - pos ? buffer.length - pos : len;
@@ -249,6 +241,14 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 			off += l;
 			len -= l;
 		}
+	}
+
+	@Override
+	public ISynchronizationPoint<IOException> writeAsync(char c) {
+		buffer[pos++] = c;
+		if (pos == buffer.length)
+			return flushBufferAsync();
+		return new SynchronizationPoint<>(true);
 	}
 	
 	@Override

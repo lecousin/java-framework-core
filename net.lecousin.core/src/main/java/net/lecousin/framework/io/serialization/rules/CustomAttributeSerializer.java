@@ -3,8 +3,8 @@ package net.lecousin.framework.io.serialization.rules;
 import net.lecousin.framework.io.serialization.CustomSerializer;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
-import net.lecousin.framework.io.serialization.SerializationContextPattern.OnClassAttribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
+import net.lecousin.framework.io.serialization.SerializationContextPattern.OnClassAttribute;
 
 /** Rule to customize the serialization of an attribute. */
 public class CustomAttributeSerializer implements SerializationRule {
@@ -41,8 +41,10 @@ public class CustomAttributeSerializer implements SerializationRule {
 		return r.pattern.isEquivalent(pattern) && r.serializer.getClass().equals(serializer.getClass());
 	}
 	
+	/** Used to override an attribute with a custom serializer. */
 	public static class CustomAttribute extends Attribute {
 		
+		/** Constructor. */
 		public CustomAttribute(Attribute a, CustomSerializer serializer) {
 			super(a);
 			this.serializer = serializer;

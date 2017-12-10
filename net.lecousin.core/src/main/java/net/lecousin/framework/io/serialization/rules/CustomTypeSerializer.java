@@ -19,6 +19,7 @@ import net.lecousin.framework.io.serialization.rules.CustomAttributeSerializer.C
  */
 public class CustomTypeSerializer implements SerializationRule {
 
+	/** Constructor. */
 	public CustomTypeSerializer(CustomSerializer serializer, SerializationContextPattern context) {
 		this.serializer = serializer;
 		this.context = context;
@@ -62,7 +63,7 @@ public class CustomTypeSerializer implements SerializationRule {
 	}
 	
 	@Override
-	public Object getDeserializationValue(Object value, TypeDefinition type, SerializationContext context) throws Exception {
+	public Object getDeserializationValue(Object value, TypeDefinition type, SerializationContext context) {
 		if (!type.equals(serializer.sourceType()))
 			return value;
 		if (this.context != null && !this.context.matches(context))

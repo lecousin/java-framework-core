@@ -10,8 +10,10 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 
+/** Decode Base64 data into a Writable. */
 public class Base64Decoder {
 
+	/** Constructor. */
 	public Base64Decoder(IO.Writable output) {
 		this.output = output;
 	}
@@ -21,6 +23,7 @@ public class Base64Decoder {
 	private byte[] previous = new byte[4];
 	private int nbPrev = 0;
 	
+	/** Start a new Task to decode the given buffer. */
 	public ISynchronizationPoint<IOException> decode(ByteBuffer buffer) {
 		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
 		new Task.Cpu<Void, NoException>("Decoding base 64", output.getPriority()) {
@@ -61,6 +64,7 @@ public class Base64Decoder {
 		return result;
 	}
 	
+	/** Start a new Task to decode the given buffer. */
 	public ISynchronizationPoint<IOException> decode(CharBuffer buffer) {
 		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
 		new Task.Cpu<Void, NoException>("Decoding base 64", output.getPriority()) {
@@ -101,6 +105,9 @@ public class Base64Decoder {
 		return result;
 	}
 	
+	/** Decode any pending bytes, then return a synchronization point that will be unblocked once
+	 * the last writing operation is done.
+	 */
 	public ISynchronizationPoint<IOException> flush() {
 		if (nbPrev == 0)
 			return lastWrite;

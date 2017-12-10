@@ -9,12 +9,15 @@ import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.rules.RenameAttribute;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
+/** Specify a different name for serialization. */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD,ElementType.METHOD})
 public @interface SerializationName {
 
+	/** The new name. */
 	String value();
 	
+	/** Convert an annotation into a rule. */
 	public static class ToRule implements AttributeAnnotationToRuleOnType<SerializationName> {
 		
 		@Override

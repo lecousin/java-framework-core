@@ -498,6 +498,9 @@ public abstract class Task<T,TError extends Exception> {
 	
 	public Output getOutput() { return result; }
 	
+	/** Ensure that when this task will be done, successfully or not, the given synchronization point
+	 * are unblocked. If some are not, they are cancelled upon task completion.
+	 */
 	public Task<T,TError> ensureUnblocked(ISynchronizationPoint<?>... sp) {
 		if (status == STATUS_DONE) {
 			for (int i = 0; i < sp.length; ++i)

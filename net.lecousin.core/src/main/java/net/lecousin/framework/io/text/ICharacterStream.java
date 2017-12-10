@@ -12,13 +12,16 @@ import net.lecousin.framework.util.AsyncCloseable;
 /** Character stream. */
 public interface ICharacterStream extends AutoCloseable, AsyncCloseable<IOException> {
 	
+	/** Return the priority. */
 	byte getPriority();
 	
+	/** Change the priority (see Task priorities). */
 	void setPriority(byte priority);
 
 	/** Description. */
 	String getDescription();
 	
+	/** Return the encoding of the stream. */
 	Charset getEncoding();
 	
 	/** Readable character stream. */
@@ -98,6 +101,7 @@ public interface ICharacterStream extends AutoCloseable, AsyncCloseable<IOExcept
 		}
 	}
 	
+	/** Asynchronous writable character stream. */
 	public interface WriterAsync {
 		/** Write characters. */
 		public ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length);

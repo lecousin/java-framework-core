@@ -54,6 +54,8 @@ public interface ISynchronizationPoint<TError extends Exception> {
 	/** Pause the current thread to wait for this synchronization point to be unblocked. */
 	void block(long timeout);
 	
+	/** Pause the current thread to wait for this synchronization point to be unblocked,
+	 * and if it has an error it is thrown. */
 	default void blockException(long timeout) throws TError {
 		block(timeout);
 		if (hasError()) throw getError();
@@ -88,18 +90,6 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			}
 		});
 	}
-
-	/** Call listener when unblocked, or forward error/cancellation to onErrorOrCancel. */
-	default void listenInlineSP(Runnable onReady, ISynchronizationPoint<Exception> onErrorOrCancel) {
-		listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (hasError()) onErrorOrCancel.error(getError());
-				else if (isCancelled()) onErrorOrCancel.cancel(getCancelEvent());
-				else onReady.run();
-			}
-		});
-	}
 	
 	/** Transfer the result of this blocking point to the given synchronization point:
 	 * unblock it on success, call error method on error, or call cancel method on cancellation.
@@ -118,6 +108,18 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		});
 	}
 	
+	/** Call listener when unblocked, or forward error/cancellation to onErrorOrCancel. */
+	default void listenInlineSP(Runnable onReady, ISynchronizationPoint<Exception> onErrorOrCancel) {
+		listenInline(new Runnable() {
+			@Override
+			public void run() {
+				if (hasError()) onErrorOrCancel.error(getError());
+				else if (isCancelled()) onErrorOrCancel.cancel(getCancelEvent());
+				else onReady.run();
+			}
+		});
+	}
+
 	/** Same as listenInline but does not restrict to a synchronization point with the same exception type as parameter. */
 	default void listenInlineSP(SynchronizationPoint<Exception> sp) {
 		listenInline(new Runnable() {
@@ -173,6 +175,7 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		});
 	}
 	
+	/** If this synchronization point is cancelled, the given synchronization point will be cancelled as well with the same reason. */
 	default void forwardCancel(ISynchronizationPoint<?> sp) {
 		onCancel((reason) -> { sp.cancel(reason); });
 	}
@@ -182,6 +185,9 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		task.startOn(this, evenIfErrorOrCancel);
 	}
 	
+	/** Start the given task when this synchronization point is successfully unblocked, else the error or cancel
+	 * event are forwarded to the given synchronization point.
+	 */
 	default void listenAsync(Task<?,? extends Exception> task, ISynchronizationPoint<TError> onErrorOrCancel) {
 		listenInline(new Runnable() {
 			@Override
@@ -191,6 +197,9 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		}, onErrorOrCancel);
 	}
 
+	/** Start the given task when this synchronization point is successfully unblocked, else the error or cancel
+	 * event are forwarded to the given synchronization point.
+	 */
 	default void listenAsyncSP(Task<?,? extends Exception> task, ISynchronizationPoint<Exception> onErrorOrCancel) {
 		listenInlineSP(new Runnable() {
 			@Override

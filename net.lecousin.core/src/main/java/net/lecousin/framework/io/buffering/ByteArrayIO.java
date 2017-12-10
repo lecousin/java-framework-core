@@ -122,11 +122,6 @@ public class ByteArrayIO extends AbstractIO
 	}
 	
 	@Override
-	public int readAsync() {
-		return read();
-	}
-	
-	@Override
 	public int readFully(byte[] buffer) {
 		return read(buffer, 0, buffer.length);
 	}
@@ -160,6 +155,11 @@ public class ByteArrayIO extends AbstractIO
 		return readFullySync(pos, buffer);
 	}
 	
+	@Override
+	public int readAsync() {
+		return read();
+	}
+
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		Task<Integer, IOException> task = new Task.Cpu<Integer, IOException>("readAsync on ByteArrayIO", priority, ondone) {

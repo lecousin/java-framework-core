@@ -11,6 +11,7 @@ import net.lecousin.framework.io.serialization.rules.AttributeInstantiation;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.util.Factory;
 
+/** Provides a factory to instantiate the annotated attribute during deserialization. */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD})
 public @interface Instantiate {
@@ -19,6 +20,7 @@ public @interface Instantiate {
 	@SuppressWarnings("rawtypes")
 	public Class<? extends Factory> factory();
 	
+	/** Convert the annotation into a rule. */
 	public static class ToRule implements AttributeAnnotationToRuleOnType<Instantiate> {
 		
 		@Override

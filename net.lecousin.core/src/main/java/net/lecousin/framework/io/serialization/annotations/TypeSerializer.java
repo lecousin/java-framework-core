@@ -29,8 +29,14 @@ public @interface TypeSerializer {
 	/** The serializer to use. */
 	public Class<? extends CustomSerializer> value();
 	
+	/** Specify if the serializer has to be used more generally:
+	 * I isGeneral is true the annotation will apply for any attribute in any class having the source type 
+	 * of the serializer, else it only apply to attributes of the class if the annotation is on a class,
+	 * or only to an attribute if the annotation is on an attribute.
+	 */
 	public boolean isGeneral() default false;
 	
+	/** Convert an annotation into a rule. */
 	public static class ToRule implements TypeAnnotationToRule<TypeSerializer>, AttributeAnnotationToRuleOnAttribute<TypeSerializer> {
 		
 		@Override
@@ -40,7 +46,8 @@ public @interface TypeSerializer {
 		
 		@Override
 		public SerializationRule createRule(TypeSerializer annotation, Attribute attribute) {
-			return createRule(annotation.value(), annotation.isGeneral() ? null : new OnClassAttribute(attribute.getDeclaringClass(), attribute.getOriginalName()));
+			return createRule(annotation.value(),
+				annotation.isGeneral() ? null : new OnClassAttribute(attribute.getDeclaringClass(), attribute.getOriginalName()));
 		}
 		
 		private static SerializationRule createRule(Class<? extends CustomSerializer> custom, SerializationContextPattern context) {
