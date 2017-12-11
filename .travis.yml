@@ -10,6 +10,5 @@ after_script:
  - echo _____________SOPTBUGS______________
  - cat */target/findbugsXml.xml
  
-#after_success:
-#  - bash <(curl -s https://codecov.io/bash)
- - bash <(curl -s https://codecov.io/bash) -t repository-upload-token
+after_success:
+ - bash <(curl -s https://codecov.io/bash)
