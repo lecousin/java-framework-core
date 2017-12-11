@@ -1,6 +1,8 @@
 language: java
 
-script: mvn test verify -B
+script:
+ - mvn test verify -B
+ - mvn cobertura:cobertura
 
 after_script:
  - echo _____________CHECKSTYLE______________

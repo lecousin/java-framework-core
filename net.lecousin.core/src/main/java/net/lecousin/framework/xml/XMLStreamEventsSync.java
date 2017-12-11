@@ -9,6 +9,7 @@ import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 
+/** Base class for synchronous implementations of XMLStreamEvents. */
 public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 
 	/** Move forward to the next event. */

@@ -7,10 +7,16 @@ import java.util.List;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
+/**
+ * Base class to parse XML raising an event each time a new element (comment, text, node... is found).<br/>
+ * It is used by synchronous ({@link XMLStreamEventsSync}) and asynchronous (XMLStreamEventsAsync) implementations.<br/>
+ * This class defines the different types of event, and the available information for each event.
+ */
 public abstract class XMLStreamEvents {
 
 	public Event event = new Event();
-	
+
+	/** Parsing event. */
 	public static class Event {
 		
 		/** Type of event. */
@@ -69,6 +75,7 @@ public abstract class XMLStreamEvents {
 		 */
 		public LinkedList<ElementContext> context = new LinkedList<>();
 		
+		/** Create a copy of this event. */
 		public Event copy() {
 			Event event = new Event();
 			event.type = type;
@@ -86,6 +93,7 @@ public abstract class XMLStreamEvents {
 		}
 	}
 	
+	/** Information about an Element node. Those contexts are stacked to know the current hierarchy on an event. */
 	public static class ElementContext {
 		public UnprotectedStringBuffer text;
 		public UnprotectedStringBuffer namespacePrefix;
@@ -94,6 +102,7 @@ public abstract class XMLStreamEvents {
 		public List<Pair<UnprotectedStringBuffer, UnprotectedStringBuffer>> namespaces = new LinkedList<>();
 	}
 	
+	/** An attribute on an element node. */
 	public static class Attribute {
 		public UnprotectedStringBuffer text;
 		public UnprotectedStringBuffer namespacePrefix;
@@ -101,7 +110,7 @@ public abstract class XMLStreamEvents {
 		public UnprotectedStringBuffer value;
 	}
 	
-	
+	/** Get the namespace URI for a prefix, or empty string if the prefix is not defined. */
 	public UnprotectedStringBuffer getNamespaceURI(CharSequence namespacePrefix) {
 		for (ElementContext ctx : event.context) {
 			for (Pair<UnprotectedStringBuffer, UnprotectedStringBuffer> ns : ctx.namespaces)

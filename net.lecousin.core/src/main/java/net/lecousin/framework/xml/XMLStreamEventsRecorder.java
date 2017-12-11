@@ -9,19 +9,36 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.xml.XMLStreamEvents.Event;
 
+/**
+ * An XMLStreamEventsRecorder allows to wrap an XMLStreamEvents, record each events, and be able to replay them.
+ * Because an XMLStreamEvents goes always forward, it may be sometimes useful to be able to replay those events,
+ * either on the full XML document, or on a sub-part.<br/>
+ * Both synchronous and asynchronous implementations are available as inner classes of this interface.
+ */
 public interface XMLStreamEventsRecorder {
 
+	/** Start to record events.
+	 * @param recordCurrentEvent true to save the current event, false to start saving events for the next one.
+	 */
 	public void startRecording(boolean recordCurrentEvent);
 	
+	/** Stop recording events. */
 	public void stopRecording();
 	
+	/** Start to replay.
+	 * Once this method is called, when reaching the last recorded event an EOFException will be raised.
+	 * This method may be called multiple times to replay several times the recorded events. It will restart
+	 * from the first recorded event at each call.
+	 */
 	public void replay();
 	
+	/** Shortcut to know what is the first recorded event. */
 	public Event getFirstRecordedEvent();
 	
-	
+	/** Synchronous implementation of the recorder. */
 	public static class Sync extends XMLStreamEventsSync implements XMLStreamEventsRecorder {
 		
+		/** Constructor. */
 		public Sync(XMLStreamEventsSync stream) {
 			this.stream = stream;
 			this.event = stream.event;
@@ -76,8 +93,10 @@ public interface XMLStreamEventsRecorder {
 		
 	}
 
+	/** Asynchronous implementation of the recorder. */
 	public static class Async extends XMLStreamEventsAsync implements XMLStreamEventsRecorder {
 		
+		/** Constructor. */
 		public Async(XMLStreamEventsAsync stream) {
 			this.stream = stream;
 			this.event = stream.event;

@@ -24,13 +24,16 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
 
+/** Utility class to generate XML. */
 public class XMLWriter {
 
+	/** Constructor. */
 	@SuppressWarnings("resource")
 	public XMLWriter(IO.Writable.Buffered output, Charset encoding, boolean includeXMLDeclaration) {
 		this(new BufferedWritableCharacterStream(output, encoding != null ? encoding : StandardCharsets.UTF_8, 4096), includeXMLDeclaration);
 	}
 	
+	/** Constructor. */
 	public XMLWriter(ICharacterStream.Writable.Buffered output, boolean includeXMLDeclaration) {
 		this.output = output;
 		writer = new CharacterStreamWritePool(output);
@@ -59,6 +62,7 @@ public class XMLWriter {
 		return null;
 	}
 	
+	/** Escape a string to include it in XML (this is automatically called by other methods of this class when needed). */
 	public static String escape(CharSequence s) {
 		StringBuilder str = new StringBuilder();
 		int len = s.length();
@@ -90,11 +94,10 @@ public class XMLWriter {
 	public static final char[] END_COMMENT = new char[] { ' ', '-', '-', '>' };
 	
 	/**
-	 * 
-	 * @param rootNamespaceURI
-	 * @param rootLocalName
+	 * Start the document with the XML processing instruction if needed, and opening the root element.
+	 * @param rootNamespaceURI namespace of the root element
+	 * @param rootLocalName name of the root element
 	 * @param namespaces mapping from namespace URI and prefix, prefix may be empty for default namespace
-	 * @return
 	 */
 	public ISynchronizationPoint<IOException> start(String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces) {
 		if (includeXMLDeclaration) {
@@ -133,6 +136,7 @@ public class XMLWriter {
 		return result;
 	}
 	
+	/** End the document, close any open element, and flush the output stream. */
 	public ISynchronizationPoint<IOException> end() {
 		while (!context.isEmpty())
 			closeElement();
@@ -147,6 +151,7 @@ public class XMLWriter {
 		return output.flush();
 	}
 	
+	/** Add an attribute to the current element. */
 	public ISynchronizationPoint<IOException> addAttribute(CharSequence name, CharSequence value) {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
@@ -160,6 +165,10 @@ public class XMLWriter {
 		return writer.write('"');
 	}
 	
+	/** Signal the end of attributes, so the opening tag can be closed and the content can start.
+	 * This is optional to call this method, as any other method writing something inside the current element
+	 * will first check the opening tag is already closed or not.
+	 */
 	public ISynchronizationPoint<IOException> endOfAttributes() {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
@@ -170,6 +179,7 @@ public class XMLWriter {
 		return writer.write('>');
 	}
 	
+	/** Open a new element. */
 	public ISynchronizationPoint<IOException> openElement(String namespaceURI, String localName, Map<String, String> namespaces) {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
@@ -205,6 +215,7 @@ public class XMLWriter {
 		} while (true);
 	}
 	
+	/** Close the current element. */
 	public ISynchronizationPoint<IOException> closeElement() {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
@@ -224,6 +235,7 @@ public class XMLWriter {
 		return writer.write('>');
 	}
 	
+	/** Add text inside the current element. */
 	public ISynchronizationPoint<IOException> addText(CharSequence text) {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
@@ -235,6 +247,7 @@ public class XMLWriter {
 		return writer.write(escape(text));
 	}
 	
+	/** Add a CDATA section inside the current element. */
 	public ISynchronizationPoint<IOException> addCData(CharSequence data) {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
@@ -248,6 +261,7 @@ public class XMLWriter {
 		return writer.write(END_CDATA);
 	}
 	
+	/** Add a comment inside the current element. */
 	public ISynchronizationPoint<IOException> addComment(CharSequence comment) {
 		Context ctx = context.peekFirst();
 		if (ctx != null && ctx.open) {
@@ -259,6 +273,7 @@ public class XMLWriter {
 		return writer.write(END_COMMENT);
 	}
 	
+	/** Write the given DOM element. */
 	public ISynchronizationPoint<IOException> write(Element element) {
 		String name = element.getLocalName();
 		String uri = element.getNamespaceURI();

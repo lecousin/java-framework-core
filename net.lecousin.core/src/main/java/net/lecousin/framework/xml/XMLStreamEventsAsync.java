@@ -11,8 +11,10 @@ import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 
+/** Base class for asynchronous implementations of XMLStreamEvents. */
 public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 
+	/** Return the priority used for tasks. */
 	public abstract byte getPriority();
 	
 	/** Move forward to the next event.
@@ -63,7 +65,8 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				break;
 			}
 		if (!parentPresent)
-			return new AsyncWork<>(null, new Exception("Invalid context: parent element " + parent.localName + " is not in the current context"));
+			return new AsyncWork<>(null, new Exception("Invalid context: parent element "
+				+ parent.localName + " is not in the current context"));
 		ISynchronizationPoint<Exception> next = next();
 		do {
 			if (next.isUnblocked()) {
@@ -213,6 +216,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		return closeElement(ctx);
 	}
 	
+	/** Move forward until the closing tag of the given element is found. */
 	public ISynchronizationPoint<Exception> closeElement(ElementContext ctx) {
 		ISynchronizationPoint<Exception> next = next();
 		do {
@@ -346,6 +350,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		}, result);
 	}
 
+	/** Shortcut class to create a task. */
 	protected class ParsingTask extends Task.Cpu<Void, NoException> {
 		public ParsingTask(Runnable r) {
 			super("Parse XML", XMLStreamEventsAsync.this.getPriority());
@@ -361,6 +366,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		}
 	}
 	
+	/** Shortcut to create a task going to the next event, and call onNext if an event is successfully found. */
 	protected class Next extends ParsingTask {
 		public Next(SynchronizationPoint<Exception> sp) {
 			super(null);
