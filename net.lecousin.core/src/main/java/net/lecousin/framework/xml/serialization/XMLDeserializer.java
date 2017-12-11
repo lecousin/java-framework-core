@@ -188,10 +188,16 @@ public class XMLDeserializer extends AbstractDeserializer {
 				colValueContext.removeFirst();
 				return new AsyncWork<>(new Pair<>(null, Boolean.FALSE), null);
 			}
-			Object element;
-			try { element = SerializationClass.instantiate(context.getElementType(), context, rules); }
-			catch (Exception e) { return new AsyncWork<>(null, e); }
-			return new AsyncWork<>(new Pair<>(element, Boolean.TRUE), null);
+			AsyncWork<Object, Exception> element = deserializeValue(context, context.getElementType(), rules);
+			if (element.isUnblocked()) {
+				if (element.hasError()) return new AsyncWork<>(null, element.getError());
+				return new AsyncWork<>(new Pair<>(element.getResult(), Boolean.TRUE), null);
+			}
+			AsyncWork<Pair<Object, Boolean>, Exception> result = new AsyncWork<>();
+			element.listenInline(() -> {
+				result.unblockSuccess(new Pair<>(element.getResult(), Boolean.TRUE));
+			}, result);
+			return result;
 		}
 		AsyncWork<Pair<Object, Boolean>, Exception> result = new AsyncWork<>();
 		read.listenAsync(new DeserializationTask(() -> {
@@ -200,10 +206,15 @@ public class XMLDeserializer extends AbstractDeserializer {
 				result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
 				return;
 			}
-			try {
-				Object element = SerializationClass.instantiate(context.getElementType(), context, rules);
-				result.unblockSuccess(new Pair<>(element, Boolean.TRUE));
-			} catch (Exception e) { result.error(e); }
+			AsyncWork<Object, Exception> element = deserializeValue(context, context.getElementType(), rules);
+			if (element.isUnblocked()) {
+				if (element.hasError()) result.error(element.getError());
+				else result.unblockSuccess(new Pair<>(element.getResult(), Boolean.TRUE));
+				return;
+			}
+			element.listenInline(() -> {
+				result.unblockSuccess(new Pair<>(element.getResult(), Boolean.TRUE));
+			}, result);
 		}), result);
 		return result;
 	}
