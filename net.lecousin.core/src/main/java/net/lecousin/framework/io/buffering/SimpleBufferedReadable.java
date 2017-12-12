@@ -37,16 +37,22 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 		readBuffer = ByteBuffer.allocate(bufferSize);
 		readTask = io.readAsync(readBuffer);
 		bb = ByteBuffer.allocate(bufferSize);
-		buffer = bb.array();
+		state = new AtomicState();
+		state.pos = state.len = 0;
+		state.buffer = bb.array();
 	}
 	
 	private IO.Readable io;
-	private byte[] buffer;
-	private int pos = 0;
-	private int len = 0;
 	private ByteBuffer readBuffer;
+	private AtomicState state;
 	private ByteBuffer bb;
 	private AsyncWork<Integer,IOException> readTask;
+	
+	private static class AtomicState {
+		private byte[] buffer;
+		private int pos;
+		private int len;
+	}
 	
 	@Override
 	public ISynchronizationPoint<IOException> canStartReading() {
@@ -80,7 +86,7 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 				@Override
 				public void run() {
 					readTask = null;
-					buffer = null;
+					state.buffer = null;
 					bb = null;
 					readBuffer = null;
 					io.closeAsync().listenInline(sp);
@@ -88,7 +94,7 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 			});
 			return sp;
 		}
-		buffer = null;
+		state.buffer = null;
 		bb = null;
 		readBuffer = null;
 		return io.closeAsync();
@@ -115,16 +121,18 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 		}
 		int nb = currentRead.getResult().intValue();
 		if (nb <= 0) {
-			buffer = null;
+			state.buffer = null;
 			bb = null;
 			readBuffer = null;
 			readTask = null;
 			return;
 		}
 		if (readTask == null) return;
-		buffer = readBuffer.array();
-		pos = 0;
-		len = readBuffer.position();
+		AtomicState s = new AtomicState();
+		s.buffer = readBuffer.array();
+		s.pos = 0;
+		s.len = readBuffer.position();
+		state = s;
 		ByteBuffer b = readBuffer;
 		readBuffer = bb;
 		bb = b;
@@ -134,29 +142,31 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 
 	@Override
 	public int readSync(ByteBuffer buffer) throws IOException {
-		if (pos == len) {
-			if (this.buffer == null) return -1;
+		AtomicState s = state;
+		if (s.pos == s.len) {
+			if (s.buffer == null) return -1;
 			fill();
-			if (pos == len) return -1;
+			if (state.pos == state.len) return -1;
 		}
 		int l = buffer.remaining();
-		if (l > len - pos) l = len - pos;
-		buffer.put(this.buffer, pos, l);
-		pos += l;
+		if (l > state.len - state.pos) l = state.len - state.pos;
+		buffer.put(state.buffer, state.pos, l);
+		state.pos += l;
 		return l;
 	}
 	
 	@Override
 	public int readAsync() {
-		if (pos == len) {
-			if (this.buffer == null) return -1;
+		AtomicState s = state;
+		if (s.pos == s.len) {
+			if (s.buffer == null) return -1;
 			AsyncWork<Integer,IOException> currentRead = readTask;
 			if (currentRead != null && currentRead.isUnblocked())
 				try { fill(); }
 				catch (Throwable t) { return -1; }
 			return -2;
 		}
-		return buffer[pos++] & 0xFF;
+		return s.buffer[s.pos++] & 0xFF;
 	}
 
 	@Override
@@ -176,24 +186,26 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 
 	@Override
 	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
-		if (pos == len && buffer == null) {
+		AtomicState s = state;
+		if (s.pos == s.len && s.buffer == null) {
 			if (ondone != null) ondone.run(new Pair<>(null, null));
 			return new AsyncWork<>(null, null);
 		}
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
 			@Override
 			public ByteBuffer run() throws IOException, CancelException {
-				if (pos == len) {
-					if (buffer == null) return null;
+				AtomicState s = state;
+				if (s.pos == s.len) {
+					if (s.buffer == null) return null;
 					fill();
-					if (pos == len) return null;
+					if (state.pos == state.len) return null;
 				}
-				ByteBuffer buf = ByteBuffer.allocate(len - pos);
-				try { buf.put(buffer, pos, len - pos); }
+				ByteBuffer buf = ByteBuffer.allocate(state.len - state.pos);
+				try { buf.put(state.buffer, state.pos, state.len - state.pos); }
 				catch (NullPointerException e) {
 					throw new CancelException("IO closed");
 				}
-				pos = len;
+				state.pos = state.len;
 				buf.flip();
 				return buf;
 			}
@@ -209,9 +221,9 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 
 	@Override
 	public long skipSync(long n) throws IOException {
-		if (this.buffer == null || n <= 0) return 0;
-		if (n <= len - pos) {
-			pos += (int)n;
+		if (state.buffer == null || n <= 0) return 0;
+		if (n <= state.len - state.pos) {
+			state.pos += (int)n;
 			return n;
 		}
 		AsyncWork<Integer,IOException> currentRead = readTask;
@@ -225,15 +237,15 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 		}
 		int avail = currentRead.getResult().intValue();
 		if (avail < 0) avail = 0;
-		if (n <= len - pos + avail) {
-			int i = len - pos;
+		if (n <= state.len - state.pos + avail) {
+			int i = state.len - state.pos;
 			fill();
 			return skipSync(n - i) + i;
 		}
-		n = io.skipSync(n - ((len - pos) + avail));
-		n += len - pos;
+		n = io.skipSync(n - ((state.len - state.pos) + avail));
+		n += state.len - state.pos;
 		n += avail;
-		len = pos = 0;
+		state.len = state.pos = 0;
 		readBuffer.clear();
 		readTask = io.readAsync(readBuffer);
 		return n;
@@ -241,12 +253,12 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 
 	@Override
 	public AsyncWork<Long,IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		if (this.buffer == null || n <= 0) {
+		if (state.buffer == null || n <= 0) {
 			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
 			return new AsyncWork<Long,IOException>(Long.valueOf(0),null);
 		}
-		if (n <= len - pos) {
-			pos += (int)n;
+		if (n <= state.len - state.pos) {
+			state.pos += (int)n;
 			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(n), null));
 			return new AsyncWork<Long,IOException>(Long.valueOf(n),null);
 		}
@@ -262,15 +274,15 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 				if (!currentRead.isSuccessful()) throw currentRead.getError();
 				int avail = currentRead.getResult().intValue();
 				if (avail < 0) avail = 0;
-				if (n <= len - pos + avail) {
-					int i = len - pos;
+				if (n <= state.len - state.pos + avail) {
+					int i = state.len - state.pos;
 					fill();
 					return Long.valueOf(skipSync(n - i) + i);
 				}
-				long res = io.skipSync(n - ((len - pos) + avail));
-				res += len - pos;
+				long res = io.skipSync(n - ((state.len - state.pos) + avail));
+				res += state.len - state.pos;
 				res += avail;
-				len = pos = 0;
+				state.len = state.pos = 0;
 				readBuffer.clear();
 				readTask = io.readAsync(readBuffer);
 				return Long.valueOf(res);
@@ -282,24 +294,26 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 
 	@Override
 	public int read() throws IOException {
-		if (pos == len) {
-			if (this.buffer == null) return -1;
+		AtomicState s = state;
+		if (s.pos == s.len) {
+			if (s.buffer == null) return -1;
 			fill();
-			if (pos == len) return -1;
+			if (state.pos == state.len) return -1;
 		}
-		return buffer[pos++] & 0xFF;
+		return state.buffer[state.pos++] & 0xFF;
 	}
 
 	@Override
 	public int read(byte[] buffer, int offset, int l) throws IOException {
-		if (pos == len) {
-			if (this.buffer == null) return -1;
+		AtomicState s = state;
+		if (s.pos == s.len) {
+			if (s.buffer == null) return -1;
 			fill();
-			if (pos == len) return -1;
+			if (state.pos == state.len) return -1;
 		}
-		if (l > len - pos) l = len - pos;
-		System.arraycopy(this.buffer, pos, buffer, offset, l);
-		pos += l;
+		if (l > state.len - state.pos) l = state.len - state.pos;
+		System.arraycopy(state.buffer, state.pos, buffer, offset, l);
+		state.pos += l;
 		return l;
 	}
 

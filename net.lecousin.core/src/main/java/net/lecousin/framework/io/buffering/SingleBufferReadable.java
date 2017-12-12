@@ -32,16 +32,23 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 		this.io = io;
 		this.buffer = new byte[bufferSize];
 		this.useReadFully = useReadFully;
+		this.state = new AtomicState();
+		state.pos = state.len = 0;
+		state.eof = false;
 		fillNextBuffer();
 	}
 	
 	private IO.Readable io;
-	private byte[] buffer;
-	private int len = 0;
-	private int pos;
 	private boolean useReadFully;
-	private boolean eof = false;
+	private byte[] buffer;
+	private AtomicState state;
 	private AsyncWork<Integer, IOException> reading;
+	
+	private static class AtomicState {
+		private int len;
+		private int pos;
+		private boolean eof;
+	}
 	
 	@Override
 	public ISynchronizationPoint<IOException> canStartReading() {
@@ -52,22 +59,29 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 		if (useReadFully)
 			reading = io.readFullyAsync(ByteBuffer.wrap(buffer), (result) -> {
 				if (result.getValue1() == null) return;
-				len = result.getValue1().intValue();
-				if (len <= 0) {
-					len = 0;
-					eof = true;
-				} else if (len < buffer.length)
-					eof = true;
-				pos = 0;
+				AtomicState ns = new AtomicState();
+				ns.len = result.getValue1().intValue();
+				if (ns.len <= 0) {
+					ns.len = 0;
+					ns.eof = true;
+				} else if (ns.len < buffer.length)
+					ns.eof = true;
+				else
+					ns.eof = false;
+				ns.pos = 0;
+				state = ns;
 			});
 		else
 			reading = io.readAsync(ByteBuffer.wrap(buffer), (result) -> {
-				len = result.getValue1().intValue();
-				if (len <= 0) {
-					len = 0;
-					eof = true;
-				}
-				pos = 0;
+				AtomicState ns = new AtomicState();
+				ns.len = result.getValue1().intValue();
+				if (ns.len <= 0) {
+					ns.len = 0;
+					ns.eof = true;
+				} else
+					ns.eof = false;
+				ns.pos = 0;
+				state = ns;
 			});
 	}
 	
@@ -79,16 +93,17 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 
 	@Override
 	public int readSync(ByteBuffer buffer) throws IOException {
-		if (pos == len) {
-			if (eof) return 0;
+		AtomicState s = state;
+		if (s.pos == s.len) {
+			if (s.eof) return 0;
 			waitBufferSync();
 			return readSync(buffer);
 		}
 		int l = buffer.remaining();
-		if (l > len - pos) l = len - pos;
-		buffer.put(this.buffer, pos, l);
-		pos += l;
-		if (pos == len)
+		if (l > s.len - s.pos) l = s.len - s.pos;
+		buffer.put(this.buffer, s.pos, l);
+		s.pos += l;
+		if (s.pos == s.len)
 			fillNextBuffer();
 		return l;
 	}
@@ -100,12 +115,13 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 	
 	@Override
 	public int readAsync() {
-		if (pos == len) {
-			if (eof) return -1;
+		AtomicState s = state;
+		if (s.pos == s.len) {
+			if (s.eof) return -1;
 			return -2;
 		}
-		int c = buffer[pos++] & 0xFF;
-		if (pos == len) fillNextBuffer();
+		int c = buffer[s.pos++] & 0xFF;
+		if (s.pos == s.len) fillNextBuffer();
 		return c;
 	}
 
@@ -125,16 +141,17 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 			return 0;
 		long nb = 0;
 		while (n > 0) {
-			if (pos == len) {
-				if (eof) return nb;
+			AtomicState s = state;
+			if (s.pos == s.len) {
+				if (s.eof) return nb;
 				waitBufferSync();
 			}
-			int l = len - pos;
+			int l = s.len - s.pos;
 			if (l > n) l = (int)n;
-			pos += l;
+			s.pos += l;
 			nb += l;
 			n -= l;
-			if (pos == len)
+			if (s.pos == s.len)
 				fillNextBuffer();
 		}
 		return nb;
@@ -172,28 +189,30 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 
 	@Override
 	public int read() throws IOException {
-		if (pos == len) {
-			if (eof) return -1;
+		AtomicState s = state;
+		if (s.pos == s.len) {
+			if (s.eof) return -1;
 			waitBufferSync();
 			return read();
 		}
-		int c = buffer[pos++] & 0xFF;
-		if (pos == len) fillNextBuffer();
+		int c = buffer[s.pos++] & 0xFF;
+		if (s.pos == s.len) fillNextBuffer();
 		return c;
 	}
 
 	@Override
 	public int read(byte[] buffer, int offset, int len) throws IOException {
-		if (pos == this.len) {
-			if (eof) return 0;
+		AtomicState s = state;
+		if (s.pos == s.len) {
+			if (s.eof) return 0;
 			waitBufferSync();
 			return read(buffer, offset, len);
 		}
 		int l = len;
-		if (l > this.len - pos) l = this.len - pos;
-		System.arraycopy(this.buffer, pos, buffer, offset, l);
-		pos += l;
-		if (pos == this.len) fillNextBuffer();
+		if (l > s.len - s.pos) l = s.len - s.pos;
+		System.arraycopy(this.buffer, s.pos, buffer, offset, l);
+		s.pos += l;
+		if (s.pos == s.len) fillNextBuffer();
 		return l;
 	}
 
@@ -209,7 +228,8 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 
 	@Override
 	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
-		if (pos == len && eof) {
+		AtomicState s = state;
+		if (s.pos == s.len && s.eof) {
 			if (ondone != null) ondone.run(new Pair<>(null, null));
 			return new AsyncWork<>(null, null);
 		}
@@ -218,10 +238,11 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 			public ByteBuffer run() throws IOException, CancelException {
 				if (reading.hasError()) throw reading.getError();
 				if (reading.isCancelled()) throw reading.getCancelEvent();
-				if (pos == len && eof) return null;
-				ByteBuffer buf = ByteBuffer.allocate(len - pos);
-				buf.put(buffer, pos, len - pos);
-				pos = len;
+				AtomicState s = state;
+				if (s.pos == s.len && s.eof) return null;
+				ByteBuffer buf = ByteBuffer.allocate(s.len - s.pos);
+				buf.put(buffer, s.pos, s.len - s.pos);
+				s.pos = s.len;
 				fillNextBuffer();
 				buf.flip();
 				return buf;
