@@ -78,13 +78,17 @@ public class XMLDeserializer extends AbstractDeserializer {
 		return result;
 	}
 	
-	@Override
-	protected ISynchronizationPoint<Exception> initializeDeserialization(IO.Readable input) {
+	protected ISynchronizationPoint<Exception> createAndStartReader(IO.Readable input) {
 		XMLStreamReaderAsync reader = new XMLStreamReaderAsync(input, forceEncoding, 8192);
 		this.input = reader;
 		reader.setMaximumTextSize(16384);
 		reader.setMaximumCDataSize(16384);
-		ISynchronizationPoint<Exception> start = reader.startRootElement();
+		return reader.startRootElement();
+	}
+	
+	@Override
+	protected ISynchronizationPoint<Exception> initializeDeserialization(IO.Readable input) {
+		ISynchronizationPoint<Exception> start = createAndStartReader(input);
 		if (start.isUnblocked()) {
 			if (start.hasError()) return start;
 			if (this.expectedRootLocalName != null && !this.input.event.localName.equals(this.expectedRootLocalName))

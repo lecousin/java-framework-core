@@ -443,30 +443,28 @@ public abstract class AbstractDeserializer implements Deserializer {
 			int currentIndex = elementIndex;
 			next.listenInline(() -> {
 				if (next.hasError()) {
-					if (next.hasError()) {
-						result.error(next.getError());
-						return;
-					}
-					Pair<Object, Boolean> p = next.getResult();
-					if (!p.getValue2().booleanValue()) {
-						// end of collection
-						if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
-							result.unblockSuccess(context.getCollection());
-						else
-							result.unblockSuccess(((Collection)context.getCollection()).toArray());
-						return;
-					}
-					new DeserializationTask(() -> {
-						Object element = p.getValue1();
-						if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-							result.error(new Exception("Invalid collection element type " + element.getClass().getName()
-								+ ", expected is " + context.getElementType().getBase().getName()));
-							return;
-						}
-						((Collection)context.getCollection()).add(element);
-						deserializeNextCollectionValueElement(context, currentIndex + 1, rules, result);
-					}).start();
+					result.error(next.getError());
+					return;
 				}
+				Pair<Object, Boolean> p = next.getResult();
+				if (!p.getValue2().booleanValue()) {
+					// end of collection
+					if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
+						result.unblockSuccess(context.getCollection());
+					else
+						result.unblockSuccess(((Collection)context.getCollection()).toArray());
+					return;
+				}
+				new DeserializationTask(() -> {
+					Object element = p.getValue1();
+					if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+						result.error(new Exception("Invalid collection element type " + element.getClass().getName()
+							+ ", expected is " + context.getElementType().getBase().getName()));
+						return;
+					}
+					((Collection)context.getCollection()).add(element);
+					deserializeNextCollectionValueElement(context, currentIndex + 1, rules, result);
+				}).start();
 			});
 			return;
 		} while (true);
@@ -558,30 +556,28 @@ public abstract class AbstractDeserializer implements Deserializer {
 			int currentIndex = elementIndex;
 			next.listenInline(() -> {
 				if (next.hasError()) {
-					if (next.hasError()) {
-						result.error(next.getError());
-						return;
-					}
-					Pair<Object, Boolean> p = next.getResult();
-					if (!p.getValue2().booleanValue()) {
-						// end of collection
-						if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
-							result.unblockSuccess(context.getCollection());
-						else
-							result.unblockSuccess(toArray(context));
-						return;
-					}
-					new DeserializationTask(() -> {
-						Object element = p.getValue1();
-						if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-							result.error(new Exception("Invalid collection element type " + element.getClass().getName()
-								+ ", expected is " + context.getElementType().getBase().getName()));
-							return;
-						}
-						((Collection)context.getCollection()).add(element);
-						deserializeNextCollectionAttributeValueElement(context, currentIndex + 1, rules, result);
-					}).start();
+					result.error(next.getError());
+					return;
 				}
+				Pair<Object, Boolean> p = next.getResult();
+				if (!p.getValue2().booleanValue()) {
+					// end of collection
+					if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
+						result.unblockSuccess(context.getCollection());
+					else
+						result.unblockSuccess(toArray(context));
+					return;
+				}
+				new DeserializationTask(() -> {
+					Object element = p.getValue1();
+					if (element != null && !context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+						result.error(new Exception("Invalid collection element type " + element.getClass().getName()
+							+ ", expected is " + context.getElementType().getBase().getName()));
+						return;
+					}
+					((Collection)context.getCollection()).add(element);
+					deserializeNextCollectionAttributeValueElement(context, currentIndex + 1, rules, result);
+				}).start();
 			});
 			return;
 		} while (true);

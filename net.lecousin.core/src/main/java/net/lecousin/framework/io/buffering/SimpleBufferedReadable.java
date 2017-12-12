@@ -150,6 +150,10 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 	public int readAsync() {
 		if (pos == len) {
 			if (this.buffer == null) return -1;
+			AsyncWork<Integer,IOException> currentRead = readTask;
+			if (currentRead != null && currentRead.isUnblocked())
+				try { fill(); }
+				catch (Throwable t) { return -1; }
 			return -2;
 		}
 		return buffer[pos++] & 0xFF;
