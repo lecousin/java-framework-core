@@ -10,10 +10,11 @@ import org.junit.runners.Parameterized.Parameters;
 
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
+import net.lecousin.framework.xml.XMLStreamEventsAsync;
 import net.lecousin.framework.xml.XMLStreamReaderAsync;
 
 @RunWith(Parameterized.class)
-public class TestXMLStreamReaderAsyncWithDOM extends TestXMLStreamEventsWithDOM<XMLStreamReaderAsync> {
+public class TestXMLStreamReaderAsyncWithDOM extends TestXMLStreamEventsWithDOM<XMLStreamEventsAsync> {
 
 	@Parameters(name = "file = {0}, efficient = {1}")
 	public static Collection<Object[]> parameters() {
@@ -34,7 +35,7 @@ public class TestXMLStreamReaderAsyncWithDOM extends TestXMLStreamEventsWithDOM<
 	protected boolean efficient;
 
 	@Override
-	protected XMLStreamReaderAsync start(IO.Readable input) throws Exception {
+	protected XMLStreamEventsAsync start(IO.Readable input) throws Exception {
 		XMLStreamReaderAsync xml;
 		if (efficient)
 			xml = new XMLStreamReaderAsync(input, 1024);
@@ -47,7 +48,7 @@ public class TestXMLStreamReaderAsyncWithDOM extends TestXMLStreamEventsWithDOM<
 	}
 	
 	@Override
-	protected void next(XMLStreamReaderAsync xml) throws Exception {
+	protected void next(XMLStreamEventsAsync xml) throws Exception {
 		xml.next().blockException(0);
 	}
 	

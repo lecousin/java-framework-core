@@ -281,9 +281,12 @@ public abstract class TestXMLStreamEventsWithDOM<EVENTS extends XMLStreamEvents>
 			if (prefix == null) prefix = "";
 			String name = attr.getLocalName();
 			String value = attr.getNodeValue();
-			Attribute a = xml.removeAttributeWithPrefix(prefix, name);
+			Attribute a = xml.getAttributeWithPrefix(prefix, name);
 			if (a == null)
 				throw new AssertionError("Missing attribute '" + name + "' and prefix '" + prefix + "' on element " + node.getNodeName());
+			Assert.assertTrue(a == xml.getAttributeByFullName(prefix.length() > 0 ? prefix + ':' + name : name));
+			Assert.assertTrue(a == xml.getAttributeWithNamespaceURI(xml.getNamespaceURI(prefix), name));
+			xml.removeAttributeWithPrefix(prefix, name);
 			assertEquals("value of attribute '" + name + "' on element " + node.getNodeName(), value, a.value);
 		}
 		Assert.assertTrue(xml.event.attributes.isEmpty());
