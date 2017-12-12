@@ -146,12 +146,12 @@ public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.B
 				if (s.eof) return nb;
 				waitBufferSync();
 			}
-			int l = s.len - s.pos;
+			int l = state.len - state.pos;
 			if (l > n) l = (int)n;
-			s.pos += l;
+			state.pos += l;
 			nb += l;
 			n -= l;
-			if (s.pos == s.len)
+			if (state.pos == state.len)
 				fillNextBuffer();
 		}
 		return nb;
