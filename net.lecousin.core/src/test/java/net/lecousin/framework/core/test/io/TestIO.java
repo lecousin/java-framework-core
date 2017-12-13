@@ -12,6 +12,7 @@ import org.junit.Test;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -44,6 +45,17 @@ public abstract class TestIO extends LCCoreAbstractTest {
 			list.add(new Object[] { testBuf1, Integer.valueOf(nbBuf1Medium) });
 			list.add(new Object[] { testBuf1, Integer.valueOf(nbBuf1Large) });
 			return list;
+		}
+		
+		@Override
+		protected void basicTests(IO io) throws Exception {
+			super.basicTests(io);
+			if (io instanceof IO.KnownSize) {
+				Assert.assertEquals(((long)testBuf.length) * nbBuf, ((IO.KnownSize)io).getSizeSync());
+				AsyncWork<Long, IOException> getSize = ((IO.KnownSize)io).getSizeAsync();
+				getSize.blockException(0);
+				Assert.assertEquals(((long)testBuf.length) * nbBuf, getSize.getResult().longValue());
+			}
 		}
 		
 	}

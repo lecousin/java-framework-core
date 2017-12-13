@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.FileIO;
@@ -82,6 +83,73 @@ public abstract class TestReadableBuffered extends TestIO.UsingGeneratedTestFile
 		}
 		if (io.read() != -1)
 			throw new Exception("Remaining byte(s) at the end of the file");
+		io.close();
+	}
+	
+	@Test
+	public void testReadableBufferedByteByByteAsync() throws Exception {
+		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
+		MutableInteger i = new MutableInteger(0);
+		MutableInteger j = new MutableInteger(0);
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Runnable run = new Runnable() {
+			@Override
+			public void run() {
+				if (i.get() >= nbBuf) {
+					int c;
+					try { c = io.readAsync(); }
+					catch (Exception e) {
+						sp.error(e);
+						return;
+					}
+					if (c == -1) {
+						sp.unblock();
+						return;
+					}
+					if (c == -2) {
+						io.canStartReading().listenAsync(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
+						return;
+					}
+					sp.error(new Exception("Remaining byte(s) at the end of the file"));
+					return;
+				}
+				if (nbBuf > 1000 && (i.get() % 100) == 99) {
+					// make the test faster
+					int skipBuf = 50;
+					if (i.get() + skipBuf > nbBuf) skipBuf = nbBuf - i.get();
+					i.add(skipBuf);
+					j.set(0);
+					io.skipAsync(skipBuf * testBuf.length).listenAsyncSP(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), sp);
+					return;
+				}
+				while (j.get() < testBuf.length) {
+					int c;
+					try { c = io.readAsync(); }
+					catch (Exception e) {
+						sp.error(e);
+						return;
+					}
+					if (c == -2) {
+						io.canStartReading().listenAsync(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
+						return;
+					}
+					if (c == -1) {
+						sp.error(new Exception("Unexpected end at offset " + (testBuf.length*i.get()+j.get())));
+						return;
+					}
+					if (c != testBuf[j.get()]) {
+						sp.error(new Exception("Byte " + c + " read instead of " + (testBuf[j.get()] & 0xFF) + " at offset " + (testBuf.length*i.get()+j.get())));
+						return;
+					}
+					j.inc();
+				}
+				j.set(0);
+				i.inc();
+				new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this).start();
+			}
+		};
+		new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), run).start();
+		sp.blockException(0);
 		io.close();
 	}
 	
