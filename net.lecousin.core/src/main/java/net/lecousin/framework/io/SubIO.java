@@ -324,7 +324,15 @@ public abstract class SubIO extends IO.AbstractIO {
 
 				@Override
 				public ISynchronizationPoint<IOException> canStartReading() {
-					return ((IO.Readable.Buffered)io).canStartReading();
+					ISynchronizationPoint<IOException> sp = ((IO.Readable.Buffered)io).canStartReading();
+					if (!sp.isUnblocked()) return sp;
+					try {
+						if (io.getPosition() == start + pos) return sp;
+					} catch (IOException e) {
+						return new SynchronizationPoint<>(e);
+					}
+					AsyncWork<Long, IOException> seek = io.seekAsync(SeekType.FROM_BEGINNING, start + pos);
+					return seek;
 				}
 				
 				@Override
@@ -358,6 +366,12 @@ public abstract class SubIO extends IO.AbstractIO {
 				@Override
 				public int readAsync() throws IOException {
 					if (pos == size) return -1;
+					if (io.getPosition() != start + pos) {
+						AsyncWork<Long, IOException> seek = io.seekAsync(SeekType.FROM_BEGINNING, start + pos);
+						if (!seek.isUnblocked())
+							return -2;
+						if (seek.hasError()) throw seek.getError();
+					}
 					int res = ((IO.Readable.Buffered)io).readAsync();
 					if (res >= 0)
 						pos++;

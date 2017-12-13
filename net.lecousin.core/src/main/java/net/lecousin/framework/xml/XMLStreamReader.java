@@ -381,8 +381,21 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 						c = event.text.charAt(2);
 						if (c == 'l' || c == 'L') {
 							UnprotectedStringBuffer encoding = getAttributeValueByLocalName("encoding");
-							if (encoding != null)
-								cp = new CharacterStreamProvider(Charset.forName(encoding.asString()));
+							if (encoding != null) {
+								if (!(cp instanceof CharacterStreamProvider))
+									cp = new CharacterStreamProvider(Charset.forName(encoding.asString()));
+								else {
+									CharacterStreamProvider current = (CharacterStreamProvider)cp;
+									Charset cs = null;
+									try { cs = Charset.forName(encoding.asString()); }
+									catch (Exception e) {}
+									if (cs != null) {
+										if (!cs.equals(current.stream.getEncoding())) {
+											// TODO change !! handle back and buffered...
+										}
+									}
+								}
+							}
 							return true;
 						}
 					}

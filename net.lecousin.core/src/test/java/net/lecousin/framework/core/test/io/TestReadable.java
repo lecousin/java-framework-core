@@ -33,7 +33,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 	protected IO getIOForCommonTests() throws Exception {
 		return createReadableFromFile(openFile(), getFileSize());
 	}
-
+	
 	@SuppressWarnings("resource")
 	@Test
 	public void testReadableBufferByBufferSync() throws Exception {
@@ -515,8 +515,13 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 	@Override
 	protected void basicTests(IO io) throws Exception {
 		super.basicTests(io);
+		if (io instanceof IO.KnownSize) {
+			Assert.assertEquals(((long)testBuf.length) * nbBuf, ((IO.KnownSize)io).getSizeSync());
+			AsyncWork<Long, IOException> getSize = ((IO.KnownSize)io).getSizeAsync();
+			getSize.blockException(0);
+			Assert.assertEquals(((long)testBuf.length) * nbBuf, getSize.getResult().longValue());
+		}
 		((IO.Readable)io).canStartReading();
 	}
-	
-	// TODO getSize if it implements DeterminedSize
+
 }

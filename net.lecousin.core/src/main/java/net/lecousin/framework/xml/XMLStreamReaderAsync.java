@@ -417,8 +417,21 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 						c = event.text.charAt(2);
 						if (c == 'l' || c == 'L') {
 							UnprotectedStringBuffer encoding = getAttributeValueByFullName("encoding");
-							if (encoding != null)
-								cp = new CharacterStreamProvider(Charset.forName(encoding.asString()));
+							if (encoding != null) {
+								if (!(cp instanceof CharacterStreamProvider))
+									cp = new CharacterStreamProvider(Charset.forName(encoding.asString()));
+								else {
+									CharacterStreamProvider current = (CharacterStreamProvider)cp;
+									Charset cs = null;
+									try { cs = Charset.forName(encoding.asString()); }
+									catch (Exception e) {}
+									if (cs != null) {
+										if (!cs.equals(current.stream.getEncoding())) {
+											// TODO change !! handle back and buffered...
+										}
+									}
+								}
+							}
 							return true;
 						}
 					}
@@ -823,16 +836,6 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		if (c == '>') {
 			sp.unblock();
 			return false;
-		}
-		if (c == 'P') {
-			state = State.DOCTYPE_PUBLIC_NAME;
-			statePos = 1;
-			return true;
-		}
-		if (c == 'S') {
-			state = State.DOCTYPE_SYSTEM_NAME;
-			statePos = 1;
-			return true;
 		}
 		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
 		return false;

@@ -152,6 +152,33 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 		"xml-test-suite/japanese/pr-xml-shift_jis.xml",
 		"xml-test-suite/japanese/pr-xml-utf-16.xml",
 		"xml-test-suite/japanese/pr-xml-utf-8.xml",
+		/* TODO
+		"xml-test-suite/pugixml/large.xml",
+		"xml-test-suite/pugixml/latintest_latin1.xml",
+		"xml-test-suite/pugixml/latintest_utf8.xml",
+		"xml-test-suite/pugixml/small.xml",
+		"xml-test-suite/pugixml/truncation.xml",
+		"xml-test-suite/pugixml/utftest_utf16_be_bom.xml",
+		"xml-test-suite/pugixml/utftest_utf16_be_clean.xml",
+		"xml-test-suite/pugixml/utftest_utf16_be_nodecl.xml",
+		"xml-test-suite/pugixml/utftest_utf16_be.xml",
+		"xml-test-suite/pugixml/utftest_utf16_le_bom.xml",
+		"xml-test-suite/pugixml/utftest_utf16_le_clean.xml",
+		"xml-test-suite/pugixml/utftest_utf16_le_nodecl.xml",
+		"xml-test-suite/pugixml/utftest_utf16_le.xml",
+		"xml-test-suite/pugixml/utftest_utf32_be_bom.xml",
+		"xml-test-suite/pugixml/utftest_utf32_be_clean.xml",
+		"xml-test-suite/pugixml/utftest_utf32_be_nodecl.xml",
+		"xml-test-suite/pugixml/utftest_utf32_be.xml",
+		"xml-test-suite/pugixml/utftest_utf32_le_bom.xml",
+		"xml-test-suite/pugixml/utftest_utf32_le_clean.xml",
+		"xml-test-suite/pugixml/utftest_utf32_le_nodecl.xml",
+		"xml-test-suite/pugixml/utftest_utf32_le.xml",
+		"xml-test-suite/pugixml/utftest_utf8_bom.xml",
+		"xml-test-suite/pugixml/utftest_utf8_clean.xml",
+		"xml-test-suite/pugixml/utftest_utf8_nodecl.xml",
+		"xml-test-suite/pugixml/utftest_utf8.xml",
+		"xml-test-suite/pugixml/тест.xml", */
 	};
 	
 	public static Collection<Object[]> getFiles() {
@@ -179,6 +206,7 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 		factory.setProperty(XMLInputFactory.SUPPORT_DTD, Boolean.FALSE);
 		factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
 		factory.setProperty(XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, Boolean.FALSE);
+		factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, Boolean.TRUE);
 		javax.xml.stream.XMLStreamReader reader = factory.createXMLStreamReader(in);
 		InputStream in2 = getClass().getClassLoader().getResourceAsStream(filepath);
 		IO.Readable io = new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL);
