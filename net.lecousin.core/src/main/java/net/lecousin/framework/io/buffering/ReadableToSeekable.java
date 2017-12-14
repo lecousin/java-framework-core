@@ -322,7 +322,7 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 	public int read(byte[] buffer, int offset, int len) throws IOException {
 		if (!waitPosition(pos))
 			return -1;
-		waitPosition(buffer.length + len - 1);
+		waitPosition(pos + len - 1);
 		int nb = buffered.readFullySync(pos, ByteBuffer.wrap(buffer, offset, len));
 		pos += nb;
 		return nb;
@@ -341,7 +341,10 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 	@Override
 	public int readAsync() throws IOException {
 		if (knownSize >= 0 && pos >= knownSize) return -1;
-		if (pos >= ioPos) return -2;
+		if (pos >= ioPos) {
+			bufferizeTo(pos);
+			return -2;
+		}
 		if (buffered.getPosition() == pos) {
 			int r = buffered.readAsync();
 			if (r >= 0) pos++;
@@ -425,10 +428,15 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 					@Override
 					public void ready(Integer res) {
 						int nb = res.intValue();
-						if (nb > 0) ReadableToSeekable.this.pos = pos + nb;
-						buffer.flip();
-						if (ondone != null) ondone.run(new Pair<>(buffer, null));
-						result.unblockSuccess(buffer);
+						if (nb > 0) {
+							ReadableToSeekable.this.pos = pos + nb;
+							buffer.flip();
+							if (ondone != null) ondone.run(new Pair<>(buffer, null));
+							result.unblockSuccess(buffer);
+						} else {
+							if (ondone != null) ondone.run(new Pair<>(null, null));
+							result.unblockSuccess(null);
+						}
 					}
 					
 					@Override
