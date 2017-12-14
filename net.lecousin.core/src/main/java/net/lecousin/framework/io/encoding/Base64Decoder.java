@@ -130,7 +130,7 @@ public class Base64Decoder {
 				return;
 			}
 			output.writeAsync(ByteBuffer.wrap(buf)).listenInline(thisOne);
-			result.unblock();
+			if (result != null) result.unblock();
 		});
 	}
 	

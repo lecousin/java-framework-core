@@ -20,30 +20,12 @@ public final class Base64 {
 
 	/** Decode the 4 input bytes of the inputBuffer, into the outputBuffer that must have at least 3 bytes. */
 	public static int decode4BytesBase64(byte[] inputBuffer, byte[] outputBuffer) throws IOException {
-		int v1 = decodeBase64Char(inputBuffer[0]);
-		int v2 = decodeBase64Char(inputBuffer[1]);
-		int v3 = decodeBase64Char(inputBuffer[2]);
-		outputBuffer[0] = (byte)((v1 << 2) | (v2 >>> 4));
-		if (v3 == 64) return 1;
-		int v4 = decodeBase64Char(inputBuffer[3]);
-		outputBuffer[1] = (byte)(((v2 & 0x0F) << 4) | (v3 >>> 2));
-		if (v4 == 64) return 2;
-		outputBuffer[2] = (byte)(((v3 & 0x03) << 6) | v4);
-		return 3;
+		return decode4BytesBase64(inputBuffer, 0, outputBuffer, 0);
 	}
 
 	/** Decode the 4 input bytes of the inputBuffer, into the outputBuffer that must have at least 3 bytes remaining. */
 	public static int decode4BytesBase64(byte[] inputBuffer, byte[] outputBuffer, int outputOffset) throws IOException {
-		int v1 = decodeBase64Char(inputBuffer[0]);
-		int v2 = decodeBase64Char(inputBuffer[1]);
-		int v3 = decodeBase64Char(inputBuffer[2]);
-		outputBuffer[outputOffset] = (byte)((v1 << 2) | (v2 >>> 4));
-		if (v3 == 64) return 1;
-		int v4 = decodeBase64Char(inputBuffer[3]);
-		outputBuffer[outputOffset + 1] = (byte)(((v2 & 0x0F) << 4) | (v3 >>> 2));
-		if (v4 == 64) return 2;
-		outputBuffer[outputOffset + 2] = (byte)(((v3 & 0x03) << 6) | v4);
-		return 3;
+		return decode4BytesBase64(inputBuffer, 0, outputBuffer, outputOffset);
 	}
 
 	/** Decode 4 input bytes of the inputBuffer, into the outputBuffer that must have at least 3 bytes remaining. */
@@ -362,13 +344,15 @@ public final class Base64 {
 		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Encode base 64 stream", io.getPriority()) {
 			@Override
 			public Void run() {
-				if (lastWrite.hasError()) {
-					result.error(lastWrite.getError());
-					return null;
-				}
-				if (lastWrite.isCancelled()) {
-					result.cancel(lastWrite.getCancelEvent());
-					return null;
+				if (lastWrite != null) {
+					if (lastWrite.hasError()) {
+						result.error(lastWrite.getError());
+						return null;
+					}
+					if (lastWrite.isCancelled()) {
+						result.cancel(lastWrite.getCancelEvent());
+						return null;
+					}
 				}
 				int nb = nbBuf;
 				if (nb > 0) {
@@ -390,7 +374,7 @@ public final class Base64 {
 				ISynchronizationPoint<IOException> write = writer.writeAsync(ByteBuffer.wrap(out));
 				buffer.position(buffer.position() + l * 3);
 				nb = buffer.remaining();
-				buffer.get(buf);
+				buffer.get(buf, 0, nb);
 				encodeAsyncNextBuffer(io, writer, result, buf, nb, write);
 				return null;
 			}
@@ -406,13 +390,15 @@ public final class Base64 {
 		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Encode base 64 stream", io.getPriority()) {
 			@Override
 			public Void run() {
-				if (lastWrite.hasError()) {
-					result.error(lastWrite.getError());
-					return null;
-				}
-				if (lastWrite.isCancelled()) {
-					result.cancel(lastWrite.getCancelEvent());
-					return null;
+				if (lastWrite != null) {
+					if (lastWrite.hasError()) {
+						result.error(lastWrite.getError());
+						return null;
+					}
+					if (lastWrite.isCancelled()) {
+						result.cancel(lastWrite.getCancelEvent());
+						return null;
+					}
 				}
 				int nb = nbBuf;
 				if (nb > 0) {
@@ -434,7 +420,7 @@ public final class Base64 {
 				ISynchronizationPoint<IOException> write = writer.writeAsync(out);
 				buffer.position(buffer.position() + l * 3);
 				nb = buffer.remaining();
-				buffer.get(buf);
+				buffer.get(buf, 0, nb);
 				encodeAsyncNextBuffer(io, writer, result, buf, nb, write);
 				return null;
 			}
@@ -457,13 +443,15 @@ public final class Base64 {
 		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Encode base 64 stream", io.getPriority()) {
 			@Override
 			public Void run() {
-				if (lastWrite.hasError()) {
-					result.error(lastWrite.getError());
-					return null;
-				}
-				if (lastWrite.isCancelled()) {
-					result.cancel(lastWrite.getCancelEvent());
-					return null;
+				if (lastWrite != null) {
+					if (lastWrite.hasError()) {
+						result.error(lastWrite.getError());
+						return null;
+					}
+					if (lastWrite.isCancelled()) {
+						result.cancel(lastWrite.getCancelEvent());
+						return null;
+					}
 				}
 				byte[] out = new byte[4];
 				encodeUpTo3BytesBase64(buf, 0, out, 0, nbBuf);
@@ -489,13 +477,15 @@ public final class Base64 {
 		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Encode base 64 stream", io.getPriority()) {
 			@Override
 			public Void run() {
-				if (lastWrite.hasError()) {
-					result.error(lastWrite.getError());
-					return null;
-				}
-				if (lastWrite.isCancelled()) {
-					result.cancel(lastWrite.getCancelEvent());
-					return null;
+				if (lastWrite != null) {
+					if (lastWrite.hasError()) {
+						result.error(lastWrite.getError());
+						return null;
+					}
+					if (lastWrite.isCancelled()) {
+						result.cancel(lastWrite.getCancelEvent());
+						return null;
+					}
 				}
 				char[] out = new char[4];
 				encodeUpTo3BytesBase64(buf, 0, out, 0, nbBuf);
