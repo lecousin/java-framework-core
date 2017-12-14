@@ -14,13 +14,20 @@ public class BufferedReadableCharacterStreamLocation implements ICharacterStream
 
 	/** Constructor. */
 	public BufferedReadableCharacterStreamLocation(ICharacterStream.Readable.Buffered stream) {
+		this(stream, 1, 0);
+	}
+
+	/** Constructor. */
+	public BufferedReadableCharacterStreamLocation(ICharacterStream.Readable.Buffered stream, int line, int posInLine) {
 		this.stream = stream;
+		this.line = line;
+		this.lastLinePos = this.pos = posInLine;
 	}
 	
 	private ICharacterStream.Readable.Buffered stream;
-	private int line = 1;
-	private int pos = 0;
-	private int lastLinePos = 0;
+	private int line;
+	private int pos;
+	private int lastLinePos;
 	
 	public int getLine() { return line; }
 	

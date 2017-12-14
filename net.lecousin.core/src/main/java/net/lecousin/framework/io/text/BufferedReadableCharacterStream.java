@@ -30,17 +30,42 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 				.onUnmappableCharacter(CodingErrorAction.REPLACE),
 			bufferSize, maxBuffers);
 	}
-	
+
 	/** Constructor. */
 	public BufferedReadableCharacterStream(IO.Readable input, CharsetDecoder decoder, int bufferSize, int maxBuffers) {
+		this(input, decoder, bufferSize, maxBuffers, null, null);
+	}
+
+	/** Constructor. */
+	public BufferedReadableCharacterStream(
+		IO.Readable input, Charset charset, int bufferSize, int maxBuffers,
+		ByteBuffer initBytes, CharBuffer initChars
+	) {
+		this(input,
+			charset.newDecoder()
+				.onMalformedInput(CodingErrorAction.REPLACE)
+				.onUnmappableCharacter(CodingErrorAction.REPLACE),
+			bufferSize, maxBuffers, initBytes, initChars);
+	}
+	
+	/** Constructor. */
+	public BufferedReadableCharacterStream(
+		IO.Readable input, CharsetDecoder decoder, int bufferSize, int maxBuffers,
+		ByteBuffer initBytes, CharBuffer initChars
+	) {
 		this.input = input;
 		this.decoder = decoder;
 		if (bufferSize < 64) bufferSize = 64;
 		this.bufferSize = bufferSize;
 		ready = new TurnArray<>(maxBuffers);
 		bytes = ByteBuffer.allocate(bufferSize);
-		bytes.limit(0);
-		chars = null;
+		if (initBytes == null)
+			bytes.limit(0);
+		else {
+			bytes.put(initBytes);
+			bytes.flip();
+		}
+		chars = initChars;
 		// start decoding
 		if (input instanceof IO.Readable.Buffered)
 			((IO.Readable.Buffered)input).canStartReading().listenInline(new Runnable() {

@@ -152,7 +152,6 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 		"xml-test-suite/japanese/pr-xml-shift_jis.xml",
 		"xml-test-suite/japanese/pr-xml-utf-16.xml",
 		"xml-test-suite/japanese/pr-xml-utf-8.xml",
-		/* TODO
 		"xml-test-suite/pugixml/large.xml",
 		"xml-test-suite/pugixml/latintest_latin1.xml",
 		"xml-test-suite/pugixml/latintest_utf8.xml",
@@ -178,7 +177,7 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 		"xml-test-suite/pugixml/utftest_utf8_clean.xml",
 		"xml-test-suite/pugixml/utftest_utf8_nodecl.xml",
 		"xml-test-suite/pugixml/utftest_utf8.xml",
-		"xml-test-suite/pugixml/тест.xml", */
+		"xml-test-suite/pugixml/тест.xml",
 	};
 	
 	public static Collection<Object[]> getFiles() {
@@ -207,7 +206,14 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 		factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
 		factory.setProperty(XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, Boolean.FALSE);
 		factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, Boolean.TRUE);
-		javax.xml.stream.XMLStreamReader reader = factory.createXMLStreamReader(in);
+		javax.xml.stream.XMLStreamReader reader;
+		// it does not support UTF-32 BOM...
+		if (filepath.contains("_utf32_be"))
+			reader = factory.createXMLStreamReader(in, "UTF-32BE");
+		else if (filepath.contains("_utf32_le"))
+			reader = factory.createXMLStreamReader(in, "UTF-32LE");
+		else
+			reader = factory.createXMLStreamReader(in);
 		InputStream in2 = getClass().getClassLoader().getResourceAsStream(filepath);
 		IO.Readable io = new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL);
 		EVENTS xml = start(io);

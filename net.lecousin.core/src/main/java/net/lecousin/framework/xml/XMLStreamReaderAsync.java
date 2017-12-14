@@ -3,9 +3,9 @@ package net.lecousin.framework.xml;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
@@ -13,7 +13,7 @@ import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.encoding.DecimalNumber;
 import net.lecousin.framework.io.encoding.HexadecimalNumber;
 import net.lecousin.framework.io.encoding.INumberEncoding;
-import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
+import net.lecousin.framework.io.text.BufferedReadableCharacterStreamLocation;
 import net.lecousin.framework.locale.LocalizableString;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedString;
@@ -32,12 +32,12 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	 * If it is not buffered, a {@link PreBufferedReadable} is created.
 	 * If the charset is null, it will be automatically detected.
 	 */
-	public XMLStreamReaderAsync(IO.Readable io, Charset forcedEncoding, int charactersBuffersSize) {
+	public XMLStreamReaderAsync(IO.Readable io, Charset defaultEncoding, int charactersBuffersSize) {
 		if (io instanceof IO.Readable.Buffered)
 			this.io = (IO.Readable.Buffered)io;
 		else
 			this.io = new PreBufferedReadable(io, 1024, io.getPriority(), charactersBuffersSize, (byte)(io.getPriority() - 1), 4);
-		this.forcedCharset = forcedEncoding;
+		this.defaultEncoding = defaultEncoding;
 		this.charactersBuffersSize = charactersBuffersSize;
 	}
 	
@@ -46,12 +46,12 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		this(io, null, charactersBuffersSize);
 	}
 	
-	private Charset forcedCharset;
+	private Charset defaultEncoding;
 	private int charactersBuffersSize;
 	private int maxTextSize = -1;
 	private int maxCDataSize = -1;
 	private IO.Readable.Buffered io;
-	private CharacterProvider cp;
+	private BufferedReadableCharacterStreamLocation stream;
 	
 	public int getMaximumTextSize() {
 		return maxTextSize;
@@ -70,375 +70,23 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	}
 	
 	
-	private abstract static class CharacterProvider {
-		public CharacterProvider(char... firstChars) {
-			this.firstChars = firstChars;
-			this.pos = firstChars.length > 0 ? 0 : -1;
-		}
-		
-		private char[] firstChars;
-		private int pos;
-		private char back;
-		private boolean hasBack = false;
-		private int lastLine = 0;
-		private int lastPosInLine = 0;
-		private boolean lastIsNewLine = true;
-		
-		public ISynchronizationPoint<IOException> onCharAvailable() {
-			if (back != -1 || pos >= 0)
-				return new SynchronizationPoint<>(true);
-			return charAvailable();
-		}
-		
-		protected abstract ISynchronizationPoint<IOException> charAvailable();
-		
-		public final int nextChar() throws IOException {
-			if (hasBack) {
-				hasBack = false;
-				return back;
-			}
-			if (pos >= 0) {
-				char c = firstChars[pos++];
-				if (pos == firstChars.length) pos = -1;
-				return updatePos(c);
-			}
-			return updatePos(getNextChar());
-		}
-		
-		public final void back(char c) {
-			hasBack = true;
-			back = c;
-		}
-		
-		protected abstract int getNextChar() throws IOException;
-		
-		private int updatePos(int c) {
-			if (c < 0) return c;
-			if (lastIsNewLine) {
-				lastLine++;
-				lastPosInLine = 1;
-			} else
-				lastPosInLine++;
-			lastIsNewLine = (c == '\n');
-			return c;
-		}
-		
-		public final Pair<Integer,Integer> getPosition() {
-			return new Pair<>(Integer.valueOf(lastLine), Integer.valueOf(lastPosInLine));
-		}
-	}
-	
-	private class StartCharacterProvider extends CharacterProvider {
-		public StartCharacterProvider(char... firstChars) {
-			super(firstChars);
-		}
-		
-		protected int nextUTF8 = -1;
-		protected int firstChar = -1;
-		protected int secondChar = -1;
-		protected int thirdChar = -1;
-		
-		@Override
-		protected ISynchronizationPoint<IOException> charAvailable() {
-			if (nextUTF8 != -1)
-				return new SynchronizationPoint<>(true);
-			return io.canStartReading();
-		}
-		
-		@Override
-		protected int getNextChar() throws IOException {
-			if (nextUTF8 != -1) {
-				int c = nextUTF8;
-				nextUTF8 = -1;
-				return c;
-			}
-			int c;
-			if (firstChar == -1) {
-				c = io.readAsync();
-				if (c < 0) return c;
-			} else {
-				c = firstChar;
-				firstChar = -1;
-			}
-			// UTF-8 decoding by default
-			if (c < 0x80)
-				return (char)c;
-			int up = c & 0xF0;
-			if (up == 0xC0) {
-				// two bytes
-				int c2;
-				if (secondChar == -1)
-					c2 = io.readAsync();
-				else {
-					c2 = secondChar;
-					secondChar = -1;
-				}
-				if (c2 == -1) return (char)c;
-				if (c2 == -2) {
-					firstChar = c;
-					return -2;
-				}
-				if ((c2 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
-				return (char)((c2 & 0x3F) | ((c & 0x1F) << 6));
-			}
-			if (up == 0xE0) {
-				// 3 bytes
-				int c2;
-				if (secondChar == -1)
-					c2 = io.readAsync();
-				else {
-					c2 = secondChar;
-					secondChar = -1;
-				}
-				if (c2 == -1) return (char)c;
-				if (c2 == -2) {
-					firstChar = c;
-					return -2;
-				}
-				int c3;
-				if (thirdChar == -1)
-					c3 = io.readAsync();
-				else {
-					c3 = thirdChar;
-					thirdChar = -1;
-				}
-				if (c3 == -1) throw new IOException("Invalid UTF-8 character");
-				if (c3 == -2) {
-					firstChar = c;
-					secondChar = c2;
-					return -2;
-				}
-				if ((c2 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
-				if ((c3 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
-				return (char)((c3 & 0x3F) | ((c2 & 0x3F) << 6) | ((c & 0xF) << 12));
-			}
-			// 4 bytes
-			if ((c & 0xF8) != 0xF0) throw new IOException("Invalid UTF-8 character");
-			int c2;
-			if (secondChar == -1)
-				c2 = io.readAsync();
-			else {
-				c2 = secondChar;
-				secondChar = -1;
-			}
-			if (c2 == -1) return (char)c;
-			if (c2 == -2) {
-				firstChar = c;
-				return -2;
-			}
-			if ((c2 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
-			int c3;
-			if (thirdChar == -1)
-				c3 = io.readAsync();
-			else {
-				c3 = thirdChar;
-				thirdChar = -1;
-			}
-			if (c3 == -1) throw new IOException("Invalid UTF-8 character");
-			if (c3 == -2) {
-				firstChar = c;
-				secondChar = c2;
-				return -2;
-			}
-			if ((c3 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
-			int c4 = io.readAsync();
-			if (c4 == -1) throw new IOException("Invalid UTF-8 character");
-			if (c4 == -2) {
-				firstChar = c;
-				secondChar = c2;
-				thirdChar = c3;
-				return -2;
-			}
-			if ((c4 & 0xC0) != 0x80) throw new IOException("Invalid UTF-8 character");
-			int ch = (c4 & 0x3F) | ((c3 & 0x3F) << 6) | ((c2 & 0x3F) << 12) | (c & 0xF) << 18;
-			ch -= 0x010000;
-			nextUTF8 = (ch & 0x3FF) + 0xDC00;
-			return (char)(((ch & 0xFFC00) >> 10) + 0xD800);
-		}
-	}
-	
-	private class CharacterStreamProvider extends CharacterProvider {
-		public CharacterStreamProvider(Charset charset, char... firstChars) {
-			super(firstChars);
-			stream = new BufferedReadableCharacterStream(io, charset, charactersBuffersSize, 8);
-		}
-		
-		private BufferedReadableCharacterStream stream;
-		
-		@Override
-		protected int getNextChar() throws IOException {
-			return stream.readAsync();
-		}
-		
-		@Override
-		protected ISynchronizationPoint<IOException> charAvailable() {
-			return stream.canStartReading();
-		}
-	}
-	
-	private void initCharacterProvider() throws XMLException, IOException {
-		// detect BOM
-		// even we have a forced charset given, we read the BOM but ignore its signification
-		int c1 = io.read();
-		if (c1 < 0) throw new XMLException(null, "File is empty");
-		int c2 = io.read();
-		if (c2 < 0) throw new XMLException(null, "Not an XML file");
-		switch (c1) {
-		case 0xEF:
-			// it may be a UTF-8 BOM
-			if (c2 == 0xBB) {
-				int c3 = io.read();
-				if (c3 < 0) throw new XMLException(null, "Not an XML file");
-				if (c3 == 0xBF) {
-					// UTF-8 BOM
-					if (forcedCharset == null)
-						cp = new CharacterStreamProvider(StandardCharsets.UTF_8);
-					else
-						cp = new CharacterStreamProvider(forcedCharset);
-					return;
-				}
-				cp = new StartCharacterProvider((char)c1, (char)c2, (char)c3);
-				return;
-			}
-			cp = new StartCharacterProvider((char)c1, (char)c2);
-			return;
-		case 0xFE:
-			// it may be a UTF-16 big-endian BOM
-			if (c2 == 0xFF) {
-				// UTF-16 big-endian
-				if (forcedCharset == null)
-					cp = new CharacterStreamProvider(StandardCharsets.UTF_16BE);
-				else
-					cp = new CharacterStreamProvider(forcedCharset);
-				return;
-			}
-			cp = new StartCharacterProvider((char)c1, (char)c2);
-			return;
-		case 0xFF:
-			// it may be a BOM for UTF-16 little-endian or UTF-32 little-endian
-			if (c2 == 0xFE) {
-				int c3 = io.read();
-				if (c3 < 0) throw new XMLException(null, "Not an XML file");
-				if (c3 == 0x00) {
-					int c4 = io.read();
-					if (c4 < 0) throw new XMLException(null, "Not an XML file");
-					if (c4 == 0x00) {
-						// UTF-32 little-endian
-						if (forcedCharset == null)
-							cp = new CharacterStreamProvider(Charset.forName("UTF-32LE"));
-						else
-							cp = new CharacterStreamProvider(forcedCharset);
-						return;
-					}
-					cp = new StartCharacterProvider((char)c1, (char)c2, (char)c3, (char)c4);
-					return;
-				}
-				// UTF-16 little-endian
-				if (forcedCharset == null) {
-					int c4 = io.read();
-					if (c4 < 0) throw new XMLException(null, "Not an XML file");
-					cp = new CharacterStreamProvider(StandardCharsets.UTF_16LE, (char)(c3 | (c4 << 8)));
-				} else
-					cp = new CharacterStreamProvider(forcedCharset);
-				return;
-			}
-			cp = new StartCharacterProvider((char)c1, (char)c2);
-			return;
-		case 0x00:
-			// it may be a UTF-32 big-endian BOM, but it may also be UTF-16 without BOM
-			if (c2 == 0x00) {
-				int c3 = io.read();
-				if (c3 < 0) throw new XMLException(null, "Not an XML file");
-				if (c3 == 0xFE) {
-					int c4 = io.read();
-					if (c4 < 0) throw new XMLException(null, "Not an XML file");
-					if (c4 == 0xFF) {
-						// UTF-32 big-endian
-						if (forcedCharset == null)
-							cp = new CharacterStreamProvider(Charset.forName("UTF-32BE"));
-						else
-							cp = new CharacterStreamProvider(forcedCharset);
-						return;
-					}
-					cp = new StartCharacterProvider((char)c1, (char)c2, (char)c3, (char)c4);
-					return;
-				}
-				// UTF-16 without BOM
-				if (forcedCharset == null)
-					cp = new CharacterStreamProvider(StandardCharsets.UTF_16BE, (char)((c1 << 8) | c2));
-				else
-					cp = new CharacterStreamProvider(forcedCharset);
-				return;
-			}
-			cp = new StartCharacterProvider((char)c1, (char)c2);
-			return;
-		// TODO other BOM ? (https://en.wikipedia.org/wiki/Byte_order_mark#Representations_of_byte_order_marks_by_encoding)
-		// TODO https://www.w3.org/TR/REC-xml/#sec-guessing
-		default: break;
-		}
-		cp = new StartCharacterProvider((char)c1, (char)c2);
-	}
-	
 	/* Public methods */
 
 	/** Start reading the XML to provide the first event.
 	 * If the first tag is a processing instruction XML it reads it and goes to the next event.
 	 */
 	public ISynchronizationPoint<Exception> start() {
-		try {
-			initCharacterProvider();
-		} catch (EOFException e) {
-			return new SynchronizationPoint<>(new XMLException(null, "Invalid XML"));
-		} catch (Exception e) {
-			return new SynchronizationPoint<>(e);
-		}
-		ISynchronizationPoint<Exception> next = next();
-		if (next.isUnblocked()) {
-			if (next.hasError()) return next;
-			if (checkFirstElement()) return next();
-			return next;
-		}
-		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
-		next.listenAsync(new ParsingTask(() -> {
-			if (next.hasError()) result.error(next.getError());
-			else if (!checkFirstElement()) result.unblock();
-			else next().listenInline(result);
-		}), result);
-		return result;
-	}
-	
-	private boolean checkFirstElement() {
-		if (Type.PROCESSING_INSTRUCTION.equals(event.type)) {
-			if (event.text.length() == 3) {
-				char c = event.text.charAt(0);
-				if (c == 'x' || c == 'X') {
-					c = event.text.charAt(1);
-					if (c == 'm' || c == 'M') {
-						c = event.text.charAt(2);
-						if (c == 'l' || c == 'L') {
-							UnprotectedStringBuffer encoding = getAttributeValueByFullName("encoding");
-							if (encoding != null) {
-								if (!(cp instanceof CharacterStreamProvider))
-									cp = new CharacterStreamProvider(Charset.forName(encoding.asString()));
-								else {
-									CharacterStreamProvider current = (CharacterStreamProvider)cp;
-									Charset cs = null;
-									try { cs = Charset.forName(encoding.asString()); }
-									catch (Exception e) {}
-									if (cs != null) {
-										if (!cs.equals(current.stream.getEncoding())) {
-											// TODO change !! handle back and buffered...
-										}
-									}
-								}
-							}
-							return true;
-						}
-					}
-				}
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		io.canStartReading().listenAsync(new Task.Cpu.FromRunnable(() -> {
+			try {
+				Starter start = new Starter(io, defaultEncoding, charactersBuffersSize);
+				stream = start.start();
+				next().listenInline(sp);
+			} catch (Exception e) {
+				sp.error(e);
 			}
-		}
-		return false;
+		}, "Start parsing XML", io.getPriority()), true);
+		return sp;
 	}
 	
 	@Override
@@ -455,6 +103,10 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	@Override
 	public byte getPriority() {
 		return io.getPriority();
+	}
+	
+	public Pair<Integer, Integer> getPosition() {
+		return new Pair<>(Integer.valueOf(stream.getLine()), Integer.valueOf(stream.getPositionInLine()));
 	}
 	
 	/** Shortcut to move forward to the first START_ELEMENT event, skipping the header or comments. */
@@ -516,13 +168,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	private void nextChar(SynchronizationPoint<Exception> sp) {
 		do {
 			int c;
-			try { c = cp.nextChar(); }
+			try { c = stream.readAsync(); }
 			catch (IOException e) {
 				sp.error(e);
 				return;
 			}
 			if (c == -2) {
-				cp.onCharAvailable().listenAsync(new ParsingTask(() -> { nextChar(sp); }), true);
+				stream.canStartReading().listenAsync(new ParsingTask(() -> { nextChar(sp); }), true);
 				return;
 			}
 			switch (state) {
@@ -690,7 +342,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readTag(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -720,13 +372,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			event.text.append((char)c);
 			return true;
 		}
-		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+		sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 		return false;
 	}
 	
 	private boolean readTagExclamation(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -747,7 +399,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				event.text.append((char)c);
 				return true;
 			}
-			sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
+			sp.error(new XMLException(getPosition(), "Invalid XML"));
 			return false;
 		}
 		char c1 = event.text.charAt(0);
@@ -760,7 +412,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				event.text = new UnprotectedStringBuffer();
 				return true;
 			}
-			sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
+			sp.error(new XMLException(getPosition(), "Invalid XML"));
 			return false;
 		}
 		// CDATA
@@ -769,11 +421,11 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			if (event.text.length() < 7) {
 				if (event.text.isStartOf("[CDATA["))
 					return true;
-				sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
+				sp.error(new XMLException(getPosition(), "Invalid XML"));
 				return false;
 			}
 			if (!event.text.equals("[CDATA[")) {
-				sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
+				sp.error(new XMLException(getPosition(), "Invalid XML"));
 				return false;
 			}
 			state = State.CDATA;
@@ -786,11 +438,11 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			event.text.append((char)c);
 			if (event.text.isStartOf("DOCTYPE"))
 				return true;
-			sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
+			sp.error(new XMLException(getPosition(), "Invalid XML"));
 			return false;
 		}
 		if (!isSpaceChar((char)c)) {
-			sp.error(new XMLException(cp.getPosition(), "Invalid XML"));
+			sp.error(new XMLException(getPosition(), "Invalid XML"));
 			return false;
 		}
 		state = State.DOCTYPE;
@@ -801,13 +453,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readDocType(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (isSpaceChar((char)c)) return true;
 		if (!isNameStartChar((char)c)) {
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		event.text.append((char)c);
@@ -817,7 +469,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readDocTypeName(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -837,13 +489,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			sp.unblock();
 			return false;
 		}
-		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+		sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 		return false;
 	}
 	
 	private boolean readDocTypeSpace(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -867,30 +519,30 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			statePos = 1;
 			return true;
 		}
-		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+		sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 		return false;
 	}
 	
 	private boolean readDocTypePublicName(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (statePos < 6) {
 			if (c != "PUBLIC".charAt(statePos)) {
-				sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+				sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 				return false;
 			}
 			statePos++;
 			return true;
 		}
 		if (event.publicId.length() > 0) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Invalid XML")));
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Invalid XML")));
 			return false;
 		}			
 		if (!isSpaceChar((char)c)) {
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_PUBLIC_SPACE;
@@ -899,14 +551,14 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readDocTypePublicSpace(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (isSpaceChar((char)c))
 			return true;
 		if (c != '"' && c != '\'') {
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_PUBLIC_ID;
@@ -916,7 +568,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readDocTypePublicId(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -935,19 +587,19 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			event.publicId.append((char)c);
 			return true;
 		}
-		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+		sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 		return false;
 	}
 	
 	private boolean readDocTypeSystemName(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (statePos < 6) {
 			if (c != "SYSTEM".charAt(statePos)) {
-				sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+				sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 				return false;
 			}
 			statePos++;
@@ -956,11 +608,11 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		if (event.system == null)
 			event.system = new UnprotectedStringBuffer();
 		if (event.system.length() > 0) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Invalid XML")));
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Invalid XML")));
 			return false;
 		}			
 		if (!isSpaceChar((char)c)) {
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_SYSTEM_SPACE;
@@ -969,14 +621,14 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 
 	private boolean readDocTypeSystemSpace(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (isSpaceChar((char)c))
 			return true;
 		if (c != '"' && c != '\'') {
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_SYSTEM_VALUE;
@@ -986,7 +638,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readDocTypeSystemValue(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1000,7 +652,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readComment(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(getPosition(),
 				new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "inside comment")));
 			return false;
@@ -1037,7 +689,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readCData(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(getPosition(),
 				new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "inside CDATA")));
 			return false;
@@ -1074,7 +726,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readStartElementName(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1096,18 +748,18 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			state = State.START_ELEMENT_CLOSED;
 			return true;
 		}
-		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+		sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 		return false;
 	}
 	
 	private boolean readStartElementClosed(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (c != '>') {
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf((char)c)));
+			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf((char)c)));
 			return false;
 		}
 		event.isClosed = true;
@@ -1118,7 +770,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readStartElementSpace(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1143,7 +795,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				state = State.START_ELEMENT_CLOSED;
 				return true;
 			}
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 			return false;
 		}
 		if (c == '?') {
@@ -1156,7 +808,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readAttributeName(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1180,7 +832,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readAttributeNameSpace(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1193,13 +845,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		}
 		// no equals, we accept the attribute without value
 		state = State.START_ELEMENT_SPACE;
-		cp.back(c);
+		stream.back(c);
 		return true;
 	}
 	
 	private boolean readAttributeValueSpace(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1220,13 +872,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			a.value = new UnprotectedStringBuffer();
 			return true;
 		}
-		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+		sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 		return false;
 	}
 	
 	private boolean readAttributeValue(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
@@ -1243,7 +895,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		}
 		if (c == '<') {
-			sp.error(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(getPosition(),
 				new LocalizableString("lc.xml.error", "Unexpected character", Character.valueOf(c)),
 				new LocalizableString("lc.xml.error", "in attribute value")));
 			return false;
@@ -1256,14 +908,14 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readProcessingInstruction(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		char c = (char)i;
 		if (event.text.length() == 0) {
 			if (!isNameStartChar(c)) {
-				sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+				sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 				return false;
 			}
 			event.text.append(c);
@@ -1279,13 +931,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readProcessingInstructionClosed(int c, SynchronizationPoint<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		if (c != '>') {
 			// accept a unuseful ? alone
-			cp.back((char)c);
+			stream.back((char)c);
 			state = State.START_ELEMENT_SPACE;
 			return true;
 		}
@@ -1302,7 +954,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		}
 		char c = (char)i;
 		if (c == '<') {
-			cp.back(c);
+			stream.back(c);
 			event.text.replace("\r\n", "\n");
 			resolveReferences(event.text);
 			sp.unblock();
@@ -1320,14 +972,14 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readEndElementName(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(cp.getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
+			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in XML document")));
 			return false;
 		}
 		char c = (char)i;
 		if (event.text.length() == 0) {
 			if (!isNameStartChar(c)) {
-				sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+				sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 				return false;
 			}
 			event.text.append(c);
@@ -1337,12 +989,12 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		if (c == '>') {
 			ElementContext ctx = event.context.peekFirst();
 			if (ctx == null) {
-				sp.error(new XMLException(cp.getPosition(),
+				sp.error(new XMLException(getPosition(),
 					"Unexpected end element", event.text.asString()));
 				return false;
 			}
 			if (!ctx.text.equals(event.text)) {
-				sp.error(new XMLException(cp.getPosition(),
+				sp.error(new XMLException(getPosition(),
 					"Unexpected end element expected is", event.text.asString(), ctx.text.asString()));
 				return false;
 			}
@@ -1363,7 +1015,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		}
 		if (statePos != 0 || !isNameChar(c)) {
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 			return false;
 		}
 		event.text.append(c);
@@ -1417,7 +1069,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readInternalSubset(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(getPosition(),
 				new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in internal subset declaration")));
 			return false;
@@ -1435,7 +1087,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		}
 		if (c != '<') {
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 			return false;
 		}
 		state = State.DOCTYPE_INTERNAL_SUBSET_TAG;
@@ -1445,7 +1097,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readInternalSubsetPEReference(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(getPosition(),
 				new LocalizableString("lc.xml.error", "Unexpected end"),
 				new LocalizableString("lc.xml.error", "in internal subset declaration")));
 			return false;
@@ -1453,7 +1105,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		char c = (char)i;
 		if (statePos == 0) {
 			if (!isNameStartChar(c)) {
-				sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+				sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 				return false;
 			}
 			statePos = 1;
@@ -1470,7 +1122,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				state = State.DOCTYPE_INTERNAL_SUBSET;
 				return true;
 			}
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 			return false;
 		}
 		if (isSpaceChar(c))
@@ -1479,13 +1131,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			state = State.DOCTYPE_INTERNAL_SUBSET;
 			return true;
 		}
-		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+		sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 		return false;
 	}
 	
 	private boolean readInternalSubsetTag(int i, SynchronizationPoint<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(cp.getPosition(),
+			sp.error(new XMLException(getPosition(),
 					new LocalizableString("lc.xml.error", "Unexpected end"),
 					new LocalizableString("lc.xml.error", "in internal subset declaration")));
 				return false;
@@ -1500,7 +1152,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				statePos = 10;
 				return true;
 			}
-			sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 			return false;
 		}
 		if (statePos == 1) {
@@ -1560,20 +1212,11 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				statePos = 10;
 			return true;
 		}
-		sp.error(new XMLException(cp.getPosition(), "Unexpected character", Character.valueOf(c)));
+		sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 		return false;
 	}
 
 
-	private static boolean[] isSpace = new boolean[] { true, true, false, false, true };
-	
-	private static boolean isSpaceChar(char c) {
-		if (c == 0x20) return true;
-		if (c > 0xD) return false;
-		if (c < 0x9) return false;
-		return isSpace[c - 9];
-	}
-	
 	private static boolean isNameStartChar(char c) {
 		if (c < 0xF8) {
 			if (c < 0x3A) return false; // :
