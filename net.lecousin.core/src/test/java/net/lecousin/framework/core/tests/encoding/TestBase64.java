@@ -64,11 +64,69 @@ public class TestBase64 extends LCCoreAbstractTest {
 	
 	@SuppressWarnings("resource")
 	@Test
+	public void testEncodeAndDecodeBytesSmall() throws Exception {
+		byte[] data = new byte[128*64];
+		for (int i = 0; i < 64; ++i) {
+			for (int j = 0; j < 128; ++j) {
+				data[i * 128 + j] = (byte)((i * j % 300) + i + j - i/3);
+			}
+		}
+		MemoryIO encoded = new MemoryIO(1024, "base64_encoded");
+		Base64.encodeAsync(new ByteArrayIO(data, "base64_src"), encoded).blockException(0);
+		encoded.seekSync(SeekType.FROM_BEGINNING, 0);
+		MemoryIO decoded = new MemoryIO(1024, "base64_decoded");
+		Base64Decoder decoder = new Base64Decoder(decoded);
+		do {
+			ByteBuffer b = ByteBuffer.allocate(3);
+			int nb = encoded.readFullySync(b);
+			if (nb <= 0) break;
+			b.flip();
+			decoder.decode(b).blockException(0);
+		} while (true);
+		decoder.flush().blockException(0);
+		decoded.seekSync(SeekType.FROM_BEGINNING, 0);
+		byte[] b = new byte[128];
+		for (int i = 0; i < 64; ++i) {
+			int nb = decoded.readFully(b);
+			Assert.assertEquals(128, nb);
+			Assert.assertTrue(ArrayUtil.equals(data, i * 128, b, 0, 128));
+		}
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
 	public void testDecodeChars() throws Exception {
 		CharBuffer cb = CharBuffer.wrap("VGhhdCBpcyBhIHRlc3QgdG8gZGVjb2RlIGJhc2UgNjQgd2l0aCBjaGFyYWN0ZXIgc3RyZWFt");
 		ByteArrayIO decoded = new ByteArrayIO(512, "base64_decoded");
 		Base64Decoder decoder = new Base64Decoder(decoded);
 		decoder.decode(cb).blockException(0);
+		decoder.flush().blockException(0);
+		Assert.assertEquals("That is a test to decode base 64 with character stream", decoded.getAsString(StandardCharsets.US_ASCII));
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
+	public void testDecodeCharsSmall() throws Exception {
+		CharBuffer cb1 = CharBuffer.wrap("V");
+		CharBuffer cb2 = CharBuffer.wrap("G");
+		CharBuffer cb3 = CharBuffer.wrap("h");
+		CharBuffer cb4 = CharBuffer.wrap("h");
+		CharBuffer cb5 = CharBuffer.wrap("dC");
+		CharBuffer cb6 = CharBuffer.wrap("BpcyB");
+		CharBuffer cb7 = CharBuffer.wrap("hIHRlc3Qg");
+		CharBuffer cb8 = CharBuffer.wrap("dG8gZGVjb2R");
+		CharBuffer cb9 = CharBuffer.wrap("lIGJhc2UgNjQgd2l0aCBjaGFyYWN0ZXIgc3RyZWFt");
+		ByteArrayIO decoded = new ByteArrayIO(512, "base64_decoded");
+		Base64Decoder decoder = new Base64Decoder(decoded);
+		decoder.decode(cb1).blockException(0);
+		decoder.decode(cb2).blockException(0);
+		decoder.decode(cb3).blockException(0);
+		decoder.decode(cb4).blockException(0);
+		decoder.decode(cb5).blockException(0);
+		decoder.decode(cb6).blockException(0);
+		decoder.decode(cb7).blockException(0);
+		decoder.decode(cb8).blockException(0);
+		decoder.decode(cb9).blockException(0);
 		decoder.flush().blockException(0);
 		Assert.assertEquals("That is a test to decode base 64 with character stream", decoded.getAsString(StandardCharsets.US_ASCII));
 	}

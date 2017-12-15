@@ -28,6 +28,7 @@ import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.annotations.SerializationName;
 import net.lecousin.framework.io.serialization.annotations.Transient;
 import net.lecousin.framework.util.ClassUtil;
+import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -167,6 +168,16 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		ts.str = s;
 		test(ts, TestString.class);
 	}
+
+	public static class TestIString {
+		public UnprotectedStringBuffer str;
+	}
+
+	public void testIString(String s) throws Exception {
+		TestIString ts = new TestIString();
+		ts.str = new UnprotectedStringBuffer(s);
+		test(ts, TestIString.class);
+	}
 	
 	@Test
 	public void testStrings() throws Exception {
@@ -175,6 +186,9 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testString("hello");
 		testString("123");
 		testString("a\tb\rc\nd\be\\fg\"hi\'jk&#{([-|_@)]=+}£$*%!:/;.,?<012>34");
+		testIString("hello");
+		testIString("123");
+		testIString("a\tb\rc\nd\be\\fg\"hi\'jk&#{([-|_@)]=+}£$*%!:/;.,?<012>34");
 	}
 	
 	
@@ -313,6 +327,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		t.testBooleans = new TestBooleans[] { new TestBooleans(), createBooleans() };
 		t.testNumbers = new TestNumbers[] { createNumbers(), new TestNumbers() };
 		test(t, TestArrays.class);
+		test(new int[] { 11, 33, 55, 77, 99 }, int[].class);
 	}
 	
 	public static class TestListOfList {
@@ -453,10 +468,13 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		}
 		if (type.isPrimitive() ||
 			Number.class.isAssignableFrom(type) ||
-			CharSequence.class.isAssignableFrom(type) ||
 			Boolean.class.equals(type) ||
 			Character.class.equals(type)) {
 			Assert.assertEquals(expected, found);
+			return;
+		}
+		if (CharSequence.class.isAssignableFrom(type)) {
+			Assert.assertEquals(((CharSequence)expected).toString(), ((CharSequence)found).toString());
 			return;
 		}
 		if (List.class.isAssignableFrom(type)) {
