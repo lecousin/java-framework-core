@@ -25,6 +25,7 @@ import net.lecousin.framework.io.buffering.MemoryIO;
 import net.lecousin.framework.io.serialization.Deserializer;
 import net.lecousin.framework.io.serialization.Serializer;
 import net.lecousin.framework.io.serialization.TypeDefinition;
+import net.lecousin.framework.io.serialization.annotations.SerializationName;
 import net.lecousin.framework.io.serialization.annotations.Transient;
 import net.lecousin.framework.util.ClassUtil;
 
@@ -375,6 +376,26 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		Assert.assertFalse(t4.b2);
 		Assert.assertEquals(99, t4.i1);
 		Assert.assertEquals(20, t4.i2);
+	}
+	
+	public static class TestRename1 {
+		@SerializationName("world")
+		public String hello;
+	}
+	
+	public static class TestRename2 {
+		public String world;
+	}
+	
+	@Test
+	public void testRename() throws Exception {
+		TestRename1 t1 = new TestRename1();
+		t1.hello = "bonjour";
+		test(t1, TestRename1.class);
+		@SuppressWarnings("resource")
+		MemoryIO ioMem = serializeInMemory(t1);
+		TestRename2 t2 = deserialize(ioMem, TestRename2.class);
+		Assert.assertEquals("bonjour", t2.world);
 	}
 	
 	protected <T> void test(T object, Class<T> type) throws Exception {
