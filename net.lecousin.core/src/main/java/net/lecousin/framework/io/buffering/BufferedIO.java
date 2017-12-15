@@ -12,12 +12,12 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -240,29 +240,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		
 		@Override
 		public ISynchronizationPoint<IOException> canStartReading() {
-			int i = getBufferIndex(pos);
-			if (i >= buffers.size()) i = 0;
-			Buffer b = buffers.get(i);
-			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-			if (b.error != null) {
-				sp.error(b.error);
-				return sp;
-			}
-			SynchronizationPoint<NoException> l = b.loading;
-			if (l != null) {
-				l.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (b.error != null)
-							sp.error(b.error);
-						else
-							sp.unblock();
-					}
-				});
-				return sp;
-			}
-			sp.unblock();
-			return sp;
+			return super.canStartReading();
 		}
 		
 		@Override
@@ -445,29 +423,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		
 		@Override
 		public ISynchronizationPoint<IOException> canStartReading() {
-			int i = getBufferIndex(pos);
-			if (i >= buffers.size()) i = 0;
-			Buffer b = buffers.get(i);
-			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-			if (b.error != null) {
-				sp.error(b.error);
-				return sp;
-			}
-			SynchronizationPoint<NoException> l = b.loading;
-			if (l != null) {
-				l.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (b.error != null)
-							sp.error(b.error);
-						else
-							sp.unblock();
-					}
-				});
-				return sp;
-			}
-			sp.unblock();
-			return sp;
+			return super.canStartReading();
 		}
 		
 		@Override
@@ -695,6 +651,32 @@ public abstract class BufferedIO extends BufferingManaged {
 		}
 	}	
 
+	protected ISynchronizationPoint<IOException> canStartReading() {
+		int i = getBufferIndex(pos);
+		if (i >= buffers.size()) i = 0;
+		Buffer b = buffers.get(i);
+		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+		if (b.error != null) {
+			sp.error(b.error);
+			return sp;
+		}
+		SynchronizationPoint<NoException> l = b.loading;
+		if (l != null) {
+			l.listenInline(new Runnable() {
+				@Override
+				public void run() {
+					if (b.error != null)
+						sp.error(b.error);
+					else
+						sp.unblock();
+				}
+			});
+			return sp;
+		}
+		sp.unblock();
+		return sp;
+	}
+	
 	protected int read() throws IOException {
 		if (pos == size) return -1;
 		int bufferIndex = getBufferIndex(pos);
@@ -1040,31 +1022,18 @@ public abstract class BufferedIO extends BufferingManaged {
 			manager.newBuffer(newBuffers.removeFirst());
 		AsyncWork<Void, IOException> sp = new AsyncWork<>();
 		SynchronizationPoint<NoException> lb = lastBuffer;
-		resize.listenInline(new AsyncWorkListener<Void, IOException>() {
-			@Override
-			public void ready(Void result) {
-				if (lb == null || lb.isUnblocked()) {
+		resize.listenInline(() -> {
+			if (lb == null || lb.isUnblocked()) {
+				size = newSize;
+				sp.unblockSuccess(null);
+			} else lb.listenInline(new Runnable() {
+				@Override
+				public void run() {
 					size = newSize;
 					sp.unblockSuccess(null);
-				} else lb.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						size = newSize;
-						sp.unblockSuccess(null);
-					}
-				});
-			}
-			
-			@Override
-			public void error(IOException error) {
-				sp.unblockError(error);
-			}
-			
-			@Override
-			public void cancelled(CancelException event) {
-				sp.unblockCancel(event);
-			}
-		});
+				}
+			});
+		}, sp);
 		return sp;
 	}
 	
@@ -1118,18 +1087,11 @@ public abstract class BufferedIO extends BufferingManaged {
 					lastBuffer.lastRead = System.currentTimeMillis();
 				}
 				AsyncWork<Void,IOException> resize = ((IO.Resizable)io).setSizeAsync(ns);
-				resize.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (resize.hasError()) {
-							result.error(resize.getError());
-							return;
-						}
-						size = ns;
-						if (pos > size) pos = size;
-						result.unblockSuccess(null);
-					}
-				});
+				resize.listenInline(() -> {
+					size = ns;
+					if (pos > size) pos = size;
+					result.unblockSuccess(null);
+				}, resize);
 				return null;
 			}
 		}, true);
@@ -1145,41 +1107,10 @@ public abstract class BufferedIO extends BufferingManaged {
 			AsyncWork<Void,IOException> resize = increaseSize(pos);
 			size = pos;
 			AsyncWork<Integer,IOException> sp = new AsyncWork<>();
-			resize.listenInline(new AsyncWorkListener<Void, IOException>() {
-				@Override
-				public void ready(Void result) {
-					AsyncWork<Integer, IOException> write = writeAsync(pos, buf, alreadyDone, null);
-					write.listenInline(new AsyncWorkListener<Integer, IOException>() {
-						@Override
-						public void ready(Integer result) {
-							if (ondone != null) ondone.run(new Pair<>(result, null));
-							sp.unblockSuccess(result);
-						}
-						
-						@Override
-						public void error(IOException error) {
-							if (ondone != null) ondone.run(new Pair<>(null, error));
-							sp.unblockError(error);
-						}
-						
-						@Override
-						public void cancelled(CancelException event) {
-							sp.unblockCancel(event);
-						}
-					});
-				}
-				
-				@Override
-				public void error(IOException error) {
-					if (ondone != null) ondone.run(new Pair<>(null, error));
-					sp.unblockError(error);
-				}
-				
-				@Override
-				public void cancelled(CancelException event) {
-					sp.unblockCancel(event);
-				}
-			});
+			IOUtil.listenOnDone(resize,(result) -> {
+				AsyncWork<Integer, IOException> write = writeAsync(pos, buf, alreadyDone, null);
+				IOUtil.listenOnDone(write, sp, ondone);
+			}, sp, ondone);
 			return sp;
 		}
 		
@@ -1243,24 +1174,7 @@ public abstract class BufferedIO extends BufferingManaged {
 					return null;
 				}
 				AsyncWork<Integer,IOException> next = writeAsync(p, buf, len + alreadyDone, null);
-				next.listenInline(new AsyncWorkListener<Integer, IOException>() {
-					@Override
-					public void ready(Integer result) {
-						if (ondone != null) ondone.run(new Pair<>(result, null));
-						done.unblockSuccess(result);
-					}
-					
-					@Override
-					public void error(IOException error) {
-						if (ondone != null) ondone.run(new Pair<>(null, error));
-						done.unblockError(error);
-					}
-					
-					@Override
-					public void cancelled(CancelException event) {
-						done.unblockCancel(event);
-					}
-				});
+				IOUtil.listenOnDone(next, done, ondone);
 				return null;
 			}
 		};
