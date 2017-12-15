@@ -35,7 +35,7 @@ public final class Base64 {
 		int v3 = decodeBase64Char(inputBuffer[inputOffset + 2]);
 		outputBuffer[outputOffset] = (byte)((v1 << 2) | (v2 >>> 4));
 		if (v3 == 64) return 1;
-		int v4 = decodeBase64Char(inputBuffer[3]);
+		int v4 = decodeBase64Char(inputBuffer[inputOffset + 3]);
 		outputBuffer[outputOffset + 1] = (byte)(((v2 & 0x0F) << 4) | (v3 >>> 2));
 		if (v4 == 64) return 2;
 		outputBuffer[outputOffset + 2] = (byte)(((v3 & 0x03) << 6) | v4);

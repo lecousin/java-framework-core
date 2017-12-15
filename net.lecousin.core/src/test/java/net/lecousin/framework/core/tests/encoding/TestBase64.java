@@ -1,6 +1,9 @@
 package net.lecousin.framework.core.tests.encoding;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.StandardCharsets;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -15,6 +18,19 @@ import net.lecousin.framework.io.encoding.Base64Decoder;
 
 public class TestBase64 extends LCCoreAbstractTest {
 
+	@Test
+	public void testEncoding() {
+		Assert.assertEquals("SGVsbG8gV29ybGQgIQ==", new String(Base64.encodeBase64("Hello World !".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
+		Assert.assertEquals("SGVsbG8gV29ybGQh", new String(Base64.encodeBase64("Hello World!".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
+		Assert.assertEquals("SGVsbG8gV29ybGQ=", new String(Base64.encodeBase64("Hello World".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
+	}
+	
+	@Test
+	public void testDecoding() throws IOException {
+		Assert.assertEquals("This is a test", new String(Base64.decode("VGhpcyBpcyBhIHRlc3Q=".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
+		Assert.assertEquals("That is a test!", new String(Base64.decode("VGhhdCBpcyBhIHRlc3Qh".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
+	}
+	
 	@SuppressWarnings("resource")
 	@Test
 	public void testEncodeAndDecodeBytes() throws Exception {
@@ -44,6 +60,17 @@ public class TestBase64 extends LCCoreAbstractTest {
 			Assert.assertEquals(128, nb);
 			Assert.assertTrue(ArrayUtil.equals(data, i * 128, b, 0, 128));
 		}
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
+	public void testDecodeChars() throws Exception {
+		CharBuffer cb = CharBuffer.wrap("VGhhdCBpcyBhIHRlc3QgdG8gZGVjb2RlIGJhc2UgNjQgd2l0aCBjaGFyYWN0ZXIgc3RyZWFt");
+		ByteArrayIO decoded = new ByteArrayIO(512, "base64_decoded");
+		Base64Decoder decoder = new Base64Decoder(decoded);
+		decoder.decode(cb).blockException(0);
+		decoder.flush().blockException(0);
+		Assert.assertEquals("That is a test to decode base 64 with character stream", decoded.getAsString(StandardCharsets.US_ASCII));
 	}
 	
 }
