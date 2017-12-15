@@ -217,6 +217,15 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testChar('\f');
 	}
 	
+	public static enum Enum1 { VAL1, VAL2, VAL3 };
+	public static enum Enum2 { VAL11, VAL22, VAL33 };
+	
+	@Test
+	public void testEnum() throws Exception {
+		test(Enum1.VAL2, Enum1.class);
+		test(Enum2.VAL33, Enum2.class);
+	}
+	
 	public static class TestSimpleObjects {
 		public TestBooleans booleans;
 		public int i = 51;
@@ -224,6 +233,8 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public String s = "hello";
 		public TestString string;
 		public TestChar ch;
+		public Enum1 e1;
+		public Enum2 e2;
 	}
 	
 	@Test
@@ -238,6 +249,8 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		o.ch = new TestChar();
 		o.ch.c = 'o';
 		o.ch.C = Character.valueOf('p');
+		o.e1 = Enum1.VAL3;
+		o.e2 = null;
 		test(o, TestSimpleObjects.class);
 		// test with null values
 		o = new TestSimpleObjects();

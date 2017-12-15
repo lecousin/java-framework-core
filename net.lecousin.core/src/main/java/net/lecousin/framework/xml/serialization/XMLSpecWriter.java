@@ -180,6 +180,7 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		if (Boolean.class.equals(c)) return true;
 		if (Number.class.isAssignableFrom(c)) return true;
 		if (String.class.equals(c)) return true;
+		if (c.isEnum()) return true;
 		return false;
 	}
 	
