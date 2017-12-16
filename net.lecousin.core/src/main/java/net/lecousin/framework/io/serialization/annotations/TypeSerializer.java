@@ -19,7 +19,7 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
  * If isGeneral is true, the custom serializer will be applied generally, else
  * when declared on a class or interface the attributes of this class will use
  * the specified serializer if the type matches, and when declared on an
- * an attribute it applies only on this attribute.
+ * an attribute it applies only on the <strong>content</strong> of this attribute.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.FIELD, ElementType.METHOD})

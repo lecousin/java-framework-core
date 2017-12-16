@@ -22,13 +22,17 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.buffering.MemoryIO;
+import net.lecousin.framework.io.serialization.CustomSerializer;
 import net.lecousin.framework.io.serialization.Deserializer;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.Serializer;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.annotations.Instantiate;
+import net.lecousin.framework.io.serialization.annotations.SerializationMethods;
 import net.lecousin.framework.io.serialization.annotations.SerializationName;
 import net.lecousin.framework.io.serialization.annotations.Transient;
+import net.lecousin.framework.io.serialization.annotations.TypeSerializationMethod;
+import net.lecousin.framework.io.serialization.annotations.TypeSerializer;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Factory;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
@@ -456,6 +460,78 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		TestRename2 t2 = deserialize(ioMem, TestRename2.class);
 		Assert.assertEquals("bonjour", t2.world);
 	}
+	
+	public static class TestNoDefaultConstructor1 {
+		public TestNoDefaultConstructor1(String value) {
+			this.value = value;
+		}
+		
+		public String value;
+		
+		@Override
+		public String toString() {
+			return value;
+		}
+	}
+	
+	public static class TestNoDefaultConstructor1Serializer implements CustomSerializer {
+		@Override
+		public TypeDefinition sourceType() {
+			return new TypeDefinition(TestNoDefaultConstructor1.class);
+		}
+		@Override
+		public TypeDefinition targetType() {
+			return new TypeDefinition(String.class);
+		}
+		@Override
+		public Object serialize(Object src, Object containerInstance) {
+			return ((TestNoDefaultConstructor1)src).value;
+		}
+		@Override
+		public Object deserialize(Object src, Object containerInstance) {
+			return new TestNoDefaultConstructor1((String)src);
+		}
+	}
+	
+	@TypeSerializer(TestNoDefaultConstructor1Serializer.class)
+	public static class TestTypeSerializer1 {
+		public TestNoDefaultConstructor1 test;
+	}
+	
+	@Test
+	public void testTypeSerializer() throws Exception {
+		TestTypeSerializer1 t = new TestTypeSerializer1();
+		t.test = new TestNoDefaultConstructor1("Hello");
+		test(t, TestTypeSerializer1.class);
+	}
+	
+	public static class TestTypeSerializationMethod {
+		@TypeSerializationMethod("toString")
+		public TestNoDefaultConstructor1 test;
+	}
+
+	@Test
+	public void testTypeSerializationMethod() throws Exception {
+		TestTypeSerializationMethod t = new TestTypeSerializationMethod();
+		t.test = new TestNoDefaultConstructor1("World");
+		test(t, TestTypeSerializationMethod.class);
+	}
+	
+	public static class TestSerializationMethods {
+		@SerializationMethods(serialization="testToString", deserialization="testFromString")
+		public TestNoDefaultConstructor1 test;
+		
+		public String testToString() { return test.value; }
+		public TestNoDefaultConstructor1 testFromString(String s) { return new TestNoDefaultConstructor1(s); }
+	}
+
+	@Test
+	public void testSerializationMethods() throws Exception {
+		TestSerializationMethods t = new TestSerializationMethods();
+		t.test = new TestNoDefaultConstructor1("Hello World!");
+		test(t, TestSerializationMethods.class);
+	}
+	
 	
 	protected <T> void test(T object, Class<T> type) throws Exception {
 		@SuppressWarnings("resource")
