@@ -58,7 +58,7 @@ public class UnprotectedString implements IString {
 		chars = s.toCharArray();
 		start = 0;
 		end = chars.length - 1;
-		usableEnd = 0;
+		usableEnd = end;
 	}
 
 	/** Creates an UnprotectedString from the given String (a copy of characters is done). */
@@ -67,7 +67,7 @@ public class UnprotectedString implements IString {
 		s.fill(chars);
 		start = 0;
 		end = chars.length - 1;
-		usableEnd = 0;
+		usableEnd = end;
 	}
 
 	/** Creates an UnprotectedString from the given CharSequence (a copy of characters is done). */
