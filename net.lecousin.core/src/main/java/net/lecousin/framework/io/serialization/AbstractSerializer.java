@@ -408,7 +408,7 @@ public abstract class AbstractSerializer implements Serializer {
 	@SuppressWarnings("resource")
 	protected ISynchronizationPoint<? extends Exception> serializeInputStreamValue(
 		SerializationContext context, InputStream in, String path, List<SerializationRule> rules) {
-		return serializeIOReadableValue(context, new IOFromInputStream(in, in.toString(), Threading.getCPUTaskManager(), priority),
+		return serializeIOReadableValue(context, new IOFromInputStream(in, in.toString(), Threading.getUnmanagedTaskManager(), priority),
 			path, rules);
 	}
 
@@ -416,7 +416,7 @@ public abstract class AbstractSerializer implements Serializer {
 	protected ISynchronizationPoint<? extends Exception> serializeInputStreamAttribute(
 		AttributeContext context, InputStream in, String path, List<SerializationRule> rules) {
 		return serializeIOReadableAttribute(context, 
-			new IOFromInputStream(in, in.toString(), Threading.getCPUTaskManager(), priority),
+			new IOFromInputStream(in, in.toString(), Threading.getUnmanagedTaskManager(), priority),
 			path, rules);
 	}
 	

@@ -43,16 +43,14 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	}
 	
 	@Override
-	public Task<?, ?> peekNextOrWait(TaskWorker w) {
+	public Task<?, ?> peekNextOrWait() {
 		Task<?,?> t;
 		do {
 			if (nextPriority == Task.NB_PRIORITES) {
 				if (lastIdle < 0)
 					lastIdle = System.currentTimeMillis();
-				long start = System.nanoTime();
 				try { this.wait(); }
 				catch (InterruptedException e) { /* ignore */ }
-				w.waitingTime += System.nanoTime() - start;
 				return null;
 			}
 			if (nextPriority == Task.PRIORITY_BACKGROUND) {
@@ -62,10 +60,8 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 				long wait = lastIdle + 1000 - System.currentTimeMillis();
 				if (wait > 50) {
 					if (!taskManager.isStopping() && taskManager.getTransferTarget() == null) {
-						long start = System.nanoTime();
 						try { this.wait(); }
 						catch (InterruptedException e) { /* ignore */ }
-						w.waitingTime += System.nanoTime() - start;
 						return null;
 					}
 					return null;

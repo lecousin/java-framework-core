@@ -110,7 +110,7 @@ public class LocalizedProperties implements IMemoryManageable {
 				logger.error(sp.getError().getMessage());
 				return sp;
 			}
-			input = new IOFromInputStream(in, path + ".languages", Threading.getCPUTaskManager(), Task.PRIORITY_RATHER_IMPORTANT);
+			input = new IOFromInputStream(in, path + ".languages", Threading.getUnmanagedTaskManager(), Task.PRIORITY_RATHER_IMPORTANT);
 		}
 		if (!(input instanceof IO.Readable.Buffered))
 			input = new SimpleBufferedReadable(input, 4096);
@@ -223,7 +223,7 @@ public class LocalizedProperties implements IMemoryManageable {
 				logger.error(lang.loading.getError().getMessage());
 				return;
 			}
-			input = new IOFromInputStream(in, path + ".languages", Threading.getCPUTaskManager(), Task.PRIORITY_RATHER_IMPORTANT);
+			input = new IOFromInputStream(in, path + ".languages", Threading.getUnmanagedTaskManager(), Task.PRIORITY_RATHER_IMPORTANT);
 		}
 		if (!(input instanceof IO.Readable.Buffered))
 			input = new PreBufferedReadable(input, 4096, Task.PRIORITY_RATHER_IMPORTANT, 4096, Task.PRIORITY_RATHER_IMPORTANT, 16);

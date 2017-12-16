@@ -3,7 +3,7 @@ package net.lecousin.framework.concurrent;
 import java.util.concurrent.ThreadFactory;
 
 /** Implementation of a TaskManager using a single thread. */
-public class MonoThreadTaskManager extends TaskManager {
+public class MonoThreadTaskManager extends FixedThreadTaskManager {
 
 	/** Constructor. */
 	public MonoThreadTaskManager(
@@ -28,12 +28,12 @@ public class MonoThreadTaskManager extends TaskManager {
 	}
 	
 	@Override
-	protected void stopNow() {
+	protected void forceStopWorkers() {
 		worker.forceStop();
 	}
 	
 	@Override
-	protected void finishAndStop() {
+	protected void finishAndStopWorkers() {
 		worker.finishAndStop();
 	}
 	

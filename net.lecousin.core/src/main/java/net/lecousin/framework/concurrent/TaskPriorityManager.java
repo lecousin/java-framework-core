@@ -17,8 +17,12 @@ public interface TaskPriorityManager {
 	/** Remove a task. */
 	boolean remove(Task<?,?> task);
 	
-	/** always called inside a synchronized block on this instance. */
-	Task<?,?> peekNextOrWait(TaskWorker w);
+	/** Return a task if one is immediately available, or pause the calling thread.
+	 * If the thread is paused, null is returned when resumed in order to give a chance
+	 * to check if there is something more urgent than peeking a new task. 
+	 * This method is always called inside a synchronized block on this instance.
+	 */
+	Task<?,?> peekNextOrWait();
 	
 	/** Return the number of waiting tasks. */
 	int getRemainingTasks(boolean includingBackground);

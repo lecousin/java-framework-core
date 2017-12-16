@@ -30,7 +30,7 @@ public class IOProviderFromNameUsingClassloader implements IOProviderFromName.Re
 		// we specify CPU because most of the time it will be from a JAR, needing decompression,
 		// and we don't want to block drive access. Anyway there is no way to know on which
 		// physical drive it is.
-		return new IOFromInputStream(in, name, Threading.getCPUTaskManager(), priority);
+		return new IOFromInputStream(in, name, Threading.getUnmanagedTaskManager(), priority);
 	}
 	
 }

@@ -155,6 +155,17 @@ public abstract class Task<T,TError extends Exception> {
 		}
 	}
 	
+	/** Unmanaged task that may use any resource and block at any time without using a synchronization point.
+	 * @param <TResult> type of result
+	 * @param <TError> type of error
+	 */
+	public abstract static class Unmanaged<TResult, TError extends Exception> extends Task<TResult, TError> {
+		/** Constructor.*/
+		public Unmanaged(String description, byte priority) {
+			super(Threading.getUnmanagedTaskManager(), description, priority);
+		}
+	}
+	
 	/** Task holding a parameter.
 	 * @param <TParam> type of parameter
 	 * @param <TResult> type of result
@@ -366,6 +377,22 @@ public abstract class Task<T,TError extends Exception> {
 						"Task " + description + " is done, but still waiting for other works to be done after 30s.");
 				}
 			});
+		}
+	}
+
+	/** Called by a task executor, just after execute method finished. */
+	void rescheduleIfNeeded() {
+		if (executeEvery > 0 && !TaskScheduler.stopping) {
+			synchronized (this) {
+				status = Task.STATUS_NOT_STARTED;
+				executeIn(executeEvery);
+			}
+			TaskScheduler.schedule(this);
+		} else if (nextExecution > 0 && !TaskScheduler.stopping) {
+			synchronized (this) {
+				this.status = Task.STATUS_NOT_STARTED;
+			}
+			TaskScheduler.schedule(this);
 		}
 	}
 	

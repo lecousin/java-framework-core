@@ -3,7 +3,7 @@ package net.lecousin.framework.concurrent;
 import java.util.concurrent.ThreadFactory;
 
 /** Implementation of TaskManager using several threads. */
-public class MultiThreadTaskManager extends TaskManager {
+public class MultiThreadTaskManager extends FixedThreadTaskManager {
 
 	/** Constructor. */
 	public MultiThreadTaskManager(
@@ -30,13 +30,13 @@ public class MultiThreadTaskManager extends TaskManager {
 	}
 	
 	@Override
-	protected void stopNow() {
+	protected void forceStopWorkers() {
 		for (int i = getNbThreads() - 1; i >= 0; --i)
 			workers[i].forceStop();
 	}
 	
 	@Override
-	protected void finishAndStop() {
+	protected void finishAndStopWorkers() {
 		for (int i = getNbThreads() - 1; i >= 0; --i)
 			workers[i].finishAndStop();
 	}

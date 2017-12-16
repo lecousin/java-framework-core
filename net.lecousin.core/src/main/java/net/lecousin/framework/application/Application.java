@@ -201,7 +201,7 @@ public final class Application {
 		InputStream in = rootClassLoader.getResourceAsStream(filename);
 		if (in == null)
 			return null;
-		return new IOFromInputStream(in, filename, Threading.getCPUTaskManager(), priority);
+		return new IOFromInputStream(in, filename, Threading.getUnmanagedTaskManager(), priority);
 	}
 	
 	/** Register an instance to close on application shutdown. */

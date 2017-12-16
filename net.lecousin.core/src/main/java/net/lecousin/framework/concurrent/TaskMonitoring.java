@@ -96,7 +96,11 @@ public final class TaskMonitoring {
 						break;
 				}
 				for (TaskManager manager : Threading.getAllTaskManagers())
-					check(manager);
+					if (manager instanceof FixedThreadTaskManager)
+						check((FixedThreadTaskManager)manager);
+					else {
+						// TODO
+					}
 			}
 		}
 		
@@ -109,7 +113,7 @@ public final class TaskMonitoring {
 		}
 	}
 	
-	private static void check(TaskManager manager) {
+	private static void check(FixedThreadTaskManager manager) {
 		for (TaskWorker worker : manager.getAllActiveWorkers())
 			check(worker);
 	}

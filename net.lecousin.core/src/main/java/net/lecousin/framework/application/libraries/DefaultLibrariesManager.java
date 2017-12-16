@@ -135,7 +135,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		if ("file".equals(url.getProtocol()))
 			tm = Threading.getDrivesTaskManager().getTaskManager(url.getFile());
 		if (tm == null)
-			tm = Threading.getCPUTaskManager();
+			tm = Threading.getUnmanagedTaskManager();
 		return new IOFromInputStream(in, path, tm, priority);
 	}
 	
@@ -187,7 +187,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				InputStream input = url.openStream();
 				@SuppressWarnings("resource")
 				IOFromInputStream io = new IOFromInputStream(
-					input, url.toString(), Threading.getCPUTaskManager(), Task.PRIORITY_IMPORTANT);
+					input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
 				ep.loadPluginConfiguration(io, acl).block(0);
 			}
 			return null;
@@ -208,7 +208,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				InputStream input = url.openStream();
 				@SuppressWarnings("resource")
 				IOFromInputStream io = new IOFromInputStream(
-					input, url.toString(), Threading.getCPUTaskManager(), Task.PRIORITY_IMPORTANT);
+					input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
 				@SuppressWarnings("resource")
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 				LoadLibraryExtensionPointsFile load = new LoadLibraryExtensionPointsFile(stream, acl);
@@ -233,7 +233,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				InputStream input = url.openStream();
 				@SuppressWarnings("resource")
 				IOFromInputStream io = new IOFromInputStream(
-					input, url.toString(), Threading.getCPUTaskManager(), Task.PRIORITY_IMPORTANT);
+					input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
 				@SuppressWarnings("resource")
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 				LoadLibraryPluginsFile load = new LoadLibraryPluginsFile(stream, acl);

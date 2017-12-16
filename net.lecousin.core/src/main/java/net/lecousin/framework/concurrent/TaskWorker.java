@@ -9,7 +9,7 @@ import net.lecousin.framework.exception.NoException;
 
 class TaskWorker implements Runnable, BlockedThreadHandler {
 
-	TaskWorker(String name, TaskManager manager) {
+	TaskWorker(String name, FixedThreadTaskManager manager) {
 		this.manager = manager;
 		this.thread = manager.newThread(this);
 		this.thread.setName(name);
@@ -18,7 +18,7 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 
 	boolean stop = false;
 	boolean finish = false;
-	TaskManager manager;
+	FixedThreadTaskManager manager;
 	//boolean working = false;
 	Task<?,?> currentTask = null;
 	long currentTaskStart = -1;
@@ -65,8 +65,9 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 			// take something to do
 			//working = false;
 			currentTaskStart = System.nanoTime();
-			currentTask = manager.peekNextOrWait(this);
+			currentTask = manager.peekNextOrWait();
 			if (currentTask == null) {
+				waitingTime += System.nanoTime() - currentTaskStart;
 				if (finish)
 					stop = true;
 				continue;
@@ -86,22 +87,8 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 			Task<?,?> t = currentTask;
 			currentTask = null;
 			tasksDone++;
-			if (t.executeEvery > 0 && !TaskScheduler.stopping) {
-				synchronized (t) {
-					t.status = Task.STATUS_NOT_STARTED;
-					t.executeIn(t.executeEvery);
-				}
-				workingTime += System.nanoTime() - start;
-				TaskScheduler.schedule(t);
-			} else if (t.nextExecution > 0 && !TaskScheduler.stopping) {
-				synchronized (t) {
-					t.status = Task.STATUS_NOT_STARTED;
-				}
-				workingTime += System.nanoTime() - start;
-				TaskScheduler.schedule(t);
-			} else {
-				workingTime += System.nanoTime() - start;
-			}
+			t.rescheduleIfNeeded();
+			workingTime += System.nanoTime() - start;
 			if (aside) {
 				manager.asideWorkerDone(this);
 				break;

@@ -153,7 +153,7 @@ public class DrivesTaskManager {
 		name.append(')');
 		tm.setName(name.toString());
 		Threading.logger.info("Task manager added: " + name.toString());
-		tm.autoCloseSpares();
+		tm.started();
 	}
 	
 	private void driveRemoved(Pair<Object,List<File>> driveAndPartitions) {

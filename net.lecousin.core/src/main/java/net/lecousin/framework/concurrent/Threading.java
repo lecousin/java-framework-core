@@ -39,13 +39,15 @@ public final class Threading {
 		cpu.start();
 		resources.put(CPU, cpu);
 		drives = new DrivesTaskManager(threadFactory, taskPriorityManager);
+		unmanaged = new ThreadPoolTaskManager("Unmanaged tasks manager", UNMANAGED, 100, threadFactory, taskPriorityManager);
+		resources.put(UNMANAGED, unmanaged);
 		LCCore.get().toClose(new StopMultiThreading());
 		if (traceTasksNotDone)
 			ThreadingDebugHelper.traceTasksNotDone();
 		TaskMonitoring.start(threadFactory);
 		synchronized (resources) {
 			for (TaskManager tm : resources.values())
-				tm.autoCloseSpares();
+				tm.started();
 		}
 	}
 	
@@ -113,13 +115,17 @@ public final class Threading {
 	}
 	
 	public static final Object CPU = new Object();
+	public static final Object UNMANAGED = new Object();
 	
 	private static CPUTaskManager cpu;
 	private static DrivesTaskManager drives;
+	private static ThreadPoolTaskManager unmanaged;
 	
 	public static TaskManager getCPUTaskManager() { return cpu; }
 	
 	public static DrivesTaskManager getDrivesTaskManager() { return drives; }
+
+	public static ThreadPoolTaskManager getUnmanagedTaskManager() { return unmanaged; }
 	
 	private static Map<Object,TaskManager> resources = new HashMap<>();
 	
