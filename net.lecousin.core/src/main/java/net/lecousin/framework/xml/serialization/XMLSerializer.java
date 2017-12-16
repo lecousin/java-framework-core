@@ -265,12 +265,21 @@ public class XMLSerializer extends AbstractSerializer {
 
 	@Override
 	protected ISynchronizationPoint<IOException> serializeIOReadableValue(SerializationContext context, IO.Readable io, String path, List<SerializationRule> rules) {
-		return Base64.encodeAsync(io, new ICharacterStream.WriterAsync() {
+		ISynchronizationPoint<IOException> encode = Base64.encodeAsync(io, new ICharacterStream.WriterAsync() {
 			@Override
 			public ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length) {
 				return output.addText(new UnprotectedString(c, offset, length, c.length));
 			}
 		});
+		if (encode.isUnblocked()) {
+			if (encode.hasError()) return encode;
+			return output.closeElement();
+		}
+		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+		encode.listenAsync(new SerializationTask(() -> {
+			output.closeElement().listenInline(sp);
+		}), sp);
+		return sp;
 	}
 
 	@Override

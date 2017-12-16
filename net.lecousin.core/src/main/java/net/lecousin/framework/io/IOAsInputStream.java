@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
+import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.buffering.BufferedToInputStream;
 
 /** Convert an IO into an InputStream.
@@ -26,6 +27,7 @@ public class IOAsInputStream extends InputStream {
 	}
 	
 	private IO.Readable io;
+	private long mark = -1;
 	
 	@Override
 	public void close() throws IOException {
@@ -39,17 +41,22 @@ public class IOAsInputStream extends InputStream {
 	
 	@Override
 	public boolean markSupported() {
-		return false;
+		return io instanceof IO.Seekable;
 	}
 	
-	@SuppressWarnings("sync-override")
 	@Override
-	public void mark(int readlimit) {
+	public synchronized void mark(int readlimit) {
+		try {
+			mark = ((IO.Seekable)io).getPosition();
+		} catch (IOException e) {
+			mark = -1;
+		}
 	}
 	
-	@SuppressWarnings("sync-override")
 	@Override
-	public void reset() {
+	public synchronized void reset() throws IOException {
+		if (mark == -1) throw new IOException("No mark in InputStream");
+		((IO.Seekable)io).seekSync(SeekType.FROM_BEGINNING, mark);
 	}
 	
 	private byte[] b = new byte[1];

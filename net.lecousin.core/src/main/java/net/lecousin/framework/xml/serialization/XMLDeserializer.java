@@ -15,6 +15,7 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.buffering.IOInMemoryOrFile;
 import net.lecousin.framework.io.encoding.Base64Decoder;
 import net.lecousin.framework.io.serialization.AbstractDeserializer;
@@ -489,7 +490,11 @@ public class XMLDeserializer extends AbstractDeserializer {
 			return;
 		}
 		if (Type.END_ELEMENT.equals(input.event.type)) {
-			decoder.flush().listenInlineSP(() -> { result.unblockSuccess(io); }, result);
+			decoder.flush().listenInlineSP(() -> {
+				io.seekAsync(SeekType.FROM_BEGINNING, 0).listenInlineSP(() -> {
+					result.unblockSuccess(io);
+				}, result);
+			}, result);
 			return;
 		}
 		readNextBase64(decoder, io, result);

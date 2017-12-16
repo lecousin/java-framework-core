@@ -1,6 +1,8 @@
 package net.lecousin.framework.core.test.serialization;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -23,6 +25,7 @@ import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.io.buffering.ByteArrayIO;
 import net.lecousin.framework.io.buffering.MemoryIO;
 import net.lecousin.framework.io.serialization.CustomSerializer;
 import net.lecousin.framework.io.serialization.Deserializer;
@@ -373,6 +376,23 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(t, TestMap.class);
 	}
 	
+	public static class TestIO {
+		public InputStream stream;
+		public IO.Readable io;
+	}
+	
+	@Test
+	public void testIO() throws Exception {
+		TestIO t = new TestIO();
+		t.stream = new ByteArrayInputStream("This is an InputStream".getBytes(StandardCharsets.UTF_8));
+		t.stream.mark(0);
+		t.io = new ByteArrayIO("This is an IO.Readable".getBytes(StandardCharsets.UTF_8), "test");
+		testInMemory(t, TestIO.class);
+		t.stream.reset();
+		((ByteArrayIO)t.io).seekSync(SeekType.FROM_BEGINNING, 0);
+		testInFile(t, TestIO.class);
+	}
+	
 	public static interface MyInterface {}
 	
 	public static class MyImplementation implements MyInterface {}
@@ -550,18 +570,26 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	
 	
 	protected <T> void test(T object, Class<T> type) throws Exception {
+		testInMemory(object, type);
+		testInFile(object, type);
+	}
+
+	protected <T> void testInMemory(T object, Class<T> type) throws Exception {
 		@SuppressWarnings("resource")
 		MemoryIO ioMem = serializeInMemory(object);
 		print(ioMem, object);
 		T o2 = deserialize(ioMem, type);
 		check(object, o2);
+	}
+
+	protected <T> void testInFile(T object, Class<T> type) throws Exception {
 		@SuppressWarnings("resource")
 		FileIO.ReadWrite ioFile = serializeInFile(object);
 		print(ioFile, object);
-		o2 = deserialize(ioFile, type);
+		T o2 = deserialize(ioFile, type);
 		check(object, o2);
 	}
-	
+
 	protected MemoryIO serializeInMemory(Object o) throws Exception {
 		MemoryIO io = new MemoryIO(1024, "test");
 		Serializer s = createSerializer();
@@ -621,6 +649,14 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 			checkMap((Map<?,?>)expected, (Map<?,?>)found);
 			return;
 		}
+		if (InputStream.class.isAssignableFrom(type)) {
+			checkInputStream((InputStream)expected, (InputStream)found);
+			return;
+		}
+		if (IO.Readable.class.isAssignableFrom(type)) {
+			checkIO((IO.Readable.Seekable)expected, (IO.Readable)found);
+			return;
+		}
 		check(expected, found);
 	}
 	
@@ -656,6 +692,20 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		Assert.assertEquals(m1.size(), m2.size());
 		for (Map.Entry<?,?> e : m1.entrySet())
 			checkValue(e.getValue(), m2.get(e.getKey()));
+	}
+	
+	protected void checkInputStream(InputStream stream1, InputStream stream2) throws Exception {
+		stream1.reset();
+		String s1 = IOUtil.readFullyAsStringSync(stream1, StandardCharsets.UTF_8);
+		String s2 = IOUtil.readFullyAsStringSync(stream2, StandardCharsets.UTF_8);
+		Assert.assertEquals(s1, s2);
+	}
+	
+	protected void checkIO(IO.Readable.Seekable io1, IO.Readable io2) throws Exception {
+		io1.seekSync(SeekType.FROM_BEGINNING, 0);
+		String s1 = IOUtil.readFullyAsStringSync(io1, StandardCharsets.UTF_8);
+		String s2 = IOUtil.readFullyAsStringSync(io2, StandardCharsets.UTF_8);
+		Assert.assertEquals(s1, s2);
 	}
 	
 	protected void print(IO.Readable.Seekable io, Object o) throws Exception {

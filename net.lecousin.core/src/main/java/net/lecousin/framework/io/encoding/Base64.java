@@ -62,7 +62,12 @@ public final class Base64 {
 		int v2 = decodeBase64Char((byte)inputBuffer.get());
 		int v3 = decodeBase64Char((byte)inputBuffer.get());
 		outputBuffer[outputOffset] = (byte)((v1 << 2) | (v2 >>> 4));
-		if (v3 == 64) return 1;
+		if (v3 == 64) {
+			if (inputBuffer.hasRemaining())
+				if (inputBuffer.get() != '=')
+					throw new IOException("Unexpected character at the end of the base 64 input buffer");
+			return 1;
+		}
 		int v4 = decodeBase64Char((byte)inputBuffer.get());
 		outputBuffer[outputOffset + 1] = (byte)(((v2 & 0x0F) << 4) | (v3 >>> 2));
 		if (v4 == 64) return 2;

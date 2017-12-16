@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -604,6 +605,19 @@ public class IOUtil {
 	}
 
 	/**
+	 * Read all bytes from the given Readable and append them to the given StringBuilder using the given charset encoding.
+	 */
+	public static void readFullyAsStringSync(InputStream input, Charset charset, StringBuilder s) throws IOException {
+		byte[] buf = new byte[1024];
+		do {
+			int nb = input.read(buf);
+			if (nb <= 0) break;
+			s.append(new String(buf, 0, nb, charset));
+			if (nb < 1024) break;
+		} while (true);
+	}
+
+	/**
 	 * Read all bytes from the given Readable and convert it as a String using the given charset encoding.
 	 */
 	public static String readFullyAsStringSync(IO.Readable io, Charset charset) throws IOException {
@@ -624,6 +638,15 @@ public class IOUtil {
 		try (FileIO.ReadOnly io = new FileIO.ReadOnly(file, Task.PRIORITY_RATHER_IMPORTANT)) {
 			return readFullyAsStringSync(io, charset);
 		}
+	}
+	
+	/**
+	 * Read all bytes from the given InputStream and convert it as a String using the given charset encoding.
+	 */
+	public static String readFullyAsStringSync(InputStream input, Charset charset) throws IOException {
+		StringBuilder s = new StringBuilder(1024);
+		readFullyAsStringSync(input, charset, s);
+		return s.toString();
 	}
 	
 	/**
