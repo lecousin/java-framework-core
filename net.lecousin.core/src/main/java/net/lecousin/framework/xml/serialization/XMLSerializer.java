@@ -164,6 +164,17 @@ public class XMLSerializer extends AbstractSerializer {
 	
 	@Override
 	protected ISynchronizationPoint<IOException> startObjectValue(ObjectContext context, String path, List<SerializationRule> rules) {
+		Object instance = context.getInstance();
+		if (instance != null) {
+			if (!(context.getParent() instanceof AttributeContext) || !((AttributeContext)context.getParent()).getAttribute().hasCustomInstantiation()) {
+				Class<?> type = context.getOriginalType().getBase();
+				if (!type.equals(instance.getClass())) {
+					String attrName = "class";
+					while (XMLDeserializer.hasAttribute(type, attrName)) attrName = "_" + attrName;
+					return output.addAttribute(attrName, instance.getClass().getName());
+				}
+			}
+		}
 		return new SynchronizationPoint<>(true);
 	}
 	
@@ -209,7 +220,7 @@ public class XMLSerializer extends AbstractSerializer {
 	@Override
 	protected ISynchronizationPoint<? extends Exception> serializeObjectAttribute(AttributeContext context, Object value, String path, List<SerializationRule> rules) {
 		output.openElement(null, context.getAttribute().getName(), null);
-		ISynchronizationPoint<? extends Exception> s = serializeObjectValue(context, value, path + '.' + context.getAttribute().getName(), rules);
+		ISynchronizationPoint<? extends Exception> s = serializeObjectValue(context, value, context.getAttribute().getType(), path + '.' + context.getAttribute().getName(), rules);
 		if (s.isUnblocked()) {
 			if (s.hasError()) return s;
 			return output.closeElement();

@@ -197,6 +197,11 @@ public class SerializationClass {
 			return SerializationClass.instantiate(context.getAttribute().getType().getBase());
 		}
 		
+		/** Return true if this attribute has a custom instantiation and no type information should not be serialized. */
+		public boolean hasCustomInstantiation() {
+			return false;
+		}
+		
 		/** Retrieve a specific annotation. */
 		public <T extends Annotation> T getAnnotation(boolean onGet, Class<T> annotationType) {
 			if (field != null) {
@@ -312,7 +317,7 @@ public class SerializationClass {
 		return type.newInstance();
 	}
 	
-	public static Object instantiate(TypeDefinition type, SerializationContext context, List<SerializationRule> rules) throws Exception {
+	public static Object instantiate(TypeDefinition type, SerializationContext context, List<SerializationRule> rules, boolean forceType) throws Exception {
 		Object instance = null;
 		for (SerializationRule rule : rules)
 			if (rule.canInstantiate(type, context)) {
@@ -320,7 +325,7 @@ public class SerializationClass {
 				break;
 			}
 		if (instance == null) {
-			if (context instanceof AttributeContext)
+			if (context instanceof AttributeContext && !forceType)
 				instance = ((AttributeContext)context).getAttribute().instantiate((AttributeContext)context);
 			else
 				instance = instantiate(type.getBase());

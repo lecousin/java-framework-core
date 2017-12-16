@@ -22,14 +22,16 @@ public abstract class SerializationContext {
 	
 	public static class ObjectContext extends SerializationContext {
 		
-		public ObjectContext(SerializationContext parent, Object instance, SerializationClass clazz) {
+		public ObjectContext(SerializationContext parent, Object instance, SerializationClass clazz, TypeDefinition originalType) {
 			super(parent);
 			this.instance = instance;
 			this.clazz = clazz;
+			this.originalType = originalType;
 		}
 		
 		private Object instance;
 		private SerializationClass clazz;
+		private TypeDefinition originalType;
 		
 		public Object getInstance() {
 			return instance;
@@ -37,6 +39,10 @@ public abstract class SerializationContext {
 		
 		public SerializationClass getSerializationClass() {
 			return clazz;
+		}
+		
+		public TypeDefinition getOriginalType() {
+			return originalType;
 		}
 		
 		@Override

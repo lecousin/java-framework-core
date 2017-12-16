@@ -17,17 +17,20 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
-import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.buffering.MemoryIO;
 import net.lecousin.framework.io.serialization.Deserializer;
+import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.Serializer;
 import net.lecousin.framework.io.serialization.TypeDefinition;
+import net.lecousin.framework.io.serialization.annotations.Instantiate;
 import net.lecousin.framework.io.serialization.annotations.SerializationName;
 import net.lecousin.framework.io.serialization.annotations.Transient;
 import net.lecousin.framework.util.ClassUtil;
+import net.lecousin.framework.util.Factory;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 import org.junit.Assert;
@@ -348,6 +351,47 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 			new LinkedList<>()
 		);
 		test(t, TestListOfList.class);
+	}
+	
+	public static interface MyInterface {}
+	
+	public static class MyImplementation implements MyInterface {}
+	public static class MyImplementation2 implements MyInterface {}
+	
+	public static class MyContainerOfAbstracts {
+		public MyInterface interf;
+		@Instantiate(factory=MyImplementation2AttributeFactory.class)
+		public MyInterface interf2;
+	}
+	
+	public static class MyImplementation2AttributeFactory implements Factory<MyInterface, AttributeContext> {
+		@Override
+		public MyInterface create(AttributeContext discriminator) {
+			return new MyImplementation2();
+		}
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
+	public void testInstantiation() throws Exception {
+		MyImplementation impl = new MyImplementation();
+		MemoryIO io = new MemoryIO(1024, "test");
+		Serializer s = createSerializer();
+		ISynchronizationPoint<Exception> res = s.serialize(impl, new TypeDefinition(MyInterface.class), io, new ArrayList<>(0));
+		res.block(0);
+		if (res.hasError()) throw res.getError();
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		print(io, impl);
+		MyInterface interf = deserialize(io, MyInterface.class);
+		Assert.assertEquals(MyImplementation.class, interf.getClass());
+		MyContainerOfAbstracts t = new MyContainerOfAbstracts();
+		t.interf = new MyImplementation();
+		t.interf2 = new MyImplementation();
+		io = serializeInMemory(t);
+		print(io, t);
+		MyContainerOfAbstracts t2 = deserialize(io, MyContainerOfAbstracts.class);
+		Assert.assertEquals(MyImplementation.class, t2.interf.getClass());
+		Assert.assertEquals(MyImplementation2.class, t2.interf2.getClass());
 	}
 	
 	public static class TestWithTransient {

@@ -67,6 +67,11 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 		public Object instantiate(AttributeContext context) throws Exception {
 			return factory.create(discriminator.getValue(context.getParent().getInstance()));
 		}
+		
+		@Override
+		public boolean hasCustomInstantiation() {
+			return true;
+		}
 	}
 	
 }

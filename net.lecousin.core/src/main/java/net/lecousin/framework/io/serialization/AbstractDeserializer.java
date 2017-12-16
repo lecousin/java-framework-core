@@ -383,7 +383,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			col = new LinkedList();
 			elementType = new TypeDefinition(type.getBase().getComponentType());
 		} else {
-			try { col = (Collection<?>)SerializationClass.instantiate(type, context, rules); }
+			try { col = (Collection<?>)SerializationClass.instantiate(type, context, rules, false); }
 			catch (Exception e) {
 				return new AsyncWork<>(null, e);
 			}
@@ -499,7 +499,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			else if (t.equals(char.class)) t = Character.class;
 			elementType = new TypeDefinition(t);
 		} else {
-			try { col = (Collection<?>)SerializationClass.instantiate(colType, context, rules); }
+			try { col = (Collection<?>)SerializationClass.instantiate(colType, context, rules, false); }
 			catch (Exception e) {
 				return new AsyncWork<>(null, e);
 			}
@@ -721,7 +721,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			Object instance = start.getResult();
 			if (instance == null) return (AsyncWork<T, Exception>)start;
 			AsyncWork<Object, Exception> result = new AsyncWork<>();
-			deserializeObjectAttributes(context, instance, rules, result);
+			deserializeObjectAttributes(context, instance, type, rules, result);
 			return (AsyncWork<T, Exception>)result;
 		}
 		AsyncWork<Object, Exception> result = new AsyncWork<>();
@@ -729,7 +729,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			(instance) -> {
 				if (instance == null) result.unblockSuccess(null);
 				else new DeserializationTask(() -> {
-					deserializeObjectAttributes(context, instance, rules, result);
+					deserializeObjectAttributes(context, instance, type, rules, result);
 				}).start();
 			}, result
 		);
@@ -745,10 +745,10 @@ public abstract class AbstractDeserializer implements Deserializer {
 		SerializationContext context, TypeDefinition type, List<SerializationRule> rules);
 	
 	protected void deserializeObjectAttributes(
-		SerializationContext parentContext, Object instance, List<SerializationRule> rules, AsyncWork<Object, Exception> result
+		SerializationContext parentContext, Object instance, TypeDefinition typeDef, List<SerializationRule> rules, AsyncWork<Object, Exception> result
 	) {
 		SerializationClass sc = new SerializationClass(new TypeDefinition(instance.getClass()));
-		ObjectContext ctx = new ObjectContext(parentContext, instance, sc);
+		ObjectContext ctx = new ObjectContext(parentContext, instance, sc, typeDef);
 		rules = addRulesForType(sc, rules);
 		sc.apply(rules, ctx);
 		deserializeNextObjectAttribute(ctx, rules, result);

@@ -128,7 +128,7 @@ public abstract class AbstractSerializer implements Serializer {
 		if (IO.Readable.class.isAssignableFrom(type))
 			return serializeIOReadableValue(context, (IO.Readable)value, path, rules);
 
-		return serializeObjectValue(context, value, path, rules);
+		return serializeObjectValue(context, value, typeDef, path, rules);
 	}
 	
 	// *** null ***
@@ -163,10 +163,10 @@ public abstract class AbstractSerializer implements Serializer {
 	
 	// *** Object ***
 	
-	protected ISynchronizationPoint<? extends Exception> serializeObjectValue(SerializationContext context, Object value, String path, List<SerializationRule> rules) {
+	protected ISynchronizationPoint<? extends Exception> serializeObjectValue(SerializationContext context, Object value, TypeDefinition typeDef, String path, List<SerializationRule> rules) {
 		Class<?> type = value.getClass();
 		SerializationClass sc = new SerializationClass(new TypeDefinition(type));
-		ObjectContext ctx = new ObjectContext(context, value, sc);
+		ObjectContext ctx = new ObjectContext(context, value, sc, typeDef);
 		rules = addRulesForType(sc, rules);
 		sc.apply(rules, ctx);
 		return serializeObjectValue(ctx, path, rules);

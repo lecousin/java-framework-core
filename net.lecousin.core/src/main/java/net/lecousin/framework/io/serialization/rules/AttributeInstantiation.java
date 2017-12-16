@@ -59,6 +59,11 @@ public class AttributeInstantiation implements SerializationRule {
 		public Object instantiate(AttributeContext context) {
 			return factory.create(context);
 		}
+		
+		@Override
+		public boolean hasCustomInstantiation() {
+			return true;
+		}
 	}
 	
 }

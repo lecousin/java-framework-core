@@ -253,24 +253,24 @@ public class XMLDeserializer extends AbstractDeserializer {
 		objects.addFirst(ctx);
 		String attrName = "class";
 		while (hasAttribute(type.getBase(), attrName)) attrName = "_" + attrName;
-		a = input.getAttributeByLocalName(attrName);
+		a = input.removeAttributeByLocalName(attrName);
 		if (a != null) {
 			String className = a.value.asString();
 			try {
 				Class<?> cl = Class.forName(className);
-				return new AsyncWork<>(SerializationClass.instantiate(new TypeDefinition(cl), context, rules), null);
+				return new AsyncWork<>(SerializationClass.instantiate(new TypeDefinition(cl), context, rules, true), null);
 			} catch (Exception e) {
 				return new AsyncWork<>(null, e);
 			}
 		}
 		try {
-			return new AsyncWork<>(SerializationClass.instantiate(type, context, rules), null);
+			return new AsyncWork<>(SerializationClass.instantiate(type, context, rules, false), null);
 		} catch (Exception e) {
 			return new AsyncWork<>(null, e);
 		}
 	}
 	
-	private boolean hasAttribute(Class<?> type, String name) {
+	public static boolean hasAttribute(Class<?> type, String name) {
 		for (Field f : type.getDeclaredFields())
 			if (f.getName().equals(name))
 				return true;
