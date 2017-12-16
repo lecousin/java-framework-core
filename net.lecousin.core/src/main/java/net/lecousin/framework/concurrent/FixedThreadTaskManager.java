@@ -228,15 +228,19 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 
 	@Override
 	public void debug(StringBuilder s) {
-		s.append("Task Manager: ").append(getName()).append(" (").append(nbThreads).append(" threads):\r\n");
-		for (TaskWorker w : getWorkers())
-			w.debug(s, "Worker");
-		for (TaskWorker w : spare)
-			try { w.debug(s, "Spare"); }
-			catch (Throwable t) { /* ignore, because we don't want to do it in a synchronized block, so NPE can happen */ }
-		for (TaskWorker w : blocked)
-			try { w.debug(s, "Blocked"); }
-			catch (Throwable t) { /* ignore, because we don't want to do it in a synchronized block, so NPE can happen */ }
+		try {
+			s.append("Task Manager: ").append(getName()).append(" (").append(nbThreads).append(" threads):\r\n");
+			for (TaskWorker w : getWorkers())
+				w.debug(s, "Worker");
+			for (TaskWorker w : spare)
+				try { w.debug(s, "Spare"); }
+				catch (Throwable t) { /* ignore, because we don't want to do it in a synchronized block, so NPE can happen */ }
+			for (TaskWorker w : blocked)
+				try { w.debug(s, "Blocked"); }
+				catch (Throwable t) { /* ignore, because we don't want to do it in a synchronized block, so NPE can happen */ }
+		} catch (Throwable t) {
+			/* ignore, because we don't want to do it in a synchronized block, so NPE can happen */
+		}
 	}
 	
 	@Override
@@ -256,7 +260,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 				w.printStats(s);
 			}
 		} catch (Throwable t) {
-			/* ignore */
+			/* ignore, because we don't want to do it in a synchronized block, so NPE can happen */
 		}
 	}
 	

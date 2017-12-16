@@ -66,7 +66,7 @@ public final class Threading {
 							for (TaskManager tm : resources.values()) {
 								int nb = tm.getRemainingTasks(false);
 								if (nb > 0) {
-									logger.info("   * Still " + nb + " tasks to do for " + tm.getName());
+									System.out.println("   * Still " + nb + " tasks to do for " + tm.getName());
 									hasTasks = true;
 								}
 							}
@@ -76,8 +76,8 @@ public final class Threading {
 						try { Thread.sleep(25); }
 						catch (InterruptedException e) { break; }
 					} while (true);
-					if (!hasTasks) logger.info("   * No more task to do in any task manager, continue stop process");
-					else logger.error("   * Still some tasks after 5 seconds, continue stop process anyway");
+					if (!hasTasks) System.out.println("   * No more task to do in any task manager, continue stop process");
+					else System.out.println("   * Still some tasks after 5 seconds, continue stop process anyway");
 					// stop scheduling new tasks
 					TaskScheduler.end();
 					// stopping task managers
@@ -105,7 +105,7 @@ public final class Threading {
 							}
 						}
 					} while (true);
-					logger.info("   * All Task Managers are stopped");
+					System.out.println("   * All Task Managers are stopped");
 					sp.unblock();
 				}
 			};

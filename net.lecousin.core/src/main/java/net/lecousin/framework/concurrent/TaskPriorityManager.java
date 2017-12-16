@@ -23,6 +23,11 @@ public interface TaskPriorityManager {
 	 * This method is always called inside a synchronized block on this instance.
 	 */
 	Task<?,?> peekNextOrWait();
+
+	/** Return a task if one is immediately available, or null.
+	 * This method is always called inside a synchronized block on this instance.
+	 */
+	Task<?,?> peekNext();
 	
 	/** Return the number of waiting tasks. */
 	int getRemainingTasks(boolean includingBackground);

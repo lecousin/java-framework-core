@@ -80,6 +80,27 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	}
 	
 	@Override
+	public Task<?, ?> peekNext() {
+		Task<?,?> t;
+		do {
+			if (nextPriority == Task.NB_PRIORITES) {
+				if (lastIdle < 0)
+					lastIdle = System.currentTimeMillis();
+				return null;
+			}
+			t = ready[nextPriority].pollFirst();
+			if (t == null) {
+				nextPriority++;
+				continue;
+			}
+			if (nextPriority < Task.PRIORITY_BACKGROUND && t.executeEvery <= 0)
+				lastIdle = -1;
+			break;
+		} while (true);
+		return t;
+	}
+	
+	@Override
 	public List<Task<?, ?>> removeAllPendingTasks() {
 		LinkedList<Task<?,?>> list = new LinkedList<>();
 		for (byte p = 0; p < Task.NB_PRIORITES; ++p) {
@@ -92,7 +113,9 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	@Override
 	public void forceStop() {
 		nextPriority = Task.NB_PRIORITES;
-		ready.notifyAll();
+		synchronized (ready) {
+			ready.notifyAll();
+		}
 		nextPriority = Task.NB_PRIORITES;
 		for (byte p = 0; p < Task.NB_PRIORITES; ++p) {
 			if (ready[p].isEmpty()) continue;

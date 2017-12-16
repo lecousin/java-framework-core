@@ -52,18 +52,18 @@ public abstract class TaskManager {
 		Thread t = new Thread("Stopping Task Manager: " + name) {
 			@Override
 			public void run() {
-				Threading.logger.info("   * Stopping Task Manager: " + name);
+				System.out.println("   * Stopping Task Manager: " + name);
 				do {
 					synchronized (taskPriorityManager) {
 						if (!taskPriorityManager.hasRemainingTasks(false)) {
 							// no more task => shutdown
-							Threading.logger.info("   * Task Manager has no more task to do: " + name);
+							System.out.println("   * Task Manager has no more task to do: " + name);
 							TaskManager.this.finishAndStopThreads();
 							taskPriorityManager.notifyAll();
 							break;
 						}
 					}
-					Threading.logger.info("   * Waiting for task manager " + name + " to finish its tasks");
+					System.out.println("   * Waiting for task manager " + name + " to finish its tasks");
 					synchronized (stopping) {
 						try { stopping.wait(1000); }
 						catch (InterruptedException e) { break; }

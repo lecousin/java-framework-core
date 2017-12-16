@@ -359,8 +359,8 @@ public final class Application {
 			if (closing.isEmpty()) break;
 			try { Thread.sleep(100); }
 			catch (InterruptedException e) { break; }
-			if (System.currentTimeMillis() - start > 10000) {
-				System.out.println("Ressources are still closing, but we don't wait more than 10 seconds.");
+			if (System.currentTimeMillis() - start > 15000) {
+				System.out.println("Ressources are still closing, but we don't wait more than 15 seconds.");
 				break;
 			}
 		} while (true);
