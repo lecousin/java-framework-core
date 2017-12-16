@@ -35,7 +35,7 @@ public @interface TypeSerializationMethod {
 			try {
 				TypeDefinition sourceType = attribute.getOriginalType();
 				Method method = sourceType.getBase().getMethod(annotation.value());
-				TypeDefinition targetType = new TypeDefinition(method.getGenericReturnType());
+				TypeDefinition targetType = new TypeDefinition(sourceType, method.getGenericReturnType());
 				Constructor<?> ctor = sourceType.getBase().getConstructor(targetType.getBase());
 				return new CustomAttributeSerializer(
 					attribute.getDeclaringClass(), attribute.getOriginalName(),

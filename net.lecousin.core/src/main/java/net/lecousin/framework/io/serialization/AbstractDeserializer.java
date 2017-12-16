@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -22,6 +23,7 @@ import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
+import net.lecousin.framework.io.serialization.SerializationUtil.MapEntry;
 import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnAttribute;
 import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnType;
 import net.lecousin.framework.io.serialization.annotations.TypeAnnotationToRule;
@@ -218,10 +220,8 @@ public abstract class AbstractDeserializer implements Deserializer {
 		if (Collection.class.isAssignableFrom(c))
 			return (AsyncWork<T, Exception>)deserializeCollectionValue(context, type, rules);
 
-		/*
 		if (Map.class.isAssignableFrom(c))
 			return (AsyncWork<T, Exception>)deserializeMapValue(context, type, rules);
-		*/
 		
 		if (InputStream.class.isAssignableFrom(c))
 			return (AsyncWork<T, Exception>)deserializeInputStreamValue(context, rules);
@@ -659,12 +659,74 @@ public abstract class AbstractDeserializer implements Deserializer {
 	
 	// *** Map ***
 	
-	/*
-	protected abstract AsyncWork<Map<?,?>, Exception> deserializeMapValue(
-		SerializationContext context, TypeDefinition type, List<SerializationRule> rules);
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	protected AsyncWork<Map<?,?>, Exception> deserializeMapValue(
+		SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules
+	) {
+		TypeDefinition type = new TypeDefinition(MapEntry.class, typeDef.getParameters());
+		type = new TypeDefinition(ArrayList.class, type);
+		AsyncWork<Object, Exception> value = deserializeValueType(context, type, rules);
+		AsyncWork<Map<?,?>, Exception> result = new AsyncWork<>();
+		if (value.isUnblocked()) {
+			if (value.hasError()) result.error(value.getError());
+			else
+				try {
+					result.unblockSuccess(getMap((ArrayList<MapEntry>)value.getResult(), typeDef, context, rules));
+				} catch (Exception e) {
+					result.error(e);
+				}
+			return result;
+		}
+		value.listenAsync(new DeserializationTask(() -> {
+			try {
+				result.unblockSuccess(getMap((ArrayList<MapEntry>)value.getResult(), typeDef, context, rules));
+			} catch (Exception e) {
+				result.error(e);
+			}
+		}), result);
+		return result;
+	}
 	
-	protected abstract AsyncWork<Map<?,?>, Exception> deserializeMapAttributeValue(AttributeContext context, List<SerializationRule> rules);
-	*/
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	protected AsyncWork<Map<?,?>, Exception> deserializeMapAttributeValue(
+		AttributeContext context, List<SerializationRule> rules
+	) {
+		TypeDefinition type = new TypeDefinition(MapEntry.class, context.getAttribute().getType().getParameters());
+		type = new TypeDefinition(ArrayList.class, type);
+		Attribute fakeAttribute = new Attribute(context.getAttribute());
+		fakeAttribute.setType(type);
+		AttributeContext ctx = new AttributeContext(context.getParent(), fakeAttribute);
+		AsyncWork<Object, Exception> value = deserializeCollectionAttributeValue(ctx, rules);
+		AsyncWork<Map<?,?>, Exception> result = new AsyncWork<>();
+		if (value.isUnblocked()) {
+			if (value.hasError()) result.error(value.getError());
+			else 
+				try {
+					result.unblockSuccess(
+						getMap((ArrayList<MapEntry>)value.getResult(), context.getAttribute().getType(), context, rules));
+				} catch (Exception e) {
+					result.error(e);
+				}
+			return result;
+		}
+		value.listenAsync(new DeserializationTask(() -> {
+			try {
+				result.unblockSuccess(
+					getMap((ArrayList<MapEntry>)value.getResult(), context.getAttribute().getType(), context, rules));
+			} catch (Exception e) {
+				result.error(e);
+			}
+		}), result);
+		return result;
+	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	protected static Map<?,?> getMap(ArrayList<MapEntry> entries, TypeDefinition type, SerializationContext context, List<SerializationRule> rules) throws Exception {
+		Map map = (Map)SerializationClass.instantiate(type, context, rules, false);
+		for (MapEntry entry : entries)
+			map.put(entry.key, entry.value);
+		return map;
+	}
 	
 	// *** InputStream ***
 
@@ -747,7 +809,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	protected void deserializeObjectAttributes(
 		SerializationContext parentContext, Object instance, TypeDefinition typeDef, List<SerializationRule> rules, AsyncWork<Object, Exception> result
 	) {
-		SerializationClass sc = new SerializationClass(new TypeDefinition(instance.getClass()));
+		SerializationClass sc = new SerializationClass(typeDef != null ? TypeDefinition.from(instance.getClass(), typeDef) : new TypeDefinition(instance.getClass()));
 		ObjectContext ctx = new ObjectContext(parentContext, instance, sc, typeDef);
 		rules = addRulesForType(sc, rules);
 		sc.apply(rules, ctx);
@@ -961,10 +1023,8 @@ public abstract class AbstractDeserializer implements Deserializer {
 		if (Collection.class.isAssignableFrom(c))
 			return deserializeCollectionAttributeValue(context, rules);
 
-		/*
 		if (Map.class.isAssignableFrom(c))
 			return deserializeMapAttributeValue(context, rules);
-		*/
 		
 		if (InputStream.class.isAssignableFrom(c))
 			return deserializeInputStreamAttributeValue(context, rules);

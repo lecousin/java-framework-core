@@ -4,6 +4,9 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -73,7 +76,7 @@ public class SerializationClass {
 			this.parent = parent;
 			this.field = f;
 			this.name = this.originalName = f.getName();
-			this.type = this.originalType = new TypeDefinition(f.getGenericType());
+			this.type = this.originalType = new TypeDefinition(parent.getType(), f.getGenericType());
 			if ((f.getModifiers() & Modifier.TRANSIENT) != 0) ignore = true;
 		}
 		
@@ -99,7 +102,7 @@ public class SerializationClass {
 		private TypeDefinition originalType;
 		private boolean ignore = false;
 		
-		public SerializationClass getparent() {
+		public SerializationClass getParent() {
 			return parent;
 		}
 		
@@ -236,14 +239,16 @@ public class SerializationClass {
 	}
 	
 	private void populateAttributes() {
-		populateAttributes(type.getBase());
+		populateAttributes(type.getBase(), type.getParameters());
 		filterAttributes();
 	}
 	
-	private void populateAttributes(Class<?> type) {
+	@SuppressWarnings("rawtypes")
+	private void populateAttributes(Class<?> type, List<TypeDefinition> params) {
 		if (Object.class.equals(type))
 			return;
 		for (Field f : type.getDeclaredFields()) {
+			if ((f.getModifiers() & (Modifier.STATIC | Modifier.FINAL)) != 0) continue;
 			String name = f.getName();
 			Attribute a = getAttributeByOriginalName(name);
 			if (a == null) {
@@ -262,7 +267,7 @@ public class SerializationClass {
 				if (returnType == null || Void.class.equals(returnType) || void.class.equals(returnType)) continue;
 				Attribute a = getAttributeByOriginalName(name);
 				if (a == null) {
-					a = new Attribute(this, name, new TypeDefinition(m.getGenericReturnType()));
+					a = new Attribute(this, name, new TypeDefinition(new TypeDefinition(type, params), m.getGenericReturnType()));
 					attributes.add(a);
 				}
 				if (a.getter == null)
@@ -287,13 +292,29 @@ public class SerializationClass {
 				if (m.getParameterCount() != 1) continue;
 				Attribute a = getAttributeByOriginalName(name);
 				if (a == null)
-					a = new Attribute(this, name, new TypeDefinition(m.getGenericParameterTypes()[0]));
+					a = new Attribute(this, name, new TypeDefinition(new TypeDefinition(type, params), m.getGenericParameterTypes()[0]));
 				if (a.setter == null)
 					a.setter = m;
 			}
 		}
-		if (type.getSuperclass() != null)
-			populateAttributes(type.getSuperclass());
+		if (type.getSuperclass() != null) {
+			Type t = type.getGenericSuperclass();
+			List<TypeDefinition> superParams = new LinkedList<>();
+			if (t instanceof ParameterizedType) {
+				for (Type arg : ((ParameterizedType)t).getActualTypeArguments()) {
+					if (arg instanceof TypeVariable) {
+						TypeVariable[] typeArgs = type.getTypeParameters();
+						for (int i = 0; i < typeArgs.length; ++i)
+							if (typeArgs[i].getName().equals(((TypeVariable)arg).getName())) {
+								superParams.add(params.get(i));
+								break;
+							}
+					} else
+						superParams.add(new TypeDefinition(null, arg));
+				}
+			}
+			populateAttributes(type.getSuperclass(), superParams);
+		}
 	}
 	
 	private void filterAttributes() {

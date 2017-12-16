@@ -36,10 +36,10 @@ public @interface SerializationMethods {
 		@Override
 		public SerializationRule createRule(SerializationMethods annotation, Attribute attribute) {
 			try {
-				Class<?> container = attribute.getDeclaringClass();
+				Class<?> container = attribute.getParent().getType().getBase();
 				TypeDefinition sourceType = attribute.getOriginalType();
 				Method serializationMethod = container.getMethod(annotation.serialization());
-				TypeDefinition targetType = new TypeDefinition(serializationMethod.getGenericReturnType());
+				TypeDefinition targetType = new TypeDefinition(attribute.getParent().getType(), serializationMethod.getGenericReturnType());
 				Method deserializationMethod = container.getMethod(annotation.deserialization(), targetType.getBase());
 				if (!deserializationMethod.getReturnType().equals(sourceType.getBase()))
 					throw new Exception("Deserialization method " + deserializationMethod.getName()

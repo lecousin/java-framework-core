@@ -1,9 +1,11 @@
 package net.lecousin.framework.io.serialization;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
@@ -16,6 +18,7 @@ import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
+import net.lecousin.framework.io.serialization.SerializationUtil.MapEntry;
 import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnAttribute;
 import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnType;
 import net.lecousin.framework.io.serialization.annotations.TypeAnnotationToRule;
@@ -117,10 +120,8 @@ public abstract class AbstractSerializer implements Serializer {
 			return serializeCollectionValue(ctx, path, rules);
 		}
 
-		/*
 		if (Map.class.isAssignableFrom(type))
-			return serializeMapValue(context, (Map<?,?>)value, path, rules);
-		*/
+			return serializeMapValue(context, (Map<?,?>)value, typeDef, path, rules);
 		
 		if (InputStream.class.isAssignableFrom(type))
 			return serializeInputStreamValue(context, (InputStream)value, path, rules);
@@ -165,7 +166,7 @@ public abstract class AbstractSerializer implements Serializer {
 	
 	protected ISynchronizationPoint<? extends Exception> serializeObjectValue(SerializationContext context, Object value, TypeDefinition typeDef, String path, List<SerializationRule> rules) {
 		Class<?> type = value.getClass();
-		SerializationClass sc = new SerializationClass(new TypeDefinition(type));
+		SerializationClass sc = new SerializationClass(typeDef != null ? TypeDefinition.from(type, typeDef) : new TypeDefinition(type));
 		ObjectContext ctx = new ObjectContext(context, value, sc, typeDef);
 		rules = addRulesForType(sc, rules);
 		sc.apply(rules, ctx);
@@ -245,7 +246,7 @@ public abstract class AbstractSerializer implements Serializer {
 		catch (Exception e) {
 			return new SynchronizationPoint<>(
 				new Exception("Unable to get value of attribute " + context.getAttribute().getOriginalName()
-					+ " on " + context.getAttribute().getOriginalType().getClass().getName(), e));
+					+ " on " + context.getParent().getInstance().getClass().getName(), e));
 		}
 		
 		if (value == null)
@@ -255,7 +256,7 @@ public abstract class AbstractSerializer implements Serializer {
 		
 		if (type.isArray()) {
 			Class<?> elementType = type.getComponentType();
-			CollectionContext ctx = new CollectionContext(context, value, new TypeDefinition(type), new TypeDefinition(elementType));
+			CollectionContext ctx = new CollectionContext(context, value, context.getAttribute().getType(), new TypeDefinition(elementType));
 			return serializeCollectionAttribute(ctx, path, rules);
 		}
 		
@@ -286,14 +287,12 @@ public abstract class AbstractSerializer implements Serializer {
 				elementType = null;
 			else
 				elementType = context.getAttribute().getType().getParameters().get(0);
-			CollectionContext ctx = new CollectionContext(context, value, new TypeDefinition(type), elementType);
+			CollectionContext ctx = new CollectionContext(context, value, context.getAttribute().getType(), elementType);
 			return serializeCollectionAttribute(ctx, path, rules);
 		}
 
-		/*
 		if (Map.class.isAssignableFrom(type))
-			return serializeMapAttribute(context, (Map<?,?>)value, path, rules);
-		*/
+			return serializeMapAttribute(context, (Map<?,?>)value, context.getAttribute().getType(), path, rules);
 		
 		if (InputStream.class.isAssignableFrom(type))
 			return serializeInputStreamAttribute(context, (InputStream)value, path, rules);
@@ -395,13 +394,38 @@ public abstract class AbstractSerializer implements Serializer {
 	
 	// *** Map ***
 	
-	/*
-	protected abstract ISynchronizationPoint<? extends Exception> serializeMapValue(
-		SerializationContext context, Map<?,?> map, String path, List<SerializationRule> rules);
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	protected ISynchronizationPoint<? extends Exception> serializeMapValue(
+		SerializationContext context, Map<?,?> map, TypeDefinition typeDef, String path, List<SerializationRule> rules
+	) {
+		TypeDefinition type = new TypeDefinition(MapEntry.class, typeDef.getParameters());
+		type = new TypeDefinition(ArrayList.class, type);
+		ArrayList<MapEntry> entries = new ArrayList<>(map.size());
+		for (Map.Entry e : map.entrySet()) {
+			MapEntry me = new MapEntry();
+			me.key = e.getKey();
+			me.value = e.getValue();
+			entries.add(me);
+		}
+		return serializeValue(context, entries, type, path, rules);
+	}
 	
-	protected abstract ISynchronizationPoint<? extends Exception> serializeMapAttribute(
-		AttributeContext context, Map<?,?> map, String path, List<SerializationRule> rules);
-		*/
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	protected ISynchronizationPoint<? extends Exception> serializeMapAttribute(
+		AttributeContext context, Map<?,?> map, TypeDefinition typeDef, String path, List<SerializationRule> rules
+	) {
+		TypeDefinition type = new TypeDefinition(MapEntry.class, typeDef.getParameters());
+		type = new TypeDefinition(ArrayList.class, type);
+		ArrayList<MapEntry> entries = new ArrayList<>(map.size());
+		for (Map.Entry e : map.entrySet()) {
+			MapEntry me = new MapEntry();
+			me.key = e.getKey();
+			me.value = e.getValue();
+			entries.add(me);
+		}
+		CollectionContext ctx = new CollectionContext(context, entries, type, type.getParameters().get(0));
+		return serializeCollectionAttribute(ctx, path, rules);
+	}
 
 	// *** InputStream ***
 

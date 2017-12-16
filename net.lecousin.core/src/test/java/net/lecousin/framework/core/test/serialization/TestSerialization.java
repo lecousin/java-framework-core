@@ -9,9 +9,11 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -208,7 +210,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(Character.valueOf('A'), Character.class);
 		TestChar tc = new TestChar();
 		tc.c = c;
-		tc.C = c;
+		tc.C = Character.valueOf(c);
 		test(tc, TestChar.class);
 	}
 	
@@ -355,6 +357,20 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 			new LinkedList<>()
 		);
 		test(t, TestListOfList.class);
+	}
+	
+	public static class TestMap {
+		public Map<String, Long> myMap;
+	}
+	
+	@Test
+	public void testMap() throws Exception {
+		TestMap t = new TestMap();
+		t.myMap = new HashMap<>();
+		t.myMap.put("key1", Long.valueOf(111));
+		t.myMap.put("key2", Long.valueOf(222));
+		t.myMap.put("key3", Long.valueOf(333));
+		test(t, TestMap.class);
 	}
 	
 	public static interface MyInterface {}
@@ -601,6 +617,10 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 			checkList((List<?>)expected, (List<?>)found);
 			return;
 		}
+		if (Map.class.isAssignableFrom(type)) {
+			checkMap((Map<?,?>)expected, (Map<?,?>)found);
+			return;
+		}
 		check(expected, found);
 	}
 	
@@ -630,6 +650,12 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		int l = Array.getLength(expected);
 		for (int i = 0; i < l; ++i)
 			checkValue(Array.get(expected, i), Array.get(found, i));
+	}
+
+	protected void checkMap(Map<?,?> m1, Map<?,?> m2) throws Exception {
+		Assert.assertEquals(m1.size(), m2.size());
+		for (Map.Entry<?,?> e : m1.entrySet())
+			checkValue(e.getValue(), m2.get(e.getKey()));
 	}
 	
 	protected void print(IO.Readable.Seekable io, Object o) throws Exception {
