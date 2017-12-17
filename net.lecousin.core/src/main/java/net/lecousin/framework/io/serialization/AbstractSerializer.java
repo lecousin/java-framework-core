@@ -169,11 +169,16 @@ public abstract class AbstractSerializer implements Serializer {
 	// *** Object ***
 	
 	protected ISynchronizationPoint<? extends Exception> serializeObjectValue(SerializationContext context, Object value, TypeDefinition typeDef, String path, List<SerializationRule> rules) {
-		Class<?> type = value.getClass();
-		SerializationClass sc = new SerializationClass(typeDef != null ? TypeDefinition.from(type, typeDef) : new TypeDefinition(type));
-		ObjectContext ctx = new ObjectContext(context, value, sc, typeDef);
-		rules = addRulesForType(sc, rules);
-		sc.apply(rules, ctx);
+		ObjectContext ctx;
+		try {
+			Class<?> type = value.getClass();
+			SerializationClass sc = new SerializationClass(typeDef != null ? TypeDefinition.from(type, typeDef) : new TypeDefinition(type));
+			ctx = new ObjectContext(context, value, sc, typeDef);
+			rules = addRulesForType(sc, rules);
+			sc.apply(rules, ctx, true);
+		} catch (Exception e) {
+			return new SynchronizationPoint<>(e);
+		}
 		return serializeObjectValue(ctx, path, rules);
 	}
 	

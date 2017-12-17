@@ -108,11 +108,16 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	protected abstract ISynchronizationPoint<? extends Exception> specifyStringValue(SerializationContext context, TypeDefinition type);
 	
 	protected ISynchronizationPoint<? extends Exception> specifyObjectValue(SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules) {
-		Class<?> type = typeDef.getBase();
-		SerializationClass sc = new SerializationClass(typeDef != null ? TypeDefinition.from(type, typeDef) : new TypeDefinition(type));
-		ObjectContext ctx = new ObjectContext(context, null, sc, typeDef);
-		rules = addRulesForType(sc, rules);
-		sc.apply(rules, ctx);
+		ObjectContext ctx;
+		try {
+			Class<?> type = typeDef.getBase();
+			SerializationClass sc = new SerializationClass(typeDef != null ? TypeDefinition.from(type, typeDef) : new TypeDefinition(type));
+			ctx = new ObjectContext(context, null, sc, typeDef);
+			rules = addRulesForType(sc, rules);
+			sc.apply(rules, ctx, true);
+		} catch (Exception e) {
+			return new SynchronizationPoint<>(e);
+		}
 		return specifyTypedValue(ctx, rules);
 	}
 

@@ -28,7 +28,7 @@ public class IgnoreAttribute implements SerializationRule {
 	private SerializationContextPattern contextPattern;
 	
 	@Override
-	public void apply(SerializationClass type, SerializationContext context) {
+	public void apply(SerializationClass type, SerializationContext context, boolean serializing) {
 		if (!contextPattern.matches(type, context))
 			return;
 		for (Attribute a : type.getAttributes())

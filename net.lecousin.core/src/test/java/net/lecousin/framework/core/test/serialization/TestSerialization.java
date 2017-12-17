@@ -34,6 +34,7 @@ import net.lecousin.framework.io.serialization.SerializationContext.AttributeCon
 import net.lecousin.framework.io.serialization.Serializer;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.annotations.Instantiate;
+import net.lecousin.framework.io.serialization.annotations.MergeAttributes;
 import net.lecousin.framework.io.serialization.annotations.Rename;
 import net.lecousin.framework.io.serialization.annotations.SerializationMethods;
 import net.lecousin.framework.io.serialization.annotations.SerializationName;
@@ -649,6 +650,61 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		TestSerializationMethods t = new TestSerializationMethods();
 		t.test = new TestNoDefaultConstructor1("Hello World!");
 		test(t, TestSerializationMethods.class);
+	}
+	
+	public static class Merged {
+		public String aString;
+	}
+	
+	public static class ToMerge {
+		@MergeAttributes(type=Pair.class, target="value2")
+		public Pair<String, Merged> pair;
+	}
+	
+	public static class MergedPair {
+		public String aString;
+		public String value1;
+	}
+
+	public static class TestMerged {
+		public MergedPair pair;
+	}
+
+	public static class ToMerge2 {
+		@Rename(value=Pair.class, attribute="value1", newName="theMerged")
+		@MergeAttributes(type=Pair.class, target="value2")
+		public Pair<String, Merged> pair;
+	}
+	
+	public static class MergedPair2 {
+		public String aString;
+		public String theMerged;
+	}
+
+	public static class TestMerged2 {
+		public MergedPair2 pair;
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
+	public void testMergeAttributes() throws Exception {
+		Merged merged = new Merged();
+		merged.aString = "Hello";
+		ToMerge toMerge = new ToMerge();
+		toMerge.pair = new Pair<>("World", merged);
+		test(toMerge, ToMerge.class);
+		MemoryIO ioMem = serializeInMemory(toMerge, new TypeDefinition(ToMerge.class));
+		TestMerged testMerged = deserialize(ioMem, new TypeDefinition(TestMerged.class));
+		Assert.assertEquals(toMerge.pair.getValue1(), testMerged.pair.value1);
+		Assert.assertEquals(toMerge.pair.getValue2().aString, testMerged.pair.aString);
+
+		ToMerge2 toMerge2 = new ToMerge2();
+		toMerge2.pair = new Pair<>("World", merged);
+		test(toMerge2, ToMerge2.class);
+		ioMem = serializeInMemory(toMerge2, new TypeDefinition(ToMerge2.class));
+		TestMerged2 testMerged2 = deserialize(ioMem, new TypeDefinition(TestMerged2.class));
+		Assert.assertEquals(toMerge2.pair.getValue1(), testMerged2.pair.theMerged);
+		Assert.assertEquals(toMerge2.pair.getValue2().aString, testMerged2.pair.aString);
 	}
 	
 	

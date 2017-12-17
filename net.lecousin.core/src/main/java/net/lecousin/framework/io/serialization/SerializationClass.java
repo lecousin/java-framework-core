@@ -59,9 +59,9 @@ public class SerializationClass {
 			}
 	}
 	
-	public void apply(List<SerializationRule> rules, SerializationContext context) {
+	public void apply(List<SerializationRule> rules, SerializationContext context, boolean serializing) throws Exception {
 		for (SerializationRule rule : rules)
-			rule.apply(this, context);
+			rule.apply(this, context, serializing);
 	}
 	
 	public static class Attribute {
@@ -92,15 +92,15 @@ public class SerializationClass {
 			this.ignore = copy.ignore;
 		}
 		
-		private SerializationClass parent;
-		private String name;
-		private String originalName;
-		private Field field;
-		private Method getter;
-		private Method setter;
-		private TypeDefinition type;
-		private TypeDefinition originalType;
-		private boolean ignore = false;
+		protected SerializationClass parent;
+		protected String name;
+		protected String originalName;
+		protected Field field;
+		protected Method getter;
+		protected Method setter;
+		protected TypeDefinition type;
+		protected TypeDefinition originalType;
+		protected boolean ignore = false;
 		
 		public SerializationClass getParent() {
 			return parent;
@@ -323,6 +323,27 @@ public class SerializationClass {
 			if (!a.canGet() && !a.canSet())
 				it.remove();
 		}
+	}
+	
+	public static TypeDefinition searchAttributeType(TypeDefinition containerType, String attributeName) {
+		try {
+			Field f = containerType.getBase().getField(attributeName);
+			if ((f.getModifiers() & (Modifier.STATIC | Modifier.FINAL)) != 0)
+				return new TypeDefinition(containerType, f.getGenericType());
+		} catch (Throwable t) { /* ignore */ }
+		try {
+			Method m = containerType.getBase().getMethod("get" + Character.toUpperCase(attributeName.charAt(0)) + attributeName.substring(1));
+			Class<?> returnType = m.getReturnType();
+			if (returnType != null && !Void.class.equals(returnType) && !void.class.equals(returnType))
+				return new TypeDefinition(containerType, m.getGenericReturnType());
+		} catch (Throwable t) { /* ignore */ }
+		try {
+			Method m = containerType.getBase().getMethod("is" + Character.toUpperCase(attributeName.charAt(0)) + attributeName.substring(1));
+			Class<?> returnType = m.getReturnType();
+			if (boolean.class.equals(returnType) || Boolean.class.equals(returnType))
+				return new TypeDefinition(containerType, m.getGenericReturnType());
+		} catch (Throwable t) { /* ignore */ }
+		return null;
 	}
 	
 	@SuppressWarnings("rawtypes")

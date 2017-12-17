@@ -29,7 +29,7 @@ public class CustomTypeSerializer implements SerializationRule {
 	private SerializationContextPattern context;
 	
 	@Override
-	public void apply(SerializationClass type, SerializationContext context) {
+	public void apply(SerializationClass type, SerializationContext context, boolean serializing) {
 		if (this.context != null && !this.context.matches(type, context))
 			return;
 		for (ListIterator<Attribute> it = type.getAttributes().listIterator(); it.hasNext(); ) {

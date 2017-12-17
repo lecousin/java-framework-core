@@ -24,7 +24,7 @@ public class CustomAttributeSerializer implements SerializationRule {
 	private CustomSerializer serializer;
 	
 	@Override
-	public void apply(SerializationClass type, SerializationContext context) {
+	public void apply(SerializationClass type, SerializationContext context, boolean serializing) {
 		Attribute a = pattern.getAttribute(type, context);
 		if (a == null)
 			return;

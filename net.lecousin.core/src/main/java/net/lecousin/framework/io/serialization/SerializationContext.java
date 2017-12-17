@@ -37,12 +37,24 @@ public abstract class SerializationContext {
 			return instance;
 		}
 		
+		public void setInstance(Object instance) {
+			this.instance = instance;
+		}
+		
 		public SerializationClass getSerializationClass() {
 			return clazz;
 		}
 		
+		public void setSerializationClass(SerializationClass clazz) {
+			this.clazz = clazz;
+		}
+		
 		public TypeDefinition getOriginalType() {
 			return originalType;
+		}
+		
+		public void setOriginalType(TypeDefinition originalType) {
+			this.originalType = originalType;
 		}
 		
 		@Override

@@ -1,6 +1,5 @@
 package net.lecousin.framework.io.serialization.rules;
 
-import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
@@ -29,19 +28,17 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 	private Class<? extends Factory> factory;
 	
 	@Override
-	public void apply(SerializationClass type, SerializationContext context) {
+	public void apply(SerializationClass type, SerializationContext context, boolean serializing) throws Exception {
 		Attribute a = pattern.getAttribute(type, context);
 		if (a == null)
 			return;
 		Attribute discr = type.getAttributeByOriginalName(discriminator);
-		if (discr == null || !discr.canGet()) {
-			LCCore.getApplication().getDefaultLogger().warn("Unable to get discriminator attribute " + discriminator);
-			return;
-		}
+		if (discr == null || !discr.canGet())
+			throw new Exception("Unable to get discriminator attribute " + discriminator);
 		try {
 			type.replaceAttribute(a, new InstantiationAttribute(a, discr, factory.newInstance()));
 		} catch (Throwable t) {
-			LCCore.getApplication().getDefaultLogger().error("Unable to replace attribute by an InstantiationAttribute", t);
+			throw new Exception("Unable to replace attribute by an InstantiationAttribute", t);
 		}
 	}
 	

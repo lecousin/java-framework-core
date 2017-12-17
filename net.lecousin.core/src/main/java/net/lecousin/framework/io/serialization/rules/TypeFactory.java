@@ -31,7 +31,7 @@ public class TypeFactory<T> implements SerializationRule {
 	}
 	
 	@Override
-	public void apply(SerializationClass type, SerializationContext context) {
+	public void apply(SerializationClass type, SerializationContext context, boolean serializing) {
 		for (ListIterator<Attribute> it = type.getAttributes().listIterator(); it.hasNext(); ) {
 			Attribute a = it.next();
 			if (!a.getOriginalType().equals(type)) continue;

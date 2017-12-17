@@ -812,10 +812,16 @@ public abstract class AbstractDeserializer implements Deserializer {
 	protected void deserializeObjectAttributes(
 		SerializationContext parentContext, Object instance, TypeDefinition typeDef, List<SerializationRule> rules, AsyncWork<Object, Exception> result
 	) {
-		SerializationClass sc = new SerializationClass(typeDef != null ? TypeDefinition.from(instance.getClass(), typeDef) : new TypeDefinition(instance.getClass()));
-		ObjectContext ctx = new ObjectContext(parentContext, instance, sc, typeDef);
-		rules = addRulesForType(sc, rules);
-		sc.apply(rules, ctx);
+		ObjectContext ctx;
+		try { 
+			SerializationClass sc = new SerializationClass(typeDef != null ? TypeDefinition.from(instance.getClass(), typeDef) : new TypeDefinition(instance.getClass()));
+			ctx = new ObjectContext(parentContext, instance, sc, typeDef);
+			rules = addRulesForType(sc, rules);
+			sc.apply(rules, ctx, false);
+		} catch (Exception e) {
+			result.error(e);
+			return;
+		}
 		deserializeNextObjectAttribute(ctx, rules, result);
 	}
 	

@@ -25,7 +25,7 @@ public class RenameAttribute implements SerializationRule {
 	private String newName;
 	
 	@Override
-	public void apply(SerializationClass type, SerializationContext context) {
+	public void apply(SerializationClass type, SerializationContext context, boolean serializing) {
 		Attribute a = contextPattern.getAttribute(type, context);
 		if (a != null)
 			a.renameTo(newName);

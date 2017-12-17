@@ -9,7 +9,7 @@ import net.lecousin.framework.io.serialization.TypeDefinition;
 public interface SerializationRule {
 
 	/** Apply the rule to the given type, knowing the given context. */
-	void apply(SerializationClass type, SerializationContext context);
+	void apply(SerializationClass type, SerializationContext context, boolean serializing) throws Exception;
 	
 	/** Check if this rule is equivalent to the given rule. */
 	boolean isEquivalent(SerializationRule rule);
