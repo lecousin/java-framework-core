@@ -11,6 +11,7 @@ public class DefaultApplicationClassLoader extends ApplicationClassLoader {
 	
 	/** Constructor. */
 	public DefaultApplicationClassLoader(Application app) {
+		super(DefaultApplicationClassLoader.class.getClassLoader());
 		this.app = app;
 	}
 	
