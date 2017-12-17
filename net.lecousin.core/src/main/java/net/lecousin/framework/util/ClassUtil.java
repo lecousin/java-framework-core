@@ -233,6 +233,21 @@ public final class ClassUtil {
 		throw new NoSuchFieldException("Unknown field path '" + path + "'");
 	}
 	
+	public static List<Annotation> getAllAnnotations(Class<?> clazz) {
+		List<Annotation> list = new LinkedList<>();
+		getAllAnnotations(clazz, list);
+		return list;
+	}
+	
+	private static void getAllAnnotations(Class<?> clazz, List<Annotation> list) {
+		for (Annotation a : clazz.getDeclaredAnnotations())
+			list.add(a);
+		if (clazz.getSuperclass() != null)
+			getAllAnnotations(clazz.getSuperclass(), list);
+		for (Class<?> i : clazz.getInterfaces())
+			getAllAnnotations(i, list);
+	}
+	
 	public static List<Annotation> expandRepeatableAnnotations(Annotation[] list) {
 		return expandRepeatableAnnotations(Arrays.asList(list));
 	}

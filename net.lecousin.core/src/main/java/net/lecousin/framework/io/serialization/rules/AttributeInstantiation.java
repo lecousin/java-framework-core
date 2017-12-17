@@ -1,5 +1,7 @@
 package net.lecousin.framework.io.serialization.rules;
 
+import java.util.List;
+
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
@@ -27,12 +29,13 @@ public class AttributeInstantiation implements SerializationRule {
 	private Class<? extends Factory> factory;
 	
 	@Override
-	public void apply(SerializationClass type, SerializationContext context, boolean serializing) throws Exception {
+	public boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) throws Exception {
 		Attribute a = pattern.getAttribute(type, context);
 		if (a == null)
-			return;
+			return false;
 		try {
 			type.replaceAttribute(a, new InstantiationAttribute(a, factory.newInstance()));
+			return false;
 		} catch (Throwable t) {
 			throw new Exception("Unable to replace attribute by an InstantiationAttribute", t);
 		}

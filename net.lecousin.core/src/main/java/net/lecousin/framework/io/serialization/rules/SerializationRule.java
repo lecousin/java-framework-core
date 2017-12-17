@@ -1,5 +1,7 @@
 package net.lecousin.framework.io.serialization.rules;
 
+import java.util.List;
+
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.TypeDefinition;
@@ -8,8 +10,10 @@ import net.lecousin.framework.io.serialization.TypeDefinition;
 @SuppressWarnings("unused")
 public interface SerializationRule {
 
-	/** Apply the rule to the given type, knowing the given context. */
-	void apply(SerializationClass type, SerializationContext context, boolean serializing) throws Exception;
+	/** Apply the rule to the given type, knowing the given context.
+	 * If true is returned no other rule will be applied on the type.
+	 */
+	boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) throws Exception;
 	
 	/** Check if this rule is equivalent to the given rule. */
 	boolean isEquivalent(SerializationRule rule);

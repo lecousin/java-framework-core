@@ -33,6 +33,7 @@ import net.lecousin.framework.io.serialization.Deserializer;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.Serializer;
 import net.lecousin.framework.io.serialization.TypeDefinition;
+import net.lecousin.framework.io.serialization.annotations.AddAttribute;
 import net.lecousin.framework.io.serialization.annotations.Instantiate;
 import net.lecousin.framework.io.serialization.annotations.MergeAttributes;
 import net.lecousin.framework.io.serialization.annotations.Rename;
@@ -705,6 +706,74 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		TestMerged2 testMerged2 = deserialize(ioMem, new TypeDefinition(TestMerged2.class));
 		Assert.assertEquals(toMerge2.pair.getValue1(), testMerged2.pair.theMerged);
 		Assert.assertEquals(toMerge2.pair.getValue2().aString, testMerged2.pair.aString);
+	}
+	
+	public static class ToMerge3 {
+		@Rename(value=Pair.class, attribute="value1", newName="theMerged")
+		@MergeAttributes(type=Pair.class, target="value2")
+		public List<Pair<String, Merged>> list;
+	}
+	
+	public static class Merged3 {
+		public List<MergedPair2> list;
+	}
+
+	@Test
+	public void testMergeAttributesOfListElements() throws Exception {
+		ToMerge3 t = new ToMerge3();
+		t.list = new ArrayList<>();
+		Merged m = new Merged();
+		m.aString = "Hello";
+		t.list.add(new Pair<>("bonjour", m));
+		m = new Merged();
+		m.aString = "World";
+		t.list.add(new Pair<>("le monde", m));
+		test(t, ToMerge3.class);
+	}
+
+	@Test
+	public void testMergeAttributesOfListElements2() throws Exception {
+		ToMerge3 t = new ToMerge3();
+		t.list = new ArrayList<>();
+		Merged m = new Merged();
+		m.aString = "Hello";
+		t.list.add(new Pair<>("bonjour", m));
+		m = new Merged();
+		m.aString = "World";
+		t.list.add(new Pair<>("le monde", m));
+		MemoryIO io = serializeInMemory(t, new TypeDefinition(ToMerge3.class));
+		print(io, t);
+		deserialize(io, new TypeDefinition(Merged3.class));
+	}
+	
+	@AddAttribute(name="config", deserializer="configure", serializer="getConfiguration")
+	public static class TestAddAttribute {
+		public String hello;
+		public transient int value = 1;
+		public void configure(int val) {
+			this.value = val + 1;
+		}
+		@Transient
+		public int getConfiguration() {
+			return value;
+		}
+	}
+	
+	public static class TestAddAttributeContainer {
+		public TestAddAttribute test;
+	}
+	
+	@Test
+	public void testAddAttribute() throws Exception {
+		TestAddAttributeContainer t = new TestAddAttributeContainer();
+		t.test = new TestAddAttribute();
+		t.test.hello = "World";
+		t.test.value = 51;
+		@SuppressWarnings("resource")
+		MemoryIO ioMem = serializeInMemory(t, new TypeDefinition(TestAddAttributeContainer.class));
+		TestAddAttributeContainer t2 = deserialize(ioMem, new TypeDefinition(TestAddAttributeContainer.class));
+		Assert.assertEquals("World", t2.test.hello);
+		Assert.assertEquals(52, t2.test.value);
 	}
 	
 	

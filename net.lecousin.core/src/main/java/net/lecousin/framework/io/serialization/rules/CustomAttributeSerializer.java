@@ -1,5 +1,7 @@
 package net.lecousin.framework.io.serialization.rules;
 
+import java.util.List;
+
 import net.lecousin.framework.io.serialization.CustomSerializer;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
@@ -24,14 +26,15 @@ public class CustomAttributeSerializer implements SerializationRule {
 	private CustomSerializer serializer;
 	
 	@Override
-	public void apply(SerializationClass type, SerializationContext context, boolean serializing) {
+	public boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) {
 		Attribute a = pattern.getAttribute(type, context);
 		if (a == null)
-			return;
+			return false;
 		if ((a instanceof CustomAttribute) && ((CustomAttribute)a).getCustomSerializer().getClass().equals(serializer.getClass()))
-			return;
+			return false;
 		CustomAttribute ca = new CustomAttribute(a, serializer);
 		type.replaceAttribute(a, ca);
+		return false;
 	}
 	
 	@Override

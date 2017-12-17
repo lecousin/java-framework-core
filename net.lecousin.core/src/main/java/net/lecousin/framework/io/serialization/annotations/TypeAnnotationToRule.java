@@ -21,10 +21,20 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 	/** Search for annotations on the given type, and try to convert them into
 	 * serialization rules.
 	 */
-	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static List<SerializationRule> addRules(Class<?> clazz, List<SerializationRule> rules) {
 		List<SerializationRule> newRules = new LinkedList<>();
-		for (Annotation a : ClassUtil.expandRepeatableAnnotations(clazz.getAnnotations())) {
+		processAnnotations(clazz, newRules, rules);
+		if (newRules.isEmpty())
+			return rules;
+		ArrayList<SerializationRule> newList = new ArrayList<>(rules.size() + newRules.size());
+		newList.addAll(rules);
+		newList.addAll(newRules);
+		return newList;
+	}
+	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	static void processAnnotations(Class<?> clazz, List<SerializationRule> newRules, List<SerializationRule> rules) {
+		for (Annotation a : ClassUtil.expandRepeatableAnnotations(clazz.getDeclaredAnnotations())) {
 			for (TypeAnnotationToRule toRule : getAnnotationToRules(a)) {
 				SerializationRule rule;
 				try { rule = toRule.createRule(a, clazz); }
@@ -52,12 +62,10 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 				}
 			}
 		}
-		if (newRules.isEmpty())
-			return rules;
-		ArrayList<SerializationRule> newList = new ArrayList<>(rules.size() + newRules.size());
-		newList.addAll(rules);
-		newList.addAll(newRules);
-		return newList;
+		if (clazz.getSuperclass() != null)
+			processAnnotations(clazz.getSuperclass(), newRules, rules);
+		for (Class<?> i : clazz.getInterfaces())
+			processAnnotations(i, newRules, rules);
 	}
 	
 	/** Search for implementations to convert the given annotation into a rule.

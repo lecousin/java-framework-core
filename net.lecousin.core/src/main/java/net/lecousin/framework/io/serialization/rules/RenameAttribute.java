@@ -1,5 +1,7 @@
 package net.lecousin.framework.io.serialization.rules;
 
+import java.util.List;
+
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
@@ -25,10 +27,11 @@ public class RenameAttribute implements SerializationRule {
 	private String newName;
 	
 	@Override
-	public void apply(SerializationClass type, SerializationContext context, boolean serializing) {
+	public boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) {
 		Attribute a = contextPattern.getAttribute(type, context);
 		if (a != null)
 			a.renameTo(newName);
+		return false;
 	}
 	
 	@Override

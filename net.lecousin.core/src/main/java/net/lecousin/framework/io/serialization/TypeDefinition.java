@@ -3,6 +3,7 @@ package net.lecousin.framework.io.serialization;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -35,6 +36,9 @@ public class TypeDefinition {
 					return;
 				}
 			throw new IllegalArgumentException("Unexpected type " + type.getClass() + ": " + type.toString());
+		} else if (type instanceof WildcardType) {
+			base = Object.class;
+			parameters = new ArrayList<>(0);
 		} else
 			throw new IllegalArgumentException("Unexpected type " + type.getClass() + ": " + type.toString());
 	}

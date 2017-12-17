@@ -1,5 +1,6 @@
 package net.lecousin.framework.io.serialization.rules;
 
+import java.util.List;
 import java.util.ListIterator;
 
 import net.lecousin.framework.io.serialization.CustomSerializer;
@@ -29,9 +30,9 @@ public class CustomTypeSerializer implements SerializationRule {
 	private SerializationContextPattern context;
 	
 	@Override
-	public void apply(SerializationClass type, SerializationContext context, boolean serializing) {
+	public boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) {
 		if (this.context != null && !this.context.matches(type, context))
-			return;
+			return false;
 		for (ListIterator<Attribute> it = type.getAttributes().listIterator(); it.hasNext(); ) {
 			Attribute a = it.next();
 			if (this.context != null && !this.context.matches(type, context, a))
@@ -42,6 +43,7 @@ public class CustomTypeSerializer implements SerializationRule {
 				continue;
 			it.set(new CustomAttribute(a, serializer));
 		}
+		return false;
 	}
 	
 	@Override

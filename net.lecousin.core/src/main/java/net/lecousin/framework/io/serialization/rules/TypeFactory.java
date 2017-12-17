@@ -1,5 +1,6 @@
 package net.lecousin.framework.io.serialization.rules;
 
+import java.util.List;
 import java.util.ListIterator;
 
 import net.lecousin.framework.io.serialization.SerializationClass;
@@ -31,7 +32,7 @@ public class TypeFactory<T> implements SerializationRule {
 	}
 	
 	@Override
-	public void apply(SerializationClass type, SerializationContext context, boolean serializing) {
+	public boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) {
 		for (ListIterator<Attribute> it = type.getAttributes().listIterator(); it.hasNext(); ) {
 			Attribute a = it.next();
 			if (!a.getOriginalType().equals(type)) continue;
@@ -42,6 +43,7 @@ public class TypeFactory<T> implements SerializationRule {
 				}
 			});
 		}
+		return false;
 	}
 	
 	@Override

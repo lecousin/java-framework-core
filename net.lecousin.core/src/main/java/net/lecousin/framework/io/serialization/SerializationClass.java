@@ -61,7 +61,8 @@ public class SerializationClass {
 	
 	public void apply(List<SerializationRule> rules, SerializationContext context, boolean serializing) throws Exception {
 		for (SerializationRule rule : rules)
-			rule.apply(this, context, serializing);
+			if (rule.apply(this, context, rules, serializing))
+				break;
 	}
 	
 	public static class Attribute {

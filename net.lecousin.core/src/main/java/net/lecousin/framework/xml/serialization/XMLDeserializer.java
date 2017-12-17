@@ -3,6 +3,7 @@ package net.lecousin.framework.xml.serialization;
 import java.io.EOFException;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
@@ -187,7 +188,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	@Override
 	protected AsyncWork<Pair<Object, Boolean>, Exception> deserializeCollectionValueElement(
-		CollectionContext context, int elementIndex, List<SerializationRule> rules
+		CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules
 	) {
 		CollectionValueContext ctx = colValueContext.getFirst();
 		AsyncWork<Boolean, Exception> read = input.nextInnerElement(ctx.parent, "element");
@@ -197,7 +198,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 				colValueContext.removeFirst();
 				return new AsyncWork<>(new Pair<>(null, Boolean.FALSE), null);
 			}
-			AsyncWork<Object, Exception> element = deserializeValue(context, context.getElementType(), rules);
+			AsyncWork<Object, Exception> element = deserializeValue(context, context.getElementType(), colPath + '[' + elementIndex + ']', rules);
 			if (element.isUnblocked()) {
 				if (element.hasError()) return new AsyncWork<>(null, element.getError());
 				return new AsyncWork<>(new Pair<>(element.getResult(), Boolean.TRUE), null);
@@ -215,7 +216,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 				result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
 				return;
 			}
-			AsyncWork<Object, Exception> element = deserializeValue(context, context.getElementType(), rules);
+			AsyncWork<Object, Exception> element = deserializeValue(context, context.getElementType(), colPath + '[' + elementIndex + ']', rules);
 			if (element.isUnblocked()) {
 				if (element.hasError()) result.error(element.getError());
 				else result.unblockSuccess(new Pair<>(element.getResult(), Boolean.TRUE));
@@ -277,11 +278,15 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	public static boolean hasAttribute(Class<?> type, String name) {
+		if (type.equals(Object.class)) return false;
 		for (Field f : type.getDeclaredFields())
 			if (f.getName().equals(name))
 				return true;
-		if (ClassUtil.getGetter(type, name) != null) return true;
-		if (ClassUtil.getSetter(type, name) != null) return true;
+		Method m;
+		m = ClassUtil.getGetter(type, name);
+		if (m != null && !m.getDeclaringClass().equals(Object.class)) return true;
+		m = ClassUtil.getSetter(type, name);
+		if (m != null && !m.getDeclaringClass().equals(Object.class)) return true;
 		if (type.getSuperclass() != null)
 			return hasAttribute(type.getSuperclass(), name);
 		return false;
@@ -412,7 +417,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	@Override
-	protected AsyncWork<Pair<Object, Boolean>, Exception> deserializeCollectionAttributeValueElement(CollectionContext context, int elementIndex, List<SerializationRule> rules) {
+	protected AsyncWork<Pair<Object, Boolean>, Exception> deserializeCollectionAttributeValueElement(CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules) {
 		XMLObjectContext ctx = objects.getFirst();
 		Attribute colAttr = ((AttributeContext)context.getParent()).getAttribute();
 		AsyncWork<Pair<Object, Boolean>, Exception> result = new AsyncWork<>();
@@ -446,17 +451,17 @@ public class XMLDeserializer extends AbstractDeserializer {
 						result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
 						return;
 					}
-					readColElement(context, rules, result);
+					readColElement(context, colPath + '[' + elementIndex + ']', rules, result);
 				}), result);
 				return result;
 			}
 		}
 		
-		readColElement(context, rules, result);
+		readColElement(context, colPath + '[' + elementIndex + ']', rules, result);
 		return result;
 	}
 	
-	private void readColElement(CollectionContext context, List<SerializationRule> rules, AsyncWork<Pair<Object, Boolean>, Exception> result) {
+	private void readColElement(CollectionContext context, String elementPath, List<SerializationRule> rules, AsyncWork<Pair<Object, Boolean>, Exception> result) {
 		Attribute a = null;
 		SerializationContext c = context.getParent();
 		while (c != null) {
@@ -479,7 +484,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 			}
 		}
 		if (value == null)
-			value = deserializeValue(context, context.getElementType(), rules);
+			value = deserializeValue(context, context.getElementType(), elementPath, rules);
 		if (value.isUnblocked()) {
 			if (value.hasError()) result.error(value.getError());
 			else result.unblockSuccess(new Pair<>(value.getResult(), Boolean.TRUE));
@@ -552,7 +557,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	@Override
-	protected AsyncWork<?, Exception> deserializeObjectAttributeValue(AttributeContext context, List<SerializationRule> rules) {
+	protected AsyncWork<?, Exception> deserializeObjectAttributeValue(AttributeContext context, String path, List<SerializationRule> rules) {
 		XMLCustomSerialization custom = context.getAttribute().getAnnotation(false, XMLCustomSerialization.class);
 		if (custom != null) {
 			try {
@@ -563,6 +568,6 @@ public class XMLDeserializer extends AbstractDeserializer {
 				return new AsyncWork<>(null, e);
 			}
 		}
-		return super.deserializeObjectAttributeValue(context, rules);
+		return super.deserializeObjectAttributeValue(context, path, rules);
 	}
 }

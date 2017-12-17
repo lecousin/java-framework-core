@@ -6,6 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
+import net.lecousin.framework.io.serialization.SerializationContextPattern;
 import net.lecousin.framework.io.serialization.rules.MergeTypeAttributes;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
@@ -25,7 +26,7 @@ public @interface MergeAttributes {
 		
 		@Override
 		public SerializationRule createRule(MergeAttributes annotation, Attribute attribute) {
-			return new MergeTypeAttributes(annotation.type(), annotation.target());
+			return new MergeTypeAttributes(new SerializationContextPattern.OnClassAttribute(attribute.getDeclaringClass(), attribute.getOriginalName()), annotation.type(), annotation.target());
 		}
 		
 	}
