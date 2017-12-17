@@ -7,6 +7,7 @@ import java.util.List;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
+import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Pair;
 
 /** Convert an annotation into a SerializationRule.
@@ -23,7 +24,7 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static List<SerializationRule> addRules(Class<?> clazz, List<SerializationRule> rules) {
 		List<SerializationRule> newRules = new LinkedList<>();
-		for (Annotation a : clazz.getAnnotations()) {
+		for (Annotation a : ClassUtil.expandRepeatableAnnotations(clazz.getAnnotations())) {
 			for (TypeAnnotationToRule toRule : getAnnotationToRules(a)) {
 				SerializationRule rule;
 				try { rule = toRule.createRule(a, clazz); }

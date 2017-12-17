@@ -1,10 +1,13 @@
 package net.lecousin.framework.util;
 
+import java.lang.annotation.Annotation;
+import java.lang.annotation.Repeatable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -228,6 +231,31 @@ public final class ClassUtil {
 			object = obj;
 		}
 		throw new NoSuchFieldException("Unknown field path '" + path + "'");
+	}
+	
+	public static List<Annotation> expandRepeatableAnnotations(Annotation[] list) {
+		return expandRepeatableAnnotations(Arrays.asList(list));
+	}
+	public static List<Annotation> expandRepeatableAnnotations(Iterable<Annotation> list) {
+		LinkedList<Annotation> result = new LinkedList<>();
+		for (Annotation a : list) {
+			try {
+				Method m = a.annotationType().getMethod("value");
+				if (m != null && m.getReturnType().isArray()) {
+					Class<?> t = m.getReturnType().getComponentType();
+					if (Annotation.class.isAssignableFrom(t)) {
+						Repeatable r = t.getAnnotation(Repeatable.class);
+						if (r != null && r.value().isAssignableFrom(a.getClass())) {
+							for (Annotation ra : (Annotation[])m.invoke(a))
+								result.add(ra);
+							continue;
+						}
+					}
+				}
+			} catch (Throwable t) { /* ignore */ }
+			result.add(a);
+		}
+		return result;
 	}
 	
 }

@@ -8,6 +8,7 @@ import java.util.List;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
+import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Pair;
 
 /** Convert an annotation on an attribute into a SerializationRule on this attribute.
@@ -24,7 +25,7 @@ public interface AttributeAnnotationToRuleOnAttribute<TAnnotation extends Annota
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static List<SerializationRule> addRules(Attribute attr, boolean onGet, List<SerializationRule> rules) {
 		List<SerializationRule> newRules = new LinkedList<>();
-		for (Annotation a : attr.getAnnotations(onGet)) {
+		for (Annotation a : ClassUtil.expandRepeatableAnnotations(attr.getAnnotations(onGet))) {
 			for (AttributeAnnotationToRuleOnAttribute toRule : getAnnotationToRules(a)) {
 				SerializationRule rule;
 				try { rule = toRule.createRule(a, attr); }

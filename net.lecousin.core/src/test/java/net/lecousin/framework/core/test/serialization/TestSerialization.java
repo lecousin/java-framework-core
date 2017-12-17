@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -33,6 +34,7 @@ import net.lecousin.framework.io.serialization.SerializationContext.AttributeCon
 import net.lecousin.framework.io.serialization.Serializer;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.annotations.Instantiate;
+import net.lecousin.framework.io.serialization.annotations.Rename;
 import net.lecousin.framework.io.serialization.annotations.SerializationMethods;
 import net.lecousin.framework.io.serialization.annotations.SerializationName;
 import net.lecousin.framework.io.serialization.annotations.Transient;
@@ -42,6 +44,7 @@ import net.lecousin.framework.math.IntegerUnit.Unit;
 import net.lecousin.framework.math.TimeUnit;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Factory;
+import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 import org.junit.Assert;
@@ -541,7 +544,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	}
 	
 	@Test
-	public void testRename() throws Exception {
+	public void testRenameAttribute() throws Exception {
 		TestRename1 t1 = new TestRename1();
 		t1.hello = "bonjour";
 		test(t1, TestRename1.class);
@@ -549,6 +552,32 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		MemoryIO ioMem = serializeInMemory(t1, new TypeDefinition(TestRename1.class));
 		TestRename2 t2 = deserialize(ioMem, new TypeDefinition(TestRename2.class));
 		Assert.assertEquals("bonjour", t2.world);
+	}
+	
+	public static class TestRenamePair1 {
+		@Rename(value=Pair.class, attribute="value1", newName="myValue1")
+		@Rename(value=Pair.class, attribute="value2", newName="myValue2")
+		public Pair<String,String> pair;
+	}
+	
+	public static class TestRenamePair2 {
+		public MyPair pair;
+	}
+	public static class MyPair {
+		public String myValue1;
+		public String myValue2;
+	}
+	
+	@Test
+	public void testRenamePair() throws Exception {
+		TestRenamePair1 t1 = new TestRenamePair1();
+		t1.pair = new Pair<>("Hello", "World");
+		test(t1, TestRenamePair1.class);
+		@SuppressWarnings("resource")
+		MemoryIO ioMem = serializeInMemory(t1, new TypeDefinition(TestRenamePair1.class));
+		TestRenamePair2 t2 = deserialize(ioMem, new TypeDefinition(TestRenamePair2.class));
+		Assert.assertEquals(t1.pair.getValue1(), t2.pair.myValue1);
+		Assert.assertEquals(t1.pair.getValue2(), t2.pair.myValue2);
 	}
 	
 	public static class TestNoDefaultConstructor1 {
@@ -729,8 +758,14 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		for (Field f : ClassUtil.getAllFields(expected.getClass())) {
 			if ((f.getModifiers() & Modifier.STATIC) != 0) continue;
 			if ((f.getModifiers() & Modifier.FINAL) != 0) continue;
-			Object o1 = f.get(expected);
-			Object o2 = f.get(found);
+			Method getter1 = ClassUtil.getGetter(expected.getClass(), f.getName());
+			Object o1;
+			if (getter1 != null) o1 = getter1.invoke(expected);
+			else o1 = f.get(expected);
+			Method getter2 = ClassUtil.getGetter(found.getClass(), f.getName());
+			Object o2;
+			if (getter2 != null) o2 = getter2.invoke(found);
+			else o2 = f.get(found);
 			checkValue(o1, o2);
 		}
 	}

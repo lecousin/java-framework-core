@@ -9,6 +9,7 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
+import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Pair;
 
 /** Convert an annotation into a SerializationRule.
@@ -28,7 +29,7 @@ public interface AttributeAnnotationToRuleOnType<TAnnotation extends Annotation>
 		for (Attribute attr : type.getAttributes()) {
 			if (onGet && !attr.canGet()) continue;
 			if (!onGet && !attr.canSet()) continue;
-			for (Annotation a : attr.getAnnotations(onGet)) {
+			for (Annotation a : ClassUtil.expandRepeatableAnnotations(attr.getAnnotations(onGet))) {
 				for (AttributeAnnotationToRuleOnType toRule : getAnnotationToRules(a)) {
 					SerializationRule rule;
 					try { rule = toRule.createRule(a, attr); }
