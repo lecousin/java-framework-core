@@ -43,6 +43,29 @@ public final class CollectionsUtil {
 		return list;
 	}
 	
+	public static <T> Iterator<T> iterator(Enumeration<T> enumeration) {
+		return new Iterator<T>() {
+			@Override
+			public boolean hasNext() {
+				return enumeration.hasMoreElements();
+			}
+			
+			@Override
+			public T next() {
+				return enumeration.nextElement();
+			}
+		};
+	}
+	
+	public static <T> Iterable<T> singleTimeIterable(Enumeration<T> enumeration) {
+		return new Iterable<T>() {
+			@Override
+			public Iterator<T> iterator() {
+				return CollectionsUtil.iterator(enumeration);
+			}
+		};
+	}
+	
 	/** Return true of the 2 lists are identical. To be identical, the 2 lists must have the same size,
 	 * and each element must be equals and in the same order. To compare elements, the method
 	 * {@link ObjectUtil#equalsOrNull(Object, Object)} is used.
