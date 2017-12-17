@@ -6,6 +6,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
+import java.util.LinkedList;
 import java.util.concurrent.ThreadFactory;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -30,24 +31,6 @@ public final class TaskMonitoring {
 		monitor = new TaskMonitor();
 		threadFactory.newThread(monitor).start();
 		LCCore.get().toClose(monitor);
-	}
-	
-	/** Called when a TaskWorker is blocked, if checkLocksOfBlockingTasks is true. */
-	static void checkNoLockForWorker() {
-		ThreadMXBean bean = ManagementFactory.getThreadMXBean();
-		if (bean == null) return;
-		Thread t = Thread.currentThread();
-		ThreadInfo info = bean.getThreadInfo(new long[] { t.getId() }, true, true)[0];
-		if (info == null) return;
-		MonitorInfo[] monitors = info.getLockedMonitors();
-		LockInfo[] locks = info.getLockedSynchronizers();
-		if (monitors.length == 0 && locks.length == 0) return;
-		StringBuilder s = new StringBuilder(4096);
-		s.append("TaskWorker is blocked while locking objects:\r\n");
-		DebugUtil.createStackTrace(s, info.getStackTrace());
-		append(s, monitors);
-		append(s, locks);
-		Threading.logger.error(s.toString());
 	}
 	
 	private static void append(StringBuilder s, MonitorInfo[] monitors) {
@@ -95,12 +78,16 @@ public final class TaskMonitoring {
 					if (closed)
 						break;
 				}
+				LinkedList<TaskWorker> blocked = new LinkedList<>();
 				for (TaskManager manager : Threading.getAllTaskManagers())
-					if (manager instanceof FixedThreadTaskManager)
-						check((FixedThreadTaskManager)manager);
-					else {
+					if (manager instanceof FixedThreadTaskManager) {
+						FixedThreadTaskManager m = (FixedThreadTaskManager)manager;
+						check(m);
+						blocked.addAll(m.getBlockedWorkers());
+					} else {
 						// TODO
 					}
+				checkBlockedWorkers(blocked);
 			}
 		}
 		
@@ -143,6 +130,28 @@ public final class TaskMonitoring {
 		appendLocks(s, worker.thread);
 		Threading.logger.error(s.toString());
 		worker.manager.killWorker(worker);
+	}
+	
+	private static void checkBlockedWorkers(LinkedList<TaskWorker> workers) {
+		if (!checkLocksOfBlockingTasks) return;
+		if (workers.isEmpty()) return;
+		ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+		if (bean == null) return;
+		long[] ids = new long[workers.size()];
+		int i = 0;
+		for (TaskWorker w : workers) ids[i++] = w.thread.getId();
+		ThreadInfo[] info = bean.getThreadInfo(ids, true, true);
+		for (ThreadInfo ti : info) {
+			MonitorInfo[] monitors = ti.getLockedMonitors();
+			LockInfo[] locks = ti.getLockedSynchronizers();
+			if (monitors.length == 0 && locks.length == 0) continue;
+			StringBuilder s = new StringBuilder(4096);
+			s.append("TaskWorker is blocked while locking objects:\r\n");
+			DebugUtil.createStackTrace(s, ti.getStackTrace());
+			append(s, monitors);
+			append(s, locks);
+			Threading.logger.error(s.toString());
+		}
 	}
 	
 }

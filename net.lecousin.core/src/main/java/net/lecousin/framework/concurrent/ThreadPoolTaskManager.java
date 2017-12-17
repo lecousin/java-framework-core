@@ -101,9 +101,9 @@ public class ThreadPoolTaskManager extends TaskManager {
 	public void debug(StringBuilder s) {
 		try {
 			s.append("Thread pool ").append(getName()).append(": ")
-			 .append(activeThreads.size()).append(" active threads on ").append(maxThreads);
+			 .append(activeThreads.size()).append(" active threads on ").append(maxThreads).append("\r\n");
 			for (Worker w : activeThreads)
-				s.append("\r\n - ").append(w.task != null ? w.task.getDescription() : "waiting");
+				s.append(" - ").append(w.task != null ? w.task.getDescription() : "waiting").append("\r\n");
 		} catch (Throwable t) {
 			s.append("\r\n...");
 		}

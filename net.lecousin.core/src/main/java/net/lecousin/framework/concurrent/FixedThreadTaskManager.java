@@ -120,8 +120,6 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		if (Threading.traceBlockingTasks) {
 			Threading.logger.error("Task " + worker.currentTask.description + " blocked", new Exception());
 		}
-		if (TaskMonitoring.checkLocksOfBlockingTasks)
-			TaskMonitoring.checkNoLockForWorker();
 		if (transferredTo != null) {
 			// we are in the process of being transferred, we cannot launch a spare
 			Threading.logger.info("Task blocked while transferring to a new TaskManager: " + worker.currentTask.description);
@@ -192,6 +190,12 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 			list.addAll(aside);
 		}
 		return list;
+	}
+	
+	List<TaskWorker> getBlockedWorkers() {
+		synchronized (blocked) {
+			return new ArrayList<>(blocked);
+		}
 	}
 	
 	void putWorkerAside(TaskWorker worker) {
