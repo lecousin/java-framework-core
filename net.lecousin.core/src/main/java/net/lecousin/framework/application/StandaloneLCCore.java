@@ -39,7 +39,7 @@ public class StandaloneLCCore implements LCCore.Environment {
 		threads = null;
 	}
 	
-	private Application app;
+	private Application app = null;
 	private long startTime;
 	private boolean closing;
 	private List<Thread> threadsBeforeInit = new LinkedList<Thread>();
@@ -51,7 +51,7 @@ public class StandaloneLCCore implements LCCore.Environment {
 	
 	@Override
 	public void add(Application app) {
-		if (app == null)
+		if (this.app == null)
 			this.app = app;
 		else
 			throw new IllegalStateException("Cannot add several application on a standalone LCCore environment");

@@ -101,8 +101,12 @@ public final class LCCore {
 	}
 	
 	static synchronized void init(Application app) {
-		if (instance == null) init(new StandaloneLCCore());
-		instance.add(app);
+		if (instance == null) {
+			StandaloneLCCore env = new StandaloneLCCore();
+			env.add(app);
+			init(env);
+		} else
+			instance.add(app);
 	}
 	
 	public static Application getApplication() {
