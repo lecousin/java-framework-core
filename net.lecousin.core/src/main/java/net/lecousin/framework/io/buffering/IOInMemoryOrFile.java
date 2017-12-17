@@ -10,7 +10,6 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
@@ -245,14 +244,9 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 			AsyncWork<Void, IOException> resize = setSizeAsync(pos);
 			AsyncWork<Integer,IOException> result = new AsyncWork<>();
 			long p = pos;
-			resize.listenInline((res) -> {
+			IOUtil.listenOnDone(resize, (res) -> {
 				writeAsync(p, buffer, ondone).listenInline(result);
-			}, (error) -> {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
-				result.error(error);
-			}, (cancel) -> {
-				result.cancel(cancel);
-			});
+			}, result, ondone);
 			return result;
 		}
 		int len = buffer.remaining();
@@ -287,25 +281,11 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 						return;
 					}
 					fil.set(((IO.Writable.Seekable)file).writeAsync(0, buffer));
-					fil.get().listenInline(new AsyncWorkListener<Integer, IOException>() {
-						@Override
-						public void ready(Integer result) {
-							Integer r = Integer.valueOf(mem.getResult().intValue() + result.intValue());
-							if (ondone != null) ondone.run(new Pair<>(r, null));
-							sp.unblockSuccess(r);
-						}
-						
-						@Override
-						public void error(IOException error) {
-							if (ondone != null) ondone.run(new Pair<>(null, error));
-							sp.unblockError(error);
-						}
-						
-						@Override
-						public void cancelled(CancelException event) {
-							sp.unblockCancel(event);
-						}
-					});
+					IOUtil.listenOnDone(fil.get(), (result) -> {
+						Integer r = Integer.valueOf(mem.getResult().intValue() + result.intValue());
+						if (ondone != null) ondone.run(new Pair<>(r, null));
+						sp.unblockSuccess(r);
+					}, sp, ondone);
 				}
 			});
 			sp.listenCancel(new Listener<CancelException>() {
@@ -426,15 +406,10 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 			AsyncWork<Void, IOException> result = new AsyncWork<>();
 			AsyncWork<Void, IOException> resize = file.setSizeAsync(newSize - maxSizeInMemory);
 			resize.listenInline(() -> {
-				if (resize.isSuccessful()) {
-					size = newSize;
-					if (pos > size) pos = size;
-					result.unblockSuccess(null);
-				} else if (resize.hasError())
-					result.unblockError(resize.getError());
-				else
-					result.unblockCancel(resize.getCancelEvent());
-			});
+				size = newSize;
+				if (pos > size) pos = size;
+				result.unblockSuccess(null);
+			}, result);
 			return result;
 		}
 		// enlarge
@@ -473,7 +448,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 		JoinPoint.fromSynchronizationPointsSimilarError(taskMemory, taskFile).listenInline(() -> {
 			size = newSize;
 			result.unblockSuccess(null);
-		}, (error) -> { result.error(error); }, (cancel) -> { result.cancel(cancel); });
+		}, result);
 		return result;
 	}
 	
@@ -625,42 +600,14 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 		AsyncWork<Integer,IOException> sp = new AsyncWork<Integer,IOException>();
 		final int l = len;
 		Mutable<AsyncWork<Integer,IOException>> fil = new Mutable<>(null);
-		mem.getOutput().listenInline(new AsyncWorkListener<Integer, IOException>() {
-			@Override
-			public void cancelled(CancelException event) {
-				sp.unblockCancel(event);
-			}
-			
-			@Override
-			public void error(IOException error) {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
-				sp.unblockError(error);
-			}
-			
-			@Override
-			public void ready(Integer result) {
-				fil.set(readFromFile(0, l, buffer, null));
-				fil.get().listenInline(new AsyncWorkListener<Integer, IOException>() {
-					@Override
-					public void error(IOException error) {
-						if (ondone != null) ondone.run(new Pair<>(null, error));
-						sp.unblockError(error);
-					}
-					
-					@Override
-					public void ready(Integer result2) {
-						Integer r = Integer.valueOf(result.intValue() + result2.intValue());
-						if (ondone != null) ondone.run(new Pair<>(r, null));
-						sp.unblockSuccess(r);
-					}
-					
-					@Override
-					public void cancelled(CancelException event) {
-						sp.unblockCancel(event);
-					}
-				});
-			}
-		});
+		IOUtil.listenOnDone(mem.getOutput(), (result) -> {
+			fil.set(readFromFile(0, l, buffer, null));
+			IOUtil.listenOnDone(fil.get(), (result2) -> {
+				Integer r = Integer.valueOf(result.intValue() + result2.intValue());
+				if (ondone != null) ondone.run(new Pair<>(r, null));
+				sp.unblockSuccess(r);
+			}, sp, ondone);
+		}, sp, ondone);
 		ReadInMemory mm = mem;
 		sp.listenCancel(new Listener<CancelException>() {
 			@Override

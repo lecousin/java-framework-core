@@ -3,6 +3,8 @@ package net.lecousin.framework.io.buffering;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -86,6 +88,7 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 	public IO getWrappedIO() { return io; }
 	
 	@Override
+	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	public String getSourceDescription() { return io.getSourceDescription(); }
 	
 	@Override

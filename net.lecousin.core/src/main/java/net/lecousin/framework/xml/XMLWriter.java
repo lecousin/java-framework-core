@@ -79,19 +79,19 @@ public class XMLWriter {
 		return str.toString();
 	}
 
-	public static final char[] XML_DECLARATION_START = new char[] {
+	private static final char[] XML_DECLARATION_START = new char[] {
 		'<', '?', 'x', 'm', 'l', ' ', 'v', 'e', 'r', 's', 'i', 'o', 'n', '=', '"', '1', '.', '1', '"',
 		' ', 'e', 'n', 'c', 'o', 'd', 'i', 'n', 'g', '=', '"'
 	};
-	public static final char[] XML_DECLARATION_END = new char[] { '"', '?', '>', '\n' };
-	public static final char[] XMLNS = new char[] { ' ', 'x', 'm', 'l', 'n', 's' };
-	public static final char[] ATTRIBUTE_EQUALS = new char[] { '=', '"' };
-	public static final char[] CLOSE_EMPTY_TAG = new char[] { '/', '>' };
-	public static final char[] START_CLOSE = new char[] { '<', '/' };
-	public static final char[] START_CDATA = new char[] { '[', 'C', 'D', 'A', 'T', 'A', '[' };
-	public static final char[] END_CDATA = new char[] { ']', ']' };
-	public static final char[] START_COMMENT = new char[] { '<', '!', '-', '-', ' ' };
-	public static final char[] END_COMMENT = new char[] { ' ', '-', '-', '>' };
+	private static final char[] XML_DECLARATION_END = new char[] { '"', '?', '>', '\n' };
+	private static final char[] XMLNS = new char[] { ' ', 'x', 'm', 'l', 'n', 's' };
+	private static final char[] ATTRIBUTE_EQUALS = new char[] { '=', '"' };
+	private static final char[] CLOSE_EMPTY_TAG = new char[] { '/', '>' };
+	private static final char[] START_CLOSE = new char[] { '<', '/' };
+	private static final char[] START_CDATA = new char[] { '[', 'C', 'D', 'A', 'T', 'A', '[' };
+	private static final char[] END_CDATA = new char[] { ']', ']' };
+	private static final char[] START_COMMENT = new char[] { '<', '!', '-', '-', ' ' };
+	private static final char[] END_COMMENT = new char[] { ' ', '-', '-', '>' };
 	
 	/**
 	 * Start the document with the XML processing instruction if needed, and opening the root element.

@@ -585,7 +585,6 @@ public class UnprotectedStringBuffer implements IString {
 	/** Remove characters from start to end (inclusive), and replace them by the given string. */
 	public void replace(int start, int end, UnprotectedStringBuffer s) {
 		if (strings == null) return;
-		if (strings == null) return;
 		if (end < start) return;
 		int firstBufferIndex = 0;
 		int firstBufferPos = 0;

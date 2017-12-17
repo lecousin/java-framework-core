@@ -5,12 +5,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
@@ -139,22 +139,7 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 			return sp;
 		}
 		AsyncWork<Long,IOException> seek = seekAsync(SeekType.FROM_END, 0);
-		seek.listenInline(new AsyncWorkListener<Long, IOException>() {
-			@Override
-			public void ready(Long result) {
-				sp.unblockSuccess(Long.valueOf(knownSize));
-			}
-			
-			@Override
-			public void error(IOException error) {
-				sp.unblockError(error);
-			}
-			
-			@Override
-			public void cancelled(CancelException event) {
-				sp.unblockCancel(event);
-			}
-		});
+		seek.listenInline((result) -> { sp.unblockSuccess(Long.valueOf(knownSize)); }, sp);
 		sp.listenCancel(new Listener<CancelException>() {
 			@Override
 			public void fire(CancelException event) {
@@ -168,56 +153,30 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 		buffering = new AsyncWork<Boolean,IOException>();
 		ByteBuffer buffer = ByteBuffer.allocate(8192);
 		AsyncWork<Integer,IOException> read = io.readFullyAsync(buffer);
-		read.listenInline(new AsyncWorkListener<Integer, IOException>() {
-			@Override
-			public void ready(Integer result) {
-				if (result.intValue() <= 0) {
-					knownSize = ioPos;
-					buffering.unblockSuccess(Boolean.TRUE);
+		read.listenInline((result) -> {
+			if (result.intValue() <= 0) {
+				knownSize = ioPos;
+				buffering.unblockSuccess(Boolean.TRUE);
+				return;
+			}
+			buffer.flip();
+			AsyncWork<Integer,IOException> write = buffered.writeAsync(ioPos, buffer);
+			write.listenInline((result2) -> {
+				int nb = result2.intValue();
+				if (nb != result.intValue()) {
+					buffering.unblockError(
+						new IOException("Only " + nb + " bytes written in BufferedIO, "
+								+ result.intValue() + " expected")
+					);
 					return;
 				}
-				buffer.flip();
-				AsyncWork<Integer,IOException> write = buffered.writeAsync(ioPos, buffer);
-				write.listenInline(new AsyncWorkListener<Integer, IOException>() {
-					@Override
-					public void ready(Integer result2) {
-						int nb = result2.intValue();
-						if (nb != result.intValue()) {
-							buffering.unblockError(
-								new IOException("Only " + nb + " bytes written in BufferedIO, "
-										+ result.intValue() + " expected")
-							);
-							return;
-						}
-						synchronized (ReadableToSeekable.this) {
-							ioPos += nb;
-							if (nb < 8192) knownSize = ioPos;
-						}
-						buffering.unblockSuccess(Boolean.valueOf(nb < 8192));
-					}
-					
-					@Override
-					public void error(IOException error) {
-						buffering.unblockError(error);
-					}
-					
-					@Override
-					public void cancelled(CancelException event) {
-						buffering.unblockCancel(event);
-					}
-				});
-			}
-			
-			@Override
-			public void error(IOException error) {
-				buffering.unblockError(error);
-			}
-			
-			@Override
-			public void cancelled(CancelException event) {
-				buffering.unblockCancel(event);
-			}
-		});
+				synchronized (ReadableToSeekable.this) {
+					ioPos += nb;
+					if (nb < 8192) knownSize = ioPos;
+				}
+				buffering.unblockSuccess(Boolean.valueOf(nb < 8192));
+			}, buffering);
+		}, buffering);
 	}
 
 	private boolean waitPosition(long pos) throws IOException {
@@ -255,56 +214,28 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 		}
 		// we need to read more
 		AsyncWork<Boolean,IOException> sp = new AsyncWork<>();
-		buffering.listenInline(new AsyncWorkListener<Boolean, IOException>() {
-			@Override
-			public void ready(Boolean result) {
-				if (result.booleanValue()) {
-					// end reached
-					sp.unblockSuccess(null);
-					return;
-				}
-				new Task.Cpu<Void,NoException>("Bufferize in ReadableToSeekable", io.getPriority()) {
-					@Override
-					public Void run() {
-						synchronized (ReadableToSeekable.this) {
-							if (buffering.isUnblocked())
-								readNextBuffer();
-						}
-						AsyncWork<Boolean,IOException> next = bufferizeTo(pos);
-						if (next == null)
-							sp.unblockSuccess(null);
-						else
-							next.listenInline(new AsyncWorkListener<Boolean, IOException>() {
-								@Override
-								public void ready(Boolean result) {
-									sp.unblockSuccess(null);
-								}
-								
-								@Override
-								public void error(IOException error) {
-									sp.unblockError(error);
-								}
-								
-								@Override
-								public void cancelled(CancelException event) {
-									sp.unblockCancel(event);
-								}
-							});
-						return null;
+		buffering.listenInline((result) -> {
+			if (result.booleanValue()) {
+				// end reached
+				sp.unblockSuccess(null);
+				return;
+			}
+			new Task.Cpu<Void,NoException>("Bufferize in ReadableToSeekable", io.getPriority()) {
+				@Override
+				public Void run() {
+					synchronized (ReadableToSeekable.this) {
+						if (buffering.isUnblocked())
+							readNextBuffer();
 					}
-				}.start();
-			}
-			
-			@Override
-			public void error(IOException error) {
-				sp.unblockError(error);
-			}
-			
-			@Override
-			public void cancelled(CancelException event) {
-				sp.unblockCancel(event);
-			}
-		});
+					AsyncWork<Boolean,IOException> next = bufferizeTo(pos);
+					if (next == null)
+						sp.unblockSuccess(null);
+					else
+						next.listenInline((result) -> { sp.unblockSuccess(null); }, sp);
+					return null;
+				}
+			}.start();
+		}, sp);
 		return sp;
 	}
 	
@@ -375,26 +306,12 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 					}
 				}
 				AsyncWork<Integer,IOException> read = buffered.readAsync(pos, buffer);
-				read.listenInline(new AsyncWorkListener<Integer, IOException>() {
-					@Override
-					public void ready(Integer res) {
-						int nb = res.intValue();
-						if (nb > 0) ReadableToSeekable.this.pos = pos + nb;
-						if (ondone != null) ondone.run(new Pair<>(res, null));
-						result.unblockSuccess(res);
-					}
-					
-					@Override
-					public void error(IOException error) {
-						if (ondone != null) ondone.run(new Pair<>(null, error));
-						result.unblockError(error);
-					}
-					
-					@Override
-					public void cancelled(CancelException event) {
-						result.unblockCancel(event);
-					}
-				});
+				IOUtil.listenOnDone(read, (res) -> {
+					int nb = res.intValue();
+					if (nb > 0) ReadableToSeekable.this.pos = pos + nb;
+					if (ondone != null) ondone.run(new Pair<>(res, null));
+					result.unblockSuccess(res);
+				}, result, ondone);
 			}
 		};
 		if (bufferize == null)
@@ -424,32 +341,18 @@ public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.See
 				}
 				ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 				AsyncWork<Integer,IOException> read = buffered.readAsync(pos, buffer);
-				read.listenInline(new AsyncWorkListener<Integer, IOException>() {
-					@Override
-					public void ready(Integer res) {
-						int nb = res.intValue();
-						if (nb > 0) {
-							ReadableToSeekable.this.pos = pos + nb;
-							buffer.flip();
-							if (ondone != null) ondone.run(new Pair<>(buffer, null));
-							result.unblockSuccess(buffer);
-						} else {
-							if (ondone != null) ondone.run(new Pair<>(null, null));
-							result.unblockSuccess(null);
-						}
+				IOUtil.listenOnDone(read, (res) -> {
+					int nb = res.intValue();
+					if (nb > 0) {
+						ReadableToSeekable.this.pos = pos + nb;
+						buffer.flip();
+						if (ondone != null) ondone.run(new Pair<>(buffer, null));
+						result.unblockSuccess(buffer);
+					} else {
+						if (ondone != null) ondone.run(new Pair<>(null, null));
+						result.unblockSuccess(null);
 					}
-					
-					@Override
-					public void error(IOException error) {
-						if (ondone != null) ondone.run(new Pair<>(null, error));
-						result.unblockError(error);
-					}
-					
-					@Override
-					public void cancelled(CancelException event) {
-						result.unblockCancel(event);
-					}
-				});
+				}, result, ondone);
 				return null;
 			}
 		};

@@ -416,7 +416,7 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 		catch (Throwable t) { /* ignore */ }
 		bytes = null;
 		chars = null;
-		ready = null;
+		ready.clear();
 		decoder = null;
 	}
 	

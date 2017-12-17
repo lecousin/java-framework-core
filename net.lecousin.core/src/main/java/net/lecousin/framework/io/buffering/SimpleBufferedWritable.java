@@ -125,15 +125,9 @@ public class SimpleBufferedWritable extends AbstractIO implements IO.Writable.Bu
 			w = writing;
 		}
 		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		w.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (!w.isSuccessful())
-					sp.error(w.getError());
-				else
-					flush().listenInline(sp);
-			}
-		});
+		w.listenInline(() -> {
+			flush().listenInline(sp);
+		}, sp);
 		return sp;
 	}
 	

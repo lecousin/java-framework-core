@@ -111,7 +111,7 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 		ObjectContext ctx;
 		try {
 			Class<?> type = typeDef.getBase();
-			SerializationClass sc = new SerializationClass(typeDef != null ? TypeDefinition.from(type, typeDef) : new TypeDefinition(type));
+			SerializationClass sc = new SerializationClass(TypeDefinition.from(type, typeDef));
 			ctx = new ObjectContext(context, null, sc, typeDef);
 			rules = addRulesForType(sc, rules);
 			sc.apply(rules, ctx, true);

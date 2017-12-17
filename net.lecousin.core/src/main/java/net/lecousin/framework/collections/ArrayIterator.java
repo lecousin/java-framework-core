@@ -22,6 +22,7 @@ public class ArrayIterator<T> implements java.util.Iterator<T> {
 	}
 
 	/** Constructor. */
+	@SuppressFBWarnings("EI_EXPOSE_REP2")
 	public ArrayIterator(T[] array) {
 		this.array = array;
 		this.max = array.length;
@@ -63,6 +64,8 @@ public class ArrayIterator<T> implements java.util.Iterator<T> {
 		
 		@Override
 		public Object next() {
+			if (array == null || pos >= Array.getLength(array))
+				throw new NoSuchElementException();
 			return Array.get(array, pos++);
 		}
 		

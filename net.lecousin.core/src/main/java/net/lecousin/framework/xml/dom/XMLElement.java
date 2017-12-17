@@ -218,7 +218,7 @@ public class XMLElement extends XMLNode implements Element {
 		for (XMLAttribute a : attributes)
 			if (a.getNodeName().equals(name))
 				return a.getNodeValue();
-		return null;
+		return "";
 	}
 
 	@Override

@@ -383,7 +383,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				else onNext();
 				return null;
 			}
-			next.listenAsync(new Task.Cpu<Void, NoException>("Parse XML", getPriority()) {
+			next.listenAsync(new Task.Cpu<Void, NoException>("Parse XML", XMLStreamEventsAsync.this.getPriority()) {
 				@Override
 				public Void run() {
 					onNext();

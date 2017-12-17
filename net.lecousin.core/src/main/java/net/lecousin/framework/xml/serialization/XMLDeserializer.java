@@ -97,7 +97,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 			if (start.hasError()) return start;
 			if (this.expectedRootLocalName != null && !this.input.event.localName.equals(this.expectedRootLocalName))
 				return new SynchronizationPoint<>(new Exception("Expected root XML element is " + this.expectedRootLocalName + ", found is " + this.input.event.localName.asString()));
-			if (this.expectedRootNamespaceURI != null && !this.expectedRootNamespaceURI.equals(this.input.getNamespaceURI(this.input.event.namespacePrefix)))
+			if (this.expectedRootNamespaceURI != null && !this.input.getNamespaceURI(this.input.event.namespacePrefix).equals(this.expectedRootNamespaceURI))
 				return new SynchronizationPoint<>(new Exception("Expected root XML element namespace is " + this.expectedRootNamespaceURI + ", found is " + this.input.getNamespaceURI(this.input.event.namespacePrefix)));
 			return start;
 		}
@@ -105,7 +105,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 		start.listenInline(() -> {
 			if (this.expectedRootLocalName != null && !this.input.event.localName.equals(this.expectedRootLocalName))
 				sp.error(new Exception("Expected root XML element is " + this.expectedRootLocalName + ", found is " + this.input.event.localName.asString()));
-			else if (this.expectedRootNamespaceURI != null && !this.expectedRootNamespaceURI.equals(this.input.getNamespaceURI(this.input.event.namespacePrefix)))
+			else if (this.expectedRootNamespaceURI != null && !this.input.getNamespaceURI(this.input.event.namespacePrefix).equals(this.expectedRootNamespaceURI))
 				sp.error(new Exception("Expected root XML element namespace is " + this.expectedRootNamespaceURI + ", found is " + this.input.getNamespaceURI(this.input.event.namespacePrefix)));
 			else
 				sp.unblock();
@@ -339,7 +339,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 		return result;
 	}
 	
-	private void endOfAttributes(XMLObjectContext ctx, ObjectContext context) throws Exception {
+	private static void endOfAttributes(XMLObjectContext ctx, ObjectContext context) throws Exception {
 		// In XML, if an attribute is not present, it means it is null
 		for (Attribute a : context.getSerializationClass().getAttributes()) {
 			String name = a.getName();

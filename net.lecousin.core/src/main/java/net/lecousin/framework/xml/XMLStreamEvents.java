@@ -507,10 +507,10 @@ public abstract class XMLStreamEvents {
 			if (c != 'x' && c != 'X')
 				return end(new char[] { '<', '?', c });
 			char c2 = nextChar();
-			if (c2 != 'm' && c != 'M')
+			if (c2 != 'm' && c2 != 'M')
 				return end(new char[] { '<', '?', c, c2 });
 			char c3 = nextChar();
-			if (c3 != 'l' && c != 'L')
+			if (c3 != 'l' && c3 != 'L')
 				return end(new char[] { '<', '?', c, c2, c3 });
 			char c4 = nextChar();
 			if (!isSpaceChar(c4))

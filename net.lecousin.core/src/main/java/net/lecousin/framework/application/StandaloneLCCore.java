@@ -9,6 +9,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import net.lecousin.framework.LCCoreVersion;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.concurrent.StandaloneTaskPriorityManager;
@@ -49,6 +51,7 @@ public class StandaloneLCCore implements LCCore.Environment {
 		throw new IllegalStateException("Cannot add several application on a standalone LCCore environment");
 	}
 	
+	@SuppressFBWarnings("MS_SHOULD_BE_FINAL")
 	public static long logThreadingInterval = 30000;
 	
 	@Override

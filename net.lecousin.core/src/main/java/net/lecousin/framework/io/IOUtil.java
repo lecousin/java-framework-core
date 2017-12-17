@@ -1116,7 +1116,7 @@ public class IOUtil {
 		} while (true);
 	}
 	
-	public static void listenOnDone(AsyncWork<Integer, IOException> toListen, AsyncWork<Integer, IOException> toUnblock, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public static <T> void listenOnDone(AsyncWork<T, IOException> toListen, AsyncWork<T, IOException> toUnblock, RunnableWithParameter<Pair<T,IOException>> ondone) {
 		toListen.listenInline(
 			(result) -> {
 				if (ondone != null) ondone.run(new Pair<>(result, null));
@@ -1132,7 +1132,7 @@ public class IOUtil {
 		);
 	}
 
-	public static <T> void listenOnDone(AsyncWork<T, IOException> toListen, Listener<T> onReady, ISynchronizationPoint<IOException> onErrorOrCancel, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public static <T, T2> void listenOnDone(AsyncWork<T, IOException> toListen, Listener<T> onReady, ISynchronizationPoint<IOException> onErrorOrCancel, RunnableWithParameter<Pair<T2,IOException>> ondone) {
 		toListen.listenInline(
 			onReady,
 			(error) -> {

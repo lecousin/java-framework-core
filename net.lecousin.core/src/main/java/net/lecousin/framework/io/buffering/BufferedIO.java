@@ -1107,7 +1107,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			AsyncWork<Void,IOException> resize = increaseSize(pos);
 			size = pos;
 			AsyncWork<Integer,IOException> sp = new AsyncWork<>();
-			IOUtil.listenOnDone(resize,(result) -> {
+			IOUtil.listenOnDone(resize, (result) -> {
 				AsyncWork<Integer, IOException> write = writeAsync(pos, buf, alreadyDone, null);
 				IOUtil.listenOnDone(write, sp, ondone);
 			}, sp, ondone);
