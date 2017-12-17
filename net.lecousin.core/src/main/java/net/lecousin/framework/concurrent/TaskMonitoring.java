@@ -37,14 +37,14 @@ public final class TaskMonitoring {
 		ThreadMXBean bean = ManagementFactory.getThreadMXBean();
 		if (bean == null) return;
 		Thread t = Thread.currentThread();
-		ThreadInfo info = bean.getThreadInfo(t.getId());
+		ThreadInfo info = bean.getThreadInfo(new long[] { t.getId() }, true, true)[0];
 		if (info == null) return;
 		MonitorInfo[] monitors = info.getLockedMonitors();
 		LockInfo[] locks = info.getLockedSynchronizers();
 		if (monitors.length == 0 && locks.length == 0) return;
 		StringBuilder s = new StringBuilder(4096);
 		s.append("TaskWorker is blocked while locking objects:\r\n");
-		DebugUtil.createStackTrace(s, new Exception("Here"), false);
+		DebugUtil.createStackTrace(s, info.getStackTrace());
 		append(s, monitors);
 		append(s, locks);
 		Threading.logger.error(s.toString());
@@ -65,7 +65,7 @@ public final class TaskMonitoring {
 		if (locks.length > 0) {
 			s.append("\r\nLocked synchronizers:");
 			for (int i = 0; i < locks.length; ++i) {
-				s.append("\r\n - ").append(locks[i].getClassName());
+				s.append("\r\n - ").append(locks[i].toString());
 			}
 		}
 	}
@@ -73,7 +73,7 @@ public final class TaskMonitoring {
 	private static void appendLocks(StringBuilder s, Thread t) {
 		ThreadMXBean bean = ManagementFactory.getThreadMXBean();
 		if (bean == null) return;
-		ThreadInfo info = bean.getThreadInfo(t.getId());
+		ThreadInfo info = bean.getThreadInfo(new long[] { t.getId() }, true, true)[0];
 		if (info == null) return;
 		MonitorInfo[] monitors = info.getLockedMonitors();
 		LockInfo[] locks = info.getLockedSynchronizers();

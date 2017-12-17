@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -41,8 +42,11 @@ public abstract class AbstractSerializer implements Serializer {
 		private Runnable r;
 		
 		@Override
-		public Void run() {
-			r.run();
+		public Void run() throws CancelException {
+			try { r.run(); }
+			catch (Throwable t) {
+				throw new CancelException("Error thrown by serialization", t);
+			}
 			return null;
 		}
 	}

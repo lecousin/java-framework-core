@@ -24,6 +24,7 @@ import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
+import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.math.IntegerUnit;
@@ -32,6 +33,7 @@ import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLStreamEvents.ElementContext;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
+import net.lecousin.framework.xml.XMLStreamEvents;
 import net.lecousin.framework.xml.XMLStreamEventsAsync;
 import net.lecousin.framework.xml.XMLStreamReaderAsync;
 import net.lecousin.framework.xml.XMLUtil;
@@ -138,7 +140,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	@Override
-	protected AsyncWork<? extends Number, Exception> deserializeNumericValue(Class<?> type, boolean nullable) {
+	protected AsyncWork<? extends Number, Exception> deserializeNumericValue(Class<?> type, boolean nullable, Class<? extends IntegerUnit> targetUnit) {
 		XMLStreamReaderAsync.Attribute a = input.getAttributeWithNamespaceURI(XMLUtil.XSI_NAMESPACE_URI, "nil");
 		if (a != null && a.value.equals("true")) {
 			if (nullable)
@@ -149,8 +151,10 @@ public class XMLDeserializer extends AbstractDeserializer {
 		AsyncWork<Number, Exception> result = new AsyncWork<>();
 		read.listenInline((text) -> {
 			try {
-				BigDecimal n = new BigDecimal(text.asString());
-				convertBigDecimalValue(n, type, result);
+				if (targetUnit != null)
+					result.unblockSuccess(convertStringToInteger(type, text.asString(), targetUnit));
+				else
+					convertBigDecimalValue(new BigDecimal(text.asString()), type, result);
 			} catch (Exception e) {
 				result.error(e);
 			}
@@ -224,15 +228,16 @@ public class XMLDeserializer extends AbstractDeserializer {
 		return result;
 	}
 
-	private static class ObjectContext {
+	private static class XMLObjectContext {
 		private ElementContext element;
 		private int attributeIndex = 0;
 		private List<XMLStreamReaderAsync.Attribute> attributes;
 		private boolean endOfAttributes = false;
 		private boolean onNextAttribute = false;
+		private List<String> attributesDone = new LinkedList<>();
 	}
 	
-	private LinkedList<ObjectContext> objects = new LinkedList<>();
+	private LinkedList<XMLObjectContext> objects = new LinkedList<>();
 	
 	@Override
 	protected AsyncWork<Object, Exception> startObjectValue(
@@ -247,7 +252,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 			close.listenInline(() -> { res.unblockSuccess(null); }, res);
 			return res;
 		}
-		ObjectContext ctx = new ObjectContext();
+		XMLObjectContext ctx = new XMLObjectContext();
 		ctx.element = input.event.context.getFirst();
 		ctx.attributes = input.event.attributes;
 		ctx.endOfAttributes = input.event.isClosed;
@@ -283,13 +288,15 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	@Override
-	protected AsyncWork<String, Exception> deserializeObjectAttributeName() {
-		ObjectContext ctx = objects.getFirst();
+	protected AsyncWork<String, Exception> deserializeObjectAttributeName(ObjectContext context) {
+		XMLObjectContext ctx = objects.getFirst();
 		// first get attributes on element
 		if (ctx.attributeIndex < ctx.attributes.size())
 			return new AsyncWork<>(ctx.attributes.get(ctx.attributeIndex).localName.asString(), null);
 		// then inner elements
 		if (ctx.endOfAttributes) {
+			try { endOfAttributes(ctx, context); }
+			catch (Exception e) { return new AsyncWork<>(null, e); }
 			objects.removeFirst();
 			return new AsyncWork<>(null, null);
 		}
@@ -310,9 +317,16 @@ public class XMLDeserializer extends AbstractDeserializer {
 				result.error(next.getError());
 				return;
 			}
-			if (next.getResult().booleanValue())
-				result.unblockSuccess(input.event.text.asString());
-			else {
+			if (next.getResult().booleanValue()) {
+				String name = input.event.text.asString();
+				ctx.attributesDone.add(name);
+				result.unblockSuccess(name);
+			} else {
+				try { endOfAttributes(ctx, context); }
+				catch (Exception e) {
+					result.error(e);
+					return;
+				}
 				objects.removeFirst();
 				result.unblockSuccess(null);
 			}
@@ -320,9 +334,29 @@ public class XMLDeserializer extends AbstractDeserializer {
 		return result;
 	}
 	
+	private void endOfAttributes(XMLObjectContext ctx, ObjectContext context) throws Exception {
+		// In XML, if an attribute is not present, it means it is null
+		for (Attribute a : context.getSerializationClass().getAttributes()) {
+			String name = a.getName();
+			if (!a.canSet()) continue;
+			if (a.ignore()) continue;
+			if (ctx.attributesDone.contains(name)) continue;
+			boolean found = false;
+			for (XMLStreamEvents.Attribute xmlAttr : ctx.attributes)
+				if (xmlAttr.localName.equals(name)) {
+					found = true;
+					break;
+				}
+			if (found) continue;
+			// not found => set as null, except if it is a primitive
+			if (a.getType().getBase().isPrimitive()) continue;
+			a.setValue(context.getInstance(), null);
+		}
+	}
+	
 	@Override
 	protected AsyncWork<Boolean, Exception> deserializeBooleanAttributeValue(AttributeContext context, boolean nullable) {
-		ObjectContext ctx = objects.getFirst();
+		XMLObjectContext ctx = objects.getFirst();
 		if (ctx.attributeIndex < ctx.attributes.size()) {
 			// element attribute
 			XMLStreamReaderAsync.Attribute attr = ctx.attributes.get(ctx.attributeIndex++);
@@ -340,11 +374,11 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	@Override
 	protected AsyncWork<? extends Number, Exception> deserializeNumericAttributeValue(AttributeContext context, boolean nullable) {
-		ObjectContext ctx = objects.getFirst();
+		XMLObjectContext ctx = objects.getFirst();
+		IntegerUnit.Unit unit = context.getAttribute().getAnnotation(false, IntegerUnit.Unit.class);
 		if (ctx.attributeIndex < ctx.attributes.size()) {
 			// element attribute
 			XMLStreamReaderAsync.Attribute attr = ctx.attributes.get(ctx.attributeIndex++);
-			IntegerUnit.Unit unit = context.getAttribute().getAnnotation(false, IntegerUnit.Unit.class);
 			if (unit != null) {
 				try {
 					return new AsyncWork<>(convertStringToInteger(context.getAttribute().getType().getBase(), attr.value.asString(), unit.value()), null);
@@ -362,12 +396,12 @@ public class XMLDeserializer extends AbstractDeserializer {
 			return result;
 		}
 		// inner element
-		return deserializeNumericValue(context.getAttribute().getType().getBase(), nullable);
+		return deserializeNumericValue(context.getAttribute().getType().getBase(), nullable, unit != null ? unit.value() : null);
 	}
 	
 	@Override
 	protected AsyncWork<? extends CharSequence, Exception> deserializeStringAttributeValue(AttributeContext context) {
-		ObjectContext ctx = objects.getFirst();
+		XMLObjectContext ctx = objects.getFirst();
 		if (ctx.attributeIndex < ctx.attributes.size()) {
 			// element attribute
 			XMLStreamReaderAsync.Attribute attr = ctx.attributes.get(ctx.attributeIndex++);
@@ -379,7 +413,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	@Override
 	protected AsyncWork<Pair<Object, Boolean>, Exception> deserializeCollectionAttributeValueElement(CollectionContext context, int elementIndex, List<SerializationRule> rules) {
-		ObjectContext ctx = objects.getFirst();
+		XMLObjectContext ctx = objects.getFirst();
 		Attribute colAttr = ((AttributeContext)context.getParent()).getAttribute();
 		AsyncWork<Pair<Object, Boolean>, Exception> result = new AsyncWork<>();
 		if (elementIndex > 0) {

@@ -193,6 +193,7 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			@Override
 			public void run() {
 				task.start();
+				task.getOutput().onCancel((cancel) -> { if (!onErrorOrCancel.isUnblocked()) onErrorOrCancel.cancel(cancel); });
 			}
 		}, onErrorOrCancel);
 	}
@@ -205,6 +206,7 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			@Override
 			public void run() {
 				task.start();
+				task.getOutput().onCancel((cancel) -> { if (!onErrorOrCancel.isUnblocked()) onErrorOrCancel.cancel(cancel); });
 			}
 		}, onErrorOrCancel);
 	}

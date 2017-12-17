@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -27,10 +28,12 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 		io.getSizeAsync().listenInline(new AsyncWorkListener<Long, IOException>() {
 			@Override
 			public void ready(Long result) {
-				synchronized (BufferedReverseIOReading.this) {
-					fileSize = bufferPosInFile = result.longValue();
-					readBufferBack();
-				}
+				new Task.Cpu.FromRunnable("Read last buffer", io.getPriority(), () -> {
+					synchronized (BufferedReverseIOReading.this) {
+						fileSize = bufferPosInFile = result.longValue();
+						readBufferBack();
+					}
+				}).start();
 			}
 			
 			@Override
@@ -106,6 +109,7 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 			canRead.block(0);
 			synchronized (this) {
 				if (error != null) throw error;
+				if (io == null) throw new IOException("IO closed");
 				// check if we reached the beginning of the file
 				if (bufferPosInFile == 0 && posInBuffer == minInBuffer) return -1;
 				if (posInBuffer == minInBuffer) {
@@ -132,6 +136,7 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 			canRead.block(0);
 			synchronized (this) {
 				if (error != null) throw error;
+				if (io == null) throw new IOException("IO closed");
 				// check if we reached the end of the file
 				if (bufferPosInFile + (maxInBuffer - minInBuffer) == fileSize && posInBuffer == maxInBuffer) return -1;
 				if (posInBuffer == maxInBuffer) {
@@ -159,6 +164,7 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 			canRead.block(0);
 			synchronized (this) {
 				if (error != null) throw error;
+				if (io == null) throw new IOException("IO closed");
 				// check if we reached the end of the file
 				if (bufferPosInFile + (maxInBuffer - minInBuffer) == fileSize && posInBuffer == maxInBuffer) return -1;
 				if (posInBuffer == maxInBuffer) {
@@ -193,6 +199,7 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 			canRead.block(0);
 			synchronized (this) {
 				if (error != null) throw error;
+				if (io == null) throw new IOException("IO closed");
 				// check if we reached the end of the file
 				if (bufferPosInFile + (maxInBuffer - minInBuffer) == fileSize && posInBuffer == maxInBuffer) return done;
 				if (posInBuffer == maxInBuffer) {
@@ -247,22 +254,19 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 		}
 		ByteBuffer buf = ByteBuffer.wrap(buffer, start, len);
 		currentRead = io.readFullyAsync(bufferPosInFile - len, buf);
-		currentRead.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				synchronized (BufferedReverseIOReading.this) {
-					if (!currentRead.isSuccessful()) {
-						error = currentRead.getError();
-					} else {
-						int nb = currentRead.getResult().intValue();
-						bufferPosInFile -= nb;
-						minInBuffer -= nb;
-					}
-					currentRead = null;
+		currentRead.listenAsync(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
+			synchronized (BufferedReverseIOReading.this) {
+				if (!currentRead.isSuccessful()) {
+					error = currentRead.getError();
+				} else {
+					int nb = currentRead.getResult().intValue();
+					bufferPosInFile -= nb;
+					minInBuffer -= nb;
 				}
-				canRead.unblock();
+				currentRead = null;
 			}
-		});
+			canRead.unblock();
+		}), true);
 	}
 	
 	private void readBufferForward() {
@@ -293,21 +297,18 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 			len = (int)(fileSize - (bufferPosInFile + (maxInBuffer - minInBuffer)));
 		ByteBuffer buf = ByteBuffer.wrap(buffer, start, len);
 		currentRead = io.readFullyAsync(bufferPosInFile + (maxInBuffer - minInBuffer), buf);
-		currentRead.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				synchronized (BufferedReverseIOReading.this) {
-					if (!currentRead.isSuccessful()) {
-						error = currentRead.getError();
-					} else {
-						int nb = currentRead.getResult().intValue();
-						maxInBuffer += nb;
-					}
-					currentRead = null;
+		currentRead.listenAsync(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
+			synchronized (BufferedReverseIOReading.this) {
+				if (!currentRead.isSuccessful()) {
+					error = currentRead.getError();
+				} else {
+					int nb = currentRead.getResult().intValue();
+					maxInBuffer += nb;
 				}
-				canRead.unblock();
+				currentRead = null;
 			}
-		});
+			canRead.unblock();
+		}), true);
 	}
 
 }

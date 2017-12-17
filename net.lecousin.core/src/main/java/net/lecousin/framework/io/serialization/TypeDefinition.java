@@ -25,6 +25,9 @@ public class TypeDefinition {
 		} else if ((type instanceof TypeVariable) && containerType != null) {
 			String name = ((TypeVariable)type).getName();
 			TypeVariable[] params = containerType.getBase().getTypeParameters();
+			if (containerType.parameters.size() != params.length)
+				throw new IllegalArgumentException("Cannot resolve type variable " + name
+					+ " using parameters of " + containerType.base.getName());
 			for (int i = 0; i < params.length; ++i)
 				if (params[i].getName().equals(name)) {
 					base = containerType.parameters.get(i).base;

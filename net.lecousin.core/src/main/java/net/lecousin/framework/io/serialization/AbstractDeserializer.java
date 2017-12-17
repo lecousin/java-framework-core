@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -29,6 +30,7 @@ import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationTo
 import net.lecousin.framework.io.serialization.annotations.TypeAnnotationToRule;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.math.IntegerUnit;
+import net.lecousin.framework.math.IntegerUnit.Unit;
 import net.lecousin.framework.util.Pair;
 
 /** Implements most of the logic of a deserializer. */
@@ -74,8 +76,11 @@ public abstract class AbstractDeserializer implements Deserializer {
 		private Runnable run;
 		
 		@Override
-		public Void run() {
-			run.run();
+		public Void run() throws CancelException {
+			try { run.run(); }
+			catch (Throwable t) {
+				throw new CancelException("Error thrown in desrialization", t);
+			}
 			return null;
 		}
 	}
@@ -144,9 +149,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 			long.class.equals(c) ||
 			float.class.equals(c) ||
 			double.class.equals(c))
-			return (AsyncWork<T, Exception>)deserializeNumericValue(c, false);
+			return (AsyncWork<T, Exception>)deserializeNumericValue(c, false, null);
 		if (Number.class.isAssignableFrom(c))
-			return (AsyncWork<T, Exception>)deserializeNumericValue(c, true);
+			return (AsyncWork<T, Exception>)deserializeNumericValue(c, true, null);
 			
 		if (char.class.equals(c))
 			return (AsyncWork<T, Exception>)deserializeCharacterValue(false);
@@ -158,39 +163,35 @@ public abstract class AbstractDeserializer implements Deserializer {
 			AsyncWork<T, Exception> result = new AsyncWork<>();
 			str.listenInline(
 				(string) -> {
-					if (string != null && c.isAssignableFrom(string.getClass()))
-						result.unblockSuccess((T)string);
-					else {
-						for (Constructor<?> ctor : c.getConstructors()) {
-							Class<?>[] params = ctor.getParameterTypes();
-							if (params.length != 1) continue;
-							if (string == null) {
-								try {
-									result.unblockSuccess((T)ctor.newInstance(new Object[] { null }));
-									return;
-								} catch (Throwable t) {
-									continue;
-								}
-							}
-							if (params[0].isAssignableFrom(string.getClass())) {
-								try { result.unblockSuccess((T)ctor.newInstance(string)); }
-								catch (Throwable t) {
-									result.error(new Exception("Error instantiating type " + c.getName(), t));
-								}
-								return;
-							}
-							if (params[0].isAssignableFrom(String.class)) {
-								try { result.unblockSuccess((T)ctor.newInstance(string.toString())); }
-								catch (Throwable t) {
-									result.error(new Exception("Error instantiating type " + c.getName(), t));
-								}
-								return;
-							}
-						}
-						result.error(new Exception("Type " + c.getName()
-							+ " does not have a compatible constructor with parameter type " + string.getClass()
-							+ " or String"));
+					if (string == null) {
+						result.unblockSuccess(null);
+						return;
 					}
+					if (c.isAssignableFrom(string.getClass())) {
+						result.unblockSuccess((T)string);
+						return;
+					}
+					for (Constructor<?> ctor : c.getConstructors()) {
+						Class<?>[] params = ctor.getParameterTypes();
+						if (params.length != 1) continue;
+						if (params[0].isAssignableFrom(string.getClass())) {
+							try { result.unblockSuccess((T)ctor.newInstance(string)); }
+							catch (Throwable t) {
+								result.error(new Exception("Error instantiating type " + c.getName(), t));
+							}
+							return;
+						}
+						if (params[0].isAssignableFrom(String.class)) {
+							try { result.unblockSuccess((T)ctor.newInstance(string.toString())); }
+							catch (Throwable t) {
+								result.error(new Exception("Error instantiating type " + c.getName(), t));
+							}
+							return;
+						}
+					}
+					result.error(new Exception("Type " + c.getName()
+						+ " does not have a compatible constructor with parameter type " + string.getClass()
+						+ " or String"));
 				},
 				result
 			);
@@ -243,10 +244,12 @@ public abstract class AbstractDeserializer implements Deserializer {
 	
 	// *** numeric ***
 
-	protected abstract AsyncWork<? extends Number, Exception> deserializeNumericValue(Class<?> type, boolean nullable);
+	protected abstract AsyncWork<? extends Number, Exception> deserializeNumericValue(Class<?> type, boolean nullable, Class<? extends IntegerUnit> targetUnit);
 
 	protected AsyncWork<? extends Number, Exception> deserializeNumericAttributeValue(AttributeContext context, boolean nullable) {
-		return deserializeNumericValue(context.getAttribute().getType().getBase(), nullable);
+		Unit unit = context.getAttribute().getAnnotation(false, Unit.class);
+		Class<? extends IntegerUnit> target = unit != null ? unit.value() : null;
+		return deserializeNumericValue(context.getAttribute().getType().getBase(), nullable, target);
 	}
 	
 	/** Convert a BigDecimal into the specified type. */
@@ -818,7 +821,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	
 	protected void deserializeNextObjectAttribute(ObjectContext context, List<SerializationRule> rules, AsyncWork<Object, Exception> result) {
 		do {
-			AsyncWork<String, Exception> name = deserializeObjectAttributeName();
+			AsyncWork<String, Exception> name = deserializeObjectAttributeName(context);
 			if (name.isUnblocked()) {
 				if (name.hasError()) {
 					result.error(name.getError());
@@ -891,7 +894,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	/** Return the name of the attribute read, or null if the object is closed. */
-	protected abstract AsyncWork<String, Exception> deserializeObjectAttributeName();
+	protected abstract AsyncWork<String, Exception> deserializeObjectAttributeName(ObjectContext context);
 	
 	protected ISynchronizationPoint<Exception> deserializeObjectAttributeValue(
 		ObjectContext context, Attribute a, List<SerializationRule> rules
@@ -961,39 +964,35 @@ public abstract class AbstractDeserializer implements Deserializer {
 			AsyncWork<Object, Exception> result = new AsyncWork<>();
 			str.listenInline(
 				(string) -> {
-					if (string != null && c.isAssignableFrom(string.getClass()))
-						result.unblockSuccess(string);
-					else {
-						for (Constructor<?> ctor : c.getConstructors()) {
-							Class<?>[] params = ctor.getParameterTypes();
-							if (params.length != 1) continue;
-							if (string == null) {
-								try {
-									result.unblockSuccess(ctor.newInstance(new Object[] { null }));
-									return;
-								} catch (Throwable t) {
-									continue;
-								}
-							}
-							if (params[0].isAssignableFrom(string.getClass())) {
-								try { result.unblockSuccess(ctor.newInstance(string)); }
-								catch (Throwable t) {
-									result.error(new Exception("Error instantiating type " + c.getName(), t));
-								}
-								return;
-							}
-							if (params[0].isAssignableFrom(String.class)) {
-								try { result.unblockSuccess(ctor.newInstance(string.toString())); }
-								catch (Throwable t) {
-									result.error(new Exception("Error instantiating type " + c.getName(), t));
-								}
-								return;
-							}
-						}
-						result.error(new Exception("Type " + c.getName()
-							+ " does not have a compatible constructor with parameter type " + string.getClass()
-							+ " or String"));
+					if (string == null) {
+						result.unblockSuccess(null);
+						return;
 					}
+					if (c.isAssignableFrom(string.getClass())) {
+						result.unblockSuccess(string);
+						return;
+					}
+					for (Constructor<?> ctor : c.getConstructors()) {
+						Class<?>[] params = ctor.getParameterTypes();
+						if (params.length != 1) continue;
+						if (params[0].isAssignableFrom(string.getClass())) {
+							try { result.unblockSuccess(ctor.newInstance(string)); }
+							catch (Throwable t) {
+								result.error(new Exception("Error instantiating type " + c.getName(), t));
+							}
+							return;
+						}
+						if (params[0].isAssignableFrom(String.class)) {
+							try { result.unblockSuccess(ctor.newInstance(string.toString())); }
+							catch (Throwable t) {
+								result.error(new Exception("Error instantiating type " + c.getName(), t));
+							}
+							return;
+						}
+					}
+					result.error(new Exception("Type " + c.getName()
+						+ " does not have a compatible constructor with parameter type " + string.getClass()
+						+ " or String"));
 				},
 				result
 			);
