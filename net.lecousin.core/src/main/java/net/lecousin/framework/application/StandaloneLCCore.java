@@ -13,6 +13,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import net.lecousin.framework.LCCoreVersion;
 import net.lecousin.framework.application.libraries.LibrariesManager;
+import net.lecousin.framework.concurrent.DrivesTaskManager.DrivesProvider;
 import net.lecousin.framework.concurrent.StandaloneTaskPriorityManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -26,12 +27,11 @@ import net.lecousin.framework.util.Pair;
  */
 public class StandaloneLCCore implements LCCore.Environment {
 
-	/** Constructor with the single application. */
-	public StandaloneLCCore(Application app) {
+	/** Constructor. */
+	public StandaloneLCCore() {
 		System.out.println("net.lecousin.framework " + LCCoreVersion.VERSION);
 		startTime = System.nanoTime();
 		closing = false;
-		this.app = app;
 		
 		Map<Thread,StackTraceElement[]> threads = Thread.getAllStackTraces();
 		for (Map.Entry<Thread,StackTraceElement[]> thread : threads.entrySet())
@@ -45,10 +45,34 @@ public class StandaloneLCCore implements LCCore.Environment {
 	private List<Thread> threadsBeforeInit = new LinkedList<Thread>();
 	private ArrayList<Closeable> toCloseSync = new ArrayList<>();
 	private ArrayList<AsyncCloseable<?>> toCloseAsync = new ArrayList<>();
+	private int nbCPUThreads = -1;
+	private int nbUnmanagedThreads = -1;
+	private DrivesProvider drivesProvider = null;
 	
 	@Override
 	public void add(Application app) {
-		throw new IllegalStateException("Cannot add several application on a standalone LCCore environment");
+		if (app == null)
+			this.app = app;
+		else
+			throw new IllegalStateException("Cannot add several application on a standalone LCCore environment");
+	}
+	
+	/** Set the number of CPU threads to use by multi-threading system. */
+	public void setCPUThreads(int nbThreads) {
+		if (Threading.isInitialized()) throw new IllegalStateException("Threading has been already initialized.");
+		nbCPUThreads = nbThreads;
+	}
+	
+	/** Set the number of threads to use by multi-threading system for unmanaged tasks. */
+	public void setUnmanagedThreads(int nbThreads) {
+		if (Threading.isInitialized()) throw new IllegalStateException("Threading has been already initialized.");
+		nbUnmanagedThreads = nbThreads;
+	}
+	
+	/** Set the drives provider to use by multi-threading system. */
+	public void setDrivesProvider(DrivesProvider provider) {
+		if (Threading.isInitialized()) throw new IllegalStateException("Threading has been already initialized.");
+		drivesProvider = provider;
 	}
 	
 	@SuppressFBWarnings("MS_SHOULD_BE_FINAL")
@@ -57,7 +81,13 @@ public class StandaloneLCCore implements LCCore.Environment {
 	@Override
 	public void start() {
 		// start multi-threading system
-		Threading.init(app.getThreadFactory(), StandaloneTaskPriorityManager.class);
+		Threading.init(
+			app.getThreadFactory(),
+			StandaloneTaskPriorityManager.class,
+			nbCPUThreads,
+			drivesProvider,
+			nbUnmanagedThreads
+		);
 		
 		// debugging
 		if (app.isDebugMode()) {

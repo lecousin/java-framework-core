@@ -16,25 +16,32 @@ import net.lecousin.framework.util.Pair;
 public class DrivesTaskManager {
 
 	/** Constructor. */
-	public DrivesTaskManager(ThreadFactory threadFactory, Class<? extends TaskPriorityManager> taskPriorityManager) {
+	public DrivesTaskManager(
+		ThreadFactory threadFactory,
+		Class<? extends TaskPriorityManager> taskPriorityManager,
+		DrivesProvider drivesProvider
+	) {
 		this.threadFactory = threadFactory;
 		this.taskPriorityManager = taskPriorityManager;
 		rootResources = new HashMap<>();
 		rootManagers = new HashMap<>();
 		managers = new HashMap<>();
-		// first, one resource per root
-		for (File root : File.listRoots()) {
-			String path = root.getAbsolutePath();
-			if (path.charAt(path.length() - 1) != File.separatorChar)
-				path += File.separatorChar;
-			Object resource = new Object();
-			MonoThreadTaskManager tm = new MonoThreadTaskManager("Drive " + path, resource, threadFactory, taskPriorityManager);
-			tm.start();
-			rootResources.put(path, resource);
-			rootManagers.put(path, tm);
-			managers.put(resource, tm);
-			Threading.registerResource(resource, tm);
-		}
+		if (drivesProvider == null) {
+			// by default, one resource per root
+			for (File root : File.listRoots()) {
+				String path = root.getAbsolutePath();
+				if (path.charAt(path.length() - 1) != File.separatorChar)
+					path += File.separatorChar;
+				Object resource = new Object();
+				MonoThreadTaskManager tm = new MonoThreadTaskManager("Drive " + path, resource, threadFactory, taskPriorityManager);
+				tm.start();
+				rootResources.put(path, resource);
+				rootManagers.put(path, tm);
+				managers.put(resource, tm);
+				Threading.registerResource(resource, tm);
+			}
+		} else
+			setDrivesProvider(drivesProvider);
 	}
 	
 	private ThreadFactory threadFactory;

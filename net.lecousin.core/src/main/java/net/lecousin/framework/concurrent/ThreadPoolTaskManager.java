@@ -9,7 +9,10 @@ public class ThreadPoolTaskManager extends TaskManager {
 		String name, Object resource, int maxThreads, ThreadFactory threadFactory, Class<? extends TaskPriorityManager> taskPriorityManager
 	) {
 		super(name, resource, threadFactory, taskPriorityManager);
-		this.maxThreads = maxThreads;
+		if (maxThreads > 0)
+			this.maxThreads = maxThreads;
+		else
+			this.maxThreads = 100;
 	}
 	
 	private int maxThreads;

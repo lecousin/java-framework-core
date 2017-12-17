@@ -1,5 +1,6 @@
 package net.lecousin.framework.concurrent;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -8,7 +9,9 @@ import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.DrivesTaskManager.DrivesProvider;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
@@ -31,15 +34,34 @@ public final class Threading {
 	public static boolean traceTaskDone = false;
 	public static boolean traceTasksNotDone = false;
 	
-	/** Initialize multi-threading. */
-	public static void init(ThreadFactory threadFactory, Class<? extends TaskPriorityManager> taskPriorityManager) {
+	/**
+	 * Initialize multi-threading.
+	 * This method is called by the {@link LCCore.Environment} instance on initialization.
+	 * @param threadFactory factory to use when creating threads
+	 * @param taskPriorityManager the class to use to manage priority of tasks
+	 * @param nbCPUThreads number of threads to use for CPU tasks,
+	 *     0 or negative value means the number of available processors returned by {@link Runtime#availableProcessors()}
+	 * @param drivesProvider provides physical drives and associated mount points.
+	 *     If null, {@link File#listRoots()} is used and each returned root is considered as a physical drive.
+	 *     This may be changed later on by calling {@link DrivesTaskManager#setDrivesProvider(DrivesProvider)}.
+	 * @param nbUnmanagedThreads number of threads to use for unmanaged tasks.
+	 *     If 0 or negative, maximum 100 threads will be used.
+	 */
+	public static void init(
+		ThreadFactory threadFactory,
+		Class<? extends TaskPriorityManager> taskPriorityManager,
+		int nbCPUThreads,
+		DrivesProvider drivesProvider,
+		int nbUnmanagedThreads
+	) throws IllegalStateException {
+		if (isInitialized()) throw new IllegalStateException("Threading has been already initialized.");
 		logger = LCCore.get().getThreadingLogger();
 		TaskScheduler.init();
-		cpu = new CPUTaskManager(threadFactory, taskPriorityManager);
+		cpu = new CPUTaskManager(threadFactory, taskPriorityManager, nbCPUThreads);
 		cpu.start();
 		resources.put(CPU, cpu);
-		drives = new DrivesTaskManager(threadFactory, taskPriorityManager);
-		unmanaged = new ThreadPoolTaskManager("Unmanaged tasks manager", UNMANAGED, 100, threadFactory, taskPriorityManager);
+		drives = new DrivesTaskManager(threadFactory, taskPriorityManager, drivesProvider);
+		unmanaged = new ThreadPoolTaskManager("Unmanaged tasks manager", UNMANAGED, nbUnmanagedThreads, threadFactory, taskPriorityManager);
 		resources.put(UNMANAGED, unmanaged);
 		LCCore.get().toClose(new StopMultiThreading());
 		if (traceTasksNotDone)
@@ -49,6 +71,10 @@ public final class Threading {
 			for (TaskManager tm : resources.values())
 				tm.started();
 		}
+	}
+	
+	public static boolean isInitialized() {
+		return cpu != null;
 	}
 	
 	private static class StopMultiThreading implements AsyncCloseable<Exception> {
