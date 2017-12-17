@@ -109,12 +109,13 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 		}
 	}
 	
-	private void fill() throws IOException {
+	private void fill() throws IOException, CancelException {
 		AsyncWork<Integer,IOException> currentRead = readTask;
 		if (currentRead == null)
 			return;
 		currentRead.block(0);
 		if (!currentRead.isSuccessful()) {
+			if (currentRead.isCancelled()) throw currentRead.getCancelEvent();
 			Exception e = currentRead.getError();
 			if (e instanceof IOException) throw (IOException)e;
 			throw new IOException(e);
@@ -145,7 +146,8 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 		AtomicState s = state;
 		if (s.pos == s.len) {
 			if (s.buffer == null) return -1;
-			fill();
+			try { fill(); }
+			catch (CancelException e) { return -1; }
 			if (state.pos == state.len) return -1;
 		}
 		int l = buffer.remaining();
@@ -231,6 +233,7 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 			return 0;
 		currentRead.block(0);
 		if (!currentRead.isSuccessful()) {
+			if (currentRead.isCancelled()) return 0;
 			Exception e = currentRead.getError();
 			if (e instanceof IOException) throw (IOException)e;
 			throw new IOException(e);
@@ -239,7 +242,8 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 		if (avail < 0) avail = 0;
 		if (n <= state.len - state.pos + avail) {
 			int i = state.len - state.pos;
-			fill();
+			try { fill(); }
+			catch (CancelException e) { return 0; }
 			return skipSync(n - i) + i;
 		}
 		n = io.skipSync(n - ((state.len - state.pos) + avail));
@@ -269,9 +273,12 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 		}
 		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Skipping bytes", io.getPriority(), ondone) {
 			@Override
-			public Long run() throws IOException {
+			public Long run() throws IOException, CancelException {
 				if (currentRead.isCancelled()) return Long.valueOf(0);
-				if (!currentRead.isSuccessful()) throw currentRead.getError();
+				if (!currentRead.isSuccessful()) {
+					if (currentRead.isCancelled()) throw currentRead.getCancelEvent();
+					throw currentRead.getError();
+				}
 				int avail = currentRead.getResult().intValue();
 				if (avail < 0) avail = 0;
 				if (n <= state.len - state.pos + avail) {
@@ -297,7 +304,8 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 		AtomicState s = state;
 		if (s.pos == s.len) {
 			if (s.buffer == null) return -1;
-			fill();
+			try { fill(); }
+			catch (CancelException e) { return -1; }
 			if (state.pos == state.len) return -1;
 		}
 		return state.buffer[state.pos++] & 0xFF;
@@ -308,7 +316,8 @@ public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable
 		AtomicState s = state;
 		if (s.pos == s.len) {
 			if (s.buffer == null) return -1;
-			fill();
+			try { fill(); }
+			catch (CancelException e) { return -1; }
 			if (state.pos == state.len) return -1;
 		}
 		if (l > state.len - state.pos) l = state.len - state.pos;
