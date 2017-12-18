@@ -30,7 +30,7 @@ public abstract class TestWritableBufferedToFile extends TestIO.UsingTestData {
 		IO.Writable.Buffered io = createWritableBufferedFromFile(file);
 		for (int i = 0; i < nbBuf; ++i)
 			io.write(testBuf, 0, testBuf.length);
-		io.flush().block(0);
+		io.flush().blockThrow(0);
 		flush(io);
 		io.close();
 		TestWritableToFile.checkFile(file, testBuf, nbBuf);
@@ -43,7 +43,7 @@ public abstract class TestWritableBufferedToFile extends TestIO.UsingTestData {
 		for (int i = 0; i < nbBuf; ++i)
 			for (int j = 0; j < testBuf.length; ++j)
 				io.write(testBuf[j]);
-		io.flush().block(0);
+		io.flush().blockThrow(0);
 		flush(io);
 		io.close();
 		TestWritableToFile.checkFile(file, testBuf, nbBuf);

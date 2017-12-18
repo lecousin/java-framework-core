@@ -189,8 +189,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 				read.get().listenInline(this);
 			}
 		});
-		done.block(0);
-		if (done.hasError()) throw done.getError();
+		done.blockThrow(0);
 		if (io instanceof IO.PositionKnown)
 			Assert.assertEquals(nbBuf * testBuf.length, ((IO.PositionKnown)io).getPosition());
 		io.close();
@@ -251,8 +250,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 				read.get().listenInline(this);
 			}
 		});
-		done.block(0);
-		if (done.hasError()) throw done.getError();
+		done.blockThrow(0);
 		io.close();
 	}
 	
@@ -314,8 +312,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 				read.get().listenInline(this);
 			}
 		});
-		done.block(0);
-		if (done.hasError()) throw done.getError();
+		done.blockThrow(0);
 		io.close();
 	}
 	
@@ -433,9 +430,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		read.set(io.readFullyAsync(buffer));
 		read.get().listenInline(readListener);
 		
-		result.block(0);
-		if (result.hasError())
-			throw result.getError();
+		result.blockThrow(0);
 		
 		io.close();
 	}

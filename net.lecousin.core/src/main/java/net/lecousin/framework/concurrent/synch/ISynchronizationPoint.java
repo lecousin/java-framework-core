@@ -60,6 +60,14 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		block(timeout);
 		if (hasError()) throw getError();
 	}
+	
+	/** Pause the current thread to wait for this synchronization point to be unblocked.
+	 * If it has an error or a cancellation it is thrown. */
+	default void blockThrow(long timeout) throws TError, CancelException {
+		block(timeout);
+		if (hasError()) throw getError();
+		if (isCancelled()) throw getCancelEvent();
+	}
 
 	/** Really block, using wait method (used by threading system to know when a thread can be resumed). */
 	void blockPause(long logWarningAfterMillis);

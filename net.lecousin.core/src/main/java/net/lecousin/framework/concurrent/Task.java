@@ -334,6 +334,9 @@ public abstract class Task<T,TError extends Exception> {
 				} catch (ClassCastException e) {
 					cancelling = new CancelException("Unexpected exception thrown", t);
 					result.cancelled(cancelling);
+				} catch (Throwable e) {
+					cancelling = new CancelException("Unexpected exception thrown", t);
+					result.cancelled(cancelling);
 				}
 			} else
 				if (app.isDebugMode())
@@ -345,7 +348,10 @@ public abstract class Task<T,TError extends Exception> {
 		}
 		if (taskJoin == null) {
 			status = STATUS_DONE;
-			if (ondone != null) ondone.run(new Pair<>(res, null));
+			try { if (ondone != null) ondone.run(new Pair<>(res, null)); }
+			catch (Throwable t) {
+				app.getDefaultLogger().error("Error while calling ondone on task " + description, t);
+			}
 			result.unblockSuccess(res);
 			checkSP();
 			return;

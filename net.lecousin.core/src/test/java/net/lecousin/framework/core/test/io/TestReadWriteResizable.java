@@ -187,8 +187,7 @@ public abstract class TestReadWriteResizable extends TestIO {
 			}
 		});
 		
-		sp.block(0);
-		if (sp.hasError()) throw sp.getError();
+		sp.blockThrow(0);
 		io.close();
 	}
 	

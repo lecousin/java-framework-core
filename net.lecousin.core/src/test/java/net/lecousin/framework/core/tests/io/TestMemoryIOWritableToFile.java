@@ -39,7 +39,7 @@ public class TestMemoryIOWritableToFile extends TestWritableToFile {
 	protected void flush(IO.Writable io) throws IOException {
 		MemoryIO mio = (MemoryIO)io;
 		FileIO.WriteOnly fio = new FileIO.WriteOnly(file, Task.PRIORITY_NORMAL);
-		mio.writeAsyncTo(fio).block(0);
+		mio.writeAsyncTo(fio).blockException(0);
 		fio.close();
 	}
 	

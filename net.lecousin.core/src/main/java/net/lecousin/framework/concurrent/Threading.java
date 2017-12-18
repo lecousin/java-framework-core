@@ -207,9 +207,7 @@ public final class Threading {
 	/** Wait for the given tasks to be done. */
 	public static void waitFinished(Collection<? extends Task<?,?>> tasks) throws Exception {
 		for (Task<?,?> t : tasks) {
-			t.getOutput().block(0);
-			if (t.isCancelled()) throw t.getCancelEvent();
-			if (!t.isSuccessful()) throw t.getError();
+			t.getOutput().blockThrow(0);
 		}
 	}
 	

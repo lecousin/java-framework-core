@@ -385,8 +385,7 @@ public interface IO extends AutoCloseable, Closeable, AsyncCloseable<IOException
 				closeListeners = null;
 			}
 			ISynchronizationPoint<IOException> sp = closeIO();
-			sp.block(0);
-			if (sp.hasError()) throw sp.getError();
+			sp.blockException(0);
 		}
 		
 		@Override

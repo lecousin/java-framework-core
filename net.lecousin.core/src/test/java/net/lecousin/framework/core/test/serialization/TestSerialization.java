@@ -62,12 +62,11 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		MemoryIO io = new MemoryIO(1024, "test");
 		Serializer s = createSerializer();
 		ISynchronizationPoint<Exception> r1 = s.serialize(value, new TypeDefinition(type), io, new ArrayList<>(0));
-		r1.block(0);
-		if (r1.hasError()) throw r1.getError();
+		r1.blockThrow(0);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Deserializer d = createDeserializer();
 		AsyncWork<Object, Exception> r2 = d.deserialize(new TypeDefinition(type), io, new ArrayList<>(0));
-		r2.block(0);
+		r2.blockThrow(0);
 		Assert.assertEquals(value, r2.getResult());
 	}
 	
@@ -476,9 +475,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		MemoryIO io = new MemoryIO(1024, "test");
 		Serializer s = createSerializer();
 		ISynchronizationPoint<Exception> res = s.serialize(impl, new TypeDefinition(MyInterface.class), io, new ArrayList<>(0));
-		res.block(0);
-		if (res.hasError()) throw res.getError();
-		if (res.isCancelled()) throw res.getCancelEvent();
+		res.blockThrow(0);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		print(io, impl);
 		MyInterface interf = deserialize(io, new TypeDefinition(MyInterface.class));
@@ -802,9 +799,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		MemoryIO io = new MemoryIO(1024, "test");
 		Serializer s = createSerializer();
 		ISynchronizationPoint<Exception> res = s.serialize(o, type, io, new ArrayList<>(0));
-		res.block(0);
-		if (res.hasError()) throw res.getError();
-		if (res.isCancelled()) throw res.getCancelEvent();
+		res.blockThrow(0);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		return io;
 	}
@@ -814,9 +809,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		FileIO.ReadWrite io = new FileIO.ReadWrite(tmp, Task.PRIORITY_NORMAL);
 		Serializer s = createSerializer();
 		ISynchronizationPoint<Exception> res = s.serialize(o, type, io, new ArrayList<>(0));
-		res.block(0);
-		if (res.hasError()) throw res.getError();
-		if (res.isCancelled()) throw res.getCancelEvent();
+		res.blockThrow(0);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		return io;
 	}
@@ -825,9 +818,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	protected <T> T deserialize(IO.Readable io, TypeDefinition type) throws Exception {
 		Deserializer d = createDeserializer();
 		AsyncWork<Object, Exception> res = d.deserialize(type, io, new ArrayList<>(0));
-		res.block(0);
-		if (res.hasError()) throw res.getError();
-		if (res.isCancelled()) throw res.getCancelEvent();
+		res.blockThrow(0);
 		return (T)res.getResult();
 	}
 	

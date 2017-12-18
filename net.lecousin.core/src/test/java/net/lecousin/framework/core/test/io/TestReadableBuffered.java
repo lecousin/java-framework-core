@@ -248,8 +248,7 @@ public abstract class TestReadableBuffered extends TestIO.UsingGeneratedTestFile
 				read.get().listenInline(this);
 			}
 		});
-		done.block(0);
-		if (done.hasError()) throw done.getError();
+		done.blockThrow(0);
 		io.close();
 	}
 	

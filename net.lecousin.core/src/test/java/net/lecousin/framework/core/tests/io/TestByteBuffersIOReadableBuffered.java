@@ -30,7 +30,7 @@ public class TestByteBuffersIOReadableBuffered extends TestReadableBuffered {
 	@Override
 	protected ByteBuffersIO createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
 		ByteBuffersIO io = new ByteBuffersIO(true, "test", Task.PRIORITY_NORMAL);
-		IOUtil.copy(file, io, fileSize, false, null, 0).block(0);
+		IOUtil.copy(file, io, fileSize, false, null, 0).blockThrow(0);
 		file.close();
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		return io;

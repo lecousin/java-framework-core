@@ -94,8 +94,7 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 		write.set(io.writeAsync(ByteBuffer.wrap(testBuf)));
 		write.get().listenInline(listener);
 		
-		sp.block(0);
-		if (sp.hasError()) throw sp.getError();
+		sp.blockThrow(0);
 		flush(io);
 		io.close();
 		checkFile(file, testBuf, nbBuf);

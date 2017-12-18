@@ -82,27 +82,21 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			prevRead = readBuffer(io, prevWrite, prevRead, buffersToRead);
 			// make some pauses to avoid stack overflow
 			if ((i % 10) == 8) {
-				prevRead.block(0);
+				prevRead.blockThrow(0);
 				prevRead = null;
 				prevWrite = null;
 			}
 		}
 		if (prevWrite != null) {
-			prevWrite.block(0);
-			if (prevWrite.hasError()) throw prevWrite.getError();
-			if (prevWrite.isCancelled()) throw prevWrite.getCancelEvent();
+			prevWrite.blockThrow(0);
 		}
 		while (!buffersToRead.isEmpty()) {
 			prevRead = readBuffer(io, prevWrite, prevRead, buffersToRead);
-			prevRead.block(0);
-			if (prevRead.hasError()) throw prevRead.getError();
-			if (prevRead.isCancelled()) throw prevRead.getCancelEvent();
+			prevRead.blockThrow(0);
 			prevRead = null;
 		}
 		if (prevRead != null) {
-			prevRead.block(0);
-			if (prevRead.hasError()) throw prevRead.getError();
-			if (prevRead.isCancelled()) throw prevRead.getCancelEvent();
+			prevRead.blockThrow(0);
 		}
 		io.close();
 	}
@@ -345,9 +339,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		// read reverse
 		for (int i = nbBuf - 1; i >= 0; --i)
 			prev = readReverseSeekAsync(io, i, prev);
-		prev.block(0);
-		if (prev.hasError()) throw prev.getError();
-		if (prev.isCancelled()) throw prev.getCancelEvent();
+		prev.blockThrow(0);
 		io.close();
 	}
 	

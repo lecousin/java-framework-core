@@ -75,7 +75,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 	}
 	
 	@Test
-	public void testWriteAsyncReadHalfAsync() throws IOException {
+	public void testWriteAsyncReadHalfAsync() throws Exception {
 		IO.OutputToInput o2i = createOutputToInput();
 		SynchronizationPoint<IOException> spWrite = new SynchronizationPoint<>();
 		new Task.Cpu<Void, NoException>("Launch write async to OutputToInput", Task.PRIORITY_IMPORTANT) {
@@ -152,10 +152,8 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 				return null;
 			}
 		}.start();
-		spWrite.block(0);
-		if (spWrite.hasError()) throw spWrite.getError();
-		spRead.block(0);
-		if (spRead.hasError()) throw spRead.getError();
+		spWrite.blockThrow(0);
+		spRead.blockThrow(0);
 		o2i.closeAsync();
 	}
 	

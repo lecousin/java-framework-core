@@ -59,6 +59,8 @@ public class TestProduction extends LCCoreAbstractTest {
 		System.out.println("All done");
 		if (jp.hasError()) {
 			jp.getError().printStackTrace(System.err);
+		} else if (jp.isCancelled()) {
+			jp.getCancelEvent().printStackTrace(System.err);
 		} else {
 			System.out.println(" ************************ SUCCESS **********************");
 		}

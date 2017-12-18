@@ -188,7 +188,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				@SuppressWarnings("resource")
 				IOFromInputStream io = new IOFromInputStream(
 					input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
-				ep.loadPluginConfiguration(io, acl).block(0);
+				ep.loadPluginConfiguration(io, acl).blockThrow(0);
 			}
 			return null;
 		}
@@ -213,7 +213,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 				LoadLibraryExtensionPointsFile load = new LoadLibraryExtensionPointsFile(stream, acl);
 				load.startOn(stream.canStartReading(), false);
-				load.getOutput().block(0);
+				load.getOutput().blockThrow(0);
 			}
 			return null;
 		}
@@ -238,7 +238,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 				LoadLibraryPluginsFile load = new LoadLibraryPluginsFile(stream, acl);
 				load.startOn(stream.canStartReading(), false);
-				load.getOutput().block(0);
+				load.getOutput().blockThrow(0);
 			}
 			return null;
 		}

@@ -53,8 +53,7 @@ public class FileAccess implements AutoCloseable {
 	public void setPriority(byte priority) { this.priority = priority; }
 
 	public void open() throws IOException {
-		openTask.getOutput().block(0);
-		if (!openTask.isSuccessful()) throw openTask.getError();
+		openTask.getOutput().blockException(0);
 	}
 	
 	public Task<Void,IOException> closeAsync() {
@@ -73,8 +72,7 @@ public class FileAccess implements AutoCloseable {
 	}
 	
 	public long getSize() throws IOException {
-		openTask.getOutput().block(0);
-		if (!openTask.isSuccessful()) throw openTask.getError();
+		openTask.getOutput().blockException(0);
 		return size;
 	}
 	
@@ -93,8 +91,7 @@ public class FileAccess implements AutoCloseable {
 	
 	public void setSize(long newSize) throws IOException {
 		SetFileSizeTask t = new SetFileSizeTask(this, newSize, priority);
-		t.getOutput().block(0);
-		if (!t.isSuccessful()) throw t.getError();
+		t.getOutput().blockException(0);
 	}
 	
 	public Task<Void,IOException> setSizeAsync(long newSize) {
@@ -103,10 +100,8 @@ public class FileAccess implements AutoCloseable {
 	
 	public int read(long pos, ByteBuffer buffer) throws IOException {
 		ReadFileTask task = new ReadFileTask(this, pos, buffer, false, priority, null);
-		task.getOutput().block(0);
-		if (task.isSuccessful())
-			return task.getCurrentNbRead();
-		throw task.getError();
+		task.getOutput().blockException(0);
+		return task.getCurrentNbRead();
 	}
 	
 	public Task<Integer,IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
@@ -115,10 +110,8 @@ public class FileAccess implements AutoCloseable {
 	
 	public int readFully(long pos, ByteBuffer buffer) throws IOException {
 		ReadFileTask task = new ReadFileTask(this, pos, buffer, true, priority, null);
-		task.getOutput().block(0);
-		if (task.isSuccessful())
-			return task.getCurrentNbRead();
-		throw task.getError();
+		task.getOutput().blockException(0);
+		return task.getCurrentNbRead();
 	}
 	
 	public Task<Integer,IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
@@ -127,10 +120,8 @@ public class FileAccess implements AutoCloseable {
 	
 	public long seek(SeekType type, long move, boolean allowAfterEnd) throws IOException {
 		SeekFileTask task = new SeekFileTask(this, type, move, allowAfterEnd, true, priority, null);
-		task.getOutput().block(0);
-		if (task.isSuccessful())
-			return task.getResult().longValue();
-		throw task.getError();
+		task.getOutput().blockException(0);
+		return task.getResult().longValue();
 	}
 	
 	public Task<Long,IOException> seekAsync(
@@ -141,10 +132,8 @@ public class FileAccess implements AutoCloseable {
 	
 	public long skip(long move) throws IOException {
 		SeekFileTask task = new SeekFileTask(this, SeekType.FROM_CURRENT, move, false, false, priority, null);
-		task.getOutput().block(0);
-		if (task.isSuccessful())
-			return task.getResult().longValue();
-		throw task.getError();
+		task.getOutput().blockException(0);
+		return task.getResult().longValue();
 	}
 	
 	public Task<Long,IOException> skipAsync(long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
@@ -153,9 +142,7 @@ public class FileAccess implements AutoCloseable {
 	
 	public int write(long pos, ByteBuffer buffer) throws IOException {
 		WriteFileTask task = new WriteFileTask(this, pos, buffer, priority, null);
-		task.getOutput().block(0);
-		if (task.hasError())
-			throw task.getError();
+		task.getOutput().blockException(0);
 		return task.getResult().intValue();
 	}
 	

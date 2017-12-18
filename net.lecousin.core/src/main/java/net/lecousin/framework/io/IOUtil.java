@@ -671,9 +671,7 @@ public class IOUtil {
 	 */
 	public static long seekSyncUsingAsync(IO.Readable.Seekable io, SeekType type, long move) throws IOException {
 		AsyncWork<Long,IOException> seek = io.seekAsync(type, move);
-		seek.block(0);
-		if (seek.hasError())
-			throw seek.getError();
+		seek.blockException(0);
 		return seek.getResult().longValue();
 	}
 	

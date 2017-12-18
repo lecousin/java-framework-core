@@ -151,8 +151,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		read.set(io.readAsync(offset.get()*testBuf.length+j.get(), buffer, ondone));
 		read.get().listenInline(listener);
 
-		sp.block(0);
-		if (sp.hasError()) throw sp.getError();
+		sp.blockThrow(0);
 		
 		io.close();
 	}
@@ -186,8 +185,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	public void testSeekableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
 		SynchronizationPoint<Exception> sp = _testSeekableBufferByBufferFullyAsync(io);
-		sp.block(0);
-		if (sp.hasError()) throw sp.getError();
+		sp.blockThrow(0);
 		io.close();
 	}
 	private SynchronizationPoint<Exception> _testSeekableBufferByBufferFullyAsync(IO.Readable.Seekable io) {
@@ -278,8 +276,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			task.start();
 		}
 		jp.start();
-		jp.block(0);
-		if (jp.hasError()) throw jp.getError();
+		jp.blockThrow(0);
 		io.close();
 	}
 	
@@ -366,8 +363,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			sp = testSeekAsync(sp, io, SeekType.FROM_CURRENT, 10, 0, size);
 		}
 		
-		sp.block(0);
-		if (sp.hasError()) throw sp.getError();
+		sp.blockThrow(0);
 		io.close();
 	}
 	
@@ -561,8 +557,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			}
 		});
 
-		sp.block(0);
-		if (sp.hasError()) throw sp.getError();
+		sp.blockThrow(0);
 		io.close();
 	}
 	
@@ -625,9 +620,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			}
 			pos += nb;
 			AsyncWork<Long, IOException> skipped = io.skipAsync(testBuf.length / 4);
-			skipped.block(0);
-			if (skipped.hasError()) throw skipped.getError();
-			if (skipped.isCancelled()) throw skipped.getCancelEvent();
+			skipped.blockThrow(0);
 			if (skipped.getResult().longValue() != testBuf.length / 4) {
 				if (pos + skipped.getResult().longValue() != size)
 					throw new AssertionError(skipped.getResult().longValue() + " byte(s) skipped at " + pos);
@@ -642,9 +635,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			}
 			pos += nb;
 			skipped = io.skipAsync(-testBuf.length / 3);
-			skipped.block(0);
-			if (skipped.hasError()) throw skipped.getError();
-			if (skipped.isCancelled()) throw skipped.getCancelEvent();
+			skipped.blockThrow(0);
 			if (skipped.getResult().longValue() != -testBuf.length / 3) {
 				if (pos + skipped.getResult().longValue() != 0)
 					throw new AssertionError(skipped.getResult().longValue() + " byte(s) skipped at " + pos);
