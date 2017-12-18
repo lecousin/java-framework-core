@@ -3,6 +3,8 @@ package net.lecousin.framework.concurrent;
 import java.util.LinkedList;
 import java.util.concurrent.ThreadFactory;
 
+import net.lecousin.framework.application.LCCore;
+
 /**
  * A Task Manager that use a pool of threads to execute tasks.
  * This is used for unmanaged tasks, that may use several physical resources and block at any time,
@@ -79,10 +81,38 @@ public class ThreadPoolTaskManager extends TaskManager {
 		}
 	}
 	
+	private class UncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
+		public UncaughtExceptionHandler(Worker worker) {
+			this.worker = worker;
+		}
+		
+		private Worker worker;
+		
+		@Override
+		public void uncaughtException(Thread t, Throwable e) {
+			if (worker.task != null) {
+				if (!worker.task.isDone()) {
+					CancelException reason = new CancelException("Unexpected error in thread " + t.getName(), e);
+					worker.task.cancelling = reason;
+					worker.task.result.cancelled(reason);
+				}
+			}
+			synchronized (taskPriorityManager) {
+				activeThreads.remove(t);
+				Task<?,?> task = taskPriorityManager.peekNext();
+				if (task != null)
+					activeThreads.add(new Worker(task));
+			}
+			LCCore.getApplication().getDefaultLogger().error("Error in Worker " + t.getName(), e);
+		}
+	}
+	
 	private class Worker implements Runnable {
 		public Worker(Task<?,?> task) {
 			this.task = task;
-			threadFactory.newThread(this).start();
+			Thread t = threadFactory.newThread(this);
+			t.setUncaughtExceptionHandler(new UncaughtExceptionHandler(this));
+			t.start();
 		}
 		
 		private Task<?,?> task;

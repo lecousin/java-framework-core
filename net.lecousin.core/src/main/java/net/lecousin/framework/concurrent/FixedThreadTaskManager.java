@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.concurrent.ThreadFactory;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.exception.NoException;
@@ -81,7 +83,46 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 	}
 
 	Thread newThread(TaskWorker worker) {
-		return threadFactory.newThread(worker);
+		Thread t = threadFactory.newThread(worker);
+		t.setUncaughtExceptionHandler(new UncaughtExceptionHandler(worker));
+		return t;
+	}
+	
+	private class UncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
+		public UncaughtExceptionHandler(TaskWorker worker) {
+			this.worker = worker;
+		}
+		
+		private TaskWorker worker;
+		
+		@Override
+		public void uncaughtException(Thread t, Throwable e) {
+			if (worker.currentTask != null) {
+				if (!worker.currentTask.isDone()) {
+					CancelException reason = new CancelException("Unexpected error in thread " + t.getName(), e);
+					worker.currentTask.cancelling = reason;
+					worker.currentTask.result.cancelled(reason);
+				}
+			}
+			TaskWorker w;
+			synchronized (spare) {
+				w = spare.pollFirst();
+			}
+			if (w == null) {
+				// no more spare !
+				w = createWorker();
+				// replace the worker
+				replaceWorkerBySpare(worker, w);
+				// start the new one
+				w.thread.start();
+			} else {
+				// replace the worker
+				replaceWorkerBySpare(worker, w);
+				// wake up this spare
+				synchronized (w) { w.notify(); }
+			}
+			LCCore.getApplication().getDefaultLogger().error("Error in TaskWorker " + t.getName(), e);
+		}
 	}
 	
 	final Task<?,?> peekNextOrWait() {

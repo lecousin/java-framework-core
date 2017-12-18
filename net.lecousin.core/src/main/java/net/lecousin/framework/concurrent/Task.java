@@ -699,7 +699,7 @@ public abstract class Task<T,TError extends Exception> {
 			Task.this.cancel(reason);
 		}
 		
-		private void cancelled(CancelException reason) {
+		void cancelled(CancelException reason) {
 			super.cancel(reason);
 		}
 		
