@@ -213,7 +213,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 			} while (rem > 0);
 			if (pos + len <= maxSizeInMemory) {
 				this.pos = p;
-				if (p + inMem > size) size = p + inMem;
+				if (p > size) size = p;
 				return len;
 			}
 
