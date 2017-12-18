@@ -10,9 +10,11 @@ public abstract class ApplicationClassLoader extends ClassLoader {
 		ClassLoader.registerAsParallelCapable();
 	}
 	
+	/** Constructor without parent class loader. */
 	public ApplicationClassLoader() {
 	}
 	
+	/** Constructor with parent class loader. */
 	public ApplicationClassLoader(ClassLoader parent) {
 		super(parent);
 	}

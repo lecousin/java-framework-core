@@ -43,6 +43,7 @@ public final class CollectionsUtil {
 		return list;
 	}
 	
+	/** Create an Iterator from an Enumeration. */
 	public static <T> Iterator<T> iterator(Enumeration<T> enumeration) {
 		return new Iterator<T>() {
 			@Override
@@ -57,6 +58,7 @@ public final class CollectionsUtil {
 		};
 	}
 	
+	/** Create an Iterable from an Enumeration, but avoiding to create a list, so the Iterable can be iterated only once. */
 	public static <T> Iterable<T> singleTimeIterable(Enumeration<T> enumeration) {
 		return new Iterable<T>() {
 			@Override

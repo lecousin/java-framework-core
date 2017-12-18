@@ -233,6 +233,7 @@ public final class ClassUtil {
 		throw new NoSuchFieldException("Unknown field path '" + path + "'");
 	}
 	
+	/** Returns all annotations including those on the superclass and implemented interfaces. */
 	public static List<Annotation> getAllAnnotations(Class<?> clazz) {
 		List<Annotation> list = new LinkedList<>();
 		getAllAnnotations(clazz, list);
@@ -248,9 +249,12 @@ public final class ClassUtil {
 			getAllAnnotations(i, list);
 	}
 	
+	/** Expand repeatable annotations. */
 	public static List<Annotation> expandRepeatableAnnotations(Annotation[] list) {
 		return expandRepeatableAnnotations(Arrays.asList(list));
 	}
+	
+	/** Expand repeatable annotations. */
 	public static List<Annotation> expandRepeatableAnnotations(Iterable<Annotation> list) {
 		LinkedList<Annotation> result = new LinkedList<>();
 		for (Annotation a : list) {

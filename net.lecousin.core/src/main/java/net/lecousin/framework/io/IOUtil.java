@@ -1116,7 +1116,12 @@ public class IOUtil {
 		} while (true);
 	}
 	
-	public static <T> void listenOnDone(AsyncWork<T, IOException> toListen, AsyncWork<T, IOException> toUnblock, RunnableWithParameter<Pair<T,IOException>> ondone) {
+	/** Listen to the given asynchronous operation, then unblock <code>toUnblock</code> with its result/error/cancellation,
+	 * but calls ondone before if not null and the result is not cancelled.
+	 */
+	public static <T> void listenOnDone(
+		AsyncWork<T, IOException> toListen, AsyncWork<T, IOException> toUnblock, RunnableWithParameter<Pair<T,IOException>> ondone
+	) {
 		toListen.listenInline(
 			(result) -> {
 				if (ondone != null) ondone.run(new Pair<>(result, null));
@@ -1132,7 +1137,14 @@ public class IOUtil {
 		);
 	}
 
-	public static <T, T2> void listenOnDone(AsyncWork<T, IOException> toListen, Listener<T> onReady, ISynchronizationPoint<IOException> onErrorOrCancel, RunnableWithParameter<Pair<T2,IOException>> ondone) {
+	/** Listen to <code>toListen</code>, then calls <code>onReady</code> if it succeed.
+	 * In case of error or cancellation, the error or cancellation event is given to <code>onErrorOrCancel</code>.
+	 * If ondone is not null, it is called before <code>onReady</code> and <code>onErrorOrCancel</code>.
+	 */
+	public static <T, T2> void listenOnDone(
+		AsyncWork<T, IOException> toListen, Listener<T> onReady, ISynchronizationPoint<IOException> onErrorOrCancel,
+		RunnableWithParameter<Pair<T2,IOException>> ondone
+	) {
 		toListen.listenInline(
 			onReady,
 			(error) -> {

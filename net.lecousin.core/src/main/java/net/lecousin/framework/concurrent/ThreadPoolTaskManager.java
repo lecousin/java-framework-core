@@ -3,8 +3,18 @@ package net.lecousin.framework.concurrent;
 import java.util.LinkedList;
 import java.util.concurrent.ThreadFactory;
 
+/**
+ * A Task Manager that use a pool of threads to execute tasks.
+ * This is used for unmanaged tasks, that may use several physical resources and block at any time,
+ * typically when using functionalities from a library that is not designed to be used with LCCore.
+ * Each time a new task comes, if the number of active threads is less than the maximum number of threads,
+ * a new thread is launched to execute the task, else it is queued.
+ * When a thread finishes a task, it checkes if tasks are present in the queue. If yes, it peeks one and
+ * execute it. Else the thread ends.
+ */
 public class ThreadPoolTaskManager extends TaskManager {
 
+	/** Constructor. */
 	public ThreadPoolTaskManager(
 		String name, Object resource, int maxThreads, ThreadFactory threadFactory, Class<? extends TaskPriorityManager> taskPriorityManager
 	) {

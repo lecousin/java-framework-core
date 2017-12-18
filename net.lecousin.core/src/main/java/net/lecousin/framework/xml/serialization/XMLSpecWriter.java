@@ -15,38 +15,51 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
 import net.lecousin.framework.io.serialization.AbstractSerializationSpecWriter;
-import net.lecousin.framework.io.serialization.SerializationContext;
-import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
+import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
+import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.xml.XMLUtil;
 import net.lecousin.framework.xml.XMLWriter;
 
+/** Write an XSD corresponding to what would be serialized in XML. */
 public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 
+	/** Constructor. */
 	public XMLSpecWriter(String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces) {
 		this(rootNamespaceURI, rootLocalName, namespaces, StandardCharsets.UTF_8, true);
 	}
 
+	/** Constructor. */
 	public XMLSpecWriter(String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces, boolean includeXMLDeclaration) {
 		this(rootNamespaceURI, rootLocalName, namespaces, StandardCharsets.UTF_8, includeXMLDeclaration);
 	}
 
+	/** Constructor. */
 	public XMLSpecWriter(String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces, Charset encoding) {
 		this(rootNamespaceURI, rootLocalName, namespaces, encoding, 4096, true);
 	}
 
-	public XMLSpecWriter(String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces, Charset encoding, boolean includeXMLDeclaration) {
+	/** Constructor. */
+	public XMLSpecWriter(
+		String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces,
+		Charset encoding, boolean includeXMLDeclaration
+	) {
 		this(rootNamespaceURI, rootLocalName, namespaces, encoding, 4096, includeXMLDeclaration);
 	}
 
+	/** Constructor. */
 	public XMLSpecWriter(String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces, Charset encoding, int bufferSize) {
 		this(rootNamespaceURI, rootLocalName, namespaces, encoding, bufferSize, true);
 	}
 	
-	public XMLSpecWriter(String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces, Charset encoding, int bufferSize, boolean includeXMLDeclaration) {
+	/** Constructor. */
+	public XMLSpecWriter(
+		String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces,
+		Charset encoding, int bufferSize, boolean includeXMLDeclaration
+	) {
 		this.rootNamespaceURI = rootNamespaceURI;
 		this.rootLocalName = rootLocalName;
 		this.namespaces = namespaces;
@@ -128,15 +141,16 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		return output.closeElement();
 	}
 	
+	/** Return the name for a type, replacing dollars by minus character. */
 	public static String getTypeName(Class<?> type) {
 		return type.getName().replace('$', '-');
 	}
 	
-	protected static class TypeContext {
+	private static class TypeContext {
 		public boolean sequenceStarted = false;
 	}
 	
-	protected LinkedList<TypeContext> typesContext = new LinkedList<>();
+	private LinkedList<TypeContext> typesContext = new LinkedList<>();
 
 	@Override
 	protected ISynchronizationPoint<? extends Exception> specifyAnyValue(SerializationContext context) {

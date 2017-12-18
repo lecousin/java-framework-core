@@ -26,7 +26,7 @@ public final class TaskMonitoring {
 	
 	private static TaskMonitor monitor;
 	
-	synchronized static void start(ThreadFactory threadFactory) {
+	static synchronized void start(ThreadFactory threadFactory) {
 		if (monitor != null) return;
 		monitor = new TaskMonitor();
 		threadFactory.newThread(monitor).start();

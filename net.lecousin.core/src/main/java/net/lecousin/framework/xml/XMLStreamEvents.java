@@ -299,6 +299,7 @@ public abstract class XMLStreamEvents {
 	
 	private static boolean[] isSpace = new boolean[] { true, true, false, false, true };
 	
+	/** Return true if the given character is considered as a white space. */
 	public static boolean isSpaceChar(char c) {
 		if (c == 0x20) return true;
 		if (c > 0xD) return false;
@@ -308,6 +309,7 @@ public abstract class XMLStreamEvents {
 	
 	/* Charset handling */
 
+	/** Helper class to start parsing the XML file and detect the encoding, either with a BOM or with the XML declaration tag. */
 	protected static class Starter {
 		public Starter(IO.Readable.Buffered io, Charset givenEncoding, int bufferSize) {
 			this.io = io;
@@ -540,23 +542,32 @@ public abstract class XMLStreamEvents {
 			while (isSpaceChar(c = nextChar()));
 			if (c == 'e' || c == 'E') {
 				c = nextChar();
-				if (c != 'n' && c != 'N') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'e" + c + "'");
+				if (c != 'n' && c != 'N')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'e" + c + "'");
 				c = nextChar();
-				if (c != 'c' && c != 'C') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'en" + c + "'");
+				if (c != 'c' && c != 'C')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'en" + c + "'");
 				c = nextChar();
-				if (c != 'o' && c != 'O') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'enc" + c + "'");
+				if (c != 'o' && c != 'O')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'enc" + c + "'");
 				c = nextChar();
-				if (c != 'd' && c != 'D') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'enco" + c + "'");
+				if (c != 'd' && c != 'D')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'enco" + c + "'");
 				c = nextChar();
-				if (c != 'i' && c != 'I') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'encod" + c + "'");
+				if (c != 'i' && c != 'I')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'encod" + c + "'");
 				c = nextChar();
-				if (c != 'n' && c != 'N') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'encodi" + c + "'");
+				if (c != 'n' && c != 'N')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'encodi" + c + "'");
 				c = nextChar();
-				if (c != 'g' && c != 'G') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'encodin" + c + "'");
+				if (c != 'g' && c != 'G')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'encodin" + c + "'");
 				while (isSpaceChar(c = nextChar()));
-				if (c != '=') throw new IOException("Invalid XML Declaration: character '=' expected after attribute name 'encoding'");
+				if (c != '=')
+					throw new IOException("Invalid XML Declaration: character '=' expected after attribute name 'encoding'");
 				while (isSpaceChar(c = nextChar()));
-				if (c != '\'' && c != '"') throw new IOException("Invalid XML Declaration: character ' or \" expected after 'encoding='");
+				if (c != '\'' && c != '"')
+					throw new IOException("Invalid XML Declaration: character ' or \" expected after 'encoding='");
 				c2 = c;
 				xmlEncoding = new UnprotectedStringBuffer();
 				while ((c = nextChar()) != c2)
@@ -565,27 +576,38 @@ public abstract class XMLStreamEvents {
 			}
 			if (c == 's' || c == 'S') {
 				c = nextChar();
-				if (c != 't' && c != 'T') throw new IOException("Invalid XML Declaration: unknown attribute starting with 's" + c + "'");
+				if (c != 't' && c != 'T')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 's" + c + "'");
 				c = nextChar();
-				if (c != 'a' && c != 'A') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'st" + c + "'");
+				if (c != 'a' && c != 'A')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'st" + c + "'");
 				c = nextChar();
-				if (c != 'n' && c != 'N') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'sta" + c + "'");
+				if (c != 'n' && c != 'N')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'sta" + c + "'");
 				c = nextChar();
-				if (c != 'd' && c != 'D') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'stan" + c + "'");
+				if (c != 'd' && c != 'D')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'stan" + c + "'");
 				c = nextChar();
-				if (c != 'a' && c != 'A') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'stand" + c + "'");
+				if (c != 'a' && c != 'A')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'stand" + c + "'");
 				c = nextChar();
-				if (c != 'l' && c != 'L') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standa" + c + "'");
+				if (c != 'l' && c != 'L')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standa" + c + "'");
 				c = nextChar();
-				if (c != 'o' && c != 'O') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standal" + c + "'");
+				if (c != 'o' && c != 'O')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standal" + c + "'");
 				c = nextChar();
-				if (c != 'n' && c != 'N') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standalo" + c + "'");
+				if (c != 'n' && c != 'N')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standalo" + c + "'");
 				c = nextChar();
-				if (c != 'e' && c != 'E') throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standalon" + c + "'");
+				if (c != 'e' && c != 'E')
+					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standalon" + c + "'");
 				while (isSpaceChar(c = nextChar()));
-				if (c != '=') throw new IOException("Invalid XML Declaration: character '=' expected after attribute name 'standalone'");
+				if (c != '=')
+					throw new IOException("Invalid XML Declaration: character '=' expected after attribute name 'standalone'");
 				while (isSpaceChar(c = nextChar()));
-				if (c != '\'' && c != '"') throw new IOException("Invalid XML Declaration: character ' or \" expected after 'standalone='");
+				if (c != '\'' && c != '"')
+					throw new IOException("Invalid XML Declaration: character ' or \" expected after 'standalone='");
 				c2 = c;
 				xmlStandalone = new UnprotectedStringBuffer();
 				while ((c = nextChar()) != c2)
@@ -598,7 +620,10 @@ public abstract class XMLStreamEvents {
 		}
 		
 		protected BufferedReadableCharacterStream end(char[] chars) {
-			return new BufferedReadableCharacterStream(io, tmpDecoder, bufferSize, 8, bytesEnd == bytesStart ? null : ByteBuffer.wrap(bytes, bytesStart, bytesEnd - bytesStart), CharBuffer.wrap(chars));
+			return new BufferedReadableCharacterStream(
+				io, tmpDecoder, bufferSize, 8,
+				bytesEnd == bytesStart ? null : ByteBuffer.wrap(bytes, bytesStart, bytesEnd - bytesStart),
+				CharBuffer.wrap(chars));
 		}
 	}
 
