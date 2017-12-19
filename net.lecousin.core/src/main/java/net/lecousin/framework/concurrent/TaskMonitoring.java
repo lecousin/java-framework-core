@@ -1,16 +1,15 @@
 package net.lecousin.framework.concurrent;
 
 import java.io.Closeable;
-import java.lang.management.LockInfo;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.concurrent.ThreadFactory;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.util.DebugUtil;
 
@@ -44,24 +43,13 @@ public final class TaskMonitoring {
 		}
 	}
 	
-	private static void append(StringBuilder s, LockInfo[] locks) {
-		if (locks.length > 0) {
-			s.append("\r\nLocked synchronizers:");
-			for (int i = 0; i < locks.length; ++i) {
-				s.append("\r\n - ").append(locks[i].toString());
-			}
-		}
-	}
-	
 	private static void appendLocks(StringBuilder s, Thread t) {
 		ThreadMXBean bean = ManagementFactory.getThreadMXBean();
 		if (bean == null) return;
-		ThreadInfo info = bean.getThreadInfo(new long[] { t.getId() }, true, true)[0];
+		ThreadInfo info = bean.getThreadInfo(new long[] { t.getId() }, true, false)[0];
 		if (info == null) return;
 		MonitorInfo[] monitors = info.getLockedMonitors();
-		LockInfo[] locks = info.getLockedSynchronizers();
 		append(s, monitors);
-		append(s, locks);
 	}
 
 	private static class TaskMonitor implements Runnable, Closeable {
@@ -140,16 +128,18 @@ public final class TaskMonitoring {
 		long[] ids = new long[workers.size()];
 		int i = 0;
 		for (TaskWorker w : workers) ids[i++] = w.thread.getId();
-		ThreadInfo[] info = bean.getThreadInfo(ids, true, true);
+		ThreadInfo[] info = bean.getThreadInfo(ids, true, false);
+		Iterator<TaskWorker> it = workers.iterator();
 		for (ThreadInfo ti : info) {
+			TaskWorker w = it.next();
+			Task<?,?> task = w.currentTask;
+			if (task == null) continue;
 			MonitorInfo[] monitors = ti.getLockedMonitors();
-			LockInfo[] locks = ti.getLockedSynchronizers();
-			if (monitors.length == 0 && locks.length == 0) continue;
-			StringBuilder s = new StringBuilder(4096);
-			s.append("TaskWorker is blocked while locking objects:\r\n");
+			if (monitors.length == 0) continue;
+			StringBuilder s = new StringBuilder(1024);
+			s.append("TaskWorker is blocked while locking objects in task ").append(task.description).append(":\r\n");
 			DebugUtil.createStackTrace(s, ti.getStackTrace());
 			append(s, monitors);
-			append(s, locks);
 			Threading.logger.error(s.toString());
 		}
 	}
