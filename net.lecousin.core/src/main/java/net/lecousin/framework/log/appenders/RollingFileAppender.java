@@ -12,6 +12,7 @@ import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.io.FileIO;
+import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.log.LogPattern;
 import net.lecousin.framework.log.LogPattern.Log;
@@ -186,7 +187,8 @@ public class RollingFileAppender implements Appender, Closeable {
 	public synchronized void close() throws IOException {
 		closed = true;
 		if (output != null) {
-			output.close();
+			try { output.close(); }
+			catch (Exception e) { throw IO.error(e); }
 			output = null;
 		}
 	}

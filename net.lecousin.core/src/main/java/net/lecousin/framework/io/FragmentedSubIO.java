@@ -10,6 +10,7 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.math.RangeLong;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -17,7 +18,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * A fragmented sub-IO allows to specify a list of fragments inside a seekable IO, and does like those fragments are a contiguous IO.
  * TODO improve perf by storing the fragment containing the current position ?
  */
-public abstract class FragmentedSubIO extends IO.AbstractIO implements IO.KnownSize, IO.Seekable {
+public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.KnownSize, IO.Seekable {
 
 	/** Constructor. */
 	public FragmentedSubIO(IO.Seekable io, List<RangeLong> fragments, boolean closeParentIOOnClose, String description) {
@@ -35,11 +36,18 @@ public abstract class FragmentedSubIO extends IO.AbstractIO implements IO.KnownS
 	protected long size;
 	protected boolean closeParentIOOnClose;
 	protected String description;
+
+	@Override
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		if (!closeParentIOOnClose) return null;
+		return io.closeAsync();
+	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
-		if (closeParentIOOnClose) return io.closeAsync();
-		return new SynchronizationPoint<>(true);
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		io = null;
+		fragments = null;
+		ondone.unblock();
 	}
 
 	/** Readable fragmented IO. */
@@ -96,7 +104,7 @@ public abstract class FragmentedSubIO extends IO.AbstractIO implements IO.KnownS
 		public AsyncWork<Integer,IOException> readFullyAsync(
 			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 		) {
-			return IOUtil.readFullyAsync(this, pos, buffer, ondone);
+			return operation(IOUtil.readFullyAsync(this, pos, buffer, ondone));
 		}
 		
 		@Override
@@ -178,14 +186,14 @@ public abstract class FragmentedSubIO extends IO.AbstractIO implements IO.KnownS
 					}
 				});
 			}
-			return ((IO.Readable.Seekable)io).readAsync(r.min + start, buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
+			return operation(((IO.Readable.Seekable)io).readAsync(r.min + start, buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
 				@Override
 				public void run(Pair<Integer, IOException> param) {
 					if (param.getValue1() != null)
 						FragmentedSubIO.this.pos = pos + param.getValue1().intValue();
 					if (ondone != null) ondone.run(param);
 				}
-			});
+			}));
 		}
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 		if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(0), null));

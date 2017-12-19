@@ -11,6 +11,7 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -29,7 +30,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  *  <li>If the second buffer is not yet ready, the operation blocks until the second buffer is ready.</li>
  * </ul>
  */
-public class SimpleBufferedReadable extends IO.AbstractIO implements IO.Readable.Buffered {
+public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Readable.Buffered {
 	
 	/** Constructor. */
 	public SimpleBufferedReadable(IO.Readable io, int bufferSize) {

@@ -13,7 +13,7 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.IO.AbstractIO;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -21,7 +21,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * IO implemented with a single byte array.
  * It supports read, write and resize operations.
  */
-public class ByteArrayIO extends AbstractIO 
+public class ByteArrayIO extends ConcurrentCloseable 
 	implements IO.Readable.Buffered, IO.Readable.Seekable, IO.Writable.Seekable, IO.Writable.Buffered, IO.KnownSize, IO.Resizable {
 
 	/** Constructor with initial buffer size of 4096. */
@@ -76,10 +76,15 @@ public class ByteArrayIO extends AbstractIO
 	public void setPriority(byte priority) { this.priority = priority; }
 	
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		return null;
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
 		pos = size = 0;
 		array = null;
-		return new SynchronizationPoint<>(true);
+		ondone.unblock();
 	}
 	
 	@Override
@@ -169,7 +174,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getOutput();
+		return operation(task.getOutput());
 	}
 	
 	@Override
@@ -181,7 +186,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getOutput();
+		return operation(task.getOutput());
 	}
 	
 	@Override
@@ -215,7 +220,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getOutput();
+		return operation(task.getOutput());
 	}
 	
 	/** Convert the content of the buffer into a String encoded with the given charset. */
@@ -289,7 +294,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getOutput();
+		return operation(task.getOutput());
 	}
 	
 	@Override
@@ -301,7 +306,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getOutput();
+		return operation(task.getOutput());
 	}
 	
 	@Override
@@ -329,7 +334,7 @@ public class ByteArrayIO extends AbstractIO
 			}
 		};
 		task.start();
-		return task.getOutput();
+		return operation(task.getOutput());
 	}
 	
 	@Override

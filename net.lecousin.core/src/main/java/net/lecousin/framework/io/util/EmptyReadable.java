@@ -9,13 +9,14 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Implement an empty Readable IO, with Buffered, Seekable and KnownSize capabilities.
  */
-public class EmptyReadable extends IO.AbstractIO implements IO.Readable, IO.KnownSize, IO.Readable.Buffered, IO.Readable.Seekable {
+public class EmptyReadable extends ConcurrentCloseable implements IO.Readable, IO.KnownSize, IO.Readable.Buffered, IO.Readable.Seekable {
 
 	/** Constructor. */
 	public EmptyReadable(String description, byte priority) {

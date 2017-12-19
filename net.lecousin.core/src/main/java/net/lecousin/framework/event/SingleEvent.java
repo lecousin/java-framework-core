@@ -12,6 +12,7 @@ public class SingleEvent<T> implements Listenable<T> {
 	private boolean occured = false;
 	private T data = null;
 	private ArrayList<Listener<T>> listeners = null;
+	private ArrayList<Runnable> listenersRunnable = null;
 	
 	@Override
 	public synchronized void addListener(Listener<T> listener) {
@@ -23,14 +24,29 @@ public class SingleEvent<T> implements Listenable<T> {
 	}
 	
 	@Override
+	public synchronized void addListener(Runnable listener) {
+		if (occured) listener.run();
+		else {
+			if (listenersRunnable == null) listenersRunnable = new ArrayList<>();
+			listenersRunnable.add(listener);
+		}
+	}
+	
+	@Override
 	public synchronized void removeListener(Listener<T> listener) {
 		if (listeners == null) return;
 		listeners.remove(listener);
 	}
 	
 	@Override
+	public synchronized void removeListener(Runnable listener) {
+		if (listenersRunnable == null) return;
+		listenersRunnable.remove(listener);
+	}
+	
+	@Override
 	public boolean hasListeners() {
-		return !listeners.isEmpty();
+		return !listeners.isEmpty() || !listenersRunnable.isEmpty();
 	}
 	
 	/** Fire the event.
@@ -44,6 +60,11 @@ public class SingleEvent<T> implements Listenable<T> {
 			for (Listener<T> listener : listeners)
 				listener.fire(event);
 			listeners = null;
+		}
+		if (listenersRunnable != null) {
+			for (Runnable listener : listenersRunnable)
+				listener.run();
+			listenersRunnable = null;
 		}
 	}
 	

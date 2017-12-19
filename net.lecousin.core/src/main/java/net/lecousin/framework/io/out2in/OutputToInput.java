@@ -15,13 +15,13 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.IO.AbstractIO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
 /** Implementation of IO.OutputToInput using the given IO. */
-public class OutputToInput extends AbstractIO implements IO.OutputToInput, IO.Writable, IO.Readable.Seekable {
+public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInput, IO.Writable, IO.Readable.Seekable {
 
 	/** Constructor. */
 	public <T extends IO.Writable.Seekable & IO.Readable.Seekable> OutputToInput(T io, String sourceDescription) {

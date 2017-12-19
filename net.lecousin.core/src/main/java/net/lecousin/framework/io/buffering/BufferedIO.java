@@ -114,7 +114,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			buffer.buffer = new byte[index == 0 ? firstBufferSize : bufferSize];
 			AsyncWork<Integer,IOException> loading =
 				io.readFullyAsync(index == 0 ? 0 : (firstBufferSize + (index - 1) * bufferSize), ByteBuffer.wrap(buffer.buffer));
-			loading.listenInline(new Runnable() {
+			operation(loading).listenInline(new Runnable() {
 				@Override
 				public void run() {
 					if (loading.isCancelled()) {
@@ -187,8 +187,8 @@ public abstract class BufferedIO extends BufferingManaged {
 	}
 	
 	@Override
-	ISynchronizationPoint<IOException> closed() {
-		ISynchronizationPoint<IOException> sp = io.closeAsync();
+	ISynchronizationPoint<Exception> closed() {
+		ISynchronizationPoint<Exception> sp = io.closeAsync();
 		io = null;
 		buffers = null;
 		return sp;
@@ -215,8 +215,13 @@ public abstract class BufferedIO extends BufferingManaged {
 	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
-		return manager.close(this);
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		return null;
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		manager.close(this).listenInlineSP(ondone);
 	}
 	
 	/** Read-only implementation of BufferedIO. */
@@ -620,9 +625,9 @@ public abstract class BufferedIO extends BufferingManaged {
 			if (newSize == size) return;
 			try {
 				if (newSize > size)
-					increaseSize(newSize).blockResult(0);
+					operation(increaseSize(newSize)).blockResult(0);
 				else
-					decreaseSize(newSize).blockResult(0);
+					operation(decreaseSize(newSize)).blockResult(0);
 			} catch (CancelException e) {
 				throw new IOException("Cancelled", e);
 			}
@@ -631,8 +636,8 @@ public abstract class BufferedIO extends BufferingManaged {
 		@Override
 		public AsyncWork<Void, IOException> setSizeAsync(long newSize) {
 			if (newSize == size) return new AsyncWork<>(null, null);
-			if (newSize > size) return increaseSize(newSize);
-			return decreaseSize(newSize);
+			if (newSize > size) return operation(increaseSize(newSize));
+			return operation(decreaseSize(newSize));
 		}
 		
 		@Override
@@ -787,7 +792,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		};
 		if (sp == null) task.start();
 		else task.startOn(sp, true);
-		return task.getOutput();
+		return operation(task.getOutput());
 	}
 	
 	protected AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
@@ -840,7 +845,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			}
 		};
 		task.startOn(sp, true);
-		return task.getOutput();
+		return operation(task.getOutput());
 	}
 
 	protected int readFully(byte[] buf) throws IOException {
@@ -958,6 +963,10 @@ public abstract class BufferedIO extends BufferingManaged {
 							done.unblockSuccess(Integer.valueOf(result));
 							return;
 						}
+						if (next.isCancelled()) {
+							done.unblockCancel(next.getCancelEvent());
+							return;
+						}
 						if (ondone != null) ondone.run(new Pair<>(null, next.getError()));
 						done.unblockError(next.getError());
 					}
@@ -967,7 +976,8 @@ public abstract class BufferedIO extends BufferingManaged {
 		};
 		if (sp == null) task.start();
 		else task.startOn(sp, true);
-		return done;
+		done.forwardCancel(task.getOutput());
+		return operation(done);
 	}
 	
 	protected AsyncWork<Void,IOException> increaseSize(long newSize) {
@@ -1111,7 +1121,7 @@ public abstract class BufferedIO extends BufferingManaged {
 				AsyncWork<Integer, IOException> write = writeAsync(pos, buf, alreadyDone, null);
 				IOUtil.listenOnDone(write, sp, ondone);
 			}, sp, ondone);
-			return sp;
+			return operation(sp);
 		}
 		
 		int bufferIndex = getBufferIndex(pos);
@@ -1182,7 +1192,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			task.start();
 		else
 			sp.listenAsync(task, true);
-		return done;
+		return operation(done);
 	}
 	
 	protected int writeSync(long pos, ByteBuffer buf, int alreadyDone) throws IOException {

@@ -9,11 +9,12 @@ import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
 /** Implements Readable from an InputStream. */
-public class IOFromInputStream extends IO.AbstractIO implements IO.Readable {
+public class IOFromInputStream extends ConcurrentCloseable implements IO.Readable {
 
 	/** Constructor. */
 	public IOFromInputStream(InputStream stream, String sourceDescription, TaskManager manager, byte priority) {

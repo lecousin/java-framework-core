@@ -14,8 +14,8 @@ import net.lecousin.framework.concurrent.synch.LockPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.IO.AbstractIO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -25,7 +25,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * Optionally a maximum number of pending buffers can be specified. In that case, a write operation can be blocked
  * if the maximum is reached, until a buffer is consumed.
  */
-public class OutputToInputBuffers extends AbstractIO implements IO.OutputToInput, IO.Writable, IO.Readable, IO.Readable.Buffered {
+public class OutputToInputBuffers extends ConcurrentCloseable implements IO.OutputToInput, IO.Writable, IO.Readable, IO.Readable.Buffered {
 
 	/** Constructor.
 	 * @param copyReceivedBuffers if true, the buffer receive through write operation are copied, so they can be reused by the calling process

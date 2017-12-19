@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -15,13 +14,14 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.util.ConcurrentCloseable;
 
 /**
  * IO that can read bytes backward.
  * It is buffered, so it implements ReadableByteStream to read forward.
  * A typical usage is when searching for a specific pattern starting from the end of an IO.
  */
-public class BufferedReverseIOReading extends IO.AbstractIO implements IO.ReadableByteStream {
+public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.ReadableByteStream {
 
 	/** Create an IO capable to read bytes backward from a Seekable. */
 	public <T extends IO.Readable.Seekable & IO.KnownSize> BufferedReverseIOReading(T io, int bufferSize) {
@@ -30,12 +30,12 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 		io.getSizeAsync().listenInline(new AsyncWorkListener<Long, IOException>() {
 			@Override
 			public void ready(Long result) {
-				new Task.Cpu.FromRunnable("Read last buffer", io.getPriority(), () -> {
+				operation(new Task.Cpu.FromRunnable("Read last buffer", io.getPriority(), () -> {
 					synchronized (BufferedReverseIOReading.this) {
 						fileSize = bufferPosInFile = result.longValue();
 						readBufferBack();
 					}
-				}).start();
+				}).start().getOutput());
 			}
 			
 			@Override
@@ -95,14 +95,16 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 	public TaskManager getTaskManager() { return Threading.getCPUTaskManager(); }
 	
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		stop();
-		ISynchronizationPoint<IOException> sp = io.closeAsync();
-		synchronized (this) {
-			buffer = null;
-			io = null;
-		}
-		return sp;
+		return io.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		buffer = null;
+		io = null;
+		ondone.unblock();
 	}
 	
 	/** Read a byte backward. */
@@ -257,7 +259,7 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 		}
 		ByteBuffer buf = ByteBuffer.wrap(buffer, start, len);
 		currentRead = io.readFullyAsync(bufferPosInFile - len, buf);
-		currentRead.listenAsync(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
+		currentRead.listenAsync(operation(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
 			synchronized (BufferedReverseIOReading.this) {
 				if (!currentRead.isSuccessful()) {
 					error = currentRead.getError();
@@ -269,7 +271,7 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 				currentRead = null;
 			}
 			canRead.unblock();
-		}), true);
+		})), true);
 	}
 	
 	private void readBufferForward() {
@@ -300,7 +302,7 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 			len = (int)(fileSize - (bufferPosInFile + (maxInBuffer - minInBuffer)));
 		ByteBuffer buf = ByteBuffer.wrap(buffer, start, len);
 		currentRead = io.readFullyAsync(bufferPosInFile + (maxInBuffer - minInBuffer), buf);
-		currentRead.listenAsync(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
+		currentRead.listenAsync(operation(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
 			synchronized (BufferedReverseIOReading.this) {
 				if (!currentRead.isSuccessful()) {
 					error = currentRead.getError();
@@ -311,7 +313,7 @@ public class BufferedReverseIOReading extends IO.AbstractIO implements IO.Readab
 				currentRead = null;
 			}
 			canRead.unblock();
-		}), true);
+		})), true);
 	}
 
 }

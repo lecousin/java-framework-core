@@ -29,7 +29,8 @@ public class BufferedToInputStream extends InputStream {
 	
 	@Override
 	public void close() throws IOException {
-		io.close();
+		try { io.close(); }
+		catch (Exception e) { throw IO.error(e); }
 	}
 	
 	@Override

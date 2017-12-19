@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -20,6 +19,7 @@ import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -39,7 +39,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * <br/>
  * If the source IO is not Buffered, as PreBufferedReadable wraps it in order to read data in advance.
  */
-public class ReadableToSeekable extends IO.AbstractIO implements IO.Readable.Seekable, IO.Readable.Buffered, IO.KnownSize {
+public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readable.Seekable, IO.Readable.Buffered, IO.KnownSize {
 
 	/** Constructor. */
 	public ReadableToSeekable(IO.Readable io, int bufferSize) throws IOException {

@@ -18,6 +18,7 @@ import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.mutable.Mutable;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -31,7 +32,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * <br/>
  * This IO is writable and readable: the written data are readable.
  */
-public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seekable, IO.Writable.Seekable, IO.KnownSize, IO.Resizable {
+public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable.Seekable, IO.Writable.Seekable, IO.KnownSize, IO.Resizable {
 
 	/** Constructor. */
 	public IOInMemoryOrFile(int maxSizeInMemory, byte priority, String sourceDescription) {
@@ -88,24 +89,28 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 	}
 	
 	@Override
-	protected SynchronizationPoint<IOException> closeIO() {
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		if (file != null) {
-			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+			SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 			file.closeAsync().listenInline(new Runnable() {
 				@Override
 				public void run() {
 					if (!file.getFile().delete())
 						LCCore.getApplication().getDefaultLogger()
 							.warn("Unable to remove temporary file: " + file.getFile().getAbsolutePath());
-					file = null;
 					sp.unblock();
 				}
-			});
-			memory = null;
+			}, sp);
 			return sp;
 		}
+		return null;
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		file = null;
 		memory = null;
-		return new SynchronizationPoint<>(true);
+		ondone.unblock();
 	}
 	
 	@Override
@@ -247,7 +252,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 			IOUtil.listenOnDone(resize, (res) -> {
 				writeAsync(p, buffer, ondone).listenInline(result);
 			}, result, ondone);
-			return result;
+			return operation(result);
 		}
 		int len = buffer.remaining();
 		if (pos < maxSizeInMemory) {
@@ -258,7 +263,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 				this.pos = pos + len;
 				if (pos + len > size) size = pos + len;
 				task.start();
-				return task.getOutput();
+				return operation(task.getOutput());
 			}
 			// some other will go to file
 			Task<Integer,IOException> mem = new WriteInMemory((int)pos, buffer, (int)(maxSizeInMemory - pos), null);
@@ -295,7 +300,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 					if (fil.get() != null) fil.get().unblockCancel(event);
 				}
 			});
-			return sp;
+			return operation(sp);
 		}
 		// all go to file
 		if (file == null)
@@ -307,7 +312,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 		AsyncWork<Integer,IOException> task = ((IO.Writable.Seekable)file).writeAsync(pos - maxSizeInMemory, buffer, ondone);
 		this.pos = pos + len;
 		if (pos + len > size) size = pos + len;
-		return task;
+		return operation(task);
 	}
 	
 	@Override
@@ -400,11 +405,12 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 						return null;
 					}
 				};
+				operation(task);
 				task.start();
 				return task.getOutput();
 			}
 			AsyncWork<Void, IOException> result = new AsyncWork<>();
-			AsyncWork<Void, IOException> resize = file.setSizeAsync(newSize - maxSizeInMemory);
+			AsyncWork<Void, IOException> resize = operation(file.setSizeAsync(newSize - maxSizeInMemory));
 			resize.listenInline(() -> {
 				size = newSize;
 				if (pos > size) pos = size;
@@ -435,14 +441,14 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 					}
 			};
 			task.start();
-			taskMemory = task.getOutput();
+			taskMemory = operation(task.getOutput());
 		}
 		AsyncWork<Void, IOException> taskFile = null;
 		if (newSize > maxSizeInMemory) {
 			if (file == null)
 				try { createFile(); }
 				catch (IOException e) { return new AsyncWork<>(null, e); }
-			taskFile = file.setSizeAsync(newSize - maxSizeInMemory);
+			taskFile = operation(file.setSizeAsync(newSize - maxSizeInMemory));
 		}
 		AsyncWork<Void, IOException> result = new AsyncWork<>();
 		JoinPoint.fromSynchronizationPointsSimilarError(taskMemory, taskFile).listenInline(() -> {
@@ -529,6 +535,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 				len = (int)(maxSizeInMemory - pos);
 			ReadInMemory task = new ReadInMemory((int)pos, len, buffer, ondone);
 			this.pos = pos + len;
+			operation(task);
 			task.start();
 			return task.getOutput();
 		}
@@ -560,7 +567,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 					}
 				}
 			);
-		return task;
+		return operation(task);
 	}
 	
 	@Override
@@ -586,9 +593,9 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 				mem = new ReadInMemory((int)pos, (int)(maxSizeInMemory - pos), buffer, null);
 				pos = this.pos = maxSizeInMemory;
 				len -= (int)(maxSizeInMemory - pos);
-				mem.start();
+				operation(mem.start());
 			} else {
-				mem = new ReadInMemory((int)pos, len, buffer, ondone);
+				mem = operation(new ReadInMemory((int)pos, len, buffer, ondone));
 				this.pos = pos + len;
 				mem.start();
 				return mem.getOutput();
@@ -601,7 +608,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 		final int l = len;
 		Mutable<AsyncWork<Integer,IOException>> fil = new Mutable<>(null);
 		IOUtil.listenOnDone(mem.getOutput(), (result) -> {
-			fil.set(readFromFile(0, l, buffer, null));
+			fil.set(operation(readFromFile(0, l, buffer, null)));
 			IOUtil.listenOnDone(fil.get(), (result2) -> {
 				Integer r = Integer.valueOf(result.intValue() + result2.intValue());
 				if (ondone != null) ondone.run(new Pair<>(r, null));
@@ -649,7 +656,7 @@ public class IOInMemoryOrFile extends IO.AbstractIO implements IO.Readable.Seeka
 					if (ondone != null) ondone.run(param);
 				}
 			});
-		return task;
+		return operation(task);
 	}
 
 	private class ReadInMemory extends Task.Cpu<Integer,IOException> {

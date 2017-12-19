@@ -8,13 +8,14 @@ import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Implements Writable from an OutputStream.
  */
-public class IOFromOutputStream extends IO.AbstractIO implements IO.Writable {
+public class IOFromOutputStream extends ConcurrentCloseable implements IO.Writable {
 
 	/** Constructor. */
 	public IOFromOutputStream(OutputStream stream, String sourceDescription, TaskManager manager, byte priority) {

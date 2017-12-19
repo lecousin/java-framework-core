@@ -8,15 +8,17 @@ import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.concurrent.tasks.drives.FileAccess;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * IO on a file, using one of the 3 sub-classes: FileIO.ReadOnly, FileIO.WriteOnly, FileIO.ReadWrite.
  */
-public abstract class FileIO extends IO.AbstractIO implements IO.KnownSize {
+public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize {
 
 	protected FileIO(File file, String mode, byte priority) {
 		this.file = new FileAccess(file, mode, priority);
@@ -315,7 +317,7 @@ public abstract class FileIO extends IO.AbstractIO implements IO.KnownSize {
 	}
 	
 	protected AsyncWork<Long,IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return file.seekAsync(type, move, false, ondone).getOutput();
+		return operation(file.seekAsync(type, move, false, ondone).getOutput());
 	}
 	
 	protected long skipSync(long n) throws IOException {
@@ -323,7 +325,7 @@ public abstract class FileIO extends IO.AbstractIO implements IO.KnownSize {
 	}
 	
 	protected AsyncWork<Long,IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return file.skipAsync(n, ondone).getOutput();
+		return operation(file.skipAsync(n, ondone).getOutput());
 	}
 	
 	@Override
@@ -335,7 +337,7 @@ public abstract class FileIO extends IO.AbstractIO implements IO.KnownSize {
 	public AsyncWork<Long, IOException> getSizeAsync() {
 		AsyncWork<Long, IOException> sp = new AsyncWork<>();
 		file.getSize(sp);
-		return sp;
+		return operation(sp);
 	}
 	
 	protected void setSizeSync(long size) throws IOException {
@@ -343,12 +345,17 @@ public abstract class FileIO extends IO.AbstractIO implements IO.KnownSize {
 	}
 	
 	protected AsyncWork<Void,IOException> setSizeAsync(long size) {
-		return file.setSizeAsync(size).getOutput();
+		return operation(file.setSizeAsync(size).getOutput());
 	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
-		return file.closeAsync().getOutput();
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		return null;
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		file.closeAsync().getOutput().listenInlineSP(ondone);
 	}
 	
 	protected int readSync(ByteBuffer buffer) throws IOException {
@@ -360,11 +367,11 @@ public abstract class FileIO extends IO.AbstractIO implements IO.KnownSize {
 	}
 	
 	protected AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return file.readAsync(-1, buffer, ondone).getOutput();
+		return operation(file.readAsync(-1, buffer, ondone).getOutput());
 	}
 	
 	protected AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return file.readAsync(pos, buffer, ondone).getOutput();
+		return operation(file.readAsync(pos, buffer, ondone).getOutput());
 	}
 	
 	protected int readFullySync(ByteBuffer buffer) throws IOException {
@@ -376,12 +383,12 @@ public abstract class FileIO extends IO.AbstractIO implements IO.KnownSize {
 	}
 	
 	protected AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return file.readFullyAsync(-1, buffer, ondone).getOutput();
+		return operation(file.readFullyAsync(-1, buffer, ondone).getOutput());
 	}
 	
 	protected AsyncWork<Integer,IOException>
 	readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return file.readFullyAsync(pos, buffer, ondone).getOutput();
+		return operation(file.readFullyAsync(pos, buffer, ondone).getOutput());
 	}
 	
 	protected int writeSync(ByteBuffer buffer) throws IOException {
@@ -393,11 +400,11 @@ public abstract class FileIO extends IO.AbstractIO implements IO.KnownSize {
 	}
 	
 	protected AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return file.writeAsync(-1, buffer, ondone).getOutput();
+		return operation(file.writeAsync(-1, buffer, ondone).getOutput());
 	}
 	
 	protected AsyncWork<Integer,IOException> writeAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return file.writeAsync(pos, buffer, ondone).getOutput();
+		return operation(file.writeAsync(pos, buffer, ondone).getOutput());
 	}
 
 }

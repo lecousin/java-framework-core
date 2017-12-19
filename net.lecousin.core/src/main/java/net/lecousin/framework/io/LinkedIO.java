@@ -14,16 +14,16 @@ import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
-import net.lecousin.framework.io.IO.AbstractIO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.mutable.MutableLong;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Make several IOs as a single one.
  */
-public abstract class LinkedIO extends AbstractIO {
+public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 
 	protected LinkedIO(String description, Collection<IO> ios) {
 		this.description = description;
@@ -77,11 +77,18 @@ public abstract class LinkedIO extends AbstractIO {
 	}
 	
 	@Override
-	protected SynchronizationPoint<IOException> closeIO() {
-		JoinPoint<IOException> jp = new JoinPoint<>();
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		JoinPoint<Exception> jp = new JoinPoint<>();
 		for (IO io : ios) jp.addToJoin(io.closeAsync());
 		jp.start();
 		return jp;
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		ios = null;
+		sizes = null;
+		ondone.unblock();
 	}
 	
 	
@@ -456,6 +463,7 @@ public abstract class LinkedIO extends AbstractIO {
 			} else
 				ondone.run();
 		});
+		operation(seek);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -470,6 +478,7 @@ public abstract class LinkedIO extends AbstractIO {
 			} else
 				ondone.run();
 		});
+		operation(seek);
 	}
 
 	@SuppressWarnings("resource")
@@ -521,7 +530,7 @@ public abstract class LinkedIO extends AbstractIO {
 		AsyncWork<Integer, IOException> result = new AsyncWork<Integer, IOException>();
 		IO.Readable io = (IO.Readable)ios.get(ioIndex);
 		AsyncWork<Integer, IOException> read = io.readAsync(buffer);
-		read.listenInline(new AsyncWorkListener<Integer, IOException>() {
+		operation(read).listenInline(new AsyncWorkListener<Integer, IOException>() {
 			@Override
 			public void ready(Integer nb) {
 				if (nb.intValue() <= 0) {
@@ -575,7 +584,7 @@ public abstract class LinkedIO extends AbstractIO {
 		IO.Readable.Buffered io = (IO.Readable.Buffered)ios.get(ioIndex);
 		AsyncWork<ByteBuffer, IOException> result = new AsyncWork<>();
 		AsyncWork<ByteBuffer, IOException> read = io.readNextBufferAsync();
-		read.listenInline(new AsyncWorkListener<ByteBuffer, IOException>() {
+		operation(read).listenInline(new AsyncWorkListener<ByteBuffer, IOException>() {
 			@Override
 			public void ready(ByteBuffer buf) {
 				if (buf == null) {
@@ -675,7 +684,7 @@ public abstract class LinkedIO extends AbstractIO {
 			IO.Readable io = (IO.Readable)ios.get(ioIndex);
 			MutableLong done = new MutableLong(0);
 			AsyncWork<Long, IOException> skip = io.skipAsync(n);
-			skip.listenInline(new AsyncWorkListener<Long, IOException>() {
+			operation(skip).listenInline(new AsyncWorkListener<Long, IOException>() {
 				@Override
 				public void ready(Long nb) {
 					posInIO += nb.longValue();
@@ -699,7 +708,7 @@ public abstract class LinkedIO extends AbstractIO {
 					nextIOAsync(new Runnable() {
 						@Override
 						public void run() {
-							((IO.Readable)ios.get(ioIndex)).skipAsync(n - done.get(), null).listenInline(l);
+							operation(((IO.Readable)ios.get(ioIndex)).skipAsync(n - done.get(), null)).listenInline(l);
 						}
 					}, result, ondone);
 				}
@@ -739,7 +748,7 @@ public abstract class LinkedIO extends AbstractIO {
 		IO.Readable io = (IO.Readable)ios.get(ioIndex);
 		AsyncWork<Long, IOException> skip = io.skipAsync(n);
 		MutableLong done = new MutableLong(0);
-		skip.listenInline(new AsyncWorkListener<Long, IOException>() {
+		operation(skip).listenInline(new AsyncWorkListener<Long, IOException>() {
 			@Override
 			public void ready(Long nb) {
 				posInIO += nb.longValue();
@@ -834,7 +843,7 @@ public abstract class LinkedIO extends AbstractIO {
 			sizes[i] = ((IO.KnownSize)ios.get(i)).getSizeAsync();
 		JoinPoint<IOException> jp = JoinPoint.fromSynchronizationPointsSimilarError(sizes);
 		AsyncWork<Long, IOException> result = new AsyncWork<Long, IOException>();
-		jp.listenInline(
+		operation(jp).listenInline(
 			() -> {
 				long total = 0;
 				for (int i = 0; i < sizes.length; ++i)
@@ -903,7 +912,7 @@ public abstract class LinkedIO extends AbstractIO {
 	}
 
 	protected AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return IOUtil.seekAsyncUsingSync((IO.Readable.Seekable)this, type, move, ondone).getOutput();
+		return operation(IOUtil.seekAsyncUsingSync((IO.Readable.Seekable)this, type, move, ondone).getOutput());
 	}
 
 	// skip checkstyle: OverloadMethodsDeclarationOrder
@@ -937,7 +946,7 @@ public abstract class LinkedIO extends AbstractIO {
 		long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 	) {
 		// TODO better
-		return IOUtil.readAsyncUsingSync((IO.Readable.Seekable)this, pos, buffer, ondone).getOutput();
+		return operation(IOUtil.readAsyncUsingSync((IO.Readable.Seekable)this, pos, buffer, ondone).getOutput());
 	}
 
 	protected int readFullySync(long pos, ByteBuffer buffer) throws IOException {
@@ -947,7 +956,7 @@ public abstract class LinkedIO extends AbstractIO {
 	protected AsyncWork<Integer, IOException> readFullyAsync(
 		long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 	) {
-		return IOUtil.readFullyAsync((IO.Readable.Seekable)this, pos, buffer, ondone);
+		return operation(IOUtil.readFullyAsync((IO.Readable.Seekable)this, pos, buffer, ondone));
 	}
 	
 }

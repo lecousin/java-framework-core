@@ -32,7 +32,17 @@ public class ListenableProperty<T> extends Mutable<T> implements Listenable<T> {
 	}
 	
 	@Override
+	public void addListener(Runnable listener) {
+		event.addListener(listener);
+	}
+	
+	@Override
 	public void removeListener(Listener<T> listener) {
+		event.removeListener(listener);
+	}
+	
+	@Override
+	public void removeListener(Runnable listener) {
 		event.removeListener(listener);
 	}
 	

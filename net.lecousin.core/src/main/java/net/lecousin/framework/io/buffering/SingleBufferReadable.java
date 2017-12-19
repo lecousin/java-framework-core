@@ -11,6 +11,7 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -25,7 +26,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * file, but the next file may require to ask the user to insert a new disc. In that case, if we try to fill a buffer in
  * advance we may ask the user to insert a disc that does not exist, because we don't know in advance the number of discs.
  */
-public class SingleBufferReadable extends IO.AbstractIO implements IO.Readable.Buffered {
+public class SingleBufferReadable extends ConcurrentCloseable implements IO.Readable.Buffered {
 
 	/** Constructor. */
 	public SingleBufferReadable(IO.Readable io, int bufferSize, boolean useReadFully) {

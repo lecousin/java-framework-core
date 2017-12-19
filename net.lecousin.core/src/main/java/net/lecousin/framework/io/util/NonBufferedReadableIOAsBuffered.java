@@ -10,6 +10,7 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -18,7 +19,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * An example it cannot be used is in case of a non-seekable IO, and we do not know in advance the size
  * of the data to read. Because we cannot seek, we may not exceed a certain position in the stream.
  */
-public class NonBufferedReadableIOAsBuffered extends IO.AbstractIO implements IO.Readable.Buffered {
+public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable implements IO.Readable.Buffered {
 
 	/** Constructor. */
 	public NonBufferedReadableIOAsBuffered(IO.Readable io) {

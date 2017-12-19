@@ -9,14 +9,15 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Sub-part of an IO.
  */
-public abstract class SubIO extends IO.AbstractIO {
-	
+public abstract class SubIO extends ConcurrentCloseable {
+
 	/**
 	 * Sub-part of a Readable IO.
 	 */
@@ -53,10 +54,15 @@ public abstract class SubIO extends IO.AbstractIO {
 		public void setPriority(byte priority) { io.setPriority(priority); }
 		
 		@Override
-		protected ISynchronizationPoint<IOException> closeIO() {
-			if (closeContainer)
-				return io.closeAsync();
-			return new SynchronizationPoint<>(true);
+		protected ISynchronizationPoint<?> closeUnderlyingResources() {
+			if (!closeContainer) return null;
+			return io.closeAsync();
+		}
+		
+		@Override
+		protected void closeResources(SynchronizationPoint<Exception> ondone) {
+			io = null;
+			ondone.unblock();
 		}
 		
 		@Override

@@ -11,13 +11,14 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Read an IO.Readable into 2 buffers, then those buffers can be read when ready.
  */
-public class TwoBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered, IO.Readable.Seekable, IO.KnownSize {
+public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buffered, IO.Readable.Seekable, IO.KnownSize {
 
 	/** Constructor. */
 	public TwoBuffersIO(IO.Readable io, int firstBuffer, int secondBuffer) {

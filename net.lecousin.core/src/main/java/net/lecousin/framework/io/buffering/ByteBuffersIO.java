@@ -13,6 +13,7 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 import net.lecousin.framework.util.Triple;
@@ -20,7 +21,7 @@ import net.lecousin.framework.util.Triple;
 /**
  * Implementation of IO using a list of byte array.
  */
-public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered, IO.Readable.Seekable, IO.KnownSize, IO.Writable {
+public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Buffered, IO.Readable.Seekable, IO.KnownSize, IO.Writable {
 
 	/** Constructor.
 	 * @param copyBuffers if true each written buffer is copied into a new buffer,
@@ -107,7 +108,7 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput();
+		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput());
 	}
 
 	@Override
@@ -119,7 +120,7 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 			}
 		};
 		task.start();
-		return task.getOutput();
+		return operation(task.getOutput());
 	}
 	
 	@Override
@@ -141,7 +142,7 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 			}
 		};
 		task.start();
-		return task.getOutput();
+		return operation(task.getOutput());
 	}
 
 	@Override
@@ -314,9 +315,14 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 	}
 
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		return null;
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
 		buffers = null;
-		return new SynchronizationPoint<>(true);
+		ondone.unblock();
 	}
 
 	@Override
@@ -332,7 +338,7 @@ public class ByteBuffersIO extends IO.AbstractIO implements IO.Readable.Buffered
 			if (ondone != null) ondone.run(new Pair<>(r, null));
 			return new AsyncWork<>(r, null);
 		}
-		return IOUtil.writeAsyncUsingSync(this, buffer, ondone).getOutput();
+		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone).getOutput());
 	}
 	
 }

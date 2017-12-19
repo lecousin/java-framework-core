@@ -1,24 +1,20 @@
 package net.lecousin.framework.io;
 
-import java.io.Closeable;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
-import net.lecousin.framework.util.AsyncCloseable;
+import net.lecousin.framework.util.IConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Base interface for all IO, see the package documentation {@link net.lecousin.framework.io}.
  */
-public interface IO extends AutoCloseable, Closeable, AsyncCloseable<IOException> {
+public interface IO extends IConcurrentCloseable {
 	
 	/** Describe the IO, which can be used for logging or debugging purposes. */
 	public String getSourceDescription();
@@ -27,19 +23,6 @@ public interface IO extends AutoCloseable, Closeable, AsyncCloseable<IOException
 	 * or null if it does not wrap another IO.
 	 */
 	public IO getWrappedIO();
-	
-	/** Synchronous close. */
-	@Override
-	public void close() throws IOException;
-	
-	/** Add a listener to be called once this IO is closed. */
-	public void onclose(Runnable listener);
-	
-	/** Calling this method avoid the IO to be closed. For each call to this function, a call to the unlockClose method must be done. */
-	public void lockClose();
-	
-	/** Allow to close this IO, if this is the last lock on it. If the close method was previously called but locked, the IO is closed. */
-	public void unlockClose();
 	
 	/** Synchronous ou asynchronous operation. */
 	public enum OperationType {
@@ -366,74 +349,6 @@ public interface IO extends AutoCloseable, Closeable, AsyncCloseable<IOException
 		
 		/** Signal that no more data will be written by the producer because of an error. */
 		public void signalErrorBeforeEndOfData(IOException error);
-	}
-	
-	/** Abstract class that implements the methods lockClose, unlockClose and onClose. */
-	public abstract static class AbstractIO implements IO {
-		private ArrayList<Runnable> closeListeners = null;
-		private int closeLocked = 0;
-		private SynchronizationPoint<IOException> waitForClose = null;
-		
-		protected abstract ISynchronizationPoint<IOException> closeIO();
-		
-		@Override
-		public final void close() throws IOException {
-			if (closeLocked > 0) return;
-			if (closeListeners != null) {
-				for (Runnable listener : closeListeners)
-					listener.run();
-				closeListeners = null;
-			}
-			ISynchronizationPoint<IOException> sp = closeIO();
-			sp.blockException(0);
-		}
-		
-		@Override
-		public ISynchronizationPoint<IOException> closeAsync() {
-			synchronized (this) {
-				if (closeLocked > 0) {
-					if (waitForClose == null) waitForClose = new SynchronizationPoint<>();
-					return waitForClose;
-				}
-			}
-			if (closeListeners != null) {
-				for (Runnable listener : closeListeners)
-					listener.run();
-				closeListeners = null;
-			}
-			return closeIO();
-		}
-		
-		@Override
-		public void onclose(Runnable listener) {
-			synchronized (this) {
-				if (closeListeners == null) closeListeners = new ArrayList<>(2);
-				closeListeners.add(listener);
-			}
-		}
-		
-		@Override
-		public synchronized void lockClose() {
-			closeLocked++;
-		}
-		
-		@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
-		@Override
-		public void unlockClose() {
-			boolean unblock = false;
-			synchronized (this) {
-				if (--closeLocked == 0) unblock = waitForClose != null;
-			}
-			if (unblock) {
-				if (closeListeners != null) {
-					for (Runnable listener : closeListeners)
-						listener.run();
-					closeListeners = null;
-				}
-				closeIO().listenInline(waitForClose);
-				waitForClose = null;
-			}
-		}
 	}
 	
 }

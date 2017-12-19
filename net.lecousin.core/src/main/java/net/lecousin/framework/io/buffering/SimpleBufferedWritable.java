@@ -11,7 +11,7 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.IO.AbstractIO;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -21,7 +21,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * Once it is full, it is flushed to the underlying writable, and new data are written on the second buffer.<br/>
  * If the second buffer is full before the first one is flushed, operations are blocking.
  */
-public class SimpleBufferedWritable extends AbstractIO implements IO.Writable.Buffered {
+public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Writable.Buffered {
 
 	/** Constructor. */
 	public SimpleBufferedWritable(Writable out, int bufferSize) {

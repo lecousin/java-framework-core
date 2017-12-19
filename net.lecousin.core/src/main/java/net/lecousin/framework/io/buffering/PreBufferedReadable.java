@@ -16,6 +16,7 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -29,7 +30,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * The goal of this implementation is to fill buffers while data is computed, reducing the time waiting for
  * read operations (ideally not blocking if buffers are filled fats enough compare to the data computation).
  */
-public class PreBufferedReadable extends IO.AbstractIO implements IO.Readable.Buffered {
+public class PreBufferedReadable extends ConcurrentCloseable implements IO.Readable.Buffered {
 
 	/** Constructor. */
 	public PreBufferedReadable(

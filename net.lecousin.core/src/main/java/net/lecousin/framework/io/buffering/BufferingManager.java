@@ -124,7 +124,7 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 		}
 	}
 	
-	ISynchronizationPoint<IOException> close(BufferingManaged owner) {
+	ISynchronizationPoint<Exception> close(BufferingManaged owner) {
 		owner.closing = true;
 		ArrayList<AsyncWork<?,?>> tasks = new ArrayList<>();
 		synchronized (buffers) {
@@ -143,7 +143,7 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 				b.owner = null;
 			}
 		}
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		JoinPoint.fromSynchronizationPoints(tasks).listenInline(new Runnable() {
 			@Override
 			public void run() {

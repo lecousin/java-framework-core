@@ -6,6 +6,8 @@ import java.nio.ByteBuffer;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -13,7 +15,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * Add the capability to known on which position we are on an IO.
  * @param <IOType> type of IO
  */
-public abstract class PositionKnownWrapper<IOType extends IO> extends IO.AbstractIO implements IO.PositionKnown {
+public abstract class PositionKnownWrapper<IOType extends IO> extends ConcurrentCloseable implements IO.PositionKnown {
 
 	/** Constructor with initial position. */
 	public PositionKnownWrapper(IOType io, long position) {
@@ -183,7 +185,15 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends IO.Abstrac
 	public long getPosition() { return position; }
 	
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() { return io.closeAsync(); }
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		return io.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		io = null;
+		ondone.unblock();
+	}
 
 	// --- IO.Readable ---
 	

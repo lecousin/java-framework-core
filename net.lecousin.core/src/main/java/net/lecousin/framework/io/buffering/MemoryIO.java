@@ -13,8 +13,8 @@ import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.IO.AbstractIO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -23,7 +23,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * <br/>
  * Each byte array is allocated using the given bufferSize.
  */
-public class MemoryIO extends AbstractIO
+public class MemoryIO extends ConcurrentCloseable
 	implements IO.Readable.Buffered, IO.Readable.Seekable, IO.Writable.Seekable, IO.Writable.Buffered, IO.KnownSize, IO.Resizable {
 
 	/** Constructor. */
