@@ -32,7 +32,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	/** Create an unblocked point with the given result, error and cancellation. */
 	public AsyncWork(T result, TError error, CancelException cancel) {
 		this(result, error);
-		cancel(cancel);
+		this.cancel = cancel;
 	}
 	
 	/** Listener with one method by possible state.
