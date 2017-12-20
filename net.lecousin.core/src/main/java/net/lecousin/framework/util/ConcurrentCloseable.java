@@ -115,6 +115,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 			closing = new SynchronizationPoint<>();
 		}
 		// from now, no more operation is accepted
+		byte prio = getPriority();
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		List<ISynchronizationPoint<?>> pending;
 		synchronized (pendingOperations) {
@@ -129,7 +130,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 		if (underlying != null)
 			jp.addToJoin(underlying);
 		jp.start();
-		jp.listenAsync(new Task.Cpu.FromRunnable("Closing resources", getPriority(), () -> {
+		jp.listenAsync(new Task.Cpu.FromRunnable("Closing resources", prio, () -> {
 			synchronized (this) {
 				open = false;
 			}
