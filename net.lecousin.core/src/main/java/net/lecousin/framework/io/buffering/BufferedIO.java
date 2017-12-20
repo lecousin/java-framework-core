@@ -117,17 +117,14 @@ public abstract class BufferedIO extends BufferingManaged {
 			operation(loading).listenInline(new Runnable() {
 				@Override
 				public void run() {
-					if (loading.isCancelled()) {
-						buffer.loading.cancel(loading.getCancelEvent());
+					if (!loading.isSuccessful()) {
+						if (loading.isCancelled()) buffer.loading.cancel(loading.getCancelEvent());
+						else {
+							buffer.error = loading.getError();
+							buffer.loading.unblock();
+						}
 						buffer.loading = null;
 						buffer.buffer = null;
-						return;
-					}
-					if (loading.hasError()) {
-						buffer.error = loading.getError();
-						buffer.loading.unblock();
-						buffer.buffer = null;
-						buffer.loading = null;
 						return;
 					}
 					buffer.len = loading.getResult().intValue();

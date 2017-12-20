@@ -22,6 +22,7 @@ import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFiles {
@@ -600,6 +601,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			pos += skipped;
 			if (isEnd) break;
 		}
+		// we should be able to skip backward
+		io.seekSync(SeekType.FROM_END, 0);
+		Assert.assertEquals(-(size/2), io.skipSync(-(size/2)));
+		Assert.assertEquals(size - (size/2), io.getPosition());
+		Assert.assertEquals(-(size - (size/2)), io.skipSync(-size));
+		Assert.assertEquals(0, io.getPosition());
 		io.close();
 	}
 
