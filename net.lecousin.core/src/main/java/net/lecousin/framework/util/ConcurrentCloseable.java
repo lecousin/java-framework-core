@@ -1,6 +1,8 @@
 package net.lecousin.framework.util;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -114,10 +116,13 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 		}
 		// from now, no more operation is accepted
 		JoinPoint<Exception> jp = new JoinPoint<>();
+		List<ISynchronizationPoint<?>> pending;
 		synchronized (pendingOperations) {
-			for (ISynchronizationPoint<?> op : pendingOperations)
-				jp.addToJoin(op);
+			pending = new ArrayList<>(pendingOperations);
+			pendingOperations.clear();
 		}
+		for (ISynchronizationPoint<?> op : pending)
+			jp.addToJoin(op);
 		if (waitForClose != null)
 			closing.listenInline(waitForClose);
 		ISynchronizationPoint<?> underlying = closeUnderlyingResources();
