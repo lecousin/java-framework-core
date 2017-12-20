@@ -80,12 +80,18 @@ public class IOFromOutputStream extends ConcurrentCloseable implements IO.Writab
 	
 	@Override
 	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-		return IOUtil.writeAsyncUsingSync(this, buffer, ondone).getOutput();
+		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone)).getOutput();
 	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		return IOUtil.closeAsync(stream);
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		stream = null;
+		ondone.unblock();
 	}
 	
 }

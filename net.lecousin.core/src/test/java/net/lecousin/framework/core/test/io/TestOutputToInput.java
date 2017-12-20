@@ -38,7 +38,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 
 	@SuppressWarnings("resource")
 	@Test
-	public void testWriteSyncReadHalfSync() throws IOException {
+	public void testWriteSyncReadHalfSync() throws Exception {
 		IO.OutputToInput o2i = createOutputToInput();
 		int nbWrite = 0;
 		int nbRead = 0;

@@ -8,6 +8,7 @@ import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -24,7 +25,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	public TwoBuffersIO(IO.Readable io, int firstBuffer, int secondBuffer) {
 		this.io = io;
 		buf1 = new byte[firstBuffer];
-		read1 = io.readFullyAsync(ByteBuffer.wrap(buf1));
+		operation(read1 = io.readFullyAsync(ByteBuffer.wrap(buf1)));
 		if (secondBuffer > 0) {
 			buf2 = new byte[secondBuffer];
 			read1.listenInline(new Runnable() {
@@ -37,7 +38,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 							buf2 = null;
 							nb2 = 0;
 						} else
-							read2 = io.readFullyAsync(ByteBuffer.wrap(buf2));
+							operation(read2 = io.readFullyAsync(ByteBuffer.wrap(buf2)));
 						synchronized (buf1) { buf1.notifyAll(); }
 					}
 				}
@@ -106,8 +107,16 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	protected int pos = 0;
 
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		return io.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		io = null;
+		buf1 = null;
+		buf2 = null;
+		ondone.unblock();
 	}
 	
 	@Override
@@ -429,7 +438,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (nb1 < 0) {
 			if (!read1.isUnblocked()) {
 				AsyncWork<Integer, IOException> sp = new AsyncWork<>();
-				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.readAsync", io.getPriority()) {
+				read1.listenAsync(new Task.Cpu<Void,NoException>("TwoBuffersIO.readAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -450,7 +459,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 						return null;
 					}
 				}, true);
-				return sp;
+				return operation(sp);
 			}
 			if (!read1.isSuccessful()) {
 				IOException e;
@@ -482,7 +491,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 					return Integer.valueOf(l);
 				}
 			};
-			task.start();
+			operation(task).start();
 			return task.getOutput();
 		}
 		if (buf2 == null) {
@@ -492,7 +501,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (nb2 < 0) {
 			if (!read1.isUnblocked() || read2 == null) {
 				AsyncWork<Integer, IOException> sp = new AsyncWork<>();
-				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.readAsync", io.getPriority()) {
+				read1.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.readAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -512,12 +521,12 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 						}
 						return null;
 					}
-				}, true);
+				}), true);
 				return sp;
 			}
 			if (!read2.isUnblocked()) {
 				AsyncWork<Integer, IOException> sp = new AsyncWork<>();
-				read2.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.readAsync", io.getPriority()) {
+				read2.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.readAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read2.isSuccessful()) {
@@ -537,7 +546,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 						}
 						return null;
 					}
-				}, true);
+				}), true);
 				return sp;
 			}
 			if (!read2.isSuccessful()) {
@@ -558,7 +567,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
 			return new AsyncWork<>(Integer.valueOf(-1), null);
 		}
-		Task<Integer,IOException> task = new Task.Cpu<Integer, IOException>("readAsync on FullyBufferedIO", this.getPriority(), ondone) {
+		Task<Integer,IOException> task = new Task.Cpu<Integer, IOException>("readAsync on TwoBuffersIO", this.getPriority(), ondone) {
 			@Override
 			public Integer run() {
 				int l = (nb1 + nb2) - (int)pos;
@@ -568,7 +577,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 				return Integer.valueOf(l);
 			}
 		};
-		task.start();
+		operation(task.start());
 		return task.getOutput();
 	}
 
@@ -625,7 +634,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (nb1 < 0) {
 			if (!read1.isUnblocked()) {
 				read1.listenAsync(task, true);
-				return task.getOutput();
+				return operation(task).getOutput();
 			}
 			if (read1.hasError()) {
 				if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
@@ -641,7 +650,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			}
 		}
 		if (pos < nb1) {
-			task.start();
+			operation(task.start());
 			return task.getOutput();
 		}
 		if (buf2 == null) {
@@ -651,7 +660,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (nb2 < 0) {
 			if (!read1.isUnblocked()) {
 				read1.listenAsync(task, true);
-				return task.getOutput();
+				return operation(task).getOutput();
 			}
 			if (read1.hasError()) {
 				if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
@@ -660,12 +669,12 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			if (read1.isCancelled())
 				return new AsyncWork<>(null, null, read1.getCancelEvent());
 			if (read2 == null) {
-				task.start();
+				operation(task.start());
 				return task.getOutput();
 			}
 			if (!read2.isUnblocked()) {
 				read2.listenAsync(task, true);
-				return task.getOutput();
+				return operation(task).getOutput();
 			}
 			if (read2.hasError()) {
 				if (ondone != null) ondone.run(new Pair<>(null, read2.getError()));
@@ -684,7 +693,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			if (ondone != null) ondone.run(new Pair<>(null, null));
 			return new AsyncWork<>(null, null);
 		}
-		task.start();
+		operation(task.start());
 		return task.getOutput();
 	}
 	
@@ -754,12 +763,12 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsync(this, buffer, 0, ondone);
+		return operation(IOUtil.readFullyAsync(this, buffer, 0, ondone));
 	}
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsync(this, pos, buffer, ondone);
+		return operation(IOUtil.readFullyAsync(this, pos, buffer, ondone));
 	}
 
 	@Override
@@ -848,7 +857,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			if (!read1.isUnblocked()) {
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
 				long s = skip;
-				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.skipAsync", io.getPriority()) {
+				read1.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.skipAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -868,7 +877,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 						}
 						return null;
 					}
-				}, true);
+				}), true);
 				return sp;
 			}
 			if (!read1.isSuccessful()) {
@@ -904,7 +913,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			if (!read1.isUnblocked() || read2 == null) {
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
 				long s = skip;
-				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.skipAsync", io.getPriority()) {
+				read1.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.skipAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -924,7 +933,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 						}
 						return null;
 					}
-				}, true);
+				}), true);
 				return sp;
 			}
 			if (!read1.isSuccessful()) {
@@ -938,7 +947,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
 				long s = skip;
 				int d = done;
-				read2.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.skipAsync", io.getPriority()) {
+				read2.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.skipAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read2.isSuccessful()) {
@@ -958,7 +967,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 						}
 						return null;
 					}
-				}, true);
+				}), true);
 				return sp;
 			}
 			if (!read2.isSuccessful()) {
@@ -1037,7 +1046,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (nb1 < 0) {
 			if (!read1.isUnblocked()) {
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.getSizeAsync", io.getPriority()) {
+				read1.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.getSizeAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -1049,7 +1058,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 							sp.unblockError(read1.getError());
 						return null;
 					}
-				}, true);
+				}), true);
 				return sp;
 			}
 			if (!read1.isSuccessful()) {
@@ -1065,7 +1074,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (nb2 < 0) {
 			if (!read1.isUnblocked() || read2 == null) {
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				read1.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.getSizeAsync", io.getPriority()) {
+				read1.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.getSizeAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read1.isSuccessful()) {
@@ -1077,7 +1086,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 							sp.unblockError(read1.getError());
 						return null;
 					}
-				}, true);
+				}), true);
 				return sp;
 			}
 			if (!read1.isSuccessful()) {
@@ -1086,7 +1095,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			}
 			if (!read2.isUnblocked()) {
 				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				read2.listenAsync(new Task.Cpu<Void,NoException>("FullyBufferedIO.getSizeAsync", io.getPriority()) {
+				read2.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.getSizeAsync", io.getPriority()) {
 					@Override
 					public Void run() {
 						if (read2.isSuccessful()) {
@@ -1098,7 +1107,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 							sp.unblockError(read2.getError());
 						return null;
 					}
-				}, true);
+				}), true);
 				return sp;
 			}
 			if (!read2.isSuccessful()) {
@@ -1133,7 +1142,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 
 	@Override
 	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return IOUtil.seekAsyncUsingSync(this, type, move, ondone).getOutput();
+		return operation(IOUtil.seekAsyncUsingSync(this, type, move, ondone)).getOutput();
 	}
 	
 }

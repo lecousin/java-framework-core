@@ -29,7 +29,8 @@ public abstract class IOAsOutputStream extends OutputStream {
 		
 		@Override
 		public void close() throws IOException {
-			io.close();
+			try { io.close(); }
+			catch (Exception e) { throw IO.error(e); }
 		}
 	
 		@Override
@@ -58,7 +59,8 @@ public abstract class IOAsOutputStream extends OutputStream {
 		
 		@Override
 		public void close() throws IOException {
-			io.close();
+			try { io.close(); }
+			catch (Exception e) { throw IO.error(e); }
 		}
 	
 		@Override

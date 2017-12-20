@@ -13,9 +13,10 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.util.ConcurrentCloseable;
 
 /** Implement a buffered writable character stream from a writable IO. */
-public class BufferedWritableCharacterStream implements ICharacterStream.Writable.Buffered {
+public class BufferedWritableCharacterStream extends ConcurrentCloseable implements ICharacterStream.Writable.Buffered {
 
 	/** Constructor. */
 	public BufferedWritableCharacterStream(IO.Writable output, Charset charset, int bufferSize) {
@@ -41,6 +42,23 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 	private CharBuffer cb2;
 	private ByteBuffer encodedBuffer;
 	private int pos = 0;
+	
+	@Override
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		return output.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		output = null;
+		encoder = null;
+		buffer = null;
+		buffer2 = null;
+		cb = null;
+		cb2 = null;
+		encodedBuffer = null;
+		ondone.unblock();
+	}
 	
 	@Override
 	public byte getPriority() {
@@ -92,6 +110,7 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 				return null;
 			}
 		}.start();
+		operation(flushing);
 	}
 	
 	private ISynchronizationPoint<IOException> finalFlush(SynchronizationPoint<IOException> sp, boolean flushOnly) {
@@ -116,7 +135,7 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 			if (sp == null)
 				return writing;
 			writing.listenInline(sp);
-			return sp;
+			return operation(sp);
 		}
 		if (sp == null)
 			sp = new SynchronizationPoint<>();
@@ -131,7 +150,7 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 					finalFlush(spp, fo);
 			}
 		});
-		return sp;
+		return operation(sp);
 	}
 	
 	private void flushBuffer() throws IOException {
@@ -255,7 +274,7 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 	public ISynchronizationPoint<IOException> writeAsync(char[] c, int off, int len) {
 		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
 		writeAsync(c, off, len, result);
-		return result;
+		return operation(result);
 	}
 	
 	private void writeAsync(char[] c, int off, int len, SynchronizationPoint<IOException> result) {
@@ -281,37 +300,5 @@ public class BufferedWritableCharacterStream implements ICharacterStream.Writabl
 				return null;
 			}
 		}.start();
-	}
-	
-	@Override
-	public void close() throws Exception {
-		ISynchronizationPoint<IOException> flush = flush();
-		flush.block(0);
-		if (flush.hasError()) {
-			try { output.close(); } catch (Throwable t) { /* ignore */ }
-			throw flush.getError();
-		}
-		output.close();
-	}
-	
-	@Override
-	public ISynchronizationPoint<IOException> closeAsync() {
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		ISynchronizationPoint<IOException> flush = flush();
-		flush.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				ISynchronizationPoint<IOException> close = output.closeAsync();
-				close.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (flush.hasError()) sp.error(flush.getError());
-						else if (close.hasError()) sp.error(close.getError());
-						else sp.unblock();
-					}
-				});
-			}
-		});
-		return sp;
 	}
 }

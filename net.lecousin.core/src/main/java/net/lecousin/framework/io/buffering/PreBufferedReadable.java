@@ -61,7 +61,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					return null;
 				}
 			};
-			start.startOn(getSize, true);
+			operation(start).startOn(getSize, true);
 		} else {
 			start(firstBuffer, firstBufferPriority, nextBuffer, nextBufferPriority, maxNbNextBuffersReady);
 		}
@@ -180,7 +180,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		AsyncWork<?,?> nextRead;
 		synchronized (this) {
 			nextRead = nextReadTask;
@@ -191,6 +191,11 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			else
 				nextRead.unblockCancel(new CancelException("IO closed"));
 		}
+		return src.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
 		SynchronizationPoint<NoException> dr = null;
 		synchronized (this) {
 			endReached = true;
@@ -203,10 +208,10 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			reusableBuffers = null;
 			nextReadTask = null;
 		}
-		ISynchronizationPoint<IOException> sp = src.closeAsync();
 		if (dr != null)
 			dr.unblock();
-		return sp;
+		src = null;
+		ondone.unblock();
 	}
 	
 	@Override
@@ -236,9 +241,9 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		jpNextRead.addToJoin(1);
 		AsyncWork<Integer,IOException> firstReadTask;
 		if (nextBuffer > 0)
-			firstReadTask = src.readAsync(buffer);
+			firstReadTask = operation(src.readAsync(buffer));
 		else
-			firstReadTask = src.readFullyAsync(buffer);
+			firstReadTask = operation(src.readFullyAsync(buffer));
 		boolean singleRead = nextBuffer <= 0;
 		firstReadTask.listenInline(new Runnable() {
 			@Override
@@ -318,8 +323,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					return null;
 				}
 			};
-			prepare.start();
-			nextReadTask = task.getOutput();
+			operation(prepare).start();
+			nextReadTask = operation(task.getOutput());
 			jpNextRead.start();
 			jpNextRead.listenAsync(task, true);
 		}
@@ -415,6 +420,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				return Integer.valueOf(nb);
 			}
 		};
+		operation(t);
 		if (sp == null) {
 			t.start();
 			return t.getOutput();
@@ -430,7 +436,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	
 	@Override
 	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsync(this, buffer, ondone);
+		return operation(IOUtil.readFullyAsync(this, buffer, ondone));
 	}
 	
 	@Override
@@ -514,7 +520,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					return Long.valueOf(skipSync(n));
 				}
 			};
-			t.start();
+			operation(t.start());
 			return t.getOutput();
 		}
 	}
@@ -540,7 +546,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	private void nextRead() {
 		ByteBuffer buffer = reusableBuffers.removeFirst();
 		buffer.clear();
-		nextReadTask = src.readFullyAsync(buffer);
+		nextReadTask = operation(src.readFullyAsync(buffer));
 		// TODO this listener may take few milliseconds, see how to make it in a task
 		nextReadTask.listenInline(new Runnable() {
 			@Override
@@ -700,7 +706,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 						return buf;
 					}
 				};
-				task.start();
+				operation(task.start());
 				return task.getOutput();
 			}
 			if (endReached) {
@@ -717,7 +723,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				readNextBufferAsync(ondone).listenInline(result);
 			}
 		});
-		return result;
+		return operation(result);
 	}
 	
 }

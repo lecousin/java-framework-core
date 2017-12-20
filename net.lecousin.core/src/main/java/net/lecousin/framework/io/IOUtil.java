@@ -637,6 +637,8 @@ public class IOUtil {
 	public static String readFullyAsStringSync(File file, Charset charset) throws IOException {
 		try (FileIO.ReadOnly io = new FileIO.ReadOnly(file, Task.PRIORITY_RATHER_IMPORTANT)) {
 			return readFullyAsStringSync(io, charset);
+		} catch (Exception e) {
+			throw IO.error(e);
 		}
 	}
 	
@@ -810,18 +812,18 @@ public class IOUtil {
 				sp.unblockSuccess(Long.valueOf(written));
 			return;
 		}
-		ISynchronizationPoint<IOException> sp1 = input.closeAsync();
-		ISynchronizationPoint<IOException> sp2 = output.closeAsync();
+		ISynchronizationPoint<Exception> sp1 = input.closeAsync();
+		ISynchronizationPoint<Exception> sp2 = output.closeAsync();
 		JoinPoint.fromSynchronizationPoints(sp1, sp2).listenInline(new Runnable() {
 			@Override
 			public void run() {
-				IOException e = error;
+				Exception e = error;
 				if (e == null) {
 					if (sp1.hasError()) e = sp1.getError();
 					else if (sp2.hasError()) e = sp2.getError();
 				}
 				if (e != null) {
-					sp.error(e);
+					sp.error(IO.error(e));
 					return;
 				}
 				if (cancel != null)

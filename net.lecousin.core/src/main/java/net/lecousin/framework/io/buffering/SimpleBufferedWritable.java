@@ -128,7 +128,7 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 		w.listenInline(() -> {
 			flush().listenInline(sp);
 		}, sp);
-		return sp;
+		return operation(sp);
 	}
 	
 	@Override
@@ -219,7 +219,7 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 				} while (true);
 			}
 		};
-		task.start();
+		operation(task.start());
 	}
 
 	@Override
@@ -238,13 +238,13 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 	public TaskManager getTaskManager() { return Threading.getCPUTaskManager(); }
 
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		ISynchronizationPoint<IOException> flush = flush();
 		flush.listenInline(new Runnable() {
 			@Override
 			public void run() {
-				ISynchronizationPoint<IOException> close = out.closeAsync();
+				ISynchronizationPoint<Exception> close = out.closeAsync();
 				if (flush.hasError())
 					sp.error(flush.getError());
 				else
@@ -252,6 +252,16 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 			}
 		});
 		return sp;
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		out = null;
+		buffer = null;
+		buffer2 = null;
+		bb = null;
+		bb2 = null;
+		ondone.unblock();
 	}
 	
 }

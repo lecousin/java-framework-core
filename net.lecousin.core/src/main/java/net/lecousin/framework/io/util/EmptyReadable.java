@@ -177,8 +177,13 @@ public class EmptyReadable extends ConcurrentCloseable implements IO.Readable, I
 	}
 
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
-		return new SynchronizationPoint<>(true);
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		return null;
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		ondone.unblock();
 	}
 
 }

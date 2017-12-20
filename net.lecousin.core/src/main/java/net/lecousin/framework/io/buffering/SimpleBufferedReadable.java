@@ -78,27 +78,29 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	public void setPriority(byte priority) { io.setPriority(priority); }
 	
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		AsyncWork<Integer,IOException> currentRead = readTask;
 		if (currentRead != null && !currentRead.isUnblocked()) {
 			currentRead.cancel(new CancelException("IO closed"));
-			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+			SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 			currentRead.listenInline(new Runnable() {
 				@Override
 				public void run() {
-					readTask = null;
-					state.buffer = null;
-					bb = null;
-					readBuffer = null;
 					io.closeAsync().listenInline(sp);
 				}
 			});
 			return sp;
 		}
+		return io.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		readTask = null;
 		state.buffer = null;
 		bb = null;
 		readBuffer = null;
-		return io.closeAsync();
+		ondone.unblock();
 	}
 	
 	/** Stop any pending read, and block until they are cancelled or done. */
@@ -174,7 +176,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 
 	@Override
 	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput();
+		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone)).getOutput();
 	}
 
 	@Override
@@ -213,7 +215,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 				return buf;
 			}
 		};
-		task.start();
+		operation(task.start());
 		return task.getOutput();
 	}
 	
@@ -296,7 +298,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 				return Long.valueOf(res);
 			}
 		};
-		task.startOn(readTask, true);
+		operation(task).startOn(readTask, true);
 		return task.getOutput();
 	}
 

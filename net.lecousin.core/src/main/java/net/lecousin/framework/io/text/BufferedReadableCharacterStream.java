@@ -18,9 +18,10 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.util.ConcurrentCloseable;
 
 /** Implement a buffered readable character stream from a readable IO. */
-public class BufferedReadableCharacterStream implements ICharacterStream.Readable.Buffered {
+public class BufferedReadableCharacterStream extends ConcurrentCloseable implements ICharacterStream.Readable.Buffered {
 
 	/** Constructor. */
 	public BufferedReadableCharacterStream(IO.Readable input, Charset charset, int bufferSize, int maxBuffers) {
@@ -96,6 +97,24 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 				return nextReady;
 			return new SynchronizationPoint<>(true);
 		}
+	}
+	
+	@Override
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		synchronized (ready) {
+			nextReady.cancel(new CancelException("Closed"));
+		}
+		return input.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		bytes = null;
+		chars = null;
+		decoder = null;
+		ready = null;
+		input = null;
+		ondone.unblock();
 	}
 	
 	@Override
@@ -206,7 +225,7 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 				}
 			}
 		};
-		decode.startOn(readTask, true);
+		operation(decode).startOn(readTask, true);
 	}
 	
 	@Override
@@ -338,7 +357,7 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 		if (len <= 0)
 			return new AsyncWork<>(Integer.valueOf(0), null);
 		AsyncWork<Integer, IOException> result = new AsyncWork<>();
-		new Task.Cpu<Void, NoException>("BufferedReadableCharacterStream.readAsync", input.getPriority()) {
+		operation(new Task.Cpu<Void, NoException>("BufferedReadableCharacterStream.readAsync", input.getPriority()) {
 			@Override
 			public Void run() {
 				int done = 0;
@@ -403,35 +422,7 @@ public class BufferedReadableCharacterStream implements ICharacterStream.Readabl
 				result.unblockSuccess(Integer.valueOf(len + done));
 				return null;
 			}
-		}.startOn(canStartReading(), true);
+		}).startOn(canStartReading(), true);
 		return result;
-	}
-	
-	@Override
-	public void close() {
-		synchronized (ready) {
-			nextReady.cancel(new CancelException("Closed"));
-		}
-		try { input.close(); }
-		catch (Throwable t) { /* ignore */ }
-		bytes = null;
-		chars = null;
-		ready.clear();
-		decoder = null;
-	}
-	
-	@Override
-	public ISynchronizationPoint<IOException> closeAsync() {
-		synchronized (ready) {
-			nextReady.cancel(new CancelException("Closed"));
-		}
-		ISynchronizationPoint<IOException> close = input.closeAsync();
-		close.listenInline(() -> {
-			bytes = null;
-			chars = null;
-			decoder = null;
-			ready = null;
-		});
-		return close;
 	}
 }

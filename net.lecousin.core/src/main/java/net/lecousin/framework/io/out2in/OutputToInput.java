@@ -38,6 +38,40 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	private LockPoint<NoException> lockIO = new LockPoint<>();
 
 	@Override
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		eof = true;
+		lock.error(new EOFException());
+		return io.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		io = null;
+		ondone.unblock();
+	}
+	
+	@Override
+	public byte getPriority() { return io.getPriority(); }
+	
+	@Override
+	public void setPriority(byte priority) { io.setPriority(priority); }
+	
+	@Override
+	public String getSourceDescription() {
+		return "OutputToInput from " + sourceDescription;
+	}
+	
+	@Override
+	public TaskManager getTaskManager() {
+		return Threading.getCPUTaskManager();
+	}
+	
+	@Override
+	public IO getWrappedIO() {
+		return io;
+	}
+	
+	@Override
 	public void endOfData() {
 		eof = true;
 		lock.error(new EOFException());
@@ -97,7 +131,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 				return null;
 			}
 		}.start();
-		return result;
+		return operation(result);
 	}
 	
 	@Override
@@ -162,7 +196,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 				return new AsyncWork<Integer, IOException>(Integer.valueOf(-1), null);
 			}
 			AsyncWork<Integer, IOException> result = new AsyncWork<>();
-			lock.listenAsync(new Task.Cpu<Integer, IOException>("OutputToInput.readAsync", io.getPriority()) {
+			lock.listenAsync(operation(new Task.Cpu<Integer, IOException>("OutputToInput.readAsync", io.getPriority()) {
 				@Override
 				public Integer run() throws IOException {
 					try {
@@ -176,7 +210,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 						throw e;
 					}
 				}
-			}, true);
+			}), true);
 			return result;
 		}
 		AsyncWork<Integer, IOException> result = new AsyncWork<>();
@@ -195,17 +229,17 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 				return null;
 			}
 		}.start();
-		return result;
+		return operation(result);
 	}
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsync(this, buffer, ondone);
+		return operation(IOUtil.readFullyAsync(this, buffer, ondone));
 	}
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsync(this, pos, buffer, ondone);
+		return operation(IOUtil.readFullyAsync(this, pos, buffer, ondone));
 	}
 	
 	@Override
@@ -219,35 +253,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 		Long r = Long.valueOf(skipSync(n));
 		if (ondone != null) ondone.run(new Pair<>(r, null));
 		return new AsyncWork<Long, IOException>(r, null);
-	}
-	
-	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
-		eof = true;
-		lock.error(new EOFException());
-		return new SynchronizationPoint<>(true);
-	}
-	
-	@Override
-	public byte getPriority() { return io.getPriority(); }
-	
-	@Override
-	public void setPriority(byte priority) { io.setPriority(priority); }
-	
-	@Override
-	public String getSourceDescription() {
-		return "OutputToInput from " + sourceDescription;
-	}
-	
-	@Override
-	public TaskManager getTaskManager() {
-		return Threading.getCPUTaskManager();
-	}
-	
-	@Override
-	public IO getWrappedIO() {
-		return io;
-	}
+	}	
 
 	@Override
 	public long getPosition() {
@@ -312,7 +318,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 						lock.listenInline(this);
 				}
 			});
-			return result;
+			return operation(result);
 		default:
 			return new AsyncWork<>(null, new IOException("Unknown SeekType " + type));
 		}

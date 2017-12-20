@@ -75,8 +75,14 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		return IOUtil.closeAsync(stream);
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		stream = null;
+		ondone.unblock();
 	}
 	
 	@Override
@@ -125,7 +131,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 				return Integer.valueOf(nb);
 			}
 		};
-		t.start();
+		operation(t.start());
 		return t.getOutput();
 	}
 	
@@ -144,7 +150,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 				return Integer.valueOf(total);
 			}
 		};
-		t.start();
+		operation(t.start());
 		return t.getOutput();
 	}
 	
@@ -170,7 +176,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 				return Long.valueOf(total);
 			}
 		};
-		t.start();
+		operation(t.start());
 		return t.getOutput();
 	}
 	

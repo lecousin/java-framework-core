@@ -71,16 +71,21 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	public String getSourceDescription() { return io.getSourceDescription(); }
 
 	@Override
-	protected SynchronizationPoint<IOException> closeIO() {
-		JoinPoint<IOException> jp = new JoinPoint<>();
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		JoinPoint<Exception> jp = new JoinPoint<>();
 		buffering.unblockCancel(new CancelException("IO closed"));
 		jp.addToJoin(buffered.closeAsync());
-		buffered = null;
 		jp.addToJoin(io.closeAsync());
-		io = null;
 		jp.start();
 		jp.listenAsync(new RemoveFileTask(file, Task.PRIORITY_LOW), true);
 		return jp;
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		io = null;
+		buffered = null;
+		ondone.unblock();
 	}
 	
 	@Override
@@ -146,14 +151,14 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 				seek.unblockCancel(event);
 			}
 		});
-		return sp;
+		return operation(sp);
 	}
 
 	private void readNextBuffer() {
 		buffering = new AsyncWork<Boolean,IOException>();
 		ByteBuffer buffer = ByteBuffer.allocate(8192);
 		AsyncWork<Integer,IOException> read = io.readFullyAsync(buffer);
-		read.listenInline((result) -> {
+		operation(read).listenInline((result) -> {
 			if (result.intValue() <= 0) {
 				knownSize = ioPos;
 				buffering.unblockSuccess(Boolean.TRUE);
@@ -161,7 +166,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 			}
 			buffer.flip();
 			AsyncWork<Integer,IOException> write = buffered.writeAsync(ioPos, buffer);
-			write.listenInline((result2) -> {
+			operation(write).listenInline((result2) -> {
 				int nb = result2.intValue();
 				if (nb != result.intValue()) {
 					buffering.unblockError(
@@ -220,7 +225,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 				sp.unblockSuccess(null);
 				return;
 			}
-			new Task.Cpu<Void,NoException>("Bufferize in ReadableToSeekable", io.getPriority()) {
+			operation(new Task.Cpu<Void,NoException>("Bufferize in ReadableToSeekable", io.getPriority()) {
 				@Override
 				public Void run() {
 					synchronized (ReadableToSeekable.this) {
@@ -234,9 +239,9 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 						next.listenInline((result) -> { sp.unblockSuccess(null); }, sp);
 					return null;
 				}
-			}.start();
+			}.start());
 		}, sp);
-		return sp;
+		return operation(sp);
 	}
 	
 	@Override
@@ -318,7 +323,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 			onBuffered.run();
 		else
 			bufferize.listenInline(onBuffered);
-		return result;
+		return operation(result);
 	}
 
 	@Override
@@ -356,6 +361,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 				return null;
 			}
 		};
+		operation(task);
 		if (bufferize == null)
 			task.start();
 		else
@@ -414,7 +420,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 				return Long.valueOf(seekSync(type, move));
 			}
 		};
-		task.start();
+		operation(task.start());
 		return task.getOutput();
 	}
 	
@@ -484,7 +490,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 				return Long.valueOf(skipSync(move));
 			}
 		};
-		task.start();
+		operation(task.start());
 		return task.getOutput();
 	}
 

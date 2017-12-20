@@ -849,107 +849,111 @@ public class UnprotectedStringBuffer implements IString {
 	
 	/** Create a readable CharacterStream from this string. */
 	public ICharacterStream.Readable.Buffered asCharacterStream() {
-		return new ICharacterStream.Readable.Buffered() {
-			private int buffer = 0;
-			private int bufferIndex = 0;
-			private byte priority = Task.PRIORITY_NORMAL;
-			
-			@Override
-			public String getDescription() {
-				return "UnprotectedStringBuffer";
+		return new CS();
+	}
+	
+	protected class CS extends ConcurrentCloseable implements ICharacterStream.Readable.Buffered {
+		private int buffer = 0;
+		private int bufferIndex = 0;
+		private byte priority = Task.PRIORITY_NORMAL;
+		
+		@Override
+		protected ISynchronizationPoint<?> closeUnderlyingResources() {
+			return null;
+		}
+		
+		@Override
+		protected void closeResources(SynchronizationPoint<Exception> ondone) {
+			ondone.unblock();
+		}
+		
+		@Override
+		public String getDescription() {
+			return "UnprotectedStringBuffer";
+		}
+		
+		@Override
+		public Charset getEncoding() {
+			return StandardCharsets.UTF_16;
+		}
+		
+		@Override
+		public char read() throws EOFException {
+			if (strings == null) throw new EOFException();
+			while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
+				buffer++;
+				bufferIndex = 0;
 			}
-			
-			@Override
-			public Charset getEncoding() {
-				return StandardCharsets.UTF_16;
-			}
-			
-			@Override
-			public char read() throws EOFException {
-				if (strings == null) throw new EOFException();
+			if (buffer > lastUsed) throw new EOFException();
+			return strings[buffer].charAt(bufferIndex++);
+		}
+		
+		@Override
+		public int readSync(char[] buf, int offset, int length) {
+			if (strings == null) return -1;
+			int done = 0;
+			do {
 				while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
 					buffer++;
 					bufferIndex = 0;
 				}
-				if (buffer > lastUsed) throw new EOFException();
-				return strings[buffer].charAt(bufferIndex++);
+				if (buffer > lastUsed) return done > 0 ? done : -1;
+				int len = strings[buffer].length() - bufferIndex;
+				if (len > length) len = length;
+				System.arraycopy(strings[buffer], bufferIndex, buf, offset, len);
+				offset += len;
+				length -= len;
+				done += len;
+				if (length == 0)
+					return done;
+			} while (true);
+		}
+		
+		@Override
+		public int readAsync() {
+			if (strings == null) return -1;
+			while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
+				buffer++;
+				bufferIndex = 0;
 			}
-			
-			@Override
-			public int readSync(char[] buf, int offset, int length) {
-				if (strings == null) return -1;
-				int done = 0;
-				do {
-					while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
-						buffer++;
-						bufferIndex = 0;
-					}
-					if (buffer > lastUsed) return done > 0 ? done : -1;
-					int len = strings[buffer].length() - bufferIndex;
-					if (len > length) len = length;
-					System.arraycopy(strings[buffer], bufferIndex, buf, offset, len);
-					offset += len;
-					length -= len;
-					done += len;
-					if (length == 0)
-						return done;
-				} while (true);
-			}
-			
-			@Override
-			public int readAsync() {
-				if (strings == null) return -1;
-				while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
-					buffer++;
-					bufferIndex = 0;
+			if (buffer > lastUsed) return -1;
+			return strings[buffer].charAt(bufferIndex++);
+		}
+		
+		@Override
+		public AsyncWork<Integer, IOException> readAsync(char[] buf, int offset, int length) {
+			return new Task.Cpu<Integer, IOException>("UnprotectedStringBuffer.readAsync", priority) {
+				@Override
+				public Integer run() {
+					return Integer.valueOf(readSync(buf, offset, length));
 				}
-				if (buffer > lastUsed) return -1;
-				return strings[buffer].charAt(bufferIndex++);
-			}
-			
-			@Override
-			public AsyncWork<Integer, IOException> readAsync(char[] buf, int offset, int length) {
-				return new Task.Cpu<Integer, IOException>("UnprotectedStringBuffer.readAsync", priority) {
-					@Override
-					public Integer run() {
-						return Integer.valueOf(readSync(buf, offset, length));
-					}
-				}.start().getOutput();
-			}
-			
-			@Override
-			public byte getPriority() {
-				return priority;
-			}
-			
-			@Override
-			public void setPriority(byte priority) {
-				this.priority = priority;
-			}
-			
-			@Override
-			public void back(char c) {
-				throw new UnsupportedOperationException();
-			}
-			
-			@Override
-			public boolean endReached() {
-				return strings == null || buffer > lastUsed;
-			}
-			
-			@Override
-			public void close() {}
-			
-			@Override
-			public ISynchronizationPoint<IOException> closeAsync() {
-				return new SynchronizationPoint<>(true);
-			}
-			
-			@Override
-			public ISynchronizationPoint<IOException> canStartReading() {
-				return new SynchronizationPoint<>(true);
-			}
-		};
+			}.start().getOutput();
+		}
+		
+		@Override
+		public byte getPriority() {
+			return priority;
+		}
+		
+		@Override
+		public void setPriority(byte priority) {
+			this.priority = priority;
+		}
+		
+		@Override
+		public void back(char c) {
+			throw new UnsupportedOperationException();
+		}
+		
+		@Override
+		public boolean endReached() {
+			return strings == null || buffer > lastUsed;
+		}
+		
+		@Override
+		public ISynchronizationPoint<IOException> canStartReading() {
+			return new SynchronizationPoint<>(true);
+		}
 	}
 	
 	/** Encode this string with the given charset and write the result on the given writable IO. */

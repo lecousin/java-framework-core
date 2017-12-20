@@ -84,11 +84,11 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 				ns.pos = 0;
 				state = ns;
 			});
+		operation(reading);
 	}
 	
 	private void waitBufferSync() throws IOException {
-		reading.block(0);
-		if (reading.hasError()) throw reading.getError();
+		reading.blockException(0);
 		if (reading.isCancelled()) throw new IOException("Read cancelled", reading.getCancelEvent());
 	}
 
@@ -111,7 +111,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput();
+		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone)).getOutput();
 	}
 	
 	@Override
@@ -133,7 +133,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsync(this, buffer, ondone);
+		return operation(IOUtil.readFullyAsync(this, buffer, ondone));
 	}
 
 	@Override
@@ -160,7 +160,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 
 	@Override
 	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return IOUtil.skipAsyncByReading(this, n, ondone);
+		return operation(IOUtil.skipAsyncByReading(this, n, ondone));
 	}
 
 	@Override
@@ -249,17 +249,21 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 				return buf;
 			}
 		};
-		task.startOn(reading, true);
+		operation(task).startOn(reading, true);
 		return task.getOutput();
 	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
-		buffer = null;
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		if (!reading.isUnblocked()) reading.cancel(new CancelException("IO closed"));
-		ISynchronizationPoint<IOException> res = io.closeAsync();
+		return io.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		buffer = null;
 		io = null;
-		return res;
+		ondone.unblock();
 	}
 	
 }

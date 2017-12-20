@@ -25,7 +25,7 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 	protected abstract IO.Writable createWritableFromFile(File file) throws IOException;
 	
 	@SuppressWarnings("unused")
-	protected void flush(IO.Writable io) throws IOException {
+	protected void flush(IO.Writable io) throws Exception {
 	}
 	
 	protected static File createFile() throws IOException {

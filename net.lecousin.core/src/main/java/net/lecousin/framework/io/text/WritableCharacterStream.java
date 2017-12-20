@@ -12,9 +12,10 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.util.ConcurrentCloseable;
 
 /** Implement a non-buffered writable character stream using a writable IO. */
-public class WritableCharacterStream implements ICharacterStream.Writable {
+public class WritableCharacterStream extends ConcurrentCloseable implements ICharacterStream.Writable {
 
 	/** Constructor. */
 	public WritableCharacterStream(IO.Writable output, Charset charset) {
@@ -29,6 +30,18 @@ public class WritableCharacterStream implements ICharacterStream.Writable {
 	
 	private IO.Writable output;
 	private CharsetEncoder encoder;
+	
+	@Override
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		return output.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		encoder = null;
+		output = null;
+		ondone.unblock();
+	}
 	
 	@Override
 	public byte getPriority() {
@@ -60,7 +73,7 @@ public class WritableCharacterStream implements ICharacterStream.Writable {
 	@Override
 	public ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length) {
 		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
-		new Task.Cpu<Void, NoException>("Encoding characters", getPriority()) {
+		operation(new Task.Cpu<Void, NoException>("Encoding characters", getPriority()) {
 			@Override
 			public Void run() {
 				CharBuffer cb = CharBuffer.wrap(c, offset, length);
@@ -73,21 +86,8 @@ public class WritableCharacterStream implements ICharacterStream.Writable {
 				output.writeAsync(bb).listenInline(result);
 				return null;
 			}
-		}.start();
+		}).start();
 		return result;
-	}
-	
-	@Override
-	public void close() throws Exception {
-		encoder = null;
-		output.close();
-		output = null;
-	}
-	
-	@Override
-	public ISynchronizationPoint<IOException> closeAsync() {
-		encoder = null;
-		return output.closeAsync();
 	}
 	
 }

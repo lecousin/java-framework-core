@@ -7,7 +7,9 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.util.CloseableListenable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -34,13 +36,18 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public void close() throws IOException {
+	public void close() throws Exception {
 		io.close();
 	}
 
 	@Override
-	public ISynchronizationPoint<IOException> closeAsync() {
+	public ISynchronizationPoint<Exception> closeAsync() {
 		return io.closeAsync();
+	}
+	
+	@Override
+	public boolean isClosed() {
+		return io.isClosed();
 	}
 	
 	@Override
@@ -49,13 +56,28 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public void onclose(Runnable listener) {
-		io.onclose(listener);
+	public void addCloseListener(Runnable listener) {
+		io.addCloseListener(listener);
 	}
 	
 	@Override
-	public void lockClose() {
-		io.lockClose();
+	public void addCloseListener(Listener<CloseableListenable<Exception>> listener) {
+		io.addCloseListener(listener);
+	}
+	
+	@Override
+	public void removeCloseListener(Runnable listener) {
+		io.removeCloseListener(listener);
+	}
+	
+	@Override
+	public void removeCloseListener(Listener<CloseableListenable<Exception>> listener) {
+		io.removeCloseListener(listener);
+	}
+	
+	@Override
+	public boolean lockClose() {
+		return io.lockClose();
 	}
 	
 	@Override

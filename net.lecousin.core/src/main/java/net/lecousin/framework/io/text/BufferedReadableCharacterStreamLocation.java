@@ -7,10 +7,12 @@ import java.nio.charset.Charset;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.util.ConcurrentCloseable;
 
 /** Buffered readable character stream that calculate the line number and position on the current line while reading. */
-public class BufferedReadableCharacterStreamLocation implements ICharacterStream.Readable.Buffered {
+public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable implements ICharacterStream.Readable.Buffered {
 
 	/** Constructor. */
 	public BufferedReadableCharacterStreamLocation(ICharacterStream.Readable.Buffered stream) {
@@ -32,6 +34,17 @@ public class BufferedReadableCharacterStreamLocation implements ICharacterStream
 	public int getLine() { return line; }
 	
 	public int getPositionInLine() { return pos; }
+	
+	@Override
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		return stream.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		stream = null;
+		ondone.unblock();
+	}
 	
 	@Override
 	public String getDescription() { return stream.getDescription(); }
@@ -103,7 +116,7 @@ public class BufferedReadableCharacterStreamLocation implements ICharacterStream
 	public AsyncWork<Integer, IOException> readAsync(char[] buf, int offset, int length) {
 		AsyncWork<Integer, IOException> result = new AsyncWork<>();
 		AsyncWork<Integer, IOException> read = stream.readAsync(buf, offset, length);
-		read.listenAsync(new Task.Cpu<Void, NoException>(
+		read.listenAsync(operation(new Task.Cpu<Void, NoException>(
 			"Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority()
 		) {
 			@Override
@@ -125,18 +138,8 @@ public class BufferedReadableCharacterStreamLocation implements ICharacterStream
 				}
 				return null;
 			}
-		}, true);
+		}), true);
 		return result;
-	}
-	
-	@Override
-	public void close() throws Exception {
-		stream.close();
-	}
-	
-	@Override
-	public ISynchronizationPoint<IOException> closeAsync() {
-		return stream.closeAsync();
 	}
 	
 	@Override

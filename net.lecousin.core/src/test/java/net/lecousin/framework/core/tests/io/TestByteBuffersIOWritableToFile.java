@@ -40,7 +40,7 @@ public class TestByteBuffersIOWritableToFile extends TestWritableToFile {
 	
 	@SuppressWarnings("resource")
 	@Override
-	protected void flush(IO.Writable io) throws IOException {
+	protected void flush(IO.Writable io) throws Exception {
 		ByteBuffersIO bio = (ByteBuffersIO)io;
 		bio.seekSync(SeekType.FROM_BEGINNING, 0);
 		FileIO.WriteOnly out = new FileIO.WriteOnly(file, Task.PRIORITY_NORMAL);

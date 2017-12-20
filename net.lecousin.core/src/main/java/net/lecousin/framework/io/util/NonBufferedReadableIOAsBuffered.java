@@ -27,6 +27,17 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	}
 	
 	private IO.Readable io;
+	
+	@Override
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		return io.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		io = null;
+		ondone.unblock();
+	}
 
 	@Override
 	public String getSourceDescription() {
@@ -119,11 +130,6 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	}
 
 	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
-		return io.closeAsync();
-	}
-
-	@Override
 	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
 		AsyncWork<ByteBuffer, IOException> result = new AsyncWork<>();
 		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Read next buffer", getPriority()) {
@@ -152,7 +158,7 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 				return null;
 			}
 		};
-		task.start();
+		operation(task).start();
 		return result;
 	}
 	

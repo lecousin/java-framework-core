@@ -7,10 +7,10 @@ import java.nio.charset.Charset;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.mutable.MutableInteger;
-import net.lecousin.framework.util.AsyncCloseable;
+import net.lecousin.framework.util.IConcurrentCloseable;
 
 /** Character stream. */
-public interface ICharacterStream extends AutoCloseable, AsyncCloseable<IOException> {
+public interface ICharacterStream extends IConcurrentCloseable {
 	
 	/** Return the priority. */
 	byte getPriority();

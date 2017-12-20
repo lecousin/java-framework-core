@@ -137,7 +137,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 		return closing;
 	}
 	
-	private CancelException createCancellation() {
+	private static CancelException createCancellation() {
 		return new CancelException("Resource closed");
 	}
 	

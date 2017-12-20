@@ -16,7 +16,7 @@ public abstract class TestWritableBufferedToFile extends TestIO.UsingTestData {
 	protected abstract IO.Writable.Buffered createWritableBufferedFromFile(File file) throws IOException;
 
 	@SuppressWarnings("unused")
-	protected void flush(IO.Writable.Buffered io) throws IOException {
+	protected void flush(IO.Writable.Buffered io) throws Exception {
 	}
 	
 	@Override

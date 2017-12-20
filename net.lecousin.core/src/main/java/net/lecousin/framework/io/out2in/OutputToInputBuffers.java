@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
@@ -57,6 +56,43 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	private byte priority;
 	private AsyncWork<?,?> lastWrite = null;
 	
+	@Override
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		eof = true;
+		lock.unlock();
+		if (maxPendingBuffers > 0)
+			while (!lockMaxBuffers.isEmpty())
+				lockMaxBuffers.removeFirst().unblock();
+		return null;
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		buffers = null;
+		ondone.unblock();
+	}
+	
+	@Override
+	public byte getPriority() { return priority; }
+	
+	@Override
+	public void setPriority(byte priority) { this.priority = priority; }
+	
+	@Override
+	public String getSourceDescription() {
+		return "OutputToInput";
+	}
+	
+	@Override
+	public TaskManager getTaskManager() {
+		return Threading.getCPUTaskManager();
+	}
+	
+	@Override
+	public IO getWrappedIO() {
+		return null;
+	}
+
 	@Override
 	public void signalErrorBeforeEndOfData(IOException error) {
 		lock.error(error);
@@ -141,7 +177,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 			task.start();
 		else
 			task.startOn(sp, true);
-		return task.getOutput();
+		return operation(task).getOutput();
 	}
 	
 	@Override
@@ -232,13 +268,13 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				return Integer.valueOf(readSync(buffer));
 			}
 		};
-		task.start();
+		operation(task.start());
 		return task.getOutput();
 	}
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return IOUtil.readFullyAsync(this, buffer, ondone);
+		return operation(IOUtil.readFullyAsync(this, buffer, ondone));
 	}
 	
 	@Override
@@ -280,39 +316,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	
 	@Override
 	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return IOUtil.skipAsyncUsingSync(this, n, ondone);
-	}
-	
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
-	@Override
-	protected ISynchronizationPoint<IOException> closeIO() {
-		eof = true;
-		lock.unlock();
-		if (maxPendingBuffers > 0)
-			while (!lockMaxBuffers.isEmpty())
-				lockMaxBuffers.removeFirst().unblock();
-		return new SynchronizationPoint<>(true);
-	}
-	
-	@Override
-	public byte getPriority() { return priority; }
-	
-	@Override
-	public void setPriority(byte priority) { this.priority = priority; }
-	
-	@Override
-	public String getSourceDescription() {
-		return "OutputToInput";
-	}
-	
-	@Override
-	public TaskManager getTaskManager() {
-		return Threading.getCPUTaskManager();
-	}
-	
-	@Override
-	public IO getWrappedIO() {
-		return null;
+		return operation(IOUtil.skipAsyncUsingSync(this, n, ondone));
 	}
 
 	@Override
@@ -444,7 +448,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				return b;
 			}
 		};
-		task.startOn(canStartReading(), true);
+		operation(task).startOn(canStartReading(), true);
 		return task.getOutput();
 	}
 }
