@@ -96,7 +96,10 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 	
 	@Override
 	protected ISynchronizationPoint<?> closeUnderlyingResources() {
-		stop();
+		synchronized (this) {
+			if (currentRead != null)
+				currentRead.unblockCancel(new CancelException("BufferedReverseIO stopped"));
+		}
 		return io.closeAsync();
 	}
 	
@@ -104,6 +107,8 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 	protected void closeResources(SynchronizationPoint<Exception> ondone) {
 		buffer = null;
 		io = null;
+		if (!canRead.isUnblocked())
+			canRead.cancel(new CancelException("IO Closed"));
 		ondone.unblock();
 	}
 	
