@@ -17,7 +17,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 	private boolean open = true;
 	private HashSet<ISynchronizationPoint<?>> pendingOperations = new HashSet<>(5);
 	private SynchronizationPoint<Exception> closing = null;
-	private Event<CloseableListenable<Exception>> closeEvent = null;
+	private Event<CloseableListenable> closeEvent = null;
 	private int closeLocked = 0;
 	private SynchronizationPoint<Exception> waitForClose = null;
 
@@ -37,7 +37,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 	}
 
 	@Override
-	public void addCloseListener(Listener<CloseableListenable<Exception>> listener) {
+	public void addCloseListener(Listener<CloseableListenable> listener) {
 		synchronized (this) {
 			if (closing == null && open) {
 				if (closeEvent == null) closeEvent = new Event<>();
@@ -61,7 +61,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 	}
 
 	@Override
-	public void removeCloseListener(Listener<CloseableListenable<Exception>> listener) {
+	public void removeCloseListener(Listener<CloseableListenable> listener) {
 		synchronized (this) {
 			if (closeEvent == null) return;
 			closeEvent.removeListener(listener);

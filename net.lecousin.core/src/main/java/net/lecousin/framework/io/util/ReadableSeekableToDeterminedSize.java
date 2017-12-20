@@ -61,7 +61,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 	
 	@Override
-	public void addCloseListener(Listener<CloseableListenable<Exception>> listener) {
+	public void addCloseListener(Listener<CloseableListenable> listener) {
 		io.addCloseListener(listener);
 	}
 	
@@ -71,7 +71,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 	
 	@Override
-	public void removeCloseListener(Listener<CloseableListenable<Exception>> listener) {
+	public void removeCloseListener(Listener<CloseableListenable> listener) {
 		io.removeCloseListener(listener);
 	}
 	

@@ -1,6 +1,6 @@
 package net.lecousin.framework.util;
 
-public interface IConcurrentCloseable extends AutoCloseable, AsyncCloseable<Exception>, CloseableListenable<Exception> {
+public interface IConcurrentCloseable extends AutoCloseable, AsyncCloseable<Exception>, CloseableListenable {
 
 	/** Calling this method avoid this resource to be closed. For each call to this function, a call to the unlockClose method must be done. */
 	boolean lockClose();

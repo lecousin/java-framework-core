@@ -6,29 +6,29 @@ import net.lecousin.framework.event.Listener;
 /**
  * Closeable resource, with the possibility to add and remove listeners to be called when the resource is closed.
  */
-public interface CloseableListenable<TError extends Exception> {
+public interface CloseableListenable {
 
 	/** Close. */
-	public void close() throws TError;
+	public void close() throws Exception;
 	
 	/** Return true if closed. */
 	public boolean isClosed();
 	
 	/** Add a listener to be called once this resource is closed. */
-	public void addCloseListener(Listener<CloseableListenable<TError>> listener);
+	public void addCloseListener(Listener<CloseableListenable> listener);
 
 	/** Add a listener to be called once this resource is closed. */
 	public void addCloseListener(Runnable listener);
 	
 	/** Remove a listener. */
-	public void removeCloseListener(Listener<CloseableListenable<TError>> listener);
+	public void removeCloseListener(Listener<CloseableListenable> listener);
 	
 	/** Remove a listener. */
 	public void removeCloseListener(Runnable listener);
 	
 	/** Default implementation to handle listeners fired on close. */
-	public static class Impl<TError extends Exception> implements CloseableListenable<TError> {
-		private Event<CloseableListenable<TError>> event = new Event<>();
+	public static class Impl implements CloseableListenable {
+		private Event<CloseableListenable> event = new Event<>();
 		private boolean closed = false;
 		
 		@Override
@@ -41,7 +41,7 @@ public interface CloseableListenable<TError extends Exception> {
 		}
 		
 		@Override
-		public void addCloseListener(Listener<CloseableListenable<TError>> listener) {
+		public void addCloseListener(Listener<CloseableListenable> listener) {
 			event.addListener(listener);
 		}
 
@@ -51,7 +51,7 @@ public interface CloseableListenable<TError extends Exception> {
 		}
 		
 		@Override
-		public void removeCloseListener(Listener<CloseableListenable<TError>> listener) {
+		public void removeCloseListener(Listener<CloseableListenable> listener) {
 			event.removeListener(listener);
 		}
 
