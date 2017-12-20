@@ -293,7 +293,7 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 					}, sp, ondone);
 				}
 			});
-			sp.listenCancel(new Listener<CancelException>() {
+			sp.onCancel(new Listener<CancelException>() {
 				@Override
 				public void fire(CancelException event) {
 					mem.cancel(event);
@@ -616,7 +616,7 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 			}, sp, ondone);
 		}, sp, ondone);
 		ReadInMemory mm = mem;
-		sp.listenCancel(new Listener<CancelException>() {
+		sp.onCancel(new Listener<CancelException>() {
 			@Override
 			public void fire(CancelException event) {
 				mm.cancel(event);

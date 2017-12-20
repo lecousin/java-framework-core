@@ -44,13 +44,13 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	@Override
 	public void listenInline(Runnable r) {
 		synchronized (this) {
-			if (unblocked) {
-				r.run();
+			if (!unblocked || listenersInline != null) {
+				if (listenersInline == null) listenersInline = new ArrayList<>(5);
+				listenersInline.add(r);
 				return;
 			}
-			if (listenersInline == null) listenersInline = new ArrayList<>(5);
-			listenersInline.add(r);
 		}
+		r.run();
 	}
 	
 	/** Unblock this synchronization point without error. */
@@ -58,34 +58,49 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 		if (Threading.debugSynchronization) ThreadingDebugHelper.unblocked(this);
 		ArrayList<Runnable> listeners;
 		synchronized (this) {
+			if (unblocked) return;
 			unblocked = true;
-			listeners = listenersInline;
-			listenersInline = null;
-			if (listeners != null) {
-				Application app = LCCore.getApplication();
-				Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
-				if (log == null || !log.debug())
-					for (int i = 0; i < listeners.size(); ++i)
-						try { listeners.get(i).run(); }
-						catch (Throwable t) {
-							app.getDefaultLogger()
-								.error("Exception thrown by an inline listener of SynchronizationPoint", t);
-						}
-				else
-					for (int i = 0; i < listeners.size(); ++i) {
-						long start = System.nanoTime();
-						try { listeners.get(i).run(); }
-						catch (Throwable t) {
-							app.getDefaultLogger()
-								.error("Exception thrown by an inline listener of SynchronizationPoint", t);
-						}
-						long time = System.nanoTime() - start;
-						if (time > 1000000) // more than 1ms
-							log.debug("Listener took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
-					}
+			if (listenersInline == null) {
+				this.notifyAll();
+				return;
 			}
-			// notify after listeners
-			this.notifyAll();
+			listeners = listenersInline;
+			listenersInline = new ArrayList<>(2);
+		}
+		while (listeners != null) {
+			Application app = LCCore.getApplication();
+			Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
+			if (log == null || !log.debug())
+				for (int i = 0; i < listeners.size(); ++i)
+					try { listeners.get(i).run(); }
+					catch (Throwable t) {
+						app.getDefaultLogger()
+							.error("Exception thrown by an inline listener of SynchronizationPoint", t);
+					}
+			else
+				for (int i = 0; i < listeners.size(); ++i) {
+					long start = System.nanoTime();
+					try { listeners.get(i).run(); }
+					catch (Throwable t) {
+						app.getDefaultLogger()
+							.error("Exception thrown by an inline listener of SynchronizationPoint", t);
+					}
+					long time = System.nanoTime() - start;
+					if (time > 1000000) // more than 1ms
+						log.debug("Listener took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
+				}
+			synchronized (this) {
+				if (listenersInline.isEmpty()) {
+					listenersInline = null;
+					listeners = null;
+					this.notifyAll();
+					break;
+				}
+				listeners.clear();
+				ArrayList<Runnable> tmp = listeners;
+				listeners = listenersInline;
+				listenersInline = tmp;
+			}
 		}
 	}
 	
@@ -106,12 +121,12 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 		Thread t;
 		BlockedThreadHandler blockedHandler;
 		synchronized (this) {
-			if (unblocked) return;
+			if (unblocked && listenersInline == null) return;
 			t = Thread.currentThread();
 			blockedHandler = Threading.getBlockedThreadHandler(t);
 			if (blockedHandler == null) {
 				if (timeout <= 0) {
-					while (!unblocked)
+					while (!unblocked || listenersInline != null)
 						try { this.wait(0); }
 						catch (InterruptedException e) { return; }
 				} else
@@ -126,16 +141,15 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	@Override
 	public void blockPause(long logAfter) {
 		synchronized (this) {
-			if (unblocked) return;
-			do {
+			while (!unblocked || listenersInline != null) {
 				long start = System.currentTimeMillis();
 				try { this.wait(logAfter + 1000); }
 				catch (InterruptedException e) { return; }
 				if (System.currentTimeMillis() - start <= logAfter)
-					break;
+					continue;
 				System.err.println("Still blocked after " + (logAfter / 1000) + "s.");
 				new Exception("").printStackTrace(System.err);
-			} while (true);
+			}
 		}
 	}
 	

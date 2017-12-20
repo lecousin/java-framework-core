@@ -120,7 +120,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 							}
 						}
 					});
-				write.listenCancel(new Listener<CancelException>() {
+				write.onCancel(new Listener<CancelException>() {
 					@Override
 					public void fire(CancelException event) {
 						lock.cancel(event);

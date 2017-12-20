@@ -195,7 +195,7 @@ public class IOUtil {
 				sp.unblockCancel(event);
 			}
 		});
-		sp.listenCancel(new Listener<CancelException>() {
+		sp.onCancel(new Listener<CancelException>() {
 			@Override
 			public void fire(CancelException event) {
 				r.get().unblockCancel(event);
@@ -261,7 +261,7 @@ public class IOUtil {
 				sp.unblockCancel(event);
 			}
 		});
-		sp.listenCancel(new Listener<CancelException>() {
+		sp.onCancel(new Listener<CancelException>() {
 			@Override
 			public void fire(CancelException event) {
 				r.get().unblockCancel(event);

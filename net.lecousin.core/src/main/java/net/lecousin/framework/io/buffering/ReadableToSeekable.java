@@ -145,7 +145,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 		}
 		AsyncWork<Long,IOException> seek = seekAsync(SeekType.FROM_END, 0);
 		seek.listenInline((result) -> { sp.unblockSuccess(Long.valueOf(knownSize)); }, sp);
-		sp.listenCancel(new Listener<CancelException>() {
+		sp.onCancel(new Listener<CancelException>() {
 			@Override
 			public void fire(CancelException event) {
 				seek.unblockCancel(event);
