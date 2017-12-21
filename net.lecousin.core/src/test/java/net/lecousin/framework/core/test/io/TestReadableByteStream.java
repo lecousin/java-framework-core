@@ -1,11 +1,13 @@
 package net.lecousin.framework.core.test.io;
 
+import java.io.EOFException;
 import java.io.File;
 
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFiles {
@@ -108,6 +110,33 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 		ioBuf.close();
 	}
 	
-	// TODO skip
+	@SuppressWarnings("resource")
+	@Test
+	public void testSkip() throws Exception {
+		long size = getFileSize();
+		IO.ReadableByteStream ioBuf = createReadableByteStreamFromFile(openFile(), size);
+		for (int i = 0; i < nbBuf; ++i) {
+			int j = testBuf.length / 10;
+			Assert.assertEquals(j, ioBuf.skip(j));
+			byte b;
+			try { b = ioBuf.readByte(); }
+			catch (EOFException e) {
+				throw new AssertionError("EOF reached at " + (i * testBuf.length + j) + ", file size is " + (nbBuf * testBuf.length));
+			}
+			if (b != testBuf[j])
+				throw new AssertionError("Invalid byte " + b + " read at " + (i * testBuf.length + j)
+					+ ", expected was " + testBuf[j]);
+			Assert.assertEquals(testBuf.length - j - 2, ioBuf.skip(testBuf.length - j - 2));
+			j = testBuf.length - 1;
+			try { b = ioBuf.readByte(); }
+			catch (EOFException e) {
+				throw new AssertionError("EOF reached at " + (i * testBuf.length + j) + ", file size is " + (nbBuf * testBuf.length));
+			}
+			if (b != testBuf[j])
+				throw new AssertionError("Invalid byte " + b + " read at " + (i * testBuf.length + j)
+					+ ", expected was " + testBuf[j]);
+		}
+		ioBuf.close();
+	}
 	
 }

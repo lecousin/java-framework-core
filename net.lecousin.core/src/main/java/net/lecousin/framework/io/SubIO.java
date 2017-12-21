@@ -336,7 +336,8 @@ public abstract class SubIO extends ConcurrentCloseable {
 					} catch (IOException e) {
 						return new SynchronizationPoint<>(e);
 					}
-					AsyncWork<Long, IOException> seek = ((IO.Readable.Seekable)io).seekAsync(SeekType.FROM_BEGINNING, start + pos);
+					AsyncWork<Long, IOException> seek =
+						((IO.Readable.Seekable)io).seekAsync(SeekType.FROM_BEGINNING, start + pos);
 					return seek;
 				}
 				
@@ -372,7 +373,8 @@ public abstract class SubIO extends ConcurrentCloseable {
 				public int readAsync() throws IOException {
 					if (pos == size) return -1;
 					if (((IO.Readable.Seekable)io).getPosition() != start + pos) {
-						AsyncWork<Long, IOException> seek = ((IO.Readable.Seekable)io).seekAsync(SeekType.FROM_BEGINNING, start + pos);
+						AsyncWork<Long, IOException> seek =
+							((IO.Readable.Seekable)io).seekAsync(SeekType.FROM_BEGINNING, start + pos);
 						if (!seek.isUnblocked())
 							return -2;
 						if (seek.hasError()) throw seek.getError();
