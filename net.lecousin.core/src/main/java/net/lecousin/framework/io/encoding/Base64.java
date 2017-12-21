@@ -282,7 +282,7 @@ public final class Base64 {
 		nb *= 4;
 		char[] output = new char[nb];
 		int pos = 0;
-		while (len >= 0) {
+		while (len >= 3) {
 			encode3BytesBase64(input, offset, output, pos);
 			offset += 3;
 			len -= 3;
