@@ -176,16 +176,18 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		readPos = pos;
 		if (lock.hasError() && !eof) {
 			IOException e = new IOException("An error occured during the transfer of data", lock.getError());
 			if (ondone != null) ondone.run(new Pair<>(null, e));
 			return new AsyncWork<Integer, IOException>(null, e);
 		}
-		if (readPos >= writePos) {
+		if (pos >= writePos) {
 			if (eof) {
-				if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
-				return new AsyncWork<Integer, IOException>(Integer.valueOf(-1), null);
+				if (pos >= writePos) {
+					readPos = writePos;
+					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
+					return new AsyncWork<Integer, IOException>(Integer.valueOf(-1), null);
+				}
 			}
 			AsyncWork<Integer, IOException> result = new AsyncWork<>();
 			lock.listenAsync(operation(new Task.Cpu<Integer, IOException>("OutputToInput.readAsync", io.getPriority()) {
@@ -210,11 +212,14 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 			@Override
 			public Void run() {
 				lockIO.lock();
-				((IO.Readable.Seekable)io).readAsync(readPos, buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
+				((IO.Readable.Seekable)io).readAsync(pos, buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
 					@Override
 					public void run(Pair<Integer, IOException> param) {
 						if (param.getValue1() != null)
-							readPos += param.getValue1().intValue();
+							readPos = pos + param.getValue1().intValue();
+						else
+							readPos = pos;
+						if (ondone != null) ondone.run(param);
 					}
 				}).listenInline(result);
 				lockIO.unlock();
@@ -235,16 +240,68 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	}
 	
 	@Override
-	public long skipSync(long n) {
+	public long skipSync(long n) throws IOException {
+		if (n == 0) return 0;
+		if (n < 0) {
+			if (readPos + n < 0)
+				n = -readPos;
+			readPos += n;
+			return n;
+		}
+		if (readPos + n > writePos) {
+			if (lock.hasError() && !eof)
+				throw new IOException("An error occured during the transfer of data", lock.getError());
+			while (readPos + n > writePos) {
+				if (eof) {
+					n = writePos - readPos;
+					readPos = writePos;
+					return n;
+				}
+				if (lock.hasError() && !eof)
+					throw new IOException("An error occured during the transfer of data", lock.getError());
+				lock.lock();
+			}
+		}
 		readPos += n;
 		return n;
 	}
 	
 	@Override
 	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		Long r = Long.valueOf(skipSync(n));
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<Long, IOException>(r, null);
+		if (n <= 0 || readPos + n <= writePos) {
+			try {
+				Long r = Long.valueOf(skipSync(n));
+				if (ondone != null) ondone.run(new Pair<>(r, null));
+				return new AsyncWork<Long, IOException>(r, null);
+			} catch (IOException e) {
+				if (ondone != null) ondone.run(new Pair<>(null, e));
+				return new AsyncWork<>(null, e);
+			}
+		}
+		if (eof) {
+			long m = writePos - readPos;
+			if (m > n) m = n;
+			readPos += m;
+			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(m), null));
+			return new AsyncWork<Long, IOException>(Long.valueOf(m), null);
+		}
+		AsyncWork<Long, IOException> result = new AsyncWork<>();
+		lock.listenAsync(operation(new Task.Cpu<Long, IOException>("OutputToInput.skipAsync", io.getPriority()) {
+			@Override
+			public Long run() throws IOException {
+				try {
+					Long nb = Long.valueOf(skipSync(n));
+					if (ondone != null) ondone.run(new Pair<>(nb, null));
+					result.unblockSuccess(nb);
+					return nb;
+				} catch (IOException e) {
+					if (ondone != null) ondone.run(new Pair<>(null, e));
+					result.unblockError(e);
+					throw e;
+				}
+			}
+		}), true);
+		return result;
 	}	
 
 	@Override
@@ -256,17 +313,19 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	public long seekSync(SeekType type, long move) throws IOException {
 		switch (type) {
 		case FROM_BEGINNING:
-			readPos = move;
-			return move;
+			readPos = 0;
+			skipSync(move);
+			return readPos;
 		case FROM_CURRENT:
-			readPos += move;
+			skipSync(move);
 			return readPos;
 		case FROM_END:
 			while (!eof && !lock.hasError()) {
 				lock.lock();
 			}
 			if (eof) {
-				readPos = writePos - move;
+				readPos = writePos;
+				skipSync(-move);
 				return readPos;
 			}
 			throw new IOException("An error occured during the transfer of data", lock.getError());
@@ -277,13 +336,21 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 
 	@Override
 	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+		AsyncWork<Long, IOException> res = new AsyncWork<>();
 		switch (type) {
 		case FROM_BEGINNING:
-			readPos = move;
-			break;
+			readPos = 0;
+			skipAsync(move).listenInline(() -> {
+				if (ondone != null) ondone.run(new Pair<>(Long.valueOf(readPos), null));
+				res.unblockSuccess(Long.valueOf(readPos));
+			}, res);
+			return res;
 		case FROM_CURRENT:
-			readPos += move;
-			break;
+			skipAsync(move).listenInline(() -> {
+				if (ondone != null) ondone.run(new Pair<>(Long.valueOf(readPos), null));
+				res.unblockSuccess(Long.valueOf(readPos));
+			}, res);
+			return res;
 		case FROM_END:
 			if (lock.hasError() && !eof) {
 				IOException e = new IOException("An error occured during the transfer of data", lock.getError());
@@ -291,32 +358,34 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 				return new AsyncWork<Long, IOException>(null, e);
 			}
 			if (eof) {
-				readPos = writePos - move;
-				break;
+				if (move <= 0)
+					readPos = writePos;
+				else
+					readPos = writePos - move;
+				if (readPos < 0) readPos = 0;
+				Long r = Long.valueOf(readPos);
+				if (ondone != null) ondone.run(new Pair<>(r, null));
+				return new AsyncWork<Long, IOException>(r, null);
 			}
 			AsyncWork<Long, IOException> result = new AsyncWork<Long, IOException>();
-			lock.listenInline(new Runnable() {
+			lock.listenAsync(operation(new Task.Cpu<Void, NoException>("OutputToInput.seekAsync", io.getPriority()) {
 				@Override
-				public void run() {
-					if (lock.hasError() && !eof) {
-						IOException e = new IOException("An error occured during the transfer of data", lock.getError());
+				public Void run() {
+					try {
+						Long nb = Long.valueOf(seekSync(type, move));
+						if (ondone != null) ondone.run(new Pair<>(nb, null));
+						result.unblockSuccess(nb);
+					} catch (IOException e) {
 						if (ondone != null) ondone.run(new Pair<>(null, e));
 						result.unblockError(e);
-					} else if (eof) {
-						readPos = writePos - move;
-						if (ondone != null) ondone.run(new Pair<>(Long.valueOf(readPos), null));
-						result.unblockSuccess(Long.valueOf(readPos));
-					} else
-						lock.listenInline(this);
+					}
+					return null;
 				}
-			});
-			return operation(result);
+			}), true);
+			return result;
 		default:
 			return new AsyncWork<>(null, new IOException("Unknown SeekType " + type));
 		}
-		Long r = Long.valueOf(readPos);
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<Long, IOException>(r, null);
 	}
 
 }

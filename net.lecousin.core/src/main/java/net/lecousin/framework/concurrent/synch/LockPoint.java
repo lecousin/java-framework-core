@@ -67,7 +67,7 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 		}
 		// notify after listeners
 		synchronized (this) {
-			this.notify();
+			this.notifyAll();
 		}
 	}
 	

@@ -404,7 +404,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 						onDoneBefore.set(false);
 						long p = seek.getResult().longValue();
 						if (p != expectedPosition) {
-							sp.error(new Exception("Invalid seek: returned position " + p + ", expected is " + expectedPosition));
+							sp.error(new Exception("Invalid seek: returned position " + p + ", expected is " + expectedPosition + " after seek(" + type + ", " + move + ")"));
 							return;
 						}
 						try { p = io.getPosition(); }

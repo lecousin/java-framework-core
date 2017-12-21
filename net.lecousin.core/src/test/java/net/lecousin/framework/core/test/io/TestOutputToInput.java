@@ -160,7 +160,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 	@Test
 	public void testSkipSync() throws Exception {
 		IO.OutputToInput o2i = createOutputToInput();
-		writeBg(o2i);
+		writeBg(o2i, nbBuf, testBuf);
 		byte[] buf = new byte[testBuf.length];
 		for (int i = 0; i < nbBuf; ++i) {
 			if ((i % 2) == 0) o2i.skipSync(testBuf.length);
@@ -177,7 +177,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 	@Test
 	public void testSkipAsync() throws Exception {
 		IO.OutputToInput o2i = createOutputToInput();
-		writeBg(o2i);
+		writeBg(o2i, nbBuf, testBuf);
 		byte[] buf = new byte[testBuf.length];
 		MutableInteger i = new MutableInteger(0);
 		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
@@ -213,7 +213,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		o2i.close();
 	}
 	
-	private SynchronizationPoint<IOException> writeBg(IO.OutputToInput o2i) {
+	public static SynchronizationPoint<IOException> writeBg(IO.OutputToInput o2i, int nbBuf, byte[] testBuf) {
 		SynchronizationPoint<IOException> spWrite = new SynchronizationPoint<>();
 		new Task.Cpu<Void, NoException>("Launch write async to OutputToInput", Task.PRIORITY_IMPORTANT) {
 			@Override
@@ -229,6 +229,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 					@Override
 					public void run() {
 						if (write.get().hasError()) { spWrite.error(write.get().getError()); return; }
+						if (write.get().isCancelled()) { spWrite.cancel(write.get().getCancelEvent()); return; }
 						if (nbWrite.get() == nbBuf) {
 							o2i.endOfData();
 							spWrite.unblock();
@@ -244,7 +245,5 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		}.start();
 		return spWrite;
 	}
-	
-	// TODO seekSync + seekAsync
 	
 }

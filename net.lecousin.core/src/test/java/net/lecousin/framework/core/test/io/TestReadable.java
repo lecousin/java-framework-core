@@ -453,8 +453,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 				throw new Exception("Readable is not supposed to be able to skip with a negative value, skipping -10 bytes returned " + skipped + " while 0 was expected.");
 		}
 		io.readSync(buffer);
-		if (b[0] != testBuf[testBuf.length / 2 + (int)skipped])
-			throw new Exception("Invalid byte read after skipSync with negative value");
+		Assert.assertEquals("Invalid byte read after skipSync with negative value", testBuf[testBuf.length / 2 + (int)skipped], b[0]);
 		io.close();
 	}
 
