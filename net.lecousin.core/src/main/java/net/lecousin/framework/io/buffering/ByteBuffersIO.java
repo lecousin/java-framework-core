@@ -132,12 +132,10 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 					return null;
 				Triple<byte[],Integer,Integer> b = buffers.get(bufferIndex);
 				int len = b.getValue3().intValue() - bufferPos;
-				ByteBuffer buf = ByteBuffer.allocate(len);
-				buf.put(b.getValue1(), b.getValue2().intValue() + bufferPos, len);
+				ByteBuffer buf = ByteBuffer.wrap(b.getValue1(), b.getValue2().intValue() + bufferPos, len);
 				pos += len;
 				bufferIndex++;
 				bufferPos = 0;
-				buf.flip();
 				return buf;
 			}
 		};

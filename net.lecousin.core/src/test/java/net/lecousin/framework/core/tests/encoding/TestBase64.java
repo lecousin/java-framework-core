@@ -31,8 +31,8 @@ public class TestBase64 extends LCCoreAbstractTest {
 	public void testDecoding() throws IOException {
 		Assert.assertEquals("This is a test", new String(Base64.decode("VGhpcyBpcyBhIHRlc3Q=".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
 		Assert.assertEquals("That is a test!", new String(Base64.decode("VGhhdCBpcyBhIHRlc3Qh".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
-		Assert.assertEquals("This is a test", Base64.decode("VGhpcyBpcyBhIHRlc3Q="));
-		Assert.assertEquals("This is a test!", Base64.decode("VGhhdCBpcyBhIHRlc3Qh="));
+		Assert.assertEquals("This is a test", new String(Base64.decode("VGhpcyBpcyBhIHRlc3Q=")));
+		Assert.assertEquals("That is a test!", new String(Base64.decode("VGhhdCBpcyBhIHRlc3Qh=")));
 	}
 	
 	@SuppressWarnings("resource")
@@ -73,7 +73,7 @@ public class TestBase64 extends LCCoreAbstractTest {
 		for (int i = 0; i < 1024; ++i) {
 			byte[] data = new byte[128];
 			for (int j = 0; j < 128; ++j)
-				data[i * 128 + j] = (byte)((i * j % 300) + i + j - i/3);
+				data[j] = (byte)((i * j % 300) + i + j - i/3);
 			input.addBuffer(data, 0, 1);
 			input.addBuffer(data, 1, 1);
 			input.addBuffer(data, 2, 1);
@@ -99,8 +99,8 @@ public class TestBase64 extends LCCoreAbstractTest {
 			Assert.assertEquals(128, nb);
 			byte[] data = new byte[128];
 			for (int j = 0; j < 128; ++j)
-				data[i * 128 + j] = (byte)((i * j % 300) + i + j - i/3);
-			Assert.assertTrue(ArrayUtil.equals(data, i * 128, b, 0, 128));
+				data[j] = (byte)((i * j % 300) + i + j - i/3);
+			Assert.assertArrayEquals("Buffer " + i, data, b);
 		}
 	}
 	

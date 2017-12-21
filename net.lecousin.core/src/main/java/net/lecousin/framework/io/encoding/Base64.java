@@ -264,13 +264,14 @@ public final class Base64 {
 		nb *= 4;
 		byte[] output = new byte[nb];
 		int pos = 0;
-		while (offset + 3 < len) {
+		while (len >= 3) {
 			encode3BytesBase64(input, offset, output, pos);
 			offset += 3;
+			len -= 3;
 			pos += 4;
 		}
-		if (offset < len)
-			encodeUpTo3BytesBase64(input, offset, output, pos, len - offset);
+		if (len > 0)
+			encodeUpTo3BytesBase64(input, offset, output, pos, len);
 		return output;
 	}
 	
@@ -281,12 +282,13 @@ public final class Base64 {
 		nb *= 4;
 		char[] output = new char[nb];
 		int pos = 0;
-		while (offset + 3 < len) {
+		while (len >= 0) {
 			encode3BytesBase64(input, offset, output, pos);
 			offset += 3;
+			len -= 3;
 			pos += 4;
 		}
-		if (offset < len)
+		if (len > 0)
 			encodeUpTo3BytesBase64(input, offset, output, pos, len - offset);
 		return output;
 	}
@@ -374,9 +376,13 @@ public final class Base64 {
 					}
 				}
 				int l = buffer.remaining() / 3;
-				byte[] out = encodeBase64(buffer.array(), buffer.position(), l * 3);
-				ISynchronizationPoint<IOException> write = writer.writeAsync(ByteBuffer.wrap(out));
-				buffer.position(buffer.position() + l * 3);
+				ISynchronizationPoint<IOException> write;
+				if (l > 0) {
+					byte[] out = encodeBase64(buffer.array(), buffer.position(), l * 3);
+					write = writer.writeAsync(ByteBuffer.wrap(out));
+					buffer.position(buffer.position() + l * 3);
+				} else
+					write = null;
 				nb = buffer.remaining();
 				buffer.get(buf, 0, nb);
 				encodeAsyncNextBuffer(io, writer, result, buf, nb, write);
@@ -420,9 +426,13 @@ public final class Base64 {
 					}
 				}
 				int l = buffer.remaining() / 3;
-				char[] out = encodeBase64ToChars(buffer.array(), buffer.position(), l * 3);
-				ISynchronizationPoint<IOException> write = writer.writeAsync(out);
-				buffer.position(buffer.position() + l * 3);
+				ISynchronizationPoint<IOException> write;
+				if (l > 0) {
+					char[] out = encodeBase64ToChars(buffer.array(), buffer.position(), l * 3);
+					write = writer.writeAsync(out);
+					buffer.position(buffer.position() + l * 3);
+				} else
+					write = null;
 				nb = buffer.remaining();
 				buffer.get(buf, 0, nb);
 				encodeAsyncNextBuffer(io, writer, result, buf, nb, write);
