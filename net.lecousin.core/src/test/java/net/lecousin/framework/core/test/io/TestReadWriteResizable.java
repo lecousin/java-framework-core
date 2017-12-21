@@ -90,6 +90,20 @@ public abstract class TestReadWriteResizable extends TestIO {
 		s = io.getPosition();
 		if (s != 100) throw new Exception("Write error: new position is " + s + ", expected is 100");
 		
+		if (io instanceof IO.WritableByteStream) {
+			((IO.WritableByteStream)io).write((byte)'a');
+			s = io.getSizeSync();
+			if (s != 101) throw new Exception("Write error: new size is " + s + ", expected is 101");
+			s = io.getPosition();
+			if (s != 101) throw new Exception("Write error: new position is " + s + ", expected is 101");
+		}
+		
+		io.setSizeSync(20);
+		s = io.getSizeSync();
+		if (s != 20) throw new Exception("Write error: new size is " + s + ", expected is 20");
+		s = io.getPosition();
+		if (s != 20) throw new Exception("Write error: new position is " + s + ", expected is 20");
+		
 		io.close();
 	}
 	

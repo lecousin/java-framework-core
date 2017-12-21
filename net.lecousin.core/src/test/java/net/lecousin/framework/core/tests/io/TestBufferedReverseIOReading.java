@@ -4,19 +4,22 @@ import java.io.EOFException;
 import java.io.File;
 import java.util.Collection;
 
+import net.lecousin.framework.collections.ArrayUtil;
+import net.lecousin.framework.core.test.io.TestIO;
+import net.lecousin.framework.core.test.io.TestReadableByteStream;
+import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.FileIO.ReadOnly;
+import net.lecousin.framework.io.IO.ReadableByteStream;
+import net.lecousin.framework.io.buffering.BufferedReverseIOReading;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import net.lecousin.framework.collections.ArrayUtil;
-import net.lecousin.framework.core.test.io.TestIO;
-import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.buffering.BufferedReverseIOReading;
-
 @RunWith(Parameterized.class)
-public class TestBufferedReverseIOReading extends TestIO.UsingGeneratedTestFiles {
+public class TestBufferedReverseIOReading extends TestReadableByteStream {
 
 	@Parameters(name = "nbBuf = {2}")
 	public static Collection<Object[]> parameters() {
@@ -27,6 +30,10 @@ public class TestBufferedReverseIOReading extends TestIO.UsingGeneratedTestFiles
 		super(testFile, testBuf, nbBuf);
 	}
 	
+	@Override
+	protected ReadableByteStream createReadableByteStreamFromFile(ReadOnly file, long fileSize) throws Exception {
+		return new BufferedReverseIOReading(openFile(), 512);
+	}
 	
 	@Override
 	protected IO getIOForCommonTests() {

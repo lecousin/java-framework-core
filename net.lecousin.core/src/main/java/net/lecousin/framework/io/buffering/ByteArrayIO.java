@@ -210,8 +210,6 @@ public class ByteArrayIO extends ConcurrentCloseable
 		) {
 			@Override
 			public ByteBuffer run() {
-				if (pos == size)
-					return null;
 				ByteBuffer buf = ByteBuffer.allocate(size - pos);
 				buf.put(array, pos, size - pos);
 				pos = size;
@@ -219,7 +217,7 @@ public class ByteArrayIO extends ConcurrentCloseable
 				return buf;
 			}
 		};
-		task.start();
+		operation(task.start());
 		return operation(task.getOutput());
 	}
 	

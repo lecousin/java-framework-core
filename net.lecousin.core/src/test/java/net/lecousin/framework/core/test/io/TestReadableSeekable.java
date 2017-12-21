@@ -307,6 +307,9 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			testSeekSync(io, SeekType.FROM_CURRENT, 10, 0, size);
 		}
 		
+		testSeekSync(io, SeekType.FROM_BEGINNING, size + 10, size, size);
+		testSeekSync(io, SeekType.FROM_END, size + 10, 0, size);
+		
 		io.close();
 	}
 	
