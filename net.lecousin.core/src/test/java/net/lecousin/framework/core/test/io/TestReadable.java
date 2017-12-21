@@ -339,7 +339,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 					throw new Exception("" + skipped + " byte(s) skipped at position " + pos + ", asked was " + toSkip);
 			} else {
 				if (skipped != size - pos)
-					throw new Exception("" + skipped + " byte(s) skipped at position " + pos + ", but file size is " + size);
+					throw new Exception("" + skipped + " byte(s) skipped at position " + pos + ", asked was " + toSkip + " and file size is " + size);
 			}
 			pos += skipped;
 			toSkip = toSkip + 1 + toSkip/2;

@@ -836,7 +836,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			pos += skip;
 			return skip + done;
 		}
-		done += nb2 - pos;
+		done += (nb1 + nb2) - pos;
 		pos = nb1 + nb2;
 		return done;
 	}

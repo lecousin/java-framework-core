@@ -196,7 +196,7 @@ public class UnprotectedString implements IString {
 	@Override
 	public int indexOf(CharSequence s, int pos) {
 		int l = s.length();
-		if (l <= pos) return -1;
+		if (start + pos + l - 1 > end) return -1;
 		char first = s.charAt(0);
 		for (int i = start + pos; i <= end - l + 1; ++i)
 			if (chars[i] == first) {
@@ -205,7 +205,7 @@ public class UnprotectedString implements IString {
 					if (s.charAt(j) != chars[i + j]) break;
 					j++;
 				}
-				if (j == l) return i;
+				if (j == l) return i - start;
 			}
 		return -1;
 	}
@@ -218,12 +218,15 @@ public class UnprotectedString implements IString {
 	
 	@Override
 	public UnprotectedString substring(int start, int end) {
+		if (this.start + end > this.end) end = this.end - this.start + 1;
 		if (end <= start) return new UnprotectedString(0);
 		return new UnprotectedString(chars, this.start + start, end - start, end - start);
 	}
 	
 	@Override
 	public UnprotectedString substring(int start) {
+		if (this.start + start > end)
+			return new UnprotectedString(0);
 		return new UnprotectedString(chars, this.start + start, end - (this.start + start) + 1, end - (this.start + start) + 1);
 	}
 	
@@ -283,7 +286,7 @@ public class UnprotectedString implements IString {
 		while (pos <= end) {
 			int found = pos;
 			while (found <= end && chars[found] != sep) found++;
-			list.add(substring(pos, found));
+			list.add(substring(pos - start, found - start));
 			pos = found + 1;
 		}
 		return list;
