@@ -22,4 +22,10 @@ public interface CustomExtensionPoint {
 		return null;
 	}
 	
+	default void printInfo(StringBuilder s) {
+		s.append(getClass().getName());
+	}
+	
+	boolean keepAfterInit();
+	
 }

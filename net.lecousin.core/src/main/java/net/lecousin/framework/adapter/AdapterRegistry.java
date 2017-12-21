@@ -1,6 +1,7 @@
 package net.lecousin.framework.adapter;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -28,7 +29,7 @@ public class AdapterRegistry implements ExtensionPoint<Adapter> {
 		adapters.add(new FileInfoToPath());
 	}
 	
-	private ArrayList<Adapter<?,?>> adapters = new ArrayList<>();
+	private ArrayList<Adapter> adapters = new ArrayList<>();
 	
 	@Override
 	public void addPlugin(Adapter plugin) {
@@ -39,6 +40,11 @@ public class AdapterRegistry implements ExtensionPoint<Adapter> {
 	
 	@Override
 	public void allPluginsLoaded() {
+	}
+	
+	@Override
+	public Collection<Adapter> getPlugins() {
+		return adapters;
 	}
 	
 	@Override

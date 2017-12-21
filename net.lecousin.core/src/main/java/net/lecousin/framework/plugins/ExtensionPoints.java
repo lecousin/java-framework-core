@@ -69,9 +69,26 @@ public final class ExtensionPoints {
 	
 	/** Call the method allPluginsLoaded on every extension point. */
 	public static void allPluginsLoaded() {
+		StringBuilder s = new StringBuilder(1024);
+		s.append("Extension points:");
 		synchronized (points) {
 			for (ExtensionPoint<?> ep : points)
 				ep.allPluginsLoaded();
+			for (ExtensionPoint<?> ep : points) {
+				s.append("\r\n- ");
+				ep.printInfo(s);
+			}
+			points.trimToSize();
+		}
+		synchronized (customs) {
+			for (Iterator<CustomExtensionPoint> it = customs.iterator(); it.hasNext(); ) {
+				CustomExtensionPoint ep = it.next();
+				s.append("\r\n- ");
+				ep.printInfo(s);
+				if (!ep.keepAfterInit())
+					it.remove();
+			}
+			customs.trimToSize();
 		}
 	}
 	

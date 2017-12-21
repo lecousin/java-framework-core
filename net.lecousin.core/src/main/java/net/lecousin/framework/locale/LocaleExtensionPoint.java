@@ -22,6 +22,11 @@ public class LocaleExtensionPoint implements CustomExtensionPoint {
 	}
 	
 	@Override
+	public boolean keepAfterInit() {
+		return false;
+	}
+	
+	@Override
 	public ISynchronizationPoint<Exception> loadPluginConfiguration(
 		IO.Readable io, ApplicationClassLoader classLoader, ISynchronizationPoint<?>... startOn
 	) {

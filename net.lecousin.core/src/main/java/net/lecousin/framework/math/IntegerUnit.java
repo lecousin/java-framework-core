@@ -5,6 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -68,6 +69,11 @@ public interface IntegerUnit {
 
 		@Override
 		public void addPlugin(Converter plugin) { converters.add(plugin); }
+		
+		@Override
+		public Collection<Converter> getPlugins() {
+			return converters;
+		}
 
 		@Override
 		public void allPluginsLoaded() {
