@@ -184,11 +184,20 @@ public abstract class BufferedIO extends BufferingManaged {
 	}
 	
 	@Override
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		return manager.close(this);
+	}
+	
+	@Override
 	ISynchronizationPoint<Exception> closed() {
-		ISynchronizationPoint<Exception> sp = io.closeAsync();
+		return io.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
 		io = null;
 		buffers = null;
-		return sp;
+		ondone.unblock();
 	}
 	
 	@Override
@@ -209,16 +218,6 @@ public abstract class BufferedIO extends BufferingManaged {
 	
 	protected ISynchronizationPoint<IOException> flush() {
 		return manager.fullFlush(this);
-	}
-	
-	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
-		return null;
-	}
-	
-	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
-		manager.close(this).listenInlineSP(ondone);
 	}
 	
 	/** Read-only implementation of BufferedIO. */

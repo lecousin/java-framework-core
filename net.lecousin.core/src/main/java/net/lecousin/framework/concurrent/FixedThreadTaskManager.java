@@ -158,6 +158,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 	
 	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	void imBlocked(TaskWorker worker) {
+		worker.blocked = true;
 		if (Threading.traceBlockingTasks) {
 			Threading.logger.error("Task " + worker.currentTask.description + " blocked", new Exception());
 		}
@@ -214,6 +215,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 				spare.addLast(pause.getResult());
 			}
 		}
+		worker.blocked = false;
 		synchronized (blocked) {
 			blocked.removeInstance(worker);
 		}

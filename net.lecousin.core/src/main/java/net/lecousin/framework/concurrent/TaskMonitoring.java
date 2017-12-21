@@ -102,6 +102,7 @@ public final class TaskMonitoring {
 		long seconds = (now - start) / (1000000L * 1000);
 		if (seconds < SECONDS_BEFORE_TO_PUT_TASK_ASIDE) return;
 		if (seconds < SECONDS_BEFORE_KILL_TASK) {
+			if (worker.aside) return;
 			StringBuilder s = new StringBuilder(1024);
 			s.append("Task ").append(task).append(" is running since ").append(seconds)
 			 .append(" seconds ! put it aside and start a new thread, current stack:\r\n");
@@ -134,6 +135,7 @@ public final class TaskMonitoring {
 			TaskWorker w = it.next();
 			Task<?,?> task = w.currentTask;
 			if (task == null) continue;
+			if (!w.blocked) continue;
 			MonitorInfo[] monitors = ti.getLockedMonitors();
 			if (monitors.length == 0) continue;
 			StringBuilder s = new StringBuilder(1024);

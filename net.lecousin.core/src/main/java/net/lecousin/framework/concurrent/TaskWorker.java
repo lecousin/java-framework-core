@@ -29,6 +29,7 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 	long lastUsed = -1;
 	Thread thread;
 	boolean aside = false;
+	boolean blocked = false;
 	
 	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	void forceStop() {

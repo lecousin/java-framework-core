@@ -140,7 +140,6 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 				}
 				it.remove();
 				totalMemory -= b.buffer.length;
-				b.owner = null;
 			}
 		}
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
