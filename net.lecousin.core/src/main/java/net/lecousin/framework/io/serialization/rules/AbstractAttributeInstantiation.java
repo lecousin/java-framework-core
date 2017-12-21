@@ -30,7 +30,9 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 	private Class<? extends Factory> factory;
 	
 	@Override
-	public boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) throws Exception {
+	public boolean apply(
+		SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing
+	) throws Exception {
 		Attribute a = pattern.getAttribute(type, context);
 		if (a == null)
 			return false;

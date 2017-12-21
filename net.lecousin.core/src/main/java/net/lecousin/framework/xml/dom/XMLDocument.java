@@ -24,8 +24,10 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.ProcessingInstruction;
 
+/** DOM Document. */
 public class XMLDocument extends XMLNode implements Document {
 
+	/** Constructor. */
 	public XMLDocument() {
 		super(null);
 		this.doc = this;
@@ -34,11 +36,13 @@ public class XMLDocument extends XMLNode implements Document {
 	protected XMLDocumentType docType = null;
 	protected XMLElement root = null;
 	
+	/** Set the document type. */
 	public void setDocumentType(XMLDocumentType docType) {
 		docType.doc = this;
 		this.docType = docType;
 	}
 	
+	/** Set the root element. */
 	public void setDocumentElement(XMLElement root) {
 		root.doc = this;
 		this.root = root;
@@ -67,7 +71,7 @@ public class XMLDocument extends XMLNode implements Document {
 		return new XMLNodeList(list);
 	}
 	
-	
+	/** Create a document from a XMLStreamEvents. */
 	public static XMLDocument create(XMLStreamEventsSync stream) throws XMLException, IOException {
 		XMLDocument doc = new XMLDocument();
 		do {
@@ -75,7 +79,9 @@ public class XMLDocument extends XMLNode implements Document {
 			case DOCTYPE:
 				if (doc.docType != null)
 					throw new XMLException(stream.getPosition(), "Unexpected element ", "DOCTYPE");
-				doc.docType = new XMLDocumentType(doc, stream.event.text.asString(), stream.event.publicId != null ? stream.event.publicId.asString() : null, stream.event.system != null ? stream.event.system.asString() : null);
+				doc.docType = new XMLDocumentType(doc, stream.event.text.asString(),
+					stream.event.publicId != null ? stream.event.publicId.asString() : null,
+					stream.event.system != null ? stream.event.system.asString() : null);
 				break;
 			case START_ELEMENT:
 				if (doc.root != null)
@@ -92,6 +98,7 @@ public class XMLDocument extends XMLNode implements Document {
 		return doc;
 	}
 	
+	/** Create a document from a XMLStreamEvents. */
 	public static AsyncWork<XMLDocument, Exception> create(XMLStreamEventsAsync stream) {
 		XMLDocument doc = new XMLDocument();
 		AsyncWork<XMLDocument, Exception> result = new AsyncWork<>();
@@ -99,7 +106,9 @@ public class XMLDocument extends XMLNode implements Document {
 		return result;
 	}
 	
-	private static void create(XMLDocument doc, XMLStreamEventsAsync stream, AsyncWork<XMLDocument, Exception> result, ISynchronizationPoint<Exception> n) {
+	private static void create(
+		XMLDocument doc, XMLStreamEventsAsync stream, AsyncWork<XMLDocument, Exception> result, ISynchronizationPoint<Exception> n
+	) {
 		do {
 			ISynchronizationPoint<Exception> next = n != null ? n : stream.next();
 			n = null;
@@ -119,7 +128,9 @@ public class XMLDocument extends XMLNode implements Document {
 						result.error(new IOException("Unexpected element DOCTYPE"));
 						return;
 					}
-					doc.docType = new XMLDocumentType(doc, stream.event.text.asString(), stream.event.publicId != null ? stream.event.publicId.asString() : null, stream.event.system != null ? stream.event.system.asString() : null);
+					doc.docType = new XMLDocumentType(doc, stream.event.text.asString(),
+						stream.event.publicId != null ? stream.event.publicId.asString() : null,
+						stream.event.system != null ? stream.event.system.asString() : null);
 					break;
 				case START_ELEMENT:
 					if (doc.root != null) {

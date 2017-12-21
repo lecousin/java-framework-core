@@ -173,7 +173,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	}
 	
 	/**
-	 * Shortcut method to create a JoinPoint waiting for the given synchronization points, <b>the JoinPoint is started by this method.</b>
+	 * Shortcut method to create a JoinPoint waiting for the given synchronization points, <b>the JoinPoint is started by this method</b>.
 	 */
 	public static JoinPoint<Exception> fromSynchronizationPoints(ISynchronizationPoint<?>... synchPoints) {
 		JoinPoint<Exception> jp = new JoinPoint<>();
@@ -184,7 +184,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	}
 	
 	/**
-	 * Shortcut method to create a JoinPoint waiting for the given synchronization points, <b>the JoinPoint is started by this method.</b>
+	 * Shortcut method to create a JoinPoint waiting for the given synchronization points, <b>the JoinPoint is started by this method</b>.
 	 */
 	public static JoinPoint<Exception> fromSynchronizationPoints(Collection<? extends ISynchronizationPoint<?>> synchPoints) {
 		JoinPoint<Exception> jp = new JoinPoint<>();

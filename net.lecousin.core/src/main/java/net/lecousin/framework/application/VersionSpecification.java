@@ -7,8 +7,7 @@ import java.util.Comparator;
  */
 public interface VersionSpecification extends Comparator<Version> {
 
-	/** @return true if the given version is compatible with the specified version.
-	 */
+	/** Return true if the given version is compatible with the specified version. */
 	boolean isMatching(Version version);
 	
 	/** Only one specific version is accepted. */ 

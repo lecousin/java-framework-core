@@ -4,8 +4,10 @@ import java.util.List;
 
 import org.w3c.dom.NodeList;
 
+/** DOM NodeList. */
 public class XMLNodeList implements NodeList {
 
+	/** Constructor. */
 	public XMLNodeList(List<XMLNode> list) {
 		this.list = list;
 	}

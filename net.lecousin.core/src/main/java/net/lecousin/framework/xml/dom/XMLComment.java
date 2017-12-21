@@ -4,8 +4,10 @@ import javax.xml.soap.Node;
 
 import org.w3c.dom.Comment;
 
+/** DOM Comment. */
 public class XMLComment extends XMLCharacterData implements Comment {
 
+	/** Constructor. */
 	public XMLComment(XMLDocument doc, String text) {
 		super(doc, text);
 	}

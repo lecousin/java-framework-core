@@ -186,7 +186,8 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 					}
 				});
 			}
-			return operation(((IO.Readable.Seekable)io).readAsync(r.min + start, buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
+			return operation(((IO.Readable.Seekable)io).readAsync(r.min + start, buffer,
+			new RunnableWithParameter<Pair<Integer,IOException>>() {
 				@Override
 				public void run(Pair<Integer, IOException> param) {
 					if (param.getValue1() != null)

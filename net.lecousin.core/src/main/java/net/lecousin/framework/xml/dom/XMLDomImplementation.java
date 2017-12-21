@@ -4,6 +4,7 @@ import org.w3c.dom.DOMException;
 import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.DocumentType;
 
+/** DOM implementation. */
 public class XMLDomImplementation implements DOMImplementation {
 
 	private XMLDomImplementation() {}

@@ -5,8 +5,10 @@ import javax.xml.soap.Node;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Text;
 
+/** DOM Text. */
 public class XMLText extends XMLCharacterData implements Text {
 
+	/** Constructor. */
 	public XMLText(XMLDocument doc, String text) {
 		super(doc, text);
 	}
@@ -56,12 +58,13 @@ public class XMLText extends XMLCharacterData implements Text {
 		return true;
 	}
 	
+	/** Return true is the given character is considered as a white space. */
 	public static boolean isXMLSpace(char c) {
     	return (c <= 0x0020) &&
-    			(((((1L << 0x0009) |
-    			(1L << 0x000A) |
-    			(1L << 0x000D) |
-    			(1L << 0x0020)) >> c) & 1L) != 0);
+    			(((((1L << 0x0009)
+    			| (1L << 0x000A)
+    			| (1L << 0x000D)
+    			| (1L << 0x0020)) >> c) & 1L) != 0);
 	}
 
 	@Override

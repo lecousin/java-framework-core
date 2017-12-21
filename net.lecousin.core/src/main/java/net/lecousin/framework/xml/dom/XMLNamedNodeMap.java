@@ -8,8 +8,10 @@ import org.w3c.dom.DOMException;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 
+/** DOM NamedNodeMap. */
 public class XMLNamedNodeMap implements NamedNodeMap {
 
+	/** Constructor. */
 	public XMLNamedNodeMap(List<? extends XMLNode> nodes) {
 		this.nodes = nodes;
 	}

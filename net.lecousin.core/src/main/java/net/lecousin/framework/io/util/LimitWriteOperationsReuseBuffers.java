@@ -32,7 +32,7 @@ public class LimitWriteOperationsReuseBuffers {
 	private SynchronizationPoint<NoException> lock = null;
 	
 	/**
-	 * @return a buffer to put data to write.
+	 * Return a buffer to put data to write.
 	 */
 	public ByteBuffer getBuffer() {
 		return buffers.getBuffer();

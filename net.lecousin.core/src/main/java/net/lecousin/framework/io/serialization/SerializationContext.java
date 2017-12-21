@@ -6,8 +6,10 @@ import java.util.Iterator;
 import net.lecousin.framework.collections.ArrayIterator;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 
+/** Specify the current context during (de)serialization. */
 public abstract class SerializationContext {
 
+	/** Constructor. */
 	public SerializationContext(SerializationContext parent) {
 		this.parent = parent;
 	}
@@ -18,10 +20,13 @@ public abstract class SerializationContext {
 		return parent;
 	}
 	
+	/** Return the first ObjectContext in the ancestors, or null. */
 	public abstract ObjectContext getContainerObjectContext();
 	
+	/** The context is on an object. */
 	public static class ObjectContext extends SerializationContext {
 		
+		/** Constructor. */
 		public ObjectContext(SerializationContext parent, Object instance, SerializationClass clazz, TypeDefinition originalType) {
 			super(parent);
 			this.instance = instance;
@@ -64,8 +69,10 @@ public abstract class SerializationContext {
 		
 	}
 	
+	/** The context is on an attribute of an object. */
 	public static class AttributeContext extends SerializationContext {
 		
+		/** Constructor. */
 		public AttributeContext(ObjectContext parent, Attribute attribute) {
 			super(parent);
 			this.attribute = attribute;
@@ -89,8 +96,10 @@ public abstract class SerializationContext {
 		
 	}
 	
+	/** The context is on a collection. */
 	public static class CollectionContext extends SerializationContext {
 		
+		/** Constructor. */
 		public CollectionContext(SerializationContext parent, Object col, TypeDefinition colType, TypeDefinition elementType) {
 			super(parent);
 			this.col = col;
@@ -106,6 +115,7 @@ public abstract class SerializationContext {
 			return col;
 		}
 		
+		/** Get an iterator on the collection. */
 		@SuppressWarnings("rawtypes")
 		public Iterator<?> getIterator() {
 			if (Collection.class.isAssignableFrom(col.getClass()))

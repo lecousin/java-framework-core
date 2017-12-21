@@ -32,6 +32,7 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 		return newList;
 	}
 	
+	/** Convert annotations into rules. */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	static void processAnnotations(Class<?> clazz, List<SerializationRule> newRules, List<SerializationRule> rules) {
 		for (Annotation a : ClassUtil.expandRepeatableAnnotations(clazz.getDeclaredAnnotations())) {

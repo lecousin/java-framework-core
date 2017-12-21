@@ -22,10 +22,12 @@ public interface CustomExtensionPoint {
 		return null;
 	}
 	
+	/** Print information about this extension point to the given StringBuilder. */
 	default void printInfo(StringBuilder s) {
 		s.append(getClass().getName());
 	}
 	
+	/** Return true if the instance of this extension point should be kept in memory. */
 	boolean keepAfterInit();
 	
 }

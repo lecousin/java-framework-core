@@ -15,6 +15,7 @@ import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationTo
 import net.lecousin.framework.io.serialization.annotations.TypeAnnotationToRule;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
+/** Generate serialization specification. */
 public abstract class AbstractSerializationSpecWriter implements SerializationSpecWriter {
 
 	protected byte priority;
@@ -23,6 +24,7 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	
 	protected abstract ISynchronizationPoint<? extends Exception> finalizeSpecWriter();
 	
+	/** Utility to create tasks. */
 	protected class SpecTask extends Task.Cpu<Void, NoException> {
 		public SpecTask(Runnable r) {
 			super("Write Specification", priority);
@@ -68,7 +70,9 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	
 	protected abstract ISynchronizationPoint<? extends Exception> specifyAnyValue(SerializationContext context);
 	
-	protected ISynchronizationPoint<? extends Exception> specifyValue(SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules) {
+	protected ISynchronizationPoint<? extends Exception> specifyValue(
+		SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules
+	) {
 		Class<?> type = typeDef.getBase();
 		
 		if (boolean.class.equals(type))
@@ -107,7 +111,9 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	
 	protected abstract ISynchronizationPoint<? extends Exception> specifyStringValue(SerializationContext context, TypeDefinition type);
 	
-	protected ISynchronizationPoint<? extends Exception> specifyObjectValue(SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules) {
+	protected ISynchronizationPoint<? extends Exception> specifyObjectValue(
+		SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules
+	) {
 		ObjectContext ctx;
 		try {
 			Class<?> type = typeDef.getBase();
@@ -134,7 +140,9 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 		return attributes;
 	}
 	
-	protected void specifyTypeAttribute(ObjectContext context, List<Attribute> attributes, int index, List<SerializationRule> rules, SynchronizationPoint<Exception> sp) {
+	protected void specifyTypeAttribute(
+		ObjectContext context, List<Attribute> attributes, int index, List<SerializationRule> rules, SynchronizationPoint<Exception> sp
+	) {
 		if (index == attributes.size()) {
 			sp.unblock();
 			return;

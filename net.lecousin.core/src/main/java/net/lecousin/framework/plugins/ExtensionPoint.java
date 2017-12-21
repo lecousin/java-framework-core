@@ -17,10 +17,12 @@ public interface ExtensionPoint<PluginClass extends Plugin> {
 	
 	/** Signal that application has been fully loaded and no more plug-ins will be added. */
 	public void allPluginsLoaded();
-	
+
+	/** Return the list of registered plugins. */
 	public Collection<PluginClass> getPlugins();
 	
-	default public void printInfo(StringBuilder s) {
+	/** Print information about this extension point to the given StringBuilder. */
+	default void printInfo(StringBuilder s) {
 		s.append(getClass().getName()).append(":");
 		for (PluginClass pi : getPlugins()) {
 			s.append("\r\n\t- ").append(pi.getClass().getName());

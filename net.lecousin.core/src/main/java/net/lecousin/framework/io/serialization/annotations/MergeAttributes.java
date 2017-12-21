@@ -26,7 +26,9 @@ public @interface MergeAttributes {
 		
 		@Override
 		public SerializationRule createRule(MergeAttributes annotation, Attribute attribute) {
-			return new MergeTypeAttributes(new SerializationContextPattern.OnClassAttribute(attribute.getDeclaringClass(), attribute.getOriginalName()), annotation.type(), annotation.target());
+			return new MergeTypeAttributes(
+				new SerializationContextPattern.OnClassAttribute(attribute.getDeclaringClass(), attribute.getOriginalName()),
+				annotation.type(), annotation.target());
 		}
 		
 	}

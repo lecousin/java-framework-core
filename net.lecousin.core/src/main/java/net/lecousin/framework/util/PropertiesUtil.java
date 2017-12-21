@@ -2,8 +2,10 @@ package net.lecousin.framework.util;
 
 import java.util.Map;
 
+/** Utilities for properties. */
 public final class PropertiesUtil {
 
+	/** Resolve the values of properties if any contains ${...}. */
 	public static void resolve(Map<String, String> properties) {
 		boolean resolved = true;
 		while (resolved) {
@@ -25,6 +27,7 @@ public final class PropertiesUtil {
 		}
 	}
 	
+	/** Resolve the given value with the given properties. */
 	public static String resolve(String value, Map<String, String> properties) {
 		do {
 			int i = value.indexOf("${");

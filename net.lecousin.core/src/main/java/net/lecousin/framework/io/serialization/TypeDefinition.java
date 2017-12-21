@@ -10,8 +10,11 @@ import java.util.List;
 
 import net.lecousin.framework.collections.CollectionsUtil;
 
+/** Specify a type, with generic parameters. */
 public class TypeDefinition {
 	
+	/** Create from the given type which is the type of an attribute or a method, knowing its container type. */
+	@SuppressWarnings({ "rawtypes" })
 	public TypeDefinition(TypeDefinition containerType, Type type) {
 		if (type instanceof Class) {
 			base = (Class<?>)type;
@@ -43,16 +46,21 @@ public class TypeDefinition {
 			throw new IllegalArgumentException("Unexpected type " + type.getClass() + ": " + type.toString());
 	}
 	
+	/** Create a type of the given class and generic parameters. */
 	public TypeDefinition(Class<?> base, TypeDefinition... parameters) {
 		this.base = base;
 		this.parameters = Arrays.asList(parameters);
 	}
 
+	/** Create a type of the given class and generic parameters. */
 	public TypeDefinition(Class<?> base, List<TypeDefinition> parameters) {
 		this.base = base;
 		this.parameters = new ArrayList<>(parameters);
 	}
 	
+	/** Create a type, with the given definition of a field or method, and knowing the instance type.
+	 * This will resolve the generic type variables as much as possible.
+	 */
 	@SuppressWarnings("rawtypes")
 	public static TypeDefinition from(Class<?> instanceType, TypeDefinition definition) {
 		if (instanceType.equals(definition.getBase()))
@@ -63,16 +71,17 @@ public class TypeDefinition {
 		TypeDefinition[] params = new TypeDefinition[types.length];
 		Type superClass = instanceType.getGenericSuperclass();
 		if (superClass != null)
-			if (getParameters(superClass, definition, types, params))
+			if (getTypeParameters(superClass, definition, types, params))
 				return new TypeDefinition(instanceType, params);
 		for (Type superInt : instanceType.getGenericInterfaces())
-			if (getParameters(superInt, definition, types, params))
+			if (getTypeParameters(superInt, definition, types, params))
 				return new TypeDefinition(instanceType, params);
 		return new TypeDefinition(instanceType);
 	}
 	
+	/** Fill the generic parameters. */
 	@SuppressWarnings("rawtypes")
-	public static boolean getParameters(Type superType, TypeDefinition finalType, TypeVariable[] vars, TypeDefinition[] params) {
+	public static boolean getTypeParameters(Type superType, TypeDefinition finalType, TypeVariable[] vars, TypeDefinition[] params) {
 		if (superType instanceof ParameterizedType) {
 			Type[] args = ((ParameterizedType)superType).getActualTypeArguments();
 			Type raw = ((ParameterizedType)superType).getRawType();
@@ -92,10 +101,11 @@ public class TypeDefinition {
 			Type superSuperClass = superClass.getGenericSuperclass();
 			if (superSuperClass != null) {
 				TypeDefinition[] superParams = new TypeDefinition[args.length];
-				if (getParameters(superSuperClass, finalType, (TypeVariable[])args, superParams)) {
+				if (getTypeParameters(superSuperClass, finalType, (TypeVariable[])args, superParams)) {
 					for (int i = 0; i < vars.length; ++i) {
 						for (int j = 0; j < args.length; ++j) {
-							if (args[j] instanceof TypeVariable && ((TypeVariable)args[j]).getName().equals(vars[i].getName())) {
+							if (args[j] instanceof TypeVariable &&
+								((TypeVariable)args[j]).getName().equals(vars[i].getName())) {
 								params[i] = superParams[j];
 								break;
 							}
@@ -106,10 +116,11 @@ public class TypeDefinition {
 			}
 			for (Type superInt : superClass.getGenericInterfaces()) {
 				TypeDefinition[] superParams = new TypeDefinition[args.length];
-				if (getParameters(superInt, finalType, (TypeVariable[])args, superParams)) {
+				if (getTypeParameters(superInt, finalType, (TypeVariable[])args, superParams)) {
 					for (int i = 0; i < vars.length; ++i) {
 						for (int j = 0; j < args.length; ++j) {
-							if (args[j] instanceof TypeVariable && ((TypeVariable)args[j]).getName().equals(vars[i].getName())) {
+							if (args[j] instanceof TypeVariable &&
+								((TypeVariable)args[j]).getName().equals(vars[i].getName())) {
 								params[i] = superParams[j];
 								break;
 							}
@@ -129,6 +140,7 @@ public class TypeDefinition {
 		return base;
 	}
 	
+	/** Return the generic parameters. */
 	public List<TypeDefinition> getParameters() {
 		return parameters;
 	}

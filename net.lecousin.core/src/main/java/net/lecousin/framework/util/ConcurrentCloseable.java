@@ -12,6 +12,7 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.event.Event;
 import net.lecousin.framework.event.Listener;
 
+/** Implement most of the functionalities expected by an IConcurrentCloseable. */
 public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 
 	private boolean open = true;
@@ -21,6 +22,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 	private int closeLocked = 0;
 	private SynchronizationPoint<Exception> waitForClose = null;
 
+	/** Return the priority. */
 	public abstract byte getPriority();
 	
 	protected abstract ISynchronizationPoint<?> closeUnderlyingResources();

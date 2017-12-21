@@ -6,8 +6,10 @@ import org.w3c.dom.DocumentType;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 
+/** DOM DocumentType. */
 public class XMLDocumentType extends XMLNode implements DocumentType {
 
+	/** Constructor. */
 	public XMLDocumentType(XMLDocument doc, String name, String publicId, String systemId) {
 		super(doc);
 		this.name = name;

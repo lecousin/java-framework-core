@@ -25,6 +25,7 @@ import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationTo
 import net.lecousin.framework.io.serialization.annotations.TypeAnnotationToRule;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
+/** Implements most of the logic of a serializer. */
 public abstract class AbstractSerializer implements Serializer {
 
 	protected byte priority;
@@ -33,6 +34,7 @@ public abstract class AbstractSerializer implements Serializer {
 	
 	protected abstract ISynchronizationPoint<? extends Exception> finalizeSerialization();
 	
+	/** Utility class to create tasks along the process. */
 	protected class SerializationTask extends Task.Cpu<Void, NoException> {
 		public SerializationTask(Runnable r) {
 			super("Serialization", priority);
@@ -76,6 +78,7 @@ public abstract class AbstractSerializer implements Serializer {
 		return AttributeAnnotationToRuleOnAttribute.addRules(a, true, currentList);
 	}
 	
+	/** Serialize a value. */
 	public ISynchronizationPoint<? extends Exception> serializeValue(
 		SerializationContext context, Object value, TypeDefinition typeDef, String path, List<SerializationRule> rules
 	) {
@@ -164,15 +167,19 @@ public abstract class AbstractSerializer implements Serializer {
 	
 	protected abstract ISynchronizationPoint<? extends Exception> serializeStringValue(CharSequence value);
 
-	protected abstract ISynchronizationPoint<? extends Exception> serializeStringAttribute(AttributeContext context, CharSequence value, String path);
+	protected abstract ISynchronizationPoint<? extends Exception> serializeStringAttribute(
+		AttributeContext context, CharSequence value, String path);
 	
 	// *** Object ***
 	
-	protected ISynchronizationPoint<? extends Exception> serializeObjectValue(SerializationContext context, Object value, TypeDefinition typeDef, String path, List<SerializationRule> rules) {
+	protected ISynchronizationPoint<? extends Exception> serializeObjectValue(
+		SerializationContext context, Object value, TypeDefinition typeDef, String path, List<SerializationRule> rules
+	) {
 		ObjectContext ctx;
 		try {
 			Class<?> type = value.getClass();
-			SerializationClass sc = new SerializationClass(typeDef != null ? TypeDefinition.from(type, typeDef) : new TypeDefinition(type));
+			SerializationClass sc = new SerializationClass(
+				typeDef != null ? TypeDefinition.from(type, typeDef) : new TypeDefinition(type));
 			ctx = new ObjectContext(context, value, sc, typeDef);
 			rules = addRulesForType(sc, rules);
 			sc.apply(rules, ctx, true);
@@ -202,9 +209,11 @@ public abstract class AbstractSerializer implements Serializer {
 		return attributes;
 	}
 	
-	protected abstract ISynchronizationPoint<? extends Exception> startObjectValue(ObjectContext context, String path, List<SerializationRule> rules);
+	protected abstract ISynchronizationPoint<? extends Exception> startObjectValue(
+		ObjectContext context, String path, List<SerializationRule> rules);
 
-	protected abstract ISynchronizationPoint<? extends Exception> endObjectValue(ObjectContext context, String path, List<SerializationRule> rules);
+	protected abstract ISynchronizationPoint<? extends Exception> endObjectValue(
+		ObjectContext context, String path, List<SerializationRule> rules);
 	
 	protected void serializeAttribute(
 		List<Attribute> attributes, int attributeIndex, ObjectContext context, String containerPath,
@@ -265,7 +274,8 @@ public abstract class AbstractSerializer implements Serializer {
 		
 		if (type.isArray()) {
 			Class<?> elementType = type.getComponentType();
-			CollectionContext ctx = new CollectionContext(context, value, context.getAttribute().getType(), new TypeDefinition(elementType));
+			CollectionContext ctx = new CollectionContext(
+				context, value, context.getAttribute().getType(), new TypeDefinition(elementType));
 			return serializeCollectionAttribute(ctx, path, rules);
 		}
 		
@@ -349,7 +359,8 @@ public abstract class AbstractSerializer implements Serializer {
 	);
 	
 	protected void serializeCollectionElement(
-		CollectionContext context, Iterator<?> it, int elementIndex, String colPath, List<SerializationRule> rules, SynchronizationPoint<Exception> result
+		CollectionContext context, Iterator<?> it, int elementIndex, String colPath,
+		List<SerializationRule> rules, SynchronizationPoint<Exception> result
 	) {
 		do {
 			if (!it.hasNext()) {
@@ -359,7 +370,8 @@ public abstract class AbstractSerializer implements Serializer {
 			Object element = it.next();
 			String elementPath = colPath + '[' + elementIndex + ']';
 			
-			ISynchronizationPoint<? extends Exception> start = startCollectionValueElement(context, element, elementIndex, elementPath, rules);
+			ISynchronizationPoint<? extends Exception> start =
+				startCollectionValueElement(context, element, elementIndex, elementPath, rules);
 			
 			SynchronizationPoint<Exception> value = new SynchronizationPoint<>();
 			if (start.isUnblocked()) {

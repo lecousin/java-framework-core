@@ -852,6 +852,7 @@ public class UnprotectedStringBuffer implements IString {
 		return new CS();
 	}
 	
+	/** CharacterStream implementation. */
 	protected class CS extends ConcurrentCloseable implements ICharacterStream.Readable.Buffered {
 		private int buffer = 0;
 		private int bufferIndex = 0;

@@ -3,8 +3,10 @@ package net.lecousin.framework.xml.dom;
 import org.w3c.dom.CharacterData;
 import org.w3c.dom.DOMException;
 
+/** DOM CharacterData. */
 public abstract class XMLCharacterData extends XMLNode implements CharacterData {
 
+	/** Constructor. */
 	public XMLCharacterData(XMLDocument doc, String text) {
 		super(doc);
 		this.text = text;

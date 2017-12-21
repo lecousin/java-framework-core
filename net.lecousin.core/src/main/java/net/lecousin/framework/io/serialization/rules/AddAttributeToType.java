@@ -9,9 +9,13 @@ import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.util.ClassUtil;
 
+/** Add a custom attribute to a class. */
 public class AddAttributeToType implements SerializationRule {
 
-	public AddAttributeToType(Class<?> type, String attributeName, String serializingMethodName, String deserializingMethodName) {
+	/** Constructor. */
+	public AddAttributeToType(
+		Class<?> type, String attributeName, String serializingMethodName, String deserializingMethodName
+	) {
 		this.type = type;
 		this.attributeName = attributeName;
 		this.serializingMethodName = serializingMethodName;
@@ -24,7 +28,9 @@ public class AddAttributeToType implements SerializationRule {
 	private String deserializingMethodName;
 	
 	@Override
-	public boolean apply(SerializationClass sc, SerializationContext context, List<SerializationRule> rules, boolean serializing) throws Exception {
+	public boolean apply(
+		SerializationClass sc, SerializationContext context, List<SerializationRule> rules, boolean serializing
+	) throws Exception {
 		if (!type.isAssignableFrom(sc.getType().getBase()))
 			return false;
 		TypeDefinition t = null;
@@ -37,7 +43,8 @@ public class AddAttributeToType implements SerializationRule {
 		if (deserializingMethodName != null && !deserializingMethodName.isEmpty()) {
 			dm = ClassUtil.getMethod(type, deserializingMethodName, 1);
 			if (dm == null)
-				throw new NoSuchMethodException("Deserialization method " + deserializingMethodName + " does not exist on class " + type.getName());
+				throw new NoSuchMethodException(
+					"Deserialization method " + deserializingMethodName + " does not exist on class " + type.getName());
 			if (t == null)
 				t = new TypeDefinition(sc.getType(), dm.getGenericParameterTypes()[0]);
 		}

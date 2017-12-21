@@ -5,8 +5,10 @@ import org.w3c.dom.DOMException;
 import org.w3c.dom.Node;
 import org.w3c.dom.TypeInfo;
 
+/** DOM attribute. */
 public class XMLAttribute extends XMLNode implements Attr {
 
+	/** Constructor. */
 	public XMLAttribute(XMLDocument doc, String prefix, String localName, String value) {
 		super(doc);
 		this.prefix = prefix;

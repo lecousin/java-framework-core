@@ -12,6 +12,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.UserDataHandler;
 
+/** DOM Node. */
 public abstract class XMLNode implements Node {
 
 	protected XMLNode(XMLDocument doc) {
@@ -38,6 +39,7 @@ public abstract class XMLNode implements Node {
 		return parent;
 	}
 	
+	/** Check if the given node is an ancestor of this node. */
 	public boolean isAncestor(XMLNode node) {
 		return node == parent || (parent != null && parent.isAncestor(node));
 	}

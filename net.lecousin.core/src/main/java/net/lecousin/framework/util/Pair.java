@@ -11,7 +11,7 @@ import java.io.ObjectOutput;
  */
 public class Pair<T1,T2> implements Externalizable {
 
-	/**
+	/** Constructor for serialization purpose only.
      * @deprecated Do not use directly. This is public for serialization purpose only.
      */
 	@Deprecated

@@ -1,5 +1,6 @@
 package net.lecousin.framework.util;
 
+/** A closeable resource having asynchronous operations. */ 
 public interface IConcurrentCloseable extends AutoCloseable, AsyncCloseable<Exception>, CloseableListenable {
 
 	/** Calling this method avoid this resource to be closed. For each call to this function, a call to the unlockClose method must be done. */

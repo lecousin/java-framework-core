@@ -30,16 +30,19 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.TypeInfo;
 
+/** DOM Element. */
 public class XMLElement extends XMLNode implements Element {
 
 	// TODO use a XMLDocument as owner of all nodes...
 	
+	/** Constructor. */
 	public XMLElement(XMLDocument doc, String prefix, String localName) {
 		super(doc);
 		this.prefix = prefix;
 		this.localName = localName;
 	}
 	
+	/** Constructor. */
 	public XMLElement(XMLDocument doc, XMLStreamEvents.ElementContext context) {
 		this(doc, context.namespacePrefix.asString(), context.localName.asString());
 		for (Pair<UnprotectedStringBuffer, UnprotectedStringBuffer> ns : context.namespaces)
@@ -395,12 +398,13 @@ public class XMLElement extends XMLNode implements Element {
 		a.isId = isId;
 	}
 	
+	/** Add an attribute. */
 	public void addAttribute(XMLAttribute a) {
 		a.setParent(this);
 		attributes.add(a);
 	}
 
-	
+	/** Search the prefix for the given namespace URI. */
 	public String getPrefixForNamespaceURI(String namespaceURI) {
 		if (namespaceURI == null)
 			return "";
@@ -451,6 +455,7 @@ public class XMLElement extends XMLNode implements Element {
 		return parent.lookupNamespaceURI(prefix);
 	}
 
+	/** Declare a namespace on this element (xmlns). */
 	public void declareNamespace(String uri, String prefix) {
 		if (prefixToURI == null)
 			prefixToURI = new HashMap<>(5);
@@ -475,13 +480,7 @@ public class XMLElement extends XMLNode implements Element {
 		}
 	}
 	
-	@Override
-	public NodeList getElementsByTagNameNS(String namespaceURI, String localName) throws DOMException {
-		LinkedList<XMLNode> elements = new LinkedList<>();
-		getElementsByTagName(namespaceURI, localName, elements);
-		return new XMLNodeList(elements);
-	}
-
+	/** Search for elements. */
 	protected void getElementsByTagName(String namespaceURI, String localName, List<XMLNode> result) {
 		for (XMLNode child : children) {
 			if (!(child instanceof XMLElement)) continue;
@@ -492,7 +491,14 @@ public class XMLElement extends XMLNode implements Element {
 				e.getElementsByTagName(namespaceURI, localName, result);
 		}
 	}
-	
+
+	@Override
+	public NodeList getElementsByTagNameNS(String namespaceURI, String localName) throws DOMException {
+		LinkedList<XMLNode> elements = new LinkedList<>();
+		getElementsByTagName(namespaceURI, localName, elements);
+		return new XMLNodeList(elements);
+	}
+
 	@Override
 	public TypeInfo getSchemaTypeInfo() {
 		return null;
@@ -533,22 +539,26 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	
+	/** Create an Element from a XMLStreamEvents. */
 	public static XMLElement create(XMLDocument doc, XMLStreamEventsSync stream) throws XMLException, IOException, IllegalStateException {
 		if (!Event.Type.START_ELEMENT.equals(stream.event.type))
 			throw new IllegalStateException("Method XMLElement.create must be called with a stream being on a START_ELEMENT event");
 		XMLElement element = new XMLElement(doc, stream.event.context.getFirst());
 		for (XMLStreamEvents.Attribute a : stream.event.attributes)
-			element.addAttribute(new XMLAttribute(doc, a.namespacePrefix.asString(), a.localName.asString(), a.value != null ? a.value.asString() : null));
+			element.addAttribute(new XMLAttribute(doc, a.namespacePrefix.asString(),
+				a.localName.asString(), a.value != null ? a.value.asString() : null));
 		element.parseContent(stream);
 		return element;
 	}
 	
+	/** Create an Element from a XMLStreamEvents. */
 	public static AsyncWork<XMLElement, Exception> create(XMLDocument doc, XMLStreamEventsAsync stream) throws IllegalStateException {
 		if (!Event.Type.START_ELEMENT.equals(stream.event.type))
 			throw new IllegalStateException("Method XMLElement.create must be called with a stream being on a START_ELEMENT event");
 		XMLElement element = new XMLElement(doc, stream.event.context.getFirst());
 		for (XMLStreamEvents.Attribute a : stream.event.attributes)
-			element.addAttribute(new XMLAttribute(doc, a.namespacePrefix.asString(), a.localName.asString(), a.value != null ? a.value.asString() : null));
+			element.addAttribute(new XMLAttribute(doc, a.namespacePrefix.asString(),
+				a.localName.asString(), a.value != null ? a.value.asString() : null));
 		ISynchronizationPoint<Exception> parse = element.parseContent(stream);
 		AsyncWork<XMLElement, Exception> result = new AsyncWork<>();
 		if (parse.isUnblocked()) {
@@ -560,6 +570,7 @@ public class XMLElement extends XMLNode implements Element {
 		return result;
 	}
 	
+	/** Parse the content of this element. */
 	public void parseContent(XMLStreamEventsSync stream) throws XMLException, IOException {
 		if (stream.event.isClosed) return;
 		do {
@@ -589,6 +600,7 @@ public class XMLElement extends XMLNode implements Element {
 		} while (true);
 	}
 	
+	/** Parse the content of this element. */
 	public ISynchronizationPoint<Exception> parseContent(XMLStreamEventsAsync stream) {
 		if (stream.event.isClosed) return new SynchronizationPoint<>(true);
 		return parseContent(stream, null);
@@ -634,7 +646,8 @@ public class XMLElement extends XMLNode implements Element {
 					break;
 				default:
 					// TODO XMLException
-					return new SynchronizationPoint<>(new IOException("Unexpected XML event " + stream.event.type + " in an element"));
+					return new SynchronizationPoint<>(
+						new IOException("Unexpected XML event " + stream.event.type + " in an element"));
 				}
 				s = null;
 				continue;
