@@ -12,6 +12,7 @@
   <modules>
     <module>net.lecousin.core</module>
     <module>net.lecousin.framework.log.bridges</module>
+    <module>core.javaee</module>
   </modules>
   
   <licenses>

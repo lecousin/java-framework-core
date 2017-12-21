@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import net.lecousin.framework.adapter.AdapterRegistry;
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.locale.LocaleExtensionPoint;
 import net.lecousin.framework.math.IntegerUnit;
 
@@ -90,6 +91,7 @@ public final class ExtensionPoints {
 			}
 			customs.trimToSize();
 		}
+		LCCore.getApplication().getDefaultLogger().info(s.toString());
 	}
 	
 	/** Return all registered custom extension points. */

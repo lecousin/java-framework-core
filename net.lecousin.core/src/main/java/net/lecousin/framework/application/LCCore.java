@@ -86,9 +86,11 @@ public final class LCCore {
 		// register protocols
 		String protocols = System.getProperty("java.protocol.handler.pkgs");
 		if (protocols == null) protocols = "";
-		if (protocols.length() > 0) protocols += "|";
-		protocols += "net.lecousin.framework.protocols";
-		System.setProperty("java.protocol.handler.pkgs", protocols);
+		if (!protocols.contains("net.lecousin.framework.protocols")) {
+			if (protocols.length() > 0) protocols += "|";
+			protocols += "net.lecousin.framework.protocols";
+			System.setProperty("java.protocol.handler.pkgs", protocols);
+		}
 		
 		instance.start();
 		new Task.Cpu<Void,Exception>("Initializing framework tools", Task.PRIORITY_NORMAL) {
