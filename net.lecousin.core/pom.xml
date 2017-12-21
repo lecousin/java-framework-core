@@ -169,7 +169,7 @@
 				<artifactId>maven-checkstyle-plugin</artifactId>
 			</plugin>
 			<plugin>
-				<groupId>com.github.hazendaz.spotbugs</groupId>
+				<groupId>com.github.spotbugs</groupId>
 				<artifactId>spotbugs-maven-plugin</artifactId>
 			</plugin>
 			<plugin>

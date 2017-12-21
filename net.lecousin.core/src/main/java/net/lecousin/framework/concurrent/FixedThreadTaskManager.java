@@ -95,6 +95,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		
 		private TaskWorker worker;
 		
+		@SuppressFBWarnings("NN_NAKED_NOTIFY")
 		@Override
 		public void uncaughtException(Thread t, Throwable e) {
 			if (worker.currentTask != null) {

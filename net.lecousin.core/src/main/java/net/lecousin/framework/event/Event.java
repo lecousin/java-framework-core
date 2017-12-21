@@ -2,6 +2,8 @@ package net.lecousin.framework.event;
 
 import java.util.ArrayList;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 /**
  * An event allows to call listeners that previously registered themselves when the event is fired.
  * @param <T> type of data fired with the event
@@ -37,6 +39,7 @@ public class Event<T> implements Listenable<T> {
 		if (listenersRunnable.isEmpty()) listenersRunnable = null;
 	}
 	
+	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	@Override
 	public boolean hasListeners() { return listeners != null || listenersRunnable != null; }
 	

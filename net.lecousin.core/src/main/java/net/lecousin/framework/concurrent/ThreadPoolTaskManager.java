@@ -98,7 +98,7 @@ public class ThreadPoolTaskManager extends TaskManager {
 				}
 			}
 			synchronized (taskPriorityManager) {
-				activeThreads.remove(t);
+				activeThreads.remove(worker);
 				Task<?,?> task = taskPriorityManager.peekNext();
 				if (task != null)
 					activeThreads.add(new Worker(task));

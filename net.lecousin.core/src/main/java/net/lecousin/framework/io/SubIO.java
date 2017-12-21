@@ -179,7 +179,6 @@ public abstract class SubIO extends ConcurrentCloseable {
 			}
 			
 			protected long start;
-			protected IO.Readable.Seekable io;
 			
 			@Override
 			public long getPosition() { return pos; }
@@ -192,7 +191,7 @@ public abstract class SubIO extends ConcurrentCloseable {
 					limit = buffer.limit();
 					buffer.limit((int)(buffer.position() + size - pos));
 				}
-				int nb = io.readSync(start + pos, buffer);
+				int nb = ((IO.Readable.Seekable)io).readSync(start + pos, buffer);
 				this.pos = pos + nb;
 				if (limit != -1) buffer.limit(limit);
 				return nb;
@@ -217,7 +216,7 @@ public abstract class SubIO extends ConcurrentCloseable {
 					buffer.limit((int)(buffer.position() + size - pos));
 				}
 				int plimit = limit;
-				return io.readAsync(start + pos, buffer, (result) -> {
+				return ((IO.Readable.Seekable)io).readAsync(start + pos, buffer, (result) -> {
 					if (result.getValue1() != null)
 						SubIO.Readable.Seekable.this.pos = pos + result.getValue1().intValue();
 					if (plimit != -1)
@@ -239,7 +238,7 @@ public abstract class SubIO extends ConcurrentCloseable {
 					limit = buffer.limit();
 					buffer.limit((int)(buffer.position() + size - pos));
 				}
-				int nb = io.readFullySync(start + pos, buffer);
+				int nb = ((IO.Readable.Seekable)io).readFullySync(start + pos, buffer);
 				this.pos = pos + nb;
 				if (limit != -1) buffer.limit(limit);
 				return nb;
@@ -261,7 +260,7 @@ public abstract class SubIO extends ConcurrentCloseable {
 					buffer.limit((int)(buffer.position() + size - pos));
 				}
 				int plimit = limit;
-				return io.readFullyAsync(start + pos, buffer, (result) -> {
+				return ((IO.Readable.Seekable)io).readFullyAsync(start + pos, buffer, (result) -> {
 					if (result.getValue1() != null)
 						SubIO.Readable.Seekable.this.pos = pos + result.getValue1().intValue();
 					if (plimit != -1)
@@ -333,11 +332,11 @@ public abstract class SubIO extends ConcurrentCloseable {
 					ISynchronizationPoint<IOException> sp = ((IO.Readable.Buffered)io).canStartReading();
 					if (!sp.isUnblocked()) return sp;
 					try {
-						if (io.getPosition() == start + pos) return sp;
+						if (((IO.Readable.Seekable)io).getPosition() == start + pos) return sp;
 					} catch (IOException e) {
 						return new SynchronizationPoint<>(e);
 					}
-					AsyncWork<Long, IOException> seek = io.seekAsync(SeekType.FROM_BEGINNING, start + pos);
+					AsyncWork<Long, IOException> seek = ((IO.Readable.Seekable)io).seekAsync(SeekType.FROM_BEGINNING, start + pos);
 					return seek;
 				}
 				
@@ -372,8 +371,8 @@ public abstract class SubIO extends ConcurrentCloseable {
 				@Override
 				public int readAsync() throws IOException {
 					if (pos == size) return -1;
-					if (io.getPosition() != start + pos) {
-						AsyncWork<Long, IOException> seek = io.seekAsync(SeekType.FROM_BEGINNING, start + pos);
+					if (((IO.Readable.Seekable)io).getPosition() != start + pos) {
+						AsyncWork<Long, IOException> seek = ((IO.Readable.Seekable)io).seekAsync(SeekType.FROM_BEGINNING, start + pos);
 						if (!seek.isUnblocked())
 							return -2;
 						if (seek.hasError()) throw seek.getError();
@@ -404,7 +403,7 @@ public abstract class SubIO extends ConcurrentCloseable {
 							int len = 16384;
 							if (len > size - pos) len = (int)(size - pos);
 							ByteBuffer buf = ByteBuffer.allocate(len);
-							AsyncWork<Integer, IOException> read = io.readAsync(start + pos, buf);
+							AsyncWork<Integer, IOException> read = ((IO.Readable.Seekable)io).readAsync(start + pos, buf);
 							read.listenInline(() -> {
 								if (read.hasError()) {
 									if (ondone != null) ondone.run(new Pair<>(null, read.getError()));
