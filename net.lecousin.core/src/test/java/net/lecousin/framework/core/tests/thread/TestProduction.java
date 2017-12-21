@@ -23,7 +23,7 @@ public class TestProduction extends LCCoreAbstractTest {
 	@SuppressWarnings("resource")
 	@Test
 	public void testProduction() {
-		System.out.println("Start");
+		//System.out.println("Start");
 		MyChecker checker = new MyChecker();
 		OutputToInputBuffers io = new OutputToInputBuffers(false, Task.PRIORITY_NORMAL);
 		MyWriter writer = new MyWriter(io, checker);
@@ -56,13 +56,13 @@ public class TestProduction extends LCCoreAbstractTest {
 			}
 		});
 		jp.block(0);
-		System.out.println("All done");
+		//System.out.println("All done");
 		if (jp.hasError()) {
 			jp.getError().printStackTrace(System.err);
 		} else if (jp.isCancelled()) {
 			jp.getCancelEvent().printStackTrace(System.err);
 		} else {
-			System.out.println(" ************************ SUCCESS **********************");
+			//System.out.println(" ************************ SUCCESS **********************");
 		}
 	}
 	
@@ -76,7 +76,7 @@ public class TestProduction extends LCCoreAbstractTest {
 		}
 		public synchronized boolean read(ByteBuffer data) throws Exception {
 			if (data.remaining() == 0) {
-				System.out.println("0 byte received.");
+				//System.out.println("0 byte received.");
 				return false;
 			}
 			boolean res = false;
@@ -128,7 +128,7 @@ public class TestProduction extends LCCoreAbstractTest {
 				byte[] buf = new byte[nbWrite];
 				for (int j = 0; j < nbWrite; ++j) buf[j] = (byte)i;
 				ByteBuffer buffer = ByteBuffer.wrap(buf);
-				System.out.println("Write "+nbWrite+" bytes: "+(byte)i);
+				//System.out.println("Write "+nbWrite+" bytes: "+(byte)i);
 				pool.write(buffer);
 				if (i < 100)
 					Thread.sleep(rand.nextInt(300));
@@ -152,7 +152,7 @@ public class TestProduction extends LCCoreAbstractTest {
 		private Random rand;
 		@Override
 		public AsyncWork<?, ? extends Exception> consume(ByteBuffer product) {
-			System.out.println(product.remaining()+" bytes received");
+			//System.out.println(product.remaining()+" bytes received");
 			try {
 				if (checker.read(product))
 					Thread.sleep(rand.nextInt(25));

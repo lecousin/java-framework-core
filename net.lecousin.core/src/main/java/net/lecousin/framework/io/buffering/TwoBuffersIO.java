@@ -2,6 +2,7 @@ package net.lecousin.framework.io.buffering;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.Callable;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -123,15 +124,38 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	public ISynchronizationPoint<IOException> canStartReading() {
 		if (nb1 < 0 || pos < nb1 || buf2 == null)
 			return read1;
-		if (read2 == null) {
-			synchronized (buf1) {
-				while (read2 == null) {
-					try { buf1.wait(); }
-					catch (InterruptedException e) { /* ignore */ }
-				}
+		if (read2 == null) waitRead2();
+		return read2;
+	}
+	
+	private void waitRead2() {
+		synchronized (buf1) {
+			while (read2 == null) {
+				try { buf1.wait(); }
+				catch (InterruptedException e) { /* ignore */ }
 			}
 		}
-		return read2;
+	}
+	
+	private void needRead1() throws IOException {
+		if (!read1.isUnblocked()) read1.block(0);
+		if (!read1.isSuccessful()) {
+			if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
+			throw read1.getError();
+		}
+		nb1 = read1.getResult().intValue();
+		if (nb1 < 0) nb1 = 0;
+	}
+	
+	private void needRead2() throws IOException {
+		if (read2 == null) waitRead2();
+		if (!read2.isUnblocked()) read2.block(0);
+		if (!read2.isSuccessful()) {
+			if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
+			throw read2.getError();
+		}
+		nb2 = read2.getResult().intValue();
+		if (nb2 < 0) nb2 = 0;
 	}
 	
 	@Override
@@ -166,62 +190,18 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	
 	@Override
 	public int read() throws IOException {
-		if (nb1 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0)
-				return -1;
-		}
+		if (nb1 < 0) needRead1();
 		if (pos < nb1)
 			return buf1[pos++] & 0xFF;
 		if (buf2 == null) return -1;
-		if (nb2 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			if (read2 == null) {
-				synchronized (buf1) {
-					while (read2 == null) {
-						if (buf2 == null) return -1;
-						try { buf1.wait(); }
-						catch (InterruptedException e) { /* ignore */ }
-					}
-				}
-			}
-			if (!read2.isUnblocked()) read2.block(0);
-			if (!read2.isSuccessful()) {
-				if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
-				throw read2.getError();
-			}
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0)
-				return -1;
-		}
+		if (nb2 < 0) needRead2();
 		if (pos >= nb1 + nb2) return -1;
 		return buf2[(pos++) - nb1] & 0xFF;
 	}
 	
 	@Override
 	public int read(byte[] buffer, int offset, int len) throws IOException {
-		if (nb1 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0)
-				return -1;
-		}
+		if (nb1 < 0) needRead1();
 		if (pos < nb1) {
 			int l = nb1 - pos;
 			if (l > len) l = len;
@@ -230,31 +210,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			return l;
 		}
 		if (buf2 == null) return -1;
-		if (nb2 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			if (read2 == null) {
-				synchronized (buf1) {
-					while (read2 == null) {
-						if (buf2 == null) return -1;
-						try { buf1.wait(); }
-						catch (InterruptedException e) { /* ignore */ }
-					}
-				}
-			}
-			if (!read2.isUnblocked()) read2.block(0);
-			if (!read2.isSuccessful()) {
-				if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
-				throw read2.getError();
-			}
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0)
-				return -1;
-		}
+		if (nb2 < 0) needRead2();
 		if (pos >= nb1 + nb2) return -1;
 		int l = (nb1 + nb2) - pos;
 		if (l > len) l = len;
@@ -265,17 +221,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 
 	@Override
 	public int readFully(byte[] buffer) throws IOException {
-		if (nb1 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0)
-				return -1;
-		}
+		if (nb1 < 0) needRead1();
 		int len = buffer.length;
 		int offset = 0;
 		int done = 0;
@@ -290,31 +236,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			done = l;
 		}
 		if (buf2 == null) return done > 0 ? done : -1;
-		if (nb2 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			if (read2 == null) {
-				synchronized (buf1) {
-					while (read2 == null) {
-						if (buf2 == null) return done > 0 ? done : -1;
-						try { buf1.wait(); }
-						catch (InterruptedException e) { /* ignore */ }
-					}
-				}
-			}
-			if (!read2.isUnblocked()) read2.block(0);
-			if (!read2.isSuccessful()) {
-				if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
-				throw read2.getError();
-			}
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0)
-				return done > 0 ? done : -1;
-		}
+		if (nb2 < 0) needRead2();
 		if (pos >= nb1 + nb2) return done > 0 ? done : -1;
 		int l = (nb1 + nb2) - pos;
 		if (l > len) l = len;
@@ -330,17 +252,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	
 	@Override
 	public int readSync(long pos, ByteBuffer buffer) throws IOException {
-		if (nb1 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0)
-				return -1;
-		}
+		if (nb1 < 0) needRead1();
 		int len = buffer.remaining();
 		if (pos < nb1) {
 			int l = nb1 - (int)pos;
@@ -350,31 +262,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			return l;
 		}
 		if (buf2 == null) return -1;
-		if (nb2 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			if (read2 == null) {
-				synchronized (buf1) {
-					while (read2 == null) {
-						if (buf2 == null) return -1;
-						try { buf1.wait(); }
-						catch (InterruptedException e) { /* ignore */ }
-					}
-				}
-			}
-			if (!read2.isUnblocked()) read2.block(0);
-			if (!read2.isSuccessful()) {
-				if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
-				throw read2.getError();
-			}
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0)
-				return -1;
-		}
+		if (nb2 < 0) needRead2();
 		if (pos >= nb1 + nb2) return -1;
 		int l = (nb1 + nb2) - (int)pos;
 		if (l > len) l = len;
@@ -383,46 +271,125 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		return l;
 	}
 
+	private <T> AsyncWork<T, IOException> needRead1Async(Callable<T> onReady, RunnableWithParameter<Pair<T,IOException>> ondone) {
+		if (!read1.isUnblocked()) {
+			AsyncWork<T, IOException> sp = new AsyncWork<>();
+			read1.listenAsync(new Task.Cpu<Void,NoException>("TwoBuffersIO", io.getPriority()) {
+				@Override
+				public Void run() {
+					if (read1.isSuccessful()) {
+						try {
+							T r = onReady.call();
+							if (ondone != null) ondone.run(new Pair<>(r, null));
+							sp.unblockSuccess(r);
+						} catch (Exception e) {
+							IOException err = IO.error(e);
+							if (ondone != null) ondone.run(new Pair<>(null, err));
+							sp.unblockError(err);
+						}
+					} else if (read1.isCancelled())
+						sp.unblockCancel(read1.getCancelEvent());
+					else {
+						if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
+						sp.unblockError(read1.getError());
+					}
+					return null;
+				}
+			}, true);
+			return operation(sp);
+		}
+		if (!read1.isSuccessful()) {
+			IOException e;
+			if (read1.isCancelled())
+				e = new IOException("Cancelled", read1.getCancelEvent());
+			else
+				e = read1.getError();
+			if (ondone != null) ondone.run(new Pair<>(null, e));
+			return new AsyncWork<>(null, e);
+		}
+		nb1 = read1.getResult().intValue();
+		if (nb1 < 0) nb1 = 0;
+		return null;
+	}
+	
+	private <T> AsyncWork<T, IOException> needRead2Async(Callable<T> onReady, RunnableWithParameter<Pair<T,IOException>> ondone) {
+		if (!read1.isUnblocked() || read2 == null) {
+			AsyncWork<T, IOException> sp = new AsyncWork<>();
+			read1.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO", io.getPriority()) {
+				@Override
+				public Void run() {
+					if (read1.isSuccessful()) {
+						try {
+							T r = onReady.call();
+							if (ondone != null) ondone.run(new Pair<>(r, null));
+							sp.unblockSuccess(r);
+						} catch (Exception e) {
+							IOException err = IO.error(e);
+							if (ondone != null) ondone.run(new Pair<>(null, err));
+							sp.unblockError(err);
+						}
+					} else if (read1.isCancelled())
+						sp.unblockCancel(read1.getCancelEvent());
+					else {
+						if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
+						sp.unblockError(read1.getError());
+					}
+					return null;
+				}
+			}), true);
+			return sp;
+		}
+		if (!read2.isUnblocked()) {
+			AsyncWork<T, IOException> sp = new AsyncWork<>();
+			read2.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO", io.getPriority()) {
+				@Override
+				public Void run() {
+					if (read2.isSuccessful()) {
+						try {
+							T r = onReady.call();
+							if (ondone != null) ondone.run(new Pair<>(r, null));
+							sp.unblockSuccess(r);
+						} catch (Exception e) {
+							IOException err = IO.error(e);
+							if (ondone != null) ondone.run(new Pair<>(null, err));
+							sp.unblockError(err);
+						}
+					} else if (read2.isCancelled())
+						sp.unblockCancel(read2.getCancelEvent());
+					else {
+						if (ondone != null) ondone.run(new Pair<>(null, read2.getError()));
+						sp.unblockError(read2.getError());
+					}
+					return null;
+				}
+			}), true);
+			return sp;
+		}
+		if (!read2.isSuccessful()) {
+			IOException e;
+			if (read2.isCancelled()) e = new IOException("Cancelled", read2.getCancelEvent());
+			else e = read2.getError();
+			if (ondone != null) ondone.run(new Pair<>(null, e));
+			return new AsyncWork<>(null, e);
+		}
+		nb2 = read2.getResult().intValue();
+		if (nb2 < 0) nb2 = 0;
+		return null;
+	}
+	
 	@Override
 	public int readAsync() throws IOException {
 		if (nb1 < 0) {
 			if (!read1.isUnblocked()) return -2;
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0)
-				return -1;
+			needRead1();
 		}
 		if (pos < nb1)
 			return buf1[pos++] & 0xFF;
 		if (buf2 == null) return -1;
 		if (nb2 < 0) {
-			if (!read1.isUnblocked()) return -2;
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			if (read2 == null) {
-				synchronized (buf1) {
-					while (read2 == null) {
-						if (buf2 == null) return -1;
-						try { buf1.wait(); }
-						catch (InterruptedException e) { /* ignore */ }
-					}
-				}
-			}
+			if (read2 == null) waitRead2();
 			if (!read2.isUnblocked()) return -2;
-			if (!read2.isSuccessful()) {
-				if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
-				throw read2.getError();
-			}
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0)
-				return -1;
+			needRead2();
 		}
 		if (pos >= nb1 + nb2) return -1;
 		return buf2[(pos++) - nb1] & 0xFF;
@@ -436,46 +403,11 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		if (nb1 < 0) {
-			if (!read1.isUnblocked()) {
-				AsyncWork<Integer, IOException> sp = new AsyncWork<>();
-				read1.listenAsync(new Task.Cpu<Void,NoException>("TwoBuffersIO.readAsync", io.getPriority()) {
-					@Override
-					public Void run() {
-						if (read1.isSuccessful()) {
-							try {
-								Integer r = Integer.valueOf(readSync(pos, buffer));
-								if (ondone != null) ondone.run(new Pair<>(r, null));
-								sp.unblockSuccess(r);
-							} catch (IOException e) {
-								if (ondone != null) ondone.run(new Pair<>(null, e));
-								sp.unblockError(e);
-							}
-						} else if (read1.isCancelled())
-							sp.unblockCancel(read1.getCancelEvent());
-						else {
-							if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
-							sp.unblockError(read1.getError());
-						}
-						return null;
-					}
-				}, true);
-				return operation(sp);
-			}
-			if (!read1.isSuccessful()) {
-				IOException e;
-				if (read1.isCancelled())
-					e = new IOException("Cancelled", read1.getCancelEvent());
-				else
-					e = read1.getError();
-				if (ondone != null) ondone.run(new Pair<>(null, e));
-				return new AsyncWork<>(null, e);
-			}
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0) {
-				if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
-				return new AsyncWork<>(Integer.valueOf(-1),null);
-			}
+			AsyncWork<Integer, IOException> res = needRead1Async(() -> {
+				if (nb1 == 0) return Integer.valueOf(-1);
+				return Integer.valueOf(readSync(pos, buffer));
+			}, ondone);
+			if (res != null) return res;
 		}
 		int len = buffer.remaining();
 		if (pos < nb1) {
@@ -499,69 +431,10 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			return new AsyncWork<>(Integer.valueOf(-1), null);
 		}
 		if (nb2 < 0) {
-			if (!read1.isUnblocked() || read2 == null) {
-				AsyncWork<Integer, IOException> sp = new AsyncWork<>();
-				read1.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.readAsync", io.getPriority()) {
-					@Override
-					public Void run() {
-						if (read1.isSuccessful()) {
-							try {
-								Integer r = Integer.valueOf(readSync(pos, buffer));
-								if (ondone != null) ondone.run(new Pair<>(r, null));
-								sp.unblockSuccess(r);
-							} catch (IOException e) {
-								if (ondone != null) ondone.run(new Pair<>(null, e));
-								sp.unblockError(e);
-							}
-						} else if (read1.isCancelled())
-							sp.unblockCancel(read1.getCancelEvent());
-						else {
-							if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
-							sp.unblockError(read1.getError());
-						}
-						return null;
-					}
-				}), true);
-				return sp;
-			}
-			if (!read2.isUnblocked()) {
-				AsyncWork<Integer, IOException> sp = new AsyncWork<>();
-				read2.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.readAsync", io.getPriority()) {
-					@Override
-					public Void run() {
-						if (read2.isSuccessful()) {
-							try {
-								Integer r = Integer.valueOf(readSync(pos, buffer));
-								if (ondone != null) ondone.run(new Pair<>(r, null));
-								sp.unblockSuccess(r);
-							} catch (IOException e) {
-								if (ondone != null) ondone.run(new Pair<>(null, e));
-								sp.unblockError(e);
-							}
-						} else if (read2.isCancelled())
-							sp.unblockCancel(read2.getCancelEvent());
-						else {
-							if (ondone != null) ondone.run(new Pair<>(null, read2.getError()));
-							sp.unblockError(read2.getError());
-						}
-						return null;
-					}
-				}), true);
-				return sp;
-			}
-			if (!read2.isSuccessful()) {
-				IOException e;
-				if (read2.isCancelled()) e = new IOException("Cancelled", read2.getCancelEvent());
-				else e = read2.getError();
-				if (ondone != null) ondone.run(new Pair<>(null, e));
-				return new AsyncWork<>(null, e);
-			}
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0) {
-				if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
-				return new AsyncWork<>(Integer.valueOf(-1), null);
-			}
+			AsyncWork<Integer, IOException> res = needRead2Async(() -> {
+				return Integer.valueOf(readSync(pos, buffer));
+			}, ondone);
+			if (res != null) return res;
 		}
 		if (pos >= nb1 + nb2) {
 			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
@@ -605,15 +478,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 				if (nb2 < 0) {
 					if (read1.hasError()) throw read1.getError();
 					if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-					if (read2 == null) {
-						synchronized (buf1) {
-							while (read2 == null) {
-								if (buf2 == null) return null;
-								try { buf1.wait(); }
-								catch (InterruptedException e) { /* ignore */ }
-							}
-						}
-					}
+					if (read2 == null) waitRead2();
 					if (read2.hasError()) throw read2.getError();
 					if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
 					nb2 = read2.getResult().intValue();
@@ -704,17 +569,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	
 	@Override
 	public int readFullySync(long pos, ByteBuffer buffer) throws IOException {
-		if (nb1 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0)
-				return -1;
-		}
+		if (nb1 < 0) needRead1();
 		int len = buffer.remaining();
 		int done = 0;
 		if (pos < nb1) {
@@ -728,31 +583,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			done = l;
 		}
 		if (buf2 == null) return done > 0 ? done : -1;
-		if (nb2 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			if (read2 == null) {
-				synchronized (buf1) {
-					while (read2 == null) {
-						if (buf2 == null) return done > 0 ? done : -1;
-						try { buf1.wait(); }
-						catch (InterruptedException e) { /* ignore */ }
-					}
-				}
-			}
-			if (!read2.isUnblocked()) read2.block(0);
-			if (!read2.isSuccessful()) {
-				if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
-				throw read2.getError();
-			}
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0)
-				return done > 0 ? done : -1;
-		}
+		if (nb2 < 0) needRead2();
 		if (pos >= nb1 + nb2) return done > 0 ? done : -1;
 		int l = (nb1 + nb2) - (int)pos;
 		if (l > len) l = len;
@@ -784,17 +615,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			pos += skip;
 			return skip;
 		}
-		if (nb1 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0)
-				return 0;
-		}
+		if (nb1 < 0) needRead1();
 		int done = 0;
 		if (pos < nb1) {
 			if (pos + skip <= nb1) {
@@ -806,31 +627,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			skip -= done;
 		}
 		if (buf2 == null) return done;
-		if (nb2 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			if (read2 == null) {
-				synchronized (buf1) {
-					while (read2 == null) {
-						if (buf2 == null) return done;
-						try { buf1.wait(); }
-						catch (InterruptedException e) { /* ignore */ }
-					}
-				}
-			}
-			if (!read2.isUnblocked()) read2.block(0);
-			if (!read2.isSuccessful()) {
-				if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
-				throw read2.getError();
-			}
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0)
-				return done;
-		}
+		if (nb2 < 0) needRead2();
 		if (pos >= nb1 + nb2) return done;
 		if (pos + skip <= nb1 + nb2) {
 			pos += skip;
@@ -854,45 +651,12 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			return new AsyncWork<>(Long.valueOf(0),null);
 		}
 		if (nb1 < 0) {
-			if (!read1.isUnblocked()) {
-				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				long s = skip;
-				read1.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.skipAsync", io.getPriority()) {
-					@Override
-					public Void run() {
-						if (read1.isSuccessful()) {
-							try {
-								Long r = Long.valueOf(skipSync(s));
-								if (ondone != null) ondone.run(new Pair<>(r, null));
-								sp.unblockSuccess(r);
-							} catch (IOException e) {
-								if (ondone != null) ondone.run(new Pair<>(null, e));
-								sp.unblockError(e);
-							}
-						} else if (read1.isCancelled())
-							sp.unblockCancel(read1.getCancelEvent());
-						else {
-							if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
-							sp.unblockError(read1.getError());
-						}
-						return null;
-					}
-				}), true);
-				return sp;
-			}
-			if (!read1.isSuccessful()) {
-				IOException e;
-				if (read1.isCancelled()) e = new IOException("Cancelled", read1.getCancelEvent());
-				else e = read1.getError();
-				if (ondone != null) ondone.run(new Pair<>(null, e));
-				return new AsyncWork<>(null, e);
-			}
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0) {
-				if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
-				return new AsyncWork<>(Long.valueOf(0),null);
-			}
+			long s = skip;
+			AsyncWork<Long, IOException> res = needRead1Async(() -> {
+				if (nb1 == 0) return Long.valueOf(0);
+				return Long.valueOf(skipSync(s));
+			}, ondone);
+			if (res != null) return res;
 		}
 		int done = 0;
 		if (pos < nb1) {
@@ -910,79 +674,12 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			return new AsyncWork<>(Long.valueOf(done),null);
 		}
 		if (nb2 < 0) {
-			if (!read1.isUnblocked() || read2 == null) {
-				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				long s = skip;
-				read1.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.skipAsync", io.getPriority()) {
-					@Override
-					public Void run() {
-						if (read1.isSuccessful()) {
-							try {
-								Long r = Long.valueOf(skipSync(s));
-								if (ondone != null) ondone.run(new Pair<>(r, null));
-								sp.unblockSuccess(r);
-							} catch (IOException e) {
-								if (ondone != null) ondone.run(new Pair<>(null, e));
-								sp.unblockError(e);
-							}
-						} else if (read1.isCancelled())
-							sp.unblockCancel(read1.getCancelEvent());
-						else {
-							if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
-							sp.unblockError(read1.getError());
-						}
-						return null;
-					}
-				}), true);
-				return sp;
-			}
-			if (!read1.isSuccessful()) {
-				IOException e;
-				if (read1.isCancelled()) e = new IOException("Cancelled", read1.getCancelEvent());
-				else e = read1.getError();
-				if (ondone != null) ondone.run(new Pair<>(null, e));
-				return new AsyncWork<>(null, e);
-			}
-			if (!read2.isUnblocked()) {
-				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				long s = skip;
-				int d = done;
-				read2.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.skipAsync", io.getPriority()) {
-					@Override
-					public Void run() {
-						if (read2.isSuccessful()) {
-							try {
-								Long r = Long.valueOf(skipSync(s) + d);
-								if (ondone != null) ondone.run(new Pair<>(r, null));
-								sp.unblockSuccess(r);
-							} catch (IOException e) {
-								if (ondone != null) ondone.run(new Pair<>(null, e));
-								sp.unblockError(e);
-							}
-						} else if (read2.isCancelled())
-							sp.unblockCancel(read2.getCancelEvent());
-						else {
-							if (ondone != null) ondone.run(new Pair<>(null, read2.getError()));
-							sp.unblockError(read2.getError());
-						}
-						return null;
-					}
-				}), true);
-				return sp;
-			}
-			if (!read2.isSuccessful()) {
-				IOException e;
-				if (read2.isCancelled()) e = new IOException("Cancelled", read2.getCancelEvent());
-				else e = read2.getError();
-				if (ondone != null) ondone.run(new Pair<>(null, e));
-				return new AsyncWork<>(null, e);
-			}
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0) {
-				if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done), null));
-				return new AsyncWork<>(Long.valueOf(done),null);
-			}
+			long s = skip;
+			long d = done;
+			AsyncWork<Long, IOException> res = needRead2Async(() -> {
+				return Long.valueOf(skipSync(s) + d);
+			}, ondone);
+			if (res != null) return res;
 		}
 		if (pos >= nb1 + nb2) {
 			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done), null));
@@ -993,131 +690,34 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(skip + done), null));
 			return new AsyncWork<>(Long.valueOf(skip + done),null);
 		}
-		done += nb1 + nb2 - pos;
-		pos = nb2;
+		done += (nb1 + nb2) - pos;
+		pos = nb1 + nb2;
 		if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done), null));
 		return new AsyncWork<>(Long.valueOf(done),null);
 	}
 
 	@Override
 	public long getSizeSync() throws IOException {
-		if (nb1 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0)
-				return 0;
-		}
+		if (nb1 < 0) needRead1();
 		if (buf2 == null) return nb1;
-		if (nb2 < 0) {
-			if (!read1.isUnblocked()) read1.block(0);
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-				throw read1.getError();
-			}
-			if (read2 == null) {
-				synchronized (buf1) {
-					while (read2 == null) {
-						if (buf2 == null) return nb1;
-						try { buf1.wait(); }
-						catch (InterruptedException e) { /* ignore */ }
-					}
-				}
-			}
-			if (!read2.isUnblocked()) read2.block(0);
-			if (!read2.isSuccessful()) {
-				if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
-				throw read2.getError();
-			}
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0)
-				return nb1;
-		}
+		if (nb2 < 0) needRead2();
 		return nb1 + nb2;
 	}
 
 	@Override
 	public AsyncWork<Long, IOException> getSizeAsync() {
 		if (nb1 < 0) {
-			if (!read1.isUnblocked()) {
-				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				read1.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.getSizeAsync", io.getPriority()) {
-					@Override
-					public Void run() {
-						if (read1.isSuccessful()) {
-							try { sp.unblockSuccess(Long.valueOf(getSizeSync())); }
-							catch (IOException e) { sp.unblockError(e); }
-						} else if (read1.isCancelled())
-							sp.unblockCancel(read1.getCancelEvent());
-						else
-							sp.unblockError(read1.getError());
-						return null;
-					}
-				}), true);
-				return sp;
-			}
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) return new AsyncWork<>(null, new IOException("Cancelled", read1.getCancelEvent()));
-				return new AsyncWork<>(null, read1.getError());
-			}
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0)
-				return new AsyncWork<>(Long.valueOf(0),null);
+			AsyncWork<Long, IOException> res = needRead1Async(() -> {
+				return Long.valueOf(getSizeSync());
+			}, null);
+			if (res != null) return res;
 		}
 		if (buf2 == null) return new AsyncWork<>(Long.valueOf(nb1),null);
 		if (nb2 < 0) {
-			if (!read1.isUnblocked() || read2 == null) {
-				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				read1.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.getSizeAsync", io.getPriority()) {
-					@Override
-					public Void run() {
-						if (read1.isSuccessful()) {
-							try { sp.unblockSuccess(Long.valueOf(getSizeSync())); }
-							catch (IOException e) { sp.unblockError(e); }
-						} else if (read1.isCancelled())
-							sp.unblockCancel(read1.getCancelEvent());
-						else
-							sp.unblockError(read1.getError());
-						return null;
-					}
-				}), true);
-				return sp;
-			}
-			if (!read1.isSuccessful()) {
-				if (read1.isCancelled()) return new AsyncWork<>(null, new IOException("Cancelled", read1.getCancelEvent()));
-				return new AsyncWork<>(null, read1.getError());
-			}
-			if (!read2.isUnblocked()) {
-				AsyncWork<Long, IOException> sp = new AsyncWork<>();
-				read2.listenAsync(operation(new Task.Cpu<Void,NoException>("TwoBuffersIO.getSizeAsync", io.getPriority()) {
-					@Override
-					public Void run() {
-						if (read2.isSuccessful()) {
-							try { sp.unblockSuccess(Long.valueOf(getSizeSync())); }
-							catch (IOException e) { sp.unblockError(e); }
-						} else if (read2.isCancelled())
-							sp.unblockCancel(read2.getCancelEvent());
-						else
-							sp.unblockError(read2.getError());
-						return null;
-					}
-				}), true);
-				return sp;
-			}
-			if (!read2.isSuccessful()) {
-				if (read2.isCancelled()) return new AsyncWork<>(null, new IOException("Cancelled", read2.getCancelEvent()));
-				return new AsyncWork<>(null, read2.getError());
-			}
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0)
-				return new AsyncWork<>(Long.valueOf(nb1),null);
+			AsyncWork<Long, IOException> res = needRead2Async(() -> {
+				return Long.valueOf(getSizeSync());
+			}, null);
+			if (res != null) return res;
 		}
 		return new AsyncWork<>(Long.valueOf(nb1 + nb2),null);
 	}
