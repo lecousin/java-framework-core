@@ -3,16 +3,18 @@ package net.lecousin.framework.core.test.io;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.junit.Test;
-
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public abstract class TestOutputToInput extends TestIO.UsingTestData {
 
@@ -30,10 +32,8 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 	@Override
 	protected void basicTests(IO io) throws Exception {
 		super.basicTests(io);
-		/*
-		if (((IO.OutputToInput)io).canStartReading().isUnblocked())
-			throw new AssertionError("OutputToInput.canStartReading returned an unblocked synchronization point, but nothing can be read yet because nothing has been written yet!");
-			*/
+		((IO.OutputToInput)io).canStartWriting();
+		((IO.OutputToInput)io).canStartReading();
 	}
 
 	@SuppressWarnings("resource")
@@ -156,5 +156,95 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		spRead.blockThrow(0);
 		o2i.closeAsync();
 	}
+	
+	@Test
+	public void testSkipSync() throws Exception {
+		IO.OutputToInput o2i = createOutputToInput();
+		writeBg(o2i);
+		byte[] buf = new byte[testBuf.length];
+		for (int i = 0; i < nbBuf; ++i) {
+			if ((i % 2) == 0) o2i.skipSync(testBuf.length);
+			else {
+				int nb = o2i.readFullySync(ByteBuffer.wrap(buf));
+				Assert.assertEquals(testBuf.length, nb);
+				Assert.assertTrue(ArrayUtil.equals(testBuf, 0, buf, 0, testBuf.length));
+			}
+		}
+		Assert.assertEquals(-1, o2i.readSync(ByteBuffer.wrap(buf)));
+		o2i.close();
+	}
+	
+	@Test
+	public void testSkipAsync() throws Exception {
+		IO.OutputToInput o2i = createOutputToInput();
+		writeBg(o2i);
+		byte[] buf = new byte[testBuf.length];
+		MutableInteger i = new MutableInteger(0);
+		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+		AsyncWork<Long, IOException> op = o2i.skipAsync(testBuf.length);
+		op.listenInline(new Runnable() {
+			@Override
+			public void run() {
+				if (nbBuf == 0) {
+					sp.unblock();
+					return;
+				}
+				if ((i.get() % 2) == 1) {
+					if (!ArrayUtil.equals(testBuf, 0, buf, 0, testBuf.length)) {
+						sp.error(new IOException("Invalid read"));
+						return;
+					}
+				}
+				i.inc();
+				if (i.get() == nbBuf) {
+					sp.unblock();
+					return;
+				}
+				ISynchronizationPoint<IOException> op;
+				if ((i.get() % 2) == 0) {
+					op = o2i.skipAsync(testBuf.length);
+				} else {
+					op = o2i.readFullyAsync(ByteBuffer.wrap(buf));
+				}
+				op.listenInline(this, sp);
+			}
+		}, sp);
+		sp.blockThrow(0);
+		o2i.close();
+	}
+	
+	private SynchronizationPoint<IOException> writeBg(IO.OutputToInput o2i) {
+		SynchronizationPoint<IOException> spWrite = new SynchronizationPoint<>();
+		new Task.Cpu<Void, NoException>("Launch write async to OutputToInput", Task.PRIORITY_IMPORTANT) {
+			@Override
+			public Void run() {
+				if (nbBuf == 0) {
+					o2i.endOfData();
+					spWrite.unblock();
+					return null;
+				}
+				Mutable<AsyncWork<Integer, IOException>> write = new Mutable<>(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
+				MutableInteger nbWrite = new MutableInteger(1);
+				write.get().listenInline(new Runnable() {
+					@Override
+					public void run() {
+						if (write.get().hasError()) { spWrite.error(write.get().getError()); return; }
+						if (nbWrite.get() == nbBuf) {
+							o2i.endOfData();
+							spWrite.unblock();
+							return;
+						}
+						write.set(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
+						nbWrite.inc();
+						write.get().listenInline(this);
+					}
+				});
+				return null;
+			}
+		}.start();
+		return spWrite;
+	}
+	
+	// TODO seekSync + seekAsync
 	
 }

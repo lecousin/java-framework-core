@@ -4,7 +4,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
@@ -12,7 +11,6 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.LockPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -120,12 +118,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 							}
 						}
 					});
-				write.onCancel(new Listener<CancelException>() {
-					@Override
-					public void fire(CancelException event) {
-						lock.cancel(event);
-					}
-				});
+				write.forwardCancel(lock);
 				write.listenInline(result);
 				lockIO.unlock();
 				return null;
@@ -143,10 +136,10 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	}
 	
 	@Override
-	public int readSync(ByteBuffer buffer) throws IOException {
+	public int readSync(long pos, ByteBuffer buffer) throws IOException {
 		if (lock.hasError() && !eof)
 			throw new IOException("An error occured during the transfer of data", lock.getError());
-		while (readPos >= writePos) {
+		while (pos >= writePos) {
 			if (eof) return -1;
 			if (lock.hasError() && !eof)
 				throw new IOException("An error occured during the transfer of data", lock.getError());
@@ -154,16 +147,15 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 		}
 		int nb;
 		lockIO.lock();
-		nb = ((IO.Readable.Seekable)io).readSync(readPos, buffer);
-		readPos += nb;
+		nb = ((IO.Readable.Seekable)io).readSync(pos, buffer);
+		readPos = pos + nb;
 		lockIO.unlock();
 		return nb;
 	}
 	
 	@Override
-	public int readSync(long pos, ByteBuffer buffer) throws IOException {
-		readPos = pos;
-		return readSync(buffer);
+	public int readSync(ByteBuffer buffer) throws IOException {
+		return readSync(readPos, buffer);
 	}
 	
 	@Override
