@@ -341,7 +341,6 @@ public final class Base64 {
 		}, result);
 	}
 
-	// skip checkstyle: VariableDeclarationUsageDistance
 	private static void writeBuffer(
 		IO.Readable.Buffered io, IO.WriterAsync writer, SynchronizationPoint<IOException> result,
 		byte[] buf, int nbBuf, ByteBuffer buffer, ISynchronizationPoint<IOException> lastWrite

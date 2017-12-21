@@ -139,7 +139,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 	
 	@Override
 	public long skipSync(long n) {
-		// skip checkstyle: VariableDeclarationUsageDistance
 		long prevPos = pos;
 		this.pos += n;
 		if (this.pos < 0) this.pos = 0;

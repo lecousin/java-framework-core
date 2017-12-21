@@ -470,7 +470,6 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	
 	@Override
 	public long skipSync(long n) throws IOException {
-		// skip checkstyle: VariableDeclarationUsageDistance
 		long prevPos = pos;
 		long newPos = pos + n;
 		if (newPos < 0) newPos = 0;

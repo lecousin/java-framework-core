@@ -160,7 +160,6 @@ public class HalfByteHashMap<T> implements ByteMap<T> {
 		} while (true);
 	}
 	
-	// skip checkstyle: VariableDeclarationUsageDistance
 	@Override
 	public T remove(byte key) {
 		HalfByteArray<T> array = hashmap[key & 0xF];

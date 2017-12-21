@@ -279,7 +279,6 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 	
 	protected long skipSync(long n) {
 		long size = getSizeSync();
-		// skip checkstyle: VariableDeclarationUsageDistance
 		long prevPos = pos;
 		pos += n;
 		if (pos > size) pos = size;

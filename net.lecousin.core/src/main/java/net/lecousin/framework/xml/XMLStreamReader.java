@@ -556,7 +556,6 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		event.namespaceURI = getNamespaceURI(event.namespacePrefix);
 	}
 	
-	// skip checkstyle: VariableDeclarationUsageDistance
 	private void readIntSubset() throws XMLException, IOException {
 		Event save = event.copy();
 		

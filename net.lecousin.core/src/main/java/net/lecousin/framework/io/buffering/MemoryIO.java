@@ -84,7 +84,6 @@ public class MemoryIO extends ConcurrentCloseable
 	
 	@Override
 	public int read(byte[] buffer, int offset, int len) {
-		// skip checkstyle: VariableDeclarationUsageDistance
 		int index = pos / bufferSize;
 		int bufferPos = pos % bufferSize;
 		if (len > size - pos) len = size - pos;

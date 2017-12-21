@@ -103,7 +103,6 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 	
 	@Override
 	public void blocked(ISynchronizationPoint<?> blockPoint, long blockTimeout) {
-		// skip checkstyle: VariableDeclarationUsageDistance
 		long start = System.nanoTime();
 		manager.imBlocked(this);
 		long start2 = System.nanoTime();
