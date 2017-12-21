@@ -28,9 +28,16 @@ public final class QuotedPrintable {
 					input.position(input.position() - 1);
 					break;
 				}
-				int i = StringUtil.decodeHexa((char)(input.get() & 0xFF));
+				char c1 = (char)(input.get() & 0xFF);
+				char c2 = (char)(input.get() & 0xFF);
+				if (c1 == '\r' && c2 == '\n') {
+					// soft line break
+					endingSpaces = 0;
+					continue;
+				}
+				int i = StringUtil.decodeHexa(c1);
 				if (i == -1) throw new IOException("Invalid hexadecimal value in quoted-printable");
-				int j = StringUtil.decodeHexa((char)(input.get() & 0xFF));
+				int j = StringUtil.decodeHexa(c2);
 				if (j == -1) throw new IOException("Invalid hexadecimal value in quoted-printable");
 				out[pos++] = (byte)((i << 4) | j);
 				endingSpaces = 0;
@@ -82,10 +89,11 @@ public final class QuotedPrintable {
 		int lineCount = 0;
 		for (int i = 0; i < input.length; ++i) {
 			byte b = input[i];
-			if ((b >= 33 && b <= 60) || (b >= 62 && b <= 126)) {
-				if (lineCount == 76) {
-					if (pos >= out.length - 3)
+			if ((b >= 33 && b <= 60) || (b >= 62 && b <= 126) || ((b == 9 || b == 32) && lineCount < 73 && i < input.length - 1)) {
+				if (lineCount == 73) {
+					if (pos >= out.length - 4)
 						out = increaseBuffer(out, pos);
+					out[pos++] = '=';
 					out[pos++] = '\r';
 					out[pos++] = '\n';
 					lineCount = 0;
@@ -97,16 +105,20 @@ public final class QuotedPrintable {
 				continue;
 			}
 			// need to encode
-			if (lineCount >= 76 - 3) {
-				if (pos >= out.length - 6)
+			if (lineCount >= 73 - (i < input.length - 1 ? 1 : 0)) {
+				if (pos >= out.length - 7)
 					out = increaseBuffer(out, pos);
+				out[pos++] = '=';
 				out[pos++] = '\r';
 				out[pos++] = '\n';
 				lineCount = 0;
 			}
+			if (pos >= out.length - 3)
+				out = increaseBuffer(out, pos);
 			out[pos++] = '=';
 			out[pos++] = (byte)StringUtil.encodeHexaDigit((b & 0xF0) >> 4);
 			out[pos++] = (byte)StringUtil.encodeHexaDigit(b & 0xF);
+			lineCount += 3;
 		}
 		return ByteBuffer.wrap(out, 0, pos);
 	}

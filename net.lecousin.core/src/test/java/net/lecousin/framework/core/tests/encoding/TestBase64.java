@@ -9,9 +9,11 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
+import net.lecousin.framework.io.buffering.ByteBuffersIO;
 import net.lecousin.framework.io.buffering.MemoryIO;
 import net.lecousin.framework.io.encoding.Base64;
 import net.lecousin.framework.io.encoding.Base64Decoder;
@@ -29,6 +31,8 @@ public class TestBase64 extends LCCoreAbstractTest {
 	public void testDecoding() throws IOException {
 		Assert.assertEquals("This is a test", new String(Base64.decode("VGhpcyBpcyBhIHRlc3Q=".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
 		Assert.assertEquals("That is a test!", new String(Base64.decode("VGhhdCBpcyBhIHRlc3Qh".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
+		Assert.assertEquals("This is a test", Base64.decode("VGhpcyBpcyBhIHRlc3Q="));
+		Assert.assertEquals("This is a test!", Base64.decode("VGhhdCBpcyBhIHRlc3Qh="));
 	}
 	
 	@SuppressWarnings("resource")
@@ -58,6 +62,44 @@ public class TestBase64 extends LCCoreAbstractTest {
 		for (int i = 0; i < 1024; ++i) {
 			int nb = decoded.readFully(b);
 			Assert.assertEquals(128, nb);
+			Assert.assertTrue(ArrayUtil.equals(data, i * 128, b, 0, 128));
+		}
+	}
+
+	@SuppressWarnings("resource")
+	@Test
+	public void testEncodeAndDecodeBuffers() throws Exception {
+		ByteBuffersIO input = new ByteBuffersIO(false, "base64_src", Task.PRIORITY_NORMAL);
+		for (int i = 0; i < 1024; ++i) {
+			byte[] data = new byte[128];
+			for (int j = 0; j < 128; ++j)
+				data[i * 128 + j] = (byte)((i * j % 300) + i + j - i/3);
+			input.addBuffer(data, 0, 1);
+			input.addBuffer(data, 1, 1);
+			input.addBuffer(data, 2, 1);
+			input.addBuffer(data, 3, 125);
+		}
+		MemoryIO encoded = new MemoryIO(8192, "base64_encoded");
+		Base64.encodeAsync(input, encoded).blockException(0);
+		encoded.seekSync(SeekType.FROM_BEGINNING, 0);
+		MemoryIO decoded = new MemoryIO(8192, "base64_decoded");
+		Base64Decoder decoder = new Base64Decoder(decoded);
+		do {
+			ByteBuffer b = ByteBuffer.allocate(123);
+			int nb = encoded.readFullySync(b);
+			if (nb <= 0) break;
+			b.flip();
+			decoder.decode(b).blockException(0);
+		} while (true);
+		decoder.flush().blockException(0);
+		decoded.seekSync(SeekType.FROM_BEGINNING, 0);
+		byte[] b = new byte[128];
+		for (int i = 0; i < 1024; ++i) {
+			int nb = decoded.readFully(b);
+			Assert.assertEquals(128, nb);
+			byte[] data = new byte[128];
+			for (int j = 0; j < 128; ++j)
+				data[i * 128 + j] = (byte)((i * j % 300) + i + j - i/3);
 			Assert.assertTrue(ArrayUtil.equals(data, i * 128, b, 0, 128));
 		}
 	}
