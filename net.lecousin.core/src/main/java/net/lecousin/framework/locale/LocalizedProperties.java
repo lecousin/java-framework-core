@@ -275,12 +275,16 @@ public class LocalizedProperties implements IMemoryManageable {
 					return;
 				}
 				if (!ns.loading.isUnblocked()) {
+					// namespace has been overriden and is reloading
 					ns.loading.listenInline(this);
 					return;
 				}
 				for (Namespace.Language l : ns.languages)
-					if (languageTagCompatible(l.tag, languageTag))
+					if (languageTagCompatible(l.tag, languageTag)) {
 						localize(ns, l, key, values, result);
+						return;
+					}
+				result.unblockSuccess("!! no compatible language in namespace " + namespace + "!!");
 			}
 		});
 		return result;

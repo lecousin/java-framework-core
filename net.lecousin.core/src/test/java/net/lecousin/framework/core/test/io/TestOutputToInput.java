@@ -154,7 +154,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		}.start();
 		spWrite.blockThrow(0);
 		spRead.blockThrow(0);
-		o2i.closeAsync();
+		o2i.close();
 	}
 	
 	@Test(timeout=120000)

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+import net.lecousin.framework.application.LCCore;
+
 /**
  * An event allows to call listeners that previously registered themselves when the event is fired.
  * @param <T> type of data fired with the event
@@ -55,10 +57,16 @@ public class Event<T> implements Listenable<T> {
 		}
 		if (list1 != null)
 			for (int i = 0; i < list1.size(); ++i)
-				list1.get(i).fire(event);
+				try { list1.get(i).fire(event); }
+				catch (Throwable t) {
+					LCCore.getApplication().getDefaultLogger().error("Event listener error: " + list1.get(i), t);
+				}
 		if (list2 != null)
 			for (int i = 0; i < list2.size(); ++i)
-				list2.get(i).run();
+				try { list2.get(i).run(); }
+				catch (Throwable t) {
+					LCCore.getApplication().getDefaultLogger().error("Event listener error: " + list2.get(i), t);
+				}
 	}
 	
 	/** Bridge between 2 events: create a listener that will fire the given event when called. */

@@ -6,6 +6,7 @@ import java.util.List;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -130,8 +131,6 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 		}
 		for (ISynchronizationPoint<?> op : pending)
 			jp.addToJoin(op);
-		if (waitForClose != null)
-			closing.listenInline(waitForClose);
 		ISynchronizationPoint<?> underlying = closeUnderlyingResources();
 		if (underlying != null)
 			jp.addToJoin(underlying);
@@ -146,6 +145,18 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 			}
 			closeResources(closing);
 		}), true);
+		jp.listenTime(60000, () -> {
+			StringBuilder s = new StringBuilder();
+			s.append("IO still waiting for pending operations:");
+			for (ISynchronizationPoint<?> op : pending)
+				if (!op.isUnblocked())
+					s.append("\r\n - ").append(op);
+			if (underlying != null && !underlying.isUnblocked())
+				s.append("\r\n - closeUnderlyingResources");
+			LCCore.getApplication().getDefaultLogger().error(s.toString());
+		});
+		if (waitForClose != null)
+			closing.listenInline(waitForClose);
 		return closing;
 	}
 	

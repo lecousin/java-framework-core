@@ -98,8 +98,8 @@ public class TestDOMModifications extends TestDOM {
 		// replace Comment
 		Comment comment1bis = doc1.createComment("Second comment");
 		XMLComment comment2bis = doc2.createComment("Second comment");
-		root1.replaceChild(comment1, comment1bis);
-		root2.replaceChild(comment2, comment2bis);
+		root1.replaceChild(comment1bis, comment1);
+		root2.replaceChild(comment2bis, comment2);
 		checkDocument(doc1, doc2);
 		// get child
 		checkNode(root1.getFirstChild(), root2.getFirstChild());

@@ -151,7 +151,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 				seek.unblockCancel(event);
 			}
 		});
-		return operation(sp);
+		return operation(seek);
 	}
 
 	private void readNextBuffer() {
