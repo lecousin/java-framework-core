@@ -1,5 +1,6 @@
 package net.lecousin.framework.io.serialization;
 
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -40,6 +41,9 @@ public class TypeDefinition {
 				}
 			throw new IllegalArgumentException("Unexpected type " + type.getClass() + ": " + type.toString());
 		} else if (type instanceof WildcardType) {
+			base = Object.class;
+			parameters = new ArrayList<>(0);
+		} else if (type instanceof GenericArrayType) {
 			base = Object.class;
 			parameters = new ArrayList<>(0);
 		} else

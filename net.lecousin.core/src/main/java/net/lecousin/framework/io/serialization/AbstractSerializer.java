@@ -69,13 +69,14 @@ public abstract class AbstractSerializer implements Serializer {
 	
 	
 	protected List<SerializationRule> addRulesForType(SerializationClass type, List<SerializationRule> currentList) {
-		currentList = TypeAnnotationToRule.addRules(type.getType().getBase(), currentList);
+		currentList = TypeAnnotationToRule.addRules(type, currentList);
 		currentList = AttributeAnnotationToRuleOnType.addRules(type, true, currentList);
 		return currentList;
 	}
 	
 	protected List<SerializationRule> addRulesForAttribute(Attribute a, List<SerializationRule> currentList) {
-		return AttributeAnnotationToRuleOnAttribute.addRules(a, true, currentList);
+		currentList = AttributeAnnotationToRuleOnAttribute.addRules(a, true, currentList);
+		return currentList;
 	}
 	
 	/** Serialize a value. */

@@ -6,6 +6,7 @@ import java.util.ListIterator;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
+import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.util.Provider;
 
@@ -35,15 +36,30 @@ public class TypeFactory<T> implements SerializationRule {
 	public boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) {
 		for (ListIterator<Attribute> it = type.getAttributes().listIterator(); it.hasNext(); ) {
 			Attribute a = it.next();
-			if (!a.getOriginalType().getBase().equals(type.getType().getBase())) continue;
+			if (!a.getType().getBase().equals(this.type)) continue;
 			it.set(new Attribute(a) {
 				@Override
 				public Object instantiate(AttributeContext context) {
 					return factory.provide();
 				}
+				
+				@Override
+				public boolean hasCustomInstantiation() {
+					return true;
+				}
 			});
 		}
 		return false;
+	}
+	
+	@Override
+	public boolean canInstantiate(TypeDefinition type, SerializationContext context) {
+		return this.type.equals(type.getBase());
+	}
+	
+	@Override
+	public Object instantiate(TypeDefinition type, SerializationContext context) {
+		return factory.provide();
 	}
 	
 	@Override

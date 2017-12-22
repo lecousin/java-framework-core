@@ -184,13 +184,21 @@ public class XMLSerializer extends AbstractSerializer {
 	protected ISynchronizationPoint<IOException> startObjectValue(ObjectContext context, String path, List<SerializationRule> rules) {
 		Object instance = context.getInstance();
 		if (instance != null) {
-			if (!(context.getParent() instanceof AttributeContext) ||
-				!((AttributeContext)context.getParent()).getAttribute().hasCustomInstantiation()) {
-				Class<?> type = context.getOriginalType().getBase();
-				if (!type.equals(instance.getClass())) {
-					String attrName = "class";
-					while (XMLDeserializer.hasAttribute(type, attrName)) attrName = "_" + attrName;
-					return output.addAttribute(attrName, instance.getClass().getName());
+			boolean customInstantiator = false;
+			for (SerializationRule rule : rules)
+				if (rule.canInstantiate(context.getOriginalType(), context)) {
+					customInstantiator = true;
+					break;
+				}
+			if (!customInstantiator) {
+				if (!(context.getParent() instanceof AttributeContext) ||
+					!((AttributeContext)context.getParent()).getAttribute().hasCustomInstantiation()) {
+					Class<?> type = context.getOriginalType().getBase();
+					if (!type.equals(instance.getClass())) {
+						String attrName = "class";
+						while (XMLDeserializer.hasAttribute(type, attrName)) attrName = "_" + attrName;
+						return output.addAttribute(attrName, instance.getClass().getName());
+					}
 				}
 			}
 		}

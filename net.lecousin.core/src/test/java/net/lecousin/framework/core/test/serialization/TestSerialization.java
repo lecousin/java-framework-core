@@ -35,11 +35,13 @@ import net.lecousin.framework.io.serialization.Serializer;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.annotations.AddAttribute;
 import net.lecousin.framework.io.serialization.annotations.Instantiate;
+import net.lecousin.framework.io.serialization.annotations.Instantiation;
 import net.lecousin.framework.io.serialization.annotations.MergeAttributes;
 import net.lecousin.framework.io.serialization.annotations.Rename;
 import net.lecousin.framework.io.serialization.annotations.SerializationMethods;
 import net.lecousin.framework.io.serialization.annotations.SerializationName;
 import net.lecousin.framework.io.serialization.annotations.Transient;
+import net.lecousin.framework.io.serialization.annotations.TypeInstantiation;
 import net.lecousin.framework.io.serialization.annotations.TypeSerializationMethod;
 import net.lecousin.framework.io.serialization.annotations.TypeSerializer;
 import net.lecousin.framework.math.IntegerUnit.Unit;
@@ -47,6 +49,7 @@ import net.lecousin.framework.math.TimeUnit;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Factory;
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.Provider;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 import org.junit.Assert;
@@ -470,7 +473,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	
 	@SuppressWarnings("resource")
 	@Test
-	public void testInstantiation() throws Exception {
+	public void testInstantiate() throws Exception {
 		MyImplementation impl = new MyImplementation();
 		MemoryIO io = new MemoryIO(1024, "test");
 		Serializer s = createSerializer();
@@ -771,6 +774,103 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		TestAddAttributeContainer t2 = deserialize(ioMem, new TypeDefinition(TestAddAttributeContainer.class));
 		Assert.assertEquals("World", t2.test.hello);
 		Assert.assertEquals(52, t2.test.value);
+	}
+	
+	@TypeInstantiation(factory=MyInterfaceToInstantiateProvider.class)
+	public static interface MyInterfaceToInstantiate {}
+	
+	public static class MyImplementationSerialized implements MyInterfaceToInstantiate {
+		public String hello = "a";
+	}
+
+	public static class MyImplementationDeserialized implements MyInterfaceToInstantiate {
+		public String hello = "b";
+	}
+	
+	public static class MyInterfaceToInstantiateProvider implements Provider<MyInterfaceToInstantiate> {
+		@Override
+		public MyInterfaceToInstantiate provide() {
+			return new MyImplementationDeserialized();
+		}
+	}
+	
+	public static class MyInterfaceToInstantiateContainer {
+		public MyInterfaceToInstantiate test;
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
+	public void testTypeInstantiationContainer() throws Exception {
+		MyInterfaceToInstantiateContainer t = new MyInterfaceToInstantiateContainer();
+		t.test = new MyImplementationSerialized();
+		((MyImplementationSerialized)t.test).hello = "World";
+		MemoryIO ioMem = serializeInMemory(t, new TypeDefinition(MyInterfaceToInstantiateContainer.class));
+		print(ioMem, t);
+		MyInterfaceToInstantiateContainer o2 = deserialize(ioMem, new TypeDefinition(MyInterfaceToInstantiateContainer.class));
+		Assert.assertFalse(o2.test == null);
+		Assert.assertEquals(MyImplementationDeserialized.class, o2.test.getClass());
+		Assert.assertEquals("World", ((MyImplementationDeserialized)o2.test).hello);
+	}
+
+	@SuppressWarnings("resource")
+	@Test
+	public void testTypeInstantiationValue() throws Exception {
+		MyImplementationSerialized o = new MyImplementationSerialized();
+		o.hello = "World";
+		MemoryIO ioMem = serializeInMemory(o, new TypeDefinition(MyInterfaceToInstantiate.class));
+		print(ioMem, o);
+		MyInterfaceToInstantiate o2 = deserialize(ioMem, new TypeDefinition(MyInterfaceToInstantiate.class));
+		Assert.assertFalse(o2 == null);
+		Assert.assertEquals(MyImplementationDeserialized.class, o2.getClass());
+		Assert.assertEquals("World", ((MyImplementationDeserialized)o2).hello);
+	}
+	
+	public static class InstantiationContainer {
+		public String d = "";
+		@Instantiation(discriminator="d", factory=InstantiationFactory.class)
+		public MyInterface i;
+	}
+	
+	public static class InstantiationFactory implements Factory<MyInterface, String> {
+		@Override
+		public MyInterface create(String discriminator) {
+			if ("test1".equals(discriminator))
+				return new MyImplementation();
+			if ("test2".equals(discriminator))
+				return new MyImplementation2();
+			return null;
+		}
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
+	public void testInstantiation() throws Exception {
+		InstantiationContainer t = new InstantiationContainer();
+		t.d = "test1";
+		t.i = new MyImplementation2();
+		MemoryIO ioMem = serializeInMemory(t, new TypeDefinition(InstantiationContainer.class));
+		print(ioMem, t);
+		InstantiationContainer t2 = deserialize(ioMem, new TypeDefinition(InstantiationContainer.class));
+		Assert.assertFalse(t2.i == null);
+		Assert.assertEquals(MyImplementation.class, t2.i.getClass());
+
+		t = new InstantiationContainer();
+		t.d = "test1";
+		t.i = new MyImplementation();
+		ioMem = serializeInMemory(t, new TypeDefinition(InstantiationContainer.class));
+		print(ioMem, t);
+		t2 = deserialize(ioMem, new TypeDefinition(InstantiationContainer.class));
+		Assert.assertFalse(t2.i == null);
+		Assert.assertEquals(MyImplementation.class, t2.i.getClass());
+
+		t = new InstantiationContainer();
+		t.d = "test2";
+		t.i = new MyImplementation();
+		ioMem = serializeInMemory(t, new TypeDefinition(InstantiationContainer.class));
+		print(ioMem, t);
+		t2 = deserialize(ioMem, new TypeDefinition(InstantiationContainer.class));
+		Assert.assertFalse(t2.i == null);
+		Assert.assertEquals(MyImplementation2.class, t2.i.getClass());
 	}
 	
 	

@@ -57,7 +57,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	protected List<SerializationRule> addRulesForType(SerializationClass type, List<SerializationRule> currentList) {
-		currentList = TypeAnnotationToRule.addRules(type.getType().getBase(), currentList);
+		currentList = TypeAnnotationToRule.addRules(type, currentList);
 		currentList = AttributeAnnotationToRuleOnType.addRules(type, false, currentList);
 		return currentList;
 	}
@@ -79,7 +79,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		public Void run() throws CancelException {
 			try { run.run(); }
 			catch (Throwable t) {
-				throw new CancelException("Error thrown in desrialization", t);
+				throw new CancelException("Error thrown in deserialization", t);
 			}
 			return null;
 		}
@@ -90,6 +90,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	public <T> AsyncWork<T, Exception> deserializeValue(
 		SerializationContext context, TypeDefinition type, String path, List<SerializationRule> rules
 	) {
+		rules = addRulesForType(new SerializationClass(type), rules);
 		TypeDefinition newType = type;
 		List<TypeDefinition> rulesTypes = new ArrayList<>(rules.size());
 		for (SerializationRule rule : rules) {
@@ -115,12 +116,13 @@ public abstract class AbstractDeserializer implements Deserializer {
 			}
 			return result;
 		}
+		List<SerializationRule> _rules = rules;
 		value.listenAsync(new DeserializationTask(() -> {
 			Object o = value.getResult();
-			ListIterator<TypeDefinition> itType = rulesTypes.listIterator(rules.size());
-			ListIterator<SerializationRule> itRule = rules.listIterator(rules.size());
+			ListIterator<TypeDefinition> itType = rulesTypes.listIterator(_rules.size());
+			ListIterator<SerializationRule> itRule = _rules.listIterator(_rules.size());
 			while (itRule.hasPrevious())
-				try { o = itRule.next().getDeserializationValue(o, itType.next(), context); }
+				try { o = itRule.previous().getDeserializationValue(o, itType.previous(), context); }
 				catch (Exception e) {
 					result.error(e);
 					return;

@@ -6,6 +6,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.io.serialization.SerializationClass;
+import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Pair;
@@ -17,6 +19,16 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 
 	/** Create a rule from an annotation. */
 	SerializationRule createRule(TAnnotation annotation, Class<?> type);
+
+	/** Search for annotations on the given type, and try to convert them into
+	 * serialization rules.
+	 */
+	public static List<SerializationRule> addRules(SerializationClass type, List<SerializationRule> rules) {
+		rules = addRules(type.getType().getBase(), rules);
+		for (Attribute a : type.getAttributes())
+			rules = addRules(a.getType().getBase(), rules);
+		return rules;
+	}
 	
 	/** Search for annotations on the given type, and try to convert them into
 	 * serialization rules.
