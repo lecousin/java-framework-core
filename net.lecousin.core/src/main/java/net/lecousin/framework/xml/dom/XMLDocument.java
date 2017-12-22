@@ -49,6 +49,25 @@ public class XMLDocument extends XMLNode implements Document {
 	}
 	
 	@Override
+	public Node appendChild(Node newChild) throws DOMException {
+		if (newChild instanceof XMLElement) {
+			if (root == null) {
+				root = (XMLElement)newChild;
+				return root;
+			}
+			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "Root element already present on document");
+		}
+		if (newChild instanceof XMLDocumentType) {
+			if (docType == null) {
+				docType = (XMLDocumentType)newChild;
+				return docType;
+			}
+			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "Document type already present on document");
+		}
+		throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "Cannot append a node " + newChild.getClass().getName() + " on XMLDocument");
+	}
+	
+	@Override
 	public XMLNode getFirstChild() {
 		return docType != null ? docType : root;
 	}
