@@ -74,7 +74,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	}
 
 	@SuppressWarnings({ "resource" })
-	@Test(timeout=120000)
+	@Test(timeout=240000)
 	public void testSeekableByteByByteAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[1];
@@ -258,7 +258,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	}
 	
 
-	@Test(timeout=120000)
+	@Test(timeout=240000)
 	public void testConcurrentAccessToSeekableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
 		int nbConc = Runtime.getRuntime().availableProcessors() * 5;
