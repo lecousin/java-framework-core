@@ -52,7 +52,7 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 		return createWritableFromFile(createFile());
 	}
 
-	@Test
+	@Test(timeout=120000)
 	public void testWriteBufferByBufferSync() throws Exception {
 		File file = createFile();
 		IO.Writable io = createWritableFromFile(file);
@@ -64,7 +64,7 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testWriteBufferByBufferAsync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		File file = createFile();

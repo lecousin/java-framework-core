@@ -198,7 +198,7 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 	protected abstract void next(EVENTS xml) throws Exception;
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testParse() throws Exception {
 		InputStream in = getClass().getClassLoader().getResourceAsStream(filepath);
 		XMLInputFactory factory = XMLInputFactory.newFactory();

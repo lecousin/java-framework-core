@@ -22,7 +22,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 	}
 	
 	@SuppressWarnings({ "resource" })
-	@Test
+	@Test(timeout=120000)
 	public void testBufferByBufferFully() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());
 		char[] buf = new char[testBuf.length];
@@ -42,7 +42,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testBufferByBuffer() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());
 		char[] buf = new char[testBuf.length * 3 - testBuf.length / 10];

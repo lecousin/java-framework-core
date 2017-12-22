@@ -18,7 +18,7 @@ public class TestTurnArray extends TestDeque {
 		return false;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testFullAndEmpty() {
 		TurnArray<Long> q = new TurnArray<>(5);
 		Assert.assertTrue(q.isEmpty());
@@ -73,7 +73,7 @@ public class TestTurnArray extends TestDeque {
 		Assert.assertTrue(q.isEmpty());
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testSpecificCases() {
 		TurnArray<Long> q = new TurnArray<>(5);
 

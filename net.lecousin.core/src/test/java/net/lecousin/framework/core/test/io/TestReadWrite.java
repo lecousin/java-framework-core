@@ -37,7 +37,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	}
 
 	@SuppressWarnings({ "resource" })
-	@Test
+	@Test(timeout=120000)
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testWriteThenReadFullySync() throws Exception {
 		T io = openReadWrite();
 		ByteBuffer buf = ByteBuffer.wrap(testBuf);
@@ -66,7 +66,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testRandomWriteAndReadAsync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		T io = openReadWrite();
@@ -223,7 +223,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testRandomPartialWriteSync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		T io = openReadWrite();
@@ -263,7 +263,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testDichotomicWriteSeekSyncThenReverseReadSeekSync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		T io = openReadWrite();
@@ -322,7 +322,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testSeekAsyncWriteOddEvenThenReadReverse() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		T io = openReadWrite();

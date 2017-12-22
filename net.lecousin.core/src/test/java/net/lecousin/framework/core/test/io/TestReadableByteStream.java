@@ -29,7 +29,7 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 	}
 	
 	@SuppressWarnings({ "resource" })
-	@Test
+	@Test(timeout=120000)
 	public void testReadableBufferedBufferByBufferFully() throws Exception {
 		IO.ReadableByteStream ioBuf = createReadableByteStreamFromFile(openFile(), getFileSize());
 		byte[] b = new byte[testBuf.length];
@@ -49,7 +49,7 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 	}
 	
 	@SuppressWarnings({ "resource" })
-	@Test
+	@Test(timeout=120000)
 	public void testReadableBufferedByteByByte() throws Exception {
 		IO.ReadableByteStream io = createReadableByteStreamFromFile(openFile(), getFileSize());
 		for (int i = 0; i < nbBuf; ++i) {
@@ -79,7 +79,7 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 	}
 	
 	@SuppressWarnings({ "resource" })
-	@Test
+	@Test(timeout=120000)
 	public void testReadableBufferedBufferByBuffer() throws Exception {
 		long size = getFileSize();
 		IO.ReadableByteStream ioBuf = createReadableByteStreamFromFile(openFile(), size);
@@ -111,7 +111,7 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testSkip() throws Exception {
 		long size = getFileSize();
 		IO.ReadableByteStream ioBuf = createReadableByteStreamFromFile(openFile(), size);

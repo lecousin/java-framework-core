@@ -91,14 +91,14 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		return b;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testBooleans() throws Exception {
 		test(Boolean.TRUE, Boolean.class);
 		test(Boolean.FALSE, Boolean.class);
 		test(createBooleans(), TestBooleans.class);
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testBooleanPrimitive() throws Exception {
 		testPrimitive(Boolean.TRUE, boolean.class);
 		testPrimitive(Boolean.FALSE, boolean.class);
@@ -144,7 +144,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		return n;
 	}
 
-	@Test
+	@Test(timeout=120000)
 	public void testNumbers() throws Exception {
 		test(Byte.valueOf((byte)0), Byte.class);
 		test(Byte.valueOf((byte)1), Byte.class);
@@ -169,7 +169,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(createNumbers(), TestNumbers.class);
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testNumberPrimitives() throws Exception {
 		testPrimitive(Byte.valueOf((byte)23), byte.class);
 		testPrimitive(Byte.valueOf((byte)-9), byte.class);
@@ -210,7 +210,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(ts, TestIString.class);
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testStrings() throws Exception {
 		test("Hello World!", String.class);
 		test("", String.class);
@@ -239,7 +239,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testPrimitive(Character.valueOf(c), char.class);
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testChars() throws Exception {
 		testChar('0');
 		testChar('3');
@@ -269,7 +269,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	public static enum Enum1 { VAL1, VAL2, VAL3 };
 	public static enum Enum2 { VAL11, VAL22, VAL33 };
 	
-	@Test
+	@Test(timeout=120000)
 	public void testEnum() throws Exception {
 		test(Enum1.VAL2, Enum1.class);
 		test(Enum2.VAL33, Enum2.class);
@@ -287,7 +287,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public Enum2 e2;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testSimpleObjects() throws Exception {
 		TestSimpleObjects o = new TestSimpleObjects();
 		o.booleans = createBooleans();
@@ -319,7 +319,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public List<TestNumbers> testNumbers;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testLists() throws Exception {
 		TestLists t;
 		t = new TestLists();
@@ -347,7 +347,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public TestNumbers[] testNumbers;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testArrays() throws Exception {
 		TestArrays t = new TestArrays();
 		t.b1 = new boolean[] { true, true, false, true, false, false };
@@ -369,7 +369,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public List<List<List<Integer>>> list;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testListOfList() throws Exception {
 		TestListOfList t = new TestListOfList();
 		t.list = Arrays.asList(
@@ -389,7 +389,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public Map<String, Long> myMap;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testMap() throws Exception {
 		TestMap t = new TestMap();
 		t.myMap = new HashMap<>();
@@ -413,7 +413,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public IO.Readable io;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testIO() throws Exception {
 		TestIO t = new TestIO();
 		t.stream = new ByteArrayInputStream("This is an InputStream".getBytes(StandardCharsets.UTF_8));
@@ -433,7 +433,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public Long value;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testIntegerUnit() throws Exception {
 		testIntegerUnit("3 days", Long.valueOf(3L * 24));
 		testIntegerUnit("6h", Long.valueOf(6L));
@@ -472,7 +472,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testInstantiate() throws Exception {
 		MyImplementation impl = new MyImplementation();
 		MemoryIO io = new MemoryIO(1024, "test");
@@ -508,7 +508,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testTransient() throws Exception {
 		TestWithTransient t1 = new TestWithTransient();
 		t1.b1 = false;
@@ -545,7 +545,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public String world;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testRenameAttribute() throws Exception {
 		TestRename1 t1 = new TestRename1();
 		t1.hello = "bonjour";
@@ -570,7 +570,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public String myValue2;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testRenamePair() throws Exception {
 		TestRenamePair1 t1 = new TestRenamePair1();
 		t1.pair = new Pair<>("Hello", "World");
@@ -619,7 +619,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public TestNoDefaultConstructor1 test;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testTypeSerializer() throws Exception {
 		TestTypeSerializer1 t = new TestTypeSerializer1();
 		t.test = new TestNoDefaultConstructor1("Hello");
@@ -631,7 +631,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public TestNoDefaultConstructor1 test;
 	}
 
-	@Test
+	@Test(timeout=120000)
 	public void testTypeSerializationMethod() throws Exception {
 		TestTypeSerializationMethod t = new TestTypeSerializationMethod();
 		t.test = new TestNoDefaultConstructor1("World");
@@ -646,7 +646,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public TestNoDefaultConstructor1 testFromString(String s) { return new TestNoDefaultConstructor1(s); }
 	}
 
-	@Test
+	@Test(timeout=120000)
 	public void testSerializationMethods() throws Exception {
 		TestSerializationMethods t = new TestSerializationMethods();
 		t.test = new TestNoDefaultConstructor1("Hello World!");
@@ -687,7 +687,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testMergeAttributes() throws Exception {
 		Merged merged = new Merged();
 		merged.aString = "Hello";
@@ -718,7 +718,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public List<MergedPair2> list;
 	}
 
-	@Test
+	@Test(timeout=120000)
 	public void testMergeAttributesOfListElements() throws Exception {
 		ToMerge3 t = new ToMerge3();
 		t.list = new ArrayList<>();
@@ -731,7 +731,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(t, ToMerge3.class);
 	}
 
-	@Test
+	@Test(timeout=120000)
 	public void testMergeAttributesOfListElements2() throws Exception {
 		ToMerge3 t = new ToMerge3();
 		t.list = new ArrayList<>();
@@ -763,7 +763,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public TestAddAttribute test;
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testAddAttribute() throws Exception {
 		TestAddAttributeContainer t = new TestAddAttributeContainer();
 		t.test = new TestAddAttribute();
@@ -799,7 +799,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testTypeInstantiationContainer() throws Exception {
 		MyInterfaceToInstantiateContainer t = new MyInterfaceToInstantiateContainer();
 		t.test = new MyImplementationSerialized();
@@ -813,7 +813,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	}
 
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testTypeInstantiationValue() throws Exception {
 		MyImplementationSerialized o = new MyImplementationSerialized();
 		o.hello = "World";
@@ -843,7 +843,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testInstantiation() throws Exception {
 		InstantiationContainer t = new InstantiationContainer();
 		t.d = "test1";

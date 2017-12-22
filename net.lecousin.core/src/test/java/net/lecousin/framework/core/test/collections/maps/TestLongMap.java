@@ -15,7 +15,7 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 
 	public abstract LongMap<Object> createLongMap();
 
-	@Test
+	@Test(timeout=120000)
 	public void testLongMapIncrement() {
 		LongMap<Object> map = createLongMap();
 		HashMap<Long, Object> checkMap = new HashMap<>();
@@ -34,7 +34,7 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 			remove(i, map, checkMap);
 	}
 
-	@Test
+	@Test(timeout=120000)
 	public void testLongMapRandom() {
 		LongMap<Object> map = createLongMap();
 		HashMap<Long, Object> checkMap = new HashMap<>();

@@ -20,14 +20,14 @@ import net.lecousin.framework.io.encoding.Base64Decoder;
 
 public class TestBase64 extends LCCoreAbstractTest {
 
-	@Test
+	@Test(timeout=120000)
 	public void testEncoding() {
 		Assert.assertEquals("SGVsbG8gV29ybGQgIQ==", new String(Base64.encodeBase64("Hello World !".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
 		Assert.assertEquals("SGVsbG8gV29ybGQh", new String(Base64.encodeBase64("Hello World!".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
 		Assert.assertEquals("SGVsbG8gV29ybGQ=", new String(Base64.encodeBase64("Hello World".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testDecoding() throws IOException {
 		Assert.assertEquals("This is a test", new String(Base64.decode("VGhpcyBpcyBhIHRlc3Q=".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
 		Assert.assertEquals("That is a test!", new String(Base64.decode("VGhhdCBpcyBhIHRlc3Qh".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
@@ -36,7 +36,7 @@ public class TestBase64 extends LCCoreAbstractTest {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testEncodeAndDecodeBytes() throws Exception {
 		byte[] data = new byte[128*1024];
 		for (int i = 0; i < 1024; ++i) {
@@ -67,7 +67,7 @@ public class TestBase64 extends LCCoreAbstractTest {
 	}
 
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testEncodeAndDecodeBuffers() throws Exception {
 		ByteBuffersIO input = new ByteBuffersIO(false, "base64_src", Task.PRIORITY_NORMAL);
 		for (int i = 0; i < 1024; ++i) {
@@ -105,7 +105,7 @@ public class TestBase64 extends LCCoreAbstractTest {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testEncodeAndDecodeBytesSmall() throws Exception {
 		byte[] data = new byte[128*64];
 		for (int i = 0; i < 64; ++i) {
@@ -136,7 +136,7 @@ public class TestBase64 extends LCCoreAbstractTest {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testDecodeChars() throws Exception {
 		CharBuffer cb = CharBuffer.wrap("VGhhdCBpcyBhIHRlc3QgdG8gZGVjb2RlIGJhc2UgNjQgd2l0aCBjaGFyYWN0ZXIgc3RyZWFt");
 		ByteArrayIO decoded = new ByteArrayIO(512, "base64_decoded");
@@ -147,7 +147,7 @@ public class TestBase64 extends LCCoreAbstractTest {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testDecodeCharsSmall() throws Exception {
 		CharBuffer cb1 = CharBuffer.wrap("V");
 		CharBuffer cb2 = CharBuffer.wrap("G");

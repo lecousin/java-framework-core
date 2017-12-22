@@ -15,7 +15,7 @@ public abstract class TestSortedAssociatedWithLong extends LCCoreAbstractTest {
 
 	protected abstract Sorted.AssociatedWithLong<Object> createSorted();
 	
-	@Test
+	@Test(timeout=120000)
 	public void testAddRemoveIncrement() {
 		Sorted.AssociatedWithLong<Object> list = createSorted();
 		TreeSet<Long> order = new TreeSet<>();
@@ -31,7 +31,7 @@ public abstract class TestSortedAssociatedWithLong extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testAddIncrementRemoveDecrement() {
 		Sorted.AssociatedWithLong<Object> list = createSorted();
 		TreeSet<Long> order = new TreeSet<>();
@@ -47,7 +47,7 @@ public abstract class TestSortedAssociatedWithLong extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testAddRemoveDecrement() {
 		Sorted.AssociatedWithLong<Object> list = createSorted();
 		TreeSet<Long> order = new TreeSet<>();
@@ -63,7 +63,7 @@ public abstract class TestSortedAssociatedWithLong extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testAddDecrementRemoveIncrement() {
 		Sorted.AssociatedWithLong<Object> list = createSorted();
 		TreeSet<Long> order = new TreeSet<>();
@@ -79,7 +79,7 @@ public abstract class TestSortedAssociatedWithLong extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testAddRemoveRandom() {
 		Sorted.AssociatedWithLong<Object> list = createSorted();
 		TreeSet<Long> order = new TreeSet<>();

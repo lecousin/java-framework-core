@@ -15,7 +15,7 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 
 	public abstract ByteMap<Object> createByteMap();
 
-	@Test
+	@Test(timeout=120000)
 	public void testByteMapIncrement() {
 		ByteMap<Object> map = createByteMap();
 		HashMap<Byte, Object> checkMap = new HashMap<>();
@@ -28,7 +28,7 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 			remove((byte)i, map, checkMap);
 	}
 
-	@Test
+	@Test(timeout=120000)
 	public void testByteMapRandom() {
 		ByteMap<Object> map = createByteMap();
 		HashMap<Byte, Object> checkMap = new HashMap<>();

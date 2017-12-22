@@ -27,7 +27,7 @@ public abstract class TestReadWriteBuffered extends TestIO.UsingTestData {
 	}
 	
 	@SuppressWarnings({ "resource" })
-	@Test
+	@Test(timeout=120000)
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.Readable.Buffered & IO.Writable.Buffered>
 	void testWriteThenReadBuffered() throws Exception {
 		T io = openReadWriteBuffered();
@@ -50,7 +50,7 @@ public abstract class TestReadWriteBuffered extends TestIO.UsingTestData {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.Readable.Buffered & IO.Writable.Buffered>
 	void testWriteThenReadBufferedWithSkipSync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);

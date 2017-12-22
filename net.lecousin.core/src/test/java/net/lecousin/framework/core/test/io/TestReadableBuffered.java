@@ -32,7 +32,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		return createReadableBufferedFromFile(file, fileSize);
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testReadableBufferedByteByByteAsync() throws Exception {
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
 		MutableInteger i = new MutableInteger(0);
@@ -99,7 +99,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		io.close();
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testReadableBufferedNextBufferAsync() throws Exception {
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
 		SynchronizationPoint<Exception> done = new SynchronizationPoint<>();

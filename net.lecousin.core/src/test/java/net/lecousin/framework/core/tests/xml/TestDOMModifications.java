@@ -13,7 +13,7 @@ import org.w3c.dom.Text;
 
 public class TestDOMModifications extends TestDOM {
 
-	@Test
+	@Test(timeout=120000)
 	public void test() throws Exception {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		factory.setValidating(false);

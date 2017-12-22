@@ -15,7 +15,7 @@ public class TestUnprotectedStringBuffer extends TestIString {
 		return new UnprotectedStringBuffer(s);
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testModifications() {
 		UnprotectedStringBuffer s = new UnprotectedStringBuffer("Hello");
 		s.addFirst(' ');

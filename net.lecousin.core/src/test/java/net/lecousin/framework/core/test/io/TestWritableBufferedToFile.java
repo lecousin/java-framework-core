@@ -24,7 +24,7 @@ public abstract class TestWritableBufferedToFile extends TestIO.UsingTestData {
 		return createWritableBufferedFromFile(TestWritableToFile.createFile());
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testWriteBufferByBufferInBuffered() throws Exception {
 		File file = TestWritableWrapper.createFile();
 		IO.Writable.Buffered io = createWritableBufferedFromFile(file);
@@ -36,7 +36,7 @@ public abstract class TestWritableBufferedToFile extends TestIO.UsingTestData {
 		TestWritableToFile.checkFile(file, testBuf, nbBuf);
 	}
 
-	@Test
+	@Test(timeout=120000)
 	public void testWriteByteByByteInBuffered() throws Exception {
 		File file = TestWritableWrapper.createFile();
 		IO.Writable.Buffered io = createWritableBufferedFromFile(file);

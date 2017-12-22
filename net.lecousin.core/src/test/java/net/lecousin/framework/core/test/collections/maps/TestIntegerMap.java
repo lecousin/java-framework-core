@@ -15,7 +15,7 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 
 	public abstract IntegerMap<Object> createIntegerMap();
 
-	@Test
+	@Test(timeout=120000)
 	public void testIntegerMapIncrement() {
 		IntegerMap<Object> map = createIntegerMap();
 		HashMap<Integer, Object> checkMap = new HashMap<>();
@@ -28,7 +28,7 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 			remove(i, map, checkMap);
 	}
 
-	@Test
+	@Test(timeout=120000)
 	public void testIntegerMapRandom() {
 		IntegerMap<Object> map = createIntegerMap();
 		HashMap<Integer, Object> checkMap = new HashMap<>();

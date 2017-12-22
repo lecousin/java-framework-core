@@ -21,7 +21,7 @@ import net.lecousin.framework.util.Pair;
 public class TestProduction extends LCCoreAbstractTest {
 
 	@SuppressWarnings("resource")
-	@Test
+	@Test(timeout=120000)
 	public void testProduction() {
 		//System.out.println("Start");
 		MyChecker checker = new MyChecker();

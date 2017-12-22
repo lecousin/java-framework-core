@@ -162,7 +162,7 @@ public class TestDOMParsing extends TestDOM {
 	
 	private String filepath;
 	
-	@Test
+	@Test(timeout=120000)
 	public void testReaderSync() throws Exception {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		factory.setValidating(false);
@@ -180,7 +180,7 @@ public class TestDOMParsing extends TestDOM {
 		in.close();
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testReaderAsync() throws Exception {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		factory.setValidating(false);

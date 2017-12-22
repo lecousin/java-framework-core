@@ -11,7 +11,7 @@ import org.junit.Test;
 
 public class TestQuotedPrintable extends LCCoreAbstractTest {
 
-	@Test
+	@Test(timeout=120000)
 	public void testEncodeAndDecode() throws Exception {
 		byte[] data;
 		data = "1234567890123456789012345678901234567890123456789012345678901234567890 ".getBytes(StandardCharsets.US_ASCII);

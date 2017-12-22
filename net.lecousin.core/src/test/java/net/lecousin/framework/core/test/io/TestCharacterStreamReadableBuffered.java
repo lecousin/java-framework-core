@@ -22,7 +22,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 	}
 
 	@SuppressWarnings({ "resource" })
-	@Test
+	@Test(timeout=120000)
 	public void testCharByChar() throws Exception {
 		ICharacterStream.Readable.Buffered s = openStream(openFile());
 		for (int i = 0; i < nbBuf; ++i) {

@@ -16,7 +16,7 @@ public abstract class TestQueueFIFO extends TestCollection {
 	public abstract Queue<Long> createLongCollection();
 
 	@SuppressWarnings({ "boxing" })
-	@Test
+	@Test(timeout=120000)
 	public void testPushAndPop() {
 		Queue<Long> col = createLongCollection();
 		testQueueEmpty(col);

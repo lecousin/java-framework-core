@@ -109,7 +109,7 @@ public abstract class TestIO extends LCCoreAbstractTest {
 	
 	protected abstract IO getIOForCommonTests() throws Exception;
 	
-	@Test
+	@Test(timeout=120000)
 	public void testBasicCommonFunctions() throws Exception {
 		IO io = getIOForCommonTests();
 		basicTests(io);

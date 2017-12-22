@@ -18,13 +18,13 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		Assert.assertTrue(found.equals(expected));
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testString() {
 		check("Hello", createString("Hello"));
 		check("", createString(""));
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testSetCharAt() {
 		IString s;
 		s = createString("");
@@ -53,7 +53,7 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		} catch (IllegalArgumentException e) {}
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testAppend() {
 		IString s;
 		s = createString("Hello");
@@ -65,7 +65,7 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		check("Hello World!!!", s);
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testIndexOf() {
 		IString s;
 		s = createString("");
@@ -82,7 +82,7 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		Assert.assertEquals(-1, s.indexOf("or", 10));
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testSubstring() {
 		IString s;
 		s = createString("");
@@ -106,7 +106,7 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		Assert.assertEquals("World", createString("Hello World!").subSequence(6, 11).toString());
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testReplace() {
 		IString s;
 		s = createString("");
@@ -118,7 +118,7 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		check("Hebba zarbd!", s.replace('W', 'y'));
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testRemove() {
 		check("Hello World", createString("Hello World").removeEndChars(0));
 		check("Hello Wor", createString("Hello World").removeEndChars(2));
@@ -133,7 +133,7 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		check("", createString("Hello World").removeStartChars(12));
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testSplit() {
 		List<? extends IString> list = createString("Hello World").split('o');
 		Assert.assertEquals(3, list.size());
@@ -142,13 +142,13 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		check("rld", list.get(2));
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testCase() {
 		check("HELLO WORLD!", createString("Hello World!").toUpperCase());
 		check("hello world!", createString("Hello World!").toLowerCase());
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testStartEndWith() {
 		Assert.assertTrue(createString("Hello World").startsWith("Hel"));
 		Assert.assertTrue(createString("Hello World").startsWith("Hello World"));
@@ -167,7 +167,7 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		Assert.assertFalse(createString("ello").isStartOf("Hello World"));
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testAsCharacters() {
 		char[][] chars = createString("Hello").append(' ').append("World").append('!').asCharacters();
 		String s = new String("Hello World!");
@@ -178,7 +178,7 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		Assert.assertEquals(s.length(), pos);
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testTrim() {
 		Assert.assertEquals("Hello", createString("Hello").trim().asString());
 		Assert.assertEquals("Hello", createString(" Hello").trim().asString());

@@ -47,7 +47,7 @@ public class TestUnprotectedString extends TestIString {
 		return new UnprotectedString(chars, start, c.length, c.length + end);
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testConstructor() {
 		UnprotectedString s1 = new UnprotectedString(5);
 		s1.append("Hello").append(' ').append("World").append('!');
@@ -56,7 +56,7 @@ public class TestUnprotectedString extends TestIString {
 		Assert.assertEquals("Hello World!", s2.asString());
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testSimple() {
 		UnprotectedString s = new UnprotectedString(0);
 		Assert.assertEquals(-1, s.firstChar());
@@ -75,7 +75,7 @@ public class TestUnprotectedString extends TestIString {
 	}
 	
 	@Override
-	@Test
+	@Test(timeout=120000)
 	public void testAppend() {
 		super.testAppend();
 		UnprotectedString s = new UnprotectedString(0);

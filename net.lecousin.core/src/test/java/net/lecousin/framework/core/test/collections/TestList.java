@@ -16,7 +16,7 @@ public abstract class TestList extends TestCollection {
 	public boolean supportNullValue() { return true; }
 	
 	@SuppressWarnings("boxing")
-	@Test
+	@Test(timeout=120000)
 	public void testList() {
 		List<Long> l = createLongCollection();
 		l.add(0, Long.valueOf(1));

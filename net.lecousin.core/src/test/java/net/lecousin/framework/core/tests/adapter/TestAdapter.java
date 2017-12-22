@@ -31,7 +31,7 @@ public class TestAdapter extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testDirectAdapter() throws Exception {
 		AdapterRegistry.get().addPlugin(new Adapter1());
 		Source1 src = new Source1();
@@ -96,7 +96,7 @@ public class TestAdapter extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test
+	@Test(timeout=120000)
 	public void testIntermediates() throws Exception {
 		AdapterRegistry.get().addPlugin(new Adapter2_1());
 		AdapterRegistry.get().addPlugin(new Adapter2_2());
