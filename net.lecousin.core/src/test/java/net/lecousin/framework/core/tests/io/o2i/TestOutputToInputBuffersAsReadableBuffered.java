@@ -19,7 +19,7 @@ public class TestOutputToInputBuffersAsReadableBuffered extends TestReadableBuff
 
 	@Parameters(name = "nbBuf = {2}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingGeneratedTestFiles.generateTestCases();
+		return TestIO.UsingGeneratedTestFiles.generateTestCases(true);
 	}
 	
 	public TestOutputToInputBuffersAsReadableBuffered(File testFile, byte[] testBuf, int nbBuf) {

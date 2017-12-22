@@ -17,7 +17,7 @@ public class TestFileIOReadable extends TestReadable {
 
 	@Parameters(name = "nbBuf = {2}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingGeneratedTestFiles.generateTestCases();
+		return TestIO.UsingGeneratedTestFiles.generateTestCases(true);
 	}
 	
 	public TestFileIOReadable(File testFile, byte[] testBuf, int nbBuf) {

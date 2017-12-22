@@ -15,7 +15,7 @@ public class TestByteArrayIOReadWrite extends TestReadWrite {
 
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingTestData.generateTestCases();
+		return TestIO.UsingTestData.generateTestCases(false);
 	}
 	
 	public TestByteArrayIOReadWrite(byte[] testBuf, int nbBuf) {

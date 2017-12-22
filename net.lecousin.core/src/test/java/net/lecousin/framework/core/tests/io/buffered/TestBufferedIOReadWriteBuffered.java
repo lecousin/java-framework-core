@@ -18,7 +18,7 @@ public class TestBufferedIOReadWriteBuffered extends TestReadWriteBuffered {
 
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingTestData.generateTestCases();
+		return TestIO.UsingTestData.generateTestCases(false);
 	}
 	
 	public TestBufferedIOReadWriteBuffered(byte[] testBuf, int nbBuf) {

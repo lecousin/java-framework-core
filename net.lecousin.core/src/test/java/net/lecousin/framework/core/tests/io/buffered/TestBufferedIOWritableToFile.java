@@ -20,7 +20,7 @@ public class TestBufferedIOWritableToFile extends TestWritableToFile {
 
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingTestData.generateTestCases();
+		return TestIO.UsingTestData.generateTestCases(false);
 	}
 	
 	public TestBufferedIOWritableToFile(byte[] testBuf, int nbBuf) {

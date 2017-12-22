@@ -17,7 +17,7 @@ public class TestOutputToInputWithMemoryIO extends TestOutputToInput {
 
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingTestData.generateTestCases();
+		return TestIO.UsingTestData.generateTestCases(true);
 	}
 	
 	public TestOutputToInputWithMemoryIO(byte[] testBuf, int nbBuf) {

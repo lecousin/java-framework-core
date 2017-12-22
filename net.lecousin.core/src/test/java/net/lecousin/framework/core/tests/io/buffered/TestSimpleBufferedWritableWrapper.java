@@ -16,7 +16,7 @@ public class TestSimpleBufferedWritableWrapper extends TestWritableWrapper {
 
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingTestData.generateTestCases();
+		return TestIO.UsingTestData.generateTestCases(true);
 	}
 	
 	public TestSimpleBufferedWritableWrapper(byte[] testBuf, int nbBuf) {

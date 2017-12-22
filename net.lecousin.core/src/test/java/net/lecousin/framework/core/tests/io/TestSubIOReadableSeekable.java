@@ -18,7 +18,7 @@ public class TestSubIOReadableSeekable extends TestReadableSeekable {
 
 	@Parameters(name = "nbBuf = {2}, nbBufSkippedStart = {3}, nbBufSkippedEnd = {4}")
 	public static Collection<Object[]> parameters() {
-		Collection<Object[]> base = generateTestCases();
+		Collection<Object[]> base = generateTestCases(false);
 		LinkedList<Object[]> list = new LinkedList<>();
 		for (Object[] params : base) {
 			list.add(createParams(params, 0, 0));

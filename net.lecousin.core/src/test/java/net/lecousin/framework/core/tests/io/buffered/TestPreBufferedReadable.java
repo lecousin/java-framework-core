@@ -27,7 +27,7 @@ public class TestPreBufferedReadable extends TestReadable {
 	
 	@Parameters(name = "nbBuf = {2}, firstBufferSize = {3}, nextBufferSize = {4}, nbNextBuffers = {5}")
 	public static Collection<Object[]> parameters() {
-		Collection<Object[]> base = generateTestCases();
+		Collection<Object[]> base = generateTestCases(false);
 		LinkedList<Object[]> list = new LinkedList<>();
 		for (int i = 0; i < bufferSizes.length; ++i)
 			for (Object[] params : base) {

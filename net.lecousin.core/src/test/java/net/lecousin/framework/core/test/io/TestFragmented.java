@@ -23,7 +23,7 @@ public abstract class TestFragmented extends TestIO {
 	
 	private static synchronized void generateFragmentedFiles() throws IOException {
 		if (files != null) return;
-		List<Object[]> base = UsingTestData.generateTestCases();
+		List<Object[]> base = UsingTestData.generateTestCases(false);
 		files = new FragmentedFile[base.size()];
 		for (int i = 0; i < files.length; ++i) {
 			files[i] = new FragmentedFile();

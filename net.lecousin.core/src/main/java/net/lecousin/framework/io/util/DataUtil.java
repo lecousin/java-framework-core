@@ -427,7 +427,35 @@ public final class DataUtil {
 		value |= ((long)i) << 56;
 		return value;
 	}
-	
+
+	/** big-endian or motorola format. */
+	public static long readLongBigEndian(InputStream io) throws IOException {
+		long value = io.read();
+		if (value < 0) throw new EOFException();
+		value <<= 56;
+		int i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= ((long)i) << 48;
+		i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= ((long)i) << 40;
+		i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= ((long)i) << 32;
+		i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= ((long)i) << 24;
+		i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= i << 16;
+		i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= i << 8;
+		i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= i;
+		return value;
+	}	
 	
 	/* *** Write Operations *** */
 	

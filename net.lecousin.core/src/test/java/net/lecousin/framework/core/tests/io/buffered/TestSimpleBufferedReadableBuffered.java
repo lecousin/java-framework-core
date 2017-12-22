@@ -17,7 +17,7 @@ public class TestSimpleBufferedReadableBuffered extends TestReadableBuffered {
 
 	@Parameters(name = "nbBuf = {2}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingGeneratedTestFiles.generateTestCases();
+		return TestIO.UsingGeneratedTestFiles.generateTestCases(true);
 	}
 	
 	public TestSimpleBufferedReadableBuffered(File testFile, byte[] testBuf, int nbBuf) {

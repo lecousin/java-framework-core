@@ -20,7 +20,7 @@ public class TestByteBuffersIOReadableSeekable extends TestReadableSeekable {
 
 	@Parameters(name = "nbBuf = {2}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingGeneratedTestFiles.generateTestCases();
+		return TestIO.UsingGeneratedTestFiles.generateTestCases(true);
 	}
 	
 	public TestByteBuffersIOReadableSeekable(File testFile, byte[] testBuf, int nbBuf) {

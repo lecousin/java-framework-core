@@ -20,7 +20,7 @@ public class TestOutputToInputWithFileIO extends TestOutputToInput {
 
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingTestData.generateTestCases();
+		return TestIO.UsingTestData.generateTestCases(true);
 	}
 	
 	public TestOutputToInputWithFileIO(byte[] testBuf, int nbBuf) {

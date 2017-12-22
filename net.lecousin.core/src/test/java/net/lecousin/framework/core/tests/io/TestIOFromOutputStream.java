@@ -21,7 +21,7 @@ public class TestIOFromOutputStream extends TestWritableToFile {
 
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingTestData.generateTestCases();
+		return TestIO.UsingTestData.generateTestCases(true);
 	}
 	
 	public TestIOFromOutputStream(byte[] testBuf, int nbBuf) {

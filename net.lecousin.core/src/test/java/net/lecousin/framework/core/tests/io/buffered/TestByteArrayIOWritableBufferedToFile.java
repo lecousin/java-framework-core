@@ -19,7 +19,7 @@ public class TestByteArrayIOWritableBufferedToFile extends TestWritableBufferedT
 
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingTestData.generateTestCases();
+		return TestIO.UsingTestData.generateTestCases(false);
 	}
 	
 	public TestByteArrayIOWritableBufferedToFile(byte[] testBuf, int nbBuf) {

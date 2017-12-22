@@ -18,7 +18,7 @@ public class TestSingleBufferReadable extends TestReadable {
 
 	@Parameters(name = "nbBuf = {2}, useReadFully = {3}")
 	public static Collection<Object[]> parameters() {
-		Collection<Object[]> base = TestIO.UsingGeneratedTestFiles.generateTestCases();
+		Collection<Object[]> base = TestIO.UsingGeneratedTestFiles.generateTestCases(true);
 		LinkedList<Object[]> list = new LinkedList<>();
 		for (Object[] params : base) {
 			Object[] params2 = new Object[params.length + 1];

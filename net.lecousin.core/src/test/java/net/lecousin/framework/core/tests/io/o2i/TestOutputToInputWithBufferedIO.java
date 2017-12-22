@@ -21,7 +21,7 @@ public class TestOutputToInputWithBufferedIO extends TestOutputToInput {
 
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingTestData.generateTestCases();
+		return TestIO.UsingTestData.generateTestCases(true);
 	}
 	
 	public TestOutputToInputWithBufferedIO(byte[] testBuf, int nbBuf) {

@@ -31,18 +31,20 @@ public abstract class TestIO extends LCCoreAbstractTest {
 		
 		private static final byte[] testBuf1 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\r\nabcdefghijklmnopqrstuvwxyz\r\n0123456789012345678901234567890123456789\r\n\r\n".getBytes();;
 		private static final int nbBuf1Large = 100000;
+		private static final int nbBuf1Large_faster = 60000;
 		private static final int nbBuf1Medium = 1000;
+		private static final int nbBuf1Medium_faster = 800;
 		private static final int nbBuf1Small = 100;
 		private static final int nbBuf1Tiny = 1;
 		private static final int nbBuf1Empty = 0;
 		
-		public static List<Object[]> generateTestCases() {
+		public static List<Object[]> generateTestCases(boolean faster) {
 			LinkedList<Object[]> list = new LinkedList<>();
 			list.add(new Object[] { testBuf1, Integer.valueOf(nbBuf1Empty) });
 			list.add(new Object[] { testBuf1, Integer.valueOf(nbBuf1Tiny) });
 			list.add(new Object[] { testBuf1, Integer.valueOf(nbBuf1Small) });
-			list.add(new Object[] { testBuf1, Integer.valueOf(nbBuf1Medium) });
-			list.add(new Object[] { testBuf1, Integer.valueOf(nbBuf1Large) });
+			list.add(new Object[] { testBuf1, Integer.valueOf(faster ? nbBuf1Medium_faster : nbBuf1Medium) });
+			list.add(new Object[] { testBuf1, Integer.valueOf(faster ? nbBuf1Large_faster : nbBuf1Large) });
 			return list;
 		}
 		
@@ -55,12 +57,14 @@ public abstract class TestIO extends LCCoreAbstractTest {
 			this.testFile = testFile;
 		}
 		
-		private static File[] files;
+		private static File[] files_normal;
+		private static File[] files_faster;
 
 		protected File testFile;
 		
-		public static synchronized List<Object[]> generateTestCases() {
-			List<Object[]> base = UsingTestData.generateTestCases();
+		public static synchronized List<Object[]> generateTestCases(boolean faster) {
+			List<Object[]> base = UsingTestData.generateTestCases(faster);
+			File[] files = faster ? files_faster : files_normal;
 			if (files == null) {
 				files = new File[base.size()];
 				for (int i = 0; i < files.length; ++i) {
@@ -70,6 +74,7 @@ public abstract class TestIO extends LCCoreAbstractTest {
 						throw new RuntimeException("Error generating file", e);
 					}
 				}
+				if (faster) files_faster = files; else files_normal = files;
 			}
 			LinkedList<Object[]> list = new LinkedList<>();
 			for (int i = 0; i < files.length; ++i) {

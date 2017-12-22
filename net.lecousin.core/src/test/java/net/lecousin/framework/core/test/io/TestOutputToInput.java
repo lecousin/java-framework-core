@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import net.lecousin.framework.collections.ArrayUtil;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -223,6 +224,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 					spWrite.unblock();
 					return null;
 				}
+				if (o2i.isClosed()) { spWrite.cancel(new CancelException("OutputToInput closed")); return null; }
 				Mutable<AsyncWork<Integer, IOException>> write = new Mutable<>(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
 				MutableInteger nbWrite = new MutableInteger(1);
 				write.get().listenInline(new Runnable() {
