@@ -277,7 +277,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			if ((bufIndex % 3) == 0)
 				io.seekSync(SeekType.FROM_BEGINNING, bufIndex * testBuf.length);
 			else if ((bufIndex % 3) == 1)
-				io.seekSync(SeekType.FROM_CURRENT, -2 * testBuf.length);
+				io.seekSync(SeekType.FROM_CURRENT, bufIndex * testBuf.length - io.getPosition());
 			else
 				io.seekSync(SeekType.FROM_END, (nbBuf - bufIndex) * testBuf.length);
 			int nb = io.readFullySync(ByteBuffer.wrap(b));
@@ -369,9 +369,10 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 				AsyncWork<Long, IOException> seek;
 				if ((j % 3) == 0)
 					seek = io.seekAsync(SeekType.FROM_BEGINNING, bufIndex * testBuf.length);
-				else if ((j % 3) == 1)
-					seek = io.seekAsync(SeekType.FROM_CURRENT, testBuf.length);
-				else
+				else if ((j % 3) == 1) {
+					try { seek = io.seekAsync(SeekType.FROM_CURRENT, bufIndex * testBuf.length - io.getPosition()); }
+					catch (IOException e) { result.error(e); return null; }
+				} else
 					seek = io.seekAsync(SeekType.FROM_END, (nbBuf - bufIndex) * testBuf.length);
 				seek.listenInline(() -> {
 					if (seek.hasError()) result.error(seek.getError());
@@ -393,6 +394,10 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			@Override
 			public Void run() {
 				byte[] b = new byte[testBuf.length];
+				if (bufIndex == 0) {
+					int ii = 0;
+					ii = ii + 1;
+				}
 				AsyncWork<Integer, IOException> read = io.readFullyAsync(ByteBuffer.wrap(b));
 				read.listenInline(() -> {
 					if (read.hasError()) result.error(read.getError());
@@ -427,9 +432,10 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 				AsyncWork<Long, IOException> seek;
 				if ((bufIndex % 3) == 0)
 					seek = io.seekAsync(SeekType.FROM_BEGINNING, bufIndex * testBuf.length);
-				else if ((bufIndex % 3) == 1)
-					seek = io.seekAsync(SeekType.FROM_CURRENT, -2 * testBuf.length);
-				else
+				else if ((bufIndex % 3) == 1) {
+					try { seek = io.seekAsync(SeekType.FROM_CURRENT, bufIndex * testBuf.length - io.getPosition()); }
+					catch (IOException e) { result.error(e); return null; }
+				} else
 					seek = io.seekAsync(SeekType.FROM_END, (nbBuf - bufIndex) * testBuf.length);
 				seek.listenInline(() -> {
 					if (seek.hasError()) result.error(seek.getError());
