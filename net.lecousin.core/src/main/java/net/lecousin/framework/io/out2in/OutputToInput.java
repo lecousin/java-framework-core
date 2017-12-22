@@ -100,7 +100,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	@Override
 	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		AsyncWork<Integer, IOException> result = new AsyncWork<>();
-		new Task.Cpu<Void, NoException>("OutputToInput.writeAsync", getPriority()) {
+		operation(new Task.Cpu<Void, NoException>("OutputToInput.writeAsync", getPriority()) {
 			@Override
 			public Void run() {
 				lockIO.lock();
@@ -123,7 +123,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 				lockIO.unlock();
 				return null;
 			}
-		}.start();
+		}).start();
 		return operation(result);
 	}
 	

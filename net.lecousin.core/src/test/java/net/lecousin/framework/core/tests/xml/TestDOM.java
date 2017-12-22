@@ -94,6 +94,13 @@ public abstract class TestDOM extends LCCoreAbstractTest {
 	}
 	
 	protected static void checkNode(Node expected, Node found) {
+		if (expected == null) {
+			if (found == null) return;
+			throw new AssertionError("null node expected, found is " + found.getNodeName());
+		}
+		if (found == null)
+			throw new AssertionError("null node found, expected is " + expected.getNodeName());
+		Assert.assertEquals(expected.getNodeType(), found.getNodeType());
 		if (expected instanceof Element) {
 			Assert.assertTrue(found instanceof Element);
 			checkElement((Element)expected, (Element)found);
