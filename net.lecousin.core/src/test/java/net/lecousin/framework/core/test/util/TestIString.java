@@ -102,6 +102,8 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		check("World", s.substring(6, 11));
 		check("World!", s.substring(6, 12));
 		check("World!", s.substring(6, 100));
+		
+		Assert.assertEquals("World", createString("Hello World!").subSequence(6, 11).toString());
 	}
 	
 	@Test
@@ -158,6 +160,41 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		Assert.assertTrue(createString("Hello World").endsWith("d"));
 		Assert.assertTrue(createString("Hello World").endsWith(""));
 		Assert.assertFalse(createString("Hello World").endsWith("orl"));
+		Assert.assertTrue(createString("Hel").isStartOf("Hello World"));
+		Assert.assertTrue(createString("Hello World").isStartOf("Hello World"));
+		Assert.assertTrue(createString("H").isStartOf("Hello World"));
+		Assert.assertTrue(createString("").isStartOf("Hello World"));
+		Assert.assertFalse(createString("ello").isStartOf("Hello World"));
+	}
+	
+	@Test
+	public void testAsCharacters() {
+		char[][] chars = createString("Hello").append(' ').append("World").append('!').asCharacters();
+		String s = new String("Hello World!");
+		int pos = 0;
+		for (int i = 0; i < chars.length; ++i)
+			for (int j = 0; j < chars[i].length; ++j)
+				Assert.assertEquals(s.charAt(pos++), chars[i][j]);
+		Assert.assertEquals(s.length(), pos);
+	}
+	
+	@Test
+	public void testTrim() {
+		Assert.assertEquals("Hello", createString("Hello").trim().asString());
+		Assert.assertEquals("Hello", createString(" Hello").trim().asString());
+		Assert.assertEquals("Hello", createString("Hello ").trim().asString());
+		Assert.assertEquals("Hello", createString("  Hello").trim().asString());
+		Assert.assertEquals("Hello", createString("Hello  ").trim().asString());
+		Assert.assertEquals("Hello", createString("  Hello  ").trim().asString());
+		Assert.assertEquals("Hello", createString("\rHello").trim().asString());
+		Assert.assertEquals("Hello", createString("\nHello").trim().asString());
+		Assert.assertEquals("Hello", createString("\tHello").trim().asString());
+		Assert.assertEquals("Hello", createString("Hello\r").trim().asString());
+		Assert.assertEquals("Hello", createString("Hello\n").trim().asString());
+		Assert.assertEquals("Hello", createString("Hello\t").trim().asString());
+		Assert.assertEquals("Hello", createString(" \r\n\tHello").trim().asString());
+		Assert.assertEquals("Hello", createString("Hello \r\n\t").trim().asString());
+		Assert.assertEquals("Hello", createString("\n\t\r Hello\r \t \n").trim().asString());
 	}
 	
 }

@@ -251,11 +251,13 @@ public abstract class BufferedIO extends BufferingManaged {
 		
 		@Override
 		public String getSourceDescription() {
+			if (io == null) return "";
 			return io.getSourceDescription();
 		}
 		
 		@Override
 		public byte getPriority() {
+			if (io == null) return Task.PRIORITY_NORMAL;
 			return io.getPriority();
 		}
 		
@@ -439,11 +441,13 @@ public abstract class BufferedIO extends BufferingManaged {
 		
 		@Override
 		public String getSourceDescription() {
+			if (io == null) return "";
 			return io.getSourceDescription();
 		}
 		
 		@Override
 		public byte getPriority() {
+			if (io == null) return Task.PRIORITY_NORMAL;
 			return io.getPriority();
 		}
 		
