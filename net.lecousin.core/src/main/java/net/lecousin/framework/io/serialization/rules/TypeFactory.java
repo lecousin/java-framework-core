@@ -6,8 +6,8 @@ import java.util.ListIterator;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
-import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
+import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.util.Provider;
 
 /** A factory to instantiate a specific type during deserialization.

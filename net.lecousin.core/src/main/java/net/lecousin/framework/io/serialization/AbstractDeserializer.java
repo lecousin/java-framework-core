@@ -116,11 +116,11 @@ public abstract class AbstractDeserializer implements Deserializer {
 			}
 			return result;
 		}
-		List<SerializationRule> _rules = rules;
+		List<SerializationRule> rul = rules;
 		value.listenAsync(new DeserializationTask(() -> {
 			Object o = value.getResult();
-			ListIterator<TypeDefinition> itType = rulesTypes.listIterator(_rules.size());
-			ListIterator<SerializationRule> itRule = _rules.listIterator(_rules.size());
+			ListIterator<TypeDefinition> itType = rulesTypes.listIterator(rul.size());
+			ListIterator<SerializationRule> itRule = rul.listIterator(rul.size());
 			while (itRule.hasPrevious())
 				try { o = itRule.previous().getDeserializationValue(o, itType.previous(), context); }
 				catch (Exception e) {
