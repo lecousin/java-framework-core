@@ -466,6 +466,11 @@ public abstract class Task<T,TError extends Exception> {
 			result.cancelled(reason);
 			return;
 		}
+		if (status == Task.STATUS_NOT_STARTED) {
+			status = Task.STATUS_DONE;
+			result.cancelled(reason);
+			return;
+		}
 	}
 	
 	/** Cancel this task only if not yet started. */
