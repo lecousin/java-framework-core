@@ -28,7 +28,9 @@ public final class TaskMonitoring {
 	static synchronized void start(ThreadFactory threadFactory) {
 		if (monitor != null) return;
 		monitor = new TaskMonitor();
-		threadFactory.newThread(monitor).start();
+		Thread t = threadFactory.newThread(monitor);
+		t.setName("Task Monitoring");
+		t.start();
 		LCCore.get().toClose(monitor);
 	}
 	
