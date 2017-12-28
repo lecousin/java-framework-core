@@ -102,10 +102,20 @@ public abstract class TestSortedAssociatedWithLong extends LCCoreAbstractTest {
 	
 	protected void check(Sorted.AssociatedWithLong<Object> sorted, TreeSet<Long> order) {
 		Assert.assertEquals(order.size(), sorted.size());
+		if (order.isEmpty())
+			Assert.assertFalse(sorted.contains(0, Long.valueOf(0)));
 		for (Long i : order) {
 			long value = i.longValue();
 			Assert.assertTrue("contains(" + value + ") returned false", sorted.contains(value, Long.valueOf(-value)));
 		}
+		if (!order.isEmpty()) {
+			long val = order.last().longValue() + 1;
+			Assert.assertFalse(sorted.contains(val, Long.valueOf(-val)));
+			val = order.first().longValue() - 1;
+			Assert.assertFalse(sorted.contains(val, Long.valueOf(-val)));
+		}
+		Assert.assertFalse(sorted.contains(-10, Long.valueOf(10)));
+		Assert.assertFalse(sorted.contains(Long.MAX_VALUE, Long.valueOf(-Long.MAX_VALUE)));
 		for (Object o : sorted) {
 			long value = -((Long)o).longValue();
 			Assert.assertTrue(order.contains(Long.valueOf(value)));

@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.TreeSet;
 
 import org.junit.Assert;
+import org.junit.Test;
 
 import net.lecousin.framework.collections.sort.RedBlackTreeLong;
 import net.lecousin.framework.collections.sort.RedBlackTreeLong.Node;
@@ -36,6 +37,8 @@ public class TestRedBlackTreeLong extends TestSortedAssociatedWithLong {
 			}
 			n2 = tree.getNext(n2);
 			Assert.assertTrue(n2 == null);
+			n2 = tree.getNext(tree.getMax().getValue());
+			Assert.assertTrue(n2 == null);
 
 			n = tree.getMax();
 			Assert.assertFalse(n == null);
@@ -51,6 +54,8 @@ public class TestRedBlackTreeLong extends TestSortedAssociatedWithLong {
 			}
 			n2 = tree.getPrevious(n2);
 			Assert.assertTrue(n2 == null);
+			n2 = tree.getPrevious(tree.getMin().getValue());
+			Assert.assertTrue(n2 == null);
 		} else {
 			Node<Object> n = tree.getMin();
 			Assert.assertTrue(n == null);
@@ -59,4 +64,22 @@ public class TestRedBlackTreeLong extends TestSortedAssociatedWithLong {
 		}
 	}
 	
+	@Test
+	public void tests() {
+		RedBlackTreeLong<Object> tree = new RedBlackTreeLong<Object>();
+		Long o = Long.valueOf(1664);
+		tree.add(51, o);
+		Assert.assertEquals(1, tree.size());
+		Assert.assertTrue(tree.containsInstance(51, o));
+		tree.removeKey(51);
+		Assert.assertEquals(0, tree.size());
+		Assert.assertFalse(tree.containsInstance(51, o));
+		tree.add(51, o);
+		Assert.assertEquals(1, tree.size());
+		Assert.assertTrue(tree.containsInstance(51, o));
+		tree.removeInstance(51, o);
+		Assert.assertEquals(0, tree.size());
+		Assert.assertFalse(tree.containsInstance(51, o));
+	}
+
 }

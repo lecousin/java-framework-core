@@ -102,10 +102,20 @@ public abstract class TestSortedAssociatedWithInteger extends LCCoreAbstractTest
 	
 	protected void check(Sorted.AssociatedWithInteger<Object> sorted, TreeSet<Integer> order) {
 		Assert.assertEquals(order.size(), sorted.size());
+		if (order.isEmpty())
+			Assert.assertFalse(sorted.contains(0, Integer.valueOf(0)));
 		for (Integer i : order) {
 			int value = i.intValue();
 			Assert.assertTrue("contains(" + value + ") returned false", sorted.contains(value, Integer.valueOf(-value)));
 		}
+		if (!order.isEmpty()) {
+			int val = order.last().intValue() + 1;
+			Assert.assertFalse(sorted.contains(val, Integer.valueOf(-val)));
+			val = order.first().intValue() - 1;
+			Assert.assertFalse(sorted.contains(val, Integer.valueOf(-val)));
+		}
+		Assert.assertFalse(sorted.contains(-10, Integer.valueOf(10)));
+		Assert.assertFalse(sorted.contains(Integer.MAX_VALUE, Integer.valueOf(-Integer.MAX_VALUE)));
 		for (Object o : sorted) {
 			int value = -((Integer)o).intValue();
 			Assert.assertTrue(order.contains(Integer.valueOf(value)));
