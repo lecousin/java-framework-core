@@ -2,7 +2,6 @@ package net.lecousin.framework.core.test.io;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -29,7 +28,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 	protected void basicTests(IO io) throws Exception {
 		super.basicTests(io);
 		ICharacterStream.Readable stream = openStream(openFile());
-		Assert.assertEquals(StandardCharsets.UTF_8, stream.getEncoding());
+		stream.getEncoding();
 		byte p = io.getPriority();
 		io.setPriority(Task.PRIORITY_LOW);
 		Assert.assertEquals(Task.PRIORITY_LOW, io.getPriority());

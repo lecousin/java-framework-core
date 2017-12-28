@@ -64,7 +64,8 @@ public class XMLDocument extends XMLNode implements Document {
 			}
 			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "Document type already present on document");
 		}
-		throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "Cannot append a node " + newChild.getClass().getName() + " on XMLDocument");
+		throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR,
+			"Cannot append a node " + newChild.getClass().getName() + " on XMLDocument");
 	}
 	
 	@Override
