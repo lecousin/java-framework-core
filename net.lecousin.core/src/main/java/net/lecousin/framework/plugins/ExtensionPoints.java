@@ -49,6 +49,28 @@ public final class ExtensionPoints {
 			customs.add(custom);
 		}
 	}
+	
+	/** Retrieve an extension point instance. */
+	@SuppressWarnings("unchecked")
+	public static <T extends ExtensionPoint<?>> T getExtensionPoint(Class<T> clazz) {
+		synchronized (points) {
+			for (ExtensionPoint<?> ep : points)
+				if (clazz.isAssignableFrom(ep.getClass()))
+					return (T)ep;
+		}
+		return null;
+	}
+	
+	/** Retrieve an extension point instance. */
+	@SuppressWarnings("unchecked")
+	public static <T extends CustomExtensionPoint> T getCustomExtensionPoint(Class<T> clazz) {
+		synchronized (customs) {
+			for (CustomExtensionPoint ep : customs)
+				if (clazz.isAssignableFrom(ep.getClass()))
+					return (T)ep;
+		}
+		return null;
+	}
 
 	/** Add a plug-in for the given extension point class name. */
 	@SuppressWarnings("unchecked")
