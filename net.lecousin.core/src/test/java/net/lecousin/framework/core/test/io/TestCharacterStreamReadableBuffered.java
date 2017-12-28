@@ -1,12 +1,14 @@
 package net.lecousin.framework.core.test.io;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 
-import org.junit.Test;
-
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.ICharacterStream;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGeneratedTestFiles {
 
@@ -36,9 +38,17 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 					throw new Exception("Invalid character "+c+" at "+(i*testBuf.length+j));
 			}
 		}
+		try {
+			s.read();
+			throw new AssertionError("Can read after the end of stream");
+		} catch (EOFException e) {}
+		s.back('w');
+		Assert.assertEquals('w', s.read());
+		s.back('z');
+		char[] buf = new char[20];
+		Assert.assertEquals(1, s.readSync(buf, 0, 10));
+		Assert.assertEquals('z', buf[0]);
 		s.close();
 	}
-	
-	// TODO test to use back method
 
 }

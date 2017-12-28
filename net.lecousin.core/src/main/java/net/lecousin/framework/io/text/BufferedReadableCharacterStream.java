@@ -199,7 +199,10 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 						ready.addLast(buf);
 						full = ready.isFull();
 						sp = nextReady;
-						nextReady = new SynchronizationPoint<>();
+						if (end)
+							nextReady = new SynchronizationPoint<>(true);
+						else
+							nextReady = new SynchronizationPoint<>();
 						endReached = end;
 					}
 					sp.unblock();

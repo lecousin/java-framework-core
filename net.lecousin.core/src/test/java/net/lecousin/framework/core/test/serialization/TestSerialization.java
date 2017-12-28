@@ -618,12 +618,20 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	public static class TestTypeSerializer1 {
 		public TestNoDefaultConstructor1 test;
 	}
+
+	public static class TestTypeSerializer2 {
+		@TypeSerializer(TestNoDefaultConstructor1Serializer.class)
+		public TestNoDefaultConstructor1 test;
+	}
 	
 	@Test(timeout=120000)
 	public void testTypeSerializer() throws Exception {
 		TestTypeSerializer1 t = new TestTypeSerializer1();
 		t.test = new TestNoDefaultConstructor1("Hello");
 		test(t, TestTypeSerializer1.class);
+		TestTypeSerializer2 t2 = new TestTypeSerializer2();
+		t.test = new TestNoDefaultConstructor1("World");
+		test(t2, TestTypeSerializer2.class);
 	}
 	
 	public static class TestTypeSerializationMethod {

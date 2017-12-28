@@ -22,10 +22,23 @@ public class TextLineStream extends ConcurrentCloseable {
 	public UnprotectedStringBuffer nextLine() throws IOException {
 		if (input.endReached()) return null;
 		UnprotectedStringBuffer line = new UnprotectedStringBuffer();
+		boolean prevCR = false;
 		do {
 			try {
 				char c = input.read();
 				if (c == '\n') break;
+				if (c == '\r' && !prevCR) {
+					prevCR = true;
+					continue;
+				}
+				if (prevCR) {
+					line.append('\r');
+					prevCR = false;
+				}
+				if (c == '\r') {
+					prevCR = true;
+					continue;
+				}
 				line.append(c);
 			} catch (EOFException e) {
 				break;
