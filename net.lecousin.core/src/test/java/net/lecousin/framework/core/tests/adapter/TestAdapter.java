@@ -121,11 +121,11 @@ public class TestAdapter extends LCCoreAbstractTest {
 		out.writeSync(ByteBuffer.wrap(new byte[] { 1, 2, 3 }));
 		out.close();
 		IO.Readable in = AdapterRegistry.get().adapt(f, IO.Readable.class);
-		in.close();
 		byte[] buf = new byte[5];
 		Assert.assertEquals(3, in.readFullySync(ByteBuffer.wrap(buf)));
 		Assert.assertEquals(1, buf[0]);
 		Assert.assertEquals(2, buf[1]);
 		Assert.assertEquals(3, buf[2]);
+		in.close();
 	}
 }
