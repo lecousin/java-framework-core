@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -124,7 +125,8 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		Task<Integer,IOException> t = new Task<Integer,IOException>(manager, "Read from InputStream", priority, ondone) {
 			@Override
-			public Integer run() throws IOException {
+			public Integer run() throws IOException, CancelException {
+				if (isClosing()) throw new CancelException("InputStream closed");
 				int nb = stream.read(buffer.array(), buffer.arrayOffset(), buffer.remaining());
 				if (nb >= 0)
 					buffer.position(buffer.position() + nb);
@@ -139,9 +141,10 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		Task<Integer,IOException> t = new Task<Integer,IOException>(manager, "Read from InputStream", priority, ondone) {
 			@Override
-			public Integer run() throws IOException {
+			public Integer run() throws IOException, CancelException {
 				int total = 0;
 				do {
+					if (isClosing()) throw new CancelException("InputStream closed");
 					int nb = stream.read(buffer.array(), buffer.arrayOffset() + total, buffer.remaining() - total);
 					if (nb <= 0) break;
 					total += nb;
@@ -164,11 +167,12 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 		// InputStream does not comply to our restrictions, and may end up after the end of the stream, so we cannot use the skip method
 		Task<Long,IOException> t = new Task<Long,IOException>(manager, "Skip from InputStream", priority, ondone) {
 			@Override
-			public Long run() throws IOException {
+			public Long run() throws IOException, CancelException {
 				long total = 0;
 				byte[] b = new byte[n > 65536 ? 65536 : (int)n];
 				do {
 					int l = n - total > 65536 ? 65536 : (int)(n - total);
+					if (isClosing()) throw new CancelException("InputStream closed");
 					int nb = stream.read(b, 0, l);
 					if (nb <= 0) break;
 					total += nb;
