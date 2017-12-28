@@ -49,6 +49,24 @@ public final class ExtensionPoints {
 			customs.add(custom);
 		}
 	}
+
+	/** Add a plug-in for the given extension point class name. */
+	@SuppressWarnings("unchecked")
+	public static void add(String epClassName, Plugin pi) {
+		ExtensionPoint<Plugin> ep = null;
+		synchronized (points) {
+			for (ExtensionPoint<?> point : points)
+				if (point.getClass().getName().equals(epClassName)) {
+					ep = (ExtensionPoint<Plugin>)point;
+					break;
+				}
+			if (ep == null) {
+				waitingPlugins.add(pi);
+				return;
+			}
+		}
+		ep.addPlugin(pi);
+	}
 	
 	/** Retrieve an extension point instance. */
 	@SuppressWarnings("unchecked")
@@ -70,24 +88,6 @@ public final class ExtensionPoints {
 					return (T)ep;
 		}
 		return null;
-	}
-
-	/** Add a plug-in for the given extension point class name. */
-	@SuppressWarnings("unchecked")
-	public static void add(String epClassName, Plugin pi) {
-		ExtensionPoint<Plugin> ep = null;
-		synchronized (points) {
-			for (ExtensionPoint<?> point : points)
-				if (point.getClass().getName().equals(epClassName)) {
-					ep = (ExtensionPoint<Plugin>)point;
-					break;
-				}
-			if (ep == null) {
-				waitingPlugins.add(pi);
-				return;
-			}
-		}
-		ep.addPlugin(pi);
 	}
 	
 	/** Call the method allPluginsLoaded on every extension point. */

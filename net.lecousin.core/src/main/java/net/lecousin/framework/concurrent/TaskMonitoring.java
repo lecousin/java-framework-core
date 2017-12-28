@@ -142,6 +142,7 @@ public final class TaskMonitoring {
 			s.append("TaskWorker is blocked while locking objects in task ").append(task.description).append(":\r\n");
 			DebugUtil.createStackTrace(s, ti.getStackTrace());
 			append(s, monitors);
+			if (!w.blocked) continue;
 			Threading.logger.error(s.toString());
 		}
 	}
