@@ -1,8 +1,12 @@
 package net.lecousin.framework.core.tests.adapter;
 
+import java.io.File;
+import java.nio.ByteBuffer;
+
 import net.lecousin.framework.adapter.Adapter;
 import net.lecousin.framework.adapter.AdapterRegistry;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.io.IO;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,6 +40,8 @@ public class TestAdapter extends LCCoreAbstractTest {
 		AdapterRegistry.get().addPlugin(new Adapter1());
 		Source1 src = new Source1();
 		src.value = 51;
+		Assert.assertTrue(AdapterRegistry.get().canAdapt(src, Target1.class));
+		Assert.assertFalse(AdapterRegistry.get().canAdapt(src, Target2.class));
 		Target1 t = AdapterRegistry.get().adapt(src, Target1.class);
 		Assert.assertEquals(t.value, src.value);
 	}
@@ -107,5 +113,19 @@ public class TestAdapter extends LCCoreAbstractTest {
 		Assert.assertEquals(t.value, src.value);
 	}
 	
-	
+	@Test
+	public void testFileToIO() throws Exception {
+		File f = File.createTempFile("test", "filetoio");
+		f.deleteOnExit();
+		IO.Writable out = AdapterRegistry.get().adapt(f, IO.Writable.class);
+		out.writeSync(ByteBuffer.wrap(new byte[] { 1, 2, 3 }));
+		out.close();
+		IO.Readable in = AdapterRegistry.get().adapt(f, IO.Readable.class);
+		in.close();
+		byte[] buf = new byte[5];
+		Assert.assertEquals(3, in.readFullySync(ByteBuffer.wrap(buf)));
+		Assert.assertEquals(1, buf[0]);
+		Assert.assertEquals(2, buf[1]);
+		Assert.assertEquals(3, buf[2]);
+	}
 }

@@ -1,6 +1,7 @@
 package net.lecousin.framework.plugins;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
@@ -88,6 +89,13 @@ public final class ExtensionPoints {
 					return (T)ep;
 		}
 		return null;
+	}
+	
+	/** Return all registered extension points. */
+	public static Collection<ExtensionPoint<?>> getExtensionPoints() {
+		synchronized (points) {
+			return new ArrayList<>(points);
+		}
 	}
 	
 	/** Call the method allPluginsLoaded on every extension point. */

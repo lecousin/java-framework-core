@@ -423,6 +423,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				if (buffersReady == null) throw new CancelException("IO Closed");
 				if (current == null) {
 					if (endReached) return Integer.valueOf(-1);
+					if (isClosing()) throw new CancelException("IO Closed");
 					throw new IOException("Unexpected error: current buffer is null but end is not reached");
 				}
 				int nb = buffer.remaining();

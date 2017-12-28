@@ -126,11 +126,15 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 		Task<Integer,IOException> t = new Task<Integer,IOException>(manager, "Read from InputStream", priority, ondone) {
 			@Override
 			public Integer run() throws IOException, CancelException {
-				if (isClosing()) throw new CancelException("InputStream closed");
-				int nb = stream.read(buffer.array(), buffer.arrayOffset(), buffer.remaining());
-				if (nb >= 0)
-					buffer.position(buffer.position() + nb);
-				return Integer.valueOf(nb);
+				try {
+					int nb = stream.read(buffer.array(), buffer.arrayOffset(), buffer.remaining());
+					if (nb >= 0)
+						buffer.position(buffer.position() + nb);
+					return Integer.valueOf(nb);
+				} catch (IOException e) {
+					if (isClosing()) throw new CancelException("InputStream closed");
+					throw e;
+				}
 			}
 		};
 		operation(t.start());
@@ -144,10 +148,14 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 			public Integer run() throws IOException, CancelException {
 				int total = 0;
 				do {
-					if (isClosing()) throw new CancelException("InputStream closed");
-					int nb = stream.read(buffer.array(), buffer.arrayOffset() + total, buffer.remaining() - total);
-					if (nb <= 0) break;
-					total += nb;
+					try {
+						int nb = stream.read(buffer.array(), buffer.arrayOffset() + total, buffer.remaining() - total);
+						if (nb <= 0) break;
+						total += nb;
+					} catch (IOException e) {
+						if (isClosing()) throw new CancelException("InputStream closed");
+						throw e;
+					}
 				} while (total < buffer.remaining());
 				buffer.position(buffer.position() + total);
 				return Integer.valueOf(total);
