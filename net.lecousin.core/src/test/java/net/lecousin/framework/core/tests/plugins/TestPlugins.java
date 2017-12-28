@@ -18,6 +18,7 @@ public class TestPlugins extends LCCoreAbstractTest {
 		Collection<MyPlugin> plugins = ep.getPlugins();
 		Assert.assertEquals(1, plugins.size());
 		Assert.assertTrue(plugins.iterator().next() instanceof APlugin);
+		Assert.assertFalse(null == ExtensionPoints.getCustomExtensionPoint(ACustomExtensionPoint.class));
 	}
 	
 }

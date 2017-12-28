@@ -26,26 +26,31 @@ public class TestRedBlackTreeLong extends TestSortedAssociatedWithLong {
 			Assert.assertFalse(n == null);
 			Iterator<Long> it = order.iterator();
 			Assert.assertEquals(it.next().longValue(), n.getValue());
-			Node<Object> n2 = tree.getNext(n);
-			if (tree.size() > 1) {
+			Node<Object> n2 = n;
+			while (it.hasNext()) {
+				long val = n2.getValue();
+				n2 = tree.getNext(n2);
 				Assert.assertFalse(n2 == null);
 				Assert.assertEquals(it.next().longValue(), n2.getValue());
-				Assert.assertTrue(n2 == tree.getNext(n.getValue()));
-			} else {
-				Assert.assertTrue(n2 == null);
+				Assert.assertTrue(n2 == tree.getNext(val));
 			}
+			n2 = tree.getNext(n2);
+			Assert.assertTrue(n2 == null);
+
 			n = tree.getMax();
 			Assert.assertFalse(n == null);
 			it = order.descendingIterator();
 			Assert.assertEquals(it.next().longValue(), n.getValue());
-			n2 = tree.getPrevious(n);
-			if (tree.size() > 1) {
+			n2 = n;
+			while (it.hasNext()) {
+				long val = n2.getValue();
+				n2 = tree.getPrevious(n2);
 				Assert.assertFalse(n2 == null);
 				Assert.assertEquals(it.next().longValue(), n2.getValue());
-				Assert.assertTrue(n2 == tree.getPrevious(n.getValue()));
-			} else {
-				Assert.assertTrue(n2 == null);
+				Assert.assertTrue(n2 == tree.getPrevious(val));
 			}
+			n2 = tree.getPrevious(n2);
+			Assert.assertTrue(n2 == null);
 		} else {
 			Node<Object> n = tree.getMin();
 			Assert.assertTrue(n == null);

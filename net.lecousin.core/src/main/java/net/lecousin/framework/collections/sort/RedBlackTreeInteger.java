@@ -84,7 +84,9 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     	if (value == first.value) return null;
     	if (value == root.value) {
     		if (root.left == null) return null;
-    		return root.left;
+    		Node<T> n = root.left;
+    		while (n.right != null) n = n.right;
+    		return n;
     	}
     	if (value < root.value) {
     		if (root.left == null) return null;
@@ -111,7 +113,9 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     private Node<T> getPrevious(Node<T> node, int value) {
     	if (value == node.value) {
     		if (node.left == null) return null;
-    		return node.left;
+    		node = node.left;
+    		while (node.right != null) node = node.right;
+    		return node;
     	}
     	if (value < node.value) {
     		if (node.left == null) return null;
@@ -124,7 +128,9 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     private Node<T> getPrevious(Node<T> parentPrevious, Node<T> node, int value) {
     	if (node.value == value) {
     		if (node.left == null) return parentPrevious;
-    		return node.left;
+    		node = node.left;
+    		while (node.right != null) node = node.right;
+    		return node;
     	}
     	if (value < node.value) {
     		if (node.left == null) return null;
@@ -141,7 +147,9 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     	if (value == last.value) return null;
     	if (value == root.value) {
     		if (root.right == null) return null;
-    		return root.right;
+    		Node<T> n = root.right;
+    		while (n.left != null) n = n.left;
+    		return n;
     	}
     	if (value > root.value) {
     		if (root.right == null) return null;
