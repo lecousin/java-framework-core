@@ -135,7 +135,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	private int maxBufferedSize;
 	
 	@Override
-	public String getSourceDescription() { return src.getSourceDescription(); }
+	public String getSourceDescription() { return src != null ? src.getSourceDescription() : "closed"; }
 	
 	/** Return the next synchronization point that will be unblocked once data is ready to be read. */
 	public SynchronizationPoint<IOException> getDataReadySynchronization() {
@@ -291,7 +291,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			final int nbNext = maxNbNextBuffersReady;
 			jpNextRead.addToJoin(1);
 			Task<Void,NoException> prepare = new Task.Cpu<Void,NoException>(
-				"Allocate buffers for pre-buffered IO " + src.getSourceDescription(), nextBufferPriority
+				"Allocate buffers for pre-buffered IO " + getSourceDescription(), nextBufferPriority
 			) {
 				@Override
 				public Void run() {
@@ -309,7 +309,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				}
 			};
 			Task<Void,NoException> task = new Task.Cpu<Void,NoException>(
-				"First next read of pre-buffered IO " + src.getSourceDescription(), nextBufferPriority
+				"First next read of pre-buffered IO " + getSourceDescription(), nextBufferPriority
 			) {
 				@Override
 				public Void run() {
@@ -400,7 +400,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			}
 		}
 		Task<Integer,IOException> t = new Task.Cpu<Integer,IOException>(
-			"Async read on pre-buffered IO " + src.getSourceDescription(), getPriority(), ondone
+			"Async read on pre-buffered IO " + getSourceDescription(), getPriority(), ondone
 		) {
 			@Override
 			public Integer run() throws IOException, CancelException {
@@ -517,7 +517,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				return new AsyncWork<Long,IOException>(Long.valueOf(0), null);
 			}
 			Task<Long,IOException> t = new Task.Cpu<Long,IOException>(
-				"Skipping data from pre-buffered IO " + src.getSourceDescription(), priority, ondone
+				"Skipping data from pre-buffered IO " + getSourceDescription(), priority, ondone
 			) {
 				@Override
 				public Long run() throws IOException {
