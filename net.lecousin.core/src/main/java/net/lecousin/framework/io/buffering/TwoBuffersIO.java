@@ -38,6 +38,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 						if (nb < buf1.length) {
 							buf2 = null;
 							nb2 = 0;
+							read2 = new AsyncWork<>(Integer.valueOf(0), null);
 						} else
 							operation(read2 = io.readFullyAsync(ByteBuffer.wrap(buf2)));
 						synchronized (buf1) { buf1.notifyAll(); }
