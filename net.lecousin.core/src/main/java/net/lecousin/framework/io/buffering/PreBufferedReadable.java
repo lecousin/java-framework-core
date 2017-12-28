@@ -148,6 +148,10 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				sp.unblock();
 				return sp;
 			}
+			if (isClosing()) {
+				sp.cancel(new CancelException("IO closed"));
+				return sp;
+			}
 			if (dataReady == null)
 				dataReady = new SynchronizationPoint<>();
 			dataReady.listenInline(new Runnable() {
@@ -350,6 +354,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				if (error != null) throw error;
 				if (current != null) break;
 				if (endReached) return -1;
+				if (isClosing()) return -1;
 				if (dataReady == null) dataReady = new SynchronizationPoint<>();
 				sp = dataReady;
 			}
@@ -379,6 +384,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					return -1;
 			} else {
 				if (endReached) return -1;
+				if (isClosing()) return -1;
 				if (dataReady == null) dataReady = new SynchronizationPoint<>();
 				if (!dataReady.isUnblocked())
 					return -2;
@@ -403,6 +409,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
 					return new AsyncWork<Integer,IOException>(Integer.valueOf(-1), null);
 				}
+				if (isClosing()) return new AsyncWork<>(null, null, new CancelException("IO closed"));
 				if (dataReady == null) dataReady = new SynchronizationPoint<>();
 				sp = dataReady;
 			}
@@ -495,6 +502,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 						moveNextBuffer(true);
 						return skipped;
 					}
+					if (isClosing()) return skipped;
 					if (dataReady == null) dataReady = new SynchronizationPoint<>();
 					sp = dataReady;
 				}
@@ -558,7 +566,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	private void nextRead() {
 		if (isClosing()) {
 			SynchronizationPoint<NoException> dr;
-			synchronized(this) {
+			synchronized (this) {
 				dr = dataReady;
 				dataReady = null;
 			}
@@ -632,6 +640,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					break;
 				}
 				if (endReached) return -1;
+				if (isClosing()) return -1;
 				if (dataReady == null) dataReady = new SynchronizationPoint<>();
 				sp = dataReady;
 			}
@@ -655,6 +664,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					break;
 				}
 				if (endReached) return -1;
+				if (isClosing()) return -1;
 				if (dataReady == null) dataReady = new SynchronizationPoint<>();
 				sp = dataReady;
 			}
@@ -682,6 +692,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					break;
 				}
 				if (endReached) return -1;
+				if (isClosing()) return -1;
 				if (dataReady == null) dataReady = new SynchronizationPoint<>();
 				sp = dataReady;
 			}
