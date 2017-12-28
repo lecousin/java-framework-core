@@ -163,11 +163,12 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		writeBg(o2i, nbBuf, testBuf);
 		byte[] buf = new byte[testBuf.length];
 		for (int i = 0; i < nbBuf; ++i) {
-			if ((i % 2) == 0) o2i.skipSync(testBuf.length);
+			if ((i % 2) == 0)
+				Assert.assertEquals("Skip buffer " + i, testBuf.length, o2i.skipSync(testBuf.length));
 			else {
 				int nb = o2i.readFullySync(ByteBuffer.wrap(buf));
-				Assert.assertEquals(testBuf.length, nb);
-				Assert.assertTrue(ArrayUtil.equals(testBuf, 0, buf, 0, testBuf.length));
+				Assert.assertEquals("Read buffer " + i, testBuf.length, nb);
+				Assert.assertTrue("Buffer " + i, ArrayUtil.equals(testBuf, 0, buf, 0, testBuf.length));
 			}
 		}
 		Assert.assertEquals(-1, o2i.readSync(ByteBuffer.wrap(buf)));

@@ -308,9 +308,9 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 				if (ondone != null) ondone.run(new Pair<>(null, e));
 				return new AsyncWork<Integer,IOException>(null, e);
 			}
-		AsyncWork<Integer,IOException> task = ((IO.Writable.Seekable)file).writeAsync(pos - maxSizeInMemory, buffer, ondone);
 		this.pos = pos + len;
 		if (pos + len > size) size = pos + len;
+		AsyncWork<Integer,IOException> task = ((IO.Writable.Seekable)file).writeAsync(pos - maxSizeInMemory, buffer, ondone);
 		return operation(task);
 	}
 	
