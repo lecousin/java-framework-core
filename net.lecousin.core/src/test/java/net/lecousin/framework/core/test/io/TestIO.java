@@ -12,9 +12,11 @@ import org.junit.Test;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.mutable.MutableBoolean;
 
 public abstract class TestIO extends LCCoreAbstractTest {
 	
@@ -113,7 +115,20 @@ public abstract class TestIO extends LCCoreAbstractTest {
 	public void testBasicCommonFunctions() throws Exception {
 		IO io = getIOForCommonTests();
 		basicTests(io);
-		io.close();
+		// closeable
+		MutableBoolean closed = new MutableBoolean(false);
+		io.addCloseListener(() -> {
+			closed.set(true);
+		});
+		io.lockClose();
+		ISynchronizationPoint<Exception> close = io.closeAsync();
+		Assert.assertFalse(io.isClosed());
+		Assert.assertFalse(close.isUnblocked());
+		Assert.assertFalse(closed.get());
+		io.unlockClose();
+		close.blockThrow(0);
+		Assert.assertTrue(closed.get());
+		Assert.assertTrue(io.isClosed());
 	}
 
 	protected boolean canSetPriority() { return true; }
