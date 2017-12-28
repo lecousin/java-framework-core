@@ -17,7 +17,7 @@ import org.junit.Test;
 
 public class TestFileInfo extends LCCoreAbstractTest {
 
-	@Test
+	@Test(timeout=120000)
 	public void test() throws Exception {
 		File f = File.createTempFile("test", "fileinfo");
 		f.deleteOnExit();
@@ -32,12 +32,12 @@ public class TestFileInfo extends LCCoreAbstractTest {
 		Assert.assertEquals(f, AdapterRegistry.get().adapt(info, File.class));
 		Assert.assertEquals(f, AdapterRegistry.get().adapt(info, Path.class).toFile());
 		IO.Readable in = AdapterRegistry.get().adapt(info, IO.Readable.class);
-		in.close();
 		byte[] buf = new byte[5];
 		Assert.assertEquals(3, in.readFullySync(ByteBuffer.wrap(buf)));
 		Assert.assertEquals(1, buf[0]);
 		Assert.assertEquals(2, buf[1]);
 		Assert.assertEquals(3, buf[2]);
+		in.close();
 		f.delete();
 	}
 	
