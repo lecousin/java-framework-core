@@ -1,4 +1,4 @@
-package net.lecousin.framework.core.tests.thread;
+package net.lecousin.framework.core.tests.concurrent;
 
 import java.nio.ByteBuffer;
 import java.util.LinkedList;

@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Properties;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -71,7 +72,7 @@ public class SavePropertiesFileTask extends Task.Cpu<Void,IOException> {
 	private boolean closeStreamAtEnd;
 	
 	@Override
-	public Void run() throws IOException {
+	public Void run() throws IOException, CancelException {
 		try {
 			for (Map.Entry<Object,Object> p : properties.entrySet()) {
 				output.writeSync(p.getKey().toString());
@@ -79,6 +80,7 @@ public class SavePropertiesFileTask extends Task.Cpu<Void,IOException> {
 				output.writeSync(p.getValue().toString());
 				output.writeSync('\n');
 			}
+			output.flush().blockThrow(0);
 			return null;
 		} finally {
 			if (closeStreamAtEnd) try { output.close(); } catch (Throwable t) { /* ignore */ }
