@@ -130,10 +130,10 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 			pendingOperations.clear();
 		}
 		for (ISynchronizationPoint<?> op : pending)
-			jp.addToJoin(op);
+			jp.addToJoinNoException(op);
 		ISynchronizationPoint<?> underlying = closeUnderlyingResources();
 		if (underlying != null)
-			jp.addToJoin(underlying);
+			jp.addToJoinNoException(underlying);
 		jp.start();
 		jp.listenAsync(new Task.Cpu.FromRunnable("Closing resources", prio, () -> {
 			synchronized (this) {
