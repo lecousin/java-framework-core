@@ -945,7 +945,22 @@ public class UnprotectedStringBuffer implements IString {
 		
 		@Override
 		public void back(char c) {
-			throw new UnsupportedOperationException();
+			if (strings == null) {
+				append(c);
+				buffer = 0;
+				bufferIndex = 0;
+				return;
+			}
+			while (bufferIndex == 0 && buffer > 0) {
+				buffer--;
+				bufferIndex = strings[buffer].length();
+			}
+			if (bufferIndex == 0 && buffer == 0) {
+				addFirst(c);
+				return;
+			}
+			strings[buffer].setCharAt(--bufferIndex, c);
+			return;
 		}
 		
 		@Override
