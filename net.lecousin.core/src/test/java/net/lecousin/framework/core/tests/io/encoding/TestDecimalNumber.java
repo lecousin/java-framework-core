@@ -26,6 +26,8 @@ public class TestDecimalNumber extends LCCoreAbstractTest {
 		Assert.assertEquals(390180, n.getNumber());
 		Assert.assertFalse(n.addChar('a'));
 		Assert.assertEquals(390180, n.getNumber());
+		Assert.assertFalse(n.addChar(' '));
+		Assert.assertEquals(390180, n.getNumber());
 		n.reset();
 		Assert.assertEquals(0, n.getNumber());
 	}
