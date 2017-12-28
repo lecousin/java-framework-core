@@ -766,7 +766,7 @@ public abstract class BufferedIO extends BufferingManaged {
 				return new AsyncWork<Integer,IOException>(null, buffer.error);
 			}
 		}
-		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>("Read in BufferedIO", io.getPriority(), ondone) {
+		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>("Read in BufferedIO", getPriority(), ondone) {
 			@Override
 			public Integer run() throws IOException {
 				if (buffer.error != null)
@@ -824,7 +824,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			if (ondone != null) ondone.run(new Pair<>(buf, null));
 			return new AsyncWork<>(buf, null);
 		}
-		Task<ByteBuffer,IOException> task = new Task.Cpu<ByteBuffer,IOException>("Read in BufferedIO", io.getPriority(), ondone) {
+		Task<ByteBuffer,IOException> task = new Task.Cpu<ByteBuffer,IOException>("Read in BufferedIO", getPriority(), ondone) {
 			@Override
 			public ByteBuffer run() throws IOException {
 				if (buffer.error != null)
@@ -920,7 +920,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			}
 		}
 		AsyncWork<Integer, IOException> done = new AsyncWork<Integer, IOException>();
-		Task<Void,IOException> task = new Task.Cpu<Void,IOException>("Read in BufferedIO at " + pos, io.getPriority()) {
+		Task<Void,IOException> task = new Task.Cpu<Void,IOException>("Read in BufferedIO at " + pos, getPriority()) {
 			@Override
 			public Void run() throws IOException {
 				if (buffer.error != null) {
@@ -1152,7 +1152,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		}
 		SynchronizationPoint<NoException> sp = buffer.loading;
 		AsyncWork<Integer,IOException> done = new AsyncWork<>();
-		Task<Void,NoException> task = new Task.Cpu<Void, NoException>("Writting to BufferedIO", io.getPriority()) {
+		Task<Void,NoException> task = new Task.Cpu<Void, NoException>("Writting to BufferedIO", getPriority()) {
 			@Override
 			public Void run() {
 				if (buffer.error != null) {
