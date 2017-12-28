@@ -110,7 +110,10 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     }
     
     private Node<T> getPrevious(Node<T> node, long value) {
-    	if (value == node.value) return null;
+    	if (value == node.value) {
+    		if (node.left == null) return null;
+    		return node.left;
+    	}
     	if (value < node.value) {
     		if (node.left == null) return null;
     		return getPrevious(node.left, value);
@@ -120,7 +123,10 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     }
     
     private Node<T> getPrevious(Node<T> parentPrevious, Node<T> node, long value) {
-    	if (node.value == value) return parentPrevious;
+    	if (node.value == value) {
+    		if (node.left == null) return parentPrevious;
+    		return node.left;
+    	}
     	if (value < node.value) {
     		if (node.left == null) return null;
     		return getPrevious(parentPrevious, node.left, value);
@@ -161,7 +167,12 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     }
     
     private Node<T> getNext(Node<T> node, long value) {
-    	if (value == node.value) return null;
+    	if (value == node.value) {
+    		if (node.right == null) return null;
+    		node = node.right;
+    		while (node.left != null) node = node.left;
+    		return node;
+    	}
     	if (value > node.value) {
     		if (node.right == null) return null;
     		return getNext(node.right, value);
@@ -171,7 +182,12 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     }
     
     private Node<T> getNext(Node<T> parentNext, Node<T> node, long value) {
-    	if (node.value == value) return parentNext;
+    	if (node.value == value) {
+    		if (node.right == null) return parentNext;
+    		node = node.right;
+    		while (node.left != null) node = node.left;
+    		return node;
+    	}
     	if (value > node.value) {
     		if (node.right == null) return null;
     		return getNext(parentNext, node.right, value);
