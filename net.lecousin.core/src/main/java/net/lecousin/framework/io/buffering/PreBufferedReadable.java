@@ -244,8 +244,10 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		firstReadTask.listenInline(new Runnable() {
 			@Override
 			public void run() {
-				if (buffersReady == null)
+				if (buffersReady == null) {
+					jpNextRead.joined();
 					return;
+				}
 				buffer.flip();
 				synchronized (PreBufferedReadable.this) {
 					Throwable e = firstReadTask.getError();
@@ -275,7 +277,10 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 						}
 					}
 				}
-				if (buffersReady == null) return;
+				if (buffersReady == null) {
+					jpNextRead.joined();
+					return;
+				}
 				src.setPriority(nextBufferPriority);
 				jpNextRead.joined();
 			}
