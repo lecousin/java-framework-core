@@ -185,12 +185,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		synchronized (this) {
 			nextRead = nextReadTask;
 		}
-		if (nextRead != null && !nextRead.isUnblocked()) {
-			if (nextRead instanceof Task.Output)
-				((Task<?,?>.Output)nextRead).getTask().cancel(new CancelException("IO closed"));
-			else
-				nextRead.unblockCancel(new CancelException("IO closed"));
-		}
+		if (nextRead != null && !nextRead.isUnblocked())
+			nextRead.cancel(new CancelException("IO closed"));
 		return src.closeAsync();
 	}
 	
@@ -295,7 +291,10 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				@Override
 				public Void run() {
 					TurnArray<ByteBuffer> buffers = reusableBuffers;
-					if (buffers == null) return null; // already closed
+					if (buffers == null) {
+						jpNextRead.joined();
+						return null; // already closed
+					}
 					for (int i = 0; i < nbNext; ++i) {
 						ByteBuffer b = ByteBuffer.allocate(nextBufferSize);
 						buffers.addLast(b);
@@ -312,7 +311,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					SynchronizationPoint<NoException> dr = null;
 					synchronized (PreBufferedReadable.this) {
 						nextReadTask = null;
-						if (error == null && !endReached && !stopReading)
+						if (error == null && !endReached && !stopReading && !isClosing())
 							nextRead();
 						else if (dataReady != null) {
 							dr = dataReady;
