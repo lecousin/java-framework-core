@@ -147,7 +147,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 		}), true);
 		jp.listenTime(60000, () -> {
 			StringBuilder s = new StringBuilder();
-			s.append("IO still waiting for pending operations:");
+			s.append("Closeable still waiting for pending operations: ").append(this);
 			for (ISynchronizationPoint<?> op : pending)
 				if (!op.isUnblocked())
 					s.append("\r\n - ").append(op);
