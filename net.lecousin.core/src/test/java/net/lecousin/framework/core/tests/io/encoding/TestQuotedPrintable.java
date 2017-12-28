@@ -1,4 +1,4 @@
-package net.lecousin.framework.core.tests.encoding;
+package net.lecousin.framework.core.tests.io.encoding;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
