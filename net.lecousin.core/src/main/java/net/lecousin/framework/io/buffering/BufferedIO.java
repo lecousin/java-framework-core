@@ -977,6 +977,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		if (sp == null) task.start();
 		else task.startOn(sp, true);
 		done.forwardCancel(task.getOutput());
+		task.getOutput().forwardCancel(done);
 		return operation(done);
 	}
 	
@@ -1101,7 +1102,7 @@ public abstract class BufferedIO extends BufferingManaged {
 					size = ns;
 					if (pos > size) pos = size;
 					result.unblockSuccess(null);
-				}, resize);
+				}, result);
 				return null;
 			}
 		}, true);
@@ -1188,6 +1189,7 @@ public abstract class BufferedIO extends BufferingManaged {
 				return null;
 			}
 		};
+		task.getOutput().forwardCancel(done);
 		if (sp == null)
 			task.start();
 		else
