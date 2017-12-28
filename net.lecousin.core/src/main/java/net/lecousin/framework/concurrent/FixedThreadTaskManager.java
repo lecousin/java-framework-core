@@ -195,6 +195,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 	}
 	
 	void imUnblocked(TaskWorker worker, long since) {
+		worker.blocked = false;
 		if (Threading.traceBlockingTasks) {
 			Threading.logger.error("Task " + worker.currentTask.description + " unblocked after "
 				+ ((System.nanoTime() - since) / 1000000) + "ms.");
@@ -216,7 +217,6 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 				spare.addLast(pause.getResult());
 			}
 		}
-		worker.blocked = false;
 		synchronized (blocked) {
 			blocked.removeInstance(worker);
 		}

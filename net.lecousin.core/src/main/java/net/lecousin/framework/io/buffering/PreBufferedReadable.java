@@ -187,6 +187,15 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		}
 		if (nextRead != null && !nextRead.isUnblocked())
 			nextRead.cancel(new CancelException("IO closed"));
+		while (dataReady != null) {
+			SynchronizationPoint<NoException> dr;
+			synchronized (this) {
+				dr = dataReady;
+				dataReady = null;
+			}
+			if (dr != null)
+				dr.unblock();
+		}
 		return src.closeAsync();
 	}
 	
@@ -198,7 +207,6 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			if (dataReady != null) {
 				dr = dataReady;
 				dataReady = null;
-				dr.unblock();
 			}
 			buffersReady = null;
 			reusableBuffers = null;
@@ -548,6 +556,16 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 	
 	private void nextRead() {
+		if (isClosing()) {
+			SynchronizationPoint<NoException> dr;
+			synchronized(this) {
+				dr = dataReady;
+				dataReady = null;
+			}
+			if (dr != null)
+				dr.unblock();
+			return;
+		}
 		ByteBuffer buffer = reusableBuffers.removeFirst();
 		buffer.clear();
 		nextReadTask = operation(src.readFullyAsync(buffer));
@@ -573,7 +591,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				} else {
 					int nb;
 					try { nb = ((Integer)nextReadTask.getResult()).intValue(); }
-					catch (NullPointerException ex) { return; /* we are closed */ }
+					catch (NullPointerException ex) { nb = 0; /* we are closed */ }
 					SynchronizationPoint<NoException> sp = null;
 					synchronized (PreBufferedReadable.this) {
 						nextReadTask = null;
@@ -717,6 +735,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				if (ondone != null) ondone.run(new Pair<>(null, null));
 				return new AsyncWork<>(null, null);
 			}
+			if (isClosing()) return new AsyncWork<>(null, null, new CancelException("IO closed"));
 			if (dataReady == null) dataReady = new SynchronizationPoint<>();
 			sp = dataReady;
 		}
