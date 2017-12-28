@@ -203,6 +203,32 @@ public abstract class TestList extends TestCollection {
 			Assert.assertEquals(lit1.next(), lit2.next());
 		} while (true);
 
+		toAdd = new ArrayList<Long>();
+		for (long i = 2000; i < 3000; ++i) toAdd.add(Long.valueOf(i));
+		arr.addAll(10, toAdd);
+		l.addAll(10, toAdd);
+		Assert.assertEquals(arr.size(), l.size());
+		// compare indexes
+		for (long i = 0; i < 2000; ++i) {
+			int i1 = arr.indexOf(Long.valueOf(i));
+			int i2 = l.indexOf(Long.valueOf(i));
+			Assert.assertEquals(i1, i2);
+			i2 = arr.lastIndexOf(Long.valueOf(i));
+			Assert.assertEquals(i1, i2);
+			i2 = l.lastIndexOf(Long.valueOf(i));
+			Assert.assertEquals(i1, i2);
+		}
+		// compare iterators
+		lit1 = l.listIterator();
+		lit2 = arr.listIterator();
+		do {
+			Assert.assertEquals(lit1.nextIndex(), lit2.nextIndex());
+			Assert.assertEquals(lit1.previousIndex(), lit2.previousIndex());
+			Assert.assertEquals(lit1.hasNext(), lit2.hasNext());
+			if (!lit1.hasNext()) break;
+			Assert.assertEquals(lit1.next(), lit2.next());
+		} while (true);
+		
 		// get(index)
 		for (int i = 0; i < arr.size(); ++i)
 			Assert.assertEquals("At index " + i, arr.get(i), l.get(i));
