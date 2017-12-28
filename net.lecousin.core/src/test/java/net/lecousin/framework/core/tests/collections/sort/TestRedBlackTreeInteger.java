@@ -81,6 +81,34 @@ public class TestRedBlackTreeInteger extends TestSortedAssociatedWithInteger {
 		tree.removeInstance(51, o);
 		Assert.assertEquals(0, tree.size());
 		Assert.assertFalse(tree.containsInstance(51, o));
+		
+		for (int i = 0; i < 100; ++i)
+			tree.add(i, o);
+		Assert.assertEquals(100, tree.size());
+		tree.removeKey(10);
+		Assert.assertEquals(99, tree.size());
+		tree.removeKey(20);
+		Assert.assertEquals(98, tree.size());
+		tree.removeKey(3);
+		Assert.assertEquals(97, tree.size());
+		tree.removeKey(0);
+		Assert.assertEquals(96, tree.size());
+		tree.removeKey(99);
+		Assert.assertEquals(95, tree.size());
+		tree.removeKey(80);
+		Assert.assertEquals(94, tree.size());
+		tree.removeInstance(11, o);
+		Assert.assertEquals(93, tree.size());
+		tree.removeInstance(21, o);
+		Assert.assertEquals(92, tree.size());
+		tree.removeInstance(4, o);
+		Assert.assertEquals(91, tree.size());
+		tree.removeInstance(1, o);
+		Assert.assertEquals(90, tree.size());
+		tree.removeInstance(98, o);
+		Assert.assertEquals(89, tree.size());
+		tree.removeInstance(79, o);
+		Assert.assertEquals(88, tree.size());
 	}
 	
 }
