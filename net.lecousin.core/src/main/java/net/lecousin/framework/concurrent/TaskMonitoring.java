@@ -145,6 +145,7 @@ public final class TaskMonitoring {
 			DebugUtil.createStackTrace(s, ti.getStackTrace());
 			append(s, monitors);
 			if (!w.blocked) continue;
+			if (System.currentTimeMillis() - w.currentTaskStart - w.blockedTime < 5000) continue;
 			Threading.logger.error(s.toString());
 		}
 	}
