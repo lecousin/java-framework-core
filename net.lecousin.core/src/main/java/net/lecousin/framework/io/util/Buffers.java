@@ -21,7 +21,7 @@ public class Buffers {
 	
 	/** Get a buffer. */
 	public ByteBuffer getBuffer() {
-		ByteBuffer buf = buffers.removeFirst();
+		ByteBuffer buf = buffers.pollFirst();
 		if (buf != null) {
 			buf.clear();
 			return buf;
