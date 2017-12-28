@@ -14,7 +14,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		super(testFile, testBuf, nbBuf);
 	}
 	
-	protected abstract ICharacterStream.Readable.Buffered openStream(IO.Readable io);
+	protected abstract ICharacterStream.Readable.Buffered openStream(IO.Readable io) throws Exception;
 	
 	@Override
 	protected IO getIOForCommonTests() {

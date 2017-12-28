@@ -902,7 +902,8 @@ public class UnprotectedStringBuffer implements IString {
 				if (buffer > lastUsed) return done > 0 ? done : -1;
 				int len = strings[buffer].length() - bufferIndex;
 				if (len > length) len = length;
-				System.arraycopy(strings[buffer], bufferIndex, buf, offset, len);
+				System.arraycopy(strings[buffer].charArray(), strings[buffer].charArrayStart() + bufferIndex, buf, offset, len);
+				bufferIndex += len;
 				offset += len;
 				length -= len;
 				done += len;

@@ -14,7 +14,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		super(testFile, testBuf, nbBuf);
 	}
 	
-	protected abstract ICharacterStream.Readable openStream(IO.Readable io);
+	protected abstract ICharacterStream.Readable openStream(IO.Readable io) throws Exception;
 	
 	@Override
 	protected IO getIOForCommonTests() {
@@ -53,8 +53,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 				throw new AssertionError("End of stream reached after " + pos + " characters, expected was "
 					+ (nbBuf * testBuf.length));
 			for (int i = 0; i < nb; ++i)
-				if (buf[i] != testBuf[(pos + i) % testBuf.length])
-					throw new AssertionError("Invalid character " + buf[i] + " at " + (pos + i));
+				Assert.assertEquals("Invalid character at " + (pos + i), (char)testBuf[(pos + i) % testBuf.length], buf[i]);
 			pos += nb;
 			if (pos < nbBuf * testBuf.length)
 				Assert.assertFalse(s.endReached());

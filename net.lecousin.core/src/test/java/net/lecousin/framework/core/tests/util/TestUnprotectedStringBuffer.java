@@ -1,12 +1,13 @@
 package net.lecousin.framework.core.tests.util;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import net.lecousin.framework.core.test.util.TestIString;
 import net.lecousin.framework.util.IString;
 import net.lecousin.framework.util.Provider.FromValue;
+import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 public class TestUnprotectedStringBuffer extends TestIString {
 
@@ -17,7 +18,7 @@ public class TestUnprotectedStringBuffer extends TestIString {
 	
 	@Test(timeout=120000)
 	public void testModifications() {
-		UnprotectedStringBuffer s = new UnprotectedStringBuffer("Hello");
+		UnprotectedStringBuffer s = new UnprotectedStringBuffer(new StringBuilder("Hello"));
 		s.addFirst(' ');
 		Assert.assertEquals(" Hello", s.asString());
 		s.addFirst("World");
@@ -30,7 +31,7 @@ public class TestUnprotectedStringBuffer extends TestIString {
 				return new UnprotectedStringBuffer(Integer.toString(Integer.parseInt(value.asString()) * 2));
 			}
 		}; 
-		s = new UnprotectedStringBuffer("abcd${123}efgh${200}ijk");
+		s = new UnprotectedStringBuffer(new UnprotectedStringBuffer("abcd${123}efgh${200}ijk"));
 		s.searchAndReplace("${", "}", provider);
 		Assert.assertEquals("abcd246efgh400ijk", s.asString());
 		s = new UnprotectedStringBuffer("${34}abcd${123}efgh${200}ijk${99}");
@@ -39,6 +40,19 @@ public class TestUnprotectedStringBuffer extends TestIString {
 		s = new UnprotectedStringBuffer("${3");
 		s.searchAndReplace("${", "}", provider);
 		Assert.assertEquals("${3", s.asString());
+		
+		s = new UnprotectedStringBuffer();
+		s.append(new char[] { 'a', 'b' }, 0, 2);
+		Assert.assertEquals("ab", s.asString());
+
+		s = new UnprotectedStringBuffer();
+		s.append(new UnprotectedString("abcd"));
+		s.append(new char[] { 'a', 'b' }, 0, 2);
+		Assert.assertEquals("abcdab", s.asString());
+
+		s = new UnprotectedStringBuffer();
+		s.addFirst(new UnprotectedString("abc"));
+		Assert.assertEquals("abc", s.asString());
 	}
 	
 }
