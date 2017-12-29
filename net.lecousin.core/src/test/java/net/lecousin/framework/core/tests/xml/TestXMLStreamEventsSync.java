@@ -46,6 +46,16 @@ public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 		Assert.assertEquals("spanish", xml.event.text.asString());
 		Assert.assertEquals("hola", xml.getAttributeValueByLocalName("value").asString());
 		Assert.assertEquals("hola", xml.getAttributeValueByFullName("value").asString());
+		Assert.assertNull(xml.getAttributeByFullName("tutu"));
+		Assert.assertNull(xml.getAttributeByLocalName("tutu"));
+		Assert.assertNull(xml.getAttributeWithPrefix("tutu", "value"));
+		Assert.assertNull(xml.getAttributeValueByFullName("tutu"));
+		Assert.assertNull(xml.getAttributeValueByLocalName("tutu"));
+		Assert.assertNull(xml.getAttributeValueWithPrefix("tutu", "value"));
+		Assert.assertNull(xml.getAttributeValueWithNamespaceURI("tutu", "value"));
+		Assert.assertNull(xml.removeAttributeByFullName("tutu"));
+		Assert.assertNull(xml.removeAttributeWithPrefix("tutu", "value"));
+		Assert.assertNull(xml.removeAttributeWithNamespaceURI("tutu", "value"));
 		Assert.assertTrue(xml.readInnerText().length() == 0);
 		Assert.assertTrue(xml.nextInnerElement(ctx));
 		Assert.assertEquals("english", xml.event.text.asString());
@@ -106,6 +116,7 @@ public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 		xml.searchElement("translation");
 		xml.nextStartElement(); // hello
 		xml.closeElement();
+		Assert.assertFalse(xml.nextInnerElement(xml.event.context.getFirst()));
 	}
 	
 }

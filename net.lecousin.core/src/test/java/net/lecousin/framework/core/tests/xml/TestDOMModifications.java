@@ -93,18 +93,40 @@ public class TestDOMModifications extends TestDOM {
 		text1.setData("My Text 2");
 		text2.setData("My Text 2");
 		checkDocument(doc1, doc2);
+		text1.setNodeValue("My Text 3");
+		text2.setNodeValue("My Text 3");
+		checkDocument(doc1, doc2);
+		text2.getNodeName();
+		// clone Text
+		checkText((Text)text1.cloneNode(true), text2.cloneNode(true));
+		text2.isElementContentWhitespace();
+		// split Text
+		text1.splitText(5);
+		text2.splitText(5);
+		checkDocument(doc1, doc2);
+		Assert.assertEquals(text1.getWholeText(), text2.getWholeText());
+		// replace text
+		text1.replaceWholeText("My Third Text");
+		text2.replaceWholeText("My Third Text");
+		checkDocument(doc1, doc2);
 		// insert CDATA
 		CDATASection data1 = doc1.createCDATASection("The data");
 		XMLCData data2 = doc2.createCDATASection("The data");
 		root1.insertBefore(data1, text1);
 		root2.insertBefore(data2, text2);
 		checkDocument(doc1, doc2);
+		data2.getNodeName();
+		// clone CDATA
+		checkCData((CDATASection)data1.cloneNode(true), data2.cloneNode(true));
 		// insert Comment
 		Comment comment1 = doc1.createComment("A comment");
 		XMLComment comment2 = doc2.createComment("A comment");
 		root1.insertBefore(comment1, text1);
 		root2.insertBefore(comment2, text2);
 		checkDocument(doc1, doc2);
+		comment2.getNodeName();
+		// clone Comment
+		checkComment((Comment)comment1.cloneNode(true), comment2.cloneNode(true));
 		// remove CDATA
 		root1.removeChild(data1);
 		root2.removeChild(data2);

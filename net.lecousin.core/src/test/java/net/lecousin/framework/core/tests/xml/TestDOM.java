@@ -131,14 +131,20 @@ public abstract class TestDOM extends LCCoreAbstractTest {
 	
 	protected static void checkCData(CDATASection expected, CDATASection found) {
 		Assert.assertEquals(expected.getData(), found.getData());
+		Assert.assertEquals(expected.getNodeValue(), found.getNodeValue());
+		Assert.assertEquals(expected.getLength(), found.getLength());
 	}
 	
 	protected static void checkComment(Comment expected, Comment found) {
 		Assert.assertEquals(expected.getData(), found.getData());
+		Assert.assertEquals(expected.getNodeValue(), found.getNodeValue());
+		Assert.assertEquals(expected.getLength(), found.getLength());
 	}
 	
 	protected static void checkText(Text expected, Text found) {
 		Assert.assertEquals(expected.getData(), found.getData());
+		Assert.assertEquals(expected.getNodeValue(), found.getNodeValue());
+		Assert.assertEquals(expected.getLength(), found.getLength());
 	}
 	
 	protected static void checkAttr(Attr expected, Attr found) {
