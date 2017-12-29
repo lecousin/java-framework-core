@@ -18,6 +18,8 @@ public abstract class IOAsOutputStream extends OutputStream {
 		return new Writable(io);
 	}
 	
+	public abstract IO.Writable getWrappedIO();
+	
 	/** Default implementation of IOAsOutputStream for a Writable. */
 	public static class Writable extends IOAsOutputStream {
 		/** Constructor. */
@@ -26,6 +28,11 @@ public abstract class IOAsOutputStream extends OutputStream {
 		}
 		
 		private IO.Writable io;
+		
+		@Override
+		public IO.Writable getWrappedIO() {
+			return io;
+		}
 		
 		@Override
 		public void close() throws IOException {
@@ -56,6 +63,11 @@ public abstract class IOAsOutputStream extends OutputStream {
 		}
 		
 		private IO.WritableByteStream io;
+		
+		@Override
+		public IO.Writable getWrappedIO() {
+			return (IO.Writable)io;
+		}
 		
 		@Override
 		public void close() throws IOException {
