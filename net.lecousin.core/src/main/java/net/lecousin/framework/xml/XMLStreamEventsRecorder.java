@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.LinkedList;
 
+import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.xml.XMLStreamEvents.Event;
@@ -124,6 +125,11 @@ public interface XMLStreamEventsRecorder {
 		@Override
 		public Event getFirstRecordedEvent() {
 			return record != null && !record.isEmpty() ? record.getFirst() : null;
+		}
+		
+		@Override
+		public ISynchronizationPoint<Exception> start() {
+			return stream.start();
 		}
 
 		@Override

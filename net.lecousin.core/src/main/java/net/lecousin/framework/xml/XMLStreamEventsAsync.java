@@ -14,6 +14,11 @@ import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 /** Base class for asynchronous implementations of XMLStreamEvents. */
 public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 
+	/** Start reading the XML to provide the first event.
+	 * If the first tag is a processing instruction XML it reads it and goes to the next event.
+	 */
+	public abstract ISynchronizationPoint<Exception> start();
+	
 	/** Return the priority used for tasks. */
 	public abstract byte getPriority();
 	
@@ -267,26 +272,28 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 	}
 	
 	/** Go successively into the given elements. */
-	public ISynchronizationPoint<Exception> goInto(ElementContext rootContext, String... innerElements) {
+	public AsyncWork<Boolean, Exception> goInto(ElementContext rootContext, String... innerElements) {
 		return goInto(rootContext, 0, innerElements);
 	}
 	
-	private ISynchronizationPoint<Exception> goInto(ElementContext parent, int i, String... innerElements) {
-		ISynchronizationPoint<Exception> next = nextInnerElement(parent, innerElements[i]);
+	private AsyncWork<Boolean, Exception> goInto(ElementContext parent, int i, String... innerElements) {
+		AsyncWork<Boolean, Exception> next = nextInnerElement(parent, innerElements[i]);
 		do {
 			if (!next.isUnblocked()) break;
 			if (next.hasError()) return next;
+			if (!next.getResult().booleanValue()) return next;
 			i++;
 			if (i == innerElements.length) return next;
 			parent = event.context.getFirst();
 			next = nextInnerElement(parent, innerElements[i]);
 		} while (true);
-		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
-		ISynchronizationPoint<Exception> n = next;
+		AsyncWork<Boolean, Exception> result = new AsyncWork<>();
+		AsyncWork<Boolean, Exception> n = next;
 		int ii = i;
 		next.listenInline(() -> {
 			if (n.hasError()) result.error(n.getError());
-			else if (ii == innerElements.length - 1) result.unblock();
+			else if (!n.getResult().booleanValue()) result.unblockSuccess(Boolean.FALSE);
+			else if (ii == innerElements.length - 1) result.unblockSuccess(Boolean.TRUE);
 			else new ParsingTask(() -> { goInto(event.context.getFirst(), ii + 1, innerElements).listenInline(result); }).start();
 		}, result);
 		return result;

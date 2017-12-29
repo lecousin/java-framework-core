@@ -72,9 +72,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	/* Public methods */
 
-	/** Start reading the XML to provide the first event.
-	 * If the first tag is a processing instruction XML it reads it and goes to the next event.
-	 */
+	@Override
 	public ISynchronizationPoint<Exception> start() {
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		io.canStartReading().listenAsync(new Task.Cpu.FromRunnable(() -> {
