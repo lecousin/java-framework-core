@@ -10,17 +10,13 @@ is recommended for better performances on disk operations (detection of physical
 
 ## Build status
 
-Master: ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=master "Build Status")
-
-Branch 0.8: ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.8 "Build Status")
-
-Modules with current version:
- * core 0.8.5
-   [Javadoc](https://www.javadoc.io/doc/net.lecousin/core/0.8.5 "Javadoc")
-   [Maven Central Repository](http://search.maven.org/#artifactdetails%7Cnet.lecousin%7Ccore%7C0.8.5%7Cjar "Maven")
- * log.bridges.commons-logging 0.1.0
-   [Javadoc](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.1.0 "Javadoc")
-   [Maven Central Repository](http://search.maven.org/#artifactdetails%7Cnet.lecousin.framework%7Clog.bridges.commons-logging%7C0.1.0%7Cjar "Maven")
+Branch | Modules | Build Status | Test Coverage | Javadoc
+--- | --- | --- | --- | ---
+master | core [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.lecousin/core/badge.svg?style=flat)](http://search.maven.org/#artifactdetails%7Cnet.lecousin%7Ccore%7C0.8.5%7Cjar) | ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=master "Build Status") | [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/master/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/master) | [![Javadoc](https://img.shields.io/badge/javadoc-0.8.5-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.8.5)
+. | log.bridges.commons-logging [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.lecousin.framework/log.bridges.commons-logging/badge.svg?style=flat)](http://search.maven.org/#artifactdetails%7Cnet.lecousin.framework%7Clog.bridges.commons-logging%7C0.1.0%7Cjar) | | | [![Javadoc](https://img.shields.io/badge/javadoc-0.1.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.1.0)
+0.9 | core 0.9.0 | ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.9 "Build Status") | [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/0.9/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/0.9)
+. | core.javaee 0.9.0
+. | log.bridges.commons-logging 0.1.1
 
 ## Multi-threading
 
