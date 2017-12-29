@@ -15,14 +15,14 @@ import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.ICharacterStream;
 
 @RunWith(Parameterized.class)
-public class TestBufferedReadableBufferedCharacterStream extends TestCharacterStreamReadableBuffered {
+public class TestBufferedReadableCharacterStreamBuffered extends TestCharacterStreamReadableBuffered {
 
 	@Parameters(name = "nbBuf = {2}")
 	public static Collection<Object[]> parameters() {
 		return TestIO.UsingGeneratedTestFiles.generateTestCases(false);
 	}
 	
-	public TestBufferedReadableBufferedCharacterStream(File testFile, byte[] testBuf, int nbBuf) {
+	public TestBufferedReadableCharacterStreamBuffered(File testFile, byte[] testBuf, int nbBuf) {
 		super(testFile, testBuf, nbBuf);
 	}
 
