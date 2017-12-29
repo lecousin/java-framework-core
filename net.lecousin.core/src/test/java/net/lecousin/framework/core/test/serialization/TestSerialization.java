@@ -95,7 +95,11 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	public void testBooleans() throws Exception {
 		test(Boolean.TRUE, Boolean.class);
 		test(Boolean.FALSE, Boolean.class);
+		test(null, Boolean.class);
 		test(createBooleans(), TestBooleans.class);
+		TestBooleans t = createBooleans();
+		t.attr3 = null;
+		test(t, TestBooleans.class);
 	}
 	
 	@Test(timeout=120000)
@@ -151,22 +155,38 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(Byte.valueOf((byte)123), Byte.class);
 		test(Byte.valueOf((byte)-1), Byte.class);
 		test(Byte.valueOf((byte)-123), Byte.class);
+		test(null, Byte.class);
 		test(Short.valueOf((short)0), Short.class);
 		test(Short.valueOf((short)10), Short.class);
 		test(Short.valueOf((short)-2340), Short.class);
+		test(null, Short.class);
 		test(Integer.valueOf(0), Integer.class);
 		test(Integer.valueOf(-12345), Integer.class);
 		test(Integer.valueOf(54321), Integer.class);
+		test(null, Integer.class);
 		test(Long.valueOf(0), Long.class);
 		test(Long.valueOf(123456789L), Long.class);
 		test(Long.valueOf(987654321L), Long.class);
+		test(null, Long.class);
 		test(Float.valueOf(0f), Float.class);
 		test(Float.valueOf(450.678f), Float.class);
 		test(Float.valueOf(-0.0000111f), Float.class);
+		test(null, Float.class);
 		test(Double.valueOf(0d), Double.class);
 		test(Double.valueOf(1122330d), Double.class);
 		test(Double.valueOf(-1.234567890d), Double.class);
+		test(null, Double.class);
 		test(createNumbers(), TestNumbers.class);
+		TestNumbers t = createNumbers();
+		t.b2 = null;
+		t.s2 = null;
+		t.i2 = null;
+		t.l2 = null;
+		t.f2 = null;
+		t.d2 = null;
+		t.bi2 = null;
+		t.bd2 = null;
+		test(t, TestNumbers.class);
 	}
 	
 	@Test(timeout=120000)
@@ -235,6 +255,8 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		TestChar tc = new TestChar();
 		tc.c = c;
 		tc.C = Character.valueOf(c);
+		test(tc, TestChar.class);
+		tc.C = null;
 		test(tc, TestChar.class);
 		testPrimitive(Character.valueOf(c), char.class);
 	}
