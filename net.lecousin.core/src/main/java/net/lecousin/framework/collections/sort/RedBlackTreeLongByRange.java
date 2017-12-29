@@ -93,11 +93,27 @@ public class RedBlackTreeLongByRange<T> implements Sorted.AssociatedWithLong<T> 
 		Node<RedBlackTreeLong<T>> e = ranges.getMin();
 		return e.getElement().getMin();
 	}
+
+	/** Return the last node. */
+	public Node<T> getMax() {
+		if (size == 0) return null;
+		Node<RedBlackTreeLong<T>> e = ranges.getMax();
+		return e.getElement().getMax();
+	}
 	
 	/** Remove the first node. */
 	public void removeMin() {
 		Node<RedBlackTreeLong<T>> e = ranges.getMin();
 		e.getElement().removeMin();
+		if (e.getElement().isEmpty())
+			ranges.removeInstance(e.getValue(), e.getElement());
+		size--;
+	}
+	
+	/** Remove the first node. */
+	public void removeMax() {
+		Node<RedBlackTreeLong<T>> e = ranges.getMax();
+		e.getElement().removeMax();
 		if (e.getElement().isEmpty())
 			ranges.removeInstance(e.getValue(), e.getElement());
 		size--;
