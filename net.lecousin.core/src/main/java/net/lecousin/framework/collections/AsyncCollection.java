@@ -2,6 +2,7 @@ package net.lecousin.framework.collections;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 import net.lecousin.framework.event.Listener;
 
@@ -179,6 +180,11 @@ public interface AsyncCollection<T> {
 			}
 			col.newElements(list);
 			col.done();
+		}
+		
+		/** Return the list containing the elements kept so far. */
+		public List<T> getCurrentElements() {
+			return list;
 		}
 	}
 	
