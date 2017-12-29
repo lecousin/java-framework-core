@@ -92,4 +92,14 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(null, map.get("german"));
 	}
 	
+	@Test
+	public void test2() throws Exception {
+		XMLStreamEventsAsync xml;
+		xml = parse("xml-test-suite/mine/002.xml");
+		xml.start().blockThrow(0);
+		xml.searchElement("translation").blockThrow(0);
+		xml.nextStartElement().blockThrow(0); // hello
+		xml.closeElement().blockThrow(0);
+	}
+	
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE my002>
 <myRoot>
-	<hello>bonjour</hello>
+	<hello xmlns:language="http://language" language:code="fr">bonjour</hello>
 	<translation>
 		<hello>
 			<french>bonjour</french>

@@ -535,6 +535,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			statePos++;
 			return true;
 		}
+		if (event.publicId == null)
+			event.publicId = new UnprotectedStringBuffer();
 		if (event.publicId.length() > 0) {
 			sp.error(new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Invalid XML")));
 			return false;
@@ -644,6 +646,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			state = State.DOCTYPE_SPACE;
 			return true;
 		}
+		if (event.system == null)
+			event.system = new UnprotectedStringBuffer();
 		event.system.append((char)c);
 		return true;
 	}
