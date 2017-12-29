@@ -76,10 +76,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		task.startOn(io.canStartReading(), true);
 		return result;
 	}
-	
-	/** Start reading the XML to provide the first event.
-	 * If the first tag is a processing instruction XML it reads it and goes to the next event.
-	 */
+
+	@Override
 	public void start() throws XMLException, IOException {
 		Starter start = new Starter(io, defaultEncoding, charactersBuffersSize);
 		stream = start.start();

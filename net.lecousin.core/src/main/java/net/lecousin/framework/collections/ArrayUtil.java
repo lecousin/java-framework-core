@@ -323,7 +323,7 @@ public final class ArrayUtil {
 	public static <T> T[] concatenate(T[] a, T[] b) {
 		if (a.length == 0) return b;
 		if (b.length == 0) return a;
-		T[] array = createGenericArray((Class<T[]>)a.getClass().getComponentType(), a.length + b.length);
+		T[] array = createGenericArray((Class<T[]>)a.getClass(), a.length + b.length);
 		for (int i = 0; i < a.length; ++i)
 			array[i] = a[i];
 		for (int i = 0; i < b.length; ++i)

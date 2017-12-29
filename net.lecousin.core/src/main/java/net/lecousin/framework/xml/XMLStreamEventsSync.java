@@ -12,6 +12,11 @@ import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 /** Base class for synchronous implementations of XMLStreamEvents. */
 public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 
+	/** Start reading the XML to provide the first event.
+	 * If the first tag is a processing instruction XML it reads it and goes to the next event.
+	 */
+	public abstract void start() throws XMLException, IOException;
+	
 	/** Move forward to the next event. */
 	public abstract void next() throws XMLException, IOException;
 	

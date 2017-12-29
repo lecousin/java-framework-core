@@ -2,13 +2,13 @@ package net.lecousin.framework.core.tests.xml;
 
 import java.util.Collection;
 
-import net.lecousin.framework.io.IO;
-import net.lecousin.framework.xml.XMLStreamEventsSync;
-import net.lecousin.framework.xml.XMLStreamReader;
-
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import net.lecousin.framework.io.IO;
+import net.lecousin.framework.xml.XMLStreamEventsSync;
+import net.lecousin.framework.xml.XMLStreamReader;
 
 @RunWith(Parameterized.class)
 public class TestXMLStreamReaderWithDOM extends TestXMLStreamEventsWithDOM<XMLStreamEventsSync> {

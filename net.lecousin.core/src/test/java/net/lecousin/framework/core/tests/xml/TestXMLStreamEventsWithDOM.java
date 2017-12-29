@@ -36,6 +36,7 @@ public abstract class TestXMLStreamEventsWithDOM<EVENTS extends XMLStreamEvents>
 
 	private static final String[] files = {
 		"xml-test-suite/mine/001.xml",
+		"xml-test-suite/mine/002.xml",
 		"xml-test-suite/xmltest/valid/sa/001.xml",
 		"xml-test-suite/xmltest/valid/sa/002.xml",
 		"xml-test-suite/xmltest/valid/sa/003.xml",
@@ -224,6 +225,7 @@ public abstract class TestXMLStreamEventsWithDOM<EVENTS extends XMLStreamEvents>
 		case END_ELEMENT:
 			Assert.assertFalse(openElements.isEmpty());
 			Assert.assertEquals(openElements.removeLast(), xml.event.text.asString());
+			next(xml);
 			break;
 		case TEXT:
 			if (xml.event.text.asString().trim().isEmpty() && node.getNodeType() != Node.TEXT_NODE) {
@@ -251,7 +253,10 @@ public abstract class TestXMLStreamEventsWithDOM<EVENTS extends XMLStreamEvents>
 	}
 	
 	private void checkText(Text node, EVENTS xml) throws Exception {
-		assertEquals("text", node.getData(), xml.event.text);
+		String message = "text";
+		if (!xml.event.context.isEmpty())
+			message += " in " + xml.event.context.getFirst().text.asString();
+		assertEquals(message, node.getData(), xml.event.text);
 		next(xml);
 	}
 	
@@ -307,7 +312,7 @@ public abstract class TestXMLStreamEventsWithDOM<EVENTS extends XMLStreamEvents>
 		}
 		if (expected == null)
 			if (found.length() == 0) return;
-		Assert.assertEquals(expected, found.asString());
+		Assert.assertEquals(message, expected.trim(), found.asString().trim());
 	}
 	
 }

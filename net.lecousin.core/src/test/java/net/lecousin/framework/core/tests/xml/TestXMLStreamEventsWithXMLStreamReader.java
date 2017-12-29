@@ -27,6 +27,7 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 
 	private static final String[] files = {
 		"xml-test-suite/mine/001.xml",
+		"xml-test-suite/mine/002.xml",
 		"xml-test-suite/xmltest/valid/sa/001.xml",
 		"xml-test-suite/xmltest/valid/sa/002.xml",
 		"xml-test-suite/xmltest/valid/sa/003.xml",

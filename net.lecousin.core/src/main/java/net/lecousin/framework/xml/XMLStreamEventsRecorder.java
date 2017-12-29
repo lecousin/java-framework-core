@@ -60,6 +60,11 @@ public interface XMLStreamEventsRecorder {
 		}
 		
 		@Override
+		public void start() throws XMLException, IOException {
+			stream.start();
+		}
+		
+		@Override
 		public void next() throws XMLException, IOException {
 			if (replaying != null) {
 				if (!replaying.hasNext())
