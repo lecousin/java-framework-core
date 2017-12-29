@@ -41,6 +41,13 @@ public class XMLAttribute extends XMLNode implements Attr {
 	
 	@Override
 	public void setPrefix(String prefix) throws DOMException {
+		XMLElement p = (XMLElement)parent;
+		if (p != null) {
+			String uri = p.lookupNamespaceURI(prefix);
+			String uri2 = getNamespaceURI();
+			if (uri == null && uri2 != null)
+				p.declareNamespace(uri2, prefix);
+		}
 		this.prefix = prefix;
 	}
 	

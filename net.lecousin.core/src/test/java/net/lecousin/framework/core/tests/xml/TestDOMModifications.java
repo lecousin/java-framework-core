@@ -2,19 +2,20 @@ package net.lecousin.framework.core.tests.xml;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import net.lecousin.framework.xml.dom.XMLCData;
-import net.lecousin.framework.xml.dom.XMLComment;
-import net.lecousin.framework.xml.dom.XMLDocument;
-import net.lecousin.framework.xml.dom.XMLElement;
-import net.lecousin.framework.xml.dom.XMLText;
-
 import org.junit.Assert;
 import org.junit.Test;
+import org.w3c.dom.Attr;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Comment;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Text;
+
+import net.lecousin.framework.xml.dom.XMLCData;
+import net.lecousin.framework.xml.dom.XMLComment;
+import net.lecousin.framework.xml.dom.XMLDocument;
+import net.lecousin.framework.xml.dom.XMLElement;
+import net.lecousin.framework.xml.dom.XMLText;
 
 public class TestDOMModifications extends TestDOM {
 
@@ -65,6 +66,23 @@ public class TestDOMModifications extends TestDOM {
 		root1.removeAttributeNS("http://test2", "a3");
 		root2.removeAttributeNS("http://test2", "a3");
 		checkDocument(doc1, doc2);
+		// clone attribute
+		checkAttr((Attr)root1.getAttributeNode("a2").cloneNode(true), (Attr)root2.getAttributeNode("a2").cloneNode(true));
+		// add attribute
+		root1.setAttributeNS("http://test3", "test3:b", "bb");
+		root2.setAttributeNS("http://test3", "test3:b", "bb");
+		checkDocument(doc1, doc2);
+		// change prefix
+		root1.getAttributeNodeNS("http://test3", "b").setPrefix("tutu");
+		root2.getAttributeNodeNS("http://test3", "b").setPrefix("tutu");
+		checkDocument(doc1, doc2);
+		// change value
+		root1.getAttributeNodeNS("http://test3", "b").setValue("BB");
+		root2.getAttributeNodeNS("http://test3", "b").setValue("BB");
+		checkDocument(doc1, doc2);
+		// get owner
+		Assert.assertTrue(root2.getAttributeNodeNS("http://test3", "b").getOwnerElement() == root2);
+		Assert.assertTrue(root2.getAttributeNodeNS("http://test3", "b").getOwnerDocument() == doc2);
 		// add text
 		Text text1 = doc1.createTextNode("My Text");
 		XMLText text2 = doc2.createTextNode("My Text");

@@ -336,10 +336,9 @@ public class XMLElement extends XMLNode implements Element {
 
 	@Override
 	public void removeAttributeNS(String namespaceURI, String localName) throws DOMException {
-		String prefix = getPrefixForNamespaceURI(namespaceURI);
 		for (Iterator<XMLAttribute> it = attributes.iterator(); it.hasNext(); ) {
 			XMLAttribute a = it.next();
-			if (a.localName.equals(localName) && a.prefix.equals(prefix)) {
+			if (a.localName.equals(localName) && namespaceURI.equals(a.getNamespaceURI())) {
 				it.remove();
 				a.parent = null;
 				return;
@@ -349,10 +348,9 @@ public class XMLElement extends XMLNode implements Element {
 
 	@Override
 	public XMLAttribute getAttributeNodeNS(String namespaceURI, String localName) throws DOMException {
-		String prefix = getPrefixForNamespaceURI(namespaceURI);
 		for (Iterator<XMLAttribute> it = attributes.iterator(); it.hasNext(); ) {
 			XMLAttribute a = it.next();
-			if (a.localName.equals(localName) && a.prefix.equals(prefix))
+			if (a.localName.equals(localName) && namespaceURI.equals(a.getNamespaceURI()))
 				return a;
 		}
 		return null;
