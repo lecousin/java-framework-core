@@ -141,19 +141,31 @@ public abstract class BufferedIO extends BufferingManaged {
 	protected Buffer useBufferAsync(int index) {
 		do {
 			Buffer b = null;
-			synchronized (buffers) {
-				if (index < buffers.size())
-					b = buffers.get(index);
-			}
-			if (b != null) {
-				synchronized (b) {
-					b.inUse++;
-					if (b.buffer == null && b.loading == null && b.error == null)
-						loadBuffer(index);
+			try {
+				synchronized (buffers) {
+					if (index < buffers.size())
+						b = buffers.get(index);
 				}
+				if (b != null) {
+					synchronized (b) {
+						b.inUse++;
+						if (b.buffer == null && b.loading == null && b.error == null)
+							loadBuffer(index);
+					}
+					return b;
+				}
+				loadBuffer(index);
+			} catch (Throwable t) {
+				if (closing) {
+					b = new Buffer(this);
+					b.loading = new SynchronizationPoint<>(new CancelException("IO closed"));
+					return b;
+				}
+				if (b == null) b = new Buffer(this);
+				b.error = IO.error(t);
+				b.loading = new SynchronizationPoint<>(true);
 				return b;
 			}
-			loadBuffer(index);
 		} while (true);
 	}
 	
