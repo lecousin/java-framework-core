@@ -82,6 +82,46 @@ public final class ArrayUtil {
 		return -1;
 	}
 	
+	/** Return the index of the element in the array, or -1 if not found. */
+	public static int indexOf(byte element, byte[] array) {
+		for (int i = array.length - 1; i >= 0; --i)
+			if (array[i] == element)
+				return i;
+		return -1;
+	}
+	
+	/** Return the index of the element in the array, or -1 if not found. */
+	public static int indexOf(short element, short[] array) {
+		for (int i = array.length - 1; i >= 0; --i)
+			if (array[i] == element)
+				return i;
+		return -1;
+	}
+	
+	/** Return the index of the element in the array, or -1 if not found. */
+	public static int indexOf(int element, int[] array) {
+		for (int i = array.length - 1; i >= 0; --i)
+			if (array[i] == element)
+				return i;
+		return -1;
+	}
+	
+	/** Return the index of the element in the array, or -1 if not found. */
+	public static int indexOf(long element, long[] array) {
+		for (int i = array.length - 1; i >= 0; --i)
+			if (array[i] == element)
+				return i;
+		return -1;
+	}
+	
+	/** Return the index of the element in the array, or -1 if not found. */
+	public static int indexOf(char element, char[] array) {
+		for (int i = array.length - 1; i >= 0; --i)
+			if (array[i] == element)
+				return i;
+		return -1;
+	}
+	
 	/** Return the index of the element in the array, or -1 if not found.
 	 * Comparison is done using the == operator.
 	 * The array may contain null values.
@@ -212,6 +252,32 @@ public final class ArrayUtil {
 	 * starting at their respective offset.
 	 */
 	public static boolean equals(long[] a1, int off1, long[] a2, int off2, int len) {
+		if (a1 == null) return a2 == null;
+		if (a2 == null) return false;
+		for (int i = 0; i < len; ++i)
+			if (a1[i + off1] != a2[i + off2]) return false;
+		return true;
+	}
+	
+	/** Return true if the 2 arrays are identical. The are identical if both are null or<ul>
+	 * <li>They have the same length</li>
+	 * <li>The values are the same in the same order</li>
+	 * </ul>
+	 */
+	public static boolean equals(char[] a1, char[] a2) {
+		if (a1 == null) return a2 == null;
+		if (a2 == null) return false;
+		if (a1.length != a2.length) return false;
+		for (int i = 0; i < a1.length; ++i)
+			if (a1[i] != a2[i]) return false;
+		return true;
+	}
+	
+	/** Return true if the 2 specified parts of the arrays are identical.
+	 * The are identical if both array are null or if the values are the same and in the same order
+	 * starting at their respective offset.
+	 */
+	public static boolean equals(char[] a1, int off1, char[] a2, int off2, int len) {
 		if (a1 == null) return a2 == null;
 		if (a2 == null) return false;
 		for (int i = 0; i < len; ++i)
