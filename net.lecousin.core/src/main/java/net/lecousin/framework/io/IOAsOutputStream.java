@@ -18,6 +18,7 @@ public abstract class IOAsOutputStream extends OutputStream {
 		return new Writable(io);
 	}
 	
+	/** Return the underlying IO.Writable. */
 	public abstract IO.Writable getWrappedIO();
 	
 	/** Default implementation of IOAsOutputStream for a Writable. */

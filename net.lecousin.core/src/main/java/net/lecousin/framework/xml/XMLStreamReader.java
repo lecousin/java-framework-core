@@ -506,7 +506,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private UnprotectedStringBuffer readSystemLiteral() throws XMLException, IOException {
 		char c = stream.read();
-		if (c != '"' && c != '\'') throw new XMLException(getPosition(), "Expected character", Character.valueOf(c), "simple or double quote");
+		if (c != '"' && c != '\'') throw new XMLException(getPosition(), "Expected character", Character.valueOf(c),
+			"simple or double quote");
 		UnprotectedStringBuffer literal = new UnprotectedStringBuffer();
 		char quote = c;
 		do {
