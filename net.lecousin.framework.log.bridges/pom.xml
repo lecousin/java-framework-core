@@ -3,12 +3,12 @@
   <groupId>net.lecousin.framework</groupId>
   <artifactId>log.bridges</artifactId>
   <packaging>pom</packaging>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
 
   <parent>
   	<groupId>net.lecousin</groupId>
   	<artifactId>core-parent-pom</artifactId>
-  	<version>0.8.0</version>
+  	<version>0.9.0</version>
   </parent>
   
   <modules>
@@ -29,5 +29,15 @@
     	<name>Guillaume Le Cousin</name>
     </developer>
   </developers>
+  
+  <dependencyManagement>
+  	<dependencies>
+  		<dependency>
+  			<groupId>net.lecousin</groupId>
+  			<artifactId>core</artifactId>
+  			<version>0.9.0</version>
+  		</dependency>
+  	</dependencies>
+  </dependencyManagement>
   
 </project>
