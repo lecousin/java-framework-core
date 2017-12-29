@@ -154,6 +154,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 			if (underlying != null && !underlying.isUnblocked())
 				s.append("\r\n - closeUnderlyingResources");
 			LCCore.getApplication().getDefaultLogger().error(s.toString());
+			jp.error(new Exception("Closeable still waiting for pending operations after 1 minute, close forced"));
 		});
 		if (waitForClose != null)
 			closing.listenInline(waitForClose);
