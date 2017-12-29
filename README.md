@@ -15,24 +15,24 @@ is recommended for better performances on disk operations (detection of physical
 ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=master "Build Status")
 [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/master/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/master)
 
- - core [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.lecousin/core/badge.svg?style=flat)](http://search.maven.org/#artifactdetails%7Cnet.lecousin%7Ccore%7C0.8.5%7Cjar)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.8.5-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.8.5)
+ - core [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.lecousin/core/badge.svg?style=flat)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.9.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.9.0)
  
- - log.bridges.commons-logging [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.lecousin.framework/log.bridges.commons-logging/badge.svg?style=flat)](http://search.maven.org/#artifactdetails%7Cnet.lecousin.framework%7Clog.bridges.commons-logging%7C0.1.0%7Cjar)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.1.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.1.0)
+ - core.javaee [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.lecousin/core.javaee/badge.svg?style=flat)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core.javaee%22)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.9.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core.javaee/0.9.0)
+ 
+ - log.bridges.commons-logging [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.lecousin.framework/log.bridges.commons-logging/badge.svg?style=flat)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin.framework%22%20AND%20a%3A%22log.bridges.commons-logging%22)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.1.1-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.1.1)
 
 ### Next minor release - branch 0.9
 
 ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.9 "Build Status")
 [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/0.9/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/0.9)
-
- - core 0.9.0
- - core.javaee 0.9.0
- - log.bridges.commons-logging 0.1.1
  
 ### Next major release - branch 0.10
 
-Not yet started
+![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.10 "Build Status")
+[![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/0.10/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/0.10)
 
 ## Multi-threading
 
