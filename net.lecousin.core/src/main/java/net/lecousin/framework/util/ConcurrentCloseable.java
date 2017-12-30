@@ -149,8 +149,11 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 			StringBuilder s = new StringBuilder();
 			s.append("Closeable still waiting for pending operations: ").append(this);
 			for (ISynchronizationPoint<?> op : pending)
-				if (!op.isUnblocked())
+				if (!op.isUnblocked()) {
 					s.append("\r\n - ").append(op);
+					for (Object o : op.getAllListeners())
+						s.append("\r\n    - ").append(o);
+				}
 			if (underlying != null && !underlying.isUnblocked())
 				s.append("\r\n - closeUnderlyingResources");
 			LCCore.getApplication().getDefaultLogger().error(s.toString());

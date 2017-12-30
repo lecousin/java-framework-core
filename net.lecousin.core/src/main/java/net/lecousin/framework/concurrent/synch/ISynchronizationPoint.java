@@ -1,5 +1,7 @@
 package net.lecousin.framework.concurrent.synch;
 
+import java.util.Collection;
+
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.event.Listener;
@@ -229,5 +231,8 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		});
 		return aw;
 	}
+	
+	/** Return a collection with all listeners, only for debugging purposes. */
+	public Collection<?> getAllListeners();
 	
 }

@@ -1,6 +1,7 @@
 package net.lecousin.framework.concurrent.synch;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.application.Application;
@@ -70,6 +71,12 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	@Override
 	public boolean hasError() {
 		return error != null;
+	}
+	
+	@Override
+	public Collection<?> getAllListeners() {
+		if (listenersInline == null) return new ArrayList<>(0);
+		return new ArrayList<>(listenersInline);
 	}
 	
 	/** Add a listener to be called when this AsyncWork is unblocked. */

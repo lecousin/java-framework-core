@@ -1,6 +1,7 @@
 package net.lecousin.framework.concurrent.synch;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
@@ -40,6 +41,12 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	private TError error = null;
 	private CancelException cancelled = null;
 	private ArrayList<Runnable> listenersInline = null;
+	
+	@Override
+	public Collection<?> getAllListeners() {
+		if (listenersInline == null) return new ArrayList<>(0);
+		return new ArrayList<>(listenersInline);
+	}
 	
 	@Override
 	public void listenInline(Runnable r) {

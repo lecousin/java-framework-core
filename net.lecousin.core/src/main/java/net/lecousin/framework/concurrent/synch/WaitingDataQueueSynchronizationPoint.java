@@ -1,6 +1,7 @@
 package net.lecousin.framework.concurrent.synch;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.collections.TurnArray;
@@ -91,6 +92,12 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 		synchronized (this) {
 			this.notifyAll();
 		}
+	}
+	
+	@Override
+	public Collection<?> getAllListeners() {
+		if (listeners == null) return new ArrayList<>(0);
+		return new ArrayList<>(listeners);
 	}
 	
 	@Override

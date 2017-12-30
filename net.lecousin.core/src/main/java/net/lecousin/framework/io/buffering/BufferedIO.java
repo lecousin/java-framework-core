@@ -1189,7 +1189,7 @@ public abstract class BufferedIO extends BufferingManaged {
 				if (p < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
 					int nextIndex = getBufferIndex(p);
 					if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-				} else
+				} else if (p > size)
 					size = p;
 				if (buf.remaining() == 0) {
 					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(len + alreadyDone), null));
