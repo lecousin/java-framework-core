@@ -16,7 +16,7 @@ is recommended for better performances on disk operations (detection of physical
 [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/master)
 
  - core [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.9.1-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.9.1)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.9.2-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.9.2)
  
  - core.javaee [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.javaee.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core.javaee%22)
  [![Javadoc](https://img.shields.io/badge/javadoc-0.9.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core.javaee/0.9.0)

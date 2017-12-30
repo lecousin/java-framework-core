@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>net.lecousin</groupId>
 	<artifactId>core</artifactId>
-	<version>0.9.1</version>
+	<version>0.9.2</version>
 	
 	<parent>
 		<groupId>net.lecousin</groupId>
