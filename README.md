@@ -13,7 +13,7 @@ is recommended for better performances on disk operations (detection of physical
 ### Current version - branch master
 
 ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=master "Build Status")
-[![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/master/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/master)
+[![Codecov](https://codecov.io/gh/lecousin/java-framework-core/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/master)
 
  - core [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.lecousin/core/badge.svg?style=flat)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
  [![Javadoc](https://img.shields.io/badge/javadoc-0.9.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.9.0)
