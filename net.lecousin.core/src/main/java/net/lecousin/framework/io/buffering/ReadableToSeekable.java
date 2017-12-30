@@ -155,6 +155,10 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	}
 
 	private void readNextBuffer() {
+		if (knownSize == ioPos) {
+			buffering = new AsyncWork<Boolean,IOException>(Boolean.TRUE, null);
+			return;
+		}
 		buffering = new AsyncWork<Boolean,IOException>();
 		ByteBuffer buffer = ByteBuffer.allocate(8192);
 		AsyncWork<Integer,IOException> read = io.readFullyAsync(buffer);
@@ -184,8 +188,10 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 		}, buffering);
 	}
 
+	/** Wait to be able to read at least one byte at the given position, return false if this is beyond the end. */
 	private boolean waitPosition(long pos) throws IOException {
 		while (pos >= ioPos) {
+			if (knownSize == ioPos) return false;
 			buffering.block(0);
 			if (pos < ioPos) break;
 			synchronized (this) {
@@ -304,7 +310,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 						result.unblockCancel(bufferize.getCancelEvent());
 						return;
 					}
-					if (!bufferize.isSuccessful()) {
+					if (bufferize.hasError()) {
 						if (ondone != null) ondone.run(new Pair<>(null, bufferize.getError()));
 						result.unblockError(bufferize.getError());
 						return;

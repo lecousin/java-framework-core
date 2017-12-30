@@ -49,7 +49,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	}
 	
 	@Override
-	public byte getPriority() { return io.getPriority(); }
+	public byte getPriority() { return io != null ? io.getPriority() : Task.PRIORITY_NORMAL; }
 	
 	@Override
 	public void setPriority(byte priority) { io.setPriority(priority); }
