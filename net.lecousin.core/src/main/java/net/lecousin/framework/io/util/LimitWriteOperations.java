@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
@@ -28,6 +29,7 @@ public class LimitWriteOperations {
 	private IO.Writable io;
 	private TurnArray<Pair<ByteBuffer,AsyncWork<Integer,IOException>>> waiting;
 	private SynchronizationPoint<NoException> lock = null;
+	private AsyncWork<Integer, IOException> lastWrite = new AsyncWork<>(Integer.valueOf(0), null);
 	
 	/**
 	 * Queue the buffer to write. If there is no pending write, the write operation is started.
@@ -37,8 +39,8 @@ public class LimitWriteOperations {
 	public AsyncWork<Integer,IOException> write(ByteBuffer buffer) throws IOException {
 		do {
 			synchronized (waiting) {
-				if (waiting.isEmpty()) {
-					return io.writeAsync(buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
+				if (waiting.isEmpty() && lastWrite.isUnblocked()) {
+					return lastWrite = io.writeAsync(buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
 						@Override
 						public void run(Pair<Integer, IOException> param) {
 							writeDone();
@@ -63,12 +65,12 @@ public class LimitWriteOperations {
 		synchronized (waiting) {
 			Pair<ByteBuffer,AsyncWork<Integer,IOException>> b = waiting.pollFirst();
 			if (b != null) {
-				io.writeAsync(b.getValue1(), new RunnableWithParameter<Pair<Integer,IOException>>() {
+				(lastWrite = io.writeAsync(b.getValue1(), new RunnableWithParameter<Pair<Integer,IOException>>() {
 					@Override
 					public void run(Pair<Integer, IOException> param) {
 						writeDone();
 					}
-				}).listenInline(b.getValue2());
+				})).listenInline(b.getValue2());
 				if (lock != null) {
 					sp = lock;
 					lock = null;
@@ -81,10 +83,17 @@ public class LimitWriteOperations {
 	
 	/** Return the last pending operation, or null. */
 	public AsyncWork<Integer, IOException> getLastPendingOperation() {
-		Pair<ByteBuffer,AsyncWork<Integer,IOException>> b = waiting.pollLast();
+		Pair<ByteBuffer,AsyncWork<Integer,IOException>> b = waiting.peekLast();
 		if (b == null)
-			return null;
+			return lastWrite.isUnblocked() ? null : lastWrite;
 		return b.getValue2();
+	}
+	
+	/** Same as getLastPendingOperation but never return null (return an unblocked synchronization point instead). */
+	public ISynchronizationPoint<IOException> flush() {
+		ISynchronizationPoint<IOException> sp = getLastPendingOperation();
+		if (sp == null) sp = new SynchronizationPoint<>(true);
+		return sp;
 	}
 
 }

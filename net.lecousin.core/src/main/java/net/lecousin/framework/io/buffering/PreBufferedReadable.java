@@ -262,6 +262,15 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				}
 				buffer.flip();
 				synchronized (PreBufferedReadable.this) {
+					if (firstReadTask.isCancelled()) {
+						if (dataReady != null) {
+							SynchronizationPoint<NoException> dr = dataReady;
+							dataReady = null;
+							dr.unblock();
+						}
+						jpNextRead.joined();
+						return;
+					}
 					Throwable e = firstReadTask.getError();
 					if (singleRead && e == null && firstReadTask.getResult().intValue() < size)
 						e = new IOException("Only " + firstReadTask.getResult().intValue()
@@ -420,7 +429,10 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			@Override
 			public Integer run() throws IOException, CancelException {
 				if (error != null) throw error;
-				if (buffersReady == null) throw new CancelException("IO Closed");
+				if (buffersReady == null) {
+					if (endReached) return Integer.valueOf(-1); // case of empty readable
+					throw new CancelException("IO Closed");
+				}
 				if (current == null) {
 					if (endReached) return Integer.valueOf(-1);
 					if (isClosing() || isClosed()) throw new CancelException("IO Closed");

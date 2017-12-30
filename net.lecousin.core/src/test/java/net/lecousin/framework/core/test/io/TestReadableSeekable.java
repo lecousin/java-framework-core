@@ -215,6 +215,10 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 					sp.error(read.get().getError());
 					return;
 				}
+				if (read.get().isCancelled()) {
+					sp.cancel(read.get().getCancelEvent());
+					return;
+				}
 				if (!onDoneBefore.get()) {
 					sp.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
 					return;

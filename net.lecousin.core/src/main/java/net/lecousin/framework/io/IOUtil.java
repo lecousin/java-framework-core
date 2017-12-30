@@ -253,6 +253,7 @@ public class IOUtil {
 			
 			@Override
 			public void error(IOException error) {
+				if (ondone != null) ondone.run(new Pair<>(null, error));
 				sp.unblockError(error);
 			}
 			
