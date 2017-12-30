@@ -39,13 +39,18 @@ public class LimitWriteOperations {
 	public AsyncWork<Integer,IOException> write(ByteBuffer buffer) throws IOException {
 		do {
 			synchronized (waiting) {
+				if (lastWrite.isCancelled()) return lastWrite;
 				if (waiting.isEmpty() && lastWrite.isUnblocked()) {
-					return lastWrite = io.writeAsync(buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
+					lastWrite = io.writeAsync(buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
 						@Override
 						public void run(Pair<Integer, IOException> param) {
 							writeDone();
 						}
 					});
+					lastWrite.onCancel((cancel) -> {
+						writeDone();
+					});
+					return lastWrite;
 				}
 				if (!waiting.isFull()) {
 					AsyncWork<Integer,IOException> res = new AsyncWork<>();
@@ -65,15 +70,24 @@ public class LimitWriteOperations {
 		synchronized (waiting) {
 			Pair<ByteBuffer,AsyncWork<Integer,IOException>> b = waiting.pollFirst();
 			if (b != null) {
-				(lastWrite = io.writeAsync(b.getValue1(), new RunnableWithParameter<Pair<Integer,IOException>>() {
-					@Override
-					public void run(Pair<Integer, IOException> param) {
-						writeDone();
-					}
-				})).listenInline(b.getValue2());
 				if (lock != null) {
 					sp = lock;
 					lock = null;
+				}
+				if (lastWrite.isCancelled()) {
+					while (b != null) {
+						b.getValue2().cancel(lastWrite.getCancelEvent());
+						b = waiting.pollFirst();
+					}
+				} else {
+					lastWrite = io.writeAsync(b.getValue1(), new RunnableWithParameter<Pair<Integer,IOException>>() {
+						@Override
+						public void run(Pair<Integer, IOException> param) {
+							writeDone();
+						}
+					});
+					lastWrite.onCancel((cancel) -> { writeDone(); });
+					lastWrite.listenInline(b.getValue2());
 				}
 			}
 		}

@@ -61,8 +61,11 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			for (int j = 0; j < testBuf.length; ++j) {
 				if (faster && (j%((i%5)+1)) == 1) continue;
 				buffer.clear();
-				if (io.readSync(offset.intValue()*testBuf.length+j, buffer) != 1)
+				int nb = io.readSync(offset.intValue()*testBuf.length+j, buffer);
+				if (nb <= 0)
 					throw new Exception("Unexpected end of stream at " + (i*testBuf.length+j));
+				if (nb > 1)
+					throw new Exception("Unexpected number of bytes read at " + (i*testBuf.length+j) + ": " + nb + " bytes returned, only one requested");
 				if (b[0] != testBuf[j])
 					throw new Exception("Invalid byte "+(b[0]&0xFF)+" at "+(i*testBuf.length+j));
 			}

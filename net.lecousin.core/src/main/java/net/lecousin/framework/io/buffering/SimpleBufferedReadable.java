@@ -125,6 +125,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 		}
 		int nb = currentRead.getResult().intValue();
 		if (nb <= 0) {
+			state.pos = state.len = 0;
 			state.buffer = null;
 			bb = null;
 			readBuffer = null;
