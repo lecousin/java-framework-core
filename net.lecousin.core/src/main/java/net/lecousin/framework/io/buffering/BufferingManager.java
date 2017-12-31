@@ -27,6 +27,13 @@ import net.lecousin.framework.util.StringUtil;
  */
 public class BufferingManager implements Closeable, IMemoryManageable {
 
+	/** By default set to 55MB. */
+	public static final int DEFAULT_MEMORY_THRESHOLD = 55 * 1024 * 1024;
+	/** By default set to 64MB. */
+	public static final int DEFAULT_MAX_MEMORY = 64 * 1024 * 1024;
+	/** By default set to 12MB. */
+	public static final int DEFAULT_TO_BE_WRITTEN_THRESHOLD = 12 * 1024 * 1024;
+	
 	private Background background;
 	
 	private BufferingManager() {
@@ -58,11 +65,11 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 	
 	private LinkedArrayList<Buffer> buffers = new LinkedArrayList<>(25);
 	private long totalMemory = 0;
-	private long maxMemory = 64 * 1024 * 1024;
-	private long memoryThreshold = 55 * 1024 * 1024;
+	private long maxMemory = DEFAULT_MAX_MEMORY;
+	private long memoryThreshold = DEFAULT_MEMORY_THRESHOLD;
 	private long lastFree = 0;
 	private long toBeWritten = 0;
-	private long toBeWrittenThreshold = 12 * 1024 * 1024;
+	private long toBeWrittenThreshold = DEFAULT_TO_BE_WRITTEN_THRESHOLD;
 	
 	public long getMemoryThreshold() { return memoryThreshold; }
 	

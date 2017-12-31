@@ -700,13 +700,13 @@ public abstract class BufferedIO extends BufferingManaged {
 		int bufferIndex = getBufferIndex(pos);
 		Buffer buffer = useBufferSync(bufferIndex);
 		buffer.lastRead = System.currentTimeMillis();
-		buffer.inUse--;
 		byte b = buffer.buffer[getBufferOffset(pos)];
 		pos++;
 		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
 			int nextIndex = getBufferIndex(pos);
 			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
 		}
+		buffer.inUse--;
 		return b & 0xFF;
 	}
 
@@ -751,11 +751,14 @@ public abstract class BufferedIO extends BufferingManaged {
 		int bufferIndex = getBufferIndex(pos);
 		Buffer buffer = useBufferAsync(bufferIndex);
 		SynchronizationPoint<NoException> sp = buffer.loading;
-		if (sp != null && !sp.isUnblocked()) return -2;
+		if (sp != null && !sp.isUnblocked()) {
+			buffer.lastRead = System.currentTimeMillis();
+			buffer.inUse--;
+			return -2;
+		}
 		if (buffer.error != null) throw buffer.error;
-		buffer.lastRead = System.currentTimeMillis();
-		buffer.inUse--;
 		byte b = buffer.buffer[getBufferOffset(pos)];
+		buffer.inUse--;
 		pos++;
 		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
 			int nextIndex = getBufferIndex(pos);
@@ -786,6 +789,7 @@ public abstract class BufferedIO extends BufferingManaged {
 					throw buffer.error;
 				int start = getBufferOffset(pos);
 				if (start >= buffer.len) {
+					buffer.inUse--;
 					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(0), null));
 					return Integer.valueOf(0);
 				}
@@ -1034,14 +1038,15 @@ public abstract class BufferedIO extends BufferingManaged {
 				buffers.add(new Buffer(this));
 			while (firstIndex <= lastIndex) {
 				Buffer b;
-				if (firstIndex >= buffers.size()) {
+				if (firstIndex == buffers.size()) {
 					b = new Buffer(this);
-					newBuffers.add(b);
 					buffers.add(b);
 				} else
 					b = buffers.get(firstIndex);
-				if (b.buffer == null)
+				if (b.buffer == null) {
 					b.buffer = new byte[firstIndex > 0 ? bufferSize : firstBufferSize];
+					newBuffers.add(b);
+				}
 				b.len = firstIndex < lastIndex ? b.buffer.length : (int)(newSize - getBufferStart(firstIndex));
 				b.lastRead = System.currentTimeMillis();
 				firstIndex++;
@@ -1151,6 +1156,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			List<Buffer> buffers = this.buffers;
 			if (closing || buffers == null)
 				return new AsyncWork<>(null, null, new CancelException("IO closed"));
+			boolean isNew = false;
 			synchronized (buffers) {
 				if (bufferIndex == buffers.size()) {
 					buffer = new Buffer(this);
@@ -1158,15 +1164,18 @@ public abstract class BufferedIO extends BufferingManaged {
 					buffer.len = 0;
 					buffer.inUse = 1;
 					buffers.add(buffer);
+					isNew = true;
 				} else {
 					buffer = buffers.get(bufferIndex);
 					if (buffer.buffer == null) {
 						buffer.buffer = new byte[bufferIndex == 0 ? firstBufferSize : bufferSize];
 						buffer.len = 0;
+						isNew = true;
 					}
 					buffer.inUse++;
 				}
 			}
+			if (isNew) manager.newBuffer(buffer);
 		}
 		SynchronizationPoint<NoException> sp = buffer.loading;
 		AsyncWork<Integer,IOException> done = new AsyncWork<>();
@@ -1230,6 +1239,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		if (pos < size || (size > 0 && getBufferIndex(size - 1) == bufferIndex))
 			buffer = useBufferAsync(bufferIndex);
 		else {
+			boolean isNew = false;
 			synchronized (buffers) {
 				if (bufferIndex == buffers.size()) {
 					buffer = new Buffer(this);
@@ -1237,15 +1247,18 @@ public abstract class BufferedIO extends BufferingManaged {
 					buffer.len = 0;
 					buffer.inUse = 1;
 					buffers.add(buffer);
+					isNew = true;
 				} else {
 					buffer = buffers.get(bufferIndex);
 					if (buffer.buffer == null) {
 						buffer.buffer = new byte[bufferIndex == 0 ? firstBufferSize : bufferSize];
 						buffer.len = 0;
+						isNew = true;
 					}
 					buffer.inUse++;
 				}
 			}
+			if (isNew) manager.newBuffer(buffer);
 		}
 		SynchronizationPoint<NoException> sp = buffer.loading;
 		if (sp != null)
@@ -1278,6 +1291,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			if (pos < size || (size > 0 && getBufferIndex(size - 1) == bufferIndex))
 				buffer = useBufferAsync(bufferIndex);
 			else {
+				boolean isNew = false;
 				synchronized (buffers) {
 					if (bufferIndex == buffers.size()) {
 						buffer = new Buffer(this);
@@ -1285,15 +1299,18 @@ public abstract class BufferedIO extends BufferingManaged {
 						buffer.len = 0;
 						buffer.inUse = 1;
 						buffers.add(buffer);
+						isNew = true;
 					} else {
 						buffer = buffers.get(bufferIndex);
 						if (buffer.buffer == null) {
 							buffer.buffer = new byte[bufferIndex == 0 ? firstBufferSize : bufferSize];
 							buffer.len = 0;
+							isNew = true;
 						}
 						buffer.inUse++;
 					}
 				}
+				if (isNew) manager.newBuffer(buffer);
 			}
 			SynchronizationPoint<NoException> sp = buffer.loading;
 			if (sp != null)
@@ -1325,6 +1342,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		if (pos < size || (size > 0 && getBufferIndex(size - 1) == bufferIndex))
 			buffer = useBufferAsync(bufferIndex);
 		else {
+			boolean isNew = false;
 			synchronized (buffers) {
 				if (bufferIndex == buffers.size()) {
 					buffer = new Buffer(this);
@@ -1332,15 +1350,18 @@ public abstract class BufferedIO extends BufferingManaged {
 					buffer.len = 0;
 					buffer.inUse = 1;
 					buffers.add(buffer);
+					isNew = true;
 				} else {
 					buffer = buffers.get(bufferIndex);
 					if (buffer.buffer == null) {
 						buffer.buffer = new byte[bufferIndex == 0 ? firstBufferSize : bufferSize];
 						buffer.len = 0;
+						isNew = true;
 					}
 					buffer.inUse++;
 				}
 			}
+			if (isNew) manager.newBuffer(buffer);
 		}
 		SynchronizationPoint<NoException> sp = buffer.loading;
 		if (sp != null)
