@@ -38,6 +38,7 @@ public class LimitWriteOperations {
 	 */
 	public AsyncWork<Integer,IOException> write(ByteBuffer buffer) throws IOException {
 		do {
+			SynchronizationPoint<NoException> lk;
 			synchronized (waiting) {
 				if (lastWrite.isCancelled()) return lastWrite;
 				if (waiting.isEmpty() && lastWrite.isUnblocked()) {
@@ -60,8 +61,9 @@ public class LimitWriteOperations {
 				if (lock != null)
 					throw new IOException("Concurrent write");
 				lock = new SynchronizationPoint<>();
+				lk = lock;
 			}
-			lock.block(0);
+			lk.block(0);
 		} while (true);
 	}
 	
