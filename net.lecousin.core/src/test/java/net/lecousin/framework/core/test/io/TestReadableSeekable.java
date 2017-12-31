@@ -122,7 +122,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 					return;
 				}
 				if (read.get().getResult().intValue() != 1) {
-					sp.error(new Exception("Unexpected end of stream at " + (offset.get()*testBuf.length+j.get())));
+					sp.error(new Exception("Unexpected end of stream at " + (offset.get()*testBuf.length+j.get()) + ": 1 byte expected, " + read.get().getResult().intValue() + " read"));
 					return;
 				}
 				if (b[0] != testBuf[j.get()]) {

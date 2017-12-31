@@ -291,6 +291,9 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 						read += buffer.remaining();
 						if (size > 0 && read == size) 
 							endReached = true;
+						if (endReached && size > 0 && read < size) {
+							error = new IOException("Unexpected end after " + read + " bytes read, known size is " + size);
+						}
 						if (dataReady != null) {
 							SynchronizationPoint<NoException> dr = dataReady;
 							dataReady = null;
@@ -499,6 +502,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					if (reusableBuffers == null) {
 						// we reach the end
 						endReached = true;
+						if (size > 0 && read < size)
+							error = new IOException("Unexpected end after " + read + " bytes read, known size is " + size);
 						if (dataReady != null) dataReady.unblock();
 						return skipped;
 					}
@@ -509,7 +514,9 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					if (endReached) return skipped;
 					if (nextReadTask == null && reusableBuffers != null) {
 						// we cancelled all buffers, let's do a move
-						skipped += src.skipSync(n);
+						long n2 = src.skipSync(n);
+						skipped += n2;
+						read += n2;
 						// restart reading
 						stopReading = false;
 						moveNextBuffer(true);
@@ -629,6 +636,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 							if (!endReached && !reusableBuffers.isEmpty() && !stopReading)
 								nextRead();
 						}
+						if (endReached && size > 0 && read < size)
+							error = new IOException("Unexpected end after " + read + " bytes read, known size is " + size);
 						if (dataReady != null) {
 							sp = dataReady;
 							dataReady = null;

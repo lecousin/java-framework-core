@@ -280,7 +280,7 @@ public final class Application {
 		app.loggerFactory = new LoggerFactory(app);
 		
 		// init LCCore with this application
-		LCCore.init(app);
+		LCCore.start(app);
 
 		JoinPoint<Exception> loading = new JoinPoint<>();
 		

@@ -64,17 +64,29 @@ public final class LCCore {
 	}
 	
 	private static Environment instance = null;
+	private static boolean started = false;
 	
 	/** Return the environment. */
 	public static Environment get() {
 		return instance;
 	}
 	
-	/** Initialization. */
-	public static synchronized void init(Environment env) {
+	/** Set the environment. */
+	public static void set(Environment env) throws IllegalStateException {
 		if (instance != null) throw new IllegalStateException("LCCore environment already exists");
 		instance = env;
-
+	}
+	
+	/** Return true if the environment is already started. */
+	public static boolean isStarted() {
+		return started;
+	}
+	
+	/** Initialization. */
+	public static synchronized void start() {
+		if (started) throw new IllegalStateException("LCCore environment already started");
+		started = true;
+		
 		// init logging system if not specified
 		if (System.getProperty("org.apache.commons.logging.Log") == null) {
 			try {
@@ -102,13 +114,14 @@ public final class LCCore {
 		}.start();
 	}
 	
-	static synchronized void init(Application app) {
+	static synchronized void start(Application app) {
 		if (instance == null) {
 			StandaloneLCCore env = new StandaloneLCCore();
-			env.add(app);
-			init(env);
-		} else
-			instance.add(app);
+			set(env);
+		}
+		instance.add(app);
+		if (!isStarted())
+			start();
 	}
 	
 	public static Application getApplication() {

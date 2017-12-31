@@ -63,7 +63,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		this.bufferSize = bufferSize;
 		this.size = size;
 		this.startReadSecondBufferWhenFirstBufferFullyRead = startReadSecondBufferWhenFirstBufferFullyRead;
-		int nbBuffers = (int)((size - firstBufferSize) / bufferSize) + 2;
+		int nbBuffers = size <= firstBufferSize ? 1 : (int)((size - firstBufferSize) / bufferSize) + 2;
 		if (nbBuffers <= 10)
 			buffers = new ArrayList<>(nbBuffers);
 		else {
@@ -128,6 +128,7 @@ public abstract class BufferedIO extends BufferingManaged {
 						return;
 					}
 					buffer.len = loading.getResult().intValue();
+					if (buffer.len < 0) buffer.len = 0;
 					buffer.lastRead = System.currentTimeMillis();
 					manager.newBuffer(buffer);
 					buffer.loading.unblock();
@@ -1032,12 +1033,17 @@ public abstract class BufferedIO extends BufferingManaged {
 			while (firstIndex > buffers.size())
 				buffers.add(new Buffer(this));
 			while (firstIndex <= lastIndex) {
-				Buffer b = new Buffer(this);
-				b.buffer = new byte[firstIndex > 0 ? bufferSize : firstBufferSize];
+				Buffer b;
+				if (firstIndex >= buffers.size()) {
+					b = new Buffer(this);
+					newBuffers.add(b);
+					buffers.add(b);
+				} else
+					b = buffers.get(firstIndex);
+				if (b.buffer == null)
+					b.buffer = new byte[firstIndex > 0 ? bufferSize : firstBufferSize];
 				b.len = firstIndex < lastIndex ? b.buffer.length : (int)(newSize - getBufferStart(firstIndex));
 				b.lastRead = System.currentTimeMillis();
-				newBuffers.add(b);
-				buffers.add(b);
 				firstIndex++;
 			}
 		}
@@ -1259,7 +1265,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		if (p < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
 			int nextIndex = getBufferIndex(p);
 			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-		} else
+		} else if (p > size)
 			size = p;
 		if (buf.remaining() == 0) return alreadyDone + len;
 		return writeSync(p, buf, alreadyDone + len);
@@ -1308,7 +1314,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
 				int nextIndex = getBufferIndex(pos);
 				if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-			} else
+			} else if (pos > size)
 				size = pos;
 		} while (length > 0);
 	}
@@ -1351,7 +1357,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
 			int nextIndex = getBufferIndex(pos);
 			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-		} else
+		} else if (pos > size)
 			size = pos;
 	}
 }

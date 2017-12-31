@@ -4,10 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
@@ -20,6 +16,10 @@ import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.mutable.MutableLong;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
+
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
 public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 	

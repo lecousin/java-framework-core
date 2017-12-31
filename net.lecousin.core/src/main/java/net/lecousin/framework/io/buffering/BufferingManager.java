@@ -34,7 +34,7 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 		background.start();
 	}
 	
-	static synchronized BufferingManager get() {
+	public static synchronized BufferingManager get() {
 		Application app = LCCore.getApplication();
 		BufferingManager bm = app.getInstance(BufferingManager.class);
 		if (bm == null) {
