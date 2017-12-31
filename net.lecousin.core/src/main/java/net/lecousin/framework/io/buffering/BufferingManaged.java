@@ -12,7 +12,7 @@ public abstract class BufferingManaged extends ConcurrentCloseable {
 
 	abstract AsyncWork<?,IOException> flushWrite(Buffer buffer);
 	
-	abstract void removed(Buffer buffer);
+	abstract boolean removing(Buffer buffer);
 
 	boolean closing = false;
 	

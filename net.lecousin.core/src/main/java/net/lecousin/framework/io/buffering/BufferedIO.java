@@ -212,8 +212,12 @@ public abstract class BufferedIO extends BufferingManaged {
 	}
 	
 	@Override
-	void removed(BufferingManager.Buffer buffer) {
-		((Buffer)buffer).loading = null;
+	boolean removing(BufferingManager.Buffer buffer) {
+		Buffer b = (Buffer)buffer;
+		if (b.loading == null) return true;
+		if (!b.loading.isUnblocked()) return false;
+		b.loading = null;
+		return true;
 	}
 	
 	@Override

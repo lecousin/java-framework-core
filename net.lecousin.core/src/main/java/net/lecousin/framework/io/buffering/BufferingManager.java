@@ -211,7 +211,7 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 				synchronized (b) {
 					if (b.inUse > 0) continue;
 					if (b.lastWrite > 0) continue;
-					b.owner.removed(b);
+					if (!b.owner.removing(b)) continue;
 					buffers.remove(b);
 					totalMemory -= b.buffer.length;
 					b.buffer = null;
