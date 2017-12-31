@@ -123,7 +123,6 @@ public abstract class BufferedIO extends BufferingManaged {
 							buffer.error = loading.getError();
 							buffer.loading.unblock();
 						}
-						buffer.loading = null;
 						buffer.buffer = null;
 						return;
 					}
@@ -132,7 +131,6 @@ public abstract class BufferedIO extends BufferingManaged {
 					buffer.lastRead = System.currentTimeMillis();
 					manager.newBuffer(buffer);
 					buffer.loading.unblock();
-					buffer.loading = null;
 				}
 			});
 		}
@@ -215,6 +213,7 @@ public abstract class BufferedIO extends BufferingManaged {
 	
 	@Override
 	void removed(BufferingManager.Buffer buffer) {
+		((Buffer)buffer).loading = null;
 	}
 	
 	@Override
@@ -674,12 +673,8 @@ public abstract class BufferedIO extends BufferingManaged {
 		if (i >= buffers.size()) i = 0;
 		Buffer b = buffers.get(i);
 		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		if (b.error != null) {
-			sp.error(b.error);
-			return sp;
-		}
 		SynchronizationPoint<NoException> l = b.loading;
-		if (l != null) {
+		if (l != null && !l.isUnblocked()) {
 			l.listenInline(new Runnable() {
 				@Override
 				public void run() {
@@ -691,7 +686,10 @@ public abstract class BufferedIO extends BufferingManaged {
 			});
 			return sp;
 		}
-		sp.unblock();
+		if (b.error != null)
+			sp.error(b.error);
+		else
+			sp.unblock();
 		return sp;
 	}
 	
@@ -790,7 +788,9 @@ public abstract class BufferedIO extends BufferingManaged {
 				int start = getBufferOffset(pos);
 				if (start >= buffer.len) {
 					buffer.inUse--;
-					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(0), null));
+					if (pos < size)
+						throw new IOException("Unexpected buffer size: IO size is " + size
+							+ ", and length of buffer " + bufferIndex + " is " + buffer.len);
 					return Integer.valueOf(0);
 				}
 				int len = buf.remaining();
@@ -807,7 +807,7 @@ public abstract class BufferedIO extends BufferingManaged {
 				return Integer.valueOf(len);
 			}
 		};
-		if (sp == null) task.start();
+		if (sp == null || sp.isUnblocked()) task.start();
 		else task.startOn(sp, true);
 		return operation(task.getOutput());
 	}
@@ -820,7 +820,7 @@ public abstract class BufferedIO extends BufferingManaged {
 		int bufferIndex = getBufferIndex(pos);
 		Buffer buffer = useBufferAsync(bufferIndex);
 		SynchronizationPoint<NoException> sp = buffer.loading;
-		if (sp == null) {
+		if (sp == null || sp.isUnblocked()) {
 			// already loaded
 			if (buffer.error != null) {
 				if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
@@ -991,7 +991,7 @@ public abstract class BufferedIO extends BufferingManaged {
 				return null;
 			}
 		};
-		if (sp == null) task.start();
+		if (sp == null || sp.isUnblocked()) task.start();
 		else task.startOn(sp, true);
 		done.forwardCancel(task.getOutput());
 		task.getOutput().forwardCancel(done);
@@ -1032,6 +1032,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			}
 			firstIndex++;
 		}
+		JoinPoint<Exception> jp = new JoinPoint<>();
 		LinkedList<Buffer> newBuffers = new LinkedList<>();
 		synchronized (buffers) {
 			while (firstIndex > buffers.size())
@@ -1043,24 +1044,36 @@ public abstract class BufferedIO extends BufferingManaged {
 					buffers.add(b);
 				} else
 					b = buffers.get(firstIndex);
-				if (b.buffer == null) {
+				if (b.buffer == null && (b.loading == null || b.loading.isUnblocked())) {
 					b.buffer = new byte[firstIndex > 0 ? bufferSize : firstBufferSize];
 					newBuffers.add(b);
 				}
-				b.len = firstIndex < lastIndex ? b.buffer.length : (int)(newSize - getBufferStart(firstIndex));
-				b.lastRead = System.currentTimeMillis();
+				if (b.loading != null && !b.loading.isUnblocked()) {
+					int i = firstIndex;
+					Buffer buf = b;
+					b.loading.listenInline(() -> {
+						buf.len = i < lastIndex ? buf.buffer.length : (int)(newSize - getBufferStart(i));
+						buf.lastRead = System.currentTimeMillis();
+					});
+					jp.addToJoin(b.loading);
+				} else {
+					b.len = firstIndex < lastIndex ? b.buffer.length : (int)(newSize - getBufferStart(firstIndex));
+					b.lastRead = System.currentTimeMillis();
+				}
 				firstIndex++;
 			}
 		}
 		while (!newBuffers.isEmpty())
 			manager.newBuffer(newBuffers.removeFirst());
 		AsyncWork<Void, IOException> sp = new AsyncWork<>();
-		SynchronizationPoint<NoException> lb = lastBuffer;
+		if (lastBuffer != null)
+			jp.addToJoin(lastBuffer);
+		jp.start();
 		resize.listenInline(() -> {
-			if (lb == null || lb.isUnblocked()) {
+			if (jp.isUnblocked()) {
 				size = newSize;
 				sp.unblockSuccess(null);
-			} else lb.listenInline(new Runnable() {
+			} else jp.listenInline(new Runnable() {
 				@Override
 				public void run() {
 					size = newSize;
@@ -1081,7 +1094,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			for (int i = buffers.size() - 1; i >= lastBufferIndex && i >= 0; --i) {
 				Buffer buffer = buffers.get(i);
 				synchronized (buffer) {
-					if (buffer.loading != null)
+					if (buffer.loading != null && !buffer.loading.isUnblocked())
 						jp.addToJoin(buffer.loading);
 					if (buffer.flushing != null)
 						for (AsyncWork<?,?> f : buffer.flushing)
@@ -1167,7 +1180,7 @@ public abstract class BufferedIO extends BufferingManaged {
 					isNew = true;
 				} else {
 					buffer = buffers.get(bufferIndex);
-					if (buffer.buffer == null) {
+					if (buffer.buffer == null && (buffer.loading == null || buffer.loading.isUnblocked())) {
 						buffer.buffer = new byte[bufferIndex == 0 ? firstBufferSize : bufferSize];
 						buffer.len = 0;
 						isNew = true;
@@ -1217,7 +1230,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			}
 		};
 		task.getOutput().forwardCancel(done);
-		if (sp == null)
+		if (sp == null || sp.isUnblocked())
 			task.start();
 		else
 			sp.listenAsync(task, true);
@@ -1250,7 +1263,7 @@ public abstract class BufferedIO extends BufferingManaged {
 					isNew = true;
 				} else {
 					buffer = buffers.get(bufferIndex);
-					if (buffer.buffer == null) {
+					if (buffer.buffer == null && (buffer.loading == null || buffer.loading.isUnblocked())) {
 						buffer.buffer = new byte[bufferIndex == 0 ? firstBufferSize : bufferSize];
 						buffer.len = 0;
 						isNew = true;
@@ -1261,7 +1274,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			if (isNew) manager.newBuffer(buffer);
 		}
 		SynchronizationPoint<NoException> sp = buffer.loading;
-		if (sp != null)
+		if (sp != null && !sp.isUnblocked())
 			sp.block(0);
 		if (buffer.error != null)
 			throw buffer.error;
@@ -1302,7 +1315,7 @@ public abstract class BufferedIO extends BufferingManaged {
 						isNew = true;
 					} else {
 						buffer = buffers.get(bufferIndex);
-						if (buffer.buffer == null) {
+						if (buffer.buffer == null && (buffer.loading == null || buffer.loading.isUnblocked())) {
 							buffer.buffer = new byte[bufferIndex == 0 ? firstBufferSize : bufferSize];
 							buffer.len = 0;
 							isNew = true;
@@ -1313,7 +1326,7 @@ public abstract class BufferedIO extends BufferingManaged {
 				if (isNew) manager.newBuffer(buffer);
 			}
 			SynchronizationPoint<NoException> sp = buffer.loading;
-			if (sp != null)
+			if (sp != null && !sp.isUnblocked())
 				sp.block(0);
 			if (buffer.error != null)
 				throw buffer.error;
@@ -1353,7 +1366,7 @@ public abstract class BufferedIO extends BufferingManaged {
 					isNew = true;
 				} else {
 					buffer = buffers.get(bufferIndex);
-					if (buffer.buffer == null) {
+					if (buffer.buffer == null && (buffer.loading == null || buffer.loading.isUnblocked())) {
 						buffer.buffer = new byte[bufferIndex == 0 ? firstBufferSize : bufferSize];
 						buffer.len = 0;
 						isNew = true;
@@ -1364,7 +1377,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			if (isNew) manager.newBuffer(buffer);
 		}
 		SynchronizationPoint<NoException> sp = buffer.loading;
-		if (sp != null)
+		if (sp != null && !sp.isUnblocked())
 			sp.block(0);
 		if (buffer.error != null)
 			throw buffer.error;

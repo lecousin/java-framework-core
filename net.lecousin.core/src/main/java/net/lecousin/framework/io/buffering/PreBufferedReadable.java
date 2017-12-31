@@ -292,7 +292,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 						if (size > 0 && read == size) 
 							endReached = true;
 						if (endReached && size > 0 && read < size) {
-							error = new IOException("Unexpected end after " + read + " bytes read, known size is " + size);
+							error = new IOException("Unexpected end after " + read
+								+ " bytes read, known size is " + size);
 						}
 						if (dataReady != null) {
 							SynchronizationPoint<NoException> dr = dataReady;
@@ -503,7 +504,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 						// we reach the end
 						endReached = true;
 						if (size > 0 && read < size)
-							error = new IOException("Unexpected end after " + read + " bytes read, known size is " + size);
+							error = new IOException("Unexpected end after " + read
+								+ " bytes read, known size is " + size);
 						if (dataReady != null) dataReady.unblock();
 						return skipped;
 					}
@@ -637,7 +639,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 								nextRead();
 						}
 						if (endReached && size > 0 && read < size)
-							error = new IOException("Unexpected end after " + read + " bytes read, known size is " + size);
+							error = new IOException("Unexpected end after " + read
+								+ " bytes read, known size is " + size);
 						if (dataReady != null) {
 							sp = dataReady;
 							dataReady = null;
