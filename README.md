@@ -13,6 +13,7 @@ is recommended for better performances on disk operations (detection of physical
 ### Current version - branch master
 
 ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=master "Build Status")
+![build status](https://ci.appveyor.com/api/projects/status/github/lecousin/java-framework-core?branch=master&svg=true "Build Status")
 [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/master)
 
  - core [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
@@ -27,11 +28,13 @@ is recommended for better performances on disk operations (detection of physical
 ### Next minor release - branch 0.9
 
 ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.9 "Build Status")
+![build status](https://ci.appveyor.com/api/projects/status/github/lecousin/java-framework-core?branch=0.9&svg=true "Build Status")
 [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/0.9/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/0.9)
  
 ### Next major release - branch 0.10
 
 ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.10 "Build Status")
+![build status](https://ci.appveyor.com/api/projects/status/github/lecousin/java-framework-core?branch=0.10&svg=true "Build Status")
 [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/0.10/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/0.10)
 
 ## Multi-threading
