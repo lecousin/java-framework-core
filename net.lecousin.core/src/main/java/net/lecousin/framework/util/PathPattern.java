@@ -80,6 +80,7 @@ public class PathPattern implements IStringPattern {
 	}
 	
 	private boolean check(String[] path, int pathIndex, int pattIndex, int remainingWildcards, int remainingAny) {
+		if (pattIndex >= patterns.size()) return false;
 		WildcardFilePattern wc = patterns.get(pattIndex);
 		if (wc != null) {
 			if (!wc.matches(path[pathIndex]))
@@ -88,8 +89,6 @@ public class PathPattern implements IStringPattern {
 				return true;
 			return check(path, pathIndex + 1, pattIndex + 1, remainingWildcards - 1, remainingAny);
 		}
-		if (remainingAny == 1 && (path.length - pathIndex) != remainingWildcards)
-			return false;
 		if (pattIndex == patterns.size() - 1)
 			return true;
 		int maxToSkip = path.length - pathIndex - remainingWildcards;
