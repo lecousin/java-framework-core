@@ -951,8 +951,16 @@ public abstract class BufferedIO extends BufferingManaged {
 				}
 				int start = getBufferOffset(pos);
 				if (start >= buffer.len) {
-					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1),null));
-					done.unblockSuccess(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1));
+					buffer.inUse--;
+					if (pos < size) {
+						IOException err = new IOException("Unexpected buffer size: IO size is " + size
+							+ ", and length of buffer " + bufferIndex + " is " + buffer.len);
+						if (ondone != null) ondone.run(new Pair<>(null, err));
+						done.error(err);
+					} else {
+						if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1),null));
+						done.unblockSuccess(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1));
+					}
 					return null;
 				}
 				int len = buf.remaining();
