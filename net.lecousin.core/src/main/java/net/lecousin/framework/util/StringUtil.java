@@ -7,25 +7,50 @@ import java.math.BigInteger;
  */
 public class StringUtil {
 
-	/** Append padding character to a StringBuilder. */
-	public static StringBuilder appendPadding(char padding, int nb, String s, StringBuilder to) {
-		for (int i = s.length(); i < nb; ++i) to.append(padding);
+	/** Insert padding character to a StringBuilder. */
+	public static StringBuilder paddingLeft(StringBuilder s, int length, char padding) {
+		while (s.length() < length) s.insert(0, padding);
+		return s;
+	}
+
+	/** Add the string and insert padding character to a StringBuilder. */
+	public static StringBuilder paddingLeft(StringBuilder to, String s, int length, char padding) {
+		for (int i = s.length(); i < length; ++i) to.append(padding);
 		to.append(s);
 		return to;
 	}
 	
 	/** Convert the long to a string and append spaces up to the given fixed size. */
-	public static void appendFixedSize(StringBuilder s, long value, int fixedSize) {
+	public static StringBuilder paddingLeft(StringBuilder s, long value, int fixedSize) {
 		String str = Long.toString(value);
-		appendPadding(' ', fixedSize, str, s);
+		return paddingLeft(s, str, fixedSize, ' ');
 	}
 	
-	/** Add spaces until the StringBuilder has the given length. */
-	public static void padding(StringBuilder s, int length) {
-		while (s.length() < length) s.append(' ');
+	/** Append padding character until the StringBuilder has the given length. */
+	public static StringBuilder paddingRight(StringBuilder s, int length, char padding) {
+		while (s.length() < length) s.append(padding);
+		return s;
+	}
+	
+	/** Append padding character until the StringBuilder has the given length. */
+	public static StringBuilder paddingRight(StringBuilder to, String s, int nb, char padding) {
+		to.append(s);
+		for (int i = s.length(); i < nb; ++i) to.append(padding);
+		return to;
+	}
+	
+	/** Convert the long to a string and append spaces up to the given fixed size. */
+	public static StringBuilder paddingRight(StringBuilder s, long value, int fixedSize) {
+		String str = Long.toString(value);
+		return paddingRight(s, str, fixedSize, ' ');
 	}
 	
 	private static final char[] hexaChar = new char[] { '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F' };
+	
+	/** Encode a single hexadecimal digit (given value must be between 0 and 15). */
+	public static char encodeHexaDigit(int value) {
+		return hexaChar[value];
+	}
 	
 	/** Encode the given bytes into hexadecimal. */
 	public static String encodeHexa(byte[] data) {
@@ -43,11 +68,6 @@ public class StringUtil {
 	/** Encode the given byte into hexadecimal. */
 	public static String encodeHexa(byte b) {
 		return new StringBuilder().append(hexaChar[(b >>> 4) & 0xF]).append(hexaChar[b & 0xF]).toString();
-	}
-	
-	/** Encode a single hexadecimal digit (given value must be between 0 and 15). */
-	public static char encodeHexaDigit(int value) {
-		return hexaChar[value];
 	}
 	
 	/** Encode a long value into hexadecimal, padding with zeros to create a string of 16 characters. */
