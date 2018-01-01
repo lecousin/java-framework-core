@@ -8,7 +8,7 @@ import org.junit.runner.notification.RunListener;
 public class TestRunListener extends RunListener {
 
 	@Override
-	public void testRunFinished(Result result) throws Exception {
+	public void testRunFinished(Result result) {
 		if (result.wasSuccessful())
 			LCCore.stop(false);
 	}

@@ -147,7 +147,8 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 					if (b.flushing != null) tasks.addAll(b.flushing);
 				}
 				it.remove();
-				totalMemory -= b.buffer.length;
+				if (b.buffer != null)
+					totalMemory -= b.buffer.length;
 			}
 		}
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();

@@ -1,32 +1,42 @@
 package net.lecousin.framework.core.tests.util;
 
-import org.junit.Assert;
-import org.junit.Test;
+import java.util.Arrays;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.util.PathPattern;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestPathPattern extends LCCoreAbstractTest {
 
 	@Test
 	public void testPatterns() {
-		Assert.assertFalse(new PathPattern("").matches("path"));
-		Assert.assertTrue(new PathPattern("path").matches("path"));
-		Assert.assertFalse(new PathPattern("toto/t?t?").matches("path"));
-		Assert.assertFalse(new PathPattern("toto/t?t?").matches("toto"));
-		Assert.assertFalse(new PathPattern("toto/t?t?").matches("toto/hello"));
-		Assert.assertTrue(new PathPattern("toto/t?t?").matches("toto/titi"));
-		Assert.assertTrue(new PathPattern("toto/t?t?").matches("toto/tttt"));
-		Assert.assertFalse(new PathPattern("toto/t?t?").matches("toto/tttt2"));
-		Assert.assertTrue(new PathPattern("toto/*/t?t?").matches("toto/tttt/tttt"));
-		Assert.assertTrue(new PathPattern("toto/*/t?t?").matches("toto/hello/tttt"));
-		Assert.assertFalse(new PathPattern("toto/*/t?t?").matches("toto/hello/hello"));
-		Assert.assertFalse(new PathPattern("toto/*/t?t?").matches("toto/tttt/hello"));
-		Assert.assertFalse(new PathPattern("toto/*/t?t?").matches("toto/hello/hello/tata"));
-		Assert.assertTrue(new PathPattern("toto/**/t?t?").matches("toto/hello/hello/tata"));
-		Assert.assertTrue(new PathPattern("toto/**/t?t?").matches("toto/tata"));
-		Assert.assertTrue(new PathPattern("toto/**/t?t?").matches("toto/tata/tutu"));
-		Assert.assertFalse(new PathPattern("toto/**/t?t?").matches("toto/tata/hello"));
+		test("", "path", false);
+		test("path", "path", true);
+		test("toto/t?t?", "path", false);
+		test("toto/t?t?", "toto", false);
+		test("toto/t?t?", "toto/hello", false);
+		test("toto/t?t?", "toto/titi", true);
+		test("toto/t?t?", "toto/tttt", true);
+		test("toto/t?t?", "toto/tttt2", false);
+		test("toto/*/t?t?", "toto/tttt/tttt", true);
+		test("toto/*/t?t?", "toto/hello/tttt", true);
+		test("toto/*/t?t?", "toto/hello/hello", false);
+		test("toto/*/t?t?", "toto/tttt/hello", false);
+		test("toto/*/t?t?", "toto/hello/hello/tata", false);
+		test("toto/**/t?t?", "toto/hello/hello/tata", true);
+		test("toto/**/t?t?", "toto/tata", true);
+		test("toto/**/t?t?", "toto/tata/tutu", true);
+		test("toto/**/t?t?", "toto/tata/hello", false);
+	}
+	
+	@SuppressWarnings("boxing")
+	public void test(String pattern, String path, boolean expectedMatch) {
+		PathPattern p = new PathPattern(pattern);
+		Assert.assertEquals(expectedMatch, p.matches(path));
+		Assert.assertEquals(expectedMatch, p.matches(path.split("/")));
+		Assert.assertEquals(expectedMatch, p.matches(Arrays.asList(path.split("/"))));
 	}
 	
 }

@@ -148,7 +148,7 @@ public abstract class BufferedIO extends BufferingManaged {
 				if (b != null) {
 					synchronized (b) {
 						b.inUse++;
-						if (b.buffer == null && b.loading == null && b.error == null)
+						if (b.buffer == null && (b.loading == null || b.loading.isUnblocked()) && b.error == null)
 							loadBuffer(index);
 					}
 					return b;
@@ -794,7 +794,8 @@ public abstract class BufferedIO extends BufferingManaged {
 					buffer.inUse--;
 					if (pos < size)
 						throw new IOException("Unexpected buffer size: IO size is " + size
-							+ ", and length of buffer " + bufferIndex + " is " + buffer.len);
+							+ ", length of buffer " + bufferIndex + " is " + buffer.len
+							+ ", expected is " + (size - getBufferStart(bufferIndex)));
 					return Integer.valueOf(0);
 				}
 				int len = buf.remaining();
