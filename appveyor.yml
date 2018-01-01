@@ -11,10 +11,8 @@ install:
         [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\maven-bin.zip", "C:\maven")
       }
   - cmd: SET PATH=C:\maven\apache-maven-3.3.9\bin;%JAVA_HOME%\bin;%PATH%
-  - cmd: SET MAVEN_OPTS=-XX:MaxPermSize=2g -Xmx4g
-  - cmd: SET JAVA_OPTS=-XX:MaxPermSize=2g -Xmx4g
-environment:
-  APPVEYOR_BUILD_WORKER_CLOUD: GCE
+  - cmd: SET MAVEN_OPTS=-XX:MaxPermSize=1g -Xmx2g
+  - cmd: SET JAVA_OPTS=-XX:MaxPermSize=1g -Xmx2g
 build_script:
   - mvn clean package --batch-mode -DskipTest
 test_script:
