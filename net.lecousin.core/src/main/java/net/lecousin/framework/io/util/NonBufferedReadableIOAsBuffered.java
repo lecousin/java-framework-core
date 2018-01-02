@@ -18,6 +18,8 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * Utility class to implement the Buffered interface even in case buffers cannot be used.
  * An example it cannot be used is in case of a non-seekable IO, and we do not know in advance the size
  * of the data to read. Because we cannot seek, we may not exceed a certain position in the stream.
+ * This must be used only in case a Buffered implementation cannot be used, and the number of read
+ * operations are very limited.
  */
 public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable implements IO.Readable.Buffered {
 
@@ -104,6 +106,7 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	
 	@Override
 	public int read() throws IOException {
+		bb1.clear();
 		int nb = io.readSync(bb1);
 		if (nb <= 0) return -1;
 		return b1[0] & 0xFF;
@@ -152,6 +155,7 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 							return;
 						}
 						buf.flip();
+						if (ondone != null) ondone.run(new Pair<>(buf, null));
 						result.unblockSuccess(buf);
 					}
 				});
