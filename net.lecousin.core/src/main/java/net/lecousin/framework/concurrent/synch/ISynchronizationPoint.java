@@ -155,6 +155,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		});
 	}
 	
+	/** Call the given listener, only when this synchronization point is unblocked without error or cancellation. */
+	default void onSuccess(Runnable listener) {
+		listenInline(() -> { if (isSuccessful()) listener.run(); });
+	}
+	
 	/** Call the given listener, only when this synchronization point is unblocked with an error. */
 	default void onError(Listener<TError> listener) {
 		listenInline(new Runnable() {

@@ -1173,4 +1173,23 @@ public class IOUtil {
 			}
 		);
 	}
+	
+	/** Listen to <code>toListen</code>, then launch <code>onReady</code> if it succeed.
+	 * In case of error or cancellation, the error or cancellation event is given to <code>onErrorOrCancel</code>.
+	 * If ondone is not null, it is called before <code>onReady</code> and <code>onErrorOrCancel</code>.
+	 */
+	public static <T, T2> void listenOnDone(
+		AsyncWork<T, IOException> toListen, Task<?,?> onReady, ISynchronizationPoint<IOException> onErrorOrCancel,
+		RunnableWithParameter<Pair<T2,IOException>> ondone
+	) {
+		toListen.listenInline(() -> {
+			if (toListen.isCancelled()) {
+				if (onErrorOrCancel != null) onErrorOrCancel.cancel(toListen.getCancelEvent());
+			} else if (toListen.hasError()) {
+				if (ondone != null) ondone.run(new Pair<>(null, toListen.getError()));
+				if (onErrorOrCancel != null) onErrorOrCancel.error(toListen.getError());
+			} else
+				onReady.start();
+		});
+	}
 }
