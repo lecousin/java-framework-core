@@ -36,7 +36,7 @@ public final class Threading {
 	
 	/**
 	 * Initialize multi-threading.
-	 * This method is called by the {@link LCCore.Environment} instance on initialization.
+	 * This method is called by the {@link net.lecousin.framework.application.LCCore.Environment} instance on initialization.
 	 * @param threadFactory factory to use when creating threads
 	 * @param taskPriorityManager the class to use to manage priority of tasks
 	 * @param nbCPUThreads number of threads to use for CPU tasks,

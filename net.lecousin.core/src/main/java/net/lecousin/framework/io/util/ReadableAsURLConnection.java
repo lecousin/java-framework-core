@@ -7,8 +7,10 @@ import java.net.URLConnection;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOAsInputStream;
 
+/** Implementation of URLConnection using a IO.Readable. */
 public class ReadableAsURLConnection extends URLConnection {
 
+	/** Constructor. */
 	public ReadableAsURLConnection(IO.Readable io, URL url) {
 		super(url);
 		this.io = io;
