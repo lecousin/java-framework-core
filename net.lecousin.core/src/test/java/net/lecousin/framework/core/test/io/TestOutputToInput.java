@@ -91,14 +91,16 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 				write.get().listenInline(new Runnable() {
 					@Override
 					public void run() {
-						if (write.get().hasError()) { spWrite.error(write.get().getError()); return; }
-						if (nbWrite.get() == nbBuf) {
-							o2i.endOfData();
-							spWrite.unblock();
-							return;
-						}
-						write.set(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
-						nbWrite.inc();
+						do {
+							if (write.get().hasError()) { spWrite.error(write.get().getError()); return; }
+							if (nbWrite.get() == nbBuf) {
+								o2i.endOfData();
+								spWrite.unblock();
+								return;
+							}
+							write.set(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
+							nbWrite.inc();
+						} while (write.get().isUnblocked());
 						write.get().listenInline(this);
 					}
 				});
@@ -115,36 +117,38 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 				Runnable onRead = new Runnable() {
 					@Override
 					public void run() {
-						if (read.get() != null) {
-							if (read.get().hasError()) { spRead.error(read.get().getError()); return; }
-							if (nbRead.get() > nbBuf * 2) {
-								if (read.get().getResult().intValue() > 0) {
-									spRead.error(new IOException(read.get().getResult().intValue() + " byte(s) read after the end"));
+						do {
+							if (read.get() != null) {
+								if (read.get().hasError()) { spRead.error(read.get().getError()); return; }
+								if (nbRead.get() > nbBuf * 2) {
+									if (read.get().getResult().intValue() > 0) {
+										spRead.error(new IOException(read.get().getResult().intValue() + " byte(s) read after the end"));
+										return;
+									}
+									spRead.unblock();
 									return;
 								}
-								spRead.unblock();
-								return;
+								int len = testBuf.length / 2;
+								if ((nbRead.get() % 2) == 0 && (testBuf.length % 2) == 1) len++;
+								if (read.get().getResult().intValue() != len) {
+									spRead.error(new IOException("Only " + read.get().getResult() + " byte(s) read instead of " + len + " on the read number " + nbRead.get()));
+									return;
+								}
+								boolean ok;
+								if ((nbRead.get() % 2) != 0)
+									ok = ArrayUtil.equals(testBuf, 0, buffer, 0, len);
+								else
+									ok = ArrayUtil.equals(testBuf, testBuf.length / 2, buffer, 0, len);
+								if (!ok) {
+									spRead.error(new IOException("Read bytes do not match expected ones on read number " + nbRead.get()));
+									return;
+								}
 							}
 							int len = testBuf.length / 2;
-							if ((nbRead.get() % 2) == 0 && (testBuf.length % 2) == 1) len++;
-							if (read.get().getResult().intValue() != len) {
-								spRead.error(new IOException("Only " + read.get().getResult() + " byte(s) read instead of " + len + " on the read number " + nbRead.get()));
-								return;
-							}
-							boolean ok;
-							if ((nbRead.get() % 2) != 0)
-								ok = ArrayUtil.equals(testBuf, 0, buffer, 0, len);
-							else
-								ok = ArrayUtil.equals(testBuf, testBuf.length / 2, buffer, 0, len);
-							if (!ok) {
-								spRead.error(new IOException("Read bytes do not match expected ones on read number " + nbRead.get()));
-								return;
-							}
-						}
-						int len = testBuf.length / 2;
-						if ((nbRead.get() % 2) != 0 && (testBuf.length % 2) != 0) len++;
-						read.set(o2i.readFullyAsync(ByteBuffer.wrap(buffer, 0, len)));
-						nbRead.inc();
+							if ((nbRead.get() % 2) != 0 && (testBuf.length % 2) != 0) len++;
+							read.set(o2i.readFullyAsync(ByteBuffer.wrap(buffer, 0, len)));
+							nbRead.inc();
+						} while (read.get().isUnblocked());
 						read.get().listenInline(this);
 					}
 				};
@@ -229,15 +233,17 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 				write.get().listenInline(new Runnable() {
 					@Override
 					public void run() {
-						if (write.get().hasError()) { spWrite.error(write.get().getError()); return; }
-						if (write.get().isCancelled()) { spWrite.cancel(write.get().getCancelEvent()); return; }
-						if (nbWrite.get() == nbBuf) {
-							o2i.endOfData();
-							spWrite.unblock();
-							return;
-						}
-						write.set(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
-						nbWrite.inc();
+						do {
+							if (write.get().hasError()) { spWrite.error(write.get().getError()); return; }
+							if (write.get().isCancelled()) { spWrite.cancel(write.get().getCancelEvent()); return; }
+							if (nbWrite.get() == nbBuf) {
+								o2i.endOfData();
+								spWrite.unblock();
+								return;
+							}
+							write.set(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
+							nbWrite.inc();
+						} while (write.get().isUnblocked());
 						write.get().listenInline(this);
 					}
 				});

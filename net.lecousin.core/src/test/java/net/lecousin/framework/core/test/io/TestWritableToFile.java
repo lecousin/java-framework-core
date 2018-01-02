@@ -75,19 +75,21 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 		Runnable listener = new Runnable() {
 			@Override
 			public void run() {
-				if (write.get().hasError()) {
-					sp.error(write.get().getError());
-					return;
-				}
-				if (write.get().getResult().intValue() != testBuf.length) {
-					sp.error(new Exception("Invalid write: returned " + write.get().getResult().intValue() + " on " + testBuf.length));
-					return;
-				}
-				if (i.inc() == nbBuf) {
-					sp.unblock();
-					return;
-				}
-				write.set(io.writeAsync(ByteBuffer.wrap(testBuf)));
+				do {
+					if (write.get().hasError()) {
+						sp.error(write.get().getError());
+						return;
+					}
+					if (write.get().getResult().intValue() != testBuf.length) {
+						sp.error(new Exception("Invalid write: returned " + write.get().getResult().intValue() + " on " + testBuf.length));
+						return;
+					}
+					if (i.inc() == nbBuf) {
+						sp.unblock();
+						return;
+					}
+					write.set(io.writeAsync(ByteBuffer.wrap(testBuf)));
+				} while (write.get().isUnblocked());
 				write.get().listenInline(this);
 			}
 		};

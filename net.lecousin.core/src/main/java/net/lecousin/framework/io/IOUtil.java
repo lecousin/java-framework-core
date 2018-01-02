@@ -166,21 +166,26 @@ public class IOUtil {
 		read.listenInline(new AsyncWorkListener<Integer, IOException>() {
 			@Override
 			public void ready(Integer result) {
-				if (!buffer.hasRemaining() || result.intValue() <= 0) {
-					if (total.get() == 0) {
-						if (ondone != null) ondone.run(new Pair<>(result, null));
-						sp.unblockSuccess(result);
-					} else if (result.intValue() >= 0) {
-						if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(result.intValue() + total.get()), null));
-						sp.unblockSuccess(Integer.valueOf(result.intValue() + total.get()));
-					} else {
-						if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(total.get()), null));
-						sp.unblockSuccess(Integer.valueOf(total.get()));
+				do {
+					if (!buffer.hasRemaining() || result.intValue() <= 0) {
+						if (total.get() == 0) {
+							if (ondone != null) ondone.run(new Pair<>(result, null));
+							sp.unblockSuccess(result);
+						} else if (result.intValue() >= 0) {
+							if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(result.intValue() + total.get()), null));
+							sp.unblockSuccess(Integer.valueOf(result.intValue() + total.get()));
+						} else {
+							if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(total.get()), null));
+							sp.unblockSuccess(Integer.valueOf(total.get()));
+						}
+						return;
 					}
-					return;
-				}
-				total.add(result.intValue());
-				r.set(io.readAsync(buffer));
+					total.add(result.intValue());
+					AsyncWork<Integer, IOException> read = io.readAsync(buffer);
+					r.set(read);
+					if (read.isSuccessful()) result = read.getResult();
+					else break;
+				} while (true);
 				r.get().listenInline(this);
 			}
 			
@@ -231,23 +236,28 @@ public class IOUtil {
 		read.listenInline(new AsyncWorkListener<Integer, IOException>() {
 			@Override
 			public void ready(Integer result) {
-				if (!buffer.hasRemaining() || result.intValue() <= 0) {
-					if (total.get() == 0) {
-						if (ondone != null) ondone.run(new Pair<>(result, null));
-						sp.unblockSuccess(result);
-					} else if (result.intValue() >= 0) {
-						Integer r = Integer.valueOf(result.intValue() + total.get());
-						if (ondone != null) ondone.run(new Pair<>(r, null));
-						sp.unblockSuccess(r);
-					} else {
-						Integer r = Integer.valueOf(total.get());
-						if (ondone != null) ondone.run(new Pair<>(r, null));
-						sp.unblockSuccess(r);
+				do {
+					if (!buffer.hasRemaining() || result.intValue() <= 0) {
+						if (total.get() == 0) {
+							if (ondone != null) ondone.run(new Pair<>(result, null));
+							sp.unblockSuccess(result);
+						} else if (result.intValue() >= 0) {
+							Integer r = Integer.valueOf(result.intValue() + total.get());
+							if (ondone != null) ondone.run(new Pair<>(r, null));
+							sp.unblockSuccess(r);
+						} else {
+							Integer r = Integer.valueOf(total.get());
+							if (ondone != null) ondone.run(new Pair<>(r, null));
+							sp.unblockSuccess(r);
+						}
+						return;
 					}
-					return;
-				}
-				total.add(result.intValue());
-				r.set(io.readAsync(pos + total.get(), buffer));
+					total.add(result.intValue());
+					AsyncWork<Integer, IOException> read = io.readAsync(pos + total.get(), buffer);
+					r.set(read);
+					if (read.isSuccessful()) result = read.getResult();
+					else break;
+				} while (true);
 				r.get().listenInline(this);
 			}
 			
@@ -414,22 +424,28 @@ public class IOUtil {
 		io.readAsync(b).listenInline(new AsyncWorkListener<Integer, IOException>() {
 			@Override
 			public void ready(Integer nb) {
-				int read = nb.intValue();
-				if (read <= 0) {
-					if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done.get()), null));
-					result.unblockSuccess(Long.valueOf(done.get()));
-					return;
-				}
-				done.add(nb.intValue());
-				if (done.get() == n) {
-					if (ondone != null) ondone.run(new Pair<>(Long.valueOf(n), null));
-					result.unblockSuccess(Long.valueOf(n));
-					return;
-				}
-				b.clear();
-				if (n - done.get() < b.remaining())
-					b.limit((int)(n - done.get()));
-				io.readAsync(b).listenInline(this);
+				AsyncWork<Integer, IOException> next;
+				do {
+					int read = nb.intValue();
+					if (read <= 0) {
+						if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done.get()), null));
+						result.unblockSuccess(Long.valueOf(done.get()));
+						return;
+					}
+					done.add(nb.intValue());
+					if (done.get() == n) {
+						if (ondone != null) ondone.run(new Pair<>(Long.valueOf(n), null));
+						result.unblockSuccess(Long.valueOf(n));
+						return;
+					}
+					b.clear();
+					if (n - done.get() < b.remaining())
+						b.limit((int)(n - done.get()));
+					next = io.readAsync(b);
+					if (next.isSuccessful()) nb = next.getResult();
+					else break;
+				} while (true);
+				next.listenInline(this);
 			}
 			
 			@Override

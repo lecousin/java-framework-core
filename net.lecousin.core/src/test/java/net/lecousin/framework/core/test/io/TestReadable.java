@@ -137,55 +137,57 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		read.get().listenInline(new Runnable() {
 			@Override
 			public void run() {
-				AsyncWork<Integer,IOException> res = read.get();
-				if (res.isCancelled()) {
-					done.error(new Exception("Operation cancelled", res.getCancelEvent()));
-					return;
-				}
-				if (!onDoneBefore.get()) {
-					done.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
-					return;
-				}
-				onDoneBefore.set(false);
-				if (res.hasError()) {
-					done.error(res.getError());
-					return;
-				}
-				if (i.get() < nbBuf) {
-					if (res.getResult().intValue() != testBuf.length) {
-						done.error(new Exception("Only "+res.getResult().intValue()+" bytes read at "+(i.get()*testBuf.length)));
+				do {
+					AsyncWork<Integer,IOException> res = read.get();
+					if (res.isCancelled()) {
+						done.error(new Exception("Operation cancelled", res.getCancelEvent()));
 						return;
 					}
-					if (io instanceof IO.PositionKnown) {
-						try {
-							Assert.assertEquals((i.get() + 1) * testBuf.length, ((IO.PositionKnown)io).getPosition());
-						} catch (Throwable t) {
-							done.error(new Exception("Error reading position", t));
-							return;
-						}
-					}
-				} else {
-					if (res.getResult().intValue() > 0) {
-						done.error(new Exception("" + res.getResult() + " byte(s) read after the end of the file"));
+					if (!onDoneBefore.get()) {
+						done.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
 						return;
 					}
-					if (io instanceof IO.PositionKnown)
-						try {
-							Assert.assertEquals(nbBuf * testBuf.length, ((IO.PositionKnown)io).getPosition());
-						} catch (Throwable t) {
-							done.error(new Exception("Error reading position", t));
+					onDoneBefore.set(false);
+					if (res.hasError()) {
+						done.error(res.getError());
+						return;
+					}
+					if (i.get() < nbBuf) {
+						if (res.getResult().intValue() != testBuf.length) {
+							done.error(new Exception("Only "+res.getResult().intValue()+" bytes read at "+(i.get()*testBuf.length)));
 							return;
 						}
-					done.unblock();
-					return;
-				}
-				if (!ArrayUtil.equals(b, testBuf)) {
-					done.error(new Exception("Invalid read at "+(i.get()*testBuf.length)));
-					return;
-				}
-				i.inc();
-				buffer.clear();
-				read.set(io.readFullyAsync(buffer, ondone));
+						if (io instanceof IO.PositionKnown) {
+							try {
+								Assert.assertEquals((i.get() + 1) * testBuf.length, ((IO.PositionKnown)io).getPosition());
+							} catch (Throwable t) {
+								done.error(new Exception("Error reading position", t));
+								return;
+							}
+						}
+					} else {
+						if (res.getResult().intValue() > 0) {
+							done.error(new Exception("" + res.getResult() + " byte(s) read after the end of the file"));
+							return;
+						}
+						if (io instanceof IO.PositionKnown)
+							try {
+								Assert.assertEquals(nbBuf * testBuf.length, ((IO.PositionKnown)io).getPosition());
+							} catch (Throwable t) {
+								done.error(new Exception("Error reading position", t));
+								return;
+							}
+						done.unblock();
+						return;
+					}
+					if (!ArrayUtil.equals(b, testBuf)) {
+						done.error(new Exception("Invalid read at "+(i.get()*testBuf.length)));
+						return;
+					}
+					i.inc();
+					buffer.clear();
+					read.set(io.readFullyAsync(buffer, ondone));
+				} while (read.get().isUnblocked());
 				read.get().listenInline(this);
 			}
 		});
@@ -215,38 +217,40 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		read.get().listenInline(new Runnable() {
 			@Override
 			public void run() {
-				if (!onDoneBefore.get()) {
-					done.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
-					return;
-				}
-				onDoneBefore.set(false);
-				AsyncWork<Integer,IOException> res = read.get();
-				if (res.hasError()) {
-					done.error(res.getError());
-					return;
-				}
-				
-				int expected = 1000;
-				if (i.get() + expected > nbBuf) expected = nbBuf - i.get();
-				if ((expected == 0 && res.getResult().intValue() > 0) || (expected > 0 && res.getResult().intValue() != testBuf.length * expected)) {
-					done.error(new Exception("Only "+res.getResult().intValue()+" bytes read at "+(i.get()*testBuf.length)+", expected was "+(testBuf.length * expected)));
-					return;
-				}
-				for (int j = 0; j < expected; ++j) {
-					if (!ArrayUtil.equals(b, j*testBuf.length, testBuf, 0, testBuf.length)) {
-						done.error(new Exception("Invalid read at "+((j+i.get())*testBuf.length)));
+				do {
+					if (!onDoneBefore.get()) {
+						done.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
 						return;
 					}
-				}
-				i.add(expected);
-				
-				if (i.get() == nbBuf) {
-					done.unblock();
-					return;
-				}
-
-				buffer.clear();
-				read.set(io.readFullyAsync(buffer, ondone));
+					onDoneBefore.set(false);
+					AsyncWork<Integer,IOException> res = read.get();
+					if (res.hasError()) {
+						done.error(res.getError());
+						return;
+					}
+					
+					int expected = 1000;
+					if (i.get() + expected > nbBuf) expected = nbBuf - i.get();
+					if ((expected == 0 && res.getResult().intValue() > 0) || (expected > 0 && res.getResult().intValue() != testBuf.length * expected)) {
+						done.error(new Exception("Only "+res.getResult().intValue()+" bytes read at "+(i.get()*testBuf.length)+", expected was "+(testBuf.length * expected)));
+						return;
+					}
+					for (int j = 0; j < expected; ++j) {
+						if (!ArrayUtil.equals(b, j*testBuf.length, testBuf, 0, testBuf.length)) {
+							done.error(new Exception("Invalid read at "+((j+i.get())*testBuf.length)));
+							return;
+						}
+					}
+					i.add(expected);
+					
+					if (i.get() == nbBuf) {
+						done.unblock();
+						return;
+					}
+	
+					buffer.clear();
+					read.set(io.readFullyAsync(buffer, ondone));
+				} while (read.get().isUnblocked());
 				read.get().listenInline(this);
 			}
 		});
@@ -274,41 +278,43 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		read.get().listenInline(new Runnable() {
 			@Override
 			public void run() {
-				if (!onDoneBefore.get()) {
-					done.error(new Exception("Method readAsync didn't call ondone before listeners"));
-					return;
-				}
-				onDoneBefore.set(false);
-				AsyncWork<Integer,IOException> res = read.get();
-				if (res.hasError()) {
-					done.error(res.getError());
-					return;
-				}
-				int p = pos.get();
-				int nb = res.getResult().intValue();
-				if (p == testBuf.length * nbBuf) {
-					if (nb > 0) {
-						done.error(new Exception("" + nb + " byte(s) read after the end of the file"));
+				do {
+					if (!onDoneBefore.get()) {
+						done.error(new Exception("Method readAsync didn't call ondone before listeners"));
 						return;
 					}
-					done.unblock();
-					return;
-				}
-				int i = 0;
-				while (i < nb) {
-					int start = (p+i) % testBuf.length;
-					int len = nb - i;
-					if (len > testBuf.length - start) len = testBuf.length - start;
-					for (int j = 0; j < len; ++j)
-						if (b[i+j] != testBuf[start+j]) {
-							done.error(new Exception("Invalid byte at offset " + (p + i + start + j)));
+					onDoneBefore.set(false);
+					AsyncWork<Integer,IOException> res = read.get();
+					if (res.hasError()) {
+						done.error(res.getError());
+						return;
+					}
+					int p = pos.get();
+					int nb = res.getResult().intValue();
+					if (p == testBuf.length * nbBuf) {
+						if (nb > 0) {
+							done.error(new Exception("" + nb + " byte(s) read after the end of the file"));
 							return;
 						}
-					i += len;
-				}
-				pos.set(p + nb);
-				buffer.clear();
-				read.set(io.readAsync(buffer, ondone));
+						done.unblock();
+						return;
+					}
+					int i = 0;
+					while (i < nb) {
+						int start = (p+i) % testBuf.length;
+						int len = nb - i;
+						if (len > testBuf.length - start) len = testBuf.length - start;
+						for (int j = 0; j < len; ++j)
+							if (b[i+j] != testBuf[start+j]) {
+								done.error(new Exception("Invalid byte at offset " + (p + i + start + j)));
+								return;
+							}
+						i += len;
+					}
+					pos.set(p + nb);
+					buffer.clear();
+					read.set(io.readAsync(buffer, ondone));
+				} while (read.get().isUnblocked());
 				read.get().listenInline(this);
 			}
 		});

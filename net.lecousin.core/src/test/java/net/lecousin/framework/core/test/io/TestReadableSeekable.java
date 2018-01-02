@@ -103,51 +103,53 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		Runnable listener = new Runnable() {
 			@Override
 			public void run() {
-				if (read.get().hasError()) {
-					sp.error(read.get().getError());
-					return;
-				}
-				if (!onDoneBefore.get()) {
-					sp.error(new Exception("Method readAsync didn't call ondone before listeners"));
-					return;
-				}
-				onDoneBefore.set(false);
-				
-				if (offsets.isEmpty() && j.get() == testBuf.length) {
-					if (read.get().getResult().intValue() > 0) {
-						sp.error(new Exception("Byte read after the end of the file"));
+				do {
+					if (read.get().hasError()) {
+						sp.error(read.get().getError());
 						return;
 					}
-					sp.unblock();
-					return;
-				}
-				if (read.get().getResult().intValue() != 1) {
-					sp.error(new Exception("Unexpected end of stream at " + (offset.get()*testBuf.length+j.get()) + ": 1 byte expected, " + read.get().getResult().intValue() + " read"));
-					return;
-				}
-				if (b[0] != testBuf[j.get()]) {
-					sp.error(new Exception("Invalid byte "+(b[0]&0xFF)+" at "+(offset.get()*testBuf.length+j.get())));
-					return;
-				}
-
-				if (j.inc() == testBuf.length) {
-					if (offsets.isEmpty()) {
-						// read again to test we cannot read beyond the end of the file
-						offset.set(nbBuf-1);
-					} else {
-						if (nbBuf > 1000 && (offsets.size() % 100) == 99) {
-							// make the test faster
-							for (int skip = 0; skip < 80 && offsets.size() > 1; ++skip)
-								offsets.remove(rand.nextInt(offsets.size()));
-						}
-
-						offset.set(offsets.remove(rand.nextInt(offsets.size())).intValue());
-						j.set(0);
+					if (!onDoneBefore.get()) {
+						sp.error(new Exception("Method readAsync didn't call ondone before listeners"));
+						return;
 					}
-				}
-
-				buffer.clear();
-				read.set(io.readAsync(offset.get()*testBuf.length+j.get(), buffer, ondone));
+					onDoneBefore.set(false);
+					
+					if (offsets.isEmpty() && j.get() == testBuf.length) {
+						if (read.get().getResult().intValue() > 0) {
+							sp.error(new Exception("Byte read after the end of the file"));
+							return;
+						}
+						sp.unblock();
+						return;
+					}
+					if (read.get().getResult().intValue() != 1) {
+						sp.error(new Exception("Unexpected end of stream at " + (offset.get()*testBuf.length+j.get()) + ": 1 byte expected, " + read.get().getResult().intValue() + " read"));
+						return;
+					}
+					if (b[0] != testBuf[j.get()]) {
+						sp.error(new Exception("Invalid byte "+(b[0]&0xFF)+" at "+(offset.get()*testBuf.length+j.get())));
+						return;
+					}
+	
+					if (j.inc() == testBuf.length) {
+						if (offsets.isEmpty()) {
+							// read again to test we cannot read beyond the end of the file
+							offset.set(nbBuf-1);
+						} else {
+							if (nbBuf > 1000 && (offsets.size() % 100) == 99) {
+								// make the test faster
+								for (int skip = 0; skip < 80 && offsets.size() > 1; ++skip)
+									offsets.remove(rand.nextInt(offsets.size()));
+							}
+	
+							offset.set(offsets.remove(rand.nextInt(offsets.size())).intValue());
+							j.set(0);
+						}
+					}
+	
+					buffer.clear();
+					read.set(io.readAsync(offset.get()*testBuf.length+j.get(), buffer, ondone));
+				} while (read.get().isUnblocked());
 				read.get().listenInline(this);
 			}
 		};
@@ -214,46 +216,48 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		Runnable listener = new Runnable() {
 			@Override
 			public void run() {
-				if (read.get().hasError()) {
-					sp.error(read.get().getError());
-					return;
-				}
-				if (read.get().isCancelled()) {
-					sp.cancel(read.get().getCancelEvent());
-					return;
-				}
-				if (!onDoneBefore.get()) {
-					sp.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
-					return;
-				}
-				onDoneBefore.set(false);
-				
-				if (offset.get() == nbBuf) {
-					if (read.get().getResult().intValue() > 0) {
-						sp.error(new Exception("Bytes read after the end of the file"));
+				do {
+					if (read.get().hasError()) {
+						sp.error(read.get().getError());
 						return;
 					}
-					sp.unblock();
-					return;
-				}
-				if (read.get().getResult().intValue() != testBuf.length) {
-					sp.error(new Exception("Unexpected end of stream at " + (offset.get()*testBuf.length) + " (" + read.get().getResult().intValue() + "/" + testBuf.length + " bytes read)"));
-					return;
-				}
-				if (!ArrayUtil.equals(b, testBuf)) {
-					sp.error(new Exception("Invalid data read at "+(offset.get()*testBuf.length)));
-					return;
-				}
-
-				if (offsets.isEmpty()) {
-					// read again to test we cannot read beyond the end of the file
-					offset.set(nbBuf);
-				} else {
-					offset.set(offsets.remove(rand.nextInt(offsets.size())).intValue());
-				}
-
-				buffer.clear();
-				read.set(io.readFullyAsync(offset.get()*testBuf.length, buffer, ondone));
+					if (read.get().isCancelled()) {
+						sp.cancel(read.get().getCancelEvent());
+						return;
+					}
+					if (!onDoneBefore.get()) {
+						sp.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
+						return;
+					}
+					onDoneBefore.set(false);
+					
+					if (offset.get() == nbBuf) {
+						if (read.get().getResult().intValue() > 0) {
+							sp.error(new Exception("Bytes read after the end of the file"));
+							return;
+						}
+						sp.unblock();
+						return;
+					}
+					if (read.get().getResult().intValue() != testBuf.length) {
+						sp.error(new Exception("Unexpected end of stream at " + (offset.get()*testBuf.length) + " (" + read.get().getResult().intValue() + "/" + testBuf.length + " bytes read)"));
+						return;
+					}
+					if (!ArrayUtil.equals(b, testBuf)) {
+						sp.error(new Exception("Invalid data read at "+(offset.get()*testBuf.length)));
+						return;
+					}
+	
+					if (offsets.isEmpty()) {
+						// read again to test we cannot read beyond the end of the file
+						offset.set(nbBuf);
+					} else {
+						offset.set(offsets.remove(rand.nextInt(offsets.size())).intValue());
+					}
+	
+					buffer.clear();
+					read.set(io.readFullyAsync(offset.get()*testBuf.length, buffer, ondone));
+				} while (read.get().isUnblocked());
 				read.get().listenInline(this);
 			}
 		};

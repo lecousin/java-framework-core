@@ -116,48 +116,50 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		read.get().listenInline(new Runnable() {
 			@Override
 			public void run() {
-				if (!onDoneBefore.get()) {
-					done.error(new Exception("Method readNextBufferAsync didn't call ondone before listeners"));
-					return;
-				}
-				onDoneBefore.set(false);
-				AsyncWork<ByteBuffer,IOException> res = read.get();
-				if (res.hasError()) {
-					done.error(res.getError());
-					return;
-				}
-				int p = pos.get();
-				ByteBuffer buffer = res.getResult();
-				if (p == testBuf.length * nbBuf) {
-					if (buffer != null) {
-						done.error(new Exception("" + buffer.remaining() + " byte(s) read after the end of the file"));
+				do {
+					if (!onDoneBefore.get()) {
+						done.error(new Exception("Method readNextBufferAsync didn't call ondone before listeners"));
 						return;
 					}
-					done.unblock();
-					return;
-				}
-				if (buffer == null) {
-					done.error(new Exception("Method readNextBufferAsync returned a null buffer, but this is not the end of the file: offset " + p));
-					return;
-				}
-				int nb = buffer.remaining();
-				int i = 0;
-				while (i < nb) {
-					int start = (p+i) % testBuf.length;
-					int len = nb - i;
-					if (len > testBuf.length - start) len = testBuf.length - start;
-					for (int j = 0; j < len; ++j) {
-						byte b = buffer.get();
-						if (b != testBuf[start+j]) {
-							done.error(new Exception("Invalid byte " + b + " at offset " + (p + i + start + j) + ", expected is " + testBuf[start+j]));
+					onDoneBefore.set(false);
+					AsyncWork<ByteBuffer,IOException> res = read.get();
+					if (res.hasError()) {
+						done.error(res.getError());
+						return;
+					}
+					int p = pos.get();
+					ByteBuffer buffer = res.getResult();
+					if (p == testBuf.length * nbBuf) {
+						if (buffer != null) {
+							done.error(new Exception("" + buffer.remaining() + " byte(s) read after the end of the file"));
 							return;
 						}
+						done.unblock();
+						return;
 					}
-					i += len;
-				}
-				pos.set(p + nb);
-
-				read.set(io.readNextBufferAsync(ondone));
+					if (buffer == null) {
+						done.error(new Exception("Method readNextBufferAsync returned a null buffer, but this is not the end of the file: offset " + p));
+						return;
+					}
+					int nb = buffer.remaining();
+					int i = 0;
+					while (i < nb) {
+						int start = (p+i) % testBuf.length;
+						int len = nb - i;
+						if (len > testBuf.length - start) len = testBuf.length - start;
+						for (int j = 0; j < len; ++j) {
+							byte b = buffer.get();
+							if (b != testBuf[start+j]) {
+								done.error(new Exception("Invalid byte " + b + " at offset " + (p + i + start + j) + ", expected is " + testBuf[start+j]));
+								return;
+							}
+						}
+						i += len;
+					}
+					pos.set(p + nb);
+	
+					read.set(io.readNextBufferAsync(ondone));
+				} while (read.get().isUnblocked());
 				read.get().listenInline(this);
 			}
 		});
