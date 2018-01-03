@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
+import org.junit.Assert;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -50,6 +51,10 @@ public class TestByteBuffersIOWritableToFile extends TestWritableToFile {
 			throw new IOException("Copy ByteBuffersIO to file cancelled", e);
 		}
 		out.close();
+		if (nbBuf == 0)
+			Assert.assertEquals(new byte[0], bio.createSingleByteArray());
+		else if (nbBuf == 1)
+			Assert.assertEquals(testBuf, bio.createSingleByteArray());
 	}
 	
 }

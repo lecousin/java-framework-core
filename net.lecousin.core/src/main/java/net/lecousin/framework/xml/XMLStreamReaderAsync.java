@@ -696,7 +696,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				new LocalizableString("lc.xml.error", "inside CDATA")));
 			return false;
 		}
-		if (maxCDataSize > 0 && event.text.length() >= maxCDataSize) {
+		if (maxCDataSize > 0 && event.text.length() >= maxCDataSize + 2) {
 			if (event.text.charAt(event.text.length() - 1) == ']') {
 				if (event.text.charAt(event.text.length() - 2) == ']') {
 					if (c == '>') {
@@ -966,6 +966,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		if (maxTextSize > 0 && event.text.length() >= maxTextSize) {
 			event.text.replace("\r\n", "\n");
 			resolveReferences(event.text);
+			if (event.text.length() < maxTextSize) return true;
 			sp.unblock();
 			return false;
 		}

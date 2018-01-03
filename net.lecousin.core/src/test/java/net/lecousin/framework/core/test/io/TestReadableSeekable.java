@@ -621,6 +621,9 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		Assert.assertEquals(size - (size/2), io.getPosition());
 		Assert.assertEquals(-(size - (size/2)), io.skipSync(-size));
 		Assert.assertEquals(0, io.getPosition());
+		// skipping to a negative value should go to the start
+		Assert.assertEquals(0, io.skipSync(-10));
+		Assert.assertEquals(0, io.getPosition());
 		io.close();
 	}
 
@@ -665,6 +668,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			pos += skipped.getResult().longValue();
 			if (isEnd) break;
 		}
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(0,  io.getPosition());
+		Assert.assertEquals(0, io.skipAsync(-10).blockResult(0).longValue());
+		Assert.assertEquals(0,  io.getPosition());
+		Assert.assertEquals(testBuf.length * nbBuf, io.skipAsync(testBuf.length * nbBuf + 200).blockResult(0).longValue());
+		Assert.assertEquals(testBuf.length * nbBuf,  io.getPosition());
 		io.close();
 	}
 	

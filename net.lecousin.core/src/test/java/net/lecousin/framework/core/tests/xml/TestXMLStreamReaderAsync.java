@@ -41,4 +41,45 @@ public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 		Assert.assertEquals("mySystem", xml.event.system.asString());
 	}
 	
+	@Test
+	public void testLongTextAndCData() throws Exception {
+		XMLStreamReaderAsync xml;
+		xml = parse("xml-test-suite/mine/longText.xml");
+		xml.start().blockThrow(0);
+		xml.searchElement("testText").blockThrow(0);
+		xml.next().blockThrow(0);
+		Assert.assertEquals(Event.Type.TEXT, xml.event.type);
+		Assert.assertEquals(2008, xml.event.text.length());
+		do {
+			xml.next().blockThrow(0);
+		} while (!Event.Type.CDATA.equals(xml.event.type));
+		Assert.assertEquals(2012, xml.event.text.length());
+
+		xml = parse("xml-test-suite/mine/longText.xml");
+		xml.start().blockThrow(0);
+		xml.setMaximumTextSize(555);
+		xml.setMaximumCDataSize(666);
+		xml.searchElement("testText").blockThrow(0);
+		xml.next().blockThrow(0);
+		Assert.assertEquals(Event.Type.TEXT, xml.event.type);
+		Assert.assertEquals(555, xml.event.text.length());
+		do {
+			xml.next().blockThrow(0);
+		} while (!Event.Type.CDATA.equals(xml.event.type));
+		Assert.assertEquals(666, xml.event.text.length());
+
+		xml = parse("xml-test-suite/mine/longText.xml");
+		xml.start().blockThrow(0);
+		xml.setMaximumTextSize(5555);
+		xml.setMaximumCDataSize(6666);
+		xml.searchElement("testText").blockThrow(0);
+		xml.next().blockThrow(0);
+		Assert.assertEquals(Event.Type.TEXT, xml.event.type);
+		Assert.assertEquals(2008, xml.event.text.length());
+		do {
+			xml.next().blockThrow(0);
+		} while (!Event.Type.CDATA.equals(xml.event.type));
+		Assert.assertEquals(2012, xml.event.text.length());
+	}
+	
 }
