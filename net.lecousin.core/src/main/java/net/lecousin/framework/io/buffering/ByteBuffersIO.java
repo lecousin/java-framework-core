@@ -327,6 +327,8 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	public int writeSync(ByteBuffer buffer) {
 		addBuffer(buffer.array(), buffer.position(), buffer.remaining());
 		pos = totalSize;
+		bufferIndex = buffers.size();
+		bufferPos = 0;
 		return buffer.remaining();
 	}
 

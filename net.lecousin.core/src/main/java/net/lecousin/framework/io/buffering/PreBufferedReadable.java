@@ -252,6 +252,31 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			firstReadTask = operation(src.readAsync(buffer));
 		else
 			firstReadTask = operation(src.readFullyAsync(buffer));
+		
+		Task<Void,NoException> firstNextReadTask = null;
+		if (nextBuffer > 0) {
+			firstNextReadTask = new Task.Cpu<Void,NoException>(
+				"First next read of pre-buffered IO " + getSourceDescription(), nextBufferPriority
+			) {
+				@Override
+				public Void run() {
+					SynchronizationPoint<NoException> dr = null;
+					synchronized (PreBufferedReadable.this) {
+						nextReadTask = null;
+						if (error == null && !endReached && !stopReading && !isClosing() && !isClosed())
+							nextRead();
+						else if (dataReady != null) {
+							dr = dataReady;
+							dataReady = null;
+						}
+					}
+					if (dr != null) dr.unblock();
+					return null;
+				}
+			};
+			nextReadTask = firstNextReadTask.getOutput();
+		}
+		
 		boolean singleRead = nextBuffer <= 0;
 		firstReadTask.listenInline(new Runnable() {
 			@Override
@@ -333,29 +358,10 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					return null;
 				}
 			};
-			Task<Void,NoException> task = new Task.Cpu<Void,NoException>(
-				"First next read of pre-buffered IO " + getSourceDescription(), nextBufferPriority
-			) {
-				@Override
-				public Void run() {
-					SynchronizationPoint<NoException> dr = null;
-					synchronized (PreBufferedReadable.this) {
-						nextReadTask = null;
-						if (error == null && !endReached && !stopReading && !isClosing() && !isClosed())
-							nextRead();
-						else if (dataReady != null) {
-							dr = dataReady;
-							dataReady = null;
-						}
-					}
-					if (dr != null) dr.unblock();
-					return null;
-				}
-			};
 			operation(prepare).start();
-			nextReadTask = operation(task.getOutput());
+			operation(firstNextReadTask.getOutput());
 			jpNextRead.start();
-			jpNextRead.listenAsync(task, true);
+			jpNextRead.listenAsync(firstNextReadTask, true);
 		}
 	}
 	
@@ -638,7 +644,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 							if (!endReached && !reusableBuffers.isEmpty() && !stopReading)
 								nextRead();
 						}
-						if (endReached && size > 0 && read < size)
+						if (endReached && size > 0 && read < size && buffersReady != null)
 							error = new IOException("Unexpected end after " + read
 								+ " bytes read, known size is " + size);
 						if (dataReady != null) {
