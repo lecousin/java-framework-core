@@ -52,9 +52,9 @@ public class TestByteBuffersIOWritableToFile extends TestWritableToFile {
 		}
 		out.close();
 		if (nbBuf == 0)
-			Assert.assertEquals(new byte[0], bio.createSingleByteArray());
+			Assert.assertArrayEquals(new byte[0], bio.createSingleByteArray());
 		else if (nbBuf == 1)
-			Assert.assertEquals(testBuf, bio.createSingleByteArray());
+			Assert.assertArrayEquals(testBuf, bio.createSingleByteArray());
 	}
 	
 }
