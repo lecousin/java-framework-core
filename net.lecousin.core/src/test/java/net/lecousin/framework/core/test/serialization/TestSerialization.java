@@ -34,6 +34,7 @@ import net.lecousin.framework.io.buffering.MemoryIO;
 import net.lecousin.framework.io.serialization.CustomSerializer;
 import net.lecousin.framework.io.serialization.Deserializer;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
+import net.lecousin.framework.io.serialization.SerializationSpecWriter;
 import net.lecousin.framework.io.serialization.Serializer;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.annotations.AddAttribute;
@@ -60,6 +61,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 
 	protected abstract Serializer createSerializer();
 	protected abstract Deserializer createDeserializer();
+	protected abstract SerializationSpecWriter createSpecWriter();
 	
 	@SuppressWarnings("resource")
 	private void testPrimitive(Object value, Class<?> type) throws Exception {
@@ -101,12 +103,15 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		TestBooleans t = createBooleans();
 		t.attr3 = null;
 		test(t, TestBooleans.class);
+		testSpec(TestBooleans.class);
 	}
 	
 	@Test(timeout=120000)
 	public void testBooleanPrimitive() throws Exception {
 		testPrimitive(Boolean.TRUE, boolean.class);
 		testPrimitive(Boolean.FALSE, boolean.class);
+		testSpec(boolean.class);
+		testSpec(Boolean.class);
 	}
 	
 	public static class TestNumbers {
@@ -188,6 +193,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		t.bi2 = null;
 		t.bd2 = null;
 		test(t, TestNumbers.class);
+		testSpec(TestNumbers.class);
 	}
 	
 	@Test(timeout=120000)
@@ -208,6 +214,20 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testPrimitive(Double.valueOf(-0.0000001d), double.class);
 		testPrimitive(Double.valueOf(12345.9876d), double.class);
 		testPrimitive(Double.valueOf(-12345.9876d), double.class);
+		testSpec(byte.class);
+		testSpec(Byte.class);
+		testSpec(short.class);
+		testSpec(Short.class);
+		testSpec(int.class);
+		testSpec(Integer.class);
+		testSpec(long.class);
+		testSpec(Long.class);
+		testSpec(float.class);
+		testSpec(Float.class);
+		testSpec(double.class);
+		testSpec(Double.class);
+		testSpec(BigInteger.class);
+		testSpec(BigDecimal.class);
 	}
 	
 	
@@ -245,6 +265,8 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testIString("123");
 		testIString("a\tb\rc\nd\be\\fg\"hi\'jk&#{([-|_@)]=+}£$*%!:/;.,?<012>34");
 		testIString(null);
+		testSpec(String.class);
+		testSpec(TestString.class);
 	}
 	
 	
@@ -289,6 +311,9 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testChar('\t');
 		testChar('\b');
 		testChar('\f');
+		testSpec(char.class);
+		testSpec(Character.class);
+		testSpec(TestChar.class);
 	}
 	
 	public static enum Enum1 { VAL1, VAL2, VAL3 };
@@ -299,6 +324,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(Enum1.VAL2, Enum1.class);
 		test(Enum2.VAL33, Enum2.class);
 		test(null, Enum1.class);
+		testSpec(Enum1.class);
 	}
 	
 	public static class TestSimpleObjects {
@@ -332,6 +358,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		o.i = 53;
 		o.s = "s";
 		test(o, TestSimpleObjects.class);
+		testSpec(TestSimpleObjects.class);
 	}
 	
 	public static class TestLists {
@@ -356,6 +383,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		t.testBooleans = Arrays.asList(createBooleans(), new TestBooleans(), null);
 		t.testNumbers = Arrays.asList(createNumbers(), new TestNumbers(), null, createNumbers());
 		test(t, TestLists.class);
+		testSpec(TestLists.class);
 	}
 	
 	public static class TestArrays {
@@ -392,6 +420,26 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		t.testNumbers = new TestNumbers[] { createNumbers(), new TestNumbers() };
 		test(t, TestArrays.class);
 		test(new int[] { 11, 33, 55, 77, 99 }, int[].class);
+		testSpec(TestArrays.class);
+		testSpec(boolean[].class);
+		testSpec(Boolean[].class);
+		testSpec(byte[].class);
+		testSpec(Byte[].class);
+		testSpec(short[].class);
+		testSpec(Short[].class);
+		testSpec(int[].class);
+		testSpec(Integer[].class);
+		testSpec(long[].class);
+		testSpec(Long[].class);
+		testSpec(float[].class);
+		testSpec(Float[].class);
+		testSpec(double[].class);
+		testSpec(Double[].class);
+		testSpec(TestBooleans[].class);
+		testSpec(BigInteger[].class);
+		testSpec(BigDecimal[].class);
+		testSpec(char[].class);
+		testSpec(Character[].class);
 	}
 	
 	public static class TestListOfList {
@@ -412,6 +460,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 			new LinkedList<>()
 		);
 		test(t, TestListOfList.class);
+		testSpec(TestListOfList.class);
 	}
 	
 	public static class TestMap {
@@ -435,6 +484,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		print(io, map);
 		Map<Integer,String> map2 = deserialize(io, new TypeDefinition(HashMap.class, new TypeDefinition(Integer.class), new TypeDefinition(String.class)));
 		checkMap(map, map2);
+		testSpec(TestMap.class);
 	}
 	
 	public static class TestIO {
@@ -455,6 +505,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		
 		test(null, IO.Readable.class);
 		test(null, InputStream.class);
+		testSpec(TestIO.class);
 	}
 	
 	public static class IntegerUnitAsString {
@@ -470,6 +521,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testIntegerUnit("3 days", Long.valueOf(3L * 24));
 		testIntegerUnit("6h", Long.valueOf(6L));
 		testIntegerUnit("16 hours", Long.valueOf(16L));
+		testSpec(IntegerUnitAsLong.class);
 	}
 
 	@SuppressWarnings("resource")
@@ -960,6 +1012,14 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		AsyncWork<Object, Exception> res = d.deserialize(type, io, new ArrayList<>(0));
 		res.blockThrow(0);
 		return (T)res.getResult();
+	}
+	
+	protected void testSpec(Class<?> type) throws Exception {
+		SerializationSpecWriter sw = createSpecWriter();
+		if (sw == null) return;
+		MemoryIO io = new MemoryIO(1024, "test");
+		sw.writeSpecification(type, io, new ArrayList<>(0));
+		// TODO check
 	}
 	
 	protected void checkValue(Object expected, Object found) throws Exception {

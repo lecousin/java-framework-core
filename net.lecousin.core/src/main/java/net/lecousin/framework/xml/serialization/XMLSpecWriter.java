@@ -90,7 +90,8 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		if (!this.namespaces.containsKey(XMLUtil.XSD_NAMESPACE_URI))
 			this.namespaces.put(XMLUtil.XSD_NAMESPACE_URI, "xsd");
 		this.output.start(XMLUtil.XSD_NAMESPACE_URI, "schema", namespaces);
-		this.output.addAttribute("targetNamespace", rootNamespaceURI);
+		if (rootNamespaceURI != null)
+			this.output.addAttribute("targetNamespace", rootNamespaceURI);
 		this.output.openElement(XMLUtil.XSD_NAMESPACE_URI, "element", null);
 		return this.output.addAttribute("name", rootLocalName);
 	}

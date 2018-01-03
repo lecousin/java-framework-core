@@ -11,6 +11,7 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadable;
 import net.lecousin.framework.io.FileIO;
+import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.buffering.IOInMemoryOrFile;
@@ -25,6 +26,12 @@ public class TestIOInMemoryOrFileReadable extends TestReadable {
 	
 	public TestIOInMemoryOrFileReadable(File testFile, byte[] testBuf, int nbBuf) {
 		super(testFile, testBuf, nbBuf);
+	}
+	
+	@Override
+	protected void basicTests(IO io) throws Exception {
+		super.basicTests(io);
+		((IOInMemoryOrFile)io).getMaxInMemory();
 	}
 	
 	@Override

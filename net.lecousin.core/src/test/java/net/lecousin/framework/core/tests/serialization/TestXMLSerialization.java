@@ -23,6 +23,7 @@ import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
 import net.lecousin.framework.io.IOAsInputStream;
 import net.lecousin.framework.io.SubIO;
 import net.lecousin.framework.io.serialization.Deserializer;
+import net.lecousin.framework.io.serialization.SerializationSpecWriter;
 import net.lecousin.framework.io.serialization.Serializer;
 import net.lecousin.framework.io.text.BufferedWritableCharacterStream;
 import net.lecousin.framework.xml.XMLStreamReaderAsync;
@@ -30,6 +31,7 @@ import net.lecousin.framework.xml.XMLUtil;
 import net.lecousin.framework.xml.XMLWriter;
 import net.lecousin.framework.xml.serialization.XMLDeserializer;
 import net.lecousin.framework.xml.serialization.XMLSerializer;
+import net.lecousin.framework.xml.serialization.XMLSpecWriter;
 
 @RunWith(Parameterized.class)
 public class TestXMLSerialization extends TestSerialization {
@@ -78,6 +80,13 @@ public class TestXMLSerialization extends TestSerialization {
 				return reader.startRootElement();
 			}
 		};
+	}
+	
+	@Override
+	protected SerializationSpecWriter createSpecWriter() {
+		if (efficient)
+			return new XMLSpecWriter(null, "test", null);
+		return new XMLSpecWriter(null, "test", null, null, 4, true);
 	}
 	
 	@SuppressWarnings("resource")

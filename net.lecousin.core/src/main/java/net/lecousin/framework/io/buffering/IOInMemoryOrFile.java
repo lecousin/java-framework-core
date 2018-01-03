@@ -277,21 +277,14 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 			Mutable<AsyncWork<Integer,IOException>> fil = new Mutable<>(null);
 			this.pos = pos + len;
 			if (pos + len > size) size = pos + len;
-			mem.getOutput().listenInline(new Runnable() {
-				@Override
-				public void run() {
-					if (mem.isCancelled()) {
-						sp.unblockCancel(mem.getCancelEvent());
-						return;
-					}
-					fil.set(((IO.Writable.Seekable)file).writeAsync(0, buffer));
-					IOUtil.listenOnDone(fil.get(), (result) -> {
-						Integer r = Integer.valueOf(mem.getResult().intValue() + result.intValue());
-						if (ondone != null) ondone.run(new Pair<>(r, null));
-						sp.unblockSuccess(r);
-					}, sp, ondone);
-				}
-			});
+			IOUtil.listenOnDone(mem.getOutput(), (res) -> {
+				fil.set(((IO.Writable.Seekable)file).writeAsync(0, buffer));
+				IOUtil.listenOnDone(fil.get(), (result) -> {
+					Integer r = Integer.valueOf(mem.getResult().intValue() + result.intValue());
+					if (ondone != null) ondone.run(new Pair<>(r, null));
+					sp.unblockSuccess(r);
+				}, sp, ondone);
+			}, sp, ondone);
 			sp.onCancel(new Listener<CancelException>() {
 				@Override
 				public void fire(CancelException event) {
