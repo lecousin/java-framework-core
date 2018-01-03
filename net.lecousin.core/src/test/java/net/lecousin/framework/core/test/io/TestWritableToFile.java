@@ -98,8 +98,8 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 					}
 					if (io instanceof IO.PositionKnown)
 						try { Assert.assertEquals(testBuf.length * (i.get() + 1), ((IO.PositionKnown)io).getPosition()); }
-						catch (IOException e) {
-							sp.error(e);
+						catch (Throwable e) {
+							sp.error(IO.error(e));
 							return;
 						}
 					if (i.inc() == nbBuf) {
