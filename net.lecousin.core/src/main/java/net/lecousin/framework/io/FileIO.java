@@ -142,7 +142,7 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	/** FileIO in write-only mode. */
-	public static class WriteOnly extends FileIO implements IO.Writable.Seekable {
+	public static class WriteOnly extends FileIO implements IO.Writable.Seekable, IO.Resizable {
 		
 		/** Constructor. */
 		public WriteOnly(File file, byte priority) {
@@ -157,6 +157,16 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 		@Override
 		public long getPosition() throws IOException {
 			return super.getPosition();
+		}
+		
+		@Override
+		public void setSizeSync(long size) throws IOException {
+			super.setSizeSync(size);
+		}
+		
+		@Override
+		public AsyncWork<Void, IOException> setSizeAsync(long size) {
+			return super.setSizeAsync(size);
 		}
 		
 		@Override

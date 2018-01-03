@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -34,7 +35,7 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 		return file;
 	}
 	
-	protected static void checkFile(File file, byte[] testBuf, int nbBuf) throws Exception {
+	public static void checkFile(File file, byte[] testBuf, int nbBuf) throws Exception {
 		@SuppressWarnings("resource")
 		FileIO.ReadOnly io = new FileIO.ReadOnly(file, Task.PRIORITY_NORMAL);
 		byte[] b = new byte[testBuf.length];
@@ -51,13 +52,24 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 	protected IO getIOForCommonTests() throws Exception {
 		return createWritableFromFile(createFile());
 	}
+	
+	@Override
+	protected void basicTests(IO io) throws Exception {
+		super.basicTests(io);
+		((IO.Writable)io).canStartWriting();
+	}
 
 	@Test(timeout=120000)
 	public void testWriteBufferByBufferSync() throws Exception {
 		File file = createFile();
 		IO.Writable io = createWritableFromFile(file);
-		for (int i = 0; i < nbBuf; ++i)
+		if (io instanceof IO.PositionKnown)
+			Assert.assertEquals(0, ((IO.PositionKnown)io).getPosition());
+		for (int i = 0; i < nbBuf; ++i) {
 			io.writeSync(ByteBuffer.wrap(testBuf));
+			if (io instanceof IO.PositionKnown)
+				Assert.assertEquals(testBuf.length * (i + 1), ((IO.PositionKnown)io).getPosition());
+		}
 		flush(io);
 		io.close();
 		checkFile(file, testBuf, nbBuf);
@@ -84,6 +96,12 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 						sp.error(new Exception("Invalid write: returned " + write.get().getResult().intValue() + " on " + testBuf.length));
 						return;
 					}
+					if (io instanceof IO.PositionKnown)
+						try { Assert.assertEquals(testBuf.length * (i.get() + 1), ((IO.PositionKnown)io).getPosition()); }
+						catch (IOException e) {
+							sp.error(e);
+							return;
+						}
 					if (i.inc() == nbBuf) {
 						sp.unblock();
 						return;

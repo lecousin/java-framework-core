@@ -38,18 +38,20 @@ public class SingleEvent<T> implements Listenable<T> {
 	public synchronized void removeListener(Listener<T> listener) {
 		if (listeners == null) return;
 		listeners.remove(listener);
+		if (listeners.isEmpty()) listeners = null;
 	}
 	
 	@Override
 	public synchronized void removeListener(Runnable listener) {
 		if (listenersRunnable == null) return;
 		listenersRunnable.remove(listener);
+		if (listenersRunnable.isEmpty()) listenersRunnable = null;
 	}
 	
 	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	@Override
 	public boolean hasListeners() {
-		return !listeners.isEmpty() || !listenersRunnable.isEmpty();
+		return listeners != null || listenersRunnable != null;
 	}
 	
 	/** Fire the event.

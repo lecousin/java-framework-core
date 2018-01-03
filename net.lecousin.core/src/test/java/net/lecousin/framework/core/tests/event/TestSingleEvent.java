@@ -51,18 +51,22 @@ public class TestSingleEvent extends LCCoreAbstractTest {
 		Assert.assertEquals(0, called1.get());
 		Assert.assertEquals(0, called2.get());
 		Assert.assertEquals(0, received.get());
+		Assert.assertFalse(event.hasListeners());
 
 		event.addListener(listener1);
+		Assert.assertTrue(event.hasListeners());
 		event.addListener(listener11);
 		event.addListener(listener2);
 		event.addListener(listener22);
 		Assert.assertEquals(0, called1.get());
 		Assert.assertEquals(0, called2.get());
 		Assert.assertEquals(0, received.get());
+		Assert.assertTrue(event.hasListeners());
 		event.fire(Integer.valueOf(123));
 		Assert.assertEquals(2, called1.get());
 		Assert.assertEquals(2, called2.get());
 		Assert.assertEquals(123, received.get());
+		Assert.assertFalse(event.hasListeners());
 
 		event = new SingleEvent<>();
 		called1.set(0);
@@ -71,6 +75,7 @@ public class TestSingleEvent extends LCCoreAbstractTest {
 		Assert.assertEquals(0, called1.get());
 		Assert.assertEquals(0, called2.get());
 		Assert.assertEquals(0, received.get());
+		Assert.assertFalse(event.hasListeners());
 
 		event.addListener(listener1);
 		event.addListener(listener2);
@@ -88,6 +93,10 @@ public class TestSingleEvent extends LCCoreAbstractTest {
 		Assert.assertEquals(0, called2.get());
 		Assert.assertEquals(0, received.get());
 		Assert.assertTrue(event.occured());
+		
+		event.removeListener(listener1);
+		event.removeListener(listener2);
+		Assert.assertFalse(event.hasListeners());
 	}
 	
 }
