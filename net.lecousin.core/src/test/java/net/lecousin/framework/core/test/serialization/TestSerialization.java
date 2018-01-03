@@ -18,6 +18,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -50,10 +53,8 @@ import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Factory;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.Provider;
+import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 public abstract class TestSerialization extends LCCoreAbstractTest {
 
@@ -218,6 +219,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		TestString ts = new TestString();
 		ts.str = s;
 		test(ts, TestString.class);
+		test(s, String.class);
 	}
 
 	public static class TestIString {
@@ -228,6 +230,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		TestIString ts = new TestIString();
 		ts.str = s == null ? null : new UnprotectedStringBuffer(s);
 		test(ts, TestIString.class);
+		test(null, UnprotectedString.class);
 	}
 	
 	@Test(timeout=120000)
@@ -361,6 +364,8 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public Integer[] i;
 		public long[] l;
 		public Float[] f;
+		public float[] ff;
+		public short[] s;
 		public double[] d;
 		public String[] strings;
 		public char[] chars;
@@ -378,6 +383,8 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		t.l = new long[] { 1111, -2222, 345, -678 };
 		t.f = new Float[] { Float.valueOf(-0.01234f), Float.valueOf(9.87654f) };
 		t.d = new double[] { 11.223344d, -99.887766 };
+		t.ff = new float[] { 123.456f, 987.654f };
+		t.s = new short[] { 1234, -9876 };
 		t.strings = new String[] { "Hello", "World", "!", "Salut\ntoi" };
 		t.chars = new char[] { 'Q', '&', '<', '=', '"', '\n', '\'', ']' };
 		t.bytes = new byte[] { 1, 2, 3, 4, 5, 6 };
@@ -445,6 +452,9 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		t.stream.reset();
 		((ByteArrayIO)t.io).seekSync(SeekType.FROM_BEGINNING, 0);
 		testInFile(t, TestIO.class);
+		
+		test(null, IO.Readable.class);
+		test(null, InputStream.class);
 	}
 	
 	public static class IntegerUnitAsString {

@@ -137,12 +137,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 		SerializationContext context, TypeDefinition type, String path, List<SerializationRule> rules
 	) {
 		Class<?> c = type.getBase();
-		if (void.class.equals(c) || Void.class.equals(c))
-			return new AsyncWork<>(null, null);
 		
 		if (c.isArray())
 			return (AsyncWork<T, Exception>)deserializeCollectionValue(context, type, path, rules);
-
 		
 		if (boolean.class.equals(c))
 			return (AsyncWork<T, Exception>)deserializeBooleanValue(false);
@@ -455,10 +452,6 @@ public abstract class AbstractDeserializer implements Deserializer {
 			}
 			int currentIndex = elementIndex;
 			next.listenInline(() -> {
-				if (next.hasError()) {
-					result.error(next.getError());
-					return;
-				}
 				Pair<Object, Boolean> p = next.getResult();
 				if (!p.getValue2().booleanValue()) {
 					// end of collection
@@ -481,7 +474,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 					((Collection)context.getCollection()).add(element);
 					deserializeNextCollectionValueElement(context, currentIndex + 1, colPath, rules, result);
 				}).start();
-			});
+			}, result);
 			return;
 		} while (true);
 	}
@@ -577,10 +570,6 @@ public abstract class AbstractDeserializer implements Deserializer {
 			}
 			int currentIndex = elementIndex;
 			next.listenInline(() -> {
-				if (next.hasError()) {
-					result.error(next.getError());
-					return;
-				}
 				Pair<Object, Boolean> p = next.getResult();
 				if (!p.getValue2().booleanValue()) {
 					// end of collection
@@ -603,7 +592,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 					((Collection)context.getCollection()).add(element);
 					deserializeNextCollectionAttributeValueElement(context, currentIndex + 1, colPath, rules, result);
 				}).start();
-			});
+			}, result);
 			return;
 		} while (true);
 	}

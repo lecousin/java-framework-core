@@ -516,6 +516,9 @@ public class XMLDeserializer extends AbstractDeserializer {
 	@SuppressWarnings("resource")
 	@Override
 	protected AsyncWork<IO.Readable, Exception> deserializeIOReadableValue(SerializationContext context, List<SerializationRule> rules) {
+		XMLStreamReaderAsync.Attribute a = input.getAttributeWithNamespaceURI(XMLUtil.XSI_NAMESPACE_URI, "nil");
+		if (a != null && a.value.equals("true"))
+			return new AsyncWork<>(null, null);
 		IOInMemoryOrFile io = new IOInMemoryOrFile(128 * 1024, priority, "base 64 encoded from XML");
 		Base64Decoder decoder = new Base64Decoder(io);
 		AsyncWork<IO.Readable, Exception> result = new AsyncWork<>();

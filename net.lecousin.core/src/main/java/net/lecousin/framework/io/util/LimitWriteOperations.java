@@ -45,11 +45,11 @@ public class LimitWriteOperations {
 					lastWrite = io.writeAsync(buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
 						@Override
 						public void run(Pair<Integer, IOException> param) {
-							writeDone();
+							writeDone(buffer);
 						}
 					});
 					lastWrite.onCancel((cancel) -> {
-						writeDone();
+						writeDone(buffer);
 					});
 					return lastWrite;
 				}
@@ -67,7 +67,7 @@ public class LimitWriteOperations {
 		} while (true);
 	}
 	
-	private void writeDone() {
+	protected void writeDone(@SuppressWarnings("unused") ByteBuffer buffer) {
 		SynchronizationPoint<NoException> sp = null;
 		synchronized (waiting) {
 			Pair<ByteBuffer,AsyncWork<Integer,IOException>> b = waiting.pollFirst();
@@ -82,13 +82,14 @@ public class LimitWriteOperations {
 						b = waiting.pollFirst();
 					}
 				} else {
-					lastWrite = io.writeAsync(b.getValue1(), new RunnableWithParameter<Pair<Integer,IOException>>() {
+					ByteBuffer buf = b.getValue1();
+					lastWrite = io.writeAsync(buf, new RunnableWithParameter<Pair<Integer,IOException>>() {
 						@Override
 						public void run(Pair<Integer, IOException> param) {
-							writeDone();
+							writeDone(buf);
 						}
 					});
-					lastWrite.onCancel((cancel) -> { writeDone(); });
+					lastWrite.onCancel((cancel) -> { writeDone(buf); });
 					lastWrite.listenInline(b.getValue2());
 				}
 			}

@@ -38,6 +38,10 @@ public class TestFileInfo extends LCCoreAbstractTest {
 		Assert.assertEquals(2, buf[1]);
 		Assert.assertEquals(3, buf[2]);
 		in.close();
+		GetFileInfoTask task2 = new GetFileInfoTask(f, Task.PRIORITY_NORMAL);
+		FileInfo info2 = task2.start().getOutput().blockResult(0);
+		Assert.assertTrue(info.equals(info2));
+		Assert.assertEquals(info.hashCode(), info2.hashCode());
 		f.delete();
 	}
 	
