@@ -487,31 +487,30 @@ public class MemoryIO extends ConcurrentCloseable
 	
 	private void writeAsyncTo(IO.Writable io, SynchronizationPoint<IOException> sp, int bufferIndex) {
 		int lastIndex = size / bufferSize;
-		if (bufferIndex < lastIndex) {
+		while (bufferIndex < lastIndex) {
 			AsyncWork<Integer, IOException> write = io.writeAsync(ByteBuffer.wrap(buffers[bufferIndex]));
-			write.listenInline(new Runnable() {
-				@Override
-				public void run() {
-					if (write.hasError()) sp.error(write.getError());
-					else if (write.isCancelled()) sp.cancel(write.getCancelEvent());
-					else writeAsyncTo(io, sp, bufferIndex + 1);
-				}
-			});
-			return;
+			if (!write.isUnblocked()) {
+				int i = bufferIndex;
+				write.listenInline(new Runnable() {
+					@Override
+					public void run() {
+						if (write.hasError()) sp.error(write.getError());
+						else if (write.isCancelled()) sp.cancel(write.getCancelEvent());
+						else writeAsyncTo(io, sp, i + 1);
+					}
+				});
+				return;
+			}
+			if (write.hasError()) sp.error(write.getError());
+			else if (write.isCancelled()) sp.cancel(write.getCancelEvent());
+			if (sp.isUnblocked()) return;
+			bufferIndex++;
 		}
 		int bufferPos = size % bufferSize;
 		if (bufferPos == 0) {
 			sp.unblock();
 			return;
 		}
-		AsyncWork<Integer, IOException> write = io.writeAsync(ByteBuffer.wrap(buffers[bufferIndex], 0, bufferPos));
-		write.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (write.hasError()) sp.error(write.getError());
-				else if (write.isCancelled()) sp.cancel(write.getCancelEvent());
-				else sp.unblock();
-			}
-		});
+		io.writeAsync(ByteBuffer.wrap(buffers[bufferIndex], 0, bufferPos)).listenInline(sp);
 	}
 }
