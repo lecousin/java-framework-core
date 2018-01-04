@@ -37,7 +37,10 @@ public final class FileSystemWatcher {
 		void fileModified(Path parent, String childName);
 	}
 
-	/** Watch the given path. This will launch the thread if not yet launched. */
+	/** Watch the given path.
+	 * This will launch the thread if not yet launched.
+	 * The returned Runnable can be called to stop watching.
+	 */
 	public static Runnable watch(Path path, PathEventListener listener, WatchEvent.Kind<?>... kinds) throws IOException {
 		synchronized (FileSystemWatcher.class) {
 			Application app = LCCore.getApplication();
@@ -50,7 +53,10 @@ public final class FileSystemWatcher {
 		}
 	}
 	
-	/** Watch the given path. This will launch the thread if not yet launched. */
+	/** Watch the given path.
+	 * This will launch the thread if not yet launched.
+	 * The returned Runnable can be called to stop watching.
+	 */
 	public static Runnable watch(Path path, PathEventListener listener) throws IOException {
 		return watch(path, listener,
 			StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);

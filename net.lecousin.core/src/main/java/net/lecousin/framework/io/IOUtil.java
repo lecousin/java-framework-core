@@ -172,8 +172,9 @@ public class IOUtil {
 							if (ondone != null) ondone.run(new Pair<>(result, null));
 							sp.unblockSuccess(result);
 						} else if (result.intValue() >= 0) {
-							if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(result.intValue() + total.get()), null));
-							sp.unblockSuccess(Integer.valueOf(result.intValue() + total.get()));
+							Integer r = Integer.valueOf(result.intValue() + total.get());
+							if (ondone != null) ondone.run(new Pair<>(r, null));
+							sp.unblockSuccess(r);
 						} else {
 							if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(total.get()), null));
 							sp.unblockSuccess(Integer.valueOf(total.get()));

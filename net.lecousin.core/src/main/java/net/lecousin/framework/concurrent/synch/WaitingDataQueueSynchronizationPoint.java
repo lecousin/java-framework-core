@@ -31,7 +31,8 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	/** To call when data is needed.
 	 * @return the next data, or null if no more data will be available
 	 */
-	public DataType waitForData() {
+	public DataType waitForData(long timeout) {
+		long start = System.currentTimeMillis();
 		do {
 			Thread t;
 			BlockedThreadHandler blockedHandler;
@@ -46,13 +47,15 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 					return null;
 				t = Thread.currentThread();
 				blockedHandler = Threading.getBlockedThreadHandler(t);
-				if (blockedHandler == null)
-					try { this.wait(); }
+				if (blockedHandler == null) {
+					try { this.wait(timeout); }
 					catch (InterruptedException e) { return null; }
+				}
 			}
 			if (blockedHandler != null)
-				blockedHandler.blocked(this, 0);
-		} while (true);
+				blockedHandler.blocked(this, timeout);
+		} while (timeout <= 0 || (System.currentTimeMillis() - start) < timeout);
+		return null;
 	}
 	
 	/** Queue a new data, which may unblock a thread waiting for it. */
@@ -107,6 +110,7 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	
 	@Override
 	public void block(long timeout) {
+		long start = System.currentTimeMillis();
 		do {
 			Thread t;
 			BlockedThreadHandler blockedHandler;
@@ -117,12 +121,12 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 				t = Thread.currentThread();
 				blockedHandler = Threading.getBlockedThreadHandler(t);
 				if (blockedHandler == null)
-					try { this.wait(); }
+					try { this.wait(timeout); }
 					catch (InterruptedException e) { return; }
 			}
 			if (blockedHandler != null)
-				blockedHandler.blocked(this, 0);
-		} while (true);
+				blockedHandler.blocked(this, timeout);
+		} while (timeout <= 0 || (System.currentTimeMillis() - start) < timeout);
 	}
 	
 	@Override
