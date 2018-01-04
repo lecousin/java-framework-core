@@ -644,7 +644,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 							if (!endReached && !reusableBuffers.isEmpty() && !stopReading)
 								nextRead();
 						}
-						if (endReached && size > 0 && read < size && buffersReady != null)
+						if (endReached && size > 0 && read < size && buffersReady != null && !isClosing())
 							error = new IOException("Unexpected end after " + read
 								+ " bytes read, known size is " + size);
 						if (dataReady != null) {

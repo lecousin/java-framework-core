@@ -48,7 +48,7 @@ public abstract class SubIO extends ConcurrentCloseable {
 		public TaskManager getTaskManager() { return io.getTaskManager(); }
 		
 		@Override
-		public byte getPriority() { return io.getPriority(); }
+		public byte getPriority() { return io != null ? io.getPriority() : Task.PRIORITY_NORMAL; }
 		
 		@Override
 		public void setPriority(byte priority) { io.setPriority(priority); }

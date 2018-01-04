@@ -6,6 +6,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.util.DebugUtil;
 
 class TaskWorker implements Runnable, BlockedThreadHandler {
 
@@ -152,6 +153,8 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 			s.append("waiting");
 		else
 			s.append("executing ").append(c.description).append(" (").append(c.getClass().getName()).append(")");
+		s.append("\r\n");
+		DebugUtil.createStackTrace(s,thread.getStackTrace());
 		s.append("\r\n");
 	}
 	
