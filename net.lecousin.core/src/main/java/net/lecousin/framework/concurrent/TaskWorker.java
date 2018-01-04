@@ -154,8 +154,10 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 		else
 			s.append("executing ").append(c.description).append(" (").append(c.getClass().getName()).append(")");
 		s.append("\r\n");
-		DebugUtil.createStackTrace(s,thread.getStackTrace());
-		s.append("\r\n");
+		if (c != null) {
+			DebugUtil.createStackTrace(s,thread.getStackTrace());
+			s.append("\r\n");
+		}
 	}
 	
 	public void printStats(StringBuilder s) {

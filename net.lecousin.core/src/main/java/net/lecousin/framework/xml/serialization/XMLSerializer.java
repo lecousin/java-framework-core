@@ -219,6 +219,7 @@ public class XMLSerializer extends AbstractSerializer {
 			Boolean.class.equals(c) ||
 			Number.class.isAssignableFrom(c) ||
 			String.class.equals(c) ||
+			Character.class.equals(c) ||
 			c.isEnum())
 			return new SynchronizationPoint<>(true);
 		output.openElement(null, context.getAttribute().getName(), null);
