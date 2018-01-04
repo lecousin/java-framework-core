@@ -1,4 +1,2 @@
 coverage:
   range: "50...75"
-  round: down
-  precision: 2
