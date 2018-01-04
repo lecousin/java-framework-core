@@ -10,6 +10,7 @@ import org.junit.Test;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.tasks.drives.CreateDirectoryTask;
+import net.lecousin.framework.concurrent.tasks.drives.DirectoryReader;
 import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectoryContentTask;
 import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectoryTask;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -45,6 +46,26 @@ public class TestDirectoryTasks extends LCCoreAbstractTest {
 		Assert.assertFalse(new File(dir, "titi").exists());
 		dir.deleteOnExit();
 		root.toFile().deleteOnExit();
+	}
+	
+	@Test
+	public void testDirectoryReader() throws Exception {
+		Path root = Files.createTempDirectory("test");
+		File dir = new File(root.toFile(), "toto");
+		Assert.assertTrue(dir.mkdir());
+		File file = new File(root.toFile(), "titi");
+		Assert.assertTrue(file.createNewFile());
+		DirectoryReader.Request request = new DirectoryReader.Request();
+		request.getCreation = true;
+		request.getIsSymbolicLink = true;
+		request.getLastAccess = true;
+		request.getLastModified = true;
+		request.getSize = true;
+		DirectoryReader reader = new DirectoryReader(root.toFile(), Task.PRIORITY_NORMAL, request);
+		reader.start().getOutput().blockThrow(0);
+		DirectoryReader.ListSubDirectories lister = new DirectoryReader.ListSubDirectories(root.toFile(), Task.PRIORITY_NORMAL);
+		lister.start().getOutput().blockThrow(0);
+		new RemoveDirectoryContentTask(root.toFile(), null, 0, Task.PRIORITY_NORMAL, false).start().getOutput().blockThrow(0);
 	}
 	
 }

@@ -77,7 +77,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	}
 
 	@SuppressWarnings({ "resource" })
-	@Test(timeout=240000)
+	@Test(timeout=300000)
 	public void testSeekableByteByByteAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[1];
