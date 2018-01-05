@@ -21,6 +21,10 @@ class LoggerThread {
 					synchronized (logs) {
 						log = logs.pollFirst();
 						if (log == null) {
+							if (flushing != null) {
+								flushing.unblock();
+								flushing = null;
+							}
 							if (stop) break;
 							try { logs.wait(); }
 							catch (InterruptedException e) { break; }
@@ -55,12 +59,22 @@ class LoggerThread {
 	private Thread thread;
 	private TurnArray<Pair<Appender,Log>> logs = new TurnArray<>(200);
 	private boolean stop = false;
+	private SynchronizationPoint<Exception> flushing = null;
 
 	void log(Appender appender, Log log) {
 		Pair<Appender,Log> p = new Pair<>(appender,log);
 		synchronized (logs) {
 			logs.addLast(p);
 			logs.notify();
+		}
+	}
+	
+	ISynchronizationPoint<Exception> flush() {
+		synchronized (logs) {
+			if (flushing != null) return flushing;
+			flushing = new SynchronizationPoint<>();
+			logs.notify();
+			return flushing;
 		}
 	}
 	

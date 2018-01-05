@@ -211,4 +211,16 @@ public class StringUtil {
 			return value * 1024 * 1024 * 1024 * 1024;
 		throw new NumberFormatException("Invalid size unit: " + s);
 	}
+	
+	/** Count the number of occurences. */
+	public static int count(String string, String toSearch) {
+		int pos = 0;
+		int i;
+		int count = 0;
+		while ((i = string.indexOf(toSearch, pos)) != -1) {
+			count++;
+			pos = i + toSearch.length();
+		}
+		return count;
+	}
 }

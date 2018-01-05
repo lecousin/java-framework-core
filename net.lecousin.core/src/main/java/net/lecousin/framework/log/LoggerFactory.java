@@ -15,8 +15,8 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.application.Application;
+import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.appenders.Appender;
 import net.lecousin.framework.log.appenders.ConsoleAppender;
@@ -27,7 +27,7 @@ public class LoggerFactory {
 	Application application;
 	LoggerThread thread;
 	private Appender defaultAppender;
-	private Map<String,Logger> loggers = new HashMap<>(50);
+	private Map<String, Logger> loggers = new HashMap<>(50);
 	private Logger defaultLogger;
 	
 	/** Constructor. */
@@ -74,6 +74,11 @@ public class LoggerFactory {
 			if (l.appender == defaultAppender)
 				l.appender = appender;
 		defaultAppender = appender;
+	}
+	
+	/** Return a synchronization point that will be unblocked as soon as all pending logs have been written. */
+	public ISynchronizationPoint<Exception> flush() {
+		return thread.flush();
 	}
 	
 	/** Configure a logger with an appender. */

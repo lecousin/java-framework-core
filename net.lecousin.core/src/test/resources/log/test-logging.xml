@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LoggingConfiguration>
+	<Appender
+		name="appender1"
+		class="net.lecousin.framework.log.appenders.RollingFileAppender"
+		level="INFO"
+		pattern="%m"
+		size="50K"
+		files="3"
+		path="${net.lecousin.application.log.directory}/log1.txt"
+	/>
+	<Appender
+		name="appender2"
+		class="net.lecousin.framework.log.appenders.RollingFileAppender"
+		level="DEBUG"
+		pattern="%level %m"
+		size="20K"
+		files="2"
+		path="${net.lecousin.application.log.directory}/log2.txt"
+	/>
+	<Appender
+		name="appender3"
+		class="net.lecousin.framework.log.appenders.RollingFileAppender"
+		level="TRACE"
+		pattern="%level %logger{10} %m"
+		size="30K"
+		files="1"
+		path="${net.lecousin.application.log.directory}/log3.txt"
+	/>
+	<Appender
+		name="appender4"
+		class="net.lecousin.framework.log.appenders.MultipleAppender"
+	>
+		<AppenderRef name="appender2"/>
+		<AppenderRef name="appender3"/>
+	</Appender>
+	<Appender
+		name="appender5"
+		class="net.lecousin.framework.log.appenders.MultipleAppender"
+	>
+		<AppenderRef name="appender2"/>
+		<AppenderRef name="appender4"/>
+	</Appender>
+	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger1" appender="appender1" level="DEBUG"></Logger>
+	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger2" appender="appender2" level="INFO"></Logger>
+	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger3" appender="appender3" level="DEBUG"></Logger>
+	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger4" appender="appender4" level="TRACE"></Logger>
+	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger5" appender="appender5" level="WARN"></Logger>
+</LoggingConfiguration>

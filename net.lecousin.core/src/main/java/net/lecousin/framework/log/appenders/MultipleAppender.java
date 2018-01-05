@@ -84,8 +84,7 @@ public class MultipleAppender implements Appender {
 	@Override
 	public void append(Log log) {
 		for (Appender a : appenders)
-			if (a.level() <= log.level.ordinal())
-				a.append(log);
+			a.append(log);
 	}
 
 	@Override
@@ -102,5 +101,5 @@ public class MultipleAppender implements Appender {
 	public boolean needsLocation() {
 		return location;
 	}
-
+	
 }
