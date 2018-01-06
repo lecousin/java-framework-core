@@ -44,7 +44,9 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		int nbRead = 0;
 		byte[] b = new byte[testBuf.length];
 		while (nbWrite < nbBuf) {
-			o2i.writeSync(ByteBuffer.wrap(testBuf));
+			ByteBuffer bu = ByteBuffer.wrap(testBuf);
+			o2i.writeSync(bu);
+			Assert.assertEquals(0, bu.remaining());
 			nbWrite++;
 			readHalfSync(o2i, (nbRead % 2) == 0, b);
 			nbRead++;
@@ -86,19 +88,22 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 					spWrite.unblock();
 					return null;
 				}
-				Mutable<AsyncWork<Integer, IOException>> write = new Mutable<>(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
+				Mutable<ByteBuffer> buf = new Mutable<>(ByteBuffer.wrap(testBuf));
+				Mutable<AsyncWork<Integer, IOException>> write = new Mutable<>(o2i.writeAsync(buf.get()));
 				MutableInteger nbWrite = new MutableInteger(1);
 				write.get().listenInline(new Runnable() {
 					@Override
 					public void run() {
 						do {
 							if (write.get().hasError()) { spWrite.error(write.get().getError()); return; }
+							if (buf.get().remaining() > 0) { spWrite.error(new IOException("writeAsync did not consume the buffer")); return; }
 							if (nbWrite.get() == nbBuf) {
 								o2i.endOfData();
 								spWrite.unblock();
 								return;
 							}
-							write.set(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
+							buf.set(ByteBuffer.wrap(testBuf));
+							write.set(o2i.writeAsync(buf.get()));
 							nbWrite.inc();
 						} while (write.get().isUnblocked());
 						write.get().listenInline(this);

@@ -68,7 +68,7 @@ public class IOFromOutputStream extends ConcurrentCloseable implements IO.Writab
 	public int writeSync(ByteBuffer buffer) throws IOException {
 		int nb = buffer.remaining();
 		if (buffer.hasArray()) {
-			stream.write(buffer.array(), buffer.position(), buffer.remaining());
+			stream.write(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
 			buffer.position(buffer.position() + nb);
 		} else {
 			byte[] buf = new byte[buffer.remaining()];

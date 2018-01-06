@@ -66,7 +66,9 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 		if (io instanceof IO.PositionKnown)
 			Assert.assertEquals(0, ((IO.PositionKnown)io).getPosition());
 		for (int i = 0; i < nbBuf; ++i) {
-			io.writeSync(ByteBuffer.wrap(testBuf));
+			ByteBuffer b = ByteBuffer.wrap(testBuf);
+			io.writeSync(b);
+			Assert.assertEquals(0, b.remaining());
 			if (io instanceof IO.PositionKnown)
 				Assert.assertEquals(testBuf.length * (i + 1), ((IO.PositionKnown)io).getPosition());
 		}
@@ -83,6 +85,7 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 		IO.Writable io = createWritableFromFile(file);
 		MutableInteger i = new MutableInteger(0);
 		Mutable<AsyncWork<Integer,IOException>> write = new Mutable<>(null);
+		Mutable<ByteBuffer> buf = new Mutable<>(null);
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		Runnable listener = new Runnable() {
 			@Override
@@ -96,6 +99,10 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 						sp.error(new Exception("Invalid write: returned " + write.get().getResult().intValue() + " on " + testBuf.length));
 						return;
 					}
+					if (buf.get().remaining() > 0) {
+						sp.error(new Exception("Write operation did not fully consumed buffer"));
+						return;
+					}
 					if (io instanceof IO.PositionKnown)
 						try { Assert.assertEquals(testBuf.length * (i.get() + 1), ((IO.PositionKnown)io).getPosition()); }
 						catch (Throwable e) {
@@ -106,12 +113,14 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 						sp.unblock();
 						return;
 					}
-					write.set(io.writeAsync(ByteBuffer.wrap(testBuf)));
+					buf.set(ByteBuffer.wrap(testBuf));
+					write.set(io.writeAsync(buf.get()));
 				} while (write.get().isUnblocked());
 				write.get().listenInline(this);
 			}
 		};
-		write.set(io.writeAsync(ByteBuffer.wrap(testBuf)));
+		buf.set(ByteBuffer.wrap(testBuf));
+		write.set(io.writeAsync(buf.get()));
 		write.get().listenInline(listener);
 		
 		sp.blockThrow(0);

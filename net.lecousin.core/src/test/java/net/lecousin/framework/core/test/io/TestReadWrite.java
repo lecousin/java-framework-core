@@ -5,9 +5,6 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.junit.Assume;
-import org.junit.Test;
-
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -22,6 +19,10 @@ import net.lecousin.framework.math.RangeLong;
 import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
+
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
 public abstract class TestReadWrite extends TestIO.UsingTestData {
 
@@ -46,6 +47,8 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			int nb = io.writeSync(buf);
 			if (nb != testBuf.length)
 				throw new Exception("Write only " + nb + " bytes");
+			if (buf.remaining() > 0)
+				throw new Exception("Buffer not fully consumed by write operation");
 		}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		byte[] b = new byte[testBuf.length];
@@ -123,7 +126,8 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 				}
 				MutableBoolean ondoneCalled = new MutableBoolean(false);
 				int bufIndex = index;
-				AsyncWork<Integer, IOException> write = io.writeAsync(index * testBuf.length, ByteBuffer.wrap(testBuf),
+				ByteBuffer buf = ByteBuffer.wrap(testBuf);
+				AsyncWork<Integer, IOException> write = io.writeAsync(index * testBuf.length, buf,
 				new RunnableWithParameter<Pair<Integer,IOException>>() {
 					@Override
 					public void run(Pair<Integer, IOException> param) {
@@ -133,6 +137,10 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 				write.listenInline(() -> {
 					if (!ondoneCalled.get()) {
 						done.error(new IOException("ondone not called by writeAsync"));
+						return;
+					}
+					if (buf.remaining() > 0) {
+						done.error(new IOException("Buffer not fully consumed by write operation"));
 						return;
 					}
 					synchronized (buffersToRead) {
@@ -238,7 +246,9 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			int bufOffset = (int)((range.min + startPos) % testBuf.length);
 			int len = testBuf.length - bufOffset;
 			if (range.min + startPos + len - 1 > range.max) len = (int)(range.max - (range.min + startPos) + 1);
-			io.writeSync(range.min + startPos, ByteBuffer.wrap(testBuf, bufOffset, len));
+			ByteBuffer buf = ByteBuffer.wrap(testBuf, bufOffset, len);
+			io.writeSync(range.min + startPos, buf);
+			Assert.assertEquals(0, buf.remaining());
 			if (range.max == range.min + startPos + len - 1) {
 				toWrite.removeRange(range.min + startPos, range.max);
 				continue;
@@ -300,7 +310,10 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		case FROM_END: io.seekSync(SeekType.FROM_END, (nbBuf - bufIndex) * testBuf.length - testBuf.length / 2); break;
 		case FROM_CURRENT: io.seekSync(SeekType.FROM_CURRENT, bufIndex * testBuf.length + testBuf.length / 2 - io.getPosition()); break;
 		}
-		io.writeSync(ByteBuffer.wrap(testBuf, testBuf.length / 2, testBuf.length - testBuf.length / 2));
+		ByteBuffer b = ByteBuffer.wrap(testBuf, testBuf.length / 2, testBuf.length - testBuf.length / 2);
+		io.writeSync(b);
+		Assert.assertEquals(0, b.remaining());
+		b = null;
 		// write before
 		if (bufIndex > bufStart)
 			dichotomicWriteSync(io, bufStart, bufIndex - 1, 

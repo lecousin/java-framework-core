@@ -378,7 +378,7 @@ public final class Base64 {
 				int l = buffer.remaining() / 3;
 				ISynchronizationPoint<IOException> write;
 				if (l > 0) {
-					byte[] out = encodeBase64(buffer.array(), buffer.position(), l * 3);
+					byte[] out = encodeBase64(buffer.array(), buffer.arrayOffset() + buffer.position(), l * 3);
 					write = writer.writeAsync(ByteBuffer.wrap(out));
 					buffer.position(buffer.position() + l * 3);
 				} else
@@ -428,7 +428,7 @@ public final class Base64 {
 				int l = buffer.remaining() / 3;
 				ISynchronizationPoint<IOException> write;
 				if (l > 0) {
-					char[] out = encodeBase64ToChars(buffer.array(), buffer.position(), l * 3);
+					char[] out = encodeBase64ToChars(buffer.array(), buffer.arrayOffset() + buffer.position(), l * 3);
 					write = writer.writeAsync(out);
 					buffer.position(buffer.position() + l * 3);
 				} else

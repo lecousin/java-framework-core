@@ -88,7 +88,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	
 	@Override
 	public int readSync(ByteBuffer buffer) throws IOException {
-		int nb = stream.read(buffer.array(), buffer.arrayOffset(), buffer.remaining());
+		int nb = stream.read(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
 		if (nb >= 0)
 			buffer.position(buffer.position() + nb);
 		return nb;
@@ -98,7 +98,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	public int readFullySync(ByteBuffer buffer) throws IOException {
 		int total = 0;
 		do {
-			int nb = stream.read(buffer.array(), buffer.arrayOffset() + total, buffer.remaining() - total);
+			int nb = stream.read(buffer.array(), buffer.arrayOffset() + buffer.position() + total, buffer.remaining() - total);
 			if (nb <= 0) break;
 			total += nb;
 		} while (total < buffer.remaining());
@@ -127,7 +127,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 			@Override
 			public Integer run() throws IOException, CancelException {
 				try {
-					int nb = stream.read(buffer.array(), buffer.arrayOffset(), buffer.remaining());
+					int nb = stream.read(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
 					if (nb >= 0)
 						buffer.position(buffer.position() + nb);
 					return Integer.valueOf(nb);
@@ -149,7 +149,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 				int total = 0;
 				do {
 					try {
-						int nb = stream.read(buffer.array(), buffer.arrayOffset() + total, buffer.remaining() - total);
+						int nb = stream.read(buffer.array(), buffer.arrayOffset() + buffer.position() + total, buffer.remaining() - total);
 						if (nb <= 0) break;
 						total += nb;
 					} catch (IOException e) {
