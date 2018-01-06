@@ -49,7 +49,11 @@ must be split into several tasks.
 
 Because the multi-threading system allocates a single thread by CPU, if long running tasks are running, other
 tasks may wait for those tasks to finish if all CPUs are used. While this may be acceptable on a single application
-environment, it is recommended to split such long running tasks into smaller tasks. 
+environment, it is recommended to split such long running tasks into smaller tasks.
+
+A thread pool is also available for long running tasks that cannot be split,
+or tasks using a library with functionalities that may use several physical resources.
+They will be executed in separate threads so they won't block other tasks.
 
 A task should not, but is allowed to block. In this case the blocked thread is interrupted and a new thread
 is automatically launched to process other tasks for the same physical resource. Once the task is unblocked,
@@ -66,7 +70,7 @@ then for the same priority in a first-in-first-out order.
 This may be changed by providing a new implementation of TaskPriorityManager.
 
 The multi-threading system handles CPU and drives tasks, for network asynchronous operations you can
-use the library [net.lecousin.framework.network](https://github.com/lecousin/java-framework-network "java-framework-network").
+use the library [net.lecousin.framework.network.core](https://github.com/lecousin/java-framework-network-core "java-framework-network-core").
 
 ## IO Model
 
@@ -84,7 +88,7 @@ and it can resize the IO can be defined as follow:
 
 In addition, the model add asynchronous operations (non-blocking).
 
-See [Javadoc](https://static.javadoc.io/net.lecousin/core/0.8.0/net/lecousin/framework/io/package-summary.html "package io") for more information. 
+See the javadoc of package net.lecousin.framework.io for more information. 
  
 ## Startup
 
