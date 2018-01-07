@@ -1,15 +1,17 @@
 package net.lecousin.framework.core.tests.application;
 
+import java.io.File;
+import java.util.List;
 import java.util.Locale;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestApplication extends LCCoreAbstractTest {
 
@@ -46,4 +48,20 @@ public class TestApplication extends LCCoreAbstractTest {
 		Assert.assertTrue(null == io);
 	}
 	
+	@Test
+	public void testLibrariesLocations() {
+		List<File> list = LCCore.getApplication().getLibrariesManager().getLibrariesLocations();
+		Assert.assertNotEquals(0, list.size());
+		boolean found = false;
+		for (File f : list) {
+			if (!f.isDirectory()) continue;
+			File dir = new File(f, getClass().getPackage().getName().replace('.', '/'));
+			if (!dir.exists()) continue;
+			if (new File(dir, getClass().getSimpleName() + ".class").exists()) {
+				found = true;
+				break;
+			}
+		}
+		Assert.assertTrue(found);
+	}
 }

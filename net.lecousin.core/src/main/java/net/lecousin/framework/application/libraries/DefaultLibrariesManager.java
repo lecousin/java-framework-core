@@ -156,7 +156,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	
 	@Override
 	public List<File> getLibrariesLocations() {
-		String[] paths = System.getProperty("java.class.path").split(";");
+		String[] paths = System.getProperty("java.class.path").split(System.getProperty("path.separator"));
 		ArrayList<File> list = new ArrayList<>(paths.length);
 		for (String path : paths) {
 			path = path.trim();
