@@ -872,8 +872,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				if (sizes.get(i) == null) {
 					@SuppressWarnings("resource")
 					IO.Readable.Seekable io = (IO.Readable.Seekable)ios.get(i);
-					io.seekSync(SeekType.FROM_END, 0);
-					sizes.set(ioIndex,  Long.valueOf(io.getPosition()));
+					sizes.set(ioIndex,  Long.valueOf(io.seekSync(SeekType.FROM_END, 0)));
 				}
 				p += sizes.get(i).longValue();
 			}
@@ -895,9 +894,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			if (s == null) {
 				@SuppressWarnings("resource")
 				IO.Readable.Seekable io = (IO.Readable.Seekable)ios.get(ioIndex);
-				io.seekSync(SeekType.FROM_END, 0);
-				s = Long.valueOf(io.getPosition());
-				sizes.set(ioIndex,  s);
+				sizes.set(ioIndex, s = Long.valueOf(io.seekSync(SeekType.FROM_END, 0)));
 			}
 			if (pos + s.longValue() > move) {
 				posInIO = move - pos;
@@ -924,8 +921,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			Long s = sizes.get(i);
 			if (s == null) {
 				IO.Readable.Seekable io = (IO.Readable.Seekable)ios.get(i);
-				io.seekSync(SeekType.FROM_END, 0);
-				s = Long.valueOf(io.getPosition());
+				s = Long.valueOf(io.seekSync(SeekType.FROM_END, 0));
 				sizes.set(i,  s);
 			}
 			if (p + s.longValue() > pos) {
@@ -942,11 +938,46 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		return -1;
 	}
 
+	@SuppressWarnings("resource")
 	protected AsyncWork<Integer, IOException> readAsync(
 		long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 	) {
-		// TODO better
-		return operation(IOUtil.readAsyncUsingSync((IO.Readable.Seekable)this, pos, buffer, ondone).getOutput());
+		long p = 0;
+		int i = 0;
+		while (i < ios.size()) {
+			Long s = sizes.get(i);
+			if (s == null) {
+				IO.Readable.Seekable io = (IO.Readable.Seekable)ios.get(i);
+				AsyncWork<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
+				if (!seek.isUnblocked()) {
+					AsyncWork<Integer, IOException> result = new AsyncWork<>();
+					int ii = i;
+					seek.listenAsync(new Task.Cpu.FromRunnable("LinkedIO.readAsync", getPriority(), () -> {
+						sizes.set(ii, seek.getResult());
+						readAsync(pos, buffer, ondone).listenInline(result);
+					}), result);
+					return result;
+				}
+				sizes.set(i, s = seek.getResult());
+			}
+			if (p + s.longValue() > pos) {
+				IO.Readable.Seekable io = (IO.Readable.Seekable)ios.get(i);
+				ioIndex = i;
+				posInIO = pos - p;
+				AsyncWork<Integer, IOException> result = io.readAsync(pos - p, buffer, (res) -> {
+					if (res.getValue1() != null) {
+						posInIO += res.getValue1().intValue();
+						LinkedIO.this.pos = pos + res.getValue1().intValue();
+					}
+					if (ondone != null) ondone.run(res);
+				});
+				return result;
+			}
+			p += s.longValue();
+			i++;
+		}
+		if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
+		return new AsyncWork<>(Integer.valueOf(-1), null);
 	}
 
 	protected int readFullySync(long pos, ByteBuffer buffer) throws IOException {

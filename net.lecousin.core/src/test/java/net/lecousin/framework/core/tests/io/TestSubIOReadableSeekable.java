@@ -21,8 +21,9 @@ public class TestSubIOReadableSeekable extends TestReadableSeekable {
 		Collection<Object[]> base = generateTestCases(false);
 		LinkedList<Object[]> list = new LinkedList<>();
 		for (Object[] params : base) {
-			list.add(createParams(params, 0, 0));
 			int nbBuf = ((Integer)params[2]).intValue();
+			if (nbBuf <= 1000)
+				list.add(createParams(params, 0, 0));
 			if (nbBuf < 80) continue;
 			if (nbBuf <= 100)
 				list.add(createParams(params, 60, 15));

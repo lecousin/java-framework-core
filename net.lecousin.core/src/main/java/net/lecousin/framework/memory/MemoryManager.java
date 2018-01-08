@@ -223,10 +223,15 @@ logger.debug("No garbage collection since 2 minutes => free some cached data to 
 	/** Log memory usage. */
 	public static void logMemory(Level level) {
 		//if (jvm != null) jvm.printOptions();
+		StringBuilder s = new StringBuilder(2048);
+		logMemory(s);
+		logger.log(level, s.toString());
+	}
+	
+	public static void logMemory(StringBuilder s) {
 		long total = Runtime.getRuntime().totalMemory();
 		long free = Runtime.getRuntime().freeMemory();
 		long used = total - free;
-		StringBuilder s = new StringBuilder(2048);
 		s.append("Memory usage: ").append(StringUtil.size(used)).append('/').append(StringUtil.size(total))
 			.append(" (").append(StringUtil.size(free)).append(" free), max=")
 			.append(StringUtil.size(Runtime.getRuntime().maxMemory())).append('\n');
@@ -256,7 +261,6 @@ logger.debug("No garbage collection since 2 minutes => free some cached data to 
 			}
 			s.append("]\n");
 		}
-		logger.log(level, s.toString());
 	}
 	
 	/** Free memory on memory manageable instances. */

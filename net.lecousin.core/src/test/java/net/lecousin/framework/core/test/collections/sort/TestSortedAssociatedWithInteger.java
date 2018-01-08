@@ -84,7 +84,7 @@ public abstract class TestSortedAssociatedWithInteger extends LCCoreAbstractTest
 		Sorted.AssociatedWithInteger<Object> list = createSorted();
 		TreeSet<Integer> order = new TreeSet<>();
 		Random rand = new Random();
-		for (int i = 0; i < 5000; ++i) {
+		for (int i = 0; i < 2000; ++i) {
 			int value = rand.nextInt();
 			while (order.contains(Integer.valueOf(value))) value++;
 			list.add(value, Integer.valueOf(-value));

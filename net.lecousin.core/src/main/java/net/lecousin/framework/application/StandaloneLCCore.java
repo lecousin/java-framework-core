@@ -18,6 +18,7 @@ import net.lecousin.framework.concurrent.StandaloneTaskPriorityManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.log.Logger;
+import net.lecousin.framework.memory.MemoryManager;
 import net.lecousin.framework.util.AsyncCloseable;
 import net.lecousin.framework.util.DebugUtil;
 import net.lecousin.framework.util.Pair;
@@ -242,6 +243,11 @@ public class StandaloneLCCore implements LCCore.Environment {
 		} while (count < 50);
 
 		long end = System.nanoTime();
+		
+		StringBuilder s = new StringBuilder(2048);
+		MemoryManager.logMemory(s);
+		System.out.println(s.toString());
+		
 		OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
 		try {
 			ClassLoader.getSystemClassLoader().loadClass("com.sun.management.OperatingSystemMXBean");

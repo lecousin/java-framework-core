@@ -84,7 +84,7 @@ public abstract class TestSortedAssociatedWithLong extends LCCoreAbstractTest {
 		Sorted.AssociatedWithLong<Object> list = createSorted();
 		TreeSet<Long> order = new TreeSet<>();
 		Random rand = new Random();
-		for (int i = 0; i < 5000; ++i) {
+		for (int i = 0; i < 2000; ++i) {
 			long value = rand.nextLong();
 			while (order.contains(Long.valueOf(value))) value++;
 			list.add(value, Long.valueOf(-value));

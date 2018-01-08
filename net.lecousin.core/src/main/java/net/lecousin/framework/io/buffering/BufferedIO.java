@@ -730,12 +730,15 @@ public abstract class BufferedIO extends BufferingManaged {
 	}
 	
 	protected int readSync(long pos, ByteBuffer buf) throws IOException {
-		if (pos >= size) return -1;
+		if (pos >= size)
+			return -1;
 		int bufferIndex = getBufferIndex(pos);
 		Buffer buffer = useBufferSync(bufferIndex);
 		int start = getBufferOffset(pos);
 		int len = buf.remaining();
 		if (len > buffer.len - start) len = buffer.len - start;
+		if (len <= 0)
+			return 0;
 		buf.put(buffer.buffer, start, len);
 		buffer.lastRead = System.currentTimeMillis();
 		buffer.inUse--;

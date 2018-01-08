@@ -30,8 +30,8 @@ public class TestReadableToSeekableReadableBuffered extends TestReadableBuffered
 	@SuppressWarnings("resource")
 	@Override
 	protected IO.Readable.Buffered createReadableBufferedFromFile(ReadOnly file, long fileSize) throws Exception {
-		PreBufferedReadable ioBuf = new PreBufferedReadable(file, 256, Task.PRIORITY_IMPORTANT, 512, Task.PRIORITY_IMPORTANT, 10);
-		return new ReadableToSeekable(ioBuf, 512);
+		PreBufferedReadable ioBuf = new PreBufferedReadable(file, 256, Task.PRIORITY_IMPORTANT, 2048, Task.PRIORITY_IMPORTANT, 10);
+		return new ReadableToSeekable(ioBuf, 4096);
 	}
 	
 }

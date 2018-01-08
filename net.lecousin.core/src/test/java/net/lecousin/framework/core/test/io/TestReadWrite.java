@@ -72,6 +72,8 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	@Test(timeout=120000)
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testRandomWriteAndReadAsync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
+		int nbBuf = this.nbBuf;
+		if (nbBuf > 25000) nbBuf = 25000; // make test faster
 		T io = openReadWrite();
 		LinkedList<Integer> buffersToWrite = new LinkedList<>();
 		LinkedList<Integer> buffersToRead = new LinkedList<>();
@@ -84,7 +86,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 				prevWrite = writeBuffer(io, prevWrite, buffersToWrite, buffersToRead);
 			prevRead = readBuffer(io, prevWrite, prevRead, buffersToRead);
 			// make some pauses to avoid stack overflow
-			if ((i % 10) == 8) {
+			if ((i % 17) == 8) {
 				prevRead.blockThrow(0);
 				prevRead = null;
 				prevWrite = null;

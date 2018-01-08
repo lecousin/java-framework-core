@@ -42,7 +42,7 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 		LinkedList<Long> values = new LinkedList<>();
 		Random rand = new Random();
 		long value = 0;
-		for (int i = 0; i < 5000; ++i) {
+		for (int i = 0; i < 2500; ++i) {
 			value += rand.nextLong();
 			values.add(Long.valueOf(value));
 		}

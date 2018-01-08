@@ -48,9 +48,9 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		for (int i = 0; i < nbBuf; ++i) offsets.add(Integer.valueOf(i));
 		boolean faster = false;
 		while (!offsets.isEmpty()) {
-			if (nbBuf > 1000 && (offsets.size() % 100) == 99) {
+			if (nbBuf > 1000 && (offsets.size() % 100) == 50) {
 				// make the test faster
-				for (int skip = 0; skip < 80 && !offsets.isEmpty(); ++skip)
+				for (int skip = 0; skip < 120 && !offsets.isEmpty(); ++skip)
 					offsets.remove(rand.nextInt(offsets.size()));
 				continue;
 			}
@@ -136,9 +136,9 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 							// read again to test we cannot read beyond the end of the file
 							offset.set(nbBuf-1);
 						} else {
-							if (nbBuf > 1000 && (offsets.size() % 100) == 99) {
+							if (nbBuf > 1000 && (offsets.size() % 100) == 60) {
 								// make the test faster
-								for (int skip = 0; skip < 80 && offsets.size() > 1; ++skip)
+								for (int skip = 0; skip < 130 && offsets.size() > 1; ++skip)
 									offsets.remove(rand.nextInt(offsets.size()));
 							}
 	
@@ -272,7 +272,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	@Test(timeout=300000)
 	public void testConcurrentAccessToSeekableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
-		int nbConc = Runtime.getRuntime().availableProcessors() * 5;
+		int nbConc = Runtime.getRuntime().availableProcessors() * 3;
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		jp.addToJoin(nbConc);
 		for (int t = 0; t < nbConc; ++t) {

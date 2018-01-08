@@ -16,6 +16,7 @@ public abstract class TestFragmented extends TestIO {
 		public byte[] testBuf;
 		public int nbBuf;
 		public File file;
+		public int realSize;
 		public List<RangeLong> fragments = new LinkedList<RangeLong>();
 	}
 	
@@ -39,11 +40,11 @@ public abstract class TestFragmented extends TestIO {
 	
 	private static void generateFragmentedFile(FragmentedFile f) throws IOException {
 		int size = f.testBuf.length * f.nbBuf;
-		int realSize = size * 3;
-		System.out.println("Generating fragmented file of " + f.nbBuf + " buffers (size = " + size + ", real = " + realSize + ")");
+		f.realSize = size * 3;
+		System.out.println("Generating fragmented file of " + f.nbBuf + " buffers (size = " + size + ", real = " + f.realSize + ")");
 		RandomAccessFile file = new RandomAccessFile(f.file, "rw");
-		file.setLength(realSize);
-		FragmentedRangeInteger free = new FragmentedRangeInteger(new RangeInteger(0, realSize));
+		file.setLength(f.realSize);
+		FragmentedRangeInteger free = new FragmentedRangeInteger(new RangeInteger(0, f.realSize - 1));
 		int pos = 0;
 		int maxWriteLen;
 		if (size < 65536) maxWriteLen = 1024;
