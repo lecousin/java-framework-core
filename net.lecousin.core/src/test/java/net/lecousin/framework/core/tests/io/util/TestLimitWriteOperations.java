@@ -13,7 +13,7 @@ import org.junit.Test;
 
 public class TestLimitWriteOperations extends LCCoreAbstractTest {
 
-	@Test
+	@Test(timeout=120000)
 	public void test() throws Exception {
 		File tmp = File.createTempFile("test", "lwo");
 		tmp.deleteOnExit();
