@@ -149,7 +149,10 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 				int total = 0;
 				do {
 					try {
-						int nb = stream.read(buffer.array(), buffer.arrayOffset() + buffer.position() + total, buffer.remaining() - total);
+						int nb = stream.read(
+							buffer.array(),
+							buffer.arrayOffset() + buffer.position() + total,
+							buffer.remaining() - total);
 						if (nb <= 0) break;
 						total += nb;
 					} catch (IOException e) {

@@ -744,7 +744,10 @@ public abstract class AbstractDeserializer implements Deserializer {
 		AsyncWork<InputStream, Exception> result = new AsyncWork<>();
 		io.listenInline(
 			(inputStream) -> {
-				result.unblockSuccess(IOAsInputStream.get(inputStream));
+				if (inputStream == null)
+					result.unblockSuccess(null);
+				else
+					result.unblockSuccess(IOAsInputStream.get(inputStream));
 			},
 			result
 		);
@@ -761,7 +764,10 @@ public abstract class AbstractDeserializer implements Deserializer {
 		AsyncWork<InputStream, Exception> result = new AsyncWork<>();
 		io.listenInline(
 			(inputStream) -> {
-				result.unblockSuccess(IOAsInputStream.get(inputStream));
+				if (inputStream == null)
+					result.unblockSuccess(null);
+				else
+					result.unblockSuccess(IOAsInputStream.get(inputStream));
 			},
 			result
 		);
