@@ -1,6 +1,10 @@
 package net.lecousin.framework.io.serialization;
 
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -9,7 +13,9 @@ import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
+import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
+import net.lecousin.framework.io.serialization.SerializationUtil.MapEntry;
 import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnAttribute;
 import net.lecousin.framework.io.serialization.annotations.AttributeAnnotationToRuleOnType;
 import net.lecousin.framework.io.serialization.annotations.TypeAnnotationToRule;
@@ -73,43 +79,129 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	protected ISynchronizationPoint<? extends Exception> specifyValue(
 		SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules
 	) {
+		for (SerializationRule rule : rules)
+			typeDef = rule.getDeserializationType(typeDef, context);
+		
 		Class<?> type = typeDef.getBase();
 		
+		if (type.isArray()) {
+			Class<?> elementType = type.getComponentType();
+			CollectionContext ctx = new CollectionContext(context, null, typeDef, new TypeDefinition(elementType));
+			return specifyCollectionValue(ctx, rules);
+		}
+		
 		if (boolean.class.equals(type))
-			return specifyBooleanValue(false);
+			return specifyBooleanValue(context, false);
 		if (Boolean.class.equals(type))
-			return specifyBooleanValue(true);
+			return specifyBooleanValue(context, true);
 		
 		if (byte.class.equals(type))
-			return specifyNumericValue(Byte.class, false, Byte.valueOf(Byte.MIN_VALUE), Byte.valueOf(Byte.MAX_VALUE));
+			return specifyNumericValue(context, Byte.class, false, Byte.valueOf(Byte.MIN_VALUE), Byte.valueOf(Byte.MAX_VALUE));
 		if (Byte.class.equals(type))
-			return specifyNumericValue(Byte.class, true, Byte.valueOf(Byte.MIN_VALUE), Byte.valueOf(Byte.MAX_VALUE));
+			return specifyNumericValue(context, Byte.class, true, Byte.valueOf(Byte.MIN_VALUE), Byte.valueOf(Byte.MAX_VALUE));
 		if (short.class.equals(type))
-			return specifyNumericValue(Short.class, false, Short.valueOf(Short.MIN_VALUE), Short.valueOf(Short.MAX_VALUE));
+			return specifyNumericValue(context, Short.class, false, Short.valueOf(Short.MIN_VALUE), Short.valueOf(Short.MAX_VALUE));
 		if (Short.class.equals(type))
-			return specifyNumericValue(Short.class, true, Short.valueOf(Short.MIN_VALUE), Short.valueOf(Short.MAX_VALUE));
+			return specifyNumericValue(context, Short.class, true, Short.valueOf(Short.MIN_VALUE), Short.valueOf(Short.MAX_VALUE));
 		if (int.class.equals(type))
-			return specifyNumericValue(Integer.class, false, Integer.valueOf(Integer.MIN_VALUE), Integer.valueOf(Integer.MAX_VALUE));
+			return specifyNumericValue(context, Integer.class, false,
+				Integer.valueOf(Integer.MIN_VALUE), Integer.valueOf(Integer.MAX_VALUE));
 		if (Integer.class.equals(type))
-			return specifyNumericValue(Integer.class, true, Integer.valueOf(Integer.MIN_VALUE), Integer.valueOf(Integer.MAX_VALUE));
+			return specifyNumericValue(context, Integer.class, true,
+				Integer.valueOf(Integer.MIN_VALUE), Integer.valueOf(Integer.MAX_VALUE));
 		if (long.class.equals(type))
-			return specifyNumericValue(Long.class, false, Long.valueOf(Long.MIN_VALUE), Long.valueOf(Long.MAX_VALUE));
+			return specifyNumericValue(context, Long.class, false, Long.valueOf(Long.MIN_VALUE), Long.valueOf(Long.MAX_VALUE));
 		if (Long.class.equals(type))
-			return specifyNumericValue(Long.class, true, Long.valueOf(Long.MIN_VALUE), Long.valueOf(Long.MAX_VALUE));
+			return specifyNumericValue(context, Long.class, true, Long.valueOf(Long.MIN_VALUE), Long.valueOf(Long.MAX_VALUE));
+		if (float.class.equals(type) ||
+			double.class.equals(type) ||
+			Number.class.isAssignableFrom(type))
+			return specifyNumericValue(context, type, !type.isPrimitive(), null, null);
+
+		if (char.class.equals(type))
+			return specifyCharacterValue(context, false);
+		if (Character.class.equals(type))
+			return specifyCharacterValue(context, true);
 		
 		if (CharSequence.class.isAssignableFrom(type))
 			return specifyStringValue(context, typeDef);
+		
+		if (type.isEnum())
+			return specifyEnumValue(context, typeDef);
 
-		// TODO
+		if (Collection.class.isAssignableFrom(type)) {
+			TypeDefinition elementType;
+			if (typeDef.getParameters().isEmpty())
+				elementType = null;
+			else
+				elementType = typeDef.getParameters().get(0);
+			CollectionContext ctx = new CollectionContext(context, null, typeDef, elementType);
+			return specifyCollectionValue(ctx, rules);
+		}
+
+		if (Map.class.isAssignableFrom(type))
+			return specifyMapValue(context, typeDef, rules);
+		
+		if (InputStream.class.isAssignableFrom(type))
+			return specifyInputStreamValue(context, rules);
+		
+		if (IO.Readable.class.isAssignableFrom(type))
+			return specifyIOReadableValue(context, rules);
 		
 		return specifyObjectValue(context, typeDef, rules);
 	}
 	
-	protected abstract ISynchronizationPoint<? extends Exception> specifyBooleanValue(boolean nullable);
+	// *** boolean ***
+	
+	protected abstract ISynchronizationPoint<? extends Exception> specifyBooleanValue(SerializationContext context, boolean nullable);
 
-	protected abstract ISynchronizationPoint<? extends Exception> specifyNumericValue(Class<?> type, boolean nullable, Number min, Number max);
+	// *** number ***
+
+	protected abstract ISynchronizationPoint<? extends Exception> specifyNumericValue(
+		SerializationContext context, Class<?> type, boolean nullable, Number min, Number max);
+
+	// *** character ***
+	
+	protected abstract ISynchronizationPoint<? extends Exception> specifyCharacterValue(SerializationContext context, boolean nullable);
+	
+	// *** string ***
 	
 	protected abstract ISynchronizationPoint<? extends Exception> specifyStringValue(SerializationContext context, TypeDefinition type);
+
+	// *** enum ***
+	
+	protected abstract ISynchronizationPoint<? extends Exception> specifyEnumValue(SerializationContext context, TypeDefinition type);
+
+	// *** collection ***
+	
+	protected abstract ISynchronizationPoint<? extends Exception> specifyCollectionValue(
+		CollectionContext context, List<SerializationRule> rules);
+	
+	// *** map ***
+
+	protected ISynchronizationPoint<? extends Exception> specifyMapValue(
+		SerializationContext context, TypeDefinition type, List<SerializationRule> rules
+	) {
+		TypeDefinition elementType = new TypeDefinition(MapEntry.class, type.getParameters());
+		TypeDefinition colType = new TypeDefinition(ArrayList.class, elementType);
+		CollectionContext ctx = new CollectionContext(context, null, colType, elementType);
+		return specifyCollectionValue(ctx, rules);
+	}
+	
+	// *** InputStream ***
+
+	protected ISynchronizationPoint<? extends Exception> specifyInputStreamValue(
+		SerializationContext context, List<SerializationRule> rules
+	) {
+		return specifyIOReadableValue(context, rules);
+	}
+	
+	// *** IO.Readable ***
+
+	protected abstract ISynchronizationPoint<? extends Exception> specifyIOReadableValue(
+		SerializationContext context, List<SerializationRule> rules);
+	
+	// *** object ***
 	
 	protected ISynchronizationPoint<? extends Exception> specifyObjectValue(
 		SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules

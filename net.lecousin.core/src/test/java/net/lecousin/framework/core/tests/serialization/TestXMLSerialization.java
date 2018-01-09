@@ -8,20 +8,20 @@ import java.util.HashMap;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+import javax.xml.validation.Validator;
 
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.core.test.serialization.TestSerialization;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Readable;
-import net.lecousin.framework.io.IO.Writable;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
-import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
+import net.lecousin.framework.io.IO.Writable;
 import net.lecousin.framework.io.IOAsInputStream;
 import net.lecousin.framework.io.SubIO;
+import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
 import net.lecousin.framework.io.serialization.Deserializer;
 import net.lecousin.framework.io.serialization.SerializationSpecWriter;
 import net.lecousin.framework.io.serialization.Serializer;
@@ -32,6 +32,10 @@ import net.lecousin.framework.xml.XMLWriter;
 import net.lecousin.framework.xml.serialization.XMLDeserializer;
 import net.lecousin.framework.xml.serialization.XMLSerializer;
 import net.lecousin.framework.xml.serialization.XMLSpecWriter;
+
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 public class TestXMLSerialization extends TestSerialization {
@@ -98,6 +102,19 @@ public class TestXMLSerialization extends TestSerialization {
 		// parser will close the IO, so we need to wrap it
 		builder.parse(IOAsInputStream.get(new SubIO.Readable.Seekable(io, 0, ((IO.KnownSize)io).getSizeSync(), io.getSourceDescription(), false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
+	}
+	
+	@Override
+	protected void checkSpec(IO.Readable.Seekable spec, Class<?> type, IO.Readable.Seekable serialization) throws Exception {
+		// parser will close the IO, so we need to wrap it
+		Schema schema = SchemaFactory.newInstance(XMLUtil.XSD_NAMESPACE_URI)
+			.newSchema(new StreamSource(IOAsInputStream.get(new SubIO.Readable.Seekable(spec, 0, ((IO.KnownSize)spec).getSizeSync(), spec.getSourceDescription(), false))));
+		spec.seekSync(SeekType.FROM_BEGINNING, 0);
+		
+		Validator validator = schema.newValidator();
+		serialization.seekSync(SeekType.FROM_BEGINNING, 0);
+        validator.validate(new StreamSource(IOAsInputStream.get(new SubIO.Readable.Seekable(serialization, 0, ((IO.KnownSize)serialization).getSizeSync(), serialization.getSourceDescription(), false))));
+		serialization.seekSync(SeekType.FROM_BEGINNING, 0);
 	}
 	
 }

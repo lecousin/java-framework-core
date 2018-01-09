@@ -46,23 +46,29 @@ public class MergeTypeAttributes implements SerializationRule {
 					if (serializing) {
 						// we need to change the instance
 						Object containerObject = octx.getInstance();
-						Object targetInstance;
-						Method getter = ClassUtil.getGetter(containerObject.getClass(), targetAttributeName);
-						if (getter != null)
-							targetInstance = getter.invoke(containerObject);
-						else {
-							Field f = ClassUtil.getField(containerObject.getClass(), targetAttributeName);
-							if (f != null)
-								targetInstance = f.get(containerObject);
-							else
-								throw new Exception("Cannot find attribute " + targetAttributeName
-									+ " on class " + containerObject.getClass().getName());
+						TypeDefinition targetType;
+						if (containerObject != null) {
+							Object targetInstance;
+							Method getter = ClassUtil.getGetter(containerObject.getClass(), targetAttributeName);
+							if (getter != null)
+								targetInstance = getter.invoke(containerObject);
+							else {
+								Field f = ClassUtil.getField(containerObject.getClass(), targetAttributeName);
+								if (f != null)
+									targetInstance = f.get(containerObject);
+								else
+									throw new Exception("Cannot find attribute " + targetAttributeName
+										+ " on class " + containerObject.getClass().getName());
+							}
+							octx.setInstance(targetInstance);
+							targetType = TypeDefinition.from(targetInstance.getClass(), ma.targetType);
+						} else {
+							Attribute a = octx.getSerializationClass().getAttributeByOriginalName(targetAttributeName);
+							targetType = a.getOriginalType();
 						}
-						octx.setInstance(targetInstance);
 						// we need to change the type
 						SerializationClass containerClass = octx.getSerializationClass();
-						SerializationClass sc =
-							new SerializationClass(TypeDefinition.from(targetInstance.getClass(), ma.targetType));
+						SerializationClass sc = new SerializationClass(targetType);
 						octx.setSerializationClass(sc);
 						octx.setOriginalType(ma.targetType);
 						// we need to add other attributes
@@ -116,28 +122,34 @@ public class MergeTypeAttributes implements SerializationRule {
 								if (serializing) {
 									// we need to change the instance
 									Object containerObject = octx.getInstance();
-									Object targetInstance;
-									Method getter =
+									TypeDefinition newType;
+									if (containerObject != null) {
+										Object targetInstance;
+										Method getter =
 										ClassUtil.getGetter(containerObject.getClass(), targetAttributeName);
-									if (getter != null)
-										targetInstance = getter.invoke(containerObject);
-									else {
-										Field f = ClassUtil.getField(
-											containerObject.getClass(), targetAttributeName);
-										if (f != null)
-											targetInstance = f.get(containerObject);
-										else
-											throw new Exception("Cannot find attribute "
-												+ targetAttributeName
-												+ " on class "
-												+ containerObject.getClass().getName());
+										if (getter != null)
+											targetInstance = getter.invoke(containerObject);
+										else {
+											Field f = ClassUtil.getField(
+												containerObject.getClass(), targetAttributeName);
+											if (f != null)
+												targetInstance = f.get(containerObject);
+											else
+												throw new Exception("Cannot find attribute "
+													+ targetAttributeName
+													+ " on class "
+													+ containerObject.getClass().getName());
+										}
+										octx.setInstance(targetInstance);
+										newType = TypeDefinition.from(targetInstance.getClass(), targetType);
+									} else {
+										Attribute a = octx.getSerializationClass()
+											.getAttributeByOriginalName(targetAttributeName);
+										newType = a.getOriginalType();
 									}
-									octx.setInstance(targetInstance);
 									// we need to change the type
 									SerializationClass containerClass = octx.getSerializationClass();
-									SerializationClass sc =
-										new SerializationClass(
-											TypeDefinition.from(targetInstance.getClass(), targetType));
+									SerializationClass sc = new SerializationClass(newType);
 									octx.setSerializationClass(sc);
 									octx.setOriginalType(targetType);
 									// we need to add other attributes

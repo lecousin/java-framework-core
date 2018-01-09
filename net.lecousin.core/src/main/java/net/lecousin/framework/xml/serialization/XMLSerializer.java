@@ -162,14 +162,14 @@ public class XMLSerializer extends AbstractSerializer {
 			if (c.isPrimitive()) return -1;
 			if (Boolean.class.equals(c)) return -1;
 			if (Number.class.isAssignableFrom(c)) return -1;
-			if (String.class.equals(c)) return -1;
+			if (CharSequence.class.isAssignableFrom(c)) return -1;
 			if (Character.class.equals(c)) return -1;
 			if (c.isEnum()) return -1;
 			c = o2.getType().getBase();
 			if (c.isPrimitive()) return 1;
 			if (Boolean.class.equals(c)) return 1;
 			if (Number.class.isAssignableFrom(c)) return 1;
-			if (String.class.equals(c)) return 1;
+			if (CharSequence.class.isAssignableFrom(c)) return 1;
 			if (Character.class.equals(c)) return 1;
 			if (c.isEnum()) return 1;
 			return 0;
@@ -218,7 +218,7 @@ public class XMLSerializer extends AbstractSerializer {
 		if (c.isPrimitive() ||
 			Boolean.class.equals(c) ||
 			Number.class.isAssignableFrom(c) ||
-			String.class.equals(c) ||
+			CharSequence.class.isAssignableFrom(c) ||
 			Character.class.equals(c) ||
 			c.isEnum())
 			return new SynchronizationPoint<>(true);

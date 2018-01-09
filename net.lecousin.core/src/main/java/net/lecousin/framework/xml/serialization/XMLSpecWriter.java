@@ -18,6 +18,7 @@ import net.lecousin.framework.io.serialization.AbstractSerializationSpecWriter;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
+import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
@@ -104,15 +105,25 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> specifyBooleanValue(boolean nullable) {
+	protected ISynchronizationPoint<IOException> specifyBooleanValue(SerializationContext context, boolean nullable) {
 		output.addAttribute("type", "xsd:boolean");
-		if (nullable)
-			output.addAttribute("nillable", "true");
+		if (nullable) {
+			if (context instanceof AttributeContext)
+				output.addAttribute("use", "optional");
+			else
+				output.addAttribute("nillable", "true");
+		}
+		if (context instanceof CollectionContext) {
+			output.addAttribute("minOccurs", "0");
+			output.addAttribute("maxOccurs", "unbounded");
+		}
 		return output.closeElement();
 	}
 	
 	@Override
-	protected ISynchronizationPoint<IOException> specifyNumericValue(Class<?> type, boolean nullable, Number min, Number max) {
+	protected ISynchronizationPoint<IOException> specifyNumericValue(
+		SerializationContext context, Class<?> type, boolean nullable, Number min, Number max
+	) {
 		if (byte.class.equals(type) ||
 			Byte.class.equals(type))
 			output.addAttribute("type", "xsd:byte");
@@ -127,10 +138,26 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 			BigInteger.class.equals(type)
 		)
 			output.addAttribute("type", "xsd:integer");
+		else if (float.class.equals(type) ||
+				Float.class.equals(type))
+			output.addAttribute("type", "xsd:float");
+		else if (double.class.equals(type) ||
+				Double.class.equals(type))
+			output.addAttribute("type", "xsd:double");
 		else
 			output.addAttribute("type", "xsd:decimal");
-		if (nullable)
-			output.addAttribute("nillable", "true");
+		
+		if (nullable) {
+			if (context instanceof AttributeContext)
+				output.addAttribute("use", "optional");
+			else
+				output.addAttribute("nillable", "true");
+		}
+
+		if (context instanceof CollectionContext) {
+			output.addAttribute("minOccurs", "0");
+			output.addAttribute("maxOccurs", "unbounded");
+		}
 		// TODO min, max ? defining a type ??
 		return output.closeElement();
 	}
@@ -138,7 +165,102 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	@Override
 	protected ISynchronizationPoint<? extends Exception> specifyStringValue(SerializationContext context, TypeDefinition type) {
 		output.addAttribute("type", "xsd:string");
+		if (context instanceof AttributeContext)
+			output.addAttribute("use", "optional");
+		else
+			output.addAttribute("nillable", "true");
+		if (context instanceof CollectionContext) {
+			output.addAttribute("minOccurs", "0");
+			output.addAttribute("maxOccurs", "unbounded");
+		}
 		// TODO restrictions ?
+		return output.closeElement();
+	}
+	
+	@Override
+	protected ISynchronizationPoint<? extends Exception> specifyCharacterValue(SerializationContext context, boolean nullable) {
+		if (nullable) {
+			if (context instanceof AttributeContext)
+				output.addAttribute("use", "optional");
+			else
+				output.addAttribute("nillable", "true");
+		}
+		if (context instanceof CollectionContext) {
+			output.addAttribute("minOccurs", "0");
+			output.addAttribute("maxOccurs", "unbounded");
+		}
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "simpleType", null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "restriction", null);
+		output.addAttribute("base", "xsd:string");
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "length", null);
+		output.addAttribute("value", "1");
+		output.closeElement(); // length
+		output.closeElement(); // restriction
+		output.closeElement(); // simpleType
+		return output.closeElement();
+	}
+	
+	@Override
+	protected ISynchronizationPoint<? extends Exception> specifyEnumValue(SerializationContext context, TypeDefinition type) {
+		if (context instanceof AttributeContext)
+			output.addAttribute("use", "optional");
+		else
+			output.addAttribute("nillable", "true");
+		if (context instanceof CollectionContext) {
+			output.addAttribute("minOccurs", "0");
+			output.addAttribute("maxOccurs", "unbounded");
+		}
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "simpleType", null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "restriction", null);
+		output.addAttribute("base", "xsd:string");
+		try {
+			Enum<?>[] values = (Enum<?>[])type.getBase().getMethod("values").invoke(null);
+			for (int i = 0; i < values.length; ++i) {
+				output.openElement(XMLUtil.XSD_NAMESPACE_URI, "enumeration", null);
+				output.addAttribute("value", values[i].name());
+				output.closeElement();
+			}
+		} catch (Throwable t) {
+			/* should not happen */
+		}
+		output.closeElement(); // restriction
+		output.closeElement(); // simpleType
+		return output.closeElement();
+	}
+	
+	@Override
+	protected ISynchronizationPoint<? extends Exception> specifyCollectionValue(CollectionContext context, List<SerializationRule> rules) {
+		if (context.getParent() instanceof AttributeContext)
+			return specifyValue(context, context.getElementType(), rules);
+		output.addAttribute("nillable", "true");
+		if (context.getParent() instanceof CollectionContext) {
+			output.addAttribute("minOccurs", "0");
+			output.addAttribute("maxOccurs", "unbounded");
+		}
+		output.endOfAttributes();
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "complexType", null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "sequence", null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "element", null);
+		output.addAttribute("name", "element");
+		ISynchronizationPoint<? extends Exception> val = specifyValue(context, context.getElementType(), rules);
+		if (val.isUnblocked()) {
+			output.closeElement(); // sequence
+			output.closeElement(); // complexType
+			return output.closeElement(); // collection
+		}
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		val.listenAsyncSP(new SpecTask(() -> {
+			output.closeElement(); // sequence
+			output.closeElement(); // complexType
+			output.closeElement().listenInlineSP(sp); // collection
+		}), sp);
+		return sp;
+	}
+	
+	@Override
+	protected ISynchronizationPoint<? extends Exception> specifyIOReadableValue(SerializationContext context, List<SerializationRule> rules) {
+		output.addAttribute("type", "xsd:base64Binary");
+		output.addAttribute("nillable", "true");
 		return output.closeElement();
 	}
 	
@@ -155,6 +277,10 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 
 	@Override
 	protected ISynchronizationPoint<? extends Exception> specifyAnyValue(SerializationContext context) {
+		if (context instanceof CollectionContext) {
+			output.addAttribute("minOccurs", "0");
+			output.addAttribute("maxOccurs", "unbounded");
+		}
 		output.endOfAttributes();
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "complexType", null);
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "sequence", null);
@@ -168,6 +294,11 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	
 	@Override
 	protected ISynchronizationPoint<? extends Exception> specifyTypedValue(ObjectContext context, List<SerializationRule> rules) {
+		if (context.getParent() instanceof CollectionContext) {
+			output.addAttribute("minOccurs", "0");
+			output.addAttribute("maxOccurs", "unbounded");
+		}
+		output.addAttribute("nillable", "true");
 		output.endOfAttributes();
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "complexType", null);
 		TypeContext ctx = new TypeContext();
@@ -194,7 +325,7 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		if (c.isPrimitive()) return true;
 		if (Boolean.class.equals(c)) return true;
 		if (Number.class.isAssignableFrom(c)) return true;
-		if (String.class.equals(c)) return true;
+		if (CharSequence.class.isAssignableFrom(c)) return true;
 		if (Character.class.equals(c)) return true;
 		if (c.isEnum()) return true;
 		return false;

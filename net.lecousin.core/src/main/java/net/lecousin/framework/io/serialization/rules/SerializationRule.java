@@ -24,7 +24,8 @@ public interface SerializationRule {
 	}
 	
 	/** Can be used to change a type during deserialization, in a similar way as the method
-	 * convertSerializationValue during serialization.
+	 * convertSerializationValue during serialization. This is also used for writing
+	 * serialization specification.
 	 */
 	default TypeDefinition getDeserializationType(TypeDefinition type, SerializationContext context) {
 		return type;

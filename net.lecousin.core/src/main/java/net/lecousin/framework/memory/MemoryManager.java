@@ -228,6 +228,7 @@ logger.debug("No garbage collection since 2 minutes => free some cached data to 
 		logger.log(level, s.toString());
 	}
 	
+	/** Log memory status into the given StringBuilder. */
 	public static void logMemory(StringBuilder s) {
 		long total = Runtime.getRuntime().totalMemory();
 		long free = Runtime.getRuntime().freeMemory();
