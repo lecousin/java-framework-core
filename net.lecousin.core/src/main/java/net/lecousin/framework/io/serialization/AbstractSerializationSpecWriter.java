@@ -76,7 +76,7 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	
 	protected abstract ISynchronizationPoint<? extends Exception> specifyAnyValue(SerializationContext context);
 	
-	protected ISynchronizationPoint<? extends Exception> specifyValue(
+	public ISynchronizationPoint<? extends Exception> specifyValue(
 		SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules
 	) {
 		for (SerializationRule rule : rules)

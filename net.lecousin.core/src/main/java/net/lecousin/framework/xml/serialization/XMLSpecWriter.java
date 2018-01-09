@@ -244,6 +244,7 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		output.addAttribute("name", "element");
 		ISynchronizationPoint<? extends Exception> val = specifyValue(context, context.getElementType(), rules);
 		if (val.isUnblocked()) {
+			if (val.hasError()) return val;
 			output.closeElement(); // sequence
 			output.closeElement(); // complexType
 			return output.closeElement(); // collection
