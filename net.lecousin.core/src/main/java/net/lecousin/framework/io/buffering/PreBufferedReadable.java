@@ -438,15 +438,17 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		) {
 			@Override
 			public Integer run() throws IOException, CancelException {
-				if (error != null) throw error;
-				if (buffersReady == null) {
-					if (endReached) return Integer.valueOf(-1); // case of empty readable
-					throw new CancelException("IO Closed");
-				}
-				if (current == null) {
-					if (endReached) return Integer.valueOf(-1);
-					if (isClosing() || isClosed()) throw new CancelException("IO Closed");
-					throw new IOException("Unexpected error: current buffer is null but end is not reached");
+				synchronized (PreBufferedReadable.this) {
+					if (error != null) throw error;
+					if (buffersReady == null) {
+						if (endReached) return Integer.valueOf(-1); // case of empty readable
+						throw new CancelException("IO Closed");
+					}
+					if (current == null) {
+						if (endReached) return Integer.valueOf(-1);
+						if (isClosing() || isClosed()) throw new CancelException("IO Closed");
+						throw new IOException("Unexpected error: current buffer is null but end is not reached");
+					}
 				}
 				int nb = buffer.remaining();
 				if (current.remaining() > nb) {

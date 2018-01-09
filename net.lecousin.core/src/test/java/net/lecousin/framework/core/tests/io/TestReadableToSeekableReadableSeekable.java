@@ -3,17 +3,15 @@ package net.lecousin.framework.core.tests.io;
 import java.io.File;
 import java.util.Collection;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadableSeekable;
 import net.lecousin.framework.io.FileIO.ReadOnly;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.buffering.ReadableToSeekable;
+
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 public class TestReadableToSeekableReadableSeekable extends TestReadableSeekable {
@@ -27,11 +25,9 @@ public class TestReadableToSeekableReadableSeekable extends TestReadableSeekable
 		super(testFile, testBuf, nbBuf);
 	}
 	
-	@SuppressWarnings("resource")
 	@Override
 	protected IO.Readable.Seekable createReadableSeekableFromFile(ReadOnly file, long fileSize) throws Exception {
-		PreBufferedReadable ioBuf = new PreBufferedReadable(file, 256, Task.PRIORITY_IMPORTANT, 2048, Task.PRIORITY_IMPORTANT, 10);
-		return new ReadableToSeekable(ioBuf, 4096);
+		return new ReadableToSeekable(file, 4096);
 	}
 	
 }

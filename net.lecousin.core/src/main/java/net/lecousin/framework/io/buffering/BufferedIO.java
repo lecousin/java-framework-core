@@ -194,6 +194,24 @@ public abstract class BufferedIO extends BufferingManaged {
 		return firstBufferSize + ((index - 1) * ((long)bufferSize));
 	}
 	
+	/** Ask to cancel all buffers. This can be used before to close if the data is not needed anymore
+	 * so there is no need to write pending buffers when closing.
+	 */
+	public void cancelAll() {
+		synchronized (buffers) {
+			for (Buffer b : buffers) {
+				manager.removeBuffer(b);
+				b.buffer = null;
+				if (b.loading != null) b.loading.cancel(new CancelException("BufferedIO.cancelAll"));
+				b.loading = null;
+				if (b.flushing != null)
+					while (!b.flushing.isEmpty())
+						b.flushing.removeFirst().cancel(new CancelException("BufferedIO.cancelAll"));
+				b.flushing = null;
+			}
+		}
+	}
+	
 	@Override
 	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		return manager.close(this);

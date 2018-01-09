@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -73,6 +75,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	@Override
 	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		JoinPoint<Exception> jp = new JoinPoint<>();
+		buffered.cancelAll();
 		buffering.unblockCancel(new CancelException("IO closed"));
 		jp.addToJoin(buffered.closeAsync());
 		jp.addToJoin(io.closeAsync());
@@ -181,7 +184,13 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 				}
 				synchronized (ReadableToSeekable.this) {
 					ioPos += nb;
-					if (nb < 8192) knownSize = ioPos;
+					if (nb < 8192) {
+						if (knownSize >= 0 && knownSize != ioPos)
+							LCCore.getApplication().getDefaultLogger().error(
+								"Unexpected end on ReadableToSeekable: known size is " + knownSize
+								+ ", but end reached at " + ioPos + " (" + nb + "/8192 bytes read)");
+						knownSize = ioPos;
+					}
 				}
 				buffering.unblockSuccess(Boolean.valueOf(nb < 8192));
 			}, buffering);
@@ -218,9 +227,10 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 				if (pos < ioPos + 8192)
 					return buffering; // will be ok with the next buffer
 			} else {
+				boolean nextEnough = pos < ioPos + 8192; // will be ok with the next buffer
 				readNextBuffer();
-				if (pos < ioPos + 8192)
-					return buffering; // will be ok with the next buffer
+				if (nextEnough)
+					return buffering;
 			}
 		}
 		// we need to read more
@@ -320,6 +330,10 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 				IOUtil.listenOnDone(read, (res) -> {
 					int nb = res.intValue();
 					if (nb > 0) ReadableToSeekable.this.pos = pos + nb;
+					else if (knownSize >= 0 && pos < knownSize)
+						LCCore.getApplication().getDefaultLogger().error(
+							"Unexpected end on ReadableToSeekable: no byte read at "
+							+ pos + " but knownSize is " + knownSize);
 					if (ondone != null) ondone.run(new Pair<>(res, null));
 					result.unblockSuccess(res);
 				}, result, ondone);

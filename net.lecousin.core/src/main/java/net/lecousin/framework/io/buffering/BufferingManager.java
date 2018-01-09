@@ -60,7 +60,7 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 		long lastRead;
 		long lastWrite;
 		int inUse = 0;
-		boolean markedAsToBeWritten = false;
+		int markedAsToBeWritten = 0;
 		LinkedList<AsyncWork<?,IOException>> flushing = null;
 	}
 	
@@ -114,17 +114,16 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 			if (!buffers.remove(buffer)) return;
 			if (buffer.buffer != null) {
 				totalMemory -= buffer.buffer.length;
-				if (buffer.markedAsToBeWritten)
-					toBeWritten -= buffer.buffer.length;
+				toBeWritten -= buffer.markedAsToBeWritten;
 			}
 		}
 	}
 	
 	void toBeWritten(Buffer buffer) {
 		synchronized (buffers) {
-			if (!buffer.markedAsToBeWritten) {
-				buffer.markedAsToBeWritten = true;
-				toBeWritten += buffer.buffer.length;
+			if (buffer.markedAsToBeWritten != buffer.buffer.length) {
+				toBeWritten += buffer.buffer.length - buffer.markedAsToBeWritten;
+				buffer.markedAsToBeWritten = buffer.buffer.length;
 			}
 			buffer.lastWrite = System.currentTimeMillis();
 			if (toBeWritten > toBeWrittenThreshold)
@@ -167,13 +166,13 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 			for (Iterator<Buffer> it = buffers.iterator(); it.hasNext(); ) {
 				Buffer b = it.next();
 				if (b.owner != owner) continue;
-				if (b.lastWrite > 0) {
-					jp.addToJoin(b.owner.flushWrite(b));
-					b.lastWrite = 0;
-					b.markedAsToBeWritten = false;
-					toBeWritten -= b.buffer.length;
-				}
 				synchronized (b) {
+					if (b.lastWrite > 0) {
+						jp.addToJoin(b.owner.flushWrite(b));
+						b.lastWrite = 0;
+						toBeWritten -= b.markedAsToBeWritten;
+						b.markedAsToBeWritten = 0;
+					}
 					if (b.flushing != null) {
 						while (!b.flushing.isEmpty() && b.flushing.getFirst().isUnblocked())
 							b.flushing.removeFirst();
@@ -255,8 +254,8 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 								if (b.lastRead < b.lastWrite)
 									b.lastRead = b.lastWrite;
 								b.lastWrite = 0;
-								b.markedAsToBeWritten = false;
-								toBeWritten -= b.buffer.length;
+								toBeWritten -= b.markedAsToBeWritten;
+								b.markedAsToBeWritten = 0;
 							} else if (oldestToBeWritten != null) {
 								oldestToBeWritten.add(b.lastWrite, b);
 							}
@@ -277,8 +276,8 @@ public class BufferingManager implements Closeable, IMemoryManageable {
 							if (b.lastRead < b.lastWrite)
 								b.lastRead = b.lastWrite;
 							b.lastWrite = 0;
-							b.markedAsToBeWritten = false;
-							toBeWritten -= b.buffer.length;
+							toBeWritten -= b.markedAsToBeWritten;
+							b.markedAsToBeWritten = 0;
 						}
 					}
 				}

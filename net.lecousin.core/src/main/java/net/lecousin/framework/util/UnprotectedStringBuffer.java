@@ -613,7 +613,7 @@ public class UnprotectedStringBuffer implements IString {
 			// remaining part of the last buffer
 			end == lastBufferPos + lastBufferLen - 1 ? null : strings[lastBufferIndex].substring(end - lastBufferPos + 1),
 			// to insert
-			s.lastUsed + 1,
+			s.strings == null ? 0 : s.lastUsed + 1,
 			s.strings
 		);
 		return this;
@@ -975,19 +975,45 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	/** Encode this string with the given charset and write the result on the given writable IO. */
-	public AsyncWork<Void,IOException> encode(Charset charset, IO.Writable output, byte priority) {
-		Task<Void,IOException> task = new Task.Cpu<Void,IOException>("Encode string into bytes", priority) {
-			@Override
-			public Void run() throws IOException {
-				CharsetEncoder encoder = charset.newEncoder();
-				for (int i = 0; i <= lastUsed; ++i) {
-					ByteBuffer bytes = encoder.encode(strings[i].asCharBuffer());
-					output.writeAsync(bytes);
+	public SynchronizationPoint<IOException> encode(Charset charset, IO.Writable output, byte priority) {
+		if (strings == null) return new SynchronizationPoint<>(true);
+		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+		CharsetEncoder encoder = charset.newEncoder();
+		encode(0, encoder, output, priority, null, result);
+		return result;
+	}
+	
+	private void encode(
+		int index, CharsetEncoder encoder, IO.Writable output, byte priority,
+		ISynchronizationPoint<IOException> prevWrite, SynchronizationPoint<IOException> result
+	) {
+		new Task.Cpu.FromRunnable("Encode string into bytes", priority, () -> {
+			try {
+				ByteBuffer bytes = encoder.encode(strings[index].asCharBuffer());
+				if (prevWrite == null || prevWrite.isUnblocked()) {
+					if (prevWrite != null && prevWrite.hasError()) {
+						result.error(prevWrite.getError());
+						return;
+					}
+					ISynchronizationPoint<IOException> write = output.writeAsync(bytes);
+					if (index == lastUsed) {
+						write.listenInline(result);
+						return;
+					}
+					encode(index + 1, encoder, output, priority, write, result);
+					return;
 				}
-				return null;
+				prevWrite.listenInline(() -> {
+					ISynchronizationPoint<IOException> write = output.writeAsync(bytes);
+					if (index == lastUsed) {
+						write.listenInline(result);
+						return;
+					}
+					encode(index + 1, encoder, output, priority, write, result);
+				}, result);
+			} catch (IOException e) {
+				result.error(e);
 			}
-		};
-		task.start();
-		return task.getOutput();
+		}).start();
 	}
 }
