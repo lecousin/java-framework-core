@@ -276,6 +276,7 @@ public class XMLWriter {
 	/** Write the given DOM element. */
 	public ISynchronizationPoint<IOException> write(Element element) {
 		String name = element.getLocalName();
+		if (name == null) name = element.getNodeName();
 		String uri = element.getNamespaceURI();
 		String prefix = element.getPrefix();
 		Map<String, String> namespaces = null;
