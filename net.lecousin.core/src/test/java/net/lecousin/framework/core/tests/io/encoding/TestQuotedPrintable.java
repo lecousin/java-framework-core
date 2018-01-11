@@ -34,7 +34,7 @@ public class TestQuotedPrintable extends LCCoreAbstractTest {
 		test(data);
 	}
 	
-	private void test(byte[] data) throws Exception {
+	private static void test(byte[] data) throws Exception {
 		ByteBuffer encoded = QuotedPrintable.encode(data);
 		ByteBuffer decoded = QuotedPrintable.decode(encoded);
 		for (int i = 0; i < data.length; ++i)

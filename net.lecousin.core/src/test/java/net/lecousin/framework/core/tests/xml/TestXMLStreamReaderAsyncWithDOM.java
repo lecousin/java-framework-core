@@ -40,6 +40,7 @@ public class TestXMLStreamReaderAsyncWithDOM extends TestXMLStreamEventsWithDOM<
 		if (efficient)
 			xml = new XMLStreamReaderAsync(input, 1024);
 		else {
+			@SuppressWarnings("resource")
 			SimpleBufferedReadable bio = new SimpleBufferedReadable(input, 5);
 			xml = new XMLStreamReaderAsync(bio, 3);
 		}

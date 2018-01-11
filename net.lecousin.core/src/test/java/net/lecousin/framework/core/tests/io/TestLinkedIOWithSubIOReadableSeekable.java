@@ -32,6 +32,7 @@ public class TestLinkedIOWithSubIOReadableSeekable extends TestReadableSeekable 
 	
 	private FragmentedFile f;
 
+	@SuppressWarnings("resource")
 	@Override
 	protected IO.Readable.Seekable createReadableSeekableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
 		// this test may be very slow, let's add a buffered layer

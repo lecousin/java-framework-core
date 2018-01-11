@@ -32,7 +32,7 @@ public class TestNonBufferedReadableIOAsBuffered extends TestReadableBuffered {
 	}
 	
 	@Override
-	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
+	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) {
 		return new NonBufferedReadableIOAsBuffered(file);
 	}
 	

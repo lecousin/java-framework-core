@@ -27,14 +27,14 @@ public class TestBufferedReverseIOReading extends TestReadableByteStream {
 	}
 	
 	@Override
-	protected ReadableByteStream createReadableByteStreamFromFile(ReadOnly file, long fileSize) throws Exception {
+	protected ReadableByteStream createReadableByteStreamFromFile(ReadOnly file, long fileSize) {
 		BufferedReverseIOReading io = new BufferedReverseIOReading(openFile(), 512);
 		goBackward(io);
 		return io;
 	}
 	
 	@Override
-	protected IO getIOForCommonTests() throws Exception {
+	protected IO getIOForCommonTests() {
 		return createReadableByteStreamFromFile(openFile(), getFileSize());
 	}
 	

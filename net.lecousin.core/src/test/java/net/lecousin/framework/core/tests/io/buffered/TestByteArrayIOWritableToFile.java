@@ -29,7 +29,7 @@ public class TestByteArrayIOWritableToFile extends TestWritableToFile {
 	private File file;
 	
 	@Override
-	protected IO.Writable createWritableFromFile(File file) throws IOException {
+	protected IO.Writable createWritableFromFile(File file) {
 		this.file = file;
 		return new ByteArrayIO("test");
 	}

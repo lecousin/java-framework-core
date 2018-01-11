@@ -77,7 +77,6 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 		checkFile(file, testBuf, nbBuf);
 	}
 	
-	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public void testWriteBufferByBufferAsync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);

@@ -68,7 +68,6 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		io.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testRandomWriteAndReadAsync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
@@ -336,7 +335,6 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		io.writeSync(ByteBuffer.wrap(testBuf, 0, testBuf.length / 2));
 	}
 	
-	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testSeekAsyncWriteOddEvenThenReadReverse() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);

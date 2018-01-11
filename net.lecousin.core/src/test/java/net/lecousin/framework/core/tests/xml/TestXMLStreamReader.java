@@ -11,7 +11,7 @@ import net.lecousin.framework.xml.XMLStreamReader;
 public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 
 	@Override
-	protected XMLStreamReader parse(String resource) throws Exception {
+	protected XMLStreamReader parse(String resource) {
 		return new XMLStreamReader(LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL), 512);
 	}
 	

@@ -104,6 +104,7 @@ public class TestXMLSerialization extends TestSerialization {
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 	}
 	
+	@SuppressWarnings("resource")
 	@Override
 	protected void checkSpec(IO.Readable.Seekable spec, Class<?> type, IO.Readable.Seekable serialization) throws Exception {
 		// parser will close the IO, so we need to wrap it

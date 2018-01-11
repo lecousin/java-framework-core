@@ -115,7 +115,6 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 
-	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public void testReadableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
@@ -197,7 +196,6 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 
-	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public void testReadableBufferByBufferFullyAsyncBigBuffer() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
@@ -258,7 +256,6 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public void testReadableBufferByBufferAsync() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
@@ -353,7 +350,6 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 
-	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public void testReadableSkipAsync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);

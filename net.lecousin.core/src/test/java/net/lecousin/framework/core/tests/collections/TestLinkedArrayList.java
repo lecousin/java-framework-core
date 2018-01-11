@@ -15,7 +15,6 @@ public class TestLinkedArrayList extends TestList {
 		return new LinkedArrayList<Long>(5);
 	}
 	
-	@SuppressWarnings("boxing")
 	@Test(timeout=120000)
 	public void testLong() {
 		LinkedArrayList<Long> l = createLongCollection();

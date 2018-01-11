@@ -437,6 +437,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		map.put(Integer.valueOf(2), "World");
 		map.put(Integer.valueOf(3), "!");
 		map.put(Integer.valueOf(4), null);
+		@SuppressWarnings("resource")
 		MemoryIO io = serializeInMemory(map, new TypeDefinition(HashMap.class, new TypeDefinition(Integer.class), new TypeDefinition(String.class)));
 		print(io, map);
 		Map<Integer,String> map2 = deserialize(io, new TypeDefinition(HashMap.class, new TypeDefinition(Integer.class), new TypeDefinition(String.class)));
@@ -791,6 +792,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		m = new Merged();
 		m.aString = "World";
 		t.list.add(new Pair<>("le monde", m));
+		@SuppressWarnings("resource")
 		MemoryIO io = serializeInMemory(t, new TypeDefinition(ToMerge3.class));
 		print(io, t);
 		deserialize(io, new TypeDefinition(Merged3.class));
@@ -978,6 +980,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	protected void testSpec(Class<?> type, MemoryIO serialization) throws Exception {
 		SerializationSpecWriter sw = createSpecWriter();
 		if (sw == null) return;
+		@SuppressWarnings("resource")
 		MemoryIO io = new MemoryIO(1024, "test");
 		sw.writeSpecification(type, io, new ArrayList<>(0)).blockThrow(0);
 		printSpec(io, type);
@@ -1096,6 +1099,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		System.out.println("Serialization specification for " + type.getName() + "\r\n" + content);
 	}
 	
+	@SuppressWarnings("unused")
 	protected void checkSpec(IO.Readable.Seekable spec, Class<?> type, IO.Readable.Seekable serialization) throws Exception {
 	}
 }

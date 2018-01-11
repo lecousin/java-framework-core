@@ -179,6 +179,7 @@ public class TestDOMParsing extends TestDOM {
 		checkDocument(doc, doc2);
 		in2.close();
 		in.close();
+		io.close();
 	}
 	
 	@Test(timeout=120000)
@@ -197,6 +198,7 @@ public class TestDOMParsing extends TestDOM {
 		checkDocument(doc, doc2);
 		in2.close();
 		in.close();
+		io.close();
 	}
 	
 }

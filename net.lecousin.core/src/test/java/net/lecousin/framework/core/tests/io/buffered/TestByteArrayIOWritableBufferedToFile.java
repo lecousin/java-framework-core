@@ -29,7 +29,7 @@ public class TestByteArrayIOWritableBufferedToFile extends TestWritableBufferedT
 	private File file;
 	
 	@Override
-	protected IO.Writable.Buffered createWritableBufferedFromFile(File file) throws IOException {
+	protected IO.Writable.Buffered createWritableBufferedFromFile(File file) {
 		this.file = file;
 		return new ByteArrayIO("test");
 	}

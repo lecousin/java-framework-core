@@ -76,7 +76,6 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		io.close();
 	}
 
-	@SuppressWarnings({ "resource" })
 	@Test(timeout=300000)
 	public void testSeekableByteByByteAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
@@ -186,7 +185,6 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		io.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public void testSeekableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
@@ -349,7 +347,6 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		}
 	}
 	
-	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public void testSeekAsync() throws Exception {
 		long size = getFileSize();
@@ -506,7 +503,6 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		io.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public void testSeekAsyncWrong() throws Exception {
 		long size = getFileSize();

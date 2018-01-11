@@ -34,7 +34,7 @@ public class TestByteBuffersIOWritableToFile extends TestWritableToFile {
 	private File file;
 	
 	@Override
-	protected IO.Writable createWritableFromFile(File file) throws IOException {
+	protected IO.Writable createWritableFromFile(File file) {
 		this.file = file;
 		return new ByteBuffersIO(true, "Test ByteBuffersIO as Writable", Task.PRIORITY_NORMAL);
 	}

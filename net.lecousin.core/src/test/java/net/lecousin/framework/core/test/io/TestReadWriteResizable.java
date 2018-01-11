@@ -107,7 +107,6 @@ public abstract class TestReadWriteResizable extends TestIO {
 		io.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.KnownSize & IO.Resizable>
 	void testResizeAsync() throws Exception {

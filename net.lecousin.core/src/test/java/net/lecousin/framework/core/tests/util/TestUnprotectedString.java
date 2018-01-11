@@ -17,6 +17,7 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class TestUnprotectedString extends TestIString {
 
+	@SuppressWarnings("boxing")
 	@Parameters(name = "start = {0}, end = {1}")
 	public static Collection<Object[]> parameters() {
 		return Arrays.asList(
