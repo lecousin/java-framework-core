@@ -116,13 +116,10 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return nextStartElement();
 		}
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		start.listenAsync(new Next(sp) {
-			@Override
-			protected void onNext() {
-				if (Type.START_ELEMENT.equals(event.type)) sp.unblock();
-				else nextStartElement().listenInline(sp);
-			}
-		}, sp);
+		start.listenAsync(new ParsingTask(() -> {
+			if (Type.START_ELEMENT.equals(event.type)) sp.unblock();
+			else nextStartElement().listenInline(sp);
+		}), sp);
 		return sp;
 	}
 	
