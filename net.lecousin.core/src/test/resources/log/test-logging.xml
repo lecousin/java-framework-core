@@ -42,9 +42,19 @@
 		<AppenderRef name="appender2"/>
 		<AppenderRef name="appender4"/>
 	</Appender>
+	<Appender
+		name="appenderForPattern"
+		class="net.lecousin.framework.log.appenders.RollingFileAppender"
+		level="TRACE"
+		pattern="@@ %d{yyyy-MM-dd} %t %level %logger %C %M %L %f %m @@"
+		size="30K"
+		files="1"
+		path="${net.lecousin.application.log.directory}/logPattern.txt"
+	/>
 	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger1" appender="appender1" level="DEBUG"></Logger>
 	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger2" appender="appender2" level="INFO"></Logger>
 	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger3" appender="appender3" level="DEBUG"></Logger>
 	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger4" appender="appender4" level="TRACE"></Logger>
 	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger5" appender="appender5" level="WARN"></Logger>
+	<Logger name="net.lecousin.framework.core.tests.log.Loggers$LoggerForPattern" appender="appenderForPattern" level="TRACE"></Logger>
 </LoggingConfiguration>

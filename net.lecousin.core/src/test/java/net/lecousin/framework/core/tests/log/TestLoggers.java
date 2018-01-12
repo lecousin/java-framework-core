@@ -2,6 +2,7 @@ package net.lecousin.framework.core.tests.log;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.util.Calendar;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -16,6 +17,7 @@ import net.lecousin.framework.core.tests.log.Loggers.Logger2;
 import net.lecousin.framework.core.tests.log.Loggers.Logger3;
 import net.lecousin.framework.core.tests.log.Loggers.Logger4;
 import net.lecousin.framework.core.tests.log.Loggers.Logger5;
+import net.lecousin.framework.core.tests.log.Loggers.LoggerForPattern;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.LoggerFactory;
@@ -71,6 +73,38 @@ public class TestLoggers extends LCCoreAbstractTest {
 		Assert.assertEquals(2, StringUtil.count(log, "this is debug"));
 		Assert.assertEquals(1, StringUtil.count(log, "this is trace"));
 		
+		factory.getLogger(LoggerForPattern.class).debug("test");
+		factory.flush().blockThrow(0);
+		log = IOUtil.readFullyAsStringSync(new File(dir, "logPattern.txt"), StandardCharsets.UTF_8);
+		int i = log.indexOf("@@ ");
+		Assert.assertTrue(i >= 0);
+		log = log.substring(i + 3);
+		i = log.indexOf(" @@");
+		Assert.assertTrue(i >= 0);
+		log = log.substring(0, i);
+		StringBuilder expected = new StringBuilder();
+		Calendar cal = Calendar.getInstance();
+		expected.append(cal.get(Calendar.YEAR)).append('-');
+		StringUtil.paddingLeft(expected, Integer.toString(cal.get(Calendar.MONTH) + 1), 2, '0');
+		expected.append('-');
+		StringUtil.paddingLeft(expected, Integer.toString(cal.get(Calendar.DAY_OF_MONTH)), 2, '0');
+		expected.append(' ');
+		expected.append(Thread.currentThread().getName());
+		expected.append(' ');
+		expected.append("DEBUG");
+		expected.append(' ');
+		expected.append(LoggerForPattern.class.getName());
+		expected.append(' ');
+		expected.append(TestLoggers.class.getName());
+		expected.append(' ');
+		expected.append("test");
+		expected.append(' ');
+		expected.append(76);
+		expected.append(' ');
+		expected.append("TestLoggers.java");
+		expected.append(' ');
+		expected.append("test");
+		Assert.assertEquals(expected.toString(), log);
 	}
 	
 	private static void produceLogs(Logger log) {

@@ -45,8 +45,12 @@ public class Logger {
 			log.threadName = Thread.currentThread().getName();
 		if (appender.needsLocation()) {
 			StackTraceElement[] stack = new Exception().getStackTrace();
-			if (stack != null && stack.length > 1) {
-				log.location = stack[1];
+			if (stack != null) {
+				for (int i = 0; i < stack.length; ++i) {
+					if (Logger.class.getName().equals(stack[i].getClassName())) continue;
+					log.location = stack[i];
+					break;
+				}
 			}
 		}
 		factory.thread.log(appender, log);

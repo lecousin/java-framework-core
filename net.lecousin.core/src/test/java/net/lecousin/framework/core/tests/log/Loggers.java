@@ -12,4 +12,6 @@ public class Loggers {
 
 	public static class Logger5 {}
 	
+	public static class LoggerForPattern {}
+	
 }
