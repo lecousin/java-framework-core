@@ -178,6 +178,72 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 		return getLast().max;
 	}
 	
+	/** Remove and return the first value, or null if empty. */
+	public BigInteger removeFirstValue() {
+		if (isEmpty()) return null;
+		RangeBigInteger r = getFirst();
+		BigInteger value = r.min;
+		if (r.min.equals(r.max)) removeFirst();
+		else r.min = r.min.add(BigInteger.ONE);
+		return value;
+	}
+
+	/** Remove the given range. */
+	public void removeRange(BigInteger start, BigInteger end) {
+		for (int i = 0; i < size(); ++i) {
+			RangeBigInteger r = get(i);
+			if (r.min.compareTo(end) > 0) return;
+			if (r.max.compareTo(start) < 0) continue;
+			if (r.min.compareTo(start) < 0) {
+				if (r.max.equals(end)) {
+					r.max = start.subtract(BigInteger.ONE);
+					return;
+				} else if (r.max.compareTo(end) < 0) {
+					BigInteger j = r.max;
+					r.max = start.subtract(BigInteger.ONE);
+					start = j.add(BigInteger.ONE);
+					continue;
+				} else {
+					RangeBigInteger nr = new RangeBigInteger(end.add(BigInteger.ONE), r.max);
+					r.max = start.subtract(BigInteger.ONE);
+					add(i + 1, nr);
+					return;
+				}
+			} else if (r.min.equals(start)) {
+				if (r.max.equals(end)) {
+					remove(i);
+					return;
+				} else if (r.max.compareTo(end) < 0) {
+					remove(i);
+					start = r.max.add(BigInteger.ONE);
+					i--;
+					continue;
+				} else {
+					r.min = end.add(BigInteger.ONE);
+					return;
+				}
+			} else {
+				if (r.max.equals(end)) {
+					remove(i);
+					return;
+				} else if (r.max.compareTo(end) < 0) {
+					remove(i);
+					start = r.max.add(BigInteger.ONE);
+					i--;
+					continue;
+				} else {
+					r.min = end.add(BigInteger.ONE);
+					return;
+				}
+			}
+		}
+	}
+	
+	/** Remove a single offset. */
+	public void removeValue(BigInteger value) {
+		removeRange(value, value);
+	}
+	
 	@Override
 	public String toString() {
 		StringBuilder s = new StringBuilder("{");

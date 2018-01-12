@@ -127,6 +127,29 @@ public class TestDOMModifications extends TestDOM {
 		comment2.getNodeName();
 		// clone Comment
 		checkComment((Comment)comment1.cloneNode(true), comment2.cloneNode(true));
+		// modify comment
+		comment1.substringData(2, 4);
+		comment2.substringData(2, 4);
+		checkComment(comment1, comment2);
+		comment1.appendData("toto");
+		comment2.appendData("toto");
+		checkComment(comment1, comment2);
+		comment1.insertData(3, "tata");
+		comment2.insertData(3, "tata");
+		checkComment(comment1, comment2);
+		comment1.deleteData(6, 4);
+		comment2.deleteData(6, 4);
+		checkComment(comment1, comment2);
+		comment1.replaceData(2, 4, "titi");
+		comment2.replaceData(2, 4, "titi");
+		checkComment(comment1, comment2);
+		checkDocument(doc1, doc2);
+		Assert.assertEquals(comment1.getTextContent(), comment2.getTextContent());
+		comment1.setTextContent("a comment");
+		comment2.setTextContent("a comment");
+		checkComment(comment1, comment2);
+		checkDocument(doc1, doc2);
+		Assert.assertEquals(comment1.getTextContent(), comment2.getTextContent());
 		// remove CDATA
 		root1.removeChild(data1);
 		root2.removeChild(data2);

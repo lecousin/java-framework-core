@@ -306,7 +306,7 @@ public class LocalizedProperties implements IMemoryManageable {
 					if (!lang.loading.hasError())
 						content = lang.properties.get(key.toLowerCase());
 					if (content != null) {
-						localize(key, content, values, result);
+						localize(lang.tag, key, content, values, result);
 						lang.lastUsage = System.currentTimeMillis();
 						return;
 					}
@@ -321,7 +321,19 @@ public class LocalizedProperties implements IMemoryManageable {
 			load(ns, lang);
 	}
 	
-	private static void localize(String key, String content, Object[] values, AsyncWork<String, NoException> result) {
+	private static void localize(String[] languageTag, String key, String content, Object[] values, AsyncWork<String, NoException> result) {
+		for (int i = 0; i < values.length; ++i)
+			if (values[i] instanceof ILocalizableString) {
+				AsyncWork<String, NoException> l = ((ILocalizableString)values[i]).localize(languageTag);
+				Object[] newValues = new Object[values.length];
+				System.arraycopy(values, 0, newValues, 0, values.length);
+				int ii = i;
+				l.listenAsync(new Task.Cpu.FromRunnable(() -> {
+					newValues[ii] = l.getResult();
+					localize(languageTag, key, content, newValues, result);
+				}, "Localization", Task.PRIORITY_NORMAL), true);
+				return;
+			}
 		result.unblockSuccess(setCase(replaceValues(content, values), key));
 	}
 	

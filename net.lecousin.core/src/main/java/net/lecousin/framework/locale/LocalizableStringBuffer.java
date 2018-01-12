@@ -30,7 +30,7 @@ public class LocalizableStringBuffer implements ILocalizableString {
 	public AsyncWork<String, NoException> localize(String[] languageTag) {
 		JoinPoint<NoException> jp = new JoinPoint<>();
 		List<AsyncWork<String, NoException>> list = new LinkedList<>();
-		for (Object o : list)
+		for (Object o : this.list)
 			if (o instanceof ILocalizableString) {
 				AsyncWork<String, NoException> l = ((ILocalizableString)o).localize(languageTag);
 				jp.addToJoin(l);
@@ -43,7 +43,7 @@ public class LocalizableStringBuffer implements ILocalizableString {
 			public void run() {
 				Iterator<AsyncWork<String, NoException>> it = list.iterator();
 				StringBuffer s = new StringBuffer();
-				for (Object o : list) {
+				for (Object o : LocalizableStringBuffer.this.list) {
 					if (o instanceof String)
 						s.append((String)o);
 					else if (o instanceof ILocalizableString)
