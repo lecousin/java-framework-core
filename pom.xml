@@ -6,7 +6,7 @@
   <parent>
   	<groupId>net.lecousin</groupId>
   	<artifactId>parent-pom</artifactId>
-  	<version>0.6</version>
+  	<version>0.7</version>
   </parent>
   <modules>
     <module>net.lecousin.core</module>
@@ -29,45 +29,4 @@
     </developer>
   </developers>
 
-	<profiles>
-		<profile>
-			<id>default</id>
-			<activation>
-				<activeByDefault>true</activeByDefault>
-			</activation>
-	        <build>
-	        	<plugins>
-					<plugin>
-						<groupId>org.jacoco</groupId>
-						<artifactId>jacoco-maven-plugin</artifactId>
-						<version>0.8.0</version>
-						<executions>
-							<execution>
-								<goals>
-									<goal>prepare-agent</goal>
-								</goals>
-							</execution>
-							<execution>
-								<id>report</id>
-								<phase>test</phase>
-								<goals>
-									<goal>report</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-		<profile>
-	        <id>ossrh</id>
-	        <activation>
-	            <property>
-	                <name>ossrh</name>
-	                <value>true</value>
-	            </property>
-	        </activation>
-		</profile>
-	</profiles>
-    
 </project>

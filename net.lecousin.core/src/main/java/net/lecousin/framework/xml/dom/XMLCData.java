@@ -3,7 +3,6 @@ package net.lecousin.framework.xml.dom;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Node;
 
-// skip checkstyle: AbbreviationAsWordInName
 /** DOM CDATASection. */
 public class XMLCData extends XMLText implements CDATASection {
 
