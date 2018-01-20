@@ -117,20 +117,23 @@ public abstract class BufferedIO extends BufferingManaged {
 			operation(loading).listenInline(new Runnable() {
 				@Override
 				public void run() {
-					if (!loading.isSuccessful()) {
-						if (loading.isCancelled()) buffer.loading.cancel(loading.getCancelEvent());
-						else {
-							buffer.error = loading.getError();
-							buffer.loading.unblock();
+					synchronized (buffer) {
+						if (buffer.loading == null) return;
+						if (!loading.isSuccessful()) {
+							if (loading.isCancelled()) buffer.loading.cancel(loading.getCancelEvent());
+							else {
+								buffer.error = loading.getError();
+								buffer.loading.unblock();
+							}
+							buffer.buffer = null;
+							return;
 						}
-						buffer.buffer = null;
-						return;
+						buffer.len = loading.getResult().intValue();
+						if (buffer.len < 0) buffer.len = 0;
+						buffer.lastRead = System.currentTimeMillis();
+						manager.newBuffer(buffer);
+						buffer.loading.unblock();
 					}
-					buffer.len = loading.getResult().intValue();
-					if (buffer.len < 0) buffer.len = 0;
-					buffer.lastRead = System.currentTimeMillis();
-					manager.newBuffer(buffer);
-					buffer.loading.unblock();
 				}
 			});
 		}
@@ -201,13 +204,15 @@ public abstract class BufferedIO extends BufferingManaged {
 		synchronized (buffers) {
 			for (Buffer b : buffers) {
 				manager.removeBuffer(b);
-				b.buffer = null;
-				if (b.loading != null) b.loading.cancel(new CancelException("BufferedIO.cancelAll"));
-				b.loading = null;
-				if (b.flushing != null)
-					while (!b.flushing.isEmpty())
-						b.flushing.removeFirst().cancel(new CancelException("BufferedIO.cancelAll"));
-				b.flushing = null;
+				synchronized (b) {
+					b.buffer = null;
+					if (b.loading != null) b.loading.cancel(new CancelException("BufferedIO.cancelAll"));
+					b.loading = null;
+					if (b.flushing != null)
+						while (!b.flushing.isEmpty())
+							b.flushing.removeFirst().cancel(new CancelException("BufferedIO.cancelAll"));
+					b.flushing = null;
+				}
 			}
 		}
 	}
