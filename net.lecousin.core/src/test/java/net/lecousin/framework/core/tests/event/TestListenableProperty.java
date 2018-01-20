@@ -49,6 +49,10 @@ public class TestListenableProperty {
 		prop.listen(listener);
 		prop.listen(runnable);
 		Assert.assertTrue(prop.hasListeners());
+		prop.set(Integer.valueOf(7));
+		Assert.assertEquals(7, prop.get().intValue());
+		Assert.assertEquals(3, val1.get());
+		Assert.assertEquals(5, val2.get());
 		prop.set(Integer.valueOf(9));
 		Assert.assertEquals(9, prop.get().intValue());
 		Assert.assertEquals(7, val1.get());
