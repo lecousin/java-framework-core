@@ -1247,7 +1247,7 @@ public abstract class BufferedIO extends BufferingManaged {
 					done.unblockError(buffer.error);
 					return null;
 				}
-				if (sp.isCancelled()) {
+				if (sp != null && sp.isCancelled()) {
 					done.cancel(sp.getCancelEvent());
 					return null;
 				}
