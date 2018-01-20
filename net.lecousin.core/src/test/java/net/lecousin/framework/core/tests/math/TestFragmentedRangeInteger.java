@@ -1,13 +1,14 @@
 package net.lecousin.framework.core.tests.math;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.util.Arrays;
+import java.util.List;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.math.FragmentedRangeInteger;
 import net.lecousin.framework.math.RangeInteger;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestFragmentedRangeInteger extends LCCoreAbstractTest {
 
@@ -18,27 +19,37 @@ public class TestFragmentedRangeInteger extends LCCoreAbstractTest {
 		Assert.assertEquals(Integer.MAX_VALUE, f.getMin());
 		Assert.assertEquals(Integer.MIN_VALUE, f.getMax());
 		Assert.assertNull(f.removeFirstValue());
+		// 12
 		f.addValue(12);
 		Assert.assertEquals(1, f.size());
+		// 10-15
 		f.addRange(new RangeInteger(10, 15));
 		Assert.assertEquals(1, f.size());
 		f = new FragmentedRangeInteger();
 		f.addRange(new RangeInteger(10, 15));
 		Assert.assertEquals(1, f.size());
+		// 10-20
 		f.addRange(new RangeInteger(16, 20));
 		Assert.assertEquals(1, f.size());
+		// 10-22, 22-30
 		f.addRange(new RangeInteger(22, 30));
 		Assert.assertEquals(2, f.size());
+		// 10-30
 		f.addValue(21);
 		Assert.assertEquals(1, f.size());
+		// 9-30
 		f.addValue(9);
 		Assert.assertEquals(1, f.size());
+		// 9-31
 		f.addValue(31);
 		Assert.assertEquals(1, f.size());
+		// 9-31, 100-150, 200-250
 		f.addRanges(Arrays.asList(new RangeInteger(100, 150), new RangeInteger(200, 250)));
 		Assert.assertEquals(3, f.size());
+		// 9-31, 100-150, 175-180, 200-250
 		f.addRange(175, 180);
 		Assert.assertEquals(4, f.size());
+		// 9-31, 100-150, 175-180, 190-250
 		f.addRange(190, 199);
 		Assert.assertEquals(4, f.size());
 		
@@ -63,22 +74,41 @@ public class TestFragmentedRangeInteger extends LCCoreAbstractTest {
 		Assert.assertFalse(f.containsRange(130, 160));
 		Assert.assertFalse(f.containsRange(300, 400));
 
+		// 9-31, 100-155, 175-180, 190-250
 		f.addRange(151, 155);
 		Assert.assertEquals(4, f.size());
+		// 9-31, 100-155, 157, 175-180, 190-250
 		f.addValue(157);
 		Assert.assertEquals(5, f.size());
+		// 10-31, 100-155, 157, 175-180, 190-250
 		Assert.assertEquals(9, f.removeFirstValue().intValue());
 		Assert.assertEquals(5, f.size());
 		Assert.assertFalse(f.containsValue(9));
 		Assert.assertTrue(f.containsValue(10));
+		// 11-31, 100-155, 157, 175-180, 190-250
 		f.removeValue(10);
 		Assert.assertEquals(5, f.size());
 		Assert.assertFalse(f.containsValue(10));
 		Assert.assertTrue(f.containsValue(11));
+		// 14-31, 100-155, 157, 175-180, 190-250
 		f.remove(11, 13);
 		Assert.assertEquals(5, f.size());
 		Assert.assertFalse(f.containsValue(13));
 		Assert.assertTrue(f.containsValue(14));
+		// 14-31, 100-155, 157, 175-250
+		f.addRange(181, 189);
+		check(f, new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 157), new RangeInteger(175, 250));
+		// 14-31, 100-155, 157-300
+		f.addRange(158, 300);
+		check(f, new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 300));
+	}
+	
+	private static void check(List<RangeInteger> list, RangeInteger... expected) {
+		Assert.assertEquals(expected.length, list.size());
+		for (int i = 0; i < expected.length; ++i) {
+			Assert.assertEquals("Range " + i + " start", expected[i].min, list.get(i).min);
+			Assert.assertEquals("Range " + i + " end", expected[i].max, list.get(i).max);
+		}
 	}
 	
 }

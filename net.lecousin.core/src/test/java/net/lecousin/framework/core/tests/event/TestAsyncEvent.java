@@ -18,6 +18,7 @@ public class TestAsyncEvent extends LCCoreAbstractTest {
 		Assert.assertFalse(e.hasListeners());
 		
 		e.addListener(listener);
+		Assert.assertTrue(e.hasListeners());
 		e.fire();
 		sp.block(0);
 		sp.reset();
@@ -25,6 +26,7 @@ public class TestAsyncEvent extends LCCoreAbstractTest {
 		sp.block(0);
 		sp.reset();
 		e.removeListener(listener);
+		Assert.assertFalse(e.hasListeners());
 		e.fire();
 		sp.block(3000);
 		Assert.assertFalse(sp.isUnblocked());

@@ -46,9 +46,13 @@ public class TestEvent extends LCCoreAbstractTest {
 		Assert.assertFalse(e.hasListeners());
 		
 		e.addListener(runnable1);
+		Assert.assertTrue(e.hasListeners());
 		e.addListener(runnable2);
+		Assert.assertTrue(e.hasListeners());
 		e.addListener(listener1);
+		Assert.assertTrue(e.hasListeners());
 		e.addListener(listener2);
+		Assert.assertTrue(e.hasListeners());
 		Assert.assertEquals(0, called1.get());
 		Assert.assertEquals(0, called2.get());
 		Assert.assertEquals(0, val1.get());

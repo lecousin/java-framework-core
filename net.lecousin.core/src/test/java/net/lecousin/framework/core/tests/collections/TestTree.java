@@ -15,6 +15,8 @@ public class TestTree extends LCCoreAbstractTest {
 		Assert.assertEquals(0, tree.size());
 		tree.add(Integer.valueOf(51));
 		Assert.assertEquals(1, tree.size());
+		Assert.assertEquals(1, tree.getElements().size());
+		Assert.assertEquals(51, tree.getElements().get(0).intValue());
 		Node<Integer> n = tree.get(Integer.valueOf(51));
 		Assert.assertFalse(null == n);
 		Assert.assertEquals(51, n.getElement().intValue());
@@ -28,6 +30,8 @@ public class TestTree extends LCCoreAbstractTest {
 		tree.add(Integer.valueOf(51));
 		Assert.assertTrue(tree.removeInstance(tree.get(0).getElement()));
 		Assert.assertEquals(0, tree.size());
+		Assert.assertEquals(0, tree.getElements().size());
+		Assert.assertEquals(0, tree.getNodes().size());
 	}
 	
 }

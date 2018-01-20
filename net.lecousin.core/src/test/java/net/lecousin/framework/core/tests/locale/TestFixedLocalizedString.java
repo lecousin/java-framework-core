@@ -13,6 +13,7 @@ public class TestFixedLocalizedString extends LCCoreAbstractTest {
 		TestILocalizableString.test(new FixedLocalizedString("it's fixed"), "it's fixed", "it's fixed");
 		Assert.assertTrue(new FixedLocalizedString("test").equals(new FixedLocalizedString("test")));
 		Assert.assertEquals(new FixedLocalizedString("test").hashCode(), new FixedLocalizedString("test").hashCode());
+		Assert.assertFalse(new FixedLocalizedString("test").equals(new Object()));
 	}
 	
 }
