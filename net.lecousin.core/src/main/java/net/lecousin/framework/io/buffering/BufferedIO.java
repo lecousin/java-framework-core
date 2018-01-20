@@ -812,9 +812,11 @@ public abstract class BufferedIO extends BufferingManaged {
 		}
 		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>("Read in BufferedIO", getPriority(), ondone) {
 			@Override
-			public Integer run() throws IOException {
+			public Integer run() throws IOException, CancelException {
 				if (buffer.error != null)
 					throw buffer.error;
+				if (sp != null && sp.isCancelled())
+					throw sp.getCancelEvent();
 				int start = getBufferOffset(pos);
 				if (start >= buffer.len) {
 					buffer.inUse--;
@@ -857,6 +859,8 @@ public abstract class BufferedIO extends BufferingManaged {
 				if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
 				return new AsyncWork<>(null, buffer.error);
 			}
+			if (sp != null && sp.isCancelled())
+				return new AsyncWork<>(null, null, sp.getCancelEvent());
 			int start = getBufferOffset(pos);
 			ByteBuffer buf = ByteBuffer.allocate(buffer.len - start);
 			buf.put(buffer.buffer, start, buffer.len - start);
@@ -874,9 +878,11 @@ public abstract class BufferedIO extends BufferingManaged {
 		}
 		Task<ByteBuffer,IOException> task = new Task.Cpu<ByteBuffer,IOException>("Read in BufferedIO", getPriority(), ondone) {
 			@Override
-			public ByteBuffer run() throws IOException {
+			public ByteBuffer run() throws IOException, CancelException {
 				if (buffer.error != null)
 					throw buffer.error;
+				if (sp != null && sp.isCancelled())
+					throw sp.getCancelEvent();
 				int start = getBufferOffset(pos);
 				ByteBuffer buf = ByteBuffer.allocate(buffer.len - start);
 				buf.put(buffer.buffer, start, buffer.len - start);
@@ -970,12 +976,14 @@ public abstract class BufferedIO extends BufferingManaged {
 		AsyncWork<Integer, IOException> done = new AsyncWork<Integer, IOException>();
 		Task<Void,IOException> task = new Task.Cpu<Void,IOException>("Read in BufferedIO at " + pos, getPriority()) {
 			@Override
-			public Void run() throws IOException {
+			public Void run() throws IOException, CancelException {
 				if (buffer.error != null) {
 					if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
 					done.unblockError(buffer.error);
 					throw buffer.error;
 				}
+				if (sp != null && sp.isCancelled())
+					throw sp.getCancelEvent();
 				int start = getBufferOffset(pos);
 				if (start >= buffer.len) {
 					buffer.inUse--;
@@ -1237,6 +1245,10 @@ public abstract class BufferedIO extends BufferingManaged {
 				if (buffer.error != null) {
 					if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
 					done.unblockError(buffer.error);
+					return null;
+				}
+				if (sp.isCancelled()) {
+					done.cancel(sp.getCancelEvent());
 					return null;
 				}
 				if (closing) {
