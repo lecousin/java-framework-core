@@ -117,23 +117,25 @@ public abstract class BufferedIO extends BufferingManaged {
 			operation(loading).listenInline(new Runnable() {
 				@Override
 				public void run() {
+					SynchronizationPoint<NoException> sp;
 					synchronized (buffer) {
-						if (buffer.loading == null) return;
-						if (!loading.isSuccessful()) {
-							if (loading.isCancelled()) buffer.loading.cancel(loading.getCancelEvent());
-							else {
-								buffer.error = loading.getError();
-								buffer.loading.unblock();
-							}
-							buffer.buffer = null;
-							return;
-						}
-						buffer.len = loading.getResult().intValue();
-						if (buffer.len < 0) buffer.len = 0;
-						buffer.lastRead = System.currentTimeMillis();
-						manager.newBuffer(buffer);
-						buffer.loading.unblock();
+						sp = buffer.loading;
+						if (sp == null) return;
 					}
+					if (!loading.isSuccessful()) {
+						if (loading.isCancelled()) sp.cancel(loading.getCancelEvent());
+						else {
+							buffer.error = loading.getError();
+							sp.unblock();
+						}
+						buffer.buffer = null;
+						return;
+					}
+					buffer.len = loading.getResult().intValue();
+					if (buffer.len < 0) buffer.len = 0;
+					buffer.lastRead = System.currentTimeMillis();
+					manager.newBuffer(buffer);
+					sp.unblock();
 				}
 			});
 		}
