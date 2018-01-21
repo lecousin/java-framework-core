@@ -103,6 +103,21 @@ public class TestFragmentedRangeLong extends LCCoreAbstractTest {
 		// 14-31, 100-155, 157-300
 		f.addRange(158, 300);
 		check(f, new RangeLong(14, 31), new RangeLong(100, 155), new RangeLong(157, 300));
+		// 14-31, 100-155, 157-199, 251-300
+		f.removeRange(200, 250);
+		check(f, new RangeLong(14, 31), new RangeLong(100, 155), new RangeLong(157, 199), new RangeLong(251, 300));
+		// 14-31, 100-155, 157-300
+		f.addRange(200, 270);
+		check(f, new RangeLong(14, 31), new RangeLong(100, 155), new RangeLong(157, 300));
+		// 14-31, 100-155, 157-199, 251-300
+		f.removeRange(200, 250);
+		check(f, new RangeLong(14, 31), new RangeLong(100, 155), new RangeLong(157, 199), new RangeLong(251, 300));
+		// 14-31, 100-155, 157-400
+		f.addRange(180, 400);
+		check(f, new RangeLong(14, 31), new RangeLong(100, 155), new RangeLong(157, 400));
+		// 14-31, 100-155, 157-400, 500-500
+		f.addValue(500);
+		check(f, new RangeLong(14, 31), new RangeLong(100, 155), new RangeLong(157, 400), new RangeLong(500, 500));
 	}
 	
 	private static void check(List<RangeLong> list, RangeLong... expected) {

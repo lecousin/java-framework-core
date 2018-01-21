@@ -101,6 +101,21 @@ public class TestFragmentedRangeInteger extends LCCoreAbstractTest {
 		// 14-31, 100-155, 157-300
 		f.addRange(158, 300);
 		check(f, new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 300));
+		// 14-31, 100-155, 157-199, 251-300
+		f.remove(200, 250);
+		check(f, new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 199), new RangeInteger(251, 300));
+		// 14-31, 100-155, 157-300
+		f.addRange(200, 270);
+		check(f, new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 300));
+		// 14-31, 100-155, 157-199, 251-300
+		f.remove(200, 250);
+		check(f, new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 199), new RangeInteger(251, 300));
+		// 14-31, 100-155, 157-400
+		f.addRange(180, 400);
+		check(f, new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 400));
+		// 14-31, 100-155, 157-400, 500-500
+		f.addValue(500);
+		check(f, new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 400), new RangeInteger(500, 500));
 	}
 	
 	private static void check(List<RangeInteger> list, RangeInteger... expected) {

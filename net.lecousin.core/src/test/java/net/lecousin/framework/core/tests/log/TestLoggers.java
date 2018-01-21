@@ -94,7 +94,7 @@ public class TestLoggers extends LCCoreAbstractTest {
 		expected.append("DEBUG");
 		expected.append(' ');
 		expected.append(LoggerForPattern.class.getName());
-		expected.append(' ');
+		expected.append(" hello % ");
 		expected.append(TestLoggers.class.getName());
 		expected.append(' ');
 		expected.append("test");
@@ -105,6 +105,20 @@ public class TestLoggers extends LCCoreAbstractTest {
 		expected.append(' ');
 		expected.append("test");
 		Assert.assertEquals(expected.toString(), log);
+		
+		Logger logger = factory.getLogger("test");
+		logger.fatal();
+		logger.fatal("test", new Exception());
+		logger.error();
+		logger.error("test", new Exception());
+		logger.warn();
+		logger.warn("test", new Exception());
+		logger.info();
+		logger.info("test", new Exception());
+		logger.debug();
+		logger.debug("test", new Exception());
+		logger.trace();
+		logger.trace("test", new Exception());
 	}
 	
 	private static void produceLogs(Logger log) {

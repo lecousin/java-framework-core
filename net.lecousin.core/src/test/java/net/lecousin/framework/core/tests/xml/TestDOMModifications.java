@@ -28,12 +28,26 @@ public class TestDOMModifications extends TestDOM {
 		// create document
 		Document doc1 = factory.newDocumentBuilder().newDocument();
 		XMLDocument doc2 = new XMLDocument();
+		Assert.assertEquals(doc1.getNodeName(), doc2.getNodeName());
+		Assert.assertEquals(doc1.getNodeType(), doc2.getNodeType());
+		Assert.assertFalse(doc1.hasChildNodes());
+		Assert.assertFalse(doc2.hasChildNodes());
+		Assert.assertNull(doc1.getFirstChild());
+		Assert.assertNull(doc2.getFirstChild());
+		Assert.assertNull(doc1.getLastChild());
+		Assert.assertNull(doc2.getLastChild());
 		checkDocument(doc1, doc2);
 		// create root
 		Element root1 = doc1.createElement("root");
 		doc1.appendChild(root1);
 		XMLElement root2 = doc2.createElement("root");
 		doc2.appendChild(root2);
+		Assert.assertTrue(doc1.hasChildNodes());
+		Assert.assertTrue(doc2.hasChildNodes());
+		Assert.assertEquals(root1, doc1.getFirstChild());
+		Assert.assertEquals(root1, doc1.getLastChild());
+		Assert.assertEquals(root2, doc2.getFirstChild());
+		Assert.assertEquals(root2, doc2.getLastChild());
 		checkDocument(doc1, doc2);
 		// add attribute
 		root1.setAttribute("a1", "v1");
@@ -140,6 +154,9 @@ public class TestDOMModifications extends TestDOM {
 		comment1.deleteData(6, 4);
 		comment2.deleteData(6, 4);
 		checkComment(comment1, comment2);
+		comment1.deleteData(0, 1);
+		comment2.deleteData(0, 1);
+		checkComment(comment1, comment2);
 		comment1.replaceData(2, 4, "titi");
 		comment2.replaceData(2, 4, "titi");
 		checkComment(comment1, comment2);
@@ -167,7 +184,13 @@ public class TestDOMModifications extends TestDOM {
 		// get child
 		checkNode(root1.getFirstChild(), root2.getFirstChild());
 		checkNode(root1.getLastChild(), root2.getLastChild());
-		// TODO continue
+		// clone root
+		Element root1Clone = (Element)root1.cloneNode(true);
+		XMLElement root2Clone = root2.cloneNode(true);
+		checkElement(root1Clone, root2Clone);
+		root1Clone = (Element)root1.cloneNode(false);
+		root2Clone = root2.cloneNode(false);
+		checkElement(root1Clone, root2Clone);
 	}
 	
 }

@@ -109,6 +109,34 @@ public class TestFragmentedRangeBigInteger extends LCCoreAbstractTest {
 		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
 			new RangeBigInteger(BigInteger.valueOf(100), BigInteger.valueOf(155)),
 			new RangeBigInteger(BigInteger.valueOf(157), BigInteger.valueOf(300)));
+		// 14-31, 100-155, 157-199, 251-300
+		f.removeRange(BigInteger.valueOf(200), BigInteger.valueOf(250));
+		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
+			new RangeBigInteger(BigInteger.valueOf(100), BigInteger.valueOf(155)),
+			new RangeBigInteger(BigInteger.valueOf(157), BigInteger.valueOf(199)),
+			new RangeBigInteger(BigInteger.valueOf(251), BigInteger.valueOf(300)));
+		// 14-31, 100-155, 157-300
+		f.addRange(BigInteger.valueOf(200), BigInteger.valueOf(270));
+		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
+			new RangeBigInteger(BigInteger.valueOf(100), BigInteger.valueOf(155)),
+			new RangeBigInteger(BigInteger.valueOf(157), BigInteger.valueOf(300)));
+		// 14-31, 100-155, 157-199, 251-300
+		f.removeRange(BigInteger.valueOf(200), BigInteger.valueOf(250));
+		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
+			new RangeBigInteger(BigInteger.valueOf(100), BigInteger.valueOf(155)),
+			new RangeBigInteger(BigInteger.valueOf(157), BigInteger.valueOf(199)),
+			new RangeBigInteger(BigInteger.valueOf(251), BigInteger.valueOf(300)));
+		// 14-31, 100-155, 157-400
+		f.addRange(BigInteger.valueOf(180), BigInteger.valueOf(400));
+		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
+			new RangeBigInteger(BigInteger.valueOf(100), BigInteger.valueOf(155)),
+			new RangeBigInteger(BigInteger.valueOf(157), BigInteger.valueOf(400)));
+		// 14-31, 100-155, 157-400, 500-500
+		f.addValue(BigInteger.valueOf(500));
+		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
+			new RangeBigInteger(BigInteger.valueOf(100), BigInteger.valueOf(155)),
+			new RangeBigInteger(BigInteger.valueOf(157), BigInteger.valueOf(400)),
+			new RangeBigInteger(BigInteger.valueOf(500), BigInteger.valueOf(500)));
 	}
 	
 	private static void check(List<RangeBigInteger> list, RangeBigInteger... expected) {

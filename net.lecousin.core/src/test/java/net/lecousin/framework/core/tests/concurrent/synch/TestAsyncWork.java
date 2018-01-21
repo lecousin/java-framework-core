@@ -157,7 +157,7 @@ public class TestAsyncWork extends LCCoreAbstractTest {
 		Listener<Integer> onok = new Listener<Integer>() {
 			@Override
 			public void fire(Integer event) {
-				okResult.set(event);
+				okResult.set(event.intValue());
 			}
 		};
 		Mutable<Exception> errorResult = new Mutable<>(null);

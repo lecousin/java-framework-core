@@ -53,6 +53,7 @@ public abstract class TestDOM extends LCCoreAbstractTest {
 		//Assert.assertEquals(expected.getTextContent(), found.getTextContent());
 		Assert.assertTrue(expected.hasAttributes() == found.hasAttributes());
 		checkMap(expected.getAttributes(), found.getAttributes());
+		//Assert.assertTrue(expected.hasChildNodes() == found.hasChildNodes());
 		checkList(expected.getChildNodes(), found.getChildNodes());
 	}
 	

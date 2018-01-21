@@ -2,13 +2,15 @@ package net.lecousin.framework.core.tests.plugins;
 
 import java.util.Collection;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.core.tests.plugins.AnExtensionPoint.MyPlugin;
+import net.lecousin.framework.plugins.CustomExtensionPoint;
 import net.lecousin.framework.plugins.ExtensionPoint;
 import net.lecousin.framework.plugins.ExtensionPoints;
+import net.lecousin.framework.plugins.Plugin;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestPlugins extends LCCoreAbstractTest {
 
@@ -19,10 +21,43 @@ public class TestPlugins extends LCCoreAbstractTest {
 		Collection<MyPlugin> plugins = ep.getPlugins();
 		Assert.assertEquals(1, plugins.size());
 		Assert.assertTrue(plugins.iterator().next() instanceof APlugin);
-		Assert.assertFalse(null == ExtensionPoints.getCustomExtensionPoint(ACustomExtensionPoint.class));
+		ACustomExtensionPoint custom = ExtensionPoints.getCustomExtensionPoint(ACustomExtensionPoint.class);
+		Assert.assertNotNull(custom);
+		custom.getPluginConfigurationFilePath();
+		custom.loadPluginConfiguration(null, null);
+		Assert.assertNull(ExtensionPoints.getCustomExtensionPoint(FakeCustom.class));
+		Assert.assertNull(ExtensionPoints.getExtensionPoint(FakePoint.class));
 		// for coverage
 		for (ExtensionPoint<?> e : ExtensionPoints.getExtensionPoints()) {
 			e.getPluginClass();
+		}
+		ExtensionPoints.logRemainingPlugins();
+	}
+	
+	public static class FakeCustom implements CustomExtensionPoint {
+		@Override
+		public boolean keepAfterInit() {
+			return false;
+		}
+	}
+	
+	public static class FakePoint implements ExtensionPoint<Plugin> {
+		@Override
+		public Class<Plugin> getPluginClass() {
+			return null;
+		}
+
+		@Override
+		public void addPlugin(Plugin plugin) {
+		}
+
+		@Override
+		public void allPluginsLoaded() {
+		}
+
+		@Override
+		public Collection<Plugin> getPlugins() {
+			return null;
 		}
 	}
 	
