@@ -34,7 +34,9 @@ import net.lecousin.framework.util.UnprotectedStringBuffer;
 /**
  * Utility methods for IO.
  */
-public class IOUtil {
+public final class IOUtil {
+	
+	private IOUtil() { /* no instance */ }
 
 	/**
 	 * Fill the remaining bytes of the given buffer.

@@ -22,8 +22,9 @@ public class TestVersion extends LCCoreAbstractTest {
 		Assert.assertEquals("1.2.3", new VersionRange(new Version("1.2.3")).toString());
 		Assert.assertEquals("[1.2-2.4]", new VersionRange(new Version("1.2"), new Version("2.4"), true).toString());
 		Assert.assertEquals("[2.1-2.3[", new VersionRange(new Version("2.1"), new Version("2.3"), false).toString());
+		Assert.assertEquals("[2.1", new VersionRange(new Version("2.1"), null, false).toString());
 		
-		Assert.assertArrayEquals(new int[] { 2, 5, 87 }, VersionRange.parse("2.5.87"));
+		Assert.assertArrayEquals(new int[] { 2, 5, 87 }, VersionRange.parse("2.5.87-alpha"));
 
 		Assert.assertTrue(new VersionRange(new Version("1.2.3"), new Version("1.3.6"), true).includes(new Version("1.2.3")));
 		Assert.assertTrue(new VersionRange(new Version("1.2.3"), new Version("1.3.6"), true).includes(new Version("1.2.4")));
@@ -94,6 +95,7 @@ public class TestVersion extends LCCoreAbstractTest {
 		Assert.assertTrue(rr.compare(new Version("3.6"), new Version("3.7")) < 0);
 		Assert.assertTrue(rr.compare(new Version("3.8"), new Version("3.7")) > 0);
 		Assert.assertTrue(rr.compare(new Version("3.7.12.56"), new Version("3.7")) > 0);
+		Assert.assertTrue(rr.compare(new Version("3.7"), new Version("3.7.12.56")) < 0);
 		Assert.assertTrue(rr.compare(new Version("3.7.12.56"), new Version("3.6")) > 0);
 		Assert.assertTrue(rr.compare(new Version("3.7.12.56"), new Version("3.8")) > 0);
 		rr.toString();

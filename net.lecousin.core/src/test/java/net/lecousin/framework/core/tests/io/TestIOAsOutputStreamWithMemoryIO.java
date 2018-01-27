@@ -15,14 +15,14 @@ import net.lecousin.framework.io.IOAsOutputStream;
 import net.lecousin.framework.io.buffering.MemoryIO;
 
 @RunWith(Parameterized.class)
-public class TestIOAsOutputStream extends TestOutputStream {
+public class TestIOAsOutputStreamWithMemoryIO extends TestOutputStream {
 
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
 		return TestIO.UsingTestData.generateTestCases(true);
 	}
 
-	public TestIOAsOutputStream(byte[] testBuf, int nbBuf) {
+	public TestIOAsOutputStreamWithMemoryIO(byte[] testBuf, int nbBuf) {
 		super(testBuf, nbBuf);
 	}
 	

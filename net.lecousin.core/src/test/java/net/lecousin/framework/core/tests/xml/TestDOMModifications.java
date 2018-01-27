@@ -1,6 +1,7 @@
 package net.lecousin.framework.core.tests.xml;
 
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.soap.Node;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -37,6 +38,18 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertNull(doc1.getLastChild());
 		Assert.assertNull(doc2.getLastChild());
 		checkDocument(doc1, doc2);
+		// impl
+		XMLDocument d = doc2.getImplementation().createDocument("http://test", "toto:titi", doc2.getImplementation().createDocumentType("toto:tata", "hello", "world"));
+		Assert.assertEquals("http://test", d.getDocumentElement().getNamespaceURI());
+		Assert.assertEquals("toto", d.getDocumentElement().getPrefix());
+		Assert.assertEquals("titi", d.getDocumentElement().getLocalName());
+		Assert.assertEquals("toto:tata", d.getDoctype().getName());
+		Assert.assertEquals("toto:tata", d.getDoctype().getNodeName());
+		Assert.assertEquals("hello", d.getDoctype().getPublicId());
+		Assert.assertEquals("world", d.getDoctype().getSystemId());
+		Assert.assertEquals(Node.DOCUMENT_TYPE_NODE, d.getDoctype().getNodeType());
+		doc2.getImplementation().hasFeature("test", "1");
+		doc2.getImplementation().getFeature("test", "1");
 		// create root
 		Element root1 = doc1.createElement("root");
 		doc1.appendChild(root1);
@@ -57,6 +70,7 @@ public class TestDOMModifications extends TestDOM {
 		root1.setAttribute("a2", "v2");
 		root2.setAttribute("a2", "v2");
 		checkDocument(doc1, doc2);
+		Assert.assertEquals("v2", root2.getAttribute("a2"));
 		// change attribute
 		root1.setAttribute("a2", "V2");
 		root2.setAttribute("a2", "V2");
@@ -188,9 +202,11 @@ public class TestDOMModifications extends TestDOM {
 		Element root1Clone = (Element)root1.cloneNode(true);
 		XMLElement root2Clone = root2.cloneNode(true);
 		checkElement(root1Clone, root2Clone);
+		Assert.assertTrue(root2Clone.hasChildNodes());
 		root1Clone = (Element)root1.cloneNode(false);
 		root2Clone = root2.cloneNode(false);
 		checkElement(root1Clone, root2Clone);
+		Assert.assertFalse(root2Clone.hasChildNodes());
 	}
 	
 }

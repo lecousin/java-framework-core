@@ -37,6 +37,8 @@ public abstract class TestOutputStream extends TestIO.UsingTestData {
 			Assert.assertArrayEquals(testBuf, buf);
 		}
 		Assert.assertTrue(in.readFullySync(ByteBuffer.wrap(buf)) <= 0);
+		stream.write(51);
+		stream.close();
 	}
 
 }
