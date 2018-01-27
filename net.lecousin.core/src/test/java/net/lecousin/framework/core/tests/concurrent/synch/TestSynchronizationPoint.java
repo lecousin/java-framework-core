@@ -194,20 +194,30 @@ public class TestSynchronizationPoint extends LCCoreAbstractTest {
 		
 		sp = new SynchronizationPoint<>();
 		sp.onSuccess(onOk);
+		sp.onError(onError);
+		sp.onException(onError);
+		sp.onCancel(onCancel);
 		sp.unblock();
 		Assert.assertEquals(9, ok.get());
 		
 		sp = new SynchronizationPoint<>();
+		sp.onSuccess(onOk);
 		sp.onError(onError);
+		sp.onCancel(onCancel);
 		sp.error(new Exception());
 		Assert.assertEquals(6, error.get());
 		
 		sp = new SynchronizationPoint<>();
+		sp.onSuccess(onOk);
 		sp.onException(onError);
+		sp.onCancel(onCancel);
 		sp.error(new Exception());
 		Assert.assertEquals(7, error.get());
 		
 		sp = new SynchronizationPoint<>();
+		sp.onSuccess(onOk);
+		sp.onError(onError);
+		sp.onException(onError);
 		sp.onCancel(onCancel);
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(6, cancel.get());

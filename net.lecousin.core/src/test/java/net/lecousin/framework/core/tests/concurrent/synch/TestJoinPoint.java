@@ -5,6 +5,7 @@ import java.util.Collections;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -17,6 +18,7 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 
 	@Test(timeout=30000)
 	public void test() {
+		Threading.debugSynchronization = true;
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		Assert.assertEquals(0, jp.getToJoin());
 		jp.addToJoin(1);
@@ -30,6 +32,7 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		SynchronizationPoint<Exception> spCancel = new SynchronizationPoint<>();
 		jp.addToJoin(spCancel);
 		Assert.assertEquals(4, jp.getToJoin());
+		jp.start();
 		
 		spOk.unblock();
 		Assert.assertEquals(3, jp.getToJoin());
@@ -72,8 +75,13 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		JoinPoint<NoException> jp2 = JoinPoint.onAllDone(Collections.singletonList(task));
 		Assert.assertEquals(1, jp2.getToJoin());
 		Assert.assertFalse(jp2.isUnblocked());
+
+		task.cancel(new CancelException("test"));
+		Assert.assertTrue(jp.isUnblocked());
+		Assert.assertTrue(jp.isUnblocked());
 		
 		JoinPoint.listenInlineOnAllDone(() -> {}, spOk, spError, spCancel);
+		Threading.debugSynchronization = false;
 	}
 	
 }

@@ -3,6 +3,12 @@ package net.lecousin.framework.core.tests.xml;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.soap.Node;
 
+import net.lecousin.framework.xml.dom.XMLCData;
+import net.lecousin.framework.xml.dom.XMLComment;
+import net.lecousin.framework.xml.dom.XMLDocument;
+import net.lecousin.framework.xml.dom.XMLElement;
+import net.lecousin.framework.xml.dom.XMLText;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.w3c.dom.Attr;
@@ -11,12 +17,6 @@ import org.w3c.dom.Comment;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Text;
-
-import net.lecousin.framework.xml.dom.XMLCData;
-import net.lecousin.framework.xml.dom.XMLComment;
-import net.lecousin.framework.xml.dom.XMLDocument;
-import net.lecousin.framework.xml.dom.XMLElement;
-import net.lecousin.framework.xml.dom.XMLText;
 
 public class TestDOMModifications extends TestDOM {
 
@@ -50,6 +50,15 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertEquals(Node.DOCUMENT_TYPE_NODE, d.getDoctype().getNodeType());
 		doc2.getImplementation().hasFeature("test", "1");
 		doc2.getImplementation().getFeature("test", "1");
+		Assert.assertTrue(d.getDoctype().isEqualNode(doc2.getImplementation().createDocumentType("toto:tata", "hello", "world")));
+		Assert.assertTrue(d.getDoctype().isEqualNode(d.getDoctype().cloneNode(true)));
+		d.getDoctype().getEntities();
+		d.getDoctype().getNotations();
+		d.getDoctype().getInternalSubset();
+		d.getDoctype().getTextContent();
+		d.getDoctype().setTextContent("");
+		d = doc2.getImplementation().createDocument(null, "test", null);
+		Assert.assertEquals("test", d.getDocumentElement().getNodeName());
 		// create root
 		Element root1 = doc1.createElement("root");
 		doc1.appendChild(root1);
@@ -100,6 +109,9 @@ public class TestDOMModifications extends TestDOM {
 		root1.setAttributeNS("http://test3", "test3:b", "bb");
 		root2.setAttributeNS("http://test3", "test3:b", "bb");
 		checkDocument(doc1, doc2);
+		Assert.assertTrue(root1.hasAttributeNS("http://test3", "b"));
+		Assert.assertTrue(root2.hasAttributeNS("http://test3", "b"));
+		Assert.assertNotNull(root2.getAttributeNS("http://test3", "b"));
 		// change prefix
 		root1.getAttributeNodeNS("http://test3", "b").setPrefix("tutu");
 		root2.getAttributeNodeNS("http://test3", "b").setPrefix("tutu");
@@ -111,6 +123,13 @@ public class TestDOMModifications extends TestDOM {
 		// get owner
 		Assert.assertTrue(root2.getAttributeNodeNS("http://test3", "b").getOwnerElement() == root2);
 		Assert.assertTrue(root2.getAttributeNodeNS("http://test3", "b").getOwnerDocument() == doc2);
+		// change value
+		// TODO root2.setAttributeNodeNS(root2.getAttributeNodeNS("http://test3", "b").cloneNode(true));
+		// TODO checkDocument(doc1, doc2);
+		// remove attribute
+		root1.removeAttributeNode(root1.getAttributeNodeNS("http://test3", "b"));
+		root2.removeAttributeNode(root2.getAttributeNodeNS("http://test3", "b"));
+		checkDocument(doc1, doc2);
 		// add text
 		Text text1 = doc1.createTextNode("My Text");
 		XMLText text2 = doc2.createTextNode("My Text");
