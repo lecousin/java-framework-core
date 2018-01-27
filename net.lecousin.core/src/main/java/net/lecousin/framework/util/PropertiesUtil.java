@@ -4,6 +4,8 @@ import java.util.Map;
 
 /** Utilities for properties. */
 public final class PropertiesUtil {
+	
+	private PropertiesUtil() { /* no instance */ }
 
 	/** Resolve the values of properties if any contains ${...}. */
 	public static void resolve(Map<String, String> properties) {
@@ -12,6 +14,7 @@ public final class PropertiesUtil {
 			resolved = false;
 			for (Map.Entry<String, String> p : properties.entrySet()) {
 				String v = p.getValue();
+				if (v == null) continue;
 				int i = v.indexOf("${");
 				if (i < 0) continue;
 				int j = v.indexOf('}', i + 2);

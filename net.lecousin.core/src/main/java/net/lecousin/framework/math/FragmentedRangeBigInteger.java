@@ -2,6 +2,7 @@ package net.lecousin.framework.math;
 
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 /**
@@ -178,6 +179,52 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 		return getLast().max;
 	}
 	
+	/**
+	 * If a range with the exact size exists, it is returned.
+	 * Else, the smaller range greater than the given size is returned.
+	 * If no range can contain the size, null is returned.
+	 */
+	public RangeBigInteger removeBestRangeForSize(BigInteger size) {
+		RangeBigInteger best = null;
+		BigInteger bestSize = null;
+		for (Iterator<RangeBigInteger> it = iterator(); it.hasNext(); ) {
+			RangeBigInteger r = it.next();
+			BigInteger l = r.getLength();
+			int c = size.compareTo(l);
+			if (c == 0) {
+				it.remove();
+				return r;
+			}
+			if (c > 0) continue;
+			if (bestSize == null || bestSize.compareTo(l) > 0) {
+				best = r;
+				bestSize = l;
+			}
+		}
+		if (best == null) return null;
+		RangeBigInteger res = new RangeBigInteger(best.min, best.min.add(size).subtract(BigInteger.ONE));
+		best.min = best.min.add(size);
+		return res;
+	}
+	
+	/** Remove the largest range. */
+	public RangeBigInteger removeBiggestRange() {
+		if (isEmpty()) return null;
+		if (size() == 1) return remove(0);
+		int biggestIndex = 0;
+		RangeBigInteger r = get(0);
+		BigInteger biggestSize = r.getLength();
+		for (int i = 1; i < size(); ++i) {
+			r = get(i);
+			BigInteger l = r.getLength();
+			if (l.compareTo(biggestSize) > 0) {
+				biggestSize = l;
+				biggestIndex = i;
+			}
+		}
+		return remove(biggestIndex);
+	}
+	
 	/** Remove and return the first value, or null if empty. */
 	public BigInteger removeFirstValue() {
 		if (isEmpty()) return null;
@@ -244,6 +291,20 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 		removeRange(value, value);
 	}
 	
+	/** Return the total size, summing the ranges length. */
+	public BigInteger getTotalSize() {
+		BigInteger total = BigInteger.ZERO;
+		for (RangeBigInteger r : this)
+			total = total.add(r.getLength());
+		return total;
+	}
+
+	/** Add the given ranges. */
+	public void addCopy(Collection<RangeBigInteger> col) {
+		for (RangeBigInteger r : col)
+			addRange(r.min, r.max);
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder s = new StringBuilder("{");

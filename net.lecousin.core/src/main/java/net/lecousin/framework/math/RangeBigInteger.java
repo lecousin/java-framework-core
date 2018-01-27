@@ -48,4 +48,13 @@ public class RangeBigInteger {
 		return new RangeBigInteger(o.min, o.max.compareTo(max) > 0 ? max : o.max);
 	}
 	
+	public BigInteger getLength() {
+		return max.subtract(min).add(BigInteger.ONE);
+	}
+	
+	@Override
+	public String toString() {
+		return "[" + min.toString() + "-" + max.toString() + "]";
+	}
+	
 }

@@ -33,11 +33,6 @@ public class RangeLong {
 		return (int)(min + max);
 	}
 	
-	@Override
-	public String toString() {
-		return "[" + min + "-" + max + "]";
-	}
-	
 	/** Return true if this range contains the given value. */
 	public boolean contains(long value) {
 		return value >= min && value <= max;
@@ -80,6 +75,11 @@ public class RangeLong {
 				after = new RangeLong(max + 1, o.max);
 		}
 		return new Pair<RangeLong,RangeLong>(before, after);
+	}
+	
+	@Override
+	public String toString() {
+		return "[" + min + "-" + max + "]";
 	}
 	
 }

@@ -116,6 +116,21 @@ public class TestFragmentedRangeInteger extends LCCoreAbstractTest {
 		// 14-31, 100-155, 157-400, 500-500
 		f.addValue(500);
 		check(f, new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 400), new RangeInteger(500, 500));
+		
+		check(FragmentedRangeInteger.intersect(f, new FragmentedRangeInteger(new RangeInteger(90, 450))),
+			new RangeInteger(100, 155), new RangeInteger(157, 400));
+		check(f.copy(), new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 400), new RangeInteger(500, 500));
+		
+		Assert.assertNull(f.removeBestRangeForSize(1000));
+		Assert.assertEquals(new RangeInteger(100, 155), f.removeBestRangeForSize(56));
+		Assert.assertEquals(new RangeInteger(157, 356), f.removeBestRangeForSize(200));
+		check(f, new RangeInteger(14, 31), new RangeInteger(357, 400), new RangeInteger(500, 500));
+		Assert.assertEquals(new RangeInteger(357, 400), f.removeBiggestRange());
+		check(f, new RangeInteger(14, 31), new RangeInteger(500, 500));
+		Assert.assertEquals(19, f.getTotalSize());
+		f.addCopy(Arrays.asList(new RangeInteger(100, 120), new RangeInteger(130, 140)));
+		check(f, new RangeInteger(14, 31), new RangeInteger(100, 120), new RangeInteger(130, 140), new RangeInteger(500, 500));
+		f.toString();
 	}
 	
 	private static void check(List<RangeInteger> list, RangeInteger... expected) {

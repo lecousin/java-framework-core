@@ -50,4 +50,9 @@ public class RangeInteger {
 		return max - min + 1;
 	}
 	
+	@Override
+	public String toString() {
+		return "[" + min + "-" + max + "]";
+	}
+	
 }

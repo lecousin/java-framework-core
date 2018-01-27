@@ -287,6 +287,12 @@ public class FragmentedRangeLong extends LinkedList<RangeLong> {
 		return total;
 	}
 	
+	/** Add the given ranges. */
+	public void addCopy(Collection<RangeLong> col) {
+		for (RangeLong r : col)
+			addRange(r.min, r.max);
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder s = new StringBuilder("{");
