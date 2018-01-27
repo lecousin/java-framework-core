@@ -268,4 +268,43 @@ public class TestAsyncWork extends LCCoreAbstractTest {
 		Assert.assertTrue(sp.isCancelled());
 	}
 	
+	@Test(timeout=30000)
+	public void testUnblock() {
+		AsyncWork<Integer, Exception> aw;
+		aw = new AsyncWork<>();
+		Assert.assertEquals(0, aw.getAllListeners().size());
+		aw.listenInline(new AsyncWorkListener<Integer, Exception>() {
+			@Override
+			public void ready(Integer result) {
+			}
+			@Override
+			public void cancelled(CancelException event) {
+			}
+			@Override
+			public void error(Exception error) {
+			}
+		});
+		Assert.assertEquals(1, aw.getAllListeners().size());
+
+		Assert.assertFalse(aw.isUnblocked());
+		Assert.assertFalse(aw.isSuccessful());
+		Assert.assertFalse(aw.hasError());
+		Assert.assertFalse(aw.isCancelled());
+		aw.unblockSuccess(Integer.valueOf(10));
+		Assert.assertTrue(aw.isUnblocked());
+		Assert.assertTrue(aw.isSuccessful());
+		Assert.assertFalse(aw.hasError());
+		Assert.assertFalse(aw.isCancelled());
+		aw.error(new Exception());
+		Assert.assertTrue(aw.isUnblocked());
+		Assert.assertTrue(aw.isSuccessful());
+		Assert.assertFalse(aw.hasError());
+		Assert.assertFalse(aw.isCancelled());
+		aw.cancel(new CancelException("test"));
+		Assert.assertTrue(aw.isUnblocked());
+		Assert.assertTrue(aw.isSuccessful());
+		Assert.assertFalse(aw.hasError());
+		Assert.assertFalse(aw.isCancelled());
+	}
+	
 }

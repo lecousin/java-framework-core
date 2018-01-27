@@ -67,7 +67,7 @@ public class DriveOperationsSequence extends Task<Void,IOException> {
 				waiting = false;
 				sp.reset();
 			}
-		} while (!end);
+		} while (true);
 		return null;
 	}
 
@@ -114,10 +114,19 @@ public class DriveOperationsSequence extends Task<Void,IOException> {
 			@SuppressWarnings("resource")
 			FileAccess file = getFile();
 			long pos = getPosition();
-			if (pos < 0)
-				file.channel.read(getBuffer());
-			else
-				file.channel.read(getBuffer(), pos);
+			ByteBuffer buf = getBuffer();
+			if (pos < 0) {
+				while (buf.hasRemaining()) {
+					int nb = file.channel.read(buf);
+					if (nb <= 0) break;
+				}
+			} else {
+				while (buf.hasRemaining()) {
+					int nb = file.channel.read(buf, pos);
+					if (nb <= 0) break;
+					pos += nb;
+				}
+			}
 		}
 	}
 	

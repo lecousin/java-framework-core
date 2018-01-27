@@ -33,7 +33,7 @@ public class TestDirectoryTasks extends LCCoreAbstractTest {
 		new RemoveDirectoryTask(dir, null, 0, null, Task.PRIORITY_NORMAL, false).start().getOutput().blockThrow(0);
 		Assert.assertFalse(dir.exists());
 
-		new CreateDirectoryTask(dir, true, true, Task.PRIORITY_NORMAL).start().getOutput().blockThrow(0);
+		new CreateDirectoryTask(dir, false, true, Task.PRIORITY_NORMAL).start().getOutput().blockThrow(0);
 		Assert.assertTrue(dir.exists());
 		File subDir = new File(dir, "titi/tata");
 		Assert.assertFalse(subDir.exists());
@@ -62,10 +62,14 @@ public class TestDirectoryTasks extends LCCoreAbstractTest {
 		request.getLastModified = true;
 		request.getSize = true;
 		DirectoryReader reader = new DirectoryReader(root.toFile(), Task.PRIORITY_NORMAL, request);
+		Assert.assertEquals(root.toFile(), reader.getDirectory());
 		reader.start().getOutput().blockThrow(0);
 		DirectoryReader.ListSubDirectories lister = new DirectoryReader.ListSubDirectories(root.toFile(), Task.PRIORITY_NORMAL);
 		lister.start().getOutput().blockThrow(0);
 		new RemoveDirectoryContentTask(root.toFile(), null, 0, Task.PRIORITY_NORMAL, false).start().getOutput().blockThrow(0);
+		request = new DirectoryReader.Request();
+		reader = new DirectoryReader(root.toFile(), Task.PRIORITY_NORMAL, request);
+		reader.start().getOutput().blockThrow(0);
 	}
 	
 }
