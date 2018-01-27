@@ -33,7 +33,7 @@ public class VersionRange {
 	
 	/** Return true if this VersionRange includes the given version. */
 	public boolean includes(int[] v) {
-		if (Version.compare(v, min) < 0) return false;
+		if (min != null && Version.compare(v, min) < 0) return false;
 		if (max == null) return true;
 		int c = Version.compare(v, max);
 		if (c > 0) return false;
@@ -62,22 +62,22 @@ public class VersionRange {
 	public static int[] parse(String s) {
 		ArrayList<Integer> n = new ArrayList<Integer>();
 		int val = 0;
-		int mul = 1;
+		boolean hasChar = false;
 		int i;
 		for (i = 0; i < s.length(); ++i) {
 			char c = s.charAt(i);
 			if (c >= '0' && c <= '9') {
-				val += (c - '0') * mul;
-				mul *= 10;
+				val = val * 10 + (c - '0');
+				hasChar = true;
 				continue;
 			}
 			if (c == '.') {
 				n.add(Integer.valueOf(val));
 				val = 0;
-				mul = 1;
+				hasChar = false;
 				continue;
 			}
-			if (mul > 1)
+			if (hasChar)
 				n.add(Integer.valueOf(val));
 			break;
 		}

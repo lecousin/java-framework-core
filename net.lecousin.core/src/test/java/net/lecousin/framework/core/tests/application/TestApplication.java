@@ -5,7 +5,11 @@ import java.util.List;
 import java.util.Locale;
 
 import net.lecousin.framework.application.Application;
+import net.lecousin.framework.application.Artifact;
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.application.Version;
+import net.lecousin.framework.application.VersionSpecification;
+import net.lecousin.framework.application.libraries.Library;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
@@ -26,6 +30,12 @@ public class TestApplication extends LCCoreAbstractTest {
 		app.setLocale(Locale.US);
 		app.getLanguageTag();
 		app.getLocalizedProperties();
+		
+		app.getLibrariesManager().canLoadNewLibraries();
+		app.getLibrariesManager().loadNewLibrary("test", "test", new VersionSpecification.SingleVersion(new Version("0")), true, Task.PRIORITY_NORMAL, null, 0);
+		app.getLibrariesManager().getLibrary(TestApplication.class);
+		app.getLibrariesManager().getLibrary(TestApplication.class.getClassLoader());
+		app.getLibrariesManager().getLibrary("test", "test");
 	}
 	
 	@SuppressWarnings("resource")
@@ -64,4 +74,16 @@ public class TestApplication extends LCCoreAbstractTest {
 		}
 		Assert.assertTrue(found);
 	}
+	
+	@Test
+	public void testLibrary() {
+		Application app = LCCore.getApplication();
+		Library lib = new Library(new Artifact("mygroup", "myname", new Version("1")), app.getClassLoader());
+		Assert.assertEquals(app.getClassLoader(), lib.getClassLoader());
+		Assert.assertEquals("mygroup", lib.getGroupId());
+		Assert.assertEquals("myname", lib.getArtifactId());
+		Assert.assertEquals("1", lib.getVersion().toString());
+		Assert.assertEquals("mygroup:myname:1", lib.toString());
+	}
+	
 }
