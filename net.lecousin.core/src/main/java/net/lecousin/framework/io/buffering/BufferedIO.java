@@ -110,35 +110,36 @@ public abstract class BufferedIO extends BufferingManaged {
 			if (buffer.loading != null) return;
 			buffer.loading = new SynchronizationPoint<>();
 		}
+		AsyncWork<Integer,IOException> loading;
 		synchronized (buffer) {
 			buffer.buffer = new byte[index == 0 ? firstBufferSize : bufferSize];
-			AsyncWork<Integer,IOException> loading =
+			loading =
 				io.readFullyAsync(index == 0 ? 0 : (firstBufferSize + (index - 1) * bufferSize), ByteBuffer.wrap(buffer.buffer));
-			operation(loading).listenInline(new Runnable() {
-				@Override
-				public void run() {
-					SynchronizationPoint<NoException> sp;
-					synchronized (buffer) {
-						sp = buffer.loading;
-						if (sp == null) return;
-					}
-					if (!loading.isSuccessful()) {
-						if (loading.isCancelled()) sp.cancel(loading.getCancelEvent());
-						else {
-							buffer.error = loading.getError();
-							sp.unblock();
-						}
-						buffer.buffer = null;
-						return;
-					}
-					buffer.len = loading.getResult().intValue();
-					if (buffer.len < 0) buffer.len = 0;
-					buffer.lastRead = System.currentTimeMillis();
-					manager.newBuffer(buffer);
-					sp.unblock();
-				}
-			});
 		}
+		operation(loading).listenInline(new Runnable() {
+			@Override
+			public void run() {
+				SynchronizationPoint<NoException> sp;
+				synchronized (buffer) {
+					sp = buffer.loading;
+					if (sp == null) return;
+				}
+				if (!loading.isSuccessful()) {
+					if (loading.isCancelled()) sp.cancel(loading.getCancelEvent());
+					else {
+						buffer.error = loading.getError();
+						sp.unblock();
+					}
+					buffer.buffer = null;
+					return;
+				}
+				buffer.len = loading.getResult().intValue();
+				if (buffer.len < 0) buffer.len = 0;
+				buffer.lastRead = System.currentTimeMillis();
+				manager.newBuffer(buffer);
+				sp.unblock();
+			}
+		});
 	}
 	
 	/** Load the buffer if needed. */
@@ -207,7 +208,6 @@ public abstract class BufferedIO extends BufferingManaged {
 			for (Buffer b : buffers) {
 				manager.removeBuffer(b);
 				synchronized (b) {
-					b.buffer = null;
 					if (b.loading != null) b.loading.cancel(new CancelException("BufferedIO.cancelAll"));
 					b.loading = null;
 					if (b.flushing != null)
