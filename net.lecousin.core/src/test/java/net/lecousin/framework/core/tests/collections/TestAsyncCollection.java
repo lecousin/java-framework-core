@@ -35,9 +35,11 @@ public class TestAsyncCollection extends LCCoreAbstractTest {
 		col.newElements(Arrays.asList(Integer.valueOf(2), Integer.valueOf(22)));
 		Assert.assertTrue(CollectionsUtil.equals(list, Arrays.asList(Integer.valueOf(1), Integer.valueOf(11), Integer.valueOf(111), Integer.valueOf(2), Integer.valueOf(22))));
 		Assert.assertFalse(done.get());
+		Assert.assertFalse(col.isDone());
 		col.done();
 		Assert.assertTrue(CollectionsUtil.equals(list, Arrays.asList(Integer.valueOf(1), Integer.valueOf(11), Integer.valueOf(111), Integer.valueOf(2), Integer.valueOf(22))));
 		Assert.assertTrue(done.get());
+		Assert.assertTrue(col.isDone());
 	}
 	
 	@Test
@@ -54,9 +56,46 @@ public class TestAsyncCollection extends LCCoreAbstractTest {
 		col.newElements(Arrays.asList(Integer.valueOf(2), Integer.valueOf(22)));
 		Assert.assertTrue(CollectionsUtil.equals(col.getCurrentElements(), Arrays.asList(Integer.valueOf(1), Integer.valueOf(11), Integer.valueOf(111), Integer.valueOf(2), Integer.valueOf(22))));
 		Assert.assertFalse(done.get());
+		Assert.assertFalse(col.isDone());
 		col.done();
 		Assert.assertTrue(CollectionsUtil.equals(col.getCurrentElements(), Arrays.asList(Integer.valueOf(1), Integer.valueOf(11), Integer.valueOf(111), Integer.valueOf(2), Integer.valueOf(22))));
 		Assert.assertTrue(done.get());
+		Assert.assertTrue(col.isDone());
+	}
+	
+	@Test
+	public void testAggregator() {
+		AsyncCollection.Keep<Integer> main = new AsyncCollection.Keep<>();
+		AsyncCollection.Aggregator<Integer> aggr = new AsyncCollection.Aggregator<>(3, main);
+		MutableBoolean done = new MutableBoolean(false);
+		main.ondone(() -> { done.set(true); });
+		
+		Assert.assertTrue(main.getCurrentElements().isEmpty());
+		Assert.assertFalse(done.get());
+		aggr.newElements(Arrays.asList(Integer.valueOf(1), Integer.valueOf(11), Integer.valueOf(111)));
+		Assert.assertTrue(CollectionsUtil.equals(main.getCurrentElements(), Arrays.asList(Integer.valueOf(1), Integer.valueOf(11), Integer.valueOf(111))));
+		Assert.assertFalse(done.get());
+		Assert.assertFalse(main.isDone());
+		aggr.done();
+		Assert.assertFalse(done.get());
+		Assert.assertFalse(main.isDone());
+		aggr.newElements(Arrays.asList(Integer.valueOf(2), Integer.valueOf(22)));
+		Assert.assertTrue(CollectionsUtil.equals(main.getCurrentElements(), Arrays.asList(Integer.valueOf(1), Integer.valueOf(11), Integer.valueOf(111), Integer.valueOf(2), Integer.valueOf(22))));
+		Assert.assertFalse(done.get());
+		Assert.assertFalse(main.isDone());
+		aggr.done();
+		Assert.assertFalse(done.get());
+		Assert.assertFalse(main.isDone());
+		aggr.newElements(Arrays.asList(Integer.valueOf(3)));
+		Assert.assertTrue(CollectionsUtil.equals(main.getCurrentElements(), Arrays.asList(Integer.valueOf(1), Integer.valueOf(11), Integer.valueOf(111), Integer.valueOf(2), Integer.valueOf(22), Integer.valueOf(3))));
+		Assert.assertFalse(done.get());
+		Assert.assertFalse(main.isDone());
+		Assert.assertFalse(aggr.isDone());
+		aggr.done();
+		Assert.assertTrue(done.get());
+		Assert.assertTrue(main.isDone());
+		Assert.assertTrue(aggr.isDone());
+		Assert.assertTrue(CollectionsUtil.equals(main.getCurrentElements(), Arrays.asList(Integer.valueOf(1), Integer.valueOf(11), Integer.valueOf(111), Integer.valueOf(2), Integer.valueOf(22), Integer.valueOf(3))));
 	}
 	
 }

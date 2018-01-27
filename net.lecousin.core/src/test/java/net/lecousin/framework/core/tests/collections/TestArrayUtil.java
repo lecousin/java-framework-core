@@ -2,12 +2,14 @@ package net.lecousin.framework.core.tests.collections;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.NoSuchElementException;
+
+import net.lecousin.framework.collections.ArrayIterator;
+import net.lecousin.framework.collections.ArrayUtil;
+import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
 import org.junit.Assert;
 import org.junit.Test;
-
-import net.lecousin.framework.collections.ArrayUtil;
-import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
 public class TestArrayUtil extends LCCoreAbstractTest {
 
@@ -19,6 +21,7 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.contains(new byte[] { 10,  8, 99, 0, -6, 80, -80 }, (byte)10));
 		Assert.assertFalse(ArrayUtil.contains(new byte[] { 10,  8, 99, 0, -6, 80, -80 }, (byte)11));
 		Assert.assertFalse(ArrayUtil.contains(new byte[] { 10,  8, 99, 0, -6, 80, -80 }, (byte)1));
+		Assert.assertFalse(ArrayUtil.contains((byte[])null, (byte)1));
 		
 		Assert.assertTrue(ArrayUtil.contains(new short[] { 10,  8, 99, 0, -6, 80, -80 }, (short)0));
 		Assert.assertTrue(ArrayUtil.contains(new short[] { 10,  8, 99, 0, -6, 80, -80 }, (short)80));
@@ -26,6 +29,7 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.contains(new short[] { 10,  8, 99, 0, -6, 80, -80 }, (short)10));
 		Assert.assertFalse(ArrayUtil.contains(new short[] { 10,  8, 99, 0, -6, 80, -80 }, (short)11));
 		Assert.assertFalse(ArrayUtil.contains(new short[] { 10,  8, 99, 0, -6, 80, -80 }, (short)1));
+		Assert.assertFalse(ArrayUtil.contains((short[])null, (short)1));
 		
 		Assert.assertTrue(ArrayUtil.contains(new int[] { 10,  8, 99, 0, -6, 80, -80 }, 0));
 		Assert.assertTrue(ArrayUtil.contains(new int[] { 10,  8, 99, 0, -6, 80, -80 }, 80));
@@ -33,6 +37,7 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.contains(new int[] { 10,  8, 99, 0, -6, 80, -80 }, 10));
 		Assert.assertFalse(ArrayUtil.contains(new int[] { 10,  8, 99, 0, -6, 80, -80 }, 11));
 		Assert.assertFalse(ArrayUtil.contains(new int[] { 10,  8, 99, 0, -6, 80, -80 }, 1));
+		Assert.assertFalse(ArrayUtil.contains((int[])null, 1));
 		
 		Assert.assertTrue(ArrayUtil.contains(new long[] { 10,  8, 99, 0, -6, 80, -80 }, 0));
 		Assert.assertTrue(ArrayUtil.contains(new long[] { 10,  8, 99, 0, -6, 80, -80 }, 80));
@@ -40,6 +45,7 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.contains(new long[] { 10,  8, 99, 0, -6, 80, -80 }, 10));
 		Assert.assertFalse(ArrayUtil.contains(new long[] { 10,  8, 99, 0, -6, 80, -80 }, 11));
 		Assert.assertFalse(ArrayUtil.contains(new long[] { 10,  8, 99, 0, -6, 80, -80 }, 1));
+		Assert.assertFalse(ArrayUtil.contains((long[])null, 1));
 		
 		Assert.assertTrue(ArrayUtil.contains(new char[] { 'a',  '1', '\t', 0, (char)-6, 80, (char)-80 }, (char)0));
 		Assert.assertTrue(ArrayUtil.contains(new char[] { 'a',  '1', '\t', 0, (char)-6, 80, (char)-80 }, (char)80));
@@ -47,6 +53,7 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.contains(new char[] { 'a',  '1', '\t', 0, (char)-6, 80, (char)-80 }, 'a'));
 		Assert.assertFalse(ArrayUtil.contains(new char[] { 'a',  '1', '\t', 0, (char)-6, 80, (char)-80 }, 'b'));
 		Assert.assertFalse(ArrayUtil.contains(new char[] { 'a',  '1', '\t', 0, (char)-6, 80, (char)-80 }, (char)1));
+		Assert.assertFalse(ArrayUtil.contains((char[])null, (char)1));
 		
 		Object o1 = new Object();
 		Object o2 = new Object();
@@ -57,6 +64,7 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.contains(a, o2));
 		Assert.assertTrue(ArrayUtil.contains(a, o3));
 		Assert.assertFalse(ArrayUtil.contains(a, o4));
+		Assert.assertFalse(ArrayUtil.contains((Object[])null, o1));
 	}
 	
 	@Test
@@ -119,6 +127,9 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.equals(new byte[] { 2, 10, 22 }, 1, new byte[] { 1, 10, 22 }, 1, 2));
 		Assert.assertTrue(ArrayUtil.equals(new byte[] { 2, 10, 22 }, 1, new byte[] { 10, 22, 33 }, 0, 2));
 		Assert.assertFalse(ArrayUtil.equals(new byte[] { 2, 10, 22 }, 0, new byte[] { 1, 10, 22 }, 0, 2));
+		Assert.assertTrue(ArrayUtil.equals((byte[])null, (byte[])null));
+		Assert.assertFalse(ArrayUtil.equals(new byte[] {}, (byte[])null));
+		Assert.assertFalse(ArrayUtil.equals((byte[])null, new byte[] {}));
 		
 		Assert.assertTrue(ArrayUtil.equals(new short[] { 1, 10, 22 }, new short[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new short[] { 2, 10, 22 }, new short[] { 1, 10, 22 }));
@@ -126,6 +137,9 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.equals(new short[] { 2, 10, 22 }, 1, new short[] { 1, 10, 22 }, 1, 2));
 		Assert.assertTrue(ArrayUtil.equals(new short[] { 2, 10, 22 }, 1, new short[] { 10, 22, 33 }, 0, 2));
 		Assert.assertFalse(ArrayUtil.equals(new short[] { 2, 10, 22 }, 0, new short[] { 1, 10, 22 }, 0, 2));
+		Assert.assertTrue(ArrayUtil.equals((short[])null, (short[])null));
+		Assert.assertFalse(ArrayUtil.equals(new short[] {}, (short[])null));
+		Assert.assertFalse(ArrayUtil.equals((short[])null, new short[] {}));
 		
 		Assert.assertTrue(ArrayUtil.equals(new int[] { 1, 10, 22 }, new int[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new int[] { 2, 10, 22 }, new int[] { 1, 10, 22 }));
@@ -133,6 +147,9 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.equals(new int[] { 2, 10, 22 }, 1, new int[] { 1, 10, 22 }, 1, 2));
 		Assert.assertTrue(ArrayUtil.equals(new int[] { 2, 10, 22 }, 1, new int[] { 10, 22, 33 }, 0, 2));
 		Assert.assertFalse(ArrayUtil.equals(new int[] { 2, 10, 22 }, 0, new int[] { 1, 10, 22 }, 0, 2));
+		Assert.assertTrue(ArrayUtil.equals((int[])null, (int[])null));
+		Assert.assertFalse(ArrayUtil.equals(new int[] {}, (int[])null));
+		Assert.assertFalse(ArrayUtil.equals((int[])null, new int[] {}));
 		
 		Assert.assertTrue(ArrayUtil.equals(new long[] { 1, 10, 22 }, new long[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new long[] { 2, 10, 22 }, new long[] { 1, 10, 22 }));
@@ -140,6 +157,9 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.equals(new long[] { 2, 10, 22 }, 1, new long[] { 1, 10, 22 }, 1, 2));
 		Assert.assertTrue(ArrayUtil.equals(new long[] { 2, 10, 22 }, 1, new long[] { 10, 22, 33 }, 0, 2));
 		Assert.assertFalse(ArrayUtil.equals(new long[] { 2, 10, 22 }, 0, new long[] { 1, 10, 22 }, 0, 2));
+		Assert.assertTrue(ArrayUtil.equals((long[])null, (long[])null));
+		Assert.assertFalse(ArrayUtil.equals(new long[] {}, (long[])null));
+		Assert.assertFalse(ArrayUtil.equals((long[])null, new long[] {}));
 		
 		Assert.assertTrue(ArrayUtil.equals(new char[] { 1, 10, 22 }, new char[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new char[] { 2, 10, 22 }, new char[] { 1, 10, 22 }));
@@ -147,6 +167,9 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.equals(new char[] { 2, 10, 22 }, 1, new char[] { 1, 10, 22 }, 1, 2));
 		Assert.assertTrue(ArrayUtil.equals(new char[] { 2, 10, 22 }, 1, new char[] { 10, 22, 33 }, 0, 2));
 		Assert.assertFalse(ArrayUtil.equals(new char[] { 2, 10, 22 }, 0, new char[] { 1, 10, 22 }, 0, 2));
+		Assert.assertTrue(ArrayUtil.equals((char[])null, (char[])null));
+		Assert.assertFalse(ArrayUtil.equals(new char[] {}, (char[])null));
+		Assert.assertFalse(ArrayUtil.equals((char[])null, new char[] {}));
 		
 		Object o1 = new Object();
 		Object o2 = new Object();
@@ -161,6 +184,9 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertFalse(ArrayUtil.equals(new Object[] { o1, o2, o3 }, 0, new Object[] { o1, o2, o3 }, 1, 2));
 		Assert.assertFalse(ArrayUtil.equals(new Object[] { o1, o2, o3 }, 1, new Object[] { o1, o2, o3 }, 0, 2));
 		Assert.assertTrue(ArrayUtil.equals(new Object[] { o1, o2, o3 }, 1, new Object[] { o4, o2, o3 }, 1, 2));
+		Assert.assertTrue(ArrayUtil.equals((Object[])null, (Object[])null));
+		Assert.assertFalse(ArrayUtil.equals(new Object[] {}, (Object[])null));
+		Assert.assertFalse(ArrayUtil.equals((Object[])null, new Object[] {}));
 	}
 	
 	@Test
@@ -201,6 +227,21 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.removeAt(new Object[] { o1, o2, o3, o4 }, 2), new Object[] { o1, o2, o4 }));
 		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.removeAt(new Object[] { o1, o2, o3, o4 }, 0), new Object[] { o2, o3, o4 }));
 		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.removeAt(new Object[] { o1, o2, o3, o4 }, 3), new Object[] { o1, o2, o3 }));
+	}
+	
+	@Test(timeout=30000)
+	public void testArrayIterator() {
+		ArrayIterator<Integer> it = new ArrayIterator<>(new Integer[] { Integer.valueOf(10), Integer.valueOf(20) });
+		Assert.assertTrue(it.hasNext());
+		Assert.assertEquals(10, it.next().intValue());
+		Assert.assertTrue(it.hasNext());
+		Assert.assertEquals(20, it.next().intValue());
+		Assert.assertFalse(it.hasNext());
+		try {
+			it.next();
+			throw new AssertionError("Iterator must throw NoSuchElementException");
+		} catch (NoSuchElementException e) {
+		}
 	}
 	
 }

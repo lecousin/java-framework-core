@@ -75,7 +75,7 @@ public interface AsyncCollection<T> {
 		
 		@Override
 		public synchronized void newElements(Collection<T> elements) {
-			collection.newElements(elements);;
+			collection.newElements(elements);
 		}
 		
 		@Override
