@@ -75,9 +75,9 @@ public final class ClassUtil {
 	
 	/** Search for a getter method. */
 	public static Method getGetter(Class<?> cl, String name) {
-		name = name.substring(0,1).toUpperCase() + name.substring(1);
+		String n = name.substring(0,1).toUpperCase() + name.substring(1);
 		for (Method m : cl.getMethods()) {
-			if (!m.getName().equals("get" + name)) continue;
+			if (!m.getName().equals("get" + n)) continue;
 			if (m.getParameterTypes().length != 0) continue;
 			if ((m.getModifiers() & (Modifier.PUBLIC | Modifier.STATIC)) != Modifier.PUBLIC) continue;
 			return m;
@@ -87,7 +87,7 @@ public final class ClassUtil {
 			return null;
 		if (boolean.class.equals(f.getType()) || Boolean.class.equals(f.getType())) {
 			for (Method m : cl.getMethods()) {
-				if (!m.getName().equals("is" + name)) continue;
+				if (!m.getName().equals("is" + n)) continue;
 				if (m.getParameterTypes().length != 0) continue;
 				if ((m.getModifiers() & (Modifier.PUBLIC | Modifier.STATIC)) != Modifier.PUBLIC) continue;
 				if (!boolean.class.equals(m.getReturnType()) && ! Boolean.class.equals(m.getReturnType())) continue;

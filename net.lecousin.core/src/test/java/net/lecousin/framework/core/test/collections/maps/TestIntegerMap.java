@@ -20,12 +20,20 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 		IntegerMap<Object> map = createIntegerMap();
 		HashMap<Integer, Object> checkMap = new HashMap<>();
 		checkEmpty(map);
+		map.remove(123);
+		checkEmpty(map);
 		for (int i = 0; i < 1000; ++i)
 			put(i, map, checkMap);
 		for (int i = 2000; i < 10000; i += 7)
 			put(i, map, checkMap);
 		for (int i = 0; i < 10000; i += 3)
 			remove(i, map, checkMap);
+		for (int i = -100; i > -1000; --i)
+			put(i, map, checkMap);
+		for (int i = 600; i < 800; ++i) {
+			put(i, map, checkMap);
+			put(i, map, checkMap);
+		}
 	}
 
 	@Test(timeout=120000)

@@ -19,8 +19,14 @@ public class TestPair extends LCCoreAbstractTest {
 		p.setValue2(Integer.valueOf(200));
 		Assert.assertEquals(Integer.valueOf(200), p.getValue2());
 		Assert.assertTrue(p.equals(new Pair<>(Integer.valueOf(100), Integer.valueOf(200))));
+		Assert.assertFalse(p.equals(new Pair<>(Integer.valueOf(100), Integer.valueOf(201))));
+		Assert.assertFalse(p.equals(new Pair<>(Integer.valueOf(101), Integer.valueOf(200))));
+		Assert.assertFalse(p.equals(null));
+		Assert.assertFalse(p.equals(new Object()));
 		p.hashCode();
 		p.toString();
+		new Pair<>(null, null).hashCode();
+		new Pair<>(null, null).toString();
 	}
 	
 }

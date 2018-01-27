@@ -553,34 +553,36 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Execute this task at the given time. */
-	public void executeAt(long time) {
+	public Task<T, TError>  executeAt(long time) {
 		nextExecution = time;
+		return this;
 	}
 	
 	/** Execute this task in the given delay in milliseconds. */
-	public void executeIn(long delay) {
-		executeAt(System.currentTimeMillis() + delay);
+	public Task<T, TError> executeIn(long delay) {
+		return executeAt(System.currentTimeMillis() + delay);
 	}
 	
-	/** Execute this task repetively. */
-	public void executeEvery(long delay, long initialDelay) {
+	/** Execute this task repeatedly. */
+	public Task<T, TError>  executeEvery(long delay, long initialDelay) {
 		executeEvery = delay;
-		executeIn(initialDelay);
+		return executeIn(initialDelay);
 	}
 	
 	/** Do not execute this task again. */
-	public void stopRepeat() {
+	public void  stopRepeat() {
 		executeEvery = 0;
 	}
 	
 	/** Execute again this task in the given delay. */
-	public void executeAgainIn(long delay) {
-		executeAgainAt(System.currentTimeMillis() + delay);
+	public Task<T, TError>  executeAgainIn(long delay) {
+		return executeAgainAt(System.currentTimeMillis() + delay);
 	}
 
 	/** Execute again this task at the given time. */
-	public void executeAgainAt(long time) {
+	public Task<T, TError>  executeAgainAt(long time) {
 		nextExecution = time;
+		return this;
 	}
 	
 	/** Change the next execution time of scheduled or repetitive task. */

@@ -5,7 +5,9 @@ import java.math.BigInteger;
 /**
  * Utility methods for String.
  */
-public class StringUtil {
+public final class StringUtil {
+	
+	private StringUtil() { /* no instance */ }
 
 	/** Insert padding character to a StringBuilder. */
 	public static StringBuilder paddingLeft(StringBuilder s, int length, char padding) {
@@ -197,18 +199,33 @@ public class StringUtil {
 		// skip spaces
 		while (pos < len && s.charAt(pos) == ' ') pos++;
 		if (pos == len) return value;
+		
+		c = s.charAt(pos);
+		Double dvalue = null;
+		if (c == '.') {
+			// decimal
+			int i = pos + 1;
+			while (i < len && Character.isDigit(s.charAt(i))) i++;
+			dvalue = Double.valueOf(Long.toString(value) + s.substring(pos, i));
+			pos = i;
+			if (pos == len) return value;
+			// skip spaces
+			while (pos < len && s.charAt(pos) == ' ') pos++;
+			if (pos == len) return value;
+		}
+
 		// read unit
 		c = s.charAt(pos);
 		if (c == 'B')
 			return value;
 		if (c == 'K')
-			return value * 1024;
+			return dvalue != null ? (long)(dvalue.doubleValue() * 1024) : value * 1024;
 		if (c == 'M')
-			return value * 1024 * 1024;
+			return dvalue != null ? (long)(dvalue.doubleValue() * 1024 * 1024) : value * 1024 * 1024;
 		if (c == 'G')
-			return value * 1024 * 1024 * 1024;
+			return dvalue != null ? (long)(dvalue.doubleValue() * 1024 * 1024 * 1024) : value * 1024 * 1024 * 1024;
 		if (c == 'T')
-			return value * 1024 * 1024 * 1024 * 1024;
+			return dvalue != null ? (long)(dvalue.doubleValue() * 1024 * 1024 * 1024 * 1024) : value * 1024 * 1024 * 1024 * 1024;
 		throw new NumberFormatException("Invalid size unit: " + s);
 	}
 	

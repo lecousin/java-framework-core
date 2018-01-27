@@ -76,7 +76,6 @@ public class HalfByteHashMap<T> implements ByteMap<T> {
 			} else {
 				T previous = array.elements[0];
 				array.elements[0] = element;
-				size++;
 				return previous;
 			}
 			array.bytes = nb;
@@ -91,7 +90,6 @@ public class HalfByteHashMap<T> implements ByteMap<T> {
 			if (key == array.bytes[m]) {
 				T previous = array.elements[m];
 				array.elements[m] = element;
-				size++;
 				return previous;
 			}
 			if (key < array.bytes[m]) {

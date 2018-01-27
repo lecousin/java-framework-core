@@ -14,9 +14,9 @@ public class TestReadWriteLock extends LCCoreAbstractTest {
 		lock.startRead();
 		lock.startRead();
 		lock.endRead();
-		new Task.Cpu.FromRunnable("Test", Task.PRIORITY_IMPORTANT, () -> { lock.endRead(); }).start();
+		new Task.Cpu.FromRunnable("Test", Task.PRIORITY_IMPORTANT, () -> { lock.endRead(); }).executeIn(500).start();
 		lock.startWrite();
-		new Task.Cpu.FromRunnable("Test", Task.PRIORITY_IMPORTANT, () -> { lock.endWrite(); }).start();
+		new Task.Cpu.FromRunnable("Test", Task.PRIORITY_IMPORTANT, () -> { lock.endWrite(); }).executeIn(500).start();
 		lock.startRead();
 		lock.endRead();
 	}

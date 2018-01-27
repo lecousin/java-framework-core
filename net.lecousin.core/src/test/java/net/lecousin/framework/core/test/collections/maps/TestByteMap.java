@@ -22,7 +22,15 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 		checkEmpty(map);
 		for (int i = 0; i < 256; ++i)
 			put((byte)i, map, checkMap);
+		for (int i = 0; i < 256; ++i)
+			put((byte)i, map, checkMap);
 		for (int i = 0; i < 256; i += 2)
+			remove((byte)i, map, checkMap);
+		for (int i = 0; i < 256; ++i) {
+			put((byte)i, map, checkMap);
+			put((byte)i, map, checkMap);
+		}
+		for (int i = 0; i < 256; i += 3)
 			remove((byte)i, map, checkMap);
 		for (int i = 0; i < 256; i += 3)
 			remove((byte)i, map, checkMap);
@@ -63,6 +71,12 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 			Assert.assertTrue("containsKey(" + e.getKey() + ") returns false", map.containsKey(e.getKey().byteValue()));
 			Assert.assertEquals(e.getValue(), map.get(e.getKey().byteValue()));
 		}
+		byte b = Byte.MIN_VALUE;
+		do {
+			if (checkMap.get(Byte.valueOf(b)) == null)
+				Assert.assertNull(map.get(b));
+			b++;
+		} while (b != Byte.MIN_VALUE);
 	}
 	
 	protected void put(byte b, ByteMap<Object> map, HashMap<Byte, Object> checkMap) {

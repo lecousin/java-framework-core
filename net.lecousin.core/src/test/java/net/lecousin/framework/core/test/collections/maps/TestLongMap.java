@@ -20,6 +20,8 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 		LongMap<Object> map = createLongMap();
 		HashMap<Long, Object> checkMap = new HashMap<>();
 		checkEmpty(map);
+		map.remove(123);
+		checkEmpty(map);
 		for (long i = 0; i < 200; ++i)
 			put(i, map, checkMap);
 		for (long i = 5000; i < 10000; i += 7)
@@ -32,6 +34,12 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 			remove(i, map, checkMap);
 		for (long i = 1000000007L; i < 1000050007L; i += 13)
 			remove(i, map, checkMap);
+		for (long i = -5000; i > -7000; i -= 3)
+			put(i, map, checkMap);
+		for (long i = 600; i < 800; ++i) {
+			put(i, map, checkMap);
+			put(i, map, checkMap);
+		}
 	}
 
 	@Test(timeout=120000)

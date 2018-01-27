@@ -1,5 +1,7 @@
 package net.lecousin.framework.core.tests.util;
 
+import java.math.BigInteger;
+
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.util.StringUtil;
 
@@ -96,9 +98,15 @@ public class TestStringUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(13, StringUtil.decodeHexa('d'));
 		Assert.assertEquals(14, StringUtil.decodeHexa('e'));
 		Assert.assertEquals(15, StringUtil.decodeHexa('f'));
+		Assert.assertEquals(-1, StringUtil.decodeHexa('g'));
+		
+		Assert.assertTrue(StringUtil.isHexa('b'));
+		Assert.assertTrue(StringUtil.isHexa('6'));
+		Assert.assertFalse(StringUtil.isHexa('t'));
 		
 		Assert.assertEquals(0x00, StringUtil.decodeHexaByte("00"));
 		Assert.assertEquals(0x01, StringUtil.decodeHexaByte("01"));
+		Assert.assertEquals(0x03, StringUtil.decodeHexaByte("3"));
 		Assert.assertEquals(0x34, StringUtil.decodeHexaByte("34"));
 		Assert.assertEquals(0x7F, StringUtil.decodeHexaByte("7F"));
 		Assert.assertEquals((byte)0x9A, StringUtil.decodeHexaByte("9A"));
@@ -109,6 +117,37 @@ public class TestStringUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(0x0000000000000000L, StringUtil.decodeHexaLong("000000"));
 		Assert.assertEquals(0x0000000000000001L, StringUtil.decodeHexaLong("0000001"));
 		Assert.assertEquals(0x123456789ABCDEF0L, StringUtil.decodeHexaLong("123456789ABCDEF0"));
+	}
+	
+	@Test
+	public void testSize() {
+		testSize(0, "0");
+		testSize(20, "20");
+		testSize(1024, "1.00 KB");
+		testSize(2048, "2.00 KB");
+		testSize(2560, "2.50 KB");
+		testSize(2L * 1024 * 1024, "2.00 MB");
+		testSize(3L * 1024 * 1024 * 1024, "3.00 GB");
+		testSize(4L * 1024 * 1024 * 1024 * 1024, "4.00 TB");
+	}
+	
+	private static void testSize(long size, String str) {
+		String s = StringUtil.size(size);
+		Assert.assertEquals(str, s);
+		s = StringUtil.size(new BigInteger(Long.toString(size)));
+		Assert.assertEquals(str, s);
+		long si = StringUtil.parseSize(s);
+		Assert.assertEquals(size, si);
+	}
+	
+	public static enum E1 {
+		HELLO,
+		WORLD;
+	}
+	
+	@Test
+	public void otherTests() {
+		Assert.assertEquals("HELLO, WORLD", StringUtil.possibleValues(E1.class));
 	}
 	
 }

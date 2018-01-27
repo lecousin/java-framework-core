@@ -22,8 +22,18 @@ public class TestTriple extends LCCoreAbstractTest {
 		t.setValue3(Integer.valueOf(300));
 		Assert.assertEquals(Integer.valueOf(300), t.getValue3());
 		Assert.assertTrue(t.equals(new Triple<>(Integer.valueOf(100), Integer.valueOf(200), Integer.valueOf(300))));
+		Assert.assertFalse(t.equals(new Triple<>(Integer.valueOf(101), Integer.valueOf(200), Integer.valueOf(300))));
+		Assert.assertFalse(t.equals(new Triple<>(Integer.valueOf(100), Integer.valueOf(201), Integer.valueOf(300))));
+		Assert.assertFalse(t.equals(new Triple<>(Integer.valueOf(100), Integer.valueOf(200), Integer.valueOf(301))));
+		Assert.assertFalse(t.equals(null));
+		Assert.assertFalse(t.equals(new Object()));
+		Assert.assertFalse(t.equals(new Triple<>(null, Integer.valueOf(200), Integer.valueOf(300))));
+		Assert.assertFalse(t.equals(new Triple<>(Integer.valueOf(100), null, Integer.valueOf(300))));
+		Assert.assertFalse(t.equals(new Triple<>(Integer.valueOf(100), Integer.valueOf(200), null)));
 		t.hashCode();
 		t.toString();
+		new Triple<>(null, null, null).hashCode();
+		new Triple<>(null, null, null).toString();
 	}
 	
 }
