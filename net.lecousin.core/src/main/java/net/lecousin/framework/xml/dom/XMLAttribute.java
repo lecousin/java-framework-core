@@ -102,7 +102,7 @@ public class XMLAttribute extends XMLNode implements Attr {
 	public boolean isId() {
 		return isId;
 	}
-
+	
 	@Override
 	public String getNamespaceURI() {
 		if (parent == null) return null;

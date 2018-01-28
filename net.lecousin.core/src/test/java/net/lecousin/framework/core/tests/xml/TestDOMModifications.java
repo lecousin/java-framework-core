@@ -19,6 +19,7 @@ import org.w3c.dom.Comment;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
 
 public class TestDOMModifications extends TestDOM {
@@ -84,11 +85,22 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertEquals(docType1, doc1.getLastChild());
 		Assert.assertEquals(docType2, doc2.getFirstChild());
 		Assert.assertEquals(root2, doc2.getLastChild());
-		doc2.getChildNodes();
+		Assert.assertNull(root2.getChildNodes().item(0));
+		Assert.assertNull(doc2.getChildNodes().item(-1));
 		// add attribute
 		root1.setAttribute("a1", "v1");
 		root2.setAttribute("a1", "v1");
 		checkDocument(doc1, doc2);
+		Assert.assertNull(root2.getAttributeNode("a1").getChildNodes().item(0));
+		Assert.assertEquals(1, root2.getAttributes().getLength());
+		Assert.assertEquals("v1", root2.getAttributes().getNamedItem("a1").getNodeValue());
+		Assert.assertNull(root2.getAttributes().getNamedItem(null));
+		Assert.assertNull(root2.getAttributes().getNamedItem("a2"));
+		Assert.assertEquals("v1", root2.getAttributes().item(0).getNodeValue());
+		Assert.assertNull(root2.getAttributes().item(-1));
+		Assert.assertNull(root2.getAttributes().item(10));
+		Assert.assertNull(root2.getAttributeNode("a1").getAttributes().getNamedItem("test"));
+		Assert.assertNull(root2.getAttributeNode("a1").getAttributes().item(0));
 		// add attribute
 		root1.setAttribute("a2", "v2");
 		root2.setAttribute("a2", "v2");
@@ -130,6 +142,9 @@ public class TestDOMModifications extends TestDOM {
 		root1.getAttributeNodeNS("http://test3", "b").setPrefix("tutu");
 		root2.getAttributeNodeNS("http://test3", "b").setPrefix("tutu");
 		checkDocument(doc1, doc2);
+		root1.getAttributeNodeNS("http://test3", "b").setPrefix("test3");
+		root2.getAttributeNodeNS("http://test3", "b").setPrefix("test3");
+		checkDocument(doc1, doc2);
 		// change value
 		root1.getAttributeNodeNS("http://test3", "b").setValue("BB");
 		root2.getAttributeNodeNS("http://test3", "b").setValue("BB");
@@ -144,8 +159,8 @@ public class TestDOMModifications extends TestDOM {
 		a.getSchemaTypeInfo();
 		a.setTextContent("");
 		// change value
-		// TODO root2.setAttributeNodeNS(root2.getAttributeNodeNS("http://test3", "b").cloneNode(true));
-		// TODO checkDocument(doc1, doc2);
+		root2.setAttributeNodeNS(root2.getAttributeNodeNS("http://test3", "b").cloneNode(true));
+		checkDocument(doc1, doc2);
 		// remove attribute
 		root1.removeAttributeNode(root1.getAttributeNodeNS("http://test3", "b"));
 		root2.removeAttributeNode(root2.getAttributeNodeNS("http://test3", "b"));
@@ -246,6 +261,41 @@ public class TestDOMModifications extends TestDOM {
 		root2Clone = root2.cloneNode(false);
 		checkElement(root1Clone, root2Clone);
 		Assert.assertFalse(root2Clone.hasChildNodes());
+		// create element
+		XMLElement e = doc2.createElementNS("http://hello", "hello:world");
+		Assert.assertEquals("http://hello", e.getNamespaceURI());
+		Assert.assertEquals("hello", e.getPrefix());
+		Assert.assertEquals("world", e.getLocalName());
+		
+		e = doc2.createElementNS(null, "empty");
+		Assert.assertEquals("empty", e.getNodeName());
+		
+		a = doc2.createAttribute("myId");
+		a.setValue("myElement");
+		e.addAttribute(a);
+		e.setIdAttribute("myId", true);
+		root2.appendChild(e);
+		
+		e = doc2.getElementById("myElement");
+		Assert.assertNotNull(e);
+		Assert.assertEquals("empty", e.getNodeName());
+		e = doc2.getElementById("myElement2");
+		Assert.assertNull(e);
+
+		NodeList nodes = doc2.getElementsByTagName("empty");
+		Assert.assertNotNull(nodes);
+		Assert.assertEquals(1, nodes.getLength());
+		e = (XMLElement)nodes.item(0);
+		
+		a = doc2.createAttribute("myId");
+		a.setValue("myElement2");
+		e.setAttributeNodeNS(a);
+		e.setIdAttributeNode(a, true);
+		e = doc2.getElementById("myElement2");
+		Assert.assertNotNull(e);
+		Assert.assertEquals("empty", e.getNodeName());
+		e = doc2.getElementById("myElement");
+		Assert.assertNull(e);
 	}
 	
 }

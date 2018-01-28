@@ -311,14 +311,14 @@ public class XMLDocument extends XMLNode implements Document {
 
 	@Override
 	public NodeList getElementsByTagName(String tagname) {
-		// TODO
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
+		if (root == null) return new XMLNodeList(null);
+		return root.getElementsByTagName(tagname);
 	}
 
 	@Override
 	public NodeList getElementsByTagNameNS(String namespaceURI, String localName) {
-		// TODO
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
+		if (root == null) return new XMLNodeList(null);
+		return root.getElementsByTagNameNS(namespaceURI, localName);
 	}
 
 	@Override

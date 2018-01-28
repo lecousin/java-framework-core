@@ -264,6 +264,7 @@ public class XMLElement extends XMLNode implements Element {
 			if (a.isEqualNode(na)) {
 				it.set(na);
 				a.parent = null;
+				na.setParent(this);
 				return na;
 			}
 		}
@@ -363,8 +364,10 @@ public class XMLElement extends XMLNode implements Element {
 		XMLAttribute na = (XMLAttribute)newAttr;
 		for (ListIterator<XMLAttribute> it = attributes.listIterator(); it.hasNext(); ) {
 			XMLAttribute a = it.next();
-			if (a.isEqualNode(na)) {
+			if (a.getName().equals(na.getName())) {
 				it.set(na);
+				a.parent = null;
+				na.setParent(this);
 				return na;
 			}
 		}
@@ -463,6 +466,7 @@ public class XMLElement extends XMLNode implements Element {
 	@Override
 	public NodeList getElementsByTagName(String name) {
 		LinkedList<XMLNode> elements = new LinkedList<>();
+		if ("*".equals(name)) name = null;
 		getElementsByTagName(name, elements);
 		return new XMLNodeList(elements);
 	}
@@ -471,10 +475,9 @@ public class XMLElement extends XMLNode implements Element {
 		for (XMLNode child : children) {
 			if (!(child instanceof XMLElement)) continue;
 			XMLElement e = (XMLElement)child;
-			if (e.getNodeName().equals(name))
+			if (name == null || e.getNodeName().equals(name))
 				result.add(e);
-			else
-				e.getElementsByTagName(name, result);
+			e.getElementsByTagName(name, result);
 		}
 	}
 	
@@ -483,10 +486,10 @@ public class XMLElement extends XMLNode implements Element {
 		for (XMLNode child : children) {
 			if (!(child instanceof XMLElement)) continue;
 			XMLElement e = (XMLElement)child;
-			if (e.getLocalName().equals(localName) && ObjectUtil.equalsOrNull(namespaceURI, e.getNamespaceURI()))
+			if (("*".equals(localName) || e.getLocalName().equals(localName)) &&
+				("*".equals(namespaceURI) || ObjectUtil.equalsOrNull(namespaceURI, e.getNamespaceURI())))
 				result.add(e);
-			else
-				e.getElementsByTagName(namespaceURI, localName, result);
+			e.getElementsByTagName(namespaceURI, localName, result);
 		}
 	}
 
