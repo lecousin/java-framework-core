@@ -92,6 +92,7 @@ public final class Application {
 	private String[] languageTag;
 	private LoggerFactory loggerFactory;
 	private Map<Class<?>, Object> instances = new HashMap<>();
+	private Map<String, Object> data = new HashMap<>();
 	private ArrayList<Closeable> toCloseSync = new ArrayList<>();
 	private ArrayList<AsyncCloseable<?>> toCloseAsync = new ArrayList<>();
 	private boolean stopping = false;
@@ -237,6 +238,16 @@ public final class Application {
 	/** Set the singleton stored for this application. */
 	public <T> void setInstance(Class<T> clazz, T instance) {
 		instances.put(clazz, instance);
+	}
+	
+	/** Get a data associated with this application. */
+	public Object getData(String name) {
+		return data.get(name);
+	}
+	
+	/** Set a data associated with this application and return previously associated data with this name. */
+	public Object setData(String name, Object value) {
+		return data.put(name, value);
 	}
 	
 	/** Method to call at the beginning of the application, typically in the main method. */
