@@ -36,6 +36,19 @@ public class TestApplication extends LCCoreAbstractTest {
 		app.getLibrariesManager().getLibrary(TestApplication.class);
 		app.getLibrariesManager().getLibrary(TestApplication.class.getClassLoader());
 		app.getLibrariesManager().getLibrary("test", "test");
+		
+		Integer i = Integer.valueOf(51);
+		Assert.assertNull(app.getData("test"));
+		Assert.assertNull(app.setData("test", i));
+		Assert.assertEquals(i, app.getData("test"));
+		Assert.assertEquals(i, app.removeData("test"));
+		Assert.assertNull(app.getData("test"));
+		
+		Assert.assertNull(app.getInstance(Integer.class));
+		Assert.assertNull(app.setInstance(Integer.class, i));
+		Assert.assertEquals(i, app.getInstance(Integer.class));
+		Assert.assertEquals(i, app.removeInstance(Integer.class));
+		Assert.assertNull(app.getInstance(Integer.class));
 	}
 	
 	@SuppressWarnings("resource")

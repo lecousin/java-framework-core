@@ -1,5 +1,6 @@
 package net.lecousin.framework.memory;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,18 +10,25 @@ import java.util.List;
  * Each time an instance if released, it keeps it for future reuse (with a maximum number of unused instances to keep).
  * @param <T> type of object
  */
-public class ObjectBank<T> implements IMemoryManageable {
+public class ObjectBank<T> implements IMemoryManageable, Closeable {
 
 	/** Constructor. */
 	public ObjectBank(int maxSize, String description) {
 		this.maxSize = maxSize;
 		bank = new ArrayList<>(maxSize);
 		this.description = description;
+		MemoryManager.register(this);
 	}
 	
 	private ArrayList<T> bank;
 	private int maxSize;
 	private String description;
+	
+	@Override
+	public void close() {
+		MemoryManager.unregister(this);
+		bank = null;
+	}
 	
 	/** Get an instance. */
 	public synchronized T get() {

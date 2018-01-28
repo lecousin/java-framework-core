@@ -236,8 +236,15 @@ public final class Application {
 	}
 	
 	/** Set the singleton stored for this application. */
-	public <T> void setInstance(Class<T> clazz, T instance) {
-		instances.put(clazz, instance);
+	@SuppressWarnings("unchecked")
+	public <T> T setInstance(Class<T> clazz, T instance) {
+		return (T)instances.put(clazz, instance);
+	}
+	
+	/** Remove the singleton stored for this application. */
+	@SuppressWarnings("unchecked")
+	public <T> T removeInstance(Class<T> clazz) {
+		return (T)instances.remove(clazz);
 	}
 	
 	/** Get a data associated with this application. */
@@ -248,6 +255,11 @@ public final class Application {
 	/** Set a data associated with this application and return previously associated data with this name. */
 	public Object setData(String name, Object value) {
 		return data.put(name, value);
+	}
+	
+	/** Remove a data associated with this application. */
+	public Object removeData(String name) {
+		return data.remove(name);
 	}
 	
 	/** Method to call at the beginning of the application, typically in the main method. */

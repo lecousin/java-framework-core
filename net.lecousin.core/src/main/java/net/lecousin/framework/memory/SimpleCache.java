@@ -1,5 +1,6 @@
 package net.lecousin.framework.memory;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,17 +14,25 @@ import net.lecousin.framework.util.Provider;
  * @param <Key> type of key
  * @param <Data> type of cached data
  */
-public class SimpleCache<Key,Data> implements IMemoryManageable {
+public class SimpleCache<Key,Data> implements IMemoryManageable, Closeable {
 
 	/** Constructor. */
 	public SimpleCache(String description, Provider.FromValue<Key,Data> provider) {
 		this.description = description;
 		this.provider = provider;
+		MemoryManager.register(this);
 	}
 	
 	private String description;
 	private Provider.FromValue<Key,Data> provider;
 	private HashMap<Key,Pair<Data,Long>> cache = new HashMap<>();
+	
+	@Override
+	public void close() {
+		MemoryManager.unregister(this);
+		cache = null;
+		provider = null;
+	}
 	
 	/** Get a data, or create it using the provider. */
 	public Data get(Key key) {

@@ -63,7 +63,7 @@ public class Cache<Key,Value> implements CacheManager {
 		return data.value;
 	}
 	
-	/** Singla that the given cached data is not anymore used by the given user. */
+	/** Signal that the given cached data is not anymore used by the given user. */
 	public synchronized void free(Value value, CloseableListenable user) {
 		Data<Value> data = values.get(value);
 		if (data == null) return;
