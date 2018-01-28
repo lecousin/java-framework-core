@@ -3,9 +3,11 @@ package net.lecousin.framework.core.tests.xml;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.soap.Node;
 
+import net.lecousin.framework.xml.dom.XMLAttribute;
 import net.lecousin.framework.xml.dom.XMLCData;
 import net.lecousin.framework.xml.dom.XMLComment;
 import net.lecousin.framework.xml.dom.XMLDocument;
+import net.lecousin.framework.xml.dom.XMLDocumentType;
 import net.lecousin.framework.xml.dom.XMLElement;
 import net.lecousin.framework.xml.dom.XMLText;
 
@@ -15,6 +17,7 @@ import org.w3c.dom.Attr;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Comment;
 import org.w3c.dom.Document;
+import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
 import org.w3c.dom.Text;
 
@@ -71,6 +74,17 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertEquals(root2, doc2.getFirstChild());
 		Assert.assertEquals(root2, doc2.getLastChild());
 		checkDocument(doc1, doc2);
+		// add doc type
+		DocumentType docType1 = doc1.getImplementation().createDocumentType("test", "test", null);
+		XMLDocumentType docType2 = doc2.getImplementation().createDocumentType("test", "test", null);
+		doc1.appendChild(docType1);
+		doc2.appendChild(docType2);
+		checkDocument(doc1, doc2);
+		Assert.assertEquals(root1, doc1.getFirstChild());
+		Assert.assertEquals(docType1, doc1.getLastChild());
+		Assert.assertEquals(docType2, doc2.getFirstChild());
+		Assert.assertEquals(root2, doc2.getLastChild());
+		doc2.getChildNodes();
 		// add attribute
 		root1.setAttribute("a1", "v1");
 		root2.setAttribute("a1", "v1");
@@ -123,6 +137,12 @@ public class TestDOMModifications extends TestDOM {
 		// get owner
 		Assert.assertTrue(root2.getAttributeNodeNS("http://test3", "b").getOwnerElement() == root2);
 		Assert.assertTrue(root2.getAttributeNodeNS("http://test3", "b").getOwnerDocument() == doc2);
+		// get info
+		XMLAttribute a = root2.getAttributeNodeNS("http://test3", "b");
+		a.isId();
+		a.getSpecified();
+		a.getSchemaTypeInfo();
+		a.setTextContent("");
 		// change value
 		// TODO root2.setAttributeNodeNS(root2.getAttributeNodeNS("http://test3", "b").cloneNode(true));
 		// TODO checkDocument(doc1, doc2);

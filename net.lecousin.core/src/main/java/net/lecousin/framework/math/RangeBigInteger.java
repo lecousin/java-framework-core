@@ -13,13 +13,14 @@ public class RangeBigInteger {
 		this.max = max;
 	}
 	
+	/** Copy. */
+	public RangeBigInteger(RangeBigInteger copy) {
+		this.min = copy.min;
+		this.max = copy.max;
+	}
+	
 	public BigInteger min;
 	public BigInteger max;
-	
-	/** Create a copy of this instance. */
-	public RangeBigInteger copy() {
-		return new RangeBigInteger(min, max);
-	}
 	
 	@Override
 	public boolean equals(Object obj) {

@@ -2,6 +2,7 @@ package net.lecousin.framework.core.tests.memory;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.memory.ObjectBank;
+import net.lecousin.framework.memory.IMemoryManageable.FreeMemoryLevel;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -27,6 +28,14 @@ public class TestObjectBank extends LCCoreAbstractTest {
 		i = bank.get();
 		Assert.assertTrue(i != null && i.intValue() >= 2 && i.intValue() <= 4);
 		Assert.assertNull(bank.get());
+		
+		bank.getDescription();
+		bank.getItemsDescription();
+		bank.freeMemory(FreeMemoryLevel.EXPIRED_ONLY);
+		bank.freeMemory(FreeMemoryLevel.LOW);
+		bank.freeMemory(FreeMemoryLevel.MEDIUM);
+		bank.freeMemory(FreeMemoryLevel.URGENT);
+		
 		bank.close();
 	}
 	

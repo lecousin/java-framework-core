@@ -13,13 +13,14 @@ public class RangeLong {
 		this.max = max;
 	}
 	
+	/** Copy. */
+	public RangeLong(RangeLong copy) {
+		this.min = copy.min;
+		this.max = copy.max;
+	}
+	
 	public long min;
 	public long max;
-	
-	/** Create a copy of this instance. */
-	public RangeLong copy() {
-		return new RangeLong(min, max);
-	}
 	
 	@Override
 	public boolean equals(Object obj) {
@@ -58,7 +59,7 @@ public class RangeLong {
 		RangeLong after;
 		if (min < o.min) {
 			if (max < o.min) {
-				before = copy();
+				before = new RangeLong(this);
 				after = null;
 			} else {
 				before = new RangeLong(min, o.min);

@@ -41,7 +41,7 @@ public class FragmentedRangeLong extends LinkedList<RangeLong> {
 	/** Create a copy of this instance. */
 	public FragmentedRangeLong copy() {
 		FragmentedRangeLong c = new FragmentedRangeLong();
-		for (RangeLong r : this) c.add(r.copy());
+		for (RangeLong r : this) c.add(new RangeLong(r));
 		return c;
 	}
 	

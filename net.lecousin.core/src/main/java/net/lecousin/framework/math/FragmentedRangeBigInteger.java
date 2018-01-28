@@ -42,7 +42,7 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 	/** Create a copy of this instance. */
 	public FragmentedRangeBigInteger copy() {
 		FragmentedRangeBigInteger c = new FragmentedRangeBigInteger();
-		for (RangeBigInteger r : this) c.add(r.copy());
+		for (RangeBigInteger r : this) c.add(new RangeBigInteger(r));
 		return c;
 	}
 	

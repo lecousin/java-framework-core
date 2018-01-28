@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.memory.IMemoryManageable.FreeMemoryLevel;
 import net.lecousin.framework.memory.SimpleCache;
 
 import org.junit.Assert;
@@ -30,6 +31,14 @@ public class TestSimpleCache extends LCCoreAbstractTest {
 		cache.remove("1");
 		Assert.assertEquals(1, cache.get("1").intValue());
 		Assert.assertEquals(2, created.get(Integer.valueOf(1)).intValue());
+		
+		Assert.assertEquals("test simple cache", cache.getDescription());
+		cache.getItemsDescription();
+		cache.freeMemory(FreeMemoryLevel.EXPIRED_ONLY);
+		cache.freeMemory(FreeMemoryLevel.LOW);
+		cache.freeMemory(FreeMemoryLevel.MEDIUM);
+		cache.freeMemory(FreeMemoryLevel.URGENT);
+		
 		cache.close();
 	}
 	
