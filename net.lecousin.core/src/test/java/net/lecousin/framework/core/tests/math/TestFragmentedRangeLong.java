@@ -19,9 +19,12 @@ public class TestFragmentedRangeLong extends LCCoreAbstractTest {
 		Assert.assertEquals(Long.MAX_VALUE, f.getMin());
 		Assert.assertEquals(Long.MIN_VALUE, f.getMax());
 		Assert.assertNull(f.removeFirstValue());
+		Assert.assertEquals(0, FragmentedRangeLong.intersect(new FragmentedRangeLong(), new FragmentedRangeLong()).size());
 		// 12
 		f.addValue(12);
 		Assert.assertEquals(1, f.size());
+		Assert.assertEquals(0, FragmentedRangeLong.intersect(f, new FragmentedRangeLong()).size());
+		Assert.assertEquals(0, FragmentedRangeLong.intersect(new FragmentedRangeLong(), f).size());
 		// 10-15
 		f.addRange(new RangeLong(10, 15));
 		Assert.assertEquals(1, f.size());
@@ -133,6 +136,19 @@ public class TestFragmentedRangeLong extends LCCoreAbstractTest {
 		f.addCopy(Arrays.asList(new RangeLong(100, 120), new RangeLong(130, 140)));
 		check(f, new RangeLong(14, 31), new RangeLong(100, 120), new RangeLong(130, 140), new RangeLong(500, 500));
 		f.toString();
+		// so far = 14-31, 100-120, 130-140, 500-500
+		// 14-31, 100-117, 130-140, 500-500
+		f.removeRange(118, 125);
+		check(f, new RangeLong(14, 31), new RangeLong(100, 117), new RangeLong(130, 140), new RangeLong(500, 500));
+		// 14-31, 104-117, 130-140, 500-500
+		f.removeRange(80, 103);
+		check(f, new RangeLong(14, 31), new RangeLong(104, 117), new RangeLong(130, 140), new RangeLong(500, 500));
+		// 14-31, 130-140, 500-500
+		f.removeRange(80, 117);
+		check(f, new RangeLong(14, 31), new RangeLong(130, 140), new RangeLong(500, 500));
+		// 14-31, 500-500
+		f.removeRange(125, 145);
+		check(f, new RangeLong(14, 31), new RangeLong(500, 500));
 	}
 	
 	private static void check(List<RangeLong> list, RangeLong... expected) {

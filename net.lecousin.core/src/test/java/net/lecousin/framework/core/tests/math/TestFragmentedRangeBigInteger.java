@@ -20,9 +20,12 @@ public class TestFragmentedRangeBigInteger extends LCCoreAbstractTest {
 		Assert.assertEquals(BigInteger.ZERO, f.getMin());
 		Assert.assertEquals(BigInteger.ZERO, f.getMax());
 		Assert.assertNull(f.removeFirstValue());
+		Assert.assertEquals(0, FragmentedRangeBigInteger.intersect(new FragmentedRangeBigInteger(), new FragmentedRangeBigInteger()).size());
 		// 12
 		f.addValue(BigInteger.valueOf(12));
 		Assert.assertEquals(1, f.size());
+		Assert.assertEquals(0, FragmentedRangeBigInteger.intersect(f, new FragmentedRangeBigInteger()).size());
+		Assert.assertEquals(0, FragmentedRangeBigInteger.intersect(new FragmentedRangeBigInteger(), f).size());
 		// 10-15
 		f.addRange(new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(15)));
 		Assert.assertEquals(1, f.size());
@@ -165,6 +168,28 @@ public class TestFragmentedRangeBigInteger extends LCCoreAbstractTest {
 			new RangeBigInteger(BigInteger.valueOf(130), BigInteger.valueOf(140)),
 			new RangeBigInteger(BigInteger.valueOf(500), BigInteger.valueOf(500)));
 		f.toString();
+		// so far = 14-31, 100-120, 130-140, 500-500
+		// 14-31, 100-117, 130-140, 500-500
+		f.removeRange(BigInteger.valueOf(118), BigInteger.valueOf(125));
+		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
+			new RangeBigInteger(BigInteger.valueOf(100), BigInteger.valueOf(117)),
+			new RangeBigInteger(BigInteger.valueOf(130), BigInteger.valueOf(140)),
+			new RangeBigInteger(BigInteger.valueOf(500), BigInteger.valueOf(500)));
+		// 14-31, 104-117, 130-140, 500-500
+		f.removeRange(BigInteger.valueOf(80), BigInteger.valueOf(103));
+		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
+			new RangeBigInteger(BigInteger.valueOf(104), BigInteger.valueOf(117)),
+			new RangeBigInteger(BigInteger.valueOf(130), BigInteger.valueOf(140)),
+			new RangeBigInteger(BigInteger.valueOf(500), BigInteger.valueOf(500)));
+		// 14-31, 130-140, 500-500
+		f.removeRange(BigInteger.valueOf(80), BigInteger.valueOf(117));
+		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
+			new RangeBigInteger(BigInteger.valueOf(130), BigInteger.valueOf(140)),
+			new RangeBigInteger(BigInteger.valueOf(500), BigInteger.valueOf(500)));
+		// 14-31, 500-500
+		f.removeRange(BigInteger.valueOf(125), BigInteger.valueOf(145));
+		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
+			new RangeBigInteger(BigInteger.valueOf(500), BigInteger.valueOf(500)));
 	}
 	
 	private static void check(List<RangeBigInteger> list, RangeBigInteger... expected) {
