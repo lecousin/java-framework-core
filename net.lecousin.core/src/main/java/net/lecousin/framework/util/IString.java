@@ -44,6 +44,19 @@ public interface IString extends CharSequence {
 	/** Fill the given character array with the content of this string. */
 	public default int fill(char[] chars) { return fill(chars, 0); }
 	
+	/** Same as with char but with bytes, all characters are directly converted into bytes without CharsetEncoder. */
+	public int fillUsAsciiBytes(byte[] bytes, int start);
+
+	/** Same as with char but with bytes, all characters are directly converted into bytes without CharsetEncoder. */
+	public default int fillUsAsciiBytes(byte[] bytes) { return fillUsAsciiBytes(bytes, 0); }
+
+	/** Same as with char but with bytes, all characters are directly converted into bytes without CharsetEncoder. */
+	public default byte[] toUsAsciiBytes() {
+		byte[] bytes = new byte[length()];
+		fillUsAsciiBytes(bytes, 0);
+		return bytes;
+	}
+	
 	/** Remove spaces characters at the beginning of this string. */
 	public IString trimBeginning();
 

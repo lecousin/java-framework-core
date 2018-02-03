@@ -280,6 +280,14 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
+	public int fillUsAsciiBytes(byte[] bytes, int start) {
+		int pos = 0;
+		for (int i = this.start; i <= this.end; ++i)
+			bytes[start + (pos++)] = (byte)this.chars[i];
+		return pos;
+	}
+	
+	@Override
 	public List<UnprotectedString> split(char sep) {
 		LinkedList<UnprotectedString> list = new LinkedList<>();
 		int pos = start;

@@ -374,6 +374,15 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	@Override
+	public int fillUsAsciiBytes(byte[] bytes, int start) {
+		if (strings == null) return 0;
+		int pos = 0;
+		for (int i = 0; i <= lastUsed; ++i)
+			pos += strings[i].fillUsAsciiBytes(bytes, start + pos);
+		return pos;
+	}
+	
+	@Override
 	public UnprotectedStringBuffer trimBeginning() {
 		if (strings != null)
 			strings[0].trimBeginning();
