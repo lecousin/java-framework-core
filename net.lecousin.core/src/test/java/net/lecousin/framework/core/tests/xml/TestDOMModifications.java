@@ -267,6 +267,10 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertEquals("hello", e.getPrefix());
 		Assert.assertEquals("world", e.getLocalName());
 		
+		e = doc2.createElement("hello:bonjour");
+		Assert.assertEquals("hello", e.getPrefix());
+		Assert.assertEquals("bonjour", e.getLocalName());
+		
 		e = doc2.createElementNS(null, "empty");
 		Assert.assertEquals("empty", e.getNodeName());
 		
@@ -276,6 +280,7 @@ public class TestDOMModifications extends TestDOM {
 		e.setIdAttribute("myId", true);
 		root2.appendChild(e);
 		
+		// getElementById and getElementsByTagName
 		e = doc2.getElementById("myElement");
 		Assert.assertNotNull(e);
 		Assert.assertEquals("empty", e.getNodeName());
@@ -296,6 +301,20 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertEquals("empty", e.getNodeName());
 		e = doc2.getElementById("myElement");
 		Assert.assertNull(e);
+
+		e = doc2.getElementById("myElement2");
+		XMLElement e2 = doc2.createElement("test");
+		e.appendChild(e2);
+		Assert.assertEquals(e, e2.getParentNode());
+		Assert.assertTrue(e2.isAncestor(e));
+		Assert.assertTrue(e2.isAncestor(root2));
+		Assert.assertFalse(e.isAncestor(e2));
+		Assert.assertTrue(e.isAncestor(root2));
+		
+		Assert.assertNull(a.getFirstChild());
+		Assert.assertNull(a.getLastChild());
+		Assert.assertFalse(a.hasChildNodes());
+		Assert.assertFalse(a.hasAttributes());
 	}
 	
 }
