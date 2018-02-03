@@ -11,7 +11,7 @@
   	<dependency>
   		<groupId>net.lecousin</groupId>
   		<artifactId>core</artifactId>
-  		<version>0.9.15</version>
+  		<version>0.9.16</version>
   	</dependency>
 	<dependency>
 	    <groupId>javax.enterprise.concurrent</groupId>

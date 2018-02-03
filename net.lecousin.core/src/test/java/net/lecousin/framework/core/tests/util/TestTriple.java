@@ -9,7 +9,7 @@ import org.junit.Test;
 public class TestTriple extends LCCoreAbstractTest {
 
 	@Test
-	public void test() throws Exception {
+	public void test() {
 		Triple<Object, Object, Object> t;
 		t = new Triple<>(Integer.valueOf(10), Integer.valueOf(20), Integer.valueOf(30));
 		Assert.assertEquals(Integer.valueOf(10), t.getValue1());

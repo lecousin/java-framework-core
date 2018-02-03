@@ -71,4 +71,51 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		Assert.assertNull(ClassUtil.getSetter(Class2.class, "myBoolean3"));
 	}
 	
+	@SuppressWarnings("unused")
+	public static class Class3 {
+		public int toto(String s, int i) { return 1; }
+		public int toto(String s, long l) { return 2; }
+		public int toto(int i, String s) { return 3; }
+	}
+	
+	@Test(timeout=30000)
+	public void testGetMethod() throws Exception {
+		Object[] toto1 = new Object[] { "test", Integer.valueOf(51) };
+		Object[] toto2 = new Object[] { "test", Long.valueOf(51) };
+		Object[] toto3 = new Object[] { Integer.valueOf(1), "test" };
+		Class3 o = new Class3();
+		Assert.assertEquals(Integer.valueOf(1), ClassUtil.getMethodFor(Class3.class, "toto", toto1).invoke(o, toto1));
+		Assert.assertEquals(Integer.valueOf(2), ClassUtil.getMethodFor(Class3.class, "toto", toto2).invoke(o, toto2));
+		Assert.assertEquals(Integer.valueOf(3), ClassUtil.getMethodFor(Class3.class, "toto", toto3).invoke(o, toto3));
+		
+		Assert.assertNotNull(ClassUtil.getMethod(Class3.class, "toto"));
+		Assert.assertNull(ClassUtil.getMethod(Class3.class, "titi"));
+		Assert.assertNotNull(ClassUtil.getMethod(Class3.class, "toto", 2));
+		Assert.assertNull(ClassUtil.getMethod(Class3.class, "toto", 3));
+	}
+	
+	public static class Root {
+		public Element e1 = new Element();
+		public Element e2 = new Element();
+	}
+	
+	public static class Element {
+		public Leaf sub1 = new Leaf();
+		public Leaf sub2 = new Leaf();
+	}
+	
+	public static class Leaf {
+		public int i = 1;
+	}
+	
+	@Test(timeout=30000)
+	public void testFieldPath() throws Exception {
+		Root root = new Root();
+		Assert.assertEquals(1, root.e1.sub1.i);
+		ClassUtil.setFieldFromPath(root, "e1.sub1.i", Integer.valueOf(51));
+		Assert.assertEquals(51, root.e1.sub1.i);
+		root.e2.sub2.i = 11;
+		Assert.assertEquals(Integer.valueOf(11), ClassUtil.getFieldFromPath(root, "e2.sub2.i"));
+	}
+	
 }

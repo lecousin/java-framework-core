@@ -93,6 +93,10 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		p.error(new Exception());
 		p.cancel(new CancelException(new Exception()));
 		p.getSynch();
+		p.setAmount(1);
+		Assert.assertEquals(1, p.getAmount());
+		Assert.assertEquals(0, p.getRemainingWork());
+		Assert.assertEquals(1, p.getPosition());
 	}
 	
 }
