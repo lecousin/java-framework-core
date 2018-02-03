@@ -1,5 +1,6 @@
 package net.lecousin.framework.core.tests.progress;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.progress.WorkProgressImpl;
@@ -55,13 +56,43 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		changed.blockThrow(0);
 		changed.reset();
 		p.unlisten(listener);
+		p.unlisten(listener);
+		Runnable listener1 = () -> {};
+		Runnable listener2 = () -> {};
+		p.listen(listener1);
+		p.listen(listener2);
+		p.unlisten(listener1);
+		p.unlisten(listener2);
 		p.progress(1);
 		Assert.assertEquals(1000, p.getAmount());
 		Assert.assertEquals(699, p.getRemainingWork());
 		Assert.assertEquals(301, p.getPosition());
 		changed.blockThrow(500);
 		Assert.assertFalse(changed.isUnblocked());
+		p.setAmount(900);
+		Assert.assertEquals(900, p.getAmount());
+		Assert.assertEquals(599, p.getRemainingWork());
+		Assert.assertEquals(301, p.getPosition());
+		p.setAmount(900);
+		Assert.assertEquals(900, p.getAmount());
+		Assert.assertEquals(599, p.getRemainingWork());
+		Assert.assertEquals(301, p.getPosition());
+		p.setPosition(400);
+		Assert.assertEquals(900, p.getAmount());
+		Assert.assertEquals(500, p.getRemainingWork());
+		Assert.assertEquals(400, p.getPosition());
+		p.setPosition(400);
+		Assert.assertEquals(900, p.getAmount());
+		Assert.assertEquals(500, p.getRemainingWork());
+		Assert.assertEquals(400, p.getPosition());
+		p.progress(0);
+		Assert.assertEquals(900, p.getAmount());
+		Assert.assertEquals(500, p.getRemainingWork());
+		Assert.assertEquals(400, p.getPosition());
 		p.done();
+		p.error(new Exception());
+		p.cancel(new CancelException(new Exception()));
+		p.getSynch();
 	}
 	
 }

@@ -39,6 +39,14 @@ public class TestMultiTaskProgress extends LCCoreAbstractTest {
 		Assert.assertEquals(300, t3.getAmount());
 		Assert.assertEquals(300, t3.getPosition());
 		Assert.assertEquals(0, t3.getRemainingWork());
+		t3.setAmount(600);
+		t3.setPosition(400);
+		Assert.assertEquals(1400, p.getAmount());
+		Assert.assertEquals(450, p.getPosition());
+		Assert.assertEquals(950, p.getRemainingWork());
+		Assert.assertEquals(600, t3.getAmount());
+		Assert.assertEquals(400, t3.getPosition());
+		Assert.assertEquals(200, t3.getRemainingWork());
 	}
 	
 }

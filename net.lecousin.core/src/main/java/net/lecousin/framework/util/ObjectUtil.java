@@ -1,7 +1,9 @@
 package net.lecousin.framework.util;
 
 /** Utility methods on objects. */
-public class ObjectUtil {
+public final class ObjectUtil {
+	
+	private ObjectUtil() { /* no instance */ }
 
 	/** Return true if both are null, or if they are equals. */
 	public static boolean equalsOrNull(Object o1, Object o2) {

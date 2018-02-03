@@ -1,5 +1,10 @@
 package net.lecousin.framework.core.tests.util;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.util.Pair;
 
@@ -9,7 +14,7 @@ import org.junit.Test;
 public class TestPair extends LCCoreAbstractTest {
 
 	@Test
-	public void test() {
+	public void test() throws Exception {
 		Pair<Object, Object> p;
 		p = new Pair<>(Integer.valueOf(10), Integer.valueOf(20));
 		Assert.assertEquals(Integer.valueOf(10), p.getValue1());
@@ -27,6 +32,15 @@ public class TestPair extends LCCoreAbstractTest {
 		p.toString();
 		new Pair<>(null, null).hashCode();
 		new Pair<>(null, null).toString();
+		
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		ObjectOutputStream oout = new ObjectOutputStream(out);
+		oout.writeObject(new Pair<>(Integer.valueOf(10), "test"));
+		oout.close();
+		ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
+		ObjectInputStream oin = new ObjectInputStream(in);
+		Assert.assertEquals(new Pair<>(Integer.valueOf(10), "test"), oin.readObject());
+		oin.close();
 	}
 	
 }
