@@ -195,27 +195,29 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		op.listenInline(new Runnable() {
 			@Override
 			public void run() {
-				if (nbBuf == 0) {
-					sp.unblock();
-					return;
-				}
-				if ((i.get() % 2) == 1) {
-					if (!ArrayUtil.equals(testBuf, 0, buf, 0, testBuf.length)) {
-						sp.error(new IOException("Invalid read"));
+				ISynchronizationPoint<IOException> op;
+				do {
+					if (nbBuf == 0) {
+						sp.unblock();
 						return;
 					}
-				}
-				i.inc();
-				if (i.get() == nbBuf) {
-					sp.unblock();
-					return;
-				}
-				ISynchronizationPoint<IOException> op;
-				if ((i.get() % 2) == 0) {
-					op = o2i.skipAsync(testBuf.length);
-				} else {
-					op = o2i.readFullyAsync(ByteBuffer.wrap(buf));
-				}
+					if ((i.get() % 2) == 1) {
+						if (!ArrayUtil.equals(testBuf, 0, buf, 0, testBuf.length)) {
+							sp.error(new IOException("Invalid read"));
+							return;
+						}
+					}
+					i.inc();
+					if (i.get() == nbBuf) {
+						sp.unblock();
+						return;
+					}
+					if ((i.get() % 2) == 0) {
+						op = o2i.skipAsync(testBuf.length);
+					} else {
+						op = o2i.readFullyAsync(ByteBuffer.wrap(buf));
+					}
+				} while (op.isSuccessful());
 				op.listenInline(this, sp);
 			}
 		}, sp);
