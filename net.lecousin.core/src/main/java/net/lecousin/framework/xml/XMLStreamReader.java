@@ -270,7 +270,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 						new LocalizableString("lc.xml.error", "inside CDATA"));
 				}
 				if (c != ']') {
-					if (maxCDataSize > 0 && event.text.length() < maxCDataSize) {
+					if (maxCDataSize <= 0 || event.text.length() < maxCDataSize) {
 						event.text.append(']');
 						event.text.append(c);
 					}
@@ -286,11 +286,11 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 					if (c == '>')
 						return;
 					if (c == ']') {
-						if (maxCDataSize > 0 && event.text.length() < maxCDataSize)
+						if (maxCDataSize <= 0 || event.text.length() < maxCDataSize)
 							event.text.append(']');
 						continue;
 					}
-					if (maxCDataSize > 0 && event.text.length() < maxCDataSize) {
+					if (maxCDataSize <= 0 || event.text.length() < maxCDataSize) {
 						event.text.append(']');
 						event.text.append(']');
 						event.text.append(c);
@@ -299,7 +299,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				} while (true);
 				continue;
 			}
-			if (maxCDataSize > 0 && event.text.length() < maxCDataSize)
+			if (maxCDataSize <= 0 || event.text.length() < maxCDataSize)
 				event.text.append(c);
 		} while (true);
 	}
