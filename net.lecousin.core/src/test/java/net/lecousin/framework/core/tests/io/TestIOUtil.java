@@ -68,7 +68,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		io = new ByteArrayIO(buf, "test");
 		IOUtil.copy(io, 10, 70, 50).blockThrow(0);
 		for (int i = 70; i < 70 + 50; ++i)
-			Assert.assertEquals(data[10 + i], buf[i]);
+			Assert.assertEquals(data[10 + i - 70], buf[i]);
 		io.close();
 	}
 
