@@ -87,9 +87,16 @@ public class XMLDeserializer extends AbstractDeserializer {
 	protected ISynchronizationPoint<Exception> createAndStartReader(IO.Readable input) {
 		XMLStreamReaderAsync reader = new XMLStreamReaderAsync(input, forceEncoding, 8192);
 		this.input = reader;
-		reader.setMaximumTextSize(16384);
-		reader.setMaximumCDataSize(16384);
+		reader.setMaximumTextSize(maxTextSize);
+		reader.setMaximumCDataSize(maxTextSize);
 		return reader.startRootElement();
+	}
+	
+	@Override
+	public void setMaximumTextSize(int max) {
+		super.setMaximumTextSize(max);
+		this.input.setMaximumTextSize(maxTextSize);
+		this.input.setMaximumCDataSize(maxTextSize);
 	}
 	
 	@Override
@@ -519,10 +526,23 @@ public class XMLDeserializer extends AbstractDeserializer {
 		XMLStreamReaderAsync.Attribute a = input.getAttributeWithNamespaceURI(XMLUtil.XSI_NAMESPACE_URI, "nil");
 		if (a != null && a.value.equals("true"))
 			return new AsyncWork<>(null, null);
-		IOInMemoryOrFile io = new IOInMemoryOrFile(128 * 1024, priority, "base 64 encoded from XML");
-		Base64Decoder decoder = new Base64Decoder(io);
+		ISynchronizationPoint<Exception> next = input.next();
 		AsyncWork<IO.Readable, Exception> result = new AsyncWork<>();
-		readNextBase64(decoder, io, result);
+		next.listenAsync(new DeserializationTask(() -> {
+			if (Type.TEXT.equals(input.event.type)) {
+				// it may be a reference
+				String ref = input.event.text.asString();
+				for (StreamReferenceHandler h : streamReferenceHandlers)
+					if (h.isReference(ref)) {
+						h.getStreamFromReference(ref).listenInline(result);
+						return;
+					}
+			}
+			// not a reference, default to base 64 encoded string
+			IOInMemoryOrFile io = new IOInMemoryOrFile(128 * 1024, priority, "base 64 encoded from XML");
+			Base64Decoder decoder = new Base64Decoder(io);
+			readBase64(decoder, io, result);
+		}), result);
 		return result;
 	}
 	

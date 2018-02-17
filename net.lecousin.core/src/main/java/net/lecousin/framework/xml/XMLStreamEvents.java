@@ -25,6 +25,9 @@ import net.lecousin.framework.util.UnprotectedStringBuffer;
 public abstract class XMLStreamEvents {
 
 	public Event event = new Event();
+	
+	protected int maxTextSize = -1;
+	protected int maxCDataSize = -1;
 
 	/** Parsing event. */
 	public static class Event {
@@ -119,6 +122,14 @@ public abstract class XMLStreamEvents {
 		public UnprotectedStringBuffer localName;
 		public UnprotectedStringBuffer value;
 	}
+	
+	public int getMaximumTextSize() { return maxTextSize; }
+	
+	public void setMaximumTextSize(int max) { maxTextSize = max; }
+	
+	public int getMaximumCDataSize() { return maxCDataSize; }
+	
+	public void setMaximumCDataSize(int max) { maxCDataSize = max; }
 	
 	/** Get the namespace URI for a prefix, or empty string if the prefix is not defined. */
 	public UnprotectedStringBuffer getNamespaceURI(CharSequence namespacePrefix) {

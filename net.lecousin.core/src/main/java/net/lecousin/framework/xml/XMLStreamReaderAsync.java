@@ -48,27 +48,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private Charset defaultEncoding;
 	private int charactersBuffersSize;
-	private int maxTextSize = -1;
-	private int maxCDataSize = -1;
 	private IO.Readable.Buffered io;
 	private BufferedReadableCharacterStreamLocation stream;
-	
-	public int getMaximumTextSize() {
-		return maxTextSize;
-	}
-	
-	public void setMaximumTextSize(int max) {
-		maxTextSize = max;
-	}
-	
-	public int getMaximumCDataSize() {
-		return maxCDataSize;
-	}
-	
-	public void setMaximumCDataSize(int max) {
-		maxCDataSize = max;
-	}
-	
 	
 	/* Public methods */
 
@@ -731,7 +712,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		}
 		char c = (char)i;
 		if (isNameChar(c)) {
-			event.text.append(c);
+			if (maxTextSize <= 0 || event.text.length() < maxTextSize)
+				event.text.append(c);
 			return true;
 		}
 		if (isSpaceChar(c)) {
@@ -814,7 +796,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		char c = (char)i;
 		Attribute a = event.attributes.getLast();
 		if (isNameChar(c)) {
-			a.text.append(c);
+			if (maxTextSize <= 0 || a.text.length() < maxTextSize)
+				a.text.append(c);
 			return true;
 		}
 		i = a.text.indexOf(':');
@@ -899,9 +882,14 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				new LocalizableString("lc.xml.error", "in attribute value")));
 			return false;
 		}
-		if (c == '\n') a.value.append(' ');
-		else if (c == '\r') return true;
-		else a.value.append(c);
+		if (c == '\n') {
+			if (maxTextSize <= 0 || a.value.length() < maxTextSize)
+				a.value.append(' ');
+		} else if (c == '\r') return true;
+		else {
+			if (maxTextSize <= 0 || a.value.length() < maxTextSize)
+				a.value.append(c);
+		}
 		return true;
 	}
 	
@@ -921,7 +909,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		}
 		if (isNameChar(c)) {
-			event.text.append(c);
+			if (maxTextSize <= 0 || event.text.length() < maxTextSize)
+				event.text.append(c);
 			return true;
 		}
 		state = State.START_ELEMENT_SPACE;
@@ -1018,7 +1007,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			sp.error(new XMLException(getPosition(), "Unexpected character", Character.valueOf(c)));
 			return false;
 		}
-		event.text.append(c);
+		if (maxTextSize <= 0 || event.text.length() < maxTextSize)
+			event.text.append(c);
 		return true;
 	}
 	

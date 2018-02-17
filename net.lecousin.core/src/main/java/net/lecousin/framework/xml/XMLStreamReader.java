@@ -211,8 +211,10 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 						new LocalizableString("lc.xml.error", "inside comment"));
 				}
 				if (c != '-') {
-					event.text.append('-');
-					event.text.append(c);
+					if (maxTextSize <= 0 || event.text.length() < maxTextSize) {
+						event.text.append('-');
+						event.text.append(c);
+					}
 					continue;
 				}
 				do {
@@ -225,16 +227,20 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 					if (c == '>')
 						return;
 					if (c == '-') {
-						event.text.append('-');
+						if (maxTextSize <= 0 || event.text.length() < maxTextSize)
+							event.text.append('-');
 						continue;
 					}
-					event.text.append('-');
-					event.text.append('-');
+					if (maxTextSize <= 0 || event.text.length() < maxTextSize) {
+						event.text.append('-');
+						event.text.append('-');
+					}
 					break;
 				} while (true);
 				continue;
 			}
-			event.text.append(c);
+			if (maxTextSize <= 0 || event.text.length() < maxTextSize)
+				event.text.append(c);
 		} while (true);
 	}
 	
@@ -264,8 +270,10 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 						new LocalizableString("lc.xml.error", "inside CDATA"));
 				}
 				if (c != ']') {
-					event.text.append(']');
-					event.text.append(c);
+					if (maxCDataSize > 0 && event.text.length() < maxCDataSize) {
+						event.text.append(']');
+						event.text.append(c);
+					}
 					continue;
 				}
 				do {
@@ -278,17 +286,21 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 					if (c == '>')
 						return;
 					if (c == ']') {
-						event.text.append(']');
+						if (maxCDataSize > 0 && event.text.length() < maxCDataSize)
+							event.text.append(']');
 						continue;
 					}
-					event.text.append(']');
-					event.text.append(']');
-					event.text.append(c);
+					if (maxCDataSize > 0 && event.text.length() < maxCDataSize) {
+						event.text.append(']');
+						event.text.append(']');
+						event.text.append(c);
+					}
 					break;
 				} while (true);
 				continue;
 			}
-			event.text.append(c);
+			if (maxCDataSize > 0 && event.text.length() < maxCDataSize)
+				event.text.append(c);
 		} while (true);
 	}
 	
@@ -407,9 +419,11 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		event.type = Type.TEXT;
 		event.text = new UnprotectedStringBuffer();
 		do {
-			if (c == '&')
-				event.text.append(readReference());
-			else if (c == '<') {
+			if (c == '&') {
+				CharSequence ref = readReference();
+				if (maxTextSize <= 0 || event.text.length() < maxTextSize)
+					event.text.append(ref);
+			} else if (c == '<') {
 				stream.back(c);
 				break;
 			} else {
@@ -417,16 +431,19 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 					try {
 						c = stream.read();
 					} catch (EOFException e) {
-						event.text.append(c);
+						if (maxTextSize <= 0 || event.text.length() < maxTextSize)
+							event.text.append(c);
 						break;
 					}
-					if (c == '\n')
-						event.text.append(c);
-					else {
-						event.text.append('\r');
+					if (c == '\n') {
+						if (maxTextSize <= 0 || event.text.length() < maxTextSize)
+							event.text.append(c);
+					} else {
+						if (maxTextSize <= 0 || event.text.length() < maxTextSize)
+							event.text.append('\r');
 						continue;
 					}
-				} else
+				} else if (maxTextSize <= 0 || event.text.length() < maxTextSize)
 					event.text.append(c);
 			}
 			try {
@@ -736,7 +753,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				stream.back(c);
 				return;
 			}
-			name.append(c);
+			if (maxTextSize <= 0 || name.length() < maxTextSize)
+				name.append(c);
 		} while (true);
 	}
 	

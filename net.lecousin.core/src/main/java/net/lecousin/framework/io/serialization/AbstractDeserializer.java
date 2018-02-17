@@ -37,10 +37,21 @@ import net.lecousin.framework.util.Pair;
 public abstract class AbstractDeserializer implements Deserializer {
 	
 	protected byte priority;
+	protected int maxTextSize = -1;
 	
 	protected abstract ISynchronizationPoint<Exception> initializeDeserialization(IO.Readable input);
 	
 	protected abstract ISynchronizationPoint<Exception> finalizeDeserialization();
+	
+	@Override
+	public int getMaximumTextSize() {
+		return maxTextSize;
+	}
+	
+	@Override
+	public void setMaximumTextSize(int max) {
+		maxTextSize = max;
+	}
 	
 	@Override
 	public <T> AsyncWork<T, Exception> deserialize(TypeDefinition type, IO.Readable input, List<SerializationRule> rules) {
@@ -775,6 +786,13 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	// *** IO.Readable ***
+	
+	protected List<StreamReferenceHandler> streamReferenceHandlers = new LinkedList<>();
+
+	@Override
+	public void addStreamReferenceHandler(StreamReferenceHandler handler) {
+		streamReferenceHandlers.add(handler);
+	}
 	
 	protected abstract AsyncWork<IO.Readable, Exception> deserializeIOReadableValue(SerializationContext context, List<SerializationRule> rules);
 	
