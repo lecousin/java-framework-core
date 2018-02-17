@@ -315,6 +315,31 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertNull(a.getLastChild());
 		Assert.assertFalse(a.hasChildNodes());
 		Assert.assertFalse(a.hasAttributes());
+		
+		// normalize
+		Element e1 = doc1.createElement("toNormalize");
+		doc1.getDocumentElement().appendChild(e1);
+		e2 = doc2.createElement("toNormalize");
+		doc2.getDocumentElement().appendChild(e2);
+		e1.appendChild(doc1.createTextNode("text1"));
+		e1.appendChild(doc1.createTextNode("text2"));
+		e2.appendChild(doc2.createTextNode("text1"));
+		e2.appendChild(doc2.createTextNode("text2"));
+		checkElement(e1, e2);
+		e1.normalize();
+		e2.normalize();
+		checkElement(e1, e2);
+		
+		// get and set text content
+		Assert.assertEquals(e1.getTextContent(), e2.getTextContent());
+		e1.appendChild(doc1.createElement("toRemove"));
+		e2.appendChild(doc2.createElement("toRemove"));
+		Assert.assertEquals(e1.getTextContent(), e2.getTextContent());
+		Assert.assertEquals(e1.getChildNodes().getLength(), e2.getChildNodes().getLength());
+		e1.setTextContent("toto");
+		e2.setTextContent("toto");
+		Assert.assertEquals(e1.getTextContent(), e2.getTextContent());
+		Assert.assertEquals(e1.getChildNodes().getLength(), e2.getChildNodes().getLength());
 	}
 	
 }

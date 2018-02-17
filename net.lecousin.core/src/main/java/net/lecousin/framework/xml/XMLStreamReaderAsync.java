@@ -153,6 +153,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				stream.canStartReading().listenAsync(new ParsingTask(() -> { nextChar(sp); }), true);
 				return;
 			}
+			boolean continu;
 			switch (state) {
 			case START:
 				// start a new event
@@ -164,155 +165,129 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				if (c == '<') {
 					// start a tag
 					state = State.TAG;
+					continu = true;
 					break;
 				}
 				// start characters
 				state = State.CHARS;
 				event.type = Type.TEXT;
 				event.text = new UnprotectedStringBuffer();
-				if (!readChars(c, sp))
-					return;
+				continu = readChars(c, sp);
 				break;
 				
 			case TAG:
-				if (!readTag(c, sp))
-					return;
+				continu = readTag(c, sp);
 				break;
 			
 			case TAG_EXCLAMATION:
-				if (!readTagExclamation(c, sp))
-					return;
+				continu = readTagExclamation(c, sp);
 				break;
 				
 			case PROCESSING_INSTRUCTION:
-				if (!readProcessingInstruction(c, sp))
-					return;
+				continu = readProcessingInstruction(c, sp);
 				break;
 				
 			case PROCESSING_INSTRUCTION_CLOSED:
-				if (!readProcessingInstructionClosed(c, sp))
-					return;
+				continu = readProcessingInstructionClosed(c, sp);
 				break;
 				
 			case END_ELEMENT_NAME:
-				if (!readEndElementName(c, sp))
-					return;
+				continu = readEndElementName(c, sp);
 				break;
 				
 			case START_ELEMENT_NAME:
-				if (!readStartElementName(c, sp))
-					return;
+				continu = readStartElementName(c, sp);
 				break;
 				
 			case START_ELEMENT_SPACE:
-				if (!readStartElementSpace(c, sp))
-					return;
+				continu = readStartElementSpace(c, sp);
 				break;
 				
 			case START_ELEMENT_CLOSED:
-				if (!readStartElementClosed(c, sp))
-					return;
+				continu = readStartElementClosed(c, sp);
 				break;
 				
 			case ATTRIBUTE_NAME:
-				if (!readAttributeName(c, sp))
-					return;
+				continu = readAttributeName(c, sp);
 				break;
 				
 			case ATTRIBUTE_NAME_SPACE:
-				if (!readAttributeNameSpace(c, sp))
-					return;
+				continu = readAttributeNameSpace(c, sp);
 				break;
 				
 			case ATTRIBUTE_VALUE_SPACE:
-				if (!readAttributeValueSpace(c, sp))
-					return;
+				continu = readAttributeValueSpace(c, sp);
 				break;
 				
 			case ATTRIBUTE_VALUE:
-				if (!readAttributeValue(c, sp))
-					return;
+				continu = readAttributeValue(c, sp);
 				break;
 				
 			case COMMENT:
-				if (!readComment(c, sp))
-					return;
+				continu = readComment(c, sp);
 				break;
 				
 			case CDATA:
-				if (!readCData(c, sp))
-					return;
+				continu = readCData(c, sp);
 				break;
 				
 			case DOCTYPE:
-				if (!readDocType(c, sp))
-					return;
+				continu = readDocType(c, sp);
 				break;
 				
 			case DOCTYPE_NAME:
-				if (!readDocTypeName(c, sp))
-					return;
+				continu = readDocTypeName(c, sp);
 				break;
 
 			case DOCTYPE_SPACE:
-				if (!readDocTypeSpace(c, sp))
-					return;
+				continu = readDocTypeSpace(c, sp);
 				break;
 
 			case DOCTYPE_PUBLIC_NAME:
-				if (!readDocTypePublicName(c, sp))
-					return;
+				continu = readDocTypePublicName(c, sp);
 				break;
 
 			case DOCTYPE_PUBLIC_SPACE:
-				if (!readDocTypePublicSpace(c, sp))
-					return;
+				continu = readDocTypePublicSpace(c, sp);
 				break;
 
 			case DOCTYPE_PUBLIC_ID:
-				if (!readDocTypePublicId(c, sp))
-					return;
+				continu = readDocTypePublicId(c, sp);
 				break;
 
 			case DOCTYPE_SYSTEM_NAME:
-				if (!readDocTypeSystemName(c, sp))
-					return;
+				continu = readDocTypeSystemName(c, sp);
 				break;
 
 			case DOCTYPE_SYSTEM_SPACE:
-				if (!readDocTypeSystemSpace(c, sp))
-					return;
+				continu = readDocTypeSystemSpace(c, sp);
 				break;
 
 			case DOCTYPE_SYSTEM_VALUE:
-				if (!readDocTypeSystemValue(c, sp))
-					return;
+				continu = readDocTypeSystemValue(c, sp);
 				break;
 
 			case DOCTYPE_INTERNAL_SUBSET:
-				if (!readInternalSubset(c, sp))
-					return;
+				continu = readInternalSubset(c, sp);
 				break;
 
 			case DOCTYPE_INTERNAL_SUBSET_PEREFERENCE:
-				if (!readInternalSubsetPEReference(c, sp))
-					return;
+				continu = readInternalSubsetPEReference(c, sp);
 				break;
 
 			case DOCTYPE_INTERNAL_SUBSET_TAG:
-				if (!readInternalSubsetTag(c, sp))
-					return;
+				continu = readInternalSubsetTag(c, sp);
 				break;
 				
 			case CHARS:
-				if (!readChars(c, sp))
-					return;
+				continu = readChars(c, sp);
 				break;
 
 			default:
 				sp.error(new Exception("Unexpected state " + state));
 				return;
 			}
+			if (!continu) return;
 		} while (true);
 	}
 	

@@ -122,6 +122,11 @@ public class TestTurnArray extends TestDeque {
 		q.remove(Long.valueOf(11));
 		q.remove(Long.valueOf(12));
 		checkDeque(q, 13, 14);
+		q.add(Long.valueOf(15));
+		q.add(Long.valueOf(16));
+		q.remove(Long.valueOf(13));
+		q.remove(Long.valueOf(14));
+		checkDeque(q, 15, 16);
 		q.clear();
 		testQueueEmpty(q);
 		
@@ -147,6 +152,33 @@ public class TestTurnArray extends TestDeque {
 		Assert.assertTrue(q.removeAny(Long.valueOf(23)));
 		Assert.assertFalse(q.removeAny(Long.valueOf(23)));
 		testDequeEmpty(q);
+	}
+	
+	@Test(timeout=120000)
+	public void testIncreaseAndDecrease() {
+		TurnArray<Long> q = new TurnArray<>(5);
+
+		// make it full
+		q.add(Long.valueOf(1));
+		q.add(Long.valueOf(2));
+		q.add(Long.valueOf(3));
+		q.add(Long.valueOf(4));
+		q.add(Long.valueOf(5));
+		Assert.assertTrue(q.isFull());
+
+		q.removeFirst();
+		q.removeFirst();
+		q.add(Long.valueOf(6));
+		q.add(Long.valueOf(7));
+		Assert.assertTrue(q.isFull());
+		
+		// increase
+		for (int i = 8; i < 150; ++i)
+			q.add(Long.valueOf(i));
+		
+		// decrease
+		for (int i = 0; i < 140; ++i)
+			q.removeFirst();
 	}
 	
 }
