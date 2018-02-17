@@ -11,6 +11,8 @@ import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.log.Logger;
+import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Same as a SynchronizationPoint, except that it contains a result.
@@ -40,7 +42,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	 * @param <T> type of result
 	 * @param <TError> type of error
 	 */
-	public static interface AsyncWorkListener<T,TError> {
+	public static interface AsyncWorkListener<T, TError extends Exception> {
 		/** Called when the AsyncWork is unblocked with a result. */
 		public void ready(T result);
 		
@@ -51,6 +53,56 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 		public void cancelled(CancelException event);
 	}
 	
+	/** Implementation with a listener and an ISynchronizationPoint for error or cancel event.
+	 * @param <T> type of result
+	 * @param <TError> type of error
+	 */
+	public static class AsyncWorkListenerReady<T, TError extends Exception> implements AsyncWorkListener<T, TError> {
+		
+		/** Listener on ready.
+		 * @param <T> type of result
+		 * @param <TError> type of error
+		 */
+		public static interface OnReady<T, TError extends Exception> {
+			/** Listener on ready. */
+			void ready(T result, AsyncWorkListenerReady<T, TError> listener);
+		}
+		
+		/** Constructor. */
+		public AsyncWorkListenerReady(OnReady<T, TError> listener, ISynchronizationPoint<TError> onErrorOrCancel) {
+			this.listener = listener;
+			this.onErrorOrCancel = onErrorOrCancel;
+		}
+
+		/** Constructor. */
+		public AsyncWorkListenerReady(OnReady<T, TError> listener, ISynchronizationPoint<TError> onErrorOrCancel,
+			RunnableWithParameter<Pair<T, TError>> onDoneError) {
+			this.listener = listener;
+			this.onErrorOrCancel = onErrorOrCancel;
+			this.onError = onDoneError;
+		}
+		
+		protected OnReady<T, TError> listener;
+		protected ISynchronizationPoint<TError> onErrorOrCancel;
+		protected RunnableWithParameter<Pair<T, TError>> onError;
+		
+		@Override
+		public void ready(T result) {
+			listener.ready(result, this);
+		}
+		
+		@Override
+		public void error(TError error) {
+			if (onError != null) onError.run(new Pair<>(null, error));
+			onErrorOrCancel.error(error);
+		}
+		
+		@Override
+		public void cancelled(CancelException event) {
+			onErrorOrCancel.cancel(event);
+		}
+	}
+
 	private boolean unblocked = false;
 	private T result = null;
 	private TError error = null;

@@ -15,6 +15,7 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
+import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListenerReady;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
@@ -63,13 +64,7 @@ public final class IOUtil {
 	 * @throws IOException in case of error reading bytes
 	 */
 	public static int readFully(IO.ReadableByteStream io, byte[] buffer) throws IOException {
-		int read = 0;
-		while (read < buffer.length) {
-			int nb = io.read(buffer, read, buffer.length - read);
-			if (nb <= 0) break;
-			read += nb;
-		}
-		return read;
+		return readFully(io, buffer, 0, buffer.length);
 	}
 	
 	/**
@@ -165,44 +160,30 @@ public final class IOUtil {
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 		MutableInteger total = new MutableInteger(done);
 		Mutable<AsyncWork<Integer,IOException>> r = new Mutable<>(read);
-		read.listenInline(new AsyncWorkListener<Integer, IOException>() {
-			@Override
-			public void ready(Integer result) {
-				do {
-					if (!buffer.hasRemaining() || result.intValue() <= 0) {
-						if (total.get() == 0) {
-							if (ondone != null) ondone.run(new Pair<>(result, null));
-							sp.unblockSuccess(result);
-						} else if (result.intValue() >= 0) {
-							Integer r = Integer.valueOf(result.intValue() + total.get());
-							if (ondone != null) ondone.run(new Pair<>(r, null));
-							sp.unblockSuccess(r);
-						} else {
-							if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(total.get()), null));
-							sp.unblockSuccess(Integer.valueOf(total.get()));
-						}
-						return;
+		read.listenInline(new AsyncWorkListenerReady<Integer, IOException>((result, that) -> {
+			do {
+				if (!buffer.hasRemaining() || result.intValue() <= 0) {
+					if (total.get() == 0) {
+						if (ondone != null) ondone.run(new Pair<>(result, null));
+						sp.unblockSuccess(result);
+					} else if (result.intValue() >= 0) {
+						Integer i = Integer.valueOf(result.intValue() + total.get());
+						if (ondone != null) ondone.run(new Pair<>(i, null));
+						sp.unblockSuccess(i);
+					} else {
+						if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(total.get()), null));
+						sp.unblockSuccess(Integer.valueOf(total.get()));
 					}
-					total.add(result.intValue());
-					AsyncWork<Integer, IOException> read = io.readAsync(buffer);
-					r.set(read);
-					if (read.isSuccessful()) result = read.getResult();
-					else break;
-				} while (true);
-				r.get().listenInline(this);
-			}
-			
-			@Override
-			public void error(IOException error) {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
-				sp.unblockError(error);
-			}
-			
-			@Override
-			public void cancelled(CancelException event) {
-				sp.unblockCancel(event);
-			}
-		});
+					return;
+				}
+				total.add(result.intValue());
+				AsyncWork<Integer, IOException> reading = io.readAsync(buffer);
+				r.set(reading);
+				if (reading.isSuccessful()) result = reading.getResult();
+				else break;
+			} while (true);
+			r.get().listenInline(that);
+		}, sp, ondone));
 		sp.onCancel(new Listener<CancelException>() {
 			@Override
 			public void fire(CancelException event) {
@@ -236,45 +217,31 @@ public final class IOUtil {
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 		MutableInteger total = new MutableInteger(0);
 		Mutable<AsyncWork<Integer,IOException>> r = new Mutable<>(read);
-		read.listenInline(new AsyncWorkListener<Integer, IOException>() {
-			@Override
-			public void ready(Integer result) {
-				do {
-					if (!buffer.hasRemaining() || result.intValue() <= 0) {
-						if (total.get() == 0) {
-							if (ondone != null) ondone.run(new Pair<>(result, null));
-							sp.unblockSuccess(result);
-						} else if (result.intValue() >= 0) {
-							Integer r = Integer.valueOf(result.intValue() + total.get());
-							if (ondone != null) ondone.run(new Pair<>(r, null));
-							sp.unblockSuccess(r);
-						} else {
-							Integer r = Integer.valueOf(total.get());
-							if (ondone != null) ondone.run(new Pair<>(r, null));
-							sp.unblockSuccess(r);
-						}
-						return;
+		read.listenInline(new AsyncWorkListenerReady<Integer, IOException>((result, that) -> {
+			do {
+				if (!buffer.hasRemaining() || result.intValue() <= 0) {
+					if (total.get() == 0) {
+						if (ondone != null) ondone.run(new Pair<>(result, null));
+						sp.unblockSuccess(result);
+					} else if (result.intValue() >= 0) {
+						Integer i = Integer.valueOf(result.intValue() + total.get());
+						if (ondone != null) ondone.run(new Pair<>(i, null));
+						sp.unblockSuccess(i);
+					} else {
+						Integer i = Integer.valueOf(total.get());
+						if (ondone != null) ondone.run(new Pair<>(i, null));
+						sp.unblockSuccess(i);
 					}
-					total.add(result.intValue());
-					AsyncWork<Integer, IOException> read = io.readAsync(pos + total.get(), buffer);
-					r.set(read);
-					if (read.isSuccessful()) result = read.getResult();
-					else break;
-				} while (true);
-				r.get().listenInline(this);
-			}
-			
-			@Override
-			public void error(IOException error) {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
-				sp.unblockError(error);
-			}
-			
-			@Override
-			public void cancelled(CancelException event) {
-				sp.unblockCancel(event);
-			}
-		});
+					return;
+				}
+				total.add(result.intValue());
+				AsyncWork<Integer, IOException> reading = io.readAsync(pos + total.get(), buffer);
+				r.set(reading);
+				if (reading.isSuccessful()) result = reading.getResult();
+				else break;
+			} while (true);
+			r.get().listenInline(that);
+		}, sp, ondone));
 		sp.onCancel(new Listener<CancelException>() {
 			@Override
 			public void fire(CancelException event) {
@@ -424,43 +391,30 @@ public final class IOUtil {
 		ByteBuffer b = ByteBuffer.allocate(n > 65536 ? 65536 : (int)n);
 		MutableLong done = new MutableLong(0);
 		AsyncWork<Long, IOException> result = new AsyncWork<>();
-		io.readAsync(b).listenInline(new AsyncWorkListener<Integer, IOException>() {
-			@Override
-			public void ready(Integer nb) {
-				AsyncWork<Integer, IOException> next;
-				do {
-					int read = nb.intValue();
-					if (read <= 0) {
-						if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done.get()), null));
-						result.unblockSuccess(Long.valueOf(done.get()));
-						return;
-					}
-					done.add(nb.intValue());
-					if (done.get() == n) {
-						if (ondone != null) ondone.run(new Pair<>(Long.valueOf(n), null));
-						result.unblockSuccess(Long.valueOf(n));
-						return;
-					}
-					b.clear();
-					if (n - done.get() < b.remaining())
-						b.limit((int)(n - done.get()));
-					next = io.readAsync(b);
-					if (next.isSuccessful()) nb = next.getResult();
-					else break;
-				} while (true);
-				next.listenInline(this);
-			}
-			
-			@Override
-			public void error(IOException error) {
-				result.error(error);
-			}
-			
-			@Override
-			public void cancelled(CancelException event) {
-				result.cancel(event);
-			}
-		});
+		io.readAsync(b).listenInline(new AsyncWorkListenerReady<Integer, IOException>((nb, that) -> {
+			AsyncWork<Integer, IOException> next;
+			do {
+				int read = nb.intValue();
+				if (read <= 0) {
+					if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done.get()), null));
+					result.unblockSuccess(Long.valueOf(done.get()));
+					return;
+				}
+				done.add(nb.intValue());
+				if (done.get() == n) {
+					if (ondone != null) ondone.run(new Pair<>(Long.valueOf(n), null));
+					result.unblockSuccess(Long.valueOf(n));
+					return;
+				}
+				b.clear();
+				if (n - done.get() < b.remaining())
+					b.limit((int)(n - done.get()));
+				next = io.readAsync(b);
+				if (next.isSuccessful()) nb = next.getResult();
+				else break;
+			} while (true);
+			next.listenInline(that);
+		}, result));
 		return result;
 	}
 	

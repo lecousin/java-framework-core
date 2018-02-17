@@ -11,6 +11,7 @@ import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
+import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListenerReady;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
@@ -530,44 +531,30 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		AsyncWork<Integer, IOException> result = new AsyncWork<Integer, IOException>();
 		IO.Readable io = (IO.Readable)ios.get(ioIndex);
 		AsyncWork<Integer, IOException> read = io.readAsync(buffer);
-		operation(read).listenInline(new AsyncWorkListener<Integer, IOException>() {
-			@Override
-			public void ready(Integer nb) {
-				if (nb.intValue() <= 0) {
-					if (sizes.get(ioIndex) == null)
-						sizes.set(ioIndex, Long.valueOf(posInIO));
-					if (ioIndex == ios.size() - 1) {
-						ioIndex++;
-						posInIO = 0;
-						if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
-						result.unblockSuccess(Integer.valueOf(-1));
-						return;
-					}
-					nextIOAsync(new Runnable() {
-						@Override
-						public void run() {
-							readAsync(buffer, ondone).listenInline(result);
-						}
-					}, result, ondone);
+		operation(read).listenInline(new AsyncWorkListenerReady<Integer, IOException>((nb, that) -> {
+			if (nb.intValue() <= 0) {
+				if (sizes.get(ioIndex) == null)
+					sizes.set(ioIndex, Long.valueOf(posInIO));
+				if (ioIndex == ios.size() - 1) {
+					ioIndex++;
+					posInIO = 0;
+					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
+					result.unblockSuccess(Integer.valueOf(-1));
 					return;
 				}
-				posInIO += nb.intValue();
-				pos += nb.intValue();
-				if (ondone != null) ondone.run(new Pair<>(nb, null));
-				result.unblockSuccess(nb);
+				nextIOAsync(new Runnable() {
+					@Override
+					public void run() {
+						readAsync(buffer, ondone).listenInline(result);
+					}
+				}, result, ondone);
+				return;
 			}
-			
-			@Override
-			public void error(IOException error) {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
-				result.unblockError(error);
-			}
-			
-			@Override
-			public void cancelled(CancelException event) {
-				result.unblockCancel(event);
-			}
-		});
+			posInIO += nb.intValue();
+			pos += nb.intValue();
+			if (ondone != null) ondone.run(new Pair<>(nb, null));
+			result.unblockSuccess(nb);
+		}, result, ondone));
 		return result;
 	}
 
@@ -584,44 +571,30 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		IO.Readable.Buffered io = (IO.Readable.Buffered)ios.get(ioIndex);
 		AsyncWork<ByteBuffer, IOException> result = new AsyncWork<>();
 		AsyncWork<ByteBuffer, IOException> read = io.readNextBufferAsync();
-		operation(read).listenInline(new AsyncWorkListener<ByteBuffer, IOException>() {
-			@Override
-			public void ready(ByteBuffer buf) {
-				if (buf == null) {
-					if (sizes.get(ioIndex) == null)
-						sizes.set(ioIndex, Long.valueOf(posInIO));
-					if (ioIndex == ios.size() - 1) {
-						ioIndex++;
-						posInIO = 0;
-						if (ondone != null) ondone.run(new Pair<>(null, null));
-						result.unblockSuccess(null);
-						return;
-					}
-					nextIOAsync(new Runnable() {
-						@Override
-						public void run() {
-							readNextBufferAsync(ondone).listenInline(result);
-						}
-					}, result, ondone);
+		operation(read).listenInline(new AsyncWorkListenerReady<ByteBuffer, IOException>((buf, that) -> {
+			if (buf == null) {
+				if (sizes.get(ioIndex) == null)
+					sizes.set(ioIndex, Long.valueOf(posInIO));
+				if (ioIndex == ios.size() - 1) {
+					ioIndex++;
+					posInIO = 0;
+					if (ondone != null) ondone.run(new Pair<>(null, null));
+					result.unblockSuccess(null);
 					return;
 				}
-				posInIO += buf.remaining();
-				pos += buf.remaining();
-				if (ondone != null) ondone.run(new Pair<>(buf, null));
-				result.unblockSuccess(buf);
+				nextIOAsync(new Runnable() {
+					@Override
+					public void run() {
+						readNextBufferAsync(ondone).listenInline(result);
+					}
+				}, result, ondone);
+				return;
 			}
-			
-			@Override
-			public void error(IOException error) {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
-				result.unblockError(error);
-			}
-			
-			@Override
-			public void cancelled(CancelException event) {
-				result.unblockCancel(event);
-			}
-		});
+			posInIO += buf.remaining();
+			pos += buf.remaining();
+			if (ondone != null) ondone.run(new Pair<>(buf, null));
+			result.unblockSuccess(buf);
+		}, result, ondone));
 		return result;
 	}
 
@@ -684,46 +657,31 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			IO.Readable io = (IO.Readable)ios.get(ioIndex);
 			MutableLong done = new MutableLong(0);
 			AsyncWork<Long, IOException> skip = io.skipAsync(n);
-			operation(skip).listenInline(new AsyncWorkListener<Long, IOException>() {
-				@Override
-				public void ready(Long nb) {
-					posInIO += nb.longValue();
-					pos += nb.intValue();
-					done.add(nb.longValue());
-					if (done.get() == n) {
-						if (ondone != null) ondone.run(new Pair<>(Long.valueOf(n), null));
-						result.unblockSuccess(Long.valueOf(n));
-						return;
+			operation(skip).listenInline(new AsyncWorkListenerReady<Long, IOException>((nb, that) -> {
+				posInIO += nb.longValue();
+				pos += nb.intValue();
+				done.add(nb.longValue());
+				if (done.get() == n) {
+					if (ondone != null) ondone.run(new Pair<>(Long.valueOf(n), null));
+					result.unblockSuccess(Long.valueOf(n));
+					return;
+				}
+				if (sizes.get(ioIndex) == null)
+					sizes.set(ioIndex, Long.valueOf(posInIO));
+				if (ioIndex == ios.size() - 1) {
+					ioIndex++;
+					posInIO = 0;
+					if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done.get()), null));
+					result.unblockSuccess(Long.valueOf(done.get()));
+					return;
+				}
+				nextIOAsync(new Runnable() {
+					@Override
+					public void run() {
+						operation(((IO.Readable)ios.get(ioIndex)).skipAsync(n - done.get(), null)).listenInline(that);
 					}
-					if (sizes.get(ioIndex) == null)
-						sizes.set(ioIndex, Long.valueOf(posInIO));
-					AsyncWorkListener<Long, IOException> l = this;
-					if (ioIndex == ios.size() - 1) {
-						ioIndex++;
-						posInIO = 0;
-						if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done.get()), null));
-						result.unblockSuccess(Long.valueOf(done.get()));
-						return;
-					}
-					nextIOAsync(new Runnable() {
-						@Override
-						public void run() {
-							operation(((IO.Readable)ios.get(ioIndex)).skipAsync(n - done.get(), null)).listenInline(l);
-						}
-					}, result, ondone);
-				}
-				
-				@Override
-				public void error(IOException error) {
-					if (ondone != null) ondone.run(new Pair<>(null, error));
-					result.unblockError(error);
-				}
-				
-				@Override
-				public void cancelled(CancelException event) {
-					result.unblockCancel(event);
-				}
-			});
+				}, result, ondone);
+			}, result, ondone));
 			return result;
 		}
 		if (!(this instanceof IO.Readable.Seekable)) {
