@@ -66,6 +66,7 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
 		TemporaryFiles.get().createAndOpenFileAsync("net.lecousin.framework", "tempIO").listenInline((f) -> {
 			IOInMemoryOrFile.this.file = f;
+			sp.unblock();
 		}, sp);
 		return sp;
 	}
