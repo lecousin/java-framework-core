@@ -52,6 +52,7 @@ public final class Application {
 	public static final String PROPERTY_INSTALLATION_DIRECTORY = "net.lecousin.application.install.directory";
 	public static final String PROPERTY_CONFIG_DIRECTORY = "net.lecousin.application.config.directory";
 	public static final String PROPERTY_LOG_DIRECTORY = "net.lecousin.application.log.directory";
+	public static final String PROPERTY_TMP_DIRECTORY = "net.lecousin.application.tmpdir";
 	
 	public static final String PROPERTY_LANGUAGE_TAG = "net.lecousin.framework.locale.language";
 	

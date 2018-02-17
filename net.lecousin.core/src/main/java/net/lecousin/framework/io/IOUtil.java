@@ -5,9 +5,7 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 
 import net.lecousin.framework.concurrent.CancelException;
@@ -23,6 +21,7 @@ import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
+import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
@@ -421,19 +420,23 @@ public final class IOUtil {
 	/**
 	 * Write the given Readable to a temporary file, and return the temporary file.
 	 */
-	public static File toTempFile(IO.Readable io) throws IOException {
-		File file = File.createTempFile("net.lecousin.framework.io", "streamtofile");
-		ByteBuffer buffer = ByteBuffer.allocateDirect(65536);
-		try (RandomAccessFile f = new RandomAccessFile(file, "w"); FileChannel c = f.getChannel()) {
-			do {
-				int nb = io.readFullySync(buffer);
-				if (nb <= 0) break;
-				buffer.flip();
-				c.write(buffer);
-				buffer.clear();
-			} while (true);
-			return file;
-		}
+	@SuppressWarnings("resource")
+	public static AsyncWork<File, IOException> toTempFile(IO.Readable io) {
+		IO.Readable.Buffered bio;
+		if (io instanceof IO.Readable.Buffered)
+			bio = (IO.Readable.Buffered)io;
+		else
+			bio = new SimpleBufferedReadable(io, 65536);
+		AsyncWork<FileIO.ReadWrite, IOException> createFile =
+			TemporaryFiles.get().createAndOpenFileAsync("net.lecousin.framework.io", "streamtofile");
+		AsyncWork<File, IOException> result = new AsyncWork<>();
+		createFile.listenInline(() -> {
+			File file = createFile.getResult().getFile();
+			copy(bio, createFile.getResult(), -1, true, null, 0).listenInline(() -> {
+				result.unblockSuccess(file);
+			}, result);
+		}, result);
+		return result;
 	}
 	
 	/**

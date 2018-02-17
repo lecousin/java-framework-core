@@ -17,6 +17,7 @@ import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.io.TemporaryFiles;
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
@@ -57,10 +58,16 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 	@Override
 	public String getSourceDescription() { return sourceDescription; }
 	
-	private void createFile() throws IOException {
-		File file = File.createTempFile("net.lecousin.framework", "tempIO");
-		file.deleteOnExit();
-		this.file = new FileIO.ReadWrite(file, priority);
+	private void createFileSync() throws IOException {
+		this.file = TemporaryFiles.get().createAndOpenFileSync("net.lecousin.framework", "tempIO");
+	}
+	
+	private SynchronizationPoint<IOException> createFileAsync() {
+		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+		TemporaryFiles.get().createAndOpenFileAsync("net.lecousin.framework", "tempIO").listenInline((f) -> {
+			IOInMemoryOrFile.this.file = f;
+		}, sp);
+		return sp;
 	}
 	
 	@Override
@@ -223,7 +230,7 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 
 			// some other will go to file
 			if (file == null)
-				createFile();
+				createFileSync();
 			
 			int inFil = ((IO.Writable.Seekable)file).writeSync(0, buffer);
 			if (inFil < len - inMem) len = inMem + inFil;
@@ -234,7 +241,7 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 
 		// all go to file
 		if (file == null)
-			createFile();
+			createFileSync();
 		int nb = ((IO.Writable.Seekable)file).writeSync(pos - maxSizeInMemory, buffer);
 		this.pos = pos + nb;
 		if (pos + nb > size) size = pos + nb;
@@ -267,17 +274,22 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 			// some other will go to file
 			Task<Integer,IOException> mem = new WriteInMemory((int)pos, buffer, (int)(maxSizeInMemory - pos), null);
 			mem.start();
-			if (file == null)
-				try { createFile(); }
-				catch (IOException e) {
-					if (ondone != null) ondone.run(new Pair<>(null, e));
-					return new AsyncWork<Integer,IOException>(null, e);
-				}
+			AsyncWork<Integer, IOException> memReady;
+			if (file == null) {
+				memReady = new AsyncWork<>();
+				SynchronizationPoint<IOException> createFile = createFileAsync();
+				JoinPoint.fromSynchronizationPointsSimilarError(mem.getOutput(), createFile).listenInline(
+					() -> { memReady.unblockSuccess(mem.getOutput().getResult()); },
+					memReady
+				);
+			} else
+				memReady = mem.getOutput();
 			AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 			Mutable<AsyncWork<Integer,IOException>> fil = new Mutable<>(null);
 			this.pos = pos + len;
 			if (pos + len > size) size = pos + len;
-			IOUtil.listenOnDone(mem.getOutput(), (res) -> {
+			IOUtil.listenOnDone(memReady,
+			(res) -> {
 				fil.set(((IO.Writable.Seekable)file).writeAsync(0, buffer));
 				IOUtil.listenOnDone(fil.get(), (result) -> {
 					Integer r = Integer.valueOf(mem.getResult().intValue() + result.intValue());
@@ -295,16 +307,21 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 			return operation(sp);
 		}
 		// all go to file
-		if (file == null)
-			try { createFile(); }
-			catch (IOException e) {
-				if (ondone != null) ondone.run(new Pair<>(null, e));
-				return new AsyncWork<Integer,IOException>(null, e);
-			}
-		this.pos = pos + len;
-		if (pos + len > size) size = pos + len;
-		AsyncWork<Integer,IOException> task = ((IO.Writable.Seekable)file).writeAsync(pos - maxSizeInMemory, buffer, ondone);
-		return operation(task);
+		if (file != null) {
+			this.pos = pos + len;
+			if (pos + len > size) size = pos + len;
+			AsyncWork<Integer,IOException> task = ((IO.Writable.Seekable)file).writeAsync(pos - maxSizeInMemory, buffer, ondone);
+			return operation(task);
+		}
+		AsyncWork<Integer,IOException> result = new AsyncWork<>();
+		long p = pos;
+		createFileAsync().listenInline(() -> {
+			this.pos = p + len;
+			if (p + len > size) size = p + len;
+			AsyncWork<Integer,IOException> task = ((IO.Writable.Seekable)file).writeAsync(p - maxSizeInMemory, buffer, ondone);
+			operation(task).listenInline(result);
+		}, result);
+		return result;
 	}
 	
 	@Override
@@ -358,7 +375,7 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 		}
 		if (newSize > maxSizeInMemory) {
 			if (file == null)
-				createFile();
+				createFileSync();
 			file.setSizeSync(newSize - maxSizeInMemory);
 		}
 		size = newSize;
@@ -435,13 +452,18 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 			task.start();
 			taskMemory = operation(task.getOutput());
 		}
-		AsyncWork<Void, IOException> taskFile = null;
+		AsyncWork<Void, IOException> taskFile;
 		if (newSize > maxSizeInMemory) {
-			if (file == null)
-				try { createFile(); }
-				catch (IOException e) { return new AsyncWork<>(null, e); }
-			taskFile = operation(file.setSizeAsync(newSize - maxSizeInMemory));
-		}
+			if (file != null)
+				taskFile = operation(file.setSizeAsync(newSize - maxSizeInMemory));
+			else {
+				taskFile = new AsyncWork<>();
+				createFileAsync().listenInline(() -> {
+					operation(file.setSizeAsync(newSize - maxSizeInMemory)).listenInline(taskFile);
+				}, taskFile);
+			}
+		} else
+			taskFile = null;
 		AsyncWork<Void, IOException> result = new AsyncWork<>();
 		JoinPoint.fromSynchronizationPointsSimilarError(taskMemory, taskFile).listenInline(() -> {
 			size = newSize;
