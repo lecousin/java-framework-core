@@ -38,6 +38,12 @@
   			<artifactId>core</artifactId>
   			<version>0.10.0</version>
   		</dependency>
+  		<dependency>
+  			<groupId>net.lecousin</groupId>
+  			<artifactId>core</artifactId>
+  			<version>0.10.0</version>
+  			<type>test-jar</type>
+  		</dependency>
   	</dependencies>
   </dependencyManagement>
   

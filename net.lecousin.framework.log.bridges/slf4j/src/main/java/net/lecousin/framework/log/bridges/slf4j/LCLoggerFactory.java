@@ -7,7 +7,6 @@ import net.lecousin.framework.application.LCCore;
 
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
-import org.slf4j.impl.SimpleLogger;
 
 public class LCLoggerFactory implements ILoggerFactory {
 
