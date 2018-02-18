@@ -13,7 +13,7 @@ public class TestDrivesTaskManager extends LCCoreAbstractTest {
 	@Test(timeout=60000)
 	public void simpleTests() {
 		Object res1 = Threading.getDrivesTaskManager().getResource(new File("."));
-		Object res2 = Threading.getDrivesTaskManager().getResource(".");
+		Object res2 = Threading.getDrivesTaskManager().getResource(new File(".").getAbsolutePath());
 		Assert.assertEquals(res1, res2);
 		
 		Threading.getDrivesTaskManager().getResources();

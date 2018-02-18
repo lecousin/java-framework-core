@@ -134,6 +134,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 			do {
 				SynchronizationPoint<NoException> sp = null;
 				synchronized (this) {
+					if (isClosing() || isClosed()) return 0;
 					if (buffers.size() >= maxPendingBuffers) {
 						sp = new SynchronizationPoint<>();
 						lockMaxBuffers.addLast(sp);
