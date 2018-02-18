@@ -3,16 +3,17 @@
   <groupId>net.lecousin.framework</groupId>
   <artifactId>log.bridges</artifactId>
   <packaging>pom</packaging>
-  <version>0.1.1</version>
+  <version>0.10.0</version>
 
   <parent>
   	<groupId>net.lecousin</groupId>
   	<artifactId>core-parent-pom</artifactId>
-  	<version>0.9.0</version>
+  	<version>0.10.0</version>
   </parent>
   
   <modules>
 	<module>commons-logging</module>
+	<module>slf4j</module>
   </modules>
   
   <licenses>
@@ -35,7 +36,7 @@
   		<dependency>
   			<groupId>net.lecousin</groupId>
   			<artifactId>core</artifactId>
-  			<version>0.9.16</version>
+  			<version>0.10.0</version>
   		</dependency>
   	</dependencies>
   </dependencyManagement>
