@@ -3,14 +3,9 @@ package net.lecousin.framework.concurrent.tasks.drives;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
-import java.util.ArrayList;
 
-import net.lecousin.framework.collections.sort.RedBlackTreeInteger;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
-import net.lecousin.framework.event.Listener;
-import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
@@ -36,92 +31,32 @@ class ReadFileTask extends Task.OnFile<Integer,IOException> {
 	private long pos;
 	private ByteBuffer buffer;
 	private boolean fully;
-	private int nbRead = 0;
-	
-	private RedBlackTreeInteger<SynchronizationPoint<NoException>> waiting = null;
-	private ArrayList<Listener<Integer>> onprogress = null;
-	
-	public int getCurrentNbRead() { return nbRead; }
-	
-	public int waitNbRead(int nbRead) throws IOException {
-		if (this.nbRead >= nbRead) return this.nbRead;
-		if (getError() != null) throw getError();
-		if (isDone()) return this.nbRead;
-		SynchronizationPoint<NoException> sp = new SynchronizationPoint<NoException>();
-		synchronized (buffer) {
-			if (getError() != null) throw getError();
-			if (isDone()) return this.nbRead;
-			if (waiting == null) waiting = new RedBlackTreeInteger<>();
-			waiting.add(nbRead, sp);
-		}
-		sp.block(0);
-		if (getError() != null) throw getError();
-		return this.nbRead;
-	}
-	
-	public void onprogress(Listener<Integer> listener) {
-		synchronized (buffer) {
-			if (nbRead > 0) listener.fire(Integer.valueOf(nbRead));
-			if (onprogress == null) onprogress = new ArrayList<>(5);
-			onprogress.add(listener);
-		}
-	}
 	
 	@Override
 	public Integer run() throws IOException, CancelException {
-		try {
-			if (!file.openTask.isSuccessful())
-				throw file.openTask.getError();
+		if (!file.openTask.isSuccessful())
+			throw file.openTask.getError();
+		int nbRead = 0;
+		if (pos >= 0)
+			try { file.channel.position(pos); }
+			catch (ClosedChannelException e) { throw new CancelException("File has been closed"); }
+			catch (IOException e) {
+				throw new IOException("Unable to seek to position " + pos + " in file " + file.path, e);
+			}
+		if (!fully) {
+			try { nbRead = file.channel.read(buffer); }
+			catch (ClosedChannelException e) { throw new CancelException("File has been closed"); }
+		} else {
 			nbRead = 0;
-			if (pos >= 0)
-				try { file.channel.position(pos); }
+			while (buffer.remaining() > 0) {
+				int nb;
+				try { nb = file.channel.read(buffer); }
 				catch (ClosedChannelException e) { throw new CancelException("File has been closed"); }
-				catch (IOException e) {
-					throw new IOException("Unable to seek to position " + pos + " in file " + file.path, e);
-				}
-			if (!fully) {
-				try { nbRead = file.channel.read(buffer); }
-				catch (ClosedChannelException e) { throw new CancelException("File has been closed"); }
-				callListeners();
-			} else {
-				nbRead = 0;
-				while (buffer.remaining() > 0) {
-					int nb;
-					try { nb = file.channel.read(buffer); }
-					catch (ClosedChannelException e) { throw new CancelException("File has been closed"); }
-					if (nb <= 0) break;
-					nbRead += nb;
-					callListeners();
-				}
-			}
-			return Integer.valueOf(nbRead);
-		} finally {
-			synchronized (buffer) {
-				if (waiting != null) {
-					for (SynchronizationPoint<NoException> sp : waiting) sp.unblock();
-					waiting = null;
-				}
+				if (nb <= 0) break;
+				nbRead += nb;
 			}
 		}
-	}
-	
-	private void callListeners() {
-		synchronized (buffer) {
-			if (onprogress != null)
-				for (int i = onprogress.size() - 1; i >= 0; --i)
-					onprogress.get(i).fire(Integer.valueOf(nbRead));
-			if (waiting != null) {
-				do {
-					RedBlackTreeInteger.Node<SynchronizationPoint<NoException>> min = waiting.getMin();
-					if (min.getValue() <= nbRead) {
-						min.getElement().unblock();
-						waiting.removeMin();
-					} else
-						break;
-				} while (!waiting.isEmpty());
-				if (waiting.isEmpty()) waiting = null;
-			}
-		}
+		return Integer.valueOf(nbRead);
 	}
 	
 }

@@ -6,11 +6,13 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.io.FileIO;
+import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
@@ -99,9 +101,11 @@ public class FileAccess implements AutoCloseable {
 	}
 	
 	public int read(long pos, ByteBuffer buffer) throws IOException {
-		ReadFileTask task = new ReadFileTask(this, pos, buffer, false, priority, null);
-		task.getOutput().blockException(0);
-		return task.getCurrentNbRead();
+		try {
+			return new ReadFileTask(this, pos, buffer, false, priority, null).getOutput().blockResult(0).intValue();
+		} catch (CancelException e) {
+			throw IO.error(e);
+		}
 	}
 	
 	public Task<Integer,IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
@@ -109,9 +113,11 @@ public class FileAccess implements AutoCloseable {
 	}
 	
 	public int readFully(long pos, ByteBuffer buffer) throws IOException {
-		ReadFileTask task = new ReadFileTask(this, pos, buffer, true, priority, null);
-		task.getOutput().blockException(0);
-		return task.getCurrentNbRead();
+		try {
+			return new ReadFileTask(this, pos, buffer, true, priority, null).getOutput().blockResult(0).intValue();
+		} catch (CancelException e) {
+			throw IO.error(e);
+		}
 	}
 	
 	public Task<Integer,IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {

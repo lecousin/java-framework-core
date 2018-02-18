@@ -33,6 +33,7 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		jp.addToJoin(spCancel);
 		Assert.assertEquals(4, jp.getToJoin());
 		jp.start();
+		jp.timeout(10000, () -> {});
 		
 		spOk.unblock();
 		Assert.assertEquals(3, jp.getToJoin());
@@ -40,6 +41,7 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		spError.error(new Exception());
 		Assert.assertTrue(jp.isUnblocked());
 		Assert.assertTrue(jp.hasError());
+		jp.timeout(10000, () -> {});
 		
 		jp = new JoinPoint<>();
 		jp.addToJoin(spCancel);
@@ -63,6 +65,7 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		jp.addToJoin(task);
 		Assert.assertEquals(1, jp.getToJoin());
 		Assert.assertFalse(jp.isUnblocked());
+		jp.timeout(1, () -> {});
 		
 		jp = JoinPoint.fromTasks(task);
 		Assert.assertEquals(1, jp.getToJoin());

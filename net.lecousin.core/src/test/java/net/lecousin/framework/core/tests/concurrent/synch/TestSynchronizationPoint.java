@@ -1,6 +1,7 @@
 package net.lecousin.framework.core.tests.concurrent.synch;
 
 import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -240,6 +241,44 @@ public class TestSynchronizationPoint extends LCCoreAbstractTest {
 		aw.listenInline(onOk, onError, onCancel);
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(7, cancel.get());
+		
+		sp = new SynchronizationPoint<>();
+		sp2 = new SynchronizationPoint<>();
+		sp.listenAsync(new Task.Cpu<Void, Exception>("test", Task.PRIORITY_NORMAL) {
+			@Override
+			public Void run() throws CancelException {
+				throw new CancelException("test");
+			}
+		}, sp2);
+		sp.unblock();
+		sp2.block(0);
+		Assert.assertTrue(sp2.isCancelled());
+		
+		sp = new SynchronizationPoint<>();
+		sp2 = new SynchronizationPoint<>();
+		sp.listenAsyncSP(new Task.Cpu<Void, Exception>("test", Task.PRIORITY_NORMAL) {
+			@Override
+			public Void run() throws CancelException {
+				throw new CancelException("test");
+			}
+		}, sp2);
+		sp.unblock();
+		sp2.block(0);
+		Assert.assertTrue(sp2.isCancelled());
+		
+		sp = new SynchronizationPoint<>(new CancelException("test"));
+		Assert.assertTrue(sp.isCancelled());
+		
+		SynchronizationPoint<Exception> spbp1 = new SynchronizationPoint<>();
+		SynchronizationPoint<Exception> spbp2 = new SynchronizationPoint<>();
+		new Task.Cpu.FromRunnable(() -> {
+			spbp1.unblock();
+			spbp2.blockPause(5000);
+		}, "test", Task.PRIORITY_NORMAL).start();
+		spbp1.block(0);
+		try { Thread.sleep(100); } catch (InterruptedException e) {}
+		spbp2.unblock();
+		spbp2.blockPause(1);
 	}
 	
 }

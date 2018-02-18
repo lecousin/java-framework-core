@@ -3,11 +3,15 @@ package net.lecousin.framework.core.tests.concurrent.synch;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
+import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListenerReady;
+import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListenerReady.OnReady;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
+import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.RunnableWithParameter;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -305,6 +309,62 @@ public class TestAsyncWork extends LCCoreAbstractTest {
 		Assert.assertTrue(aw.isSuccessful());
 		Assert.assertFalse(aw.hasError());
 		Assert.assertFalse(aw.isCancelled());
+	}
+	
+	@Test(timeout=30000)
+	public void testAsyncWorkListenerReady() {
+		MutableInteger nbOk = new MutableInteger(0);
+		OnReady<Integer, Exception> ready = (result, that) -> {
+			nbOk.inc();
+		};
+		SynchronizationPoint<Exception> sp;
+		MutableInteger nbDone = new MutableInteger(0);
+		RunnableWithParameter<Pair<Integer, Exception>> ondone = (p) -> {
+			nbDone.inc();
+		};
+		AsyncWork<Integer, Exception> aw;
+		
+		// ok
+		aw = new AsyncWork<>();
+		sp = new SynchronizationPoint<>();
+		aw.listenInline(new AsyncWorkListenerReady<>(ready, sp, ondone));
+		aw.unblockSuccess(Integer.valueOf(51));
+		Assert.assertEquals(1, nbOk.get());
+		Assert.assertFalse(sp.isUnblocked());
+		Assert.assertEquals(0, nbDone.get());
+		
+		// error with ondone
+		aw = new AsyncWork<>();
+		sp = new SynchronizationPoint<>();
+		aw.listenInline(new AsyncWorkListenerReady<>(ready, sp, ondone));
+		aw.unblockError(new Exception());
+		Assert.assertEquals(1, nbOk.get());
+		Assert.assertTrue(sp.isUnblocked());
+		Assert.assertTrue(sp.hasError());
+		Assert.assertFalse(sp.isCancelled());
+		Assert.assertEquals(1, nbDone.get());
+		
+		// error without ondone
+		aw = new AsyncWork<>();
+		sp = new SynchronizationPoint<>();
+		aw.listenInline(new AsyncWorkListenerReady<>(ready, sp));
+		aw.unblockError(new Exception());
+		Assert.assertEquals(1, nbOk.get());
+		Assert.assertTrue(sp.isUnblocked());
+		Assert.assertTrue(sp.hasError());
+		Assert.assertFalse(sp.isCancelled());
+		Assert.assertEquals(1, nbDone.get());
+		
+		// cancel
+		aw = new AsyncWork<>();
+		sp = new SynchronizationPoint<>();
+		aw.listenInline(new AsyncWorkListenerReady<>(ready, sp, ondone));
+		aw.unblockCancel(new CancelException("test"));
+		Assert.assertEquals(1, nbOk.get());
+		Assert.assertTrue(sp.isUnblocked());
+		Assert.assertFalse(sp.hasError());
+		Assert.assertTrue(sp.isCancelled());
+		Assert.assertEquals(1, nbDone.get());
 	}
 	
 }

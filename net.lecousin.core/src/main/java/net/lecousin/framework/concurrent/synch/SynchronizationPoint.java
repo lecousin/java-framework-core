@@ -80,18 +80,14 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 			if (log == null || !log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
 					try { listeners.get(i).run(); }
-					catch (Throwable t) {
-						app.getDefaultLogger()
-							.error("Exception thrown by an inline listener of SynchronizationPoint", t);
-					}
+					catch (Throwable t) { app.getDefaultLogger().error(
+						"Exception thrown by an inline listener of SynchronizationPoint", t); }
 			else
 				for (int i = 0; i < listeners.size(); ++i) {
 					long start = System.nanoTime();
 					try { listeners.get(i).run(); }
-					catch (Throwable t) {
-						app.getDefaultLogger()
-							.error("Exception thrown by an inline listener of SynchronizationPoint", t);
-					}
+					catch (Throwable t) { app.getDefaultLogger().error(
+						"Exception thrown by an inline listener of SynchronizationPoint", t); }
 					long time = System.nanoTime() - start;
 					if (time > 1000000) // more than 1ms
 						log.debug("Listener took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
