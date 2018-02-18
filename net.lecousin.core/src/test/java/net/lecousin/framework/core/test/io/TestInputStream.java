@@ -17,6 +17,17 @@ public abstract class TestInputStream extends TestIO.UsingGeneratedTestFiles {
 	protected abstract InputStream openStream();
 
 	@Test(timeout=120000)
+	public void testBasics() throws Exception {
+		InputStream in = openStream();
+		in.available();
+		if (in.markSupported()) {
+			in.mark(1);
+			in.reset();
+		}
+		in.close();
+	}
+	
+	@Test(timeout=120000)
 	public void testByFullBuffer() throws Exception {
 		InputStream in = openStream();
 		byte[] buf = new byte[testBuf.length];

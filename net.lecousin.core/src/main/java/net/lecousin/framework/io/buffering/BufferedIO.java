@@ -761,7 +761,8 @@ public abstract class BufferedIO extends BufferingManaged {
 		Buffer buffer = useBufferSync(bufferIndex);
 		int start = getBufferOffset(pos);
 		int len = buf.remaining();
-		if (len > buffer.len - start) len = buffer.len - start;
+		int max = buffer.len - start;
+		if (len > max) len = max;
 		if (len <= 0)
 			return 0;
 		buf.put(buffer.buffer, start, len);

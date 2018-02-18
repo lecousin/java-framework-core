@@ -1,5 +1,7 @@
 package net.lecousin.framework.core.tests.concurrent;
 
+import java.io.File;
+
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -76,6 +78,35 @@ public class TestTask extends LCCoreAbstractTest {
 				return null;
 			}
 		}.start();
+		
+		new Task.Cpu.FromRunnable(() -> {}, "test", Task.PRIORITY_NORMAL).start();
+		
+		Task.OnFile.Parameter<Integer, Long, Exception> fileParam = new Task.OnFile.Parameter<Integer, Long, Exception>(new File("."), "test", Task.PRIORITY_NORMAL) {
+			@Override
+			public Long run() {
+				return null;
+			}
+		};
+		fileParam.start(Integer.valueOf(1234));
+		Assert.assertEquals(1234, fileParam.getParameter().intValue());
+		
+		fileParam = new Task.OnFile.Parameter<Integer, Long, Exception>(new File("."), "test", Task.PRIORITY_NORMAL, (p) -> {}) {
+			@Override
+			public Long run() {
+				return null;
+			}
+		};
+		fileParam.start(Integer.valueOf(5678));
+		Assert.assertEquals(5678, fileParam.getParameter().intValue());
+		
+		Task.Unmanaged<Integer, Exception> unmanaged = new Task.Unmanaged<Integer, Exception>("test", Task.PRIORITY_NORMAL) {
+			@Override
+			public Integer run() {
+				return Integer.valueOf(111);
+			}
+		};
+		unmanaged.startOn(true);
+		Assert.assertEquals(111, unmanaged.getOutput().blockResult(0).intValue());
 	}
 	
 }

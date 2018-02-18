@@ -7,10 +7,12 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.TemporaryFiles;
 import net.lecousin.framework.io.provider.FileIOProvider;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 public class TestFileIOProvider extends LCCoreAbstractTest {
 
+	@SuppressWarnings("unused")
 	@Test(timeout=60000)
 	public void test() throws Exception {
 		File f = TemporaryFiles.get().createFileSync("test", "fileioprovider");
@@ -21,6 +23,14 @@ public class TestFileIOProvider extends LCCoreAbstractTest {
 		provider.provideIOReadWriteSeekable(Task.PRIORITY_NORMAL).close();
 		provider.provideIOWritable(Task.PRIORITY_NORMAL).close();
 		provider.provideIOWritableSeekable(Task.PRIORITY_NORMAL).close();
+		Assert.assertEquals(f.getAbsolutePath(), provider.getDescription());
+		Assert.assertEquals(f, provider.getFile());
+		try {
+			new FileIOProvider(new File("."));
+			throw new AssertionError("Must not accept a directory");
+		} catch (IllegalArgumentException e) {
+			// ok
+		}
 	}
 	
 }

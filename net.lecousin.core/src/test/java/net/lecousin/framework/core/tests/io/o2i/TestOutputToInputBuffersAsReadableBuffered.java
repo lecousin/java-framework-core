@@ -28,7 +28,7 @@ public class TestOutputToInputBuffersAsReadableBuffered extends TestReadableBuff
 	
 	@Override
 	protected OutputToInputBuffers createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
-		OutputToInputBuffers o2i = new OutputToInputBuffers(true, Task.PRIORITY_NORMAL);
+		OutputToInputBuffers o2i = new OutputToInputBuffers(true, -3, Task.PRIORITY_NORMAL);
 		IOUtil.copy(file, o2i, fileSize, false, null, 0).blockException(0);
 		o2i.endOfData();
 		file.closeAsync();

@@ -5,6 +5,7 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
 import net.lecousin.framework.io.provider.SubIOProvider;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 public class TestSubIOProvider extends LCCoreAbstractTest {
@@ -15,6 +16,7 @@ public class TestSubIOProvider extends LCCoreAbstractTest {
 		SubIOProvider.Readable provider = new SubIOProvider.Readable(io, 10, 20, "test");
 		provider.provideIOReadable(Task.PRIORITY_NORMAL).close();
 		provider.provideIOReadableSeekable(Task.PRIORITY_NORMAL).close();
+		Assert.assertEquals("test", provider.getDescription());
 		io.close();
 	}
 	

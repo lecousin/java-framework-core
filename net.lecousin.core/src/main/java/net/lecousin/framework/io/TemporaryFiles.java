@@ -57,6 +57,7 @@ public final class TemporaryFiles {
 			if (prefix == null)
 				prefix = "";
 		}
+		prefix = prefix.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
 	}
 	
 	//private Application app;

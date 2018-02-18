@@ -17,6 +17,7 @@ import net.lecousin.framework.io.buffering.ByteBuffersIO;
 import net.lecousin.framework.io.buffering.MemoryIO;
 import net.lecousin.framework.io.encoding.Base64;
 import net.lecousin.framework.io.encoding.Base64Decoder;
+import net.lecousin.framework.io.text.BufferedWritableCharacterStream;
 
 public class TestBase64 extends LCCoreAbstractTest {
 
@@ -33,6 +34,12 @@ public class TestBase64 extends LCCoreAbstractTest {
 		Assert.assertEquals("That is a test!", new String(Base64.decode("VGhhdCBpcyBhIHRlc3Qh".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
 		Assert.assertEquals("This is a test", new String(Base64.decode("VGhpcyBpcyBhIHRlc3Q=")));
 		Assert.assertEquals("That is a test!", new String(Base64.decode("VGhhdCBpcyBhIHRlc3Qh=")));
+		
+		byte[] buf = new byte[100];
+		Base64.decode4BytesBase64("VGhp".getBytes("US-ASCII"), buf, 10);
+		Assert.assertEquals((byte)'T', buf[10]);
+		Assert.assertEquals((byte)'h', buf[11]);
+		Assert.assertEquals((byte)'i', buf[12]);
 	}
 	
 	@SuppressWarnings("resource")
@@ -100,6 +107,42 @@ public class TestBase64 extends LCCoreAbstractTest {
 			byte[] data = new byte[128];
 			for (int j = 0; j < 128; ++j)
 				data[j] = (byte)((i * j % 300) + i + j - i/3);
+			Assert.assertArrayEquals("Buffer " + i, data, b);
+		}
+		
+		input = new ByteBuffersIO(false, "base64_src", Task.PRIORITY_NORMAL);
+		for (int i = 0; i < 1024; ++i) {
+			byte[] data = new byte[128];
+			for (int j = 0; j < 128; ++j)
+				data[j] = (byte)('a' + (j % 20));
+			input.addBuffer(data, 0, 1);
+			input.addBuffer(data, 1, 1);
+			input.addBuffer(data, 2, 1);
+			input.addBuffer(data, 3, 125);
+		}
+		encoded = new MemoryIO(8192, "base64_encoded");
+		BufferedWritableCharacterStream encodedStream = new BufferedWritableCharacterStream(encoded, StandardCharsets.UTF_8, 512);
+		Base64.encodeAsync(input, encodedStream).blockException(0);
+		encodedStream.flush().blockThrow(0);
+		encoded.seekSync(SeekType.FROM_BEGINNING, 0);
+		decoded = new MemoryIO(8192, "base64_decoded");
+		decoder = new Base64Decoder(decoded);
+		do {
+			ByteBuffer bb = ByteBuffer.allocate(123);
+			int nb = encoded.readFullySync(bb);
+			if (nb <= 0) break;
+			bb.flip();
+			decoder.decode(bb).blockException(0);
+		} while (true);
+		decoder.flush().blockException(0);
+		decoded.seekSync(SeekType.FROM_BEGINNING, 0);
+		b = new byte[128];
+		for (int i = 0; i < 1024; ++i) {
+			int nb = decoded.readFully(b);
+			Assert.assertEquals(128, nb);
+			byte[] data = new byte[128];
+			for (int j = 0; j < 128; ++j)
+				data[j] = (byte)('a' + (j % 20));
 			Assert.assertArrayEquals("Buffer " + i, data, b);
 		}
 	}

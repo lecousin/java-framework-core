@@ -4,6 +4,7 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.provider.ByteArrayIOProvider;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 public class TestByteArrayIOProvider extends LCCoreAbstractTest {
@@ -18,6 +19,7 @@ public class TestByteArrayIOProvider extends LCCoreAbstractTest {
 		provider.provideIOReadWriteSeekable(Task.PRIORITY_NORMAL).close();
 		provider.provideIOWritable(Task.PRIORITY_NORMAL).close();
 		provider.provideIOWritableSeekable(Task.PRIORITY_NORMAL).close();
+		Assert.assertEquals("test", provider.getDescription());
 	}
 	
 }

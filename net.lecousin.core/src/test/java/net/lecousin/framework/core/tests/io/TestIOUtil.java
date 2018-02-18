@@ -1,14 +1,25 @@
 package net.lecousin.framework.core.tests.io;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
+import net.lecousin.framework.io.IOFromInputStream;
+import net.lecousin.framework.io.IOFromOutputStream;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.io.TemporaryFiles;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
+import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
+import net.lecousin.framework.progress.FakeWorkProgress;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -89,4 +100,41 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		io.close();
 	}
 	
+	@SuppressWarnings("resource")
+	@Test(timeout=120000)
+	public void testCopy() throws Exception {
+		String string = "This is a string to test";
+		byte[] data = string.getBytes(StandardCharsets.UTF_16);
+
+		File tmp1 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
+		IOUtil.copy(new ByteArrayIO(data, "test"), new FileIO.WriteOnly(tmp1, Task.PRIORITY_NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
+		
+		File tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
+		IOUtil.copy(tmp1, tmp2, Task.PRIORITY_NORMAL, -1, new FakeWorkProgress(), 100, null).blockThrow(0);
+		Assert.assertEquals(string, IOUtil.readFullyAsStringSync(tmp2, StandardCharsets.UTF_16));
+		tmp2.delete();
+		
+		tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
+		InputStream in = new FileInputStream(tmp1);
+		IOUtil.copy(new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.PRIORITY_NORMAL), new FileIO.WriteOnly(tmp2, Task.PRIORITY_NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
+		Assert.assertEquals(string, IOUtil.readFullyAsStringSync(tmp2, StandardCharsets.UTF_16));
+		tmp2.delete();
+		
+		tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
+		in = new FileInputStream(tmp1);
+		IOUtil.copy(new IOFromInputStream(in, "test", Threading.getDrivesTaskManager().getTaskManager(tmp2), Task.PRIORITY_NORMAL), new FileIO.WriteOnly(tmp2, Task.PRIORITY_NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
+		Assert.assertEquals(string, IOUtil.readFullyAsStringSync(tmp2, StandardCharsets.UTF_16));
+		tmp2.delete();
+
+		tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
+		OutputStream out = new FileOutputStream(tmp2);
+		IOUtil.copy(new SimpleBufferedReadable(new FileIO.ReadOnly(tmp1, Task.PRIORITY_NORMAL), 10), new IOFromOutputStream(out, "test", Threading.getCPUTaskManager(), Task.PRIORITY_NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
+		Assert.assertEquals(string, IOUtil.readFullyAsStringSync(tmp2, StandardCharsets.UTF_16));
+		tmp2.delete();
+		
+		tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
+		IOUtil.copy(new FileIO.ReadOnly(tmp1, Task.PRIORITY_NORMAL), new FileIO.WriteOnly(tmp2, Task.PRIORITY_NORMAL), tmp1.length(), true, new FakeWorkProgress(), 100).blockThrow(0);
+		Assert.assertEquals(string, IOUtil.readFullyAsStringSync(tmp2, StandardCharsets.UTF_16));
+		tmp2.delete();
+	}
 }

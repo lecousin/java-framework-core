@@ -27,11 +27,22 @@ public class TestOutputToInputBuffersAsReadable extends TestReadable {
 	}
 	
 	@Override
-	protected OutputToInputBuffers createReadableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
-		OutputToInputBuffers o2i = new OutputToInputBuffers(true, Task.PRIORITY_NORMAL);
-		IOUtil.copy(file, o2i, fileSize, false, null, 0).blockException(0);
-		o2i.endOfData();
-		file.closeAsync();
+	protected OutputToInputBuffers createReadableFromFile(FileIO.ReadOnly file, long fileSize) {
+		OutputToInputBuffers o2i = new OutputToInputBuffers(true, 1, Task.PRIORITY_NORMAL);
+		IOUtil.copy(file, o2i, fileSize, false, null, 0).listenInline(
+			() -> {
+				o2i.endOfData();
+				file.closeAsync();
+			},
+			(error) -> {
+				o2i.signalErrorBeforeEndOfData(error);
+				file.closeAsync();
+			},
+			(cancel) -> {
+				o2i.endOfData();
+				file.closeAsync();
+			}
+		);
 		return o2i;
 	}
 	

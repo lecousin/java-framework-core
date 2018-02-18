@@ -6,6 +6,7 @@ import java.util.LinkedList;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
@@ -171,6 +172,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 		synchronized (this) {
 			lastWrite = task.getOutput();
 			if (maxPendingBuffers > 0) {
+				if (isClosing() || isClosed()) return new AsyncWork<>(null, null, new CancelException("IO closed"));
 				if (buffers.size() >= maxPendingBuffers) {
 					sp = new SynchronizationPoint<>();
 					lockMaxBuffers.addLast(sp);
@@ -242,6 +244,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	public int readAsync() throws IOException {
 		ByteBuffer b = null;
 		synchronized (this) {
+			if (isClosing() || isClosed()) throw new IOException("IO closed");
 			if (!buffers.isEmpty())
 				b = buffers.get(0);
 			else if (eof)
@@ -431,11 +434,12 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 			"Peek next buffer from OutputToInputBuffers", getPriority(), ondone
 		) {
 			@Override
-			public ByteBuffer run() throws IOException {
+			public ByteBuffer run() throws IOException, CancelException {
 				SynchronizationPoint<NoException> sp = null;
 				ByteBuffer b = null;
 				do {
 					synchronized (this) {
+						if (isClosing() || isClosed()) throw new CancelException("IO closed");
 						if (!buffers.isEmpty()) {
 							b = buffers.removeFirst();
 							if (maxPendingBuffers > 0)

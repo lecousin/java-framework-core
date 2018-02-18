@@ -2,21 +2,25 @@ package net.lecousin.framework.core.tests.concurrent;
 
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
-
-import org.junit.Test;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.util.production.simple.Consumer;
+import net.lecousin.framework.concurrent.util.production.simple.Producer;
+import net.lecousin.framework.concurrent.util.production.simple.ProductTransformation;
 import net.lecousin.framework.concurrent.util.production.simple.Production;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IOWritePool;
 import net.lecousin.framework.io.out2in.OutputToInputBuffers;
 import net.lecousin.framework.io.util.IOReaderAsProducer;
 import net.lecousin.framework.util.Pair;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestProduction extends LCCoreAbstractTest {
 
@@ -38,7 +42,7 @@ public class TestProduction extends LCCoreAbstractTest {
 		writer.getOutput().listenInline(new Runnable() {
 			@Override
 			public void run() {
-				System.out.println("Writer done");
+				//System.out.println("Writer done");
 				if (!writer.isSuccessful())
 					jp.error(writer.getError());
 				else
@@ -48,7 +52,7 @@ public class TestProduction extends LCCoreAbstractTest {
 		production.getSyncOnFinished().listenInline(new Runnable() {
 			@Override
 			public void run() {
-				System.out.println("Production done");
+				//System.out.println("Production done");
 				if (!production.getSyncOnFinished().isSuccessful())
 					jp.error(production.getSyncOnFinished().getError());
 				else
@@ -178,6 +182,64 @@ public class TestProduction extends LCCoreAbstractTest {
 		public void cancel(CancelException event) {
 			event.printStackTrace(System.err);
 		}
+	}
+	
+	@Test(timeout=60000)
+	public void testTransformation() throws Exception {
+		AsyncWork<List<Long>, Exception> result = new AsyncWork<>();
+		Consumer<Long> finalConsumer = new Consumer<Long>() {
+			private LinkedList<Long> list = new LinkedList<>();
+			@Override
+			public AsyncWork<?, ? extends Exception> consume(Long product) {
+				list.add(product);
+				return new AsyncWork<>(null, null);
+			}
+			@Override
+			public AsyncWork<?, ? extends Exception> endOfProduction() {
+				result.unblockSuccess(list);
+				return new AsyncWork<>(null, null);
+			}
+			@Override
+			public void cancel(CancelException event) {
+				result.cancel(event);
+			}
+			@Override
+			public void error(Exception error) {
+				result.error(error);
+			}
+		};
+		ProductTransformation<Integer, Long> transform = new ProductTransformation<Integer, Long>(finalConsumer) {
+			@Override
+			protected AsyncWork<Long, Exception> process(Integer input) {
+				return new AsyncWork<>(Long.valueOf(input.longValue()), null);
+			}
+		};
+		Producer<Integer> producer = new Producer<Integer>() {
+			private LinkedList<Integer> toProduce = new LinkedList<>();
+			{
+				toProduce.add(Integer.valueOf(1));
+				toProduce.add(Integer.valueOf(22));
+				toProduce.add(Integer.valueOf(333));
+				toProduce.add(Integer.valueOf(4444));
+			}
+			@Override
+			public AsyncWork<Integer, ? extends Exception> produce(Production<Integer> production) {
+				if (toProduce.isEmpty())
+					return new AsyncWork<>(null, null);
+				return new AsyncWork<>(toProduce.removeFirst(), null);
+			}
+			@Override
+			public void cancel(CancelException event) {
+			}
+		};
+		Production<Integer> production = new Production<Integer>(producer, 2, transform);
+		production.start();
+		List<Long> list = result.blockResult(0);
+		Assert.assertEquals(4, list.size());
+		Assert.assertEquals(1, list.remove(0).longValue());
+		Assert.assertEquals(22, list.remove(0).longValue());
+		Assert.assertEquals(333, list.remove(0).longValue());
+		Assert.assertEquals(4444, list.remove(0).longValue());
 	}
 
 }
