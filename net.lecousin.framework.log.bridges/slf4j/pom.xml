@@ -6,7 +6,7 @@
     <version>0.10.0</version>
     <relativePath>..</relativePath>
   </parent>
-  <artifactId>slf4j</artifactId>
+  <artifactId>log.bridges.slf4j</artifactId>
   <version>0.10.0</version>
   
   
