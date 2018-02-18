@@ -81,6 +81,12 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		for (int i = 70; i < 70 + 50; ++i)
 			Assert.assertEquals(data[10 + i - 70], buf[i]);
 		io.close();
+		
+		io = new ByteArrayIO(buf, "test");
+		Assert.assertEquals(0, IOUtil.skipSyncByReading(io, -1));
+		Assert.assertEquals(0, IOUtil.skipAsyncByReading(io, -1, null).blockResult(0).intValue());
+		Assert.assertEquals(0, IOUtil.skipAsyncByReading(io, -1, (p) -> {}).blockResult(0).intValue());
+		io.close();
 	}
 
 	@Test(timeout=120000)
@@ -135,6 +141,16 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
 		IOUtil.copy(new FileIO.ReadOnly(tmp1, Task.PRIORITY_NORMAL), new FileIO.WriteOnly(tmp2, Task.PRIORITY_NORMAL), tmp1.length(), true, new FakeWorkProgress(), 100).blockThrow(0);
 		Assert.assertEquals(string, IOUtil.readFullyAsStringSync(tmp2, StandardCharsets.UTF_16));
+		tmp2.delete();
+		
+		// big file
+		tmp1 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
+		out = new FileOutputStream(tmp1);
+		for (int i = 0; i < 10; ++i)
+			out.write(new byte[64 * 1024]);
+		tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
+		IOUtil.copy(new FileIO.ReadOnly(tmp1, Task.PRIORITY_NORMAL), new FileIO.WriteOnly(tmp2, Task.PRIORITY_NORMAL), tmp1.length(), true, new FakeWorkProgress(), 100).blockThrow(0);
+		tmp1.delete();
 		tmp2.delete();
 	}
 }

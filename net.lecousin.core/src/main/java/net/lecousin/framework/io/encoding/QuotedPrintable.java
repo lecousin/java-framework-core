@@ -9,17 +9,21 @@ import net.lecousin.framework.util.StringUtil;
 
 /** Utility method to encode and decode quoted-printable as defined in RFC 2045. */
 public final class QuotedPrintable {
+	
+	private QuotedPrintable() { /* no instance. */ }
 
 	/** Decode the given input. */
 	public static ByteBuffer decode(ByteBuffer input) throws IOException {
 		byte[] out = new byte[input.remaining()];
 		int pos = 0;
 		int endingSpaces = 0;
+		int endingSpacesSkipped = 0;
 		while (input.hasRemaining()) {
 			byte b = input.get();
 			if ((b >= 33 && b <= 60) || (b >= 62 && b <= 126)) {
 				out[pos++] = b;
 				endingSpaces = 0;
+				endingSpacesSkipped = 0;
 				continue;
 			}
 			if (b == '=') {
@@ -33,6 +37,7 @@ public final class QuotedPrintable {
 				if (c1 == '\r' && c2 == '\n') {
 					// soft line break
 					endingSpaces = 0;
+					endingSpacesSkipped = 0;
 					continue;
 				}
 				int i = StringUtil.decodeHexa(c1);
@@ -41,6 +46,7 @@ public final class QuotedPrintable {
 				if (j == -1) throw new IOException("Invalid hexadecimal value in quoted-printable");
 				out[pos++] = (byte)((i << 4) | j);
 				endingSpaces = 0;
+				endingSpacesSkipped = 0;
 				continue;
 			}
 			if (b == ' ' || b == '\t') {
@@ -50,17 +56,19 @@ public final class QuotedPrintable {
 			}
 			if (b == '\r') {
 				endingSpaces++;
+				endingSpacesSkipped++;
 				continue;
 			}
 			if (b == '\n') {
 				// end of line
-				pos -= endingSpaces;
+				pos -= endingSpaces - endingSpacesSkipped;
 				endingSpaces = 0;
+				endingSpacesSkipped = 0;
 				continue;
 			}
 			throw new IOException("Unexpected byte " + b + " in quoted-printable data");
 		}
-		pos -= endingSpaces;
+		pos -= endingSpaces - endingSpacesSkipped;
 		input.position(input.position() - endingSpaces);
 		return ByteBuffer.wrap(out, 0, pos);
 	}
