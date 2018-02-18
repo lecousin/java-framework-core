@@ -14,7 +14,7 @@ import org.junit.Test;
 
 public class TestPlugins extends LCCoreAbstractTest {
 
-	@Test
+	@Test(timeout=30000)
 	public void testPlugins() {
 		AnExtensionPoint ep = ExtensionPoints.getExtensionPoint(AnExtensionPoint.class);
 		Assert.assertFalse(ep == null);
@@ -32,6 +32,10 @@ public class TestPlugins extends LCCoreAbstractTest {
 			e.getPluginClass();
 		}
 		ExtensionPoints.logRemainingPlugins();
+		
+		ACustomExtensionPointWithFile c = ExtensionPoints.getCustomExtensionPoint(ACustomExtensionPointWithFile.class);
+		Assert.assertNotNull(c);
+		Assert.assertEquals("The test is successful", c.pluginContent);
 	}
 	
 	public static class FakeCustom implements CustomExtensionPoint {

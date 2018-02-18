@@ -14,7 +14,7 @@ public class TestWaitingDataQueueSynchronizationPoint extends LCCoreAbstractTest
 		WaitingDataQueueSynchronizationPoint<Integer, Exception> wdq;
 		
 		wdq = new WaitingDataQueueSynchronizationPoint<>();
-		Assert.assertTrue(wdq.isUnblocked());
+		Assert.assertFalse(wdq.isUnblocked());
 		wdq.cancel(new CancelException("test"));
 		Assert.assertNull(wdq.waitForData(0));
 		Assert.assertTrue(wdq.isUnblocked());

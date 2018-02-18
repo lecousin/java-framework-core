@@ -105,7 +105,7 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	
 	@Override
 	public boolean isUnblocked() {
-		return !waitingData.isEmpty() || cancel != null || error != null;
+		return !waitingData.isEmpty() || cancel != null || error != null || end;
 	}
 	
 	@Override
@@ -118,6 +118,7 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 				if (cancel != null) return;
 				if (error != null) return;
 				if (!waitingData.isEmpty()) return;
+				if (end) return;
 				t = Thread.currentThread();
 				blockedHandler = Threading.getBlockedThreadHandler(t);
 				if (blockedHandler == null)
@@ -132,24 +133,26 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	@Override
 	public void blockPause(long logAfter) {
 		synchronized (this) {
-			if (waitingData.isEmpty()) {
-				do {
-					long start = System.currentTimeMillis();
-					try { this.wait(logAfter + 1000); }
-					catch (InterruptedException e) { return; }
-					if (System.currentTimeMillis() - start <= logAfter)
-						break;
-					System.err.println("Still blocked after " + (logAfter / 1000) + "s.");
-					new Exception("").printStackTrace(System.err);
-				} while (true);
-			}
+			if (cancel != null) return;
+			if (error != null) return;
+			if (!waitingData.isEmpty()) return;
+			if (end) return;
+			do {
+				long start = System.currentTimeMillis();
+				try { this.wait(logAfter + 1000); }
+				catch (InterruptedException e) { return; }
+				if (System.currentTimeMillis() - start <= logAfter)
+					break;
+				System.err.println("Still blocked after " + (logAfter / 1000) + "s.");
+				new Exception("").printStackTrace(System.err);
+			} while (true);
 		}
 	}
 	
 	@Override
 	public void listenInline(Runnable listener) {
 		synchronized (this) {
-			if (waitingData.isEmpty()) {
+			if (waitingData.isEmpty() && !end) {
 				if (listeners == null) listeners = new ArrayList<>();
 				listeners.add(listener);
 				return;

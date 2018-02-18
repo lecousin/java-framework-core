@@ -19,6 +19,7 @@ import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
@@ -63,6 +64,21 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			
 			LinkedList<ISynchronizationPoint<Exception>> tasks = new LinkedList<>();
 			tasks.add(extensionpoints.getOutput());
+			extensionpoints.getOutput().listenAsync(new Start2(tasks), true);
+			return null;
+		}
+	}
+	
+	private class Start2 extends Task.Cpu<Void, NoException> {
+		private Start2(LinkedList<ISynchronizationPoint<Exception>> tasks) {
+			super("Start DefaultLibrariesManager - step 2", Task.PRIORITY_IMPORTANT);
+			this.tasks = tasks;
+		}
+		
+		private LinkedList<ISynchronizationPoint<Exception>> tasks;
+		
+		@Override
+		public Void run() {
 			for (CustomExtensionPoint custom : ExtensionPoints.getCustomExtensionPoints()) {
 				String path = custom.getPluginConfigurationFilePath();
 				if (path == null) continue;
@@ -77,17 +93,17 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			tasks.getLast().listenAsync(new Task.Cpu<Void, NoException>("Finalize libraries loading", Task.PRIORITY_NORMAL) {
 				@Override
 				public Void run() {
-					for (ISynchronizationPoint<Exception> task : tasks) {
-						if (!task.isSuccessful()) {
-							started.error(task.getError());
-							return null;
-						}
-					}
 					ExtensionPoints.allPluginsLoaded();
 					started.unblock();
 					return null;
 				}
-			}, true);
+			}, false);
+			
+			JoinPoint.fromSynchronizationPoints(tasks).listenInline(
+				() -> { /* ok */ },
+				(error) -> { started.error(error); },
+				(cancel) -> { started.cancel(cancel); }
+			);
 			
 			return null;
 		}
@@ -180,9 +196,11 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		
 		@Override
 		public Void run() throws Exception {
+			app.getDefaultLogger().info("Loading plugin files for custom extension point " + ep.getClass().getName() + ": " + filePath);
 			Enumeration<URL> urls = acl.getResources(filePath);
 			while (urls.hasMoreElements()) {
 				URL url = urls.nextElement();
+				app.getDefaultLogger().info(" - Plugin file found: " + url.toString());
 				@SuppressWarnings("resource")
 				InputStream input = url.openStream();
 				@SuppressWarnings("resource")

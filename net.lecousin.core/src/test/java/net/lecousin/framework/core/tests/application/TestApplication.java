@@ -11,8 +11,11 @@ import net.lecousin.framework.application.Version;
 import net.lecousin.framework.application.VersionSpecification;
 import net.lecousin.framework.application.libraries.Library;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.util.AsyncCloseable;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -30,6 +33,12 @@ public class TestApplication extends LCCoreAbstractTest {
 		app.setLocale(Locale.US);
 		app.getLanguageTag();
 		app.getLocalizedProperties();
+		app.closed(new AsyncCloseable<Exception>() {
+			@Override
+			public ISynchronizationPoint<Exception> closeAsync() {
+				return new SynchronizationPoint<>(true);
+			}
+		});
 		
 		app.getLibrariesManager().canLoadNewLibraries();
 		app.getLibrariesManager().loadNewLibrary("test", "test", new VersionSpecification.SingleVersion(new Version("0")), true, Task.PRIORITY_NORMAL, null, 0);

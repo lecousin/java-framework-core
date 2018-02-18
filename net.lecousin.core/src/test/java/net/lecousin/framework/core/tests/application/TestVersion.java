@@ -25,6 +25,8 @@ public class TestVersion extends LCCoreAbstractTest {
 		Assert.assertEquals("[2.1", new VersionRange(new Version("2.1"), null, false).toString());
 		
 		Assert.assertArrayEquals(new int[] { 2, 5, 87 }, VersionRange.parse("2.5.87-alpha"));
+		Assert.assertArrayEquals(new int[] { 1, 3, 5 }, VersionRange.parse("1.3.5|beta"));
+		Assert.assertArrayEquals(new int[] {}, VersionRange.parse("pi"));
 
 		Assert.assertTrue(new VersionRange(new Version("1.2.3"), new Version("1.3.6"), true).includes(new Version("1.2.3")));
 		Assert.assertTrue(new VersionRange(new Version("1.2.3"), new Version("1.3.6"), true).includes(new Version("1.2.4")));
@@ -63,6 +65,9 @@ public class TestVersion extends LCCoreAbstractTest {
 		Assert.assertFalse(new Version("1.2.3.4.5-alpha").equals(new Version("1.2.3.4.6-beta")));
 		Assert.assertFalse(new Version("1.2.3.4.5-alpha").equals(new Object()));
 		Assert.assertEquals("1.2.3.4.5-alpha", new Version("1.2.3.4.5-alpha").toString());
+		Assert.assertEquals("1|beta", new Version("1|beta").toString());
+		Assert.assertEquals("pi", new Version("pi").toString());
+		Assert.assertEquals(1, Version.compare(new int[] { 1,  2, 3 }, new int[] { 1, 2 }));
 	}
 	
 	@Test(timeout=30000)
