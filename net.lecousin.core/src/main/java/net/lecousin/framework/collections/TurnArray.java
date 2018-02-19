@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.exception.NoException;
 
@@ -34,12 +35,19 @@ public class TurnArray<T> implements Deque<T> {
 
 	/** Initialize with a size of 5. */
 	public TurnArray() {
-		this(5);
+		this(5, 5);
+	}
+
+	/** Initialize with the given initial size. */
+	public TurnArray(int initSize) {
+		this(initSize, initSize);
 	}
 	
 	/** Initialize with the given initial size. */
-	public TurnArray(int initSize) {
+	public TurnArray(int initSize, int minSize) {
 		if (initSize <= 0) throw new IllegalArgumentException("initSize must be positive, given: " + initSize);
+		if (minSize < 5) minSize = 5;
+		this.minSize = minSize;
 		array = new Object[initSize];
 	}
 	
@@ -48,6 +56,7 @@ public class TurnArray<T> implements Deque<T> {
 	private int start = 0;
 	/** Index of next element to insert, or -1 if the array is full. */
 	private int end = 0;
+	private int minSize;
 	private DecreaseTask decreaseTask = null;
 	
 	public synchronized boolean isFull() {
@@ -99,16 +108,13 @@ public class TurnArray<T> implements Deque<T> {
 		final T e = (T)array[start];
 		array[start++] = null;
 		if (start == array.length) start = 0;
-		if (decreaseTask == null) {
-			if (array.length > 5 && size() < array.length - array.length >> 1)
-				decreaseTask = new DecreaseTask();
-		}
+		checkDecrease();
 		return e;
 	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public T removeLast() {
+	public synchronized T removeLast() {
 		if (end == start) throw new NoSuchElementException("Collection is empty");
 		if (end == -1) end = start;
 		T e;
@@ -119,10 +125,7 @@ public class TurnArray<T> implements Deque<T> {
 			e = (T)array[--end];
 		}
 		array[end] = null;
-		if (decreaseTask == null) {
-			if (array.length > 5 && size() < array.length - array.length >> 1)
-				decreaseTask = new DecreaseTask();
-		}
+		checkDecrease();
 		return e;
 	}
 	
@@ -163,7 +166,7 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	@Override
-	public void clear() {
+	public synchronized void clear() {
 		if (end == start) return; // empty
 		if (end == -1) {
 			// full
@@ -176,6 +179,7 @@ public class TurnArray<T> implements Deque<T> {
 			while (start < end) array[start++] = null;
 		}
 		start = end = 0;
+		checkDecrease();
 	}
 	
 	@Override
@@ -209,14 +213,14 @@ public class TurnArray<T> implements Deque<T> {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public T peekFirst() {
+	public synchronized T peekFirst() {
 		if (end == start) return null; // empty
 		return (T)array[start];
 	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public T peekLast() {
+	public synchronized T peekLast() {
 		// empty
 		if (end == start) return null;
 		// full
@@ -236,23 +240,20 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	@Override
-	public T pollFirst() {
+	public synchronized T pollFirst() {
 		if (end == start) return null;
 		if (end == -1) end = start;
 		@SuppressWarnings("unchecked")
 		final T e = (T)array[start];
 		array[start++] = null;
 		if (start == array.length) start = 0;
-		if (decreaseTask == null) {
-			if (array.length > 5 && size() < array.length - array.length >> 1)
-				decreaseTask = new DecreaseTask();
-		}
+		checkDecrease();
 		return e;
 	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public T pollLast() {
+	public synchronized T pollLast() {
 		if (end == start) return null;
 		if (end == -1) end = start;
 		T e;
@@ -263,10 +264,7 @@ public class TurnArray<T> implements Deque<T> {
 			e = (T)array[--end];
 		}
 		array[end] = null;
-		if (decreaseTask == null) {
-			if (array.length > 5 && size() < array.length - array.length >> 1)
-				decreaseTask = new DecreaseTask();
-		}
+		checkDecrease();
 		return e;
 	}
 	
@@ -318,21 +316,30 @@ public class TurnArray<T> implements Deque<T> {
 		array = a;
 	}
 	
+	private void checkDecrease() {
+		if (decreaseTask != null) return;
+		if (!LCCore.isStarted()) return;
+		if (array.length > minSize && size() < array.length - (array.length >> 1))
+			decreaseTask = new DecreaseTask();
+	}
+	
 	private void decrease() {
-		int newSize = array.length - array.length >> 1;
-		if (newSize < 5) newSize = 5;
+		int newSize = array.length - (array.length >> 1);
+		if (newSize < minSize) newSize = minSize;
 		if (newSize >= array.length) return;
-		if (end == -1) return;
+		if (size() >= newSize) return;
 		Object[] a = new Object[newSize];
 		if (end > start) {
 			System.arraycopy(array, start, a, 0, end - start);
 			end = end - start;
+			if (end == newSize) end = -1;
 			start = 0;
 		} else if (end < start) {
 			System.arraycopy(array, start, a, 0, array.length - start);
 			if (end > 0)
 				System.arraycopy(array, 0, a, array.length - start, end);
 			end = array.length - start + end;
+			if (end == newSize) end = -1;
 			start = 0;
 		}
 		array = a;
@@ -357,7 +364,7 @@ public class TurnArray<T> implements Deque<T> {
 	// other operation which may cost
 	
 	@Override
-	public boolean contains(Object o) {
+	public synchronized boolean contains(Object o) {
 		if (start == end) return false; // empty
 		if (end == -1) {
 			// full
@@ -383,13 +390,13 @@ public class TurnArray<T> implements Deque<T> {
 
 	/** The implementation of this operation has not been optimised. */
 	@Override
-	public boolean containsAll(Collection<?> c) {
+	public synchronized boolean containsAll(Collection<?> c) {
 		for (Object o : c) if (!contains(o)) return false;
 		return true;
 	}
 
 	/** remove this element, not necessarily the first or last occurrence. */
-	public boolean removeAny(Object element) {
+	public synchronized boolean removeAny(Object element) {
 		if (end == start) return false;
 		if (end == -1) {
 			for (int i = array.length - 1; i >= 0; --i)
@@ -421,7 +428,7 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	@Override
-	public boolean removeFirstOccurrence(Object element) {
+	public synchronized boolean removeFirstOccurrence(Object element) {
 		if (end == start) return false;
 		if (end == -1) {
 			for (int i = start; i < array.length; ++i)
@@ -458,7 +465,7 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	@Override
-	public boolean removeLastOccurrence(Object element) {
+	public synchronized boolean removeLastOccurrence(Object element) {
 		if (end == start) return false;
 		if (end == -1) {
 			for (int i = start - 1; i >= 0; --i)
@@ -495,7 +502,7 @@ public class TurnArray<T> implements Deque<T> {
 	}
 
 	/** Remove the given instance. */
-	public boolean removeInstance(T element) {
+	public synchronized boolean removeInstance(T element) {
 		if (end == start) return false;
 		if (end == -1) {
 			for (int i = array.length - 1; i >= 0; --i)
@@ -534,7 +541,7 @@ public class TurnArray<T> implements Deque<T> {
 	
 	/** The implementation of this operation has not been optimised. */
 	@Override
-	public boolean removeAll(Collection<?> c) {
+	public synchronized boolean removeAll(Collection<?> c) {
 		boolean changed = false;
 		for (Object o : c) changed |= remove(o);
 		return changed;
@@ -617,10 +624,7 @@ public class TurnArray<T> implements Deque<T> {
 			array[--end] = null;
 			return;
 		} finally {
-			if (decreaseTask == null) {
-				if (array.length > 5 && size() < array.length - array.length >> 1)
-					decreaseTask = new DecreaseTask();
-			}
+			checkDecrease();
 		}
 	}
 	
@@ -637,26 +641,28 @@ public class TurnArray<T> implements Deque<T> {
 	
 	private class It implements Iterator<T> {
 		public It() {
-			pos = start;
+			pos = 0;
 		}
 		
 		private int pos;
 		
 		@Override
 		public boolean hasNext() {
-			if (pos == -1) return false;
-			if (pos == end) return false;
+			if (pos >= size()) return false;
 			return true;
 		}
 		
 		@Override
 		public T next() {
-			if (pos == -1 || pos == end) throw new NoSuchElementException();
-			@SuppressWarnings("unchecked")
-			T e = (T)array[pos++];
-			if (pos == array.length) pos = 0;
-			if (pos == start) pos = -1;
-			return e;
+			synchronized (TurnArray.this) {
+				if (pos >= size()) throw new NoSuchElementException();
+				int i = start + pos;
+				if (i >= array.length) i -= array.length;
+				@SuppressWarnings("unchecked")
+				T e = (T)array[i];
+				pos++;
+				return e;
+			}
 		}
 	}
 
@@ -667,29 +673,27 @@ public class TurnArray<T> implements Deque<T> {
 	
 	private class DIt implements Iterator<T> {
 		public DIt() {
-			if (end == start) pos = -1;
-			else {
-				if (end == -1) pos = start - 1;
-				else pos = end - 1;
-				if (pos < 0) pos = array.length - 1;
-			}
+			pos = size() - 1;
 		}
 		
 		private int pos;
 		
 		@Override
 		public boolean hasNext() {
-			return pos != -1;
+			return pos >= 0;
 		}
 		
 		@Override
 		public T next() {
 			if (pos < 0) throw new NoSuchElementException();
-			@SuppressWarnings("unchecked")
-			T e = (T)array[pos--];
-			if (pos == start - 1) pos = -1;
-			else if (pos == -1) pos = array.length - 1;
-			return e;
+			synchronized (TurnArray.this) {
+				int i = start + pos;
+				if (i >= array.length) i -= array.length;
+				@SuppressWarnings("unchecked")
+				T e = (T)array[i];
+				pos--;
+				return e;
+			}
 		}
 	}
 	
@@ -697,7 +701,7 @@ public class TurnArray<T> implements Deque<T> {
 	 * The reason it is not ordered is for performance, when the order is not important.
 	 */
 	@SuppressWarnings("unchecked")
-	public List<T> removeAllNoOrder() {
+	public synchronized List<T> removeAllNoOrder() {
 		if (end == -1) {
 			List<Object> a = Arrays.asList(array);
 			array = new Object[array.length];
@@ -722,7 +726,7 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	@Override
-	public Object[] toArray() {
+	public synchronized Object[] toArray() {
 		if (end == start) return new Object[0];
 		if (end == -1) {
 			Object[] a = new Object[array.length];
@@ -743,7 +747,7 @@ public class TurnArray<T> implements Deque<T> {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U extends Object> U[] toArray(U[] a) {
+	public synchronized <U extends Object> U[] toArray(U[] a) {
 		if (end == start) return a;
 		int nb = size();
 		if (a.length < nb)
