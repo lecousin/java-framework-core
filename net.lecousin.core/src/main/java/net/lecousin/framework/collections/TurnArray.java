@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.exception.NoException;
 
@@ -296,6 +297,10 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	private void increase(int newSize) {
+		if (decreaseTask != null) {
+			decreaseTask.cancel(new CancelException("TurnArray increase again"));
+			decreaseTask = null;
+		}
 		Object[] a = new Object[newSize];
 		if (end == -1) {
 			System.arraycopy(array, start, a, 0, array.length - start);
@@ -328,19 +333,20 @@ public class TurnArray<T> implements Deque<T> {
 		if (newSize < minSize) newSize = minSize;
 		if (newSize >= array.length) return;
 		if (size() >= newSize) return;
+		if (end == -1) return;
 		Object[] a = new Object[newSize];
 		if (end > start) {
 			System.arraycopy(array, start, a, 0, end - start);
 			end = end - start;
-			if (end == newSize) end = -1;
 			start = 0;
 		} else if (end < start) {
 			System.arraycopy(array, start, a, 0, array.length - start);
 			if (end > 0)
 				System.arraycopy(array, 0, a, array.length - start, end);
 			end = array.length - start + end;
-			if (end == newSize) end = -1;
 			start = 0;
+		} else {
+			start = end = 0;
 		}
 		array = a;
 	}
@@ -354,6 +360,7 @@ public class TurnArray<T> implements Deque<T> {
 		@Override
 		public Void run() {
 			synchronized (TurnArray.this) {
+				if (isCancelling()) return null;
 				decreaseTask = null;
 				decrease();
 			}
