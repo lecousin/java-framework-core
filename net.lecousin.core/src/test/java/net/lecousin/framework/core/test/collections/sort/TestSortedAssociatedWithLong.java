@@ -107,6 +107,15 @@ public abstract class TestSortedAssociatedWithLong extends LCCoreAbstractTest {
 		for (Long i : order) {
 			long value = i.longValue();
 			Assert.assertTrue("contains(" + value + ") returned false", sorted.contains(value, Long.valueOf(-value)));
+			if (sorted.size() < 100) {
+				Long instance = null;
+				for (Object o : sorted)
+					if (((Long)o).longValue() == -value) {
+						instance = (Long)o;
+						break;
+					}
+				Assert.assertTrue(sorted.containsInstance(value, instance));
+			}
 		}
 		if (!order.isEmpty()) {
 			long val = order.last().longValue() + 1;

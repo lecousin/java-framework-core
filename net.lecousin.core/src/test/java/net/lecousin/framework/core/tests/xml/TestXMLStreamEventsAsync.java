@@ -3,12 +3,12 @@ package net.lecousin.framework.core.tests.xml;
 import java.io.EOFException;
 import java.util.Map;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.xml.XMLStreamEvents.ElementContext;
 import net.lecousin.framework.xml.XMLStreamEventsAsync;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 
@@ -102,4 +102,11 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 		xml.closeElement().blockThrow(0);
 	}
 	
+	@Test
+	public void testInnerText() throws Exception {
+		XMLStreamEventsAsync xml;
+		xml = parse("xml-unit-tests/innerText01.xml");
+		xml.start().blockThrow(0);
+		Assert.assertEquals("Hello World", xml.readInnerText().blockResult(0).trim().asString());
+	}
 }

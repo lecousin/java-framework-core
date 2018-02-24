@@ -119,4 +119,12 @@ public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 		Assert.assertFalse(xml.nextInnerElement(xml.event.context.getFirst()));
 	}
 	
+	@Test
+	public void testInnerText() throws Exception {
+		XMLStreamEventsSync xml;
+		xml = parse("xml-unit-tests/innerText01.xml");
+		xml.start();
+		Assert.assertEquals("Hello World", xml.readInnerText().trim().asString());
+	}
+	
 }

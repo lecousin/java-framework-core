@@ -43,8 +43,8 @@ public class OldestList<T> implements Iterable<T> {
 		if (size < elements.length) {
 			elements[size] = element;
 			dates[size] = date;
-			if (date < oldestIndex) oldestIndex = size;
-			if (date > newestIndex) newestIndex = size;
+			if (date < dates[oldestIndex]) oldestIndex = size;
+			if (date > dates[newestIndex]) newestIndex = size;
 			size++;
 			return;
 		}

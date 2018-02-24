@@ -107,6 +107,15 @@ public abstract class TestSortedAssociatedWithInteger extends LCCoreAbstractTest
 		for (Integer i : order) {
 			int value = i.intValue();
 			Assert.assertTrue("contains(" + value + ") returned false", sorted.contains(value, Integer.valueOf(-value)));
+			if (sorted.size() < 100) {
+				Integer instance = null;
+				for (Object o : sorted)
+					if (((Integer)o).intValue() == -value) {
+						instance = (Integer)o;
+						break;
+					}
+				Assert.assertTrue(sorted.containsInstance(value, instance));
+			}
 		}
 		if (!order.isEmpty()) {
 			int val = order.last().intValue() + 1;

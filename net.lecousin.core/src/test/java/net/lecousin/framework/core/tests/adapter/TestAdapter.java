@@ -15,10 +15,26 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.util.FileInfo;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class TestAdapter extends LCCoreAbstractTest {
 
+	@BeforeClass
+	public static void register() {
+		AdapterRegistry.get().addPlugin(new Adapter1());
+		AdapterRegistry.get().addPlugin(new Adapter2_1());
+		AdapterRegistry.get().addPlugin(new Adapter2_2());
+		AdapterRegistry.get().addPlugin(new Adapter2_3());
+		AdapterRegistry.get().addPlugin(new Adapter3());
+		AdapterRegistry.get().addPlugin(new Adapter4bis());
+		AdapterRegistry.get().addPlugin(new Adapter4ter());
+		AdapterRegistry.get().addPlugin(new Source1ToSource2());
+		AdapterRegistry.get().addPlugin(new Source1ToSource3());
+		AdapterRegistry.get().addPlugin(new Target2ToTarget4());
+		AdapterRegistry.get().addPlugin(new Target3ToTarget4());
+	}
+	
 	public static class Source1 {
 		public int value = 0;
 	}
@@ -43,11 +59,10 @@ public class TestAdapter extends LCCoreAbstractTest {
 	
 	@Test(timeout=120000)
 	public void testDirectAdapter() throws Exception {
-		AdapterRegistry.get().addPlugin(new Adapter1());
 		Source1 src = new Source1();
 		src.value = 51;
 		Assert.assertTrue(AdapterRegistry.get().canAdapt(src, Target1.class));
-		Assert.assertFalse(AdapterRegistry.get().canAdapt(src, Target2.class));
+		Assert.assertFalse(AdapterRegistry.get().canAdapt(src, Target4ter.class));
 		Target1 t = AdapterRegistry.get().adapt(src, Target1.class);
 		Assert.assertEquals(t.value, src.value);
 	}
@@ -110,9 +125,6 @@ public class TestAdapter extends LCCoreAbstractTest {
 	
 	@Test(timeout=120000)
 	public void testIntermediates() throws Exception {
-		AdapterRegistry.get().addPlugin(new Adapter2_1());
-		AdapterRegistry.get().addPlugin(new Adapter2_2());
-		AdapterRegistry.get().addPlugin(new Adapter2_3());
 		Source2 src = new Source2();
 		src.value = 51;
 		Target2 t = AdapterRegistry.get().adapt(src, Target2.class);
@@ -217,17 +229,91 @@ public class TestAdapter extends LCCoreAbstractTest {
 	
 	@Test
 	public void test3() throws Exception {
-		AdapterRegistry.get().addPlugin(new Adapter3());
 		Source3 src = new Source3();
 		src.value = 1;
 		Assert.assertNull(AdapterRegistry.get().adapt(src, Target3.class));
 		src.value = 111;
 		Assert.assertEquals(11, AdapterRegistry.get().adapt(src, Target3.class).value);
 
-		AdapterRegistry.get().addPlugin(new Adapter4bis());
-		AdapterRegistry.get().addPlugin(new Adapter4ter());
 		src.value = 111;
 		Assert.assertEquals(110, AdapterRegistry.get().adapt(src, Target4.class).value);
+	}
+	
+	public static class Source1ToSource2 implements Adapter<Source1, Source2> {
+		@Override
+		public Class<Source1> getInputType() { return Source1.class; }
+		@Override
+		public Class<Source2> getOutputType() { return Source2.class; }
+		@Override
+		public boolean canAdapt(Source1 input) {
+			return input.value > 0;
+		}
+		@Override
+		public Source2 adapt(Source1 input) {
+			Source2 t = new Source2();
+			t.value = input.value;
+			return t;
+		}
+	}
+
+	public static class Source1ToSource3 implements Adapter<Source1, Source3> {
+		@Override
+		public Class<Source1> getInputType() { return Source1.class; }
+		@Override
+		public Class<Source3> getOutputType() { return Source3.class; }
+		@Override
+		public boolean canAdapt(Source1 input) {
+			return input.value > 0;
+		}
+		@Override
+		public Source3 adapt(Source1 input) {
+			Source3 t = new Source3();
+			t.value = input.value;
+			return t;
+		}
+	}
+
+	public static class Target2ToTarget4 implements Adapter<Target2, Target4> {
+		@Override
+		public Class<Target2> getInputType() { return Target2.class; }
+		@Override
+		public Class<Target4> getOutputType() { return Target4.class; }
+		@Override
+		public boolean canAdapt(Target2 input) {
+			return input.value > 0;
+		}
+		@Override
+		public Target4 adapt(Target2 input) {
+			Target4 t = new Target4();
+			t.value = input.value;
+			return t;
+		}
+	}
+
+	public static class Target3ToTarget4 implements Adapter<Target3, Target4> {
+		@Override
+		public Class<Target3> getInputType() { return Target3.class; }
+		@Override
+		public Class<Target4> getOutputType() { return Target4.class; }
+		@Override
+		public boolean canAdapt(Target3 input) {
+			return input.value > 0;
+		}
+		@Override
+		public Target4 adapt(Target3 input) {
+			Target4 t = new Target4();
+			t.value = input.value;
+			return t;
+		}
+	}
+
+	@Test
+	public void testDifferentIntermediates() throws Exception {
+		Source1 src = new Source1();
+		src.value = 10;
+		AdapterRegistry.get().adapt(src, Target4.class);
+		src.value = 110;
+		AdapterRegistry.get().adapt(src, Target4.class);
 	}
 
 }
