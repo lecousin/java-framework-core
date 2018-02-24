@@ -22,6 +22,6 @@ public interface ShortMap<ValueType> {
 	public int size();
 	
 	/** Return true if this map is empty. */
-	public default boolean isEmpty() { return size() == 0; }
+	public boolean isEmpty();
 
 }

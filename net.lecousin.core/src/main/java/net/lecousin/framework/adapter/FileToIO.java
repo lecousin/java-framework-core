@@ -11,6 +11,8 @@ import net.lecousin.framework.io.IO;
  */
 public final class FileToIO {
 	
+	private FileToIO() { /* no instance */ }
+	
 	/** Convert a File into an IO.Readable by opening it. */
 	public static class Readable implements Adapter<File,IO.Readable.Seekable> {
 		@Override

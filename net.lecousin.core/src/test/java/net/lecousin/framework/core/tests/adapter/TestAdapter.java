@@ -2,11 +2,17 @@ package net.lecousin.framework.core.tests.adapter;
 
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
+import java.util.LinkedList;
 
 import net.lecousin.framework.adapter.Adapter;
 import net.lecousin.framework.adapter.AdapterRegistry;
+import net.lecousin.framework.adapter.FileInfoToFile;
+import net.lecousin.framework.adapter.FileToIO;
+import net.lecousin.framework.adapter.LinkedAdapter;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.util.FileInfo;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -128,4 +134,100 @@ public class TestAdapter extends LCCoreAbstractTest {
 		Assert.assertEquals(3, buf[2]);
 		in.close();
 	}
+	
+	@Test
+	public void basicTests() throws Exception {
+		Assert.assertEquals(0, new AdapterRegistry().getPlugins().size());
+		Assert.assertNull(AdapterRegistry.get().adapt(new Object(), TestAdapter.class));
+		FileInfo fi = new FileInfo();
+		Assert.assertNull(AdapterRegistry.get().findAdapter(fi, FileInfo.class, File.class));
+		Assert.assertNull(AdapterRegistry.get().findAdapter(fi, FileInfo.class, Path.class));
+		@SuppressWarnings("rawtypes")
+		LinkedList<Adapter> list = new LinkedList<>();
+		list.add(new FileInfoToFile());
+		list.add(new FileToIO.Readable());
+		LinkedAdapter la = new LinkedAdapter(list);
+		Assert.assertEquals(FileInfo.class, la.getInputType());
+		Assert.assertEquals(IO.Readable.Seekable.class, la.getOutputType());
+		la.canAdapt(fi);
+		la.adapt(fi);
+	}
+	
+	public static class Source3 {
+		public int value = 0;
+	}
+	public static class Target3 {
+		public int value = 0;
+	}
+	public static class Target4 {
+		public int value = 0;
+	}
+	public static class Target4bis extends Target4 {
+	}
+	public static class Target4ter extends Target4bis {
+	}
+	public static class Adapter3 implements Adapter<Source3, Target3> {
+		@Override
+		public Class<Source3> getInputType() { return Source3.class; }
+		@Override
+		public Class<Target3> getOutputType() { return Target3.class; }
+		@Override
+		public boolean canAdapt(Source3 input) {
+			return input.value > 100;
+		}
+		@Override
+		public Target3 adapt(Source3 input) {
+			Target3 t = new Target3();
+			t.value = input.value - 100;
+			return t;
+		}
+	}
+	public static class Adapter4bis implements Adapter<Source3, Target4bis> {
+		@Override
+		public Class<Source3> getInputType() { return Source3.class; }
+		@Override
+		public Class<Target4bis> getOutputType() { return Target4bis.class; }
+		@Override
+		public boolean canAdapt(Source3 input) {
+			return input.value > 100;
+		}
+		@Override
+		public Target4bis adapt(Source3 input) {
+			Target4bis t = new Target4bis();
+			t.value = input.value - 10;
+			return t;
+		}
+	}
+	public static class Adapter4ter implements Adapter<Source3, Target4ter> {
+		@Override
+		public Class<Source3> getInputType() { return Source3.class; }
+		@Override
+		public Class<Target4ter> getOutputType() { return Target4ter.class; }
+		@Override
+		public boolean canAdapt(Source3 input) {
+			return input.value > 100;
+		}
+		@Override
+		public Target4ter adapt(Source3 input) {
+			Target4ter t = new Target4ter();
+			t.value = input.value - 1;
+			return t;
+		}
+	}
+	
+	@Test
+	public void test3() throws Exception {
+		AdapterRegistry.get().addPlugin(new Adapter3());
+		Source3 src = new Source3();
+		src.value = 1;
+		Assert.assertNull(AdapterRegistry.get().adapt(src, Target3.class));
+		src.value = 111;
+		Assert.assertEquals(11, AdapterRegistry.get().adapt(src, Target3.class).value);
+
+		AdapterRegistry.get().addPlugin(new Adapter4bis());
+		AdapterRegistry.get().addPlugin(new Adapter4ter());
+		src.value = 111;
+		Assert.assertEquals(110, AdapterRegistry.get().adapt(src, Target4.class).value);
+	}
+
 }
