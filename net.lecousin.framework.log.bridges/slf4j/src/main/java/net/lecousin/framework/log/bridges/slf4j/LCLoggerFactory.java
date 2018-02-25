@@ -21,10 +21,9 @@ public class LCLoggerFactory implements ILoggerFactory {
      */
     @Override
     public Logger getLogger(String name) {
-        Logger simpleLogger = loggerMap.get(name);
-        if (simpleLogger != null) {
-            return simpleLogger;
-        }
+        Logger logger = loggerMap.get(name);
+        if (logger != null)
+            return logger;
         Logger newInstance = new LCLogger(name, LCCore.getApplication().getLoggerFactory().getLogger(name));
         Logger oldInstance = loggerMap.putIfAbsent(name, newInstance);
         return oldInstance == null ? newInstance : oldInstance;

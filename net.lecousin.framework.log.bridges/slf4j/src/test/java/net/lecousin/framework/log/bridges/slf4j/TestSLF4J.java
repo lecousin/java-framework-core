@@ -11,6 +11,7 @@ public class TestSLF4J extends LCCoreAbstractTest {
 	@Test(timeout=30000)
 	public void test() {
 		Logger l = LoggerFactory.getLogger("test");
+		l = LoggerFactory.getLogger("test");
 		l.getName();
 		Object o1 = Integer.valueOf(11);
 		Object o2 = Integer.valueOf(22);
@@ -20,26 +21,31 @@ public class TestSLF4J extends LCCoreAbstractTest {
 		l.trace("test", o1);
 		l.trace("test", o1, o2);
 		l.trace("test", o1, o2, o3);
+		l.trace("test", new Exception());
 		l.isDebugEnabled();
 		l.debug("test");
 		l.debug("test", o1);
 		l.debug("test", o1, o2);
 		l.debug("test", o1, o2, o3);
+		l.debug("test", new Exception());
 		l.isInfoEnabled();
 		l.info("test");
 		l.info("test", o1);
 		l.info("test", o1, o2);
 		l.info("test", o1, o2, o3);
+		l.info("test", new Exception());
 		l.isWarnEnabled();
 		l.warn("test");
 		l.warn("test", o1);
 		l.warn("test", o1, o2);
 		l.warn("test", o1, o2, o3);
+		l.warn("test", new Exception());
 		l.isErrorEnabled();
 		l.error("test");
 		l.error("test", o1);
 		l.error("test", o1, o2);
 		l.error("test", o1, o2, o3);
+		l.error("test", new Exception());
 	}
 	
 }

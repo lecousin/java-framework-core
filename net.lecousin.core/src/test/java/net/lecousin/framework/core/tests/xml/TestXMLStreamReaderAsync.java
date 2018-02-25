@@ -85,6 +85,7 @@ public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 
 		xml = parse("xml-test-suite/mine/longText.xml");
 		xml.start().blockThrow(0);
+		xml.getPosition();
 		xml.setMaximumTextSize(555);
 		xml.setMaximumCDataSize(666);
 		xml.searchElement("testText").blockThrow(0);
@@ -95,6 +96,10 @@ public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 			xml.next().blockThrow(0);
 		} while (!Event.Type.CDATA.equals(xml.event.type));
 		Assert.assertEquals(666, xml.event.text.length());
+		do {
+			xml.next().blockThrow(0);
+		} while (!Event.Type.COMMENT.equals(xml.event.type));
+		Assert.assertEquals(553, xml.event.text.length());
 
 		xml = parse("xml-test-suite/mine/longText.xml");
 		xml.start().blockThrow(0);
@@ -108,6 +113,10 @@ public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 			xml.next().blockThrow(0);
 		} while (!Event.Type.CDATA.equals(xml.event.type));
 		Assert.assertEquals(2012, xml.event.text.length());
+		do {
+			xml.next().blockThrow(0);
+		} while (!Event.Type.COMMENT.equals(xml.event.type));
+		Assert.assertEquals(2015, xml.event.text.length());
 	}
 	
 }

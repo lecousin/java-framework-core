@@ -2,13 +2,13 @@ package net.lecousin.framework.core.tests.xml;
 
 import java.util.Map;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.xml.XMLStreamEvents.Attribute;
 import net.lecousin.framework.xml.XMLStreamEvents.ElementContext;
 import net.lecousin.framework.xml.XMLStreamEventsSync;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 
@@ -129,4 +129,19 @@ public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 		Assert.assertEquals("Hello World", xml.readInnerText().trim().asString());
 	}
 	
+	@Test(timeout=120000)
+	public void testErrors() {
+		for (int i = 1; i <= 15; ++i) {
+			String s = Integer.toString(i);
+			while (s.length() != 3) s = "0" + s;
+			try {
+				XMLStreamEventsSync xml = parse("xml-unit-tests/error/error" + s + ".xml");
+				xml.start();
+				xml.closeElement();
+				throw new AssertionError("Error expected");
+			} catch (Exception err) {
+				// ok
+			}
+		}
+	}
 }

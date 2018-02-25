@@ -109,4 +109,20 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 		xml.start().blockThrow(0);
 		Assert.assertEquals("Hello World", xml.readInnerText().blockResult(0).trim().asString());
 	}
+	
+	@Test(timeout=120000)
+	public void testErrors() {
+		for (int i = 1; i <= 15; ++i) {
+			String s = Integer.toString(i);
+			while (s.length() != 3) s = "0" + s;
+			try {
+				XMLStreamEventsAsync xml = parse("xml-unit-tests/error/error" + s + ".xml");
+				xml.start().blockThrow(0);
+				xml.closeElement().blockThrow(0);
+				throw new AssertionError("Error expected");
+			} catch (Exception err) {
+				// ok
+			}
+		}
+	}
 }
