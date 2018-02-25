@@ -74,6 +74,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 			});
 		else
 			reading = io.readAsync(ByteBuffer.wrap(buffer), (result) -> {
+				if (result.getValue1() == null) return;
 				AtomicState ns = new AtomicState();
 				ns.len = result.getValue1().intValue();
 				if (ns.len <= 0) {
@@ -175,7 +176,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 
 	@Override
 	public byte getPriority() {
-		return io.getPriority();
+		return io != null ? io.getPriority() : Task.PRIORITY_NORMAL;
 	}
 
 	@Override

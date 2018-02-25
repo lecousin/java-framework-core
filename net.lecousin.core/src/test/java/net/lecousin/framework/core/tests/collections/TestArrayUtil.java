@@ -1,7 +1,9 @@
 package net.lecousin.framework.core.tests.collections;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.NoSuchElementException;
 
 import net.lecousin.framework.collections.ArrayIterator;
@@ -225,17 +227,30 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(col.contains(o3));
 		Assert.assertFalse(col.contains(o4));
 		
-		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.concatenate(new Object[] { o1,  o2, o3 }, new Object[] { o2, o4 }), new Object[] { o1, o2, o3, o2, o4 }));
+		Object[] a1 = new Object[] { o1,  o2, o3 };
+		Object[] a2 = new Object[] { o2, o4 };
+		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.concatenate(a1, a2), new Object[] { o1, o2, o3, o2, o4 }));
+		Assert.assertTrue(a1 == ArrayUtil.concatenate(a1, new Object[0]));
+		Assert.assertTrue(a2 == ArrayUtil.concatenate(new Object[0], a2));
 		
-		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.merge(Arrays.asList(new byte[] { 0, 1, 2 }, new byte[] { 10, 20, 30 }, new byte[] { 90 })), new byte[] { 0, 1, 2, 10, 20, 30, 90 }));
+		byte[] b1 = new byte[] { 0, 1, 2 };
+		byte[] b2 = new byte[] { 10, 20, 30 };
+		byte[] b3 = new byte[] { 90 };
+		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.merge(Arrays.asList(b1, b2, b3)), new byte[] { 0, 1, 2, 10, 20, 30, 90 }));
+		Assert.assertEquals(0, ArrayUtil.merge(new ArrayList<byte[]>()).length);
+		Assert.assertArrayEquals(b1, ArrayUtil.merge(Collections.singletonList(b1)));
 		
-		Assert.assertTrue(ArrayUtil.compare(new byte[] { 0,  1, 2 } ,new byte[] { 10, 20, 30 }) < 0);
-		Assert.assertTrue(ArrayUtil.compare(new byte[] { 10,  1, 2 } ,new byte[] { 10, 20, 30 }) < 0);
-		Assert.assertTrue(ArrayUtil.compare(new byte[] { 11,  1, 2 } ,new byte[] { 10, 20, 30 }) > 0);
-		Assert.assertTrue(ArrayUtil.compare(new byte[] { 0,  1, 2 } ,new byte[] { 0, 1, 2 }) == 0);
-		Assert.assertTrue(ArrayUtil.compare(new byte[] { 10,  20, 21 } ,new byte[] { 10, 20, 30 }) < 0);
-		Assert.assertTrue(ArrayUtil.compare(new byte[] { 10,  20, 31 } ,new byte[] { 10, 20, 30 }) > 0);
-		Assert.assertTrue(ArrayUtil.compare(new byte[] { 10,  20, 30, 0 } ,new byte[] { 10, 20, 30 }) > 0);
+		Assert.assertTrue(ArrayUtil.compare(new byte[] { 0, 1, 2 } ,new byte[] { 10, 20, 30 }) < 0);
+		Assert.assertTrue(ArrayUtil.compare(new byte[] { 10, 1, 2 } ,new byte[] { 10, 20, 30 }) < 0);
+		Assert.assertTrue(ArrayUtil.compare(new byte[] { 11, 1, 2 } ,new byte[] { 10, 20, 30 }) > 0);
+		Assert.assertTrue(ArrayUtil.compare(new byte[] { 0, 1, 2 } ,new byte[] { 0, 1, 2 }) == 0);
+		Assert.assertTrue(ArrayUtil.compare(new byte[] { 10, 20, 21 } ,new byte[] { 10, 20, 30 }) < 0);
+		Assert.assertTrue(ArrayUtil.compare(new byte[] { 10, 20, 31 } ,new byte[] { 10, 20, 30 }) > 0);
+		Assert.assertTrue(ArrayUtil.compare(new byte[] { 10, 20, 30, 0 } ,new byte[] { 10, 20, 30 }) > 0);
+		Assert.assertTrue(ArrayUtil.compare(new byte[] { 0, 1, 2 } ,new byte[] { 0, 1, 2, 3 }) < 0);
+		Assert.assertTrue(ArrayUtil.compare(new byte[] { 0, 1, 2, 3 } ,new byte[] { 0, 1, 2 }) > 0);
+		Assert.assertTrue(ArrayUtil.compare(new byte[] { 0, 1, 2 } ,new byte[] { 0, 1, 1, 0 }) > 0);
+		Assert.assertTrue(ArrayUtil.compare(new byte[] { 0, 1, 1, 0 } ,new byte[] { 0, 1, 2 }) < 0);
 		
 		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.add(new Object[] { o1, o2 }, o3), new Object[] { o1, o2, o3 }));
 		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.add(new Object[] { o1, o2 }, o3, 0), new Object[] { o3, o1, o2 }));
@@ -246,10 +261,16 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.remove(new Object[] { o1, o2, o3, o4 }, o3), new Object[] { o1, o2, o4 }));
 		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.remove(new Object[] { o1, o2, o3, o4 }, o1), new Object[] { o2, o3, o4 }));
 		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.remove(new Object[] { o1, o2, o3, o4 }, o4), new Object[] { o1, o2, o3 }));
+		Assert.assertEquals(0, ArrayUtil.remove(new Object[0], new Object()).length);
 		
 		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.removeAt(new Object[] { o1, o2, o3, o4 }, 2), new Object[] { o1, o2, o4 }));
 		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.removeAt(new Object[] { o1, o2, o3, o4 }, 0), new Object[] { o2, o3, o4 }));
 		Assert.assertTrue(ArrayUtil.equals(ArrayUtil.removeAt(new Object[] { o1, o2, o3, o4 }, 3), new Object[] { o1, o2, o3 }));
+		
+		Integer[] a = ArrayUtil.createGenericArray(Integer[].class, new Integer[] { Integer.valueOf(10), Integer.valueOf(20) });
+		Assert.assertEquals(2, a.length);
+		Assert.assertEquals(10, a[0].intValue());
+		Assert.assertEquals(20, a[1].intValue());
 	}
 	
 	@Test(timeout=30000)

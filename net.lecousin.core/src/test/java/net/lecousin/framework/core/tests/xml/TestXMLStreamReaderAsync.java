@@ -2,17 +2,45 @@ package net.lecousin.framework.core.tests.xml;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
+import java.util.ArrayList;
+import java.util.Collection;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.buffering.SingleBufferReadable;
 import net.lecousin.framework.xml.XMLStreamEvents.Event;
 import net.lecousin.framework.xml.XMLStreamReaderAsync;
 
+@RunWith(Parameterized.class)
 public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 
+	@Parameters(name = "efficient = {0}")
+	public static Collection<Object[]> parameters() {
+		ArrayList<Object[]> list = new ArrayList<>(2);
+		list.add(new Object[] { Boolean.TRUE });
+		list.add(new Object[] { Boolean.FALSE });
+		return list;
+	}
+
+	public TestXMLStreamReaderAsync(boolean efficient) {
+		this.efficient = efficient;
+	}
+	
+	protected boolean efficient;
+	
+	@SuppressWarnings("resource")
 	@Override
 	protected XMLStreamReaderAsync parse(String resource) {
-		return new XMLStreamReaderAsync(LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL), 512);
+		if (efficient)
+			return new XMLStreamReaderAsync(LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL), 512);
+		IO.Readable io = LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL);
+		SingleBufferReadable bio = new SingleBufferReadable(io, 2, false);
+		return new XMLStreamReaderAsync(bio, 1);
 	}
 	
 	@Test

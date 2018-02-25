@@ -4,14 +4,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.buffering.SingleBufferReadable;
+import net.lecousin.framework.xml.XMLStreamEventsAsync;
+import net.lecousin.framework.xml.XMLStreamReaderAsync;
+
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-
-import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
-import net.lecousin.framework.xml.XMLStreamEventsAsync;
-import net.lecousin.framework.xml.XMLStreamReaderAsync;
 
 @RunWith(Parameterized.class)
 public class TestXMLStreamReaderAsyncWithDOM extends TestXMLStreamEventsWithDOM<XMLStreamEventsAsync> {
@@ -41,8 +41,8 @@ public class TestXMLStreamReaderAsyncWithDOM extends TestXMLStreamEventsWithDOM<
 			xml = new XMLStreamReaderAsync(input, 1024);
 		else {
 			@SuppressWarnings("resource")
-			SimpleBufferedReadable bio = new SimpleBufferedReadable(input, 5);
-			xml = new XMLStreamReaderAsync(bio, 3);
+			SingleBufferReadable bio = new SingleBufferReadable(input, 2, false);
+			xml = new XMLStreamReaderAsync(bio, 1);
 		}
 		xml.start().blockException(0);
 		return xml;

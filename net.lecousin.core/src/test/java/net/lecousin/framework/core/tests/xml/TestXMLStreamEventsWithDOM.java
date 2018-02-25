@@ -188,8 +188,8 @@ public abstract class TestXMLStreamEventsWithDOM<EVENTS extends XMLStreamEvents>
 		IO.Readable io = new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL);
 		EVENTS xml = start(io);
 		checkNodeContent(doc, xml, new LinkedList<>());
-		in2.close();
 		in.close();
+		io.close();
 	}
 	
 	private void checkNodeContent(Node node, EVENTS xml, LinkedList<String> openElements) throws Exception {

@@ -17,6 +17,8 @@ public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 	@Test
 	public void test1() throws Exception {
 		XMLStreamEventsSync xml = parse("xml-test-suite/mine/002.xml");
+		xml.getMaximumTextSize();
+		xml.getMaximumCDataSize();
 		xml.start();
 		Assert.assertTrue(xml.nextStartElement());
 		Assert.assertEquals("myRoot", xml.event.text.asString());

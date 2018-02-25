@@ -335,7 +335,7 @@ public abstract class Task<T,TError extends Exception> {
 					cancelling = new CancelException("Unexpected exception thrown", t);
 					result.cancelled(cancelling);
 				} catch (Throwable e) {
-					cancelling = new CancelException("Unexpected exception thrown", t);
+					cancelling = new CancelException("Unexpected exception thrown", e);
 					result.cancelled(cancelling);
 				}
 			} else
