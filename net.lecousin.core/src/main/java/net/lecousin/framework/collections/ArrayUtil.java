@@ -149,6 +149,8 @@ public final class ArrayUtil {
 	
 	/** Return true if the portions of the arrays are equal. */
 	public static <T> boolean equals(T[] a1, int off1, T[] a2, int off2, int len) {
+		if (a1 == null) return a2 == null;
+		if (a2 == null) return false;
 		for (int i = 0; i < len; ++i)
 			if (!ObjectUtil.equalsOrNull(a1[off1 + i], a2[off2 + i]))
 				return false;

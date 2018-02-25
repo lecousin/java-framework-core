@@ -124,52 +124,72 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertTrue(ArrayUtil.equals(new byte[] { 1, 10, 22 }, new byte[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new byte[] { 2, 10, 22 }, new byte[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new byte[] { 1, 10, 22 }, new byte[] { 1, 10, 21 }));
+		Assert.assertFalse(ArrayUtil.equals(new byte[] { 1, 10, 22 }, new byte[] { 1, 10, 22, 30 }));
 		Assert.assertTrue(ArrayUtil.equals(new byte[] { 2, 10, 22 }, 1, new byte[] { 1, 10, 22 }, 1, 2));
 		Assert.assertTrue(ArrayUtil.equals(new byte[] { 2, 10, 22 }, 1, new byte[] { 10, 22, 33 }, 0, 2));
 		Assert.assertFalse(ArrayUtil.equals(new byte[] { 2, 10, 22 }, 0, new byte[] { 1, 10, 22 }, 0, 2));
 		Assert.assertTrue(ArrayUtil.equals((byte[])null, (byte[])null));
+		Assert.assertTrue(ArrayUtil.equals((byte[])null, 0, (byte[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals(new byte[] {}, (byte[])null));
+		Assert.assertFalse(ArrayUtil.equals(new byte[] {}, 0, (byte[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals((byte[])null, new byte[] {}));
+		Assert.assertFalse(ArrayUtil.equals((byte[])null, 0, new byte[] {}, 0, 0));
 		
 		Assert.assertTrue(ArrayUtil.equals(new short[] { 1, 10, 22 }, new short[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new short[] { 2, 10, 22 }, new short[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new short[] { 1, 10, 22 }, new short[] { 1, 10, 21 }));
+		Assert.assertFalse(ArrayUtil.equals(new short[] { 1, 10, 22 }, new short[] { 1, 10, 22, 30 }));
 		Assert.assertTrue(ArrayUtil.equals(new short[] { 2, 10, 22 }, 1, new short[] { 1, 10, 22 }, 1, 2));
 		Assert.assertTrue(ArrayUtil.equals(new short[] { 2, 10, 22 }, 1, new short[] { 10, 22, 33 }, 0, 2));
 		Assert.assertFalse(ArrayUtil.equals(new short[] { 2, 10, 22 }, 0, new short[] { 1, 10, 22 }, 0, 2));
 		Assert.assertTrue(ArrayUtil.equals((short[])null, (short[])null));
+		Assert.assertTrue(ArrayUtil.equals((short[])null, 0, (short[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals(new short[] {}, (short[])null));
+		Assert.assertFalse(ArrayUtil.equals(new short[] {}, 0, (short[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals((short[])null, new short[] {}));
+		Assert.assertFalse(ArrayUtil.equals((short[])null, 0, new short[] {}, 0, 0));
 		
 		Assert.assertTrue(ArrayUtil.equals(new int[] { 1, 10, 22 }, new int[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new int[] { 2, 10, 22 }, new int[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new int[] { 1, 10, 22 }, new int[] { 1, 10, 21 }));
+		Assert.assertFalse(ArrayUtil.equals(new int[] { 1, 10, 22 }, new int[] { 1, 10, 22, 30 }));
 		Assert.assertTrue(ArrayUtil.equals(new int[] { 2, 10, 22 }, 1, new int[] { 1, 10, 22 }, 1, 2));
 		Assert.assertTrue(ArrayUtil.equals(new int[] { 2, 10, 22 }, 1, new int[] { 10, 22, 33 }, 0, 2));
 		Assert.assertFalse(ArrayUtil.equals(new int[] { 2, 10, 22 }, 0, new int[] { 1, 10, 22 }, 0, 2));
 		Assert.assertTrue(ArrayUtil.equals((int[])null, (int[])null));
+		Assert.assertTrue(ArrayUtil.equals((int[])null, 0, (int[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals(new int[] {}, (int[])null));
+		Assert.assertFalse(ArrayUtil.equals(new int[] {}, 0, (int[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals((int[])null, new int[] {}));
+		Assert.assertFalse(ArrayUtil.equals((int[])null, 0, new int[] {}, 0, 0));
 		
 		Assert.assertTrue(ArrayUtil.equals(new long[] { 1, 10, 22 }, new long[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new long[] { 2, 10, 22 }, new long[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new long[] { 1, 10, 22 }, new long[] { 1, 10, 21 }));
+		Assert.assertFalse(ArrayUtil.equals(new long[] { 1, 10, 22 }, new long[] { 1, 10, 22, 30 }));
 		Assert.assertTrue(ArrayUtil.equals(new long[] { 2, 10, 22 }, 1, new long[] { 1, 10, 22 }, 1, 2));
 		Assert.assertTrue(ArrayUtil.equals(new long[] { 2, 10, 22 }, 1, new long[] { 10, 22, 33 }, 0, 2));
 		Assert.assertFalse(ArrayUtil.equals(new long[] { 2, 10, 22 }, 0, new long[] { 1, 10, 22 }, 0, 2));
 		Assert.assertTrue(ArrayUtil.equals((long[])null, (long[])null));
+		Assert.assertTrue(ArrayUtil.equals((long[])null, 0, (long[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals(new long[] {}, (long[])null));
+		Assert.assertFalse(ArrayUtil.equals(new long[] {}, 0, (long[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals((long[])null, new long[] {}));
+		Assert.assertFalse(ArrayUtil.equals((long[])null, 0, new long[] {}, 0, 0));
 		
 		Assert.assertTrue(ArrayUtil.equals(new char[] { 1, 10, 22 }, new char[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new char[] { 2, 10, 22 }, new char[] { 1, 10, 22 }));
 		Assert.assertFalse(ArrayUtil.equals(new char[] { 1, 10, 22 }, new char[] { 1, 10, 21 }));
+		Assert.assertFalse(ArrayUtil.equals(new char[] { 1, 10, 22 }, new char[] { 1, 10, 22, 30 }));
 		Assert.assertTrue(ArrayUtil.equals(new char[] { 2, 10, 22 }, 1, new char[] { 1, 10, 22 }, 1, 2));
 		Assert.assertTrue(ArrayUtil.equals(new char[] { 2, 10, 22 }, 1, new char[] { 10, 22, 33 }, 0, 2));
 		Assert.assertFalse(ArrayUtil.equals(new char[] { 2, 10, 22 }, 0, new char[] { 1, 10, 22 }, 0, 2));
 		Assert.assertTrue(ArrayUtil.equals((char[])null, (char[])null));
+		Assert.assertTrue(ArrayUtil.equals((char[])null, 0, (char[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals(new char[] {}, (char[])null));
+		Assert.assertFalse(ArrayUtil.equals(new char[] {}, 0, (char[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals((char[])null, new char[] {}));
+		Assert.assertFalse(ArrayUtil.equals((char[])null, 0, new char[] {}, 0, 0));
 		
 		Object o1 = new Object();
 		Object o2 = new Object();
@@ -185,8 +205,11 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertFalse(ArrayUtil.equals(new Object[] { o1, o2, o3 }, 1, new Object[] { o1, o2, o3 }, 0, 2));
 		Assert.assertTrue(ArrayUtil.equals(new Object[] { o1, o2, o3 }, 1, new Object[] { o4, o2, o3 }, 1, 2));
 		Assert.assertTrue(ArrayUtil.equals((Object[])null, (Object[])null));
+		Assert.assertTrue(ArrayUtil.equals((Object[])null, 0, (Object[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals(new Object[] {}, (Object[])null));
+		Assert.assertFalse(ArrayUtil.equals(new Object[] {}, 0, (Object[])null, 0, 0));
 		Assert.assertFalse(ArrayUtil.equals((Object[])null, new Object[] {}));
+		Assert.assertFalse(ArrayUtil.equals((Object[])null, 0, new Object[] {}, 0, 0));
 	}
 	
 	@Test

@@ -3,13 +3,13 @@ package net.lecousin.framework.core.tests.collections.sort;
 import java.util.Iterator;
 import java.util.TreeSet;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import net.lecousin.framework.collections.sort.RedBlackTreeLong;
 import net.lecousin.framework.collections.sort.RedBlackTreeLong.Node;
 import net.lecousin.framework.collections.sort.Sorted;
 import net.lecousin.framework.core.test.collections.sort.TestSortedAssociatedWithLong;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestRedBlackTreeLong extends TestSortedAssociatedWithLong {
 
@@ -108,6 +108,39 @@ public class TestRedBlackTreeLong extends TestSortedAssociatedWithLong {
 		Assert.assertEquals(89, tree.size());
 		tree.removeInstance(79, o);
 		Assert.assertEquals(88, tree.size());
+		
+		tree = new RedBlackTreeLong<Object>();
+		Assert.assertNull(tree.searchNearestLower(22, false));
+		for (int i = 0; i < 100; i += 10)
+			tree.add(i, Integer.valueOf(-i));
+		Assert.assertEquals(0, tree.searchNearestLower(1, false).getValue());
+		Assert.assertEquals(0, tree.searchNearestLower(10, false).getValue());
+		Assert.assertEquals(10, tree.searchNearestLower(10, true).getValue());
+		Assert.assertEquals(10, tree.searchNearestLower(11, false).getValue());
+		Assert.assertEquals(10, tree.searchNearestLower(20, false).getValue());
+		Assert.assertEquals(20, tree.searchNearestLower(20, true).getValue());
+		Assert.assertEquals(20, tree.searchNearestLower(22, false).getValue());
+		Assert.assertEquals(20, tree.searchNearestLower(30, false).getValue());
+		Assert.assertEquals(30, tree.searchNearestLower(30, true).getValue());
+		Assert.assertEquals(30, tree.searchNearestLower(33, false).getValue());
+		Assert.assertEquals(30, tree.searchNearestLower(40, false).getValue());
+		Assert.assertEquals(40, tree.searchNearestLower(40, true).getValue());
+		Assert.assertEquals(40, tree.searchNearestLower(44, false).getValue());
+		Assert.assertEquals(40, tree.searchNearestLower(50, false).getValue());
+		Assert.assertEquals(50, tree.searchNearestLower(50, true).getValue());
+		Assert.assertEquals(50, tree.searchNearestLower(55, false).getValue());
+		Assert.assertEquals(50, tree.searchNearestLower(60, false).getValue());
+		Assert.assertEquals(60, tree.searchNearestLower(60, true).getValue());
+		Assert.assertEquals(60, tree.searchNearestLower(66, false).getValue());
+		Assert.assertEquals(60, tree.searchNearestLower(70, false).getValue());
+		Assert.assertEquals(70, tree.searchNearestLower(70, true).getValue());
+		Assert.assertEquals(70, tree.searchNearestLower(77, false).getValue());
+		Assert.assertEquals(70, tree.searchNearestLower(80, false).getValue());
+		Assert.assertEquals(80, tree.searchNearestLower(80, true).getValue());
+		Assert.assertEquals(80, tree.searchNearestLower(88, false).getValue());
+		Assert.assertEquals(80, tree.searchNearestLower(90, false).getValue());
+		Assert.assertEquals(90, tree.searchNearestLower(90, true).getValue());
+		Assert.assertEquals(90, tree.searchNearestLower(99, false).getValue());
 	}
 
 }

@@ -48,17 +48,16 @@ public class OldestList<T> implements Iterable<T> {
 			size++;
 			return;
 		}
-		if (newestIndex >= 0 && dates[newestIndex] < date) return; // newer than newest
-		if (oldestIndex >= 0 && dates[oldestIndex] > date) {
+		if (dates[oldestIndex] > date) {
 			// older than oldest
-			if (newestIndex < 0) refreshIndexes();
+			if (newestIndex < 0) refreshNewestIndex();
 			elements[newestIndex] = element;
 			dates[newestIndex] = date;
 			oldestIndex = newestIndex;
 			newestIndex = -1;
 			return;
 		}
-		if (newestIndex < 0 || oldestIndex < 0) refreshIndexes();
+		if (newestIndex < 0) refreshNewestIndex();
 		if (dates[newestIndex] < date) return; // newer than newest
 		// replace the newest
 		elements[newestIndex] = element;
@@ -68,11 +67,9 @@ public class OldestList<T> implements Iterable<T> {
 		return;
 	}
 	
-	private void refreshIndexes() {
-		for (int i = elements.length - 1; i >= 0; --i) {
-			if (oldestIndex == -1 || dates[i] < dates[oldestIndex]) oldestIndex = i;
+	private void refreshNewestIndex() {
+		for (int i = elements.length - 1; i >= 0; --i)
 			if (newestIndex == -1 || dates[i] > dates[newestIndex]) newestIndex = i;
-		}
 	}
 	
 	@SuppressWarnings("unchecked")

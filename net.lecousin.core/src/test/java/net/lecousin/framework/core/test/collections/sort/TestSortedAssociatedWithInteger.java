@@ -16,6 +16,24 @@ public abstract class TestSortedAssociatedWithInteger extends LCCoreAbstractTest
 	protected abstract Sorted.AssociatedWithInteger<Object> createSorted();
 	
 	@Test(timeout=120000)
+	public void simpleTests() {
+		Sorted.AssociatedWithInteger<Object> list = createSorted();
+		Integer elem1 = Integer.valueOf(10);
+		list.add(10, elem1);
+		Integer elem2 = Integer.valueOf(12);
+		list.add(12, elem2);
+		Assert.assertTrue(list.containsInstance(10, elem1));
+		Assert.assertTrue(list.containsInstance(12, elem2));
+		Assert.assertFalse(list.containsInstance(9, elem1));
+		Assert.assertFalse(list.containsInstance(13, elem1));
+		Assert.assertFalse(list.containsInstance(10, Integer.valueOf(9)));
+		Assert.assertFalse(list.containsInstance(10, Integer.valueOf(11)));
+		Assert.assertFalse(list.containsInstance(12, Integer.valueOf(9)));
+		Assert.assertFalse(list.containsInstance(12, Integer.valueOf(10)));
+		Assert.assertFalse(list.containsInstance(11, Integer.valueOf(11)));
+	}
+	
+	@Test(timeout=120000)
 	public void testAddRemoveIncrement() {
 		Sorted.AssociatedWithInteger<Object> list = createSorted();
 		TreeSet<Integer> order = new TreeSet<>();

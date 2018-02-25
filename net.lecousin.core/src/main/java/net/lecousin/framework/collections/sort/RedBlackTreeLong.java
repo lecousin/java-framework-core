@@ -290,7 +290,6 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     		}
     		Node<T> n = searchNearestLower(node.right, value, acceptEquals);
     		if (n == null) return node;
-    		if (n.getValue() > node.value) return node;
     		return n;
     	}
     	if (acceptEquals) return node;

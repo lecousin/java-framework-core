@@ -286,7 +286,7 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     			return n;
     		}
     		Node<T> n = searchNearestLower(node.right, value);
-    		if (n == null || n.getValue() > node.value) return node;
+    		if (n == null) return node;
     		return n;
     	}
     	if (node.left == null) return null;

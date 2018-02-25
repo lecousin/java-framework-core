@@ -9,9 +9,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -323,7 +323,7 @@ public class TurnArray<T> implements Deque<T> {
 	
 	private void checkDecrease() {
 		if (decreaseTask != null) return;
-		if (!LCCore.isStarted()) return;
+		if (!Threading.isInitialized()) return;
 		if (array.length > minSize && size() < array.length - (array.length >> 1))
 			decreaseTask = new DecreaseTask();
 	}

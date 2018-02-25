@@ -20,6 +20,19 @@ public class TestArrayIterator extends LCCoreAbstractTest {
 		} catch (NoSuchElementException e) {
 			// ok
 		}
+		
+		it = new ArrayIterator.Generic(new Integer[] { Integer.valueOf(10), Integer.valueOf(20) });
+		Assert.assertTrue(it.hasNext());
+		Assert.assertEquals(10, ((Integer)it.next()).intValue());
+		Assert.assertTrue(it.hasNext());
+		Assert.assertEquals(20, ((Integer)it.next()).intValue());
+		Assert.assertFalse(it.hasNext());
+		try {
+			it.next();
+			throw new AssertionError("Iterator must throw NoSuchElementException");
+		} catch (NoSuchElementException e) {
+			// ok
+		}
 	}
 	
 }
