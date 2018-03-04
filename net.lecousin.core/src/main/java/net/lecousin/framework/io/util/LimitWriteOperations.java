@@ -3,14 +3,15 @@ package net.lecousin.framework.io.util;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * This class allows to queue write operations, but blocks if too many are waiting.
@@ -42,55 +43,68 @@ public class LimitWriteOperations {
 			synchronized (waiting) {
 				if (lastWrite.isCancelled()) return lastWrite;
 				if (waiting.isEmpty() && lastWrite.isUnblocked()) {
-					lastWrite = io.writeAsync(buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
-						@Override
-						public void run(Pair<Integer, IOException> param) {
-							writeDone(buffer);
-						}
-					});
-					lastWrite.onCancel((cancel) -> {
-						writeDone(buffer);
-					});
+					LCCore.getApplication().getConsole().out("write direct");
+					lastWrite = io.writeAsync(buffer);
+					lastWrite.listenInline(
+						(nb) -> { writeDone(buffer, null); },
+						(error) -> { writeDone(buffer, null); },
+						(cancel) -> { writeDone(buffer, cancel); }
+					);
 					return lastWrite;
 				}
 				if (!waiting.isFull()) {
+					LCCore.getApplication().getConsole().out("push write");
 					AsyncWork<Integer,IOException> res = new AsyncWork<>();
 					waiting.addLast(new Pair<>(buffer, res));
+					lastWrite = res;
 					return res;
 				}
+				LCCore.getApplication().getConsole().out("waiting has " + waiting.size());
 				if (lock != null)
 					throw new IOException("Concurrent write");
 				lock = new SynchronizationPoint<>();
 				lk = lock;
 			}
+			LCCore.getApplication().getConsole().out("block");
 			lk.block(0);
+			LCCore.getApplication().getConsole().out("unblocked");
 		} while (true);
 	}
 	
-	protected void writeDone(@SuppressWarnings("unused") ByteBuffer buffer) {
+	protected void writeDone(@SuppressWarnings("unused") ByteBuffer buffer, CancelException cancelled) {
+		LCCore.getApplication().getConsole().out("writeDone");
 		SynchronizationPoint<NoException> sp = null;
 		synchronized (waiting) {
 			Pair<ByteBuffer,AsyncWork<Integer,IOException>> b = waiting.pollFirst();
+			LCCore.getApplication().getConsole().out("b = " + b);
 			if (b != null) {
 				if (lock != null) {
 					sp = lock;
 					lock = null;
 				}
-				if (lastWrite.isCancelled()) {
+				if (cancelled != null) {
 					while (b != null) {
-						b.getValue2().cancel(lastWrite.getCancelEvent());
+						b.getValue2().cancel(cancelled);
 						b = waiting.pollFirst();
 					}
 				} else {
 					ByteBuffer buf = b.getValue1();
-					lastWrite = io.writeAsync(buf, new RunnableWithParameter<Pair<Integer,IOException>>() {
-						@Override
-						public void run(Pair<Integer, IOException> param) {
-							writeDone(buf);
+					AsyncWork<Integer, IOException> write = io.writeAsync(buf);
+					Pair<ByteBuffer,AsyncWork<Integer,IOException>> bb = b;
+					write.listenInline(
+						(nb) -> {
+							bb.getValue2().unblockSuccess(nb);
+							writeDone(buf, null);
+						},
+						(error) -> {
+							bb.getValue2().error(error);
+							writeDone(buf, null);
+						},
+						(cancel) -> {
+							bb.getValue2().cancel(cancel);
+							writeDone(buf, cancel);
 						}
-					});
-					lastWrite.onCancel((cancel) -> { writeDone(buf); });
-					lastWrite.listenInline(b.getValue2());
+					);
 				}
 			}
 		}
@@ -100,10 +114,7 @@ public class LimitWriteOperations {
 	
 	/** Return the last pending operation, or null. */
 	public AsyncWork<Integer, IOException> getLastPendingOperation() {
-		Pair<ByteBuffer,AsyncWork<Integer,IOException>> b = waiting.peekLast();
-		if (b == null)
-			return lastWrite.isUnblocked() ? null : lastWrite;
-		return b.getValue2();
+		return lastWrite.isUnblocked() ? null : lastWrite;
 	}
 	
 	/** Same as getLastPendingOperation but never return null (return an unblocked synchronization point instead). */
