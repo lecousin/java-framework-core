@@ -119,6 +119,8 @@ public class TestLoggers extends LCCoreAbstractTest {
 		logger.debug("test", new Exception());
 		logger.trace();
 		logger.trace("test", new Exception());
+
+		factory.getDefault().info("Test log message");
 	}
 	
 	private static void produceLogs(Logger log) {
