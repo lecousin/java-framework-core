@@ -43,10 +43,28 @@ public final class ClassUtil {
 			total += fields.length;
 			if (fields.length > 0) all.add(fields);
 		}
-		ArrayList<Field> result = new ArrayList<Field>(total);
+		ArrayList<Field> result = new ArrayList<>(total);
 		for (int i = all.size() - 1; i >= 0; --i)
 			for (Field f : all.get(i))
 				result.add(f);
+		return result;
+	}
+	
+	/** Get all methods from the given class and all its super classes, with the ones from the root class first. */
+	public static ArrayList<Method> getAllMethodsInheritedFirst(Class<?> cl) {
+		ArrayList<Method[]> all = new ArrayList<>();
+		Method[] methods = cl.getDeclaredMethods();
+		int total = methods.length;
+		if (methods.length > 0) all.add(methods);
+		while ((cl = cl.getSuperclass()) != null) {
+			methods = cl.getDeclaredMethods();
+			total += methods.length;
+			if (methods.length > 0) all.add(methods);
+		}
+		ArrayList<Method> result = new ArrayList<>(total);
+		for (int i = all.size() - 1; i >= 0; --i)
+			for (Method m : all.get(i))
+				result.add(m);
 		return result;
 	}
 	
