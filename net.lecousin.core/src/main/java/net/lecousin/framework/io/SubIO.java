@@ -9,135 +9,66 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
+// skip checkstyle: OverloadMethodsDeclarationOrder
 /**
  * Sub-part of an IO.
  */
-public abstract class SubIO extends ConcurrentCloseable {
+public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownSize, IO.PositionKnown {
 
+	private SubIO(IO src, long start, long size, String description, boolean closeSrcOnClose) {
+		io = src;
+		pos = 0;
+		this.start = start;
+		this.size = size;
+		this.description = description;
+		closeContainer = closeSrcOnClose;
+	}
+
+	protected IO io;
+	protected long pos;
+	protected long start;
+	protected long size;
+	protected String description;
+	protected boolean closeContainer;
+	
 	/**
 	 * Sub-part of a Readable IO.
 	 */
-	public static class Readable extends SubIO implements IO.Readable, IO.KnownSize {
+	public static class Readable extends SubIO implements IO.Readable {
 		
 		/** Constructor. */
 		public Readable(IO.Readable src, long size, String description, boolean closeSrcOnClose) {
-			io = src;
-			pos = 0;
-			this.size = size;
-			this.description = description;
-			closeContainer = closeSrcOnClose;
-		}
-		
-		protected IO.Readable io;
-		protected long pos;
-		protected long size;
-		protected String description;
-		protected boolean closeContainer;
-		
-		@Override
-		public IO getWrappedIO() { return null; }
-		
-		@Override
-		public String getSourceDescription() { return description; }
-		
-		@Override
-		public TaskManager getTaskManager() { return io.getTaskManager(); }
-		
-		@Override
-		public byte getPriority() { return io != null ? io.getPriority() : Task.PRIORITY_NORMAL; }
-		
-		@Override
-		public void setPriority(byte priority) { io.setPriority(priority); }
-		
-		@Override
-		protected ISynchronizationPoint<?> closeUnderlyingResources() {
-			if (!closeContainer) return null;
-			return io.closeAsync();
-		}
-		
-		@Override
-		protected void closeResources(SynchronizationPoint<Exception> ondone) {
-			io = null;
-			ondone.unblock();
+			super(src, 0, size, description, closeSrcOnClose);
 		}
 		
 		@Override
 		public ISynchronizationPoint<IOException> canStartReading() {
-			return io.canStartReading();
-		}
-		
-		@Override
-		public long getSizeSync() {
-			return size;
-		}
-		
-		@Override
-		public AsyncWork<Long, IOException> getSizeAsync() {
-			return new AsyncWork<Long, IOException>(Long.valueOf(size), null);
+			return super.canStartReading();
 		}
 		
 		@Override
 		public int readSync(ByteBuffer buffer) throws IOException {
-			int limit = -1;
-			if (pos + buffer.remaining() > size) {
-				limit = buffer.limit();
-				buffer.limit((int)(buffer.position() + size - pos));
-			}
-			int nb = io.readSync(buffer);
-			pos += nb;
-			if (limit != -1) buffer.limit(limit);
-			return nb;
+			return super.readSync(buffer);
 		}
 		
 		@Override
 		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			int limit = -1;
-			if (pos + buffer.remaining() > size) {
-				limit = buffer.limit();
-				buffer.limit((int)(buffer.position() + size - pos));
-			}
-			int plimit = limit;
-			return io.readAsync(buffer, (result) -> {
-				if (result.getValue1() != null)
-					pos += result.getValue1().intValue();
-				if (plimit != -1)
-					buffer.limit(plimit);
-				if (ondone != null) ondone.run(result);
-			});
+			return super.readAsync(buffer, ondone);
 		}
 		
 		@Override
 		public int readFullySync(ByteBuffer buffer) throws IOException {
-			int limit = -1;
-			if (pos + buffer.remaining() > size) {
-				limit = buffer.limit();
-				buffer.limit((int)(buffer.position() + size - pos));
-			}
-			int nb = io.readFullySync(buffer);
-			pos += nb;
-			if (limit != -1) buffer.limit(limit);
-			return nb;
+			return super.readFullySync(buffer);
 		}
 		
 		@Override
 		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			int limit = -1;
-			if (pos + buffer.remaining() > size) {
-				limit = buffer.limit();
-				buffer.limit((int)(buffer.position() + size - pos));
-			}
-			int plimit = limit;
-			return io.readAsync(buffer, (result) -> {
-				if (result.getValue1() != null)
-					pos += result.getValue1().intValue();
-				if (plimit != -1)
-					buffer.limit(plimit);
-				if (ondone != null) ondone.run(result);
-			});
+			return super.readFullyAsync(buffer, ondone);
 		}
 		
 		@Override
@@ -145,7 +76,7 @@ public abstract class SubIO extends ConcurrentCloseable {
 			if (n <= 0) return 0;
 			if (pos + n < 0) n = -pos;
 			if (pos + n > size) n = size - pos;
-			long nb = io.skipSync(n);
+			long nb = ((IO.Readable)io).skipSync(n);
 			pos += nb;
 			return nb;
 		}
@@ -158,7 +89,7 @@ public abstract class SubIO extends ConcurrentCloseable {
 			}
 			if (pos + n < 0) n = -pos;
 			if (pos + n > size) n = size - pos;
-			return io.skipAsync(n, (result) -> {
+			return ((IO.Readable)io).skipAsync(n, (result) -> {
 				if (result.getValue1() != null)
 					pos += result.getValue1().longValue();
 				if (ondone != null) ondone.run(result);
@@ -169,138 +100,72 @@ public abstract class SubIO extends ConcurrentCloseable {
 		/**
 		 * Sub-part of a Seekable Readable IO.
 		 */
-		public static class Seekable extends SubIO.Readable implements IO.Readable.Seekable {
+		public static class Seekable extends SubIO implements IO.Readable.Seekable {
 			
 			/** Constructor. */
 			public Seekable(IO.Readable.Seekable src, long start, long size, String description, boolean closeSrcOnClose) {
-				super(src, size, description, closeSrcOnClose);
-				this.start = start;
-				this.io = src;
+				super(src, start, size, description, closeSrcOnClose);
 			}
 			
-			protected long start;
-			
 			@Override
-			public long getPosition() { return pos; }
+			public ISynchronizationPoint<IOException> canStartReading() {
+				return super.canStartReading();
+			}
 			
 			@Override
 			public int readSync(long pos, ByteBuffer buffer) throws IOException {
-				if (pos >= size) return -1;
-				int limit = -1;
-				if (pos + buffer.remaining() > size) {
-					limit = buffer.limit();
-					buffer.limit((int)(buffer.position() + size - pos));
-				}
-				int nb = ((IO.Readable.Seekable)io).readSync(start + pos, buffer);
-				this.pos = pos + nb;
-				if (limit != -1) buffer.limit(limit);
-				return nb;
+				return super.readSync(pos, buffer);
 			}
 			
 			@Override
 			public int readSync(ByteBuffer buffer) throws IOException {
-				return readSync(pos, buffer);
+				return super.readSync(pos, buffer);
 			}
 			
 			@Override
 			public AsyncWork<Integer,IOException> readAsync(
 				long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 			) {
-				if (pos > size) {
-					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
-					return new AsyncWork<>(Integer.valueOf(-1),null);
-				}
-				int limit = -1;
-				if (pos + buffer.remaining() > size) {
-					limit = buffer.limit();
-					buffer.limit((int)(buffer.position() + size - pos));
-				}
-				int plimit = limit;
-				return ((IO.Readable.Seekable)io).readAsync(start + pos, buffer, (result) -> {
-					if (result.getValue1() != null)
-						SubIO.Readable.Seekable.this.pos = pos + result.getValue1().intValue();
-					if (plimit != -1)
-						buffer.limit(plimit);
-					if (ondone != null) ondone.run(result);
-				});
+				return super.readAsync(pos, buffer, ondone);
 			}
 			
 			@Override
 			public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-				return readAsync(pos, buffer, ondone);
+				return super.readAsync(pos, buffer, ondone);
 			}
 			
 			@Override
 			public int readFullySync(long pos, ByteBuffer buffer) throws IOException {
-				if (pos > size) return -1;
-				int limit = -1;
-				if (pos + buffer.remaining() > size) {
-					limit = buffer.limit();
-					buffer.limit((int)(buffer.position() + size - pos));
-				}
-				int nb = ((IO.Readable.Seekable)io).readFullySync(start + pos, buffer);
-				this.pos = pos + nb;
-				if (limit != -1) buffer.limit(limit);
-				return nb;
+				return super.readFullySync(pos, buffer);
 			}
 			
 			@Override
 			public int readFullySync(ByteBuffer buffer) throws IOException {
-				return readFullySync(pos, buffer);
+				return super.readFullySync(pos, buffer);
 			}
 			
 			@Override
 			public AsyncWork<Integer,IOException> readFullyAsync(
 				long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 			) {
-				if (pos > size) return new AsyncWork<>(Integer.valueOf(-1),null);
-				int limit = -1;
-				if (pos + buffer.remaining() > size) {
-					limit = buffer.limit();
-					buffer.limit((int)(buffer.position() + size - pos));
-				}
-				int plimit = limit;
-				return ((IO.Readable.Seekable)io).readFullyAsync(start + pos, buffer, (result) -> {
-					if (result.getValue1() != null)
-						SubIO.Readable.Seekable.this.pos = pos + result.getValue1().intValue();
-					if (plimit != -1)
-						buffer.limit(plimit);
-					if (ondone != null) ondone.run(result);
-				});
+				return super.readFullyAsync(pos, buffer, ondone);
 			}
 			
 			@Override
 			public AsyncWork<Integer,IOException> readFullyAsync(
 				ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 			) {
-				return readFullyAsync(pos, buffer, ondone);
+				return super.readFullyAsync(pos, buffer, ondone);
 			}
 			
 			@Override
 			public long seekSync(SeekType type, long move) {
-				switch (type) {
-				default:
-				case FROM_BEGINNING:
-					if (move < 0) move = 0;
-					if (move > size) move = size;
-					pos = move;
-					return pos;
-				case FROM_END:
-					if (move < 0) move = 0;
-					if (size - move < 0) move = size;
-					pos = size - move;
-					return pos;
-				case FROM_CURRENT:
-					if (pos + move < 0) move = -pos;
-					if (pos + move > size) move = size - pos;
-					pos += move;
-					return pos;
-				}
+				return super.seekSync(type, move);
 			}
 			
 			@Override
 			public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-				return IOUtil.seekAsyncUsingSync(this, type, move, ondone).getOutput();
+				return super.seekAsync(type, move, ondone);
 			}
 			
 			@Override
@@ -429,4 +294,478 @@ public abstract class SubIO extends ConcurrentCloseable {
 		
 	}
 
+	/**
+	 * Sub-part of a Writable IO.
+	 */
+	public static class Writable extends SubIO implements IO.Writable {
+
+
+		/** Constructor. */
+		public Writable(IO.Writable src, long start, long size, String description, boolean closeSrcOnClose) {
+			super(src, start, size, description, closeSrcOnClose);
+		}
+		
+		@Override
+		public ISynchronizationPoint<IOException> canStartWriting() {
+			return super.canStartWriting();
+		}
+		
+		@Override
+		public int writeSync(ByteBuffer buffer) throws IOException {
+			return super.writeSync(buffer);
+		}
+		
+		@Override
+		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+			return super.writeAsync(buffer, ondone);
+		}
+		
+		/**
+		 * Sub-part of a Seekable Writable IO.
+		 */
+		public static class Seekable extends SubIO implements IO.Writable.Seekable {
+
+			/** Constructor. */
+			public Seekable(IO.Writable.Seekable src, long start, long size, String description, boolean closeSrcOnClose) {
+				super(src, start, size, description, closeSrcOnClose);
+			}
+			
+			@Override
+			public ISynchronizationPoint<IOException> canStartWriting() {
+				return super.canStartWriting();
+			}
+			
+			@Override
+			public int writeSync(long pos, ByteBuffer buffer) throws IOException {
+				return super.writeSync(pos, buffer);
+			}
+			
+			@Override
+			public int writeSync(ByteBuffer buffer) throws IOException {
+				return super.writeSync(pos, buffer);
+			}
+			
+			@Override
+			public AsyncWork<Integer, IOException> writeAsync(
+				long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+			) {
+				return super.writeAsync(pos, buffer, ondone);
+			}
+			
+			@Override
+			public AsyncWork<Integer, IOException> writeAsync(
+				ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+			) {
+				return super.writeAsync(pos, buffer, ondone);
+			}
+			
+			@Override
+			public long seekSync(SeekType type, long move) {
+				return super.seekSync(type, move);
+			}
+			
+			@Override
+			public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+				return super.seekAsync(type, move, ondone);
+			}
+		}
+		
+	}
+	
+	/**
+	 * Sub-part of a Seekable Readable and Writable IO.
+	 */
+	public static class ReadWrite extends SubIO implements IO.Readable.Seekable, IO.Writable.Seekable {
+
+		/** Constructor. */
+		public <T extends IO.Readable.Seekable & IO.Writable.Seekable> ReadWrite(
+				T src, long start, long size, String description, boolean closeSrcOnClose
+		) {
+			super(src, start, size, description, closeSrcOnClose);
+		}
+
+		@Override
+		public ISynchronizationPoint<IOException> canStartReading() {
+			return super.canStartReading();
+		}
+		
+		@Override
+		public int readSync(long pos, ByteBuffer buffer) throws IOException {
+			return super.readSync(pos, buffer);
+		}
+		
+		@Override
+		public int readSync(ByteBuffer buffer) throws IOException {
+			return super.readSync(pos, buffer);
+		}
+		
+		@Override
+		public AsyncWork<Integer,IOException> readAsync(
+			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		) {
+			return super.readAsync(pos, buffer, ondone);
+		}
+		
+		@Override
+		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+			return super.readAsync(pos, buffer, ondone);
+		}
+		
+		@Override
+		public int readFullySync(long pos, ByteBuffer buffer) throws IOException {
+			return super.readFullySync(pos, buffer);
+		}
+		
+		@Override
+		public int readFullySync(ByteBuffer buffer) throws IOException {
+			return super.readFullySync(pos, buffer);
+		}
+		
+		@Override
+		public AsyncWork<Integer,IOException> readFullyAsync(
+			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		) {
+			return super.readFullyAsync(pos, buffer, ondone);
+		}
+		
+		@Override
+		public AsyncWork<Integer,IOException> readFullyAsync(
+			ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		) {
+			return super.readFullyAsync(pos, buffer, ondone);
+		}
+		
+		@Override
+		public long seekSync(SeekType type, long move) {
+			return super.seekSync(type, move);
+		}
+		
+		@Override
+		public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+			return super.seekAsync(type, move, ondone);
+		}
+		
+		@Override
+		public long skipSync(long n) {
+			if (pos + n < 0) n = -pos;
+			if (pos + n > size) n = size - pos;
+			pos += n;
+			return n;
+		}
+		
+		@Override
+		public AsyncWork<Long,IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+			long l = skipSync(n);
+			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(l), null));
+			return new AsyncWork<Long,IOException>(Long.valueOf(l), null);
+		}
+
+		@Override
+		public ISynchronizationPoint<IOException> canStartWriting() {
+			return super.canStartWriting();
+		}
+		
+		@Override
+		public int writeSync(long pos, ByteBuffer buffer) throws IOException {
+			return super.writeSync(pos, buffer);
+		}
+		
+		@Override
+		public int writeSync(ByteBuffer buffer) throws IOException {
+			return super.writeSync(pos, buffer);
+		}
+		
+		@Override
+		public AsyncWork<Integer, IOException> writeAsync(
+			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+		) {
+			return super.writeAsync(pos, buffer, ondone);
+		}
+		
+		@Override
+		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+			return super.writeAsync(pos, buffer, ondone);
+		}
+	}
+
+	@Override
+	public IO getWrappedIO() { return null; }
+	
+	@Override
+	public String getSourceDescription() { return description; }
+	
+	@Override
+	public TaskManager getTaskManager() { return io.getTaskManager(); }
+	
+	@Override
+	public byte getPriority() { return io != null ? io.getPriority() : Task.PRIORITY_NORMAL; }
+	
+	@Override
+	public void setPriority(byte priority) { io.setPriority(priority); }
+	
+	@Override
+	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		if (!closeContainer) return null;
+		return io.closeAsync();
+	}
+	
+	@Override
+	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		io = null;
+		ondone.unblock();
+	}
+	
+	@Override
+	public long getSizeSync() {
+		return size;
+	}
+	
+	@Override
+	public AsyncWork<Long, IOException> getSizeAsync() {
+		return new AsyncWork<Long, IOException>(Long.valueOf(size), null);
+	}
+	
+	@Override
+	public long getPosition() { return pos; }
+
+	
+	// ************************************
+	// IO.Readable
+	// ************************************
+
+	
+	protected ISynchronizationPoint<IOException> canStartReading() {
+		return ((IO.Readable)io).canStartReading();
+	}
+	
+	protected int readSync(ByteBuffer buffer) throws IOException {
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int nb = ((IO.Readable)io).readSync(buffer);
+		pos += nb;
+		if (limit != -1) buffer.limit(limit);
+		return nb;
+	}
+	
+	protected AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int plimit = limit;
+		return ((IO.Readable)io).readAsync(buffer, (result) -> {
+			if (result.getValue1() != null)
+				pos += result.getValue1().intValue();
+			if (plimit != -1)
+				buffer.limit(plimit);
+			if (ondone != null) ondone.run(result);
+		});
+	}
+	
+	protected int readFullySync(ByteBuffer buffer) throws IOException {
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int nb = ((IO.Readable)io).readFullySync(buffer);
+		pos += nb;
+		if (limit != -1) buffer.limit(limit);
+		return nb;
+	}
+	
+	protected AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int plimit = limit;
+		return ((IO.Readable)io).readAsync(buffer, (result) -> {
+			if (result.getValue1() != null)
+				pos += result.getValue1().intValue();
+			if (plimit != -1)
+				buffer.limit(plimit);
+			if (ondone != null) ondone.run(result);
+		});
+	}
+	
+	
+	// ************************************
+	// IO.Readable.Seekable
+	// ************************************
+
+	
+	protected int readSync(long pos, ByteBuffer buffer) throws IOException {
+		if (pos >= size) return -1;
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int nb = ((IO.Readable.Seekable)io).readSync(start + pos, buffer);
+		this.pos = pos + nb;
+		if (limit != -1) buffer.limit(limit);
+		return nb;
+	}
+	
+	protected AsyncWork<Integer,IOException> readAsync(
+		long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+	) {
+		if (pos > size) {
+			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
+			return new AsyncWork<>(Integer.valueOf(-1),null);
+		}
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int plimit = limit;
+		return ((IO.Readable.Seekable)io).readAsync(start + pos, buffer, (result) -> {
+			if (result.getValue1() != null)
+				SubIO.this.pos = pos + result.getValue1().intValue();
+			if (plimit != -1)
+				buffer.limit(plimit);
+			if (ondone != null) ondone.run(result);
+		});
+	}
+	
+	protected int readFullySync(long pos, ByteBuffer buffer) throws IOException {
+		if (pos > size) return -1;
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int nb = ((IO.Readable.Seekable)io).readFullySync(start + pos, buffer);
+		this.pos = pos + nb;
+		if (limit != -1) buffer.limit(limit);
+		return nb;
+	}
+	
+	protected AsyncWork<Integer,IOException> readFullyAsync(
+		long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+	) {
+		if (pos > size) return new AsyncWork<>(Integer.valueOf(-1),null);
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int plimit = limit;
+		return ((IO.Readable.Seekable)io).readFullyAsync(start + pos, buffer, (result) -> {
+			if (result.getValue1() != null)
+				SubIO.this.pos = pos + result.getValue1().intValue();
+			if (plimit != -1)
+				buffer.limit(plimit);
+			if (ondone != null) ondone.run(result);
+		});
+	}
+	
+	protected long seekSync(SeekType type, long move) {
+		switch (type) {
+		default:
+		case FROM_BEGINNING:
+			if (move < 0) move = 0;
+			if (move > size) move = size;
+			pos = move;
+			return pos;
+		case FROM_END:
+			if (move < 0) move = 0;
+			if (size - move < 0) move = size;
+			pos = size - move;
+			return pos;
+		case FROM_CURRENT:
+			if (pos + move < 0) move = -pos;
+			if (pos + move > size) move = size - pos;
+			pos += move;
+			return pos;
+		}
+	}
+	
+	protected AsyncWork<Long,IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+		return IOUtil.seekAsyncUsingSync((IO.Seekable)this, type, move, ondone).getOutput();
+	}
+
+	
+	// ************************************
+	// IO.Writable
+	// ************************************
+	
+
+	protected ISynchronizationPoint<IOException> canStartWriting() {
+		return ((IO.Writable)io).canStartWriting();
+	}
+
+	protected int writeSync(ByteBuffer buffer) throws IOException {
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int nb = ((IO.Writable)io).writeSync(buffer);
+		pos += nb;
+		if (limit != -1) buffer.limit(limit);
+		return nb;
+	}
+	
+	protected AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int plimit = limit;
+		return ((IO.Writable)io).writeAsync(buffer, (result) -> {
+			if (result.getValue1() != null)
+				pos += result.getValue1().intValue();
+			if (plimit != -1)
+				buffer.limit(plimit);
+			if (ondone != null) ondone.run(result);
+		});
+	}
+
+	
+	// ************************************
+	// IO.Writable.Seekable
+	// ************************************
+	
+	protected int writeSync(long pos, ByteBuffer buffer) throws IOException {
+		if (pos >= size) return -1;
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int nb = ((IO.Writable.Seekable)io).writeSync(start + pos, buffer);
+		this.pos = pos + nb;
+		if (limit != -1) buffer.limit(limit);
+		return nb;
+	}
+	
+	protected AsyncWork<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		if (pos > size) {
+			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
+			return new AsyncWork<>(Integer.valueOf(-1),null);
+		}
+		int limit = -1;
+		if (pos + buffer.remaining() > size) {
+			limit = buffer.limit();
+			buffer.limit((int)(buffer.position() + size - pos));
+		}
+		int plimit = limit;
+		return ((IO.Writable.Seekable)io).writeAsync(start + pos, buffer, (result) -> {
+			if (result.getValue1() != null)
+				SubIO.this.pos = pos + result.getValue1().intValue();
+			if (plimit != -1)
+				buffer.limit(plimit);
+			if (ondone != null) ondone.run(result);
+		});
+	}
+	
 }

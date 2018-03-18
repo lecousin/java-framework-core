@@ -633,7 +633,7 @@ public final class IOUtil {
 	 * This must be used only if the synchronous seek is only using CPU.
 	 */
 	public static Task<Long,IOException> seekAsyncUsingSync(
-		IO.Readable.Seekable io, SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone
+		IO.Seekable io, SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone
 	) {
 		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Seeking", io.getPriority(), ondone) {
 			@Override
@@ -648,7 +648,7 @@ public final class IOUtil {
 	/**
 	 * Implement a synchronous sync by calling an asynchronous one and blocking until the result is available.
 	 */
-	public static long seekSyncUsingAsync(IO.Readable.Seekable io, SeekType type, long move) throws IOException {
+	public static long seekSyncUsingAsync(IO.Seekable io, SeekType type, long move) throws IOException {
 		AsyncWork<Long,IOException> seek = io.seekAsync(type, move);
 		seek.blockException(0);
 		return seek.getResult().longValue();

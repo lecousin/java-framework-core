@@ -118,6 +118,44 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		}
 	}
 	
+	/** Readable and Writable fragmented IO. */
+	public static class ReadWrite extends FragmentedSubIO.Readable implements IO.Writable.Seekable {
+		
+		/** Constructor. */
+		public <T extends IO.Readable.Seekable & IO.Writable.Seekable> ReadWrite(
+			T io, List<RangeLong> fragments, boolean closeParentIOOnClose, String description
+		) {
+			super(io, fragments, closeParentIOOnClose, description);
+		}
+
+		@Override
+		public ISynchronizationPoint<IOException> canStartWriting() {
+			return super.canStartWriting();
+		}
+
+		@Override
+		public int writeSync(long pos, ByteBuffer buffer) throws IOException {
+			return super.writeSync(pos, buffer);
+		}
+
+		@Override
+		public int writeSync(ByteBuffer buffer) throws IOException {
+			return super.writeSync(pos, buffer);
+		}
+
+		@Override
+		public AsyncWork<Integer, IOException> writeAsync(
+			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+		) {
+			return super.writeAsync(pos, buffer, ondone);
+		}
+
+		@Override
+		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+			return super.writeAsync(pos, buffer, ondone);
+		}
+	}
+	
 	@Override
 	public IO getWrappedIO() {
 		return null;
@@ -159,6 +197,8 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		sp.unblockSuccess(Long.valueOf(getSizeSync()));
 		return sp;
 	}
+	
+	// Readable
 	
 	protected AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		Iterator<RangeLong> it = fragments.iterator();
@@ -301,6 +341,80 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		long skipped = skipSync(n);
 		if (ondone != null) ondone.run(new Pair<>(Long.valueOf(skipped), null));
 		sp.unblockSuccess(Long.valueOf(skipped));
+		return sp;
+	}
+	
+	// Writable
+	
+	protected ISynchronizationPoint<IOException> canStartWriting() {
+		return ((IO.Writable)io).canStartWriting();
+	}
+
+	protected int writeSync(long pos, ByteBuffer buffer) throws IOException {
+		Iterator<RangeLong> it = fragments.iterator();
+		long p = 0;
+		while (it.hasNext()) {
+			RangeLong r = it.next();
+			long s = r.max - r.min + 1;
+			if (pos >= p + s) {
+				p += s;
+				continue;
+			}
+			long start = pos - p;
+			int len = buffer.remaining();
+			if (start + len > s) {
+				int prevLimit = buffer.limit();
+				buffer.limit((int)(prevLimit - ((start + len) - s)));
+				len = ((IO.Writable.Seekable)io).writeSync(r.min + start, buffer);
+				buffer.limit(prevLimit);
+			} else {
+				len = ((IO.Writable.Seekable)io).writeSync(r.min + start, buffer);
+			}
+			this.pos = pos + len;
+			return len;
+		}
+		return 0;
+	}
+
+	protected AsyncWork<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		Iterator<RangeLong> it = fragments.iterator();
+		long p = 0;
+		while (it.hasNext()) {
+			RangeLong r = it.next();
+			long s = r.max - r.min + 1;
+			if (pos >= p + s) {
+				p += s;
+				continue;
+			}
+			long start = pos - p;
+			int len = buffer.remaining();
+			if (start + len > s) {
+				int prevLimit = buffer.limit();
+				buffer.limit((int)(prevLimit - ((start + len) - s)));
+				return ((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer,
+				new RunnableWithParameter<Pair<Integer,IOException>>() {
+					@Override
+					public void run(Pair<Integer, IOException> param) {
+						buffer.limit(prevLimit);
+						if (param.getValue1() != null)
+							FragmentedSubIO.this.pos = pos + param.getValue1().intValue();
+						if (ondone != null) ondone.run(param);
+					}
+				});
+			}
+			return operation(((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer,
+			new RunnableWithParameter<Pair<Integer,IOException>>() {
+				@Override
+				public void run(Pair<Integer, IOException> param) {
+					if (param.getValue1() != null)
+						FragmentedSubIO.this.pos = pos + param.getValue1().intValue();
+					if (ondone != null) ondone.run(param);
+				}
+			}));
+		}
+		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
+		if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(0), null));
+		sp.unblockSuccess(Integer.valueOf(0));
 		return sp;
 	}
 	
