@@ -1152,4 +1152,14 @@ public final class IOUtil {
 				onReady.start();
 		});
 	}
+	
+	/** Get the size by seeking at the end if not an instanceof IO.KnownSize. */
+	public static long getSizeSync(IO.Readable.Seekable io) throws IOException {
+		if (io instanceof IO.KnownSize)
+			return ((IO.KnownSize)io).getSizeSync();
+		long pos = io.getPosition();
+		long size = io.seekSync(SeekType.FROM_END, 0);
+		io.seekSync(SeekType.FROM_BEGINNING, pos);
+		return size;
+	}
 }

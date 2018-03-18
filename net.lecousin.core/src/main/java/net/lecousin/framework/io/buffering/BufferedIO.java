@@ -113,8 +113,11 @@ public abstract class BufferedIO extends BufferingManaged {
 		AsyncWork<Integer,IOException> loading;
 		synchronized (buffer) {
 			buffer.buffer = new byte[index == 0 ? firstBufferSize : bufferSize];
-			loading =
-				io.readFullyAsync(index == 0 ? 0L : (firstBufferSize + (index - 1) * (long)bufferSize), ByteBuffer.wrap(buffer.buffer));
+			loading = io.readFullyAsync(
+				index == 0
+				? 0L
+				: (firstBufferSize + (index - 1) * (long)bufferSize)
+			, ByteBuffer.wrap(buffer.buffer));
 		}
 		operation(loading).listenInline(new Runnable() {
 			@Override
