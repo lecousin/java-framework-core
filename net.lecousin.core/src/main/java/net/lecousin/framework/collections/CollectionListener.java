@@ -1,0 +1,164 @@
+package net.lecousin.framework.collections;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedList;
+
+import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.util.Pair;
+
+/**
+ * A collection listener allows to signal the following events:
+ * new elements, elements removed, and elements changed.
+ * 
+ * At initialization, the method elementsReady must be called once to set the collection's
+ * initial elements. Then the other methods are used to signal modifications.
+ *
+ * @param <T> type of elements
+ */
+public interface CollectionListener<T> {
+	
+	default void elementsReady(Collection<? extends T> elements) {
+		elementsAdded(elements);
+	}
+
+	void elementsAdded(Collection<? extends T> elements);
+	
+	void elementsRemoved(Collection<? extends T> elements);
+	
+	void elementsChanged(Collection<? extends T> elements);
+	
+	void error(Throwable error);
+	
+	public static class Keep<T> implements CollectionListener<T> {
+		
+		public Keep(Collection<T> implementation, byte listenersCallPriority) {
+			col = implementation;
+			priority = listenersCallPriority;
+		}
+		
+		protected Collection<T> col;
+		protected byte priority;
+		protected Throwable error = null;
+		protected LinkedList<Pair<CollectionListener<T>, Task<Void,NoException>>> listeners = new LinkedList<>();
+		
+		@Override
+		public void elementsReady(Collection<? extends T> elements) {
+			ArrayList<Pair<CollectionListener<T>, Task<Void,NoException>>> list;
+			synchronized (col) {
+				col.clear();
+				col.addAll(elements);
+				list = new ArrayList<>(listeners);
+			}
+			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
+				synchronized (l) {
+					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.elementsReady", priority, () -> {
+						l.getValue1().elementsReady(elements);
+					});
+					task.startOnDone(l.getValue2());
+					l.setValue2(task);
+				}
+			}
+		}
+		
+		@Override
+		public void elementsAdded(Collection<? extends T> elements) {
+			ArrayList<Pair<CollectionListener<T>, Task<Void,NoException>>> list;
+			synchronized (col) {
+				col.addAll(elements);
+				list = new ArrayList<>(listeners);
+			}
+			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
+				synchronized (l) {
+					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.elementsAdded", priority, () -> {
+						l.getValue1().elementsAdded(elements);
+					});
+					task.startOnDone(l.getValue2());
+					l.setValue2(task);
+				}
+			}
+		}
+		
+		@Override
+		public void elementsRemoved(Collection<? extends T> elements) {
+			ArrayList<Pair<CollectionListener<T>, Task<Void,NoException>>> list;
+			synchronized (col) {
+				col.removeAll(elements);
+				list = new ArrayList<>(listeners);
+			}
+			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
+				synchronized (l) {
+					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.elementsRemoved", priority, () -> {
+						l.getValue1().elementsRemoved(elements);
+					});
+					task.startOnDone(l.getValue2());
+					l.setValue2(task);
+				}
+			}
+		}
+		
+		@Override
+		public void elementsChanged(Collection<? extends T> elements) {
+			ArrayList<Pair<CollectionListener<T>, Task<Void,NoException>>> list;
+			synchronized (col) {
+				list = new ArrayList<>(listeners);
+			}
+			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
+				synchronized (l) {
+					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.elementsChanged", priority, () -> {
+						l.getValue1().elementsChanged(elements);
+					});
+					task.startOnDone(l.getValue2());
+					l.setValue2(task);
+				}
+			}
+		}
+		
+		@Override
+		public void error(Throwable error) {
+			ArrayList<Pair<CollectionListener<T>, Task<Void,NoException>>> list;
+			synchronized (col) {
+				this.error = error;
+				list = new ArrayList<>(listeners);
+			}
+			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
+				synchronized (l) {
+					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.error", priority, () -> {
+						l.getValue1().error(error);
+					});
+					task.startOnDone(l.getValue2());
+					l.setValue2(task);
+				}
+			}
+		}
+		
+		public void addListener(CollectionListener<T> listener) {
+			synchronized (col) {
+				if (error != null)
+					listener.error(error);
+				else
+					listener.elementsReady(col);
+				listeners.add(new Pair<>(listener, null));
+			}
+		}
+		
+		/**
+		 * Remove a listener.
+		 * Note that the listener may still be called if some calls are pending in tasks. 
+		 */
+		public void removeListener(CollectionListener<T> listener) {
+			synchronized (col) {
+				for (Iterator<Pair<CollectionListener<T>, Task<Void,NoException>>> it = listeners.iterator(); it.hasNext(); ) {
+					if (it.next().getValue1() == listener) {
+						it.remove();
+						break;
+					}
+				}
+			}
+		}
+		
+	}
+	
+}

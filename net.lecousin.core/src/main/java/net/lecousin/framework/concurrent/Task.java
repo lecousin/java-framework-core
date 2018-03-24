@@ -665,6 +665,15 @@ public abstract class Task<T,TError extends Exception> {
 		});
 	}
 	
+	/** Start this task once the given task is done. If the given task is null or already done, the method start() is called. */
+	public void startOnDone(Task<?,?> task) {
+		if (task == null || task.isDone()) {
+			start();
+			return;
+		}
+		startOn(task.getOutput(), true);
+	}
+	
 	/** Set this task as done with the given result or error. */
 	public void setDone(T result, TError error) {
 		this.status = STATUS_DONE;
