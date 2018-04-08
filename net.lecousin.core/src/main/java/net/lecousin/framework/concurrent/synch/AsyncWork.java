@@ -270,6 +270,28 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 		});
 	}
 	
+	public void listenInline(Listener<T> onSuccess) {
+		listenInline(new AsyncWorkListener<T,TError>() {
+			@Override
+			public void ready(T result) {
+				onSuccess.fire(result);
+			}
+			
+			@Override
+			public void error(TError error) {
+			}
+			
+			@Override
+			public void cancelled(CancelException event) {
+			}
+			
+			@Override
+			public String toString() {
+				return "Delegate to listener " + onSuccess;
+			}
+		});
+	}
+	
 	/** Unblock this AsyncWork with the given result. */
 	public void unblockSuccess(T result) {
 		ArrayList<AsyncWorkListener<T,TError>> listeners;
