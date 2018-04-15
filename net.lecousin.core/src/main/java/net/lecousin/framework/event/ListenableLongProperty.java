@@ -1,34 +1,50 @@
 package net.lecousin.framework.event;
 
-import net.lecousin.framework.mutable.Mutable;
-import net.lecousin.framework.util.ObjectUtil;
-
 /**
  * Property that calls listeners when modified.
  * It extends Mutable to hold the object of this property, and implements Listenable to add/remove lsiteners.
  * If the set method is called with the same object, listeners are not called.
  * Listeners are called with the PREVIOUS value, to get the current value the get method should be used.
- * @param <T> type of data for this property
  */
-public class ListenableProperty<T> extends Mutable<T> implements Listenable<T> {
+public class ListenableLongProperty implements Listenable<Long> {
 
 	/** Constructor with initial object to hold. */
-	public ListenableProperty(T value) {
-		super(value);
+	public ListenableLongProperty(long value) {
+		this.value = value;
 	}
 	
-	protected Event<T> event = new Event<>();
+	protected long value;
+	protected Event<Long> event = new Event<>();
 	
-	@Override
-	public void set(T value) {
-		T previous = get();
-		if (ObjectUtil.equalsOrNull(previous, value)) return;
-		super.set(value);
-		event.fire(previous);
+	public long get() {
+		return value;
+	}
+	
+	public void set(long value) {
+		if (this.value == value) return;
+		long previous = this.value;
+		this.value = value;
+		event.fire(Long.valueOf(previous));
+	}
+	
+	public void add(long add) {
+		set(value + add);
+	}
+
+	public void sub(long sub) {
+		set(value - sub);
+	}
+	
+	public void inc() {
+		set(value + 1);
+	}
+	
+	public void dec() {
+		set(value - 1);
 	}
 	
 	@Override
-	public void addListener(Listener<T> listener) {
+	public void addListener(Listener<Long> listener) {
 		event.addListener(listener);
 	}
 	
@@ -38,7 +54,7 @@ public class ListenableProperty<T> extends Mutable<T> implements Listenable<T> {
 	}
 	
 	@Override
-	public void removeListener(Listener<T> listener) {
+	public void removeListener(Listener<Long> listener) {
 		event.removeListener(listener);
 	}
 	

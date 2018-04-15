@@ -7,6 +7,8 @@ import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.event.ListenableLongProperty;
+import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
@@ -20,11 +22,27 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	/** Constructor with initial position. */
 	public PositionKnownWrapper(IOType io, long position) {
 		this.io = io;
-		this.position = position;
+		this.position = new ListenableLongProperty(position);
 	}
 	
 	protected IOType io;
-	protected long position;
+	protected ListenableLongProperty position;
+	
+	public void addPositionChangedListener(Listener<Long> listener) {
+		position.addListener(listener);
+	}
+
+	public void addPositionChangedListener(Runnable listener) {
+		position.addListener(listener);
+	}
+	
+	public void removePositionChangedListener(Listener<Long> listener) {
+		position.removeListener(listener);
+	}
+
+	public void removePositionChangedListener(Runnable listener) {
+		position.removeListener(listener);
+	}
 	
 	/**
 	 * Add the capability to known on which position we are on a Readable.
@@ -182,7 +200,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	public TaskManager getTaskManager() { return io.getTaskManager(); }
 	
 	@Override
-	public long getPosition() { return position; }
+	public long getPosition() { return position.get(); }
 	
 	@Override
 	protected ISynchronizationPoint<?> closeUnderlyingResources() {
@@ -204,13 +222,13 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	protected int readSync(ByteBuffer buffer) throws IOException {
 		int nb = ((IO.Readable)io).readSync(buffer);
 		if (nb > 0)
-			position += nb;
+			position.add(nb);
 		return nb;
 	}
 
 	protected int readAsync() throws IOException {
 		int c = ((IO.Readable.Buffered)io).readAsync();
-		if (c >= 0) position++;
+		if (c >= 0) position.inc();
 		return c;
 	}
 	
@@ -218,7 +236,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		return ((IO.Readable)io).readAsync(buffer, (result) -> {
 			Integer nb = result.getValue1();
 			if (nb != null && nb.intValue() > 0)
-				position += nb.intValue();
+				position.add(nb.longValue());
 			if (ondone != null)
 				ondone.run(result);
 		});
@@ -227,7 +245,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	protected int readFullySync(ByteBuffer buffer) throws IOException {
 		int nb = ((IO.Readable)io).readFullySync(buffer);
 		if (nb > 0)
-			position += nb;
+			position.add(nb);
 		return nb;
 	}
 	
@@ -235,7 +253,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		return ((IO.Readable)io).readFullyAsync(buffer, (result) -> {
 			Integer nb = result.getValue1();
 			if (nb != null && nb.intValue() > 0)
-				position += nb.intValue();
+				position.add(nb.intValue());
 			if (ondone != null)
 				ondone.run(result);
 		});
@@ -243,7 +261,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	
 	protected long skipSync(long n) throws IOException {
 		long skipped = ((IO.Readable)io).skipSync(n);
-		position += skipped;
+		position.add(skipped);
 		return skipped;
 	}
 
@@ -251,7 +269,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		return ((IO.Readable)io).skipAsync(n, (result) -> {
 			Long nb = result.getValue1();
 			if (nb != null)
-				position += nb.longValue();
+				position.add(nb.longValue());
 			if (ondone != null)
 				ondone.run(result);
 		});
@@ -261,27 +279,27 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	
 	protected int read() throws IOException {
 		int c = ((IO.Readable.Buffered)io).read();
-		if (c >= 0) position++;
+		if (c >= 0) position.inc();
 		return c;
 	}
 
 	protected int read(byte[] buffer, int offset, int len) throws IOException {
 		int nb = ((IO.Readable.Buffered)io).read(buffer, offset, len);
 		if (nb > 0)
-			position += nb;
+			position.add(nb);
 		return nb;
 	}
 
 	protected int readFully(byte[] buffer) throws IOException {
 		int nb = ((IO.Readable.Buffered)io).readFully(buffer);
 		if (nb > 0)
-			position += nb;
+			position.add(nb);
 		return nb;
 	}
 
 	protected int skip(int skip) throws IOException {
 		int skipped = ((IO.Readable.Buffered)io).skip(skip);
-		position += skipped;
+		position.add(skipped);
 		return skipped;
 	}
 
@@ -289,7 +307,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		return ((IO.Readable.Buffered)io).readNextBufferAsync((result) -> {
 			ByteBuffer buf = result.getValue1();
 			if (buf != null)
-				position += buf.remaining();
+				position.add(buf.remaining());
 			if (ondone != null)
 				ondone.run(result);
 		});

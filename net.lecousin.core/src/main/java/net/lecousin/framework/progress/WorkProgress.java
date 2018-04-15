@@ -93,19 +93,24 @@ public interface WorkProgress {
 		subTask.getSynch().listenInline(new Runnable() {
 			@Override
 			public void run() {
-				progress.progress(work - sent.get());
+				if (subTask.getSynch().hasError())
+					progress.error(subTask.getSynch().getError());
+				else if (subTask.getSynch().isCancelled())
+					progress.cancel(subTask.getSynch().getCancelEvent());
+				else
+					progress.progress(work - sent.get());
 			}
 		});
-		subTask.listen(new Runnable() {
-			@Override
-			public void run() {
-				long done = subTask.getPosition() * work / subTask.getAmount();
-				if (sent.get() < done) {
-					progress.progress(done - sent.get());
-					sent.set(done);
-				}
+		if (subTask.getSynch().isUnblocked()) return;
+		Runnable listener = () -> {
+			long done = subTask.getPosition() * work / subTask.getAmount();
+			if (sent.get() < done) {
+				progress.progress(done - sent.get());
+				sent.set(done);
 			}
-		});
+		};
+		listener.run();
+		subTask.listen(listener);
 	}
 	
 }
