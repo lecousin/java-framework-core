@@ -11,12 +11,14 @@ import net.lecousin.framework.io.IOAsInputStream;
 public class ReadableAsURLConnection extends URLConnection {
 
 	/** Constructor. */
-	public ReadableAsURLConnection(IO.Readable io, URL url) {
+	public ReadableAsURLConnection(IO.Readable io, URL url, boolean closeAsync) {
 		super(url);
 		this.io = io;
+		this.closeAsync = closeAsync;
 	}
 	
 	private IO.Readable io;
+	private boolean closeAsync;
 	
 	@Override
 	public void connect() {
@@ -31,7 +33,7 @@ public class ReadableAsURLConnection extends URLConnection {
 	
 	@Override
 	public InputStream getInputStream() {
-		return IOAsInputStream.get(io);
+		return IOAsInputStream.get(io, closeAsync);
 	}
 	
 }

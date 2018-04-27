@@ -59,12 +59,11 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		public Void run() {
 			app.getDefaultLogger().info("Starting DefaultLibrariesManager with classpath = " + System.getProperty("java.class.path"));
 			
-			ExtensionPointsLoader extensionpoints = new ExtensionPointsLoader();
-			extensionpoints.start();
+			SynchronizationPoint<Exception> sp = loadExtensionPoints();
 			
 			LinkedList<ISynchronizationPoint<Exception>> tasks = new LinkedList<>();
-			tasks.add(extensionpoints.getOutput());
-			extensionpoints.getOutput().listenAsync(new Start2(tasks), true);
+			tasks.add(sp);
+			sp.listenAsync(new Start2(tasks), true);
 			return null;
 		}
 	}
@@ -87,9 +86,11 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				tasks.add(loader.getOutput());
 			}
 			
-			PluginsLoader plugins = new PluginsLoader();
-			tasks.getLast().listenAsync(plugins, false);
-			tasks.add(plugins.getOutput());
+			SynchronizationPoint<Exception> plugins = new SynchronizationPoint<>();
+			tasks.getLast().listenAsync(new Task.Cpu.FromRunnable("Load plugins from libraries", Task.PRIORITY_NORMAL, () -> {
+				loadPlugins(plugins);
+			}), false);
+			tasks.add(plugins);
 			tasks.getLast().listenAsync(new Task.Cpu<Void, NoException>("Finalize libraries loading", Task.PRIORITY_NORMAL) {
 				@Override
 				public Void run() {
@@ -212,54 +213,73 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		}
 	}
 	
-	private class ExtensionPointsLoader extends Task.Cpu<Void, Exception> {
-		public ExtensionPointsLoader() {
-			super("Loading extensionpoints files for libraries", Task.PRIORITY_NORMAL);
+	private SynchronizationPoint<Exception> loadExtensionPoints() {
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Enumeration<URL> urls;
+		try { urls = acl.getResources("META-INF/net.lecousin/extensionpoints"); }
+		catch (IOException e) {
+			sp.error(e);
+			return sp;
 		}
-		
-		@Override
-		public Void run() throws Exception {
-			Enumeration<URL> urls = acl.getResources("META-INF/net.lecousin/extensionpoints");
-			while (urls.hasMoreElements()) {
-				URL url = urls.nextElement();
-				@SuppressWarnings("resource")
-				InputStream input = url.openStream();
-				@SuppressWarnings("resource")
-				IOFromInputStream io = new IOFromInputStream(
-					input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
-				@SuppressWarnings("resource")
-				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
-				LoadLibraryExtensionPointsFile load = new LoadLibraryExtensionPointsFile(stream, acl);
-				load.startOn(stream.canStartReading(), false);
-				load.getOutput().blockThrow(0);
-			}
-			return null;
-		}
+		loadExtensionPoints(urls, sp);
+		return sp;
 	}
 	
-	private class PluginsLoader extends Task.Cpu<Void, Exception> {
-		public PluginsLoader() {
-			super("Loading plugins files for libraries", Task.PRIORITY_NORMAL);
+	@SuppressWarnings("resource")
+	private void loadExtensionPoints(Enumeration<URL> urls, SynchronizationPoint<Exception> sp) {
+		if (!urls.hasMoreElements()) {
+			sp.unblock();
+			return;
 		}
-		
-		@Override
-		public Void run() throws Exception {
-			Enumeration<URL> urls = acl.getResources("META-INF/net.lecousin/plugins");
-			while (urls.hasMoreElements()) {
-				URL url = urls.nextElement();
-				@SuppressWarnings("resource")
-				InputStream input = url.openStream();
-				@SuppressWarnings("resource")
-				IOFromInputStream io = new IOFromInputStream(
-					input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
-				@SuppressWarnings("resource")
-				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
-				LoadLibraryPluginsFile load = new LoadLibraryPluginsFile(stream, acl);
-				load.startOn(stream.canStartReading(), false);
-				load.getOutput().blockThrow(0);
-			}
-			return null;
+		URL url = urls.nextElement();
+		InputStream input;
+		try { input = url.openStream(); }
+		catch (IOException e) {
+			sp.error(e);
+			return;
 		}
+		@SuppressWarnings("resource")
+		IOFromInputStream io = new IOFromInputStream(
+			input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
+		@SuppressWarnings("resource")
+		BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
+		LoadLibraryExtensionPointsFile load = new LoadLibraryExtensionPointsFile(stream, acl);
+		load.start().listenInline(() -> {
+			loadExtensionPoints(urls, sp);
+		}, sp);
+	}
+
+	private void loadPlugins(SynchronizationPoint<Exception> sp) {
+		Enumeration<URL> urls;
+		try { urls = acl.getResources("META-INF/net.lecousin/plugins"); }
+		catch (IOException e) {
+			sp.error(e);
+			return;
+		}
+		loadPlugins(urls, sp);
 	}
 	
+	@SuppressWarnings("resource")
+	private void loadPlugins(Enumeration<URL> urls, SynchronizationPoint<Exception> sp) {
+		if (!urls.hasMoreElements()) {
+			sp.unblock();
+			return;
+		}
+		URL url = urls.nextElement();
+		InputStream input;
+		try { input = url.openStream(); }
+		catch (IOException e) {
+			sp.error(e);
+			return;
+		}
+		@SuppressWarnings("resource")
+		IOFromInputStream io = new IOFromInputStream(
+			input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
+		@SuppressWarnings("resource")
+		BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
+		LoadLibraryPluginsFile load = new LoadLibraryPluginsFile(stream, acl);
+		load.start().listenInline(() -> {
+			loadExtensionPoints(urls, sp);
+		}, sp);
+	}
 }

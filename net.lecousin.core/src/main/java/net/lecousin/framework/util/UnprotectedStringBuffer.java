@@ -943,6 +943,20 @@ public class UnprotectedStringBuffer implements IString {
 		}
 		
 		@Override
+		public AsyncWork<UnprotectedString, IOException> readNextBufferAsync() {
+			if (strings == null) return new AsyncWork<>(null, null);
+			while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
+				buffer++;
+				bufferIndex = 0;
+			}
+			if (buffer > lastUsed) return new AsyncWork<>(null, null);
+			UnprotectedString str = strings[buffer].substring(bufferIndex);
+			buffer++;
+			bufferIndex = 0;
+			return new AsyncWork<>(str, null);
+		}
+		
+		@Override
 		public byte getPriority() {
 			return priority;
 		}

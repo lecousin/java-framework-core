@@ -30,7 +30,7 @@ public class TestPropertiesFileTasks extends LCCoreAbstractTest {
 	protected void testSaveAndLoad(Properties props) throws Exception {
 		File file = File.createTempFile("test", "properties");
 		SavePropertiesFileTask.savePropertiesFile(props, file, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL).blockThrow(0);
-		Properties loaded = LoadPropertiesFileTask.loadPropertiesFile(file, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL, null).blockResult(0);
+		Properties loaded = LoadPropertiesFileTask.loadPropertiesFile(file, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL, true, null).blockResult(0);
 		check(props, loaded);
 	}
 	

@@ -63,25 +63,25 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(value, DataUtil.readShortLittleEndian(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readShortLittleEndian(IOAsInputStream.get(io)));
+		Assert.assertEquals(value, DataUtil.readShortLittleEndian(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		DataUtil.writeShortBigEndian(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(value, DataUtil.readShortBigEndian(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readShortBigEndian(IOAsInputStream.get(io)));
+		Assert.assertEquals(value, DataUtil.readShortBigEndian(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		DataUtil.writeUnsignedShortLittleEndian(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortLittleEndian(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortLittleEndian(IOAsInputStream.get(io)));
+		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortLittleEndian(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		DataUtil.writeUnsignedShortBigEndian(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortBigEndian(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortBigEndian(IOAsInputStream.get(io)));
+		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortBigEndian(IOAsInputStream.get(io, false)));
 		io.close();
 	}
 	
@@ -112,25 +112,25 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(value, DataUtil.readIntegerLittleEndian(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readIntegerLittleEndian(IOAsInputStream.get(io)));
+		Assert.assertEquals(value, DataUtil.readIntegerLittleEndian(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		DataUtil.writeIntegerBigEndian(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(value, DataUtil.readIntegerBigEndian(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readIntegerBigEndian(IOAsInputStream.get(io)));
+		Assert.assertEquals(value, DataUtil.readIntegerBigEndian(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		DataUtil.writeUnsignedIntegerLittleEndian(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerLittleEndian(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerLittleEndian(IOAsInputStream.get(io)));
+		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerLittleEndian(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		DataUtil.writeUnsignedIntegerBigEndian(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerBigEndian(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerBigEndian(IOAsInputStream.get(io)));
+		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerBigEndian(IOAsInputStream.get(io, false)));
 		io.close();
 	}
 	
@@ -153,13 +153,13 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(value, DataUtil.readLongLittleEndian(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readLongLittleEndian(IOAsInputStream.get(io)));
+		Assert.assertEquals(value, DataUtil.readLongLittleEndian(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		DataUtil.writeLongBigEndian(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(value, DataUtil.readLongBigEndian(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readLongBigEndian(IOAsInputStream.get(io)));
+		Assert.assertEquals(value, DataUtil.readLongBigEndian(IOAsInputStream.get(io, false)));
 		io.close();
 	}
 	

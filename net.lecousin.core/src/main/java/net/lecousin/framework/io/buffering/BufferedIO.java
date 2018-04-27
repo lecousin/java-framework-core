@@ -652,12 +652,16 @@ public abstract class BufferedIO extends BufferingManaged {
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-			return super.readFullySyncIfPossible(pos, buffer, 0, null);
+		public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+			ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+		) {
+			return super.readFullySyncIfPossible(pos, buffer, 0, ondone);
 		}
 		
-		public AsyncWork<Integer, IOException> readFullySyncIfPossible(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-			return super.readFullySyncIfPossible(pos, buffer, 0, null);
+		public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+		) {
+			return super.readFullySyncIfPossible(pos, buffer, 0, ondone);
 		}
 		
 		@Override

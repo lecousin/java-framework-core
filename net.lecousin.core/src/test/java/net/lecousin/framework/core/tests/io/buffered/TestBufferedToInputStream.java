@@ -33,7 +33,7 @@ public class TestBufferedToInputStream extends TestInputStream {
 	protected InputStream openStream() {
 		FileIO.ReadOnly io = new FileIO.ReadOnly(testFile, Task.PRIORITY_NORMAL);
 		SimpleBufferedReadable bio = new SimpleBufferedReadable(io, 4096);
-		return new BufferedToInputStream(bio);
+		return new BufferedToInputStream(bio, false);
 	}
 	
 	@Override

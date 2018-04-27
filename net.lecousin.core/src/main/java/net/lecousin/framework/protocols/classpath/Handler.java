@@ -22,7 +22,7 @@ public class Handler extends URLStreamHandler {
 	@Override
 	protected URLConnection openConnection(URL u) throws IOException {
 		IO.Readable io = LCCore.getApplication().getResource(u.getPath(), Task.PRIORITY_NORMAL);
-		if (io != null) return new ReadableAsURLConnection(io, u);
+		if (io != null) return new ReadableAsURLConnection(io, u, true);
 		URL url = Handler.class.getClassLoader().getResource(u.getPath());
 		if (url == null) throw new IOException("Resource not found in classpath: " + u.getPath());
 		return url.openConnection();

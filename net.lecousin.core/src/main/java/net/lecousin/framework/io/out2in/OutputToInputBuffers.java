@@ -262,12 +262,13 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 					if (done == 0)
 						return readFullyAsync(buffer, ondone);
 					AsyncWork<Integer, IOException> r = new AsyncWork<>();
+					int d = done;
 					readFullyAsync(buffer, (res) -> {
 						if (ondone != null) {
 							if (res.getValue1() != null) {
 								int n = res.getValue1().intValue();
 								if (n < 0) n = 0;
-								n += done;
+								n += d;
 								ondone.run(new Pair<>(Integer.valueOf(n), null));
 							} else
 								ondone.run(res);
@@ -275,7 +276,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 					}).listenInline((nb) -> {
 						int n = nb.intValue();
 						if (n < 0) n = 0;
-						n += done;
+						n += d;
 						r.unblockSuccess(Integer.valueOf(n));
 					}, r);
 					return r;
@@ -286,7 +287,16 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				}
 			}
 			int len = buffer.remaining();
-			buffer.put(b);
+			if (len >= b.remaining()) {
+				done += b.remaining();
+				buffer.put(b);
+			} else {
+				int limit = b.limit();
+				b.limit(b.position() + len);
+				buffer.put(b);
+				b.limit(limit);
+				done += len;
+			}
 			if (b.remaining() == 0) {
 				SynchronizationPoint<NoException> sp = null;
 				synchronized (this) {
@@ -297,7 +307,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				if (sp != null) sp.unblock();
 			}
 			if (!buffer.hasRemaining()) {
-				Integer r = Integer.valueOf(len + done);
+				Integer r = Integer.valueOf(done);
 				if (ondone != null) ondone.run(new Pair<>(r, null));
 				return new AsyncWork<>(r, null);
 			}

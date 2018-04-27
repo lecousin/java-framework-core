@@ -1,7 +1,5 @@
 package net.lecousin.framework.locale;
 
-import java.io.IOException;
-
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.io.IO;
@@ -24,15 +22,14 @@ public class LoadLibraryLocaleFile extends FullReadLines<Void> {
 	private ApplicationClassLoader classLoader;
 	
 	@Override
-	protected void processLine(UnprotectedStringBuffer line) throws IOException {
+	protected void processLine(UnprotectedStringBuffer line) {
 		int i = line.indexOf('=');
 		if (i <= 0) return;
 		UnprotectedStringBuffer s = line.substring(0, i);
 		line = line.substring(i + 1);
 		line.trim();
 		s.trim();
-		try { classLoader.getApplication().getLocalizedProperties().registerNamespace(s.asString(), line.asString(), classLoader); }
-		catch (Exception e) { throw new IOException(e); }
+		classLoader.getApplication().getLocalizedProperties().registerNamespace(s.asString(), line.asString(), classLoader);
 	}
 	
 	@Override

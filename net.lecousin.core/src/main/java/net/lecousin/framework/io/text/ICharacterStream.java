@@ -8,6 +8,7 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.IConcurrentCloseable;
+import net.lecousin.framework.util.UnprotectedString;
 
 /** Character stream. */
 public interface ICharacterStream extends IConcurrentCloseable {
@@ -98,6 +99,9 @@ public interface ICharacterStream extends IConcurrentCloseable {
 			
 			/** Return a synchronization point which is unblocked once some characters have been buffered. */
 			public ISynchronizationPoint<IOException> canStartReading();
+			
+			/** Return the next buffer as soon as available, or null if then end of stream has been reached. */
+			public AsyncWork<UnprotectedString, IOException> readNextBufferAsync();
 		}
 	}
 	

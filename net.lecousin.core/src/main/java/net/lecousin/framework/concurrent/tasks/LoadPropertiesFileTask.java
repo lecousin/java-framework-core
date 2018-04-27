@@ -1,7 +1,6 @@
 package net.lecousin.framework.concurrent.tasks;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Properties;
 
@@ -21,13 +20,18 @@ public class LoadPropertiesFileTask extends PropertiesReader<Properties> {
 
 	/** Load properties from a file. */
 	@SuppressWarnings("resource")
-	public static AsyncWork<Properties, IOException> loadPropertiesFile(File file, Charset charset, byte priority, Listener<Properties> onDone) {
+	public static AsyncWork<Properties, Exception> loadPropertiesFile(
+		File file, Charset charset, byte priority, boolean closeSynchronous, Listener<Properties> onDone
+	) {
 		FileIO.ReadOnly input = new FileIO.ReadOnly(file, priority);
-		return loadPropertiesFile(input, charset, priority, IO.OperationType.SYNCHRONOUS, onDone);
+		return loadPropertiesFile(
+			input, charset, priority,
+			closeSynchronous ? IO.OperationType.SYNCHRONOUS : IO.OperationType.ASYNCHRONOUS,
+			onDone);
 	}
 
 	/** Load properties from a Readable IO. */
-	public static AsyncWork<Properties, IOException> loadPropertiesFile(
+	public static AsyncWork<Properties, Exception> loadPropertiesFile(
 		IO.Readable input, Charset charset, byte priority, IO.OperationType closeInputAtEnd, Listener<Properties> onDone
 	) {
 		if (!(input instanceof IO.Readable.Buffered))
@@ -37,7 +41,7 @@ public class LoadPropertiesFileTask extends PropertiesReader<Properties> {
 
 	/** Load properties from a Buffered IO. */
 	@SuppressWarnings("resource")
-	public static AsyncWork<Properties, IOException> loadPropertiesFile(
+	public static AsyncWork<Properties, Exception> loadPropertiesFile(
 		IO.Readable.Buffered input, Charset charset, byte priority, IO.OperationType closeInputAtEnd, Listener<Properties> onDone
 	) {
 		BufferedReadableCharacterStream cs = new BufferedReadableCharacterStream(input, charset, 512, 32);
@@ -45,12 +49,11 @@ public class LoadPropertiesFileTask extends PropertiesReader<Properties> {
 	}
 
 	/** Load properties from a character stream. */
-	public static AsyncWork<Properties, IOException> loadPropertiesFile(
+	public static AsyncWork<Properties, Exception> loadPropertiesFile(
 		BufferedReadableCharacterStream stream, byte priority, IO.OperationType closeStreamAtEnd, Listener<Properties> onDone
 	) {
 		LoadPropertiesFileTask task = new LoadPropertiesFileTask(stream, priority, closeStreamAtEnd, onDone);
-		task.startOn(stream.canStartReading(), false);
-		return task.getOutput();
+		return task.start();
 	}
 
 	/** Constructor. */

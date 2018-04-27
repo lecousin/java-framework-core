@@ -23,8 +23,8 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
+import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
-import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
 import net.lecousin.framework.io.provider.IOProviderFromName;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.PropertiesReader;
@@ -33,7 +33,6 @@ import net.lecousin.framework.memory.IMemoryManageable;
 import net.lecousin.framework.memory.MemoryManager;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.ObjectUtil;
-import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLException;
 
@@ -112,86 +111,58 @@ public class LocalizedProperties implements IMemoryManageable {
 			}
 			input = new IOFromInputStream(in, path + ".languages", Threading.getUnmanagedTaskManager(), Task.PRIORITY_RATHER_IMPORTANT);
 		}
-		if (!(input instanceof IO.Readable.Buffered))
-			input = new SimpleBufferedReadable(input, 4096);
-		IO.Readable.Buffered in = (IO.Readable.Buffered)input;
+		AsyncWork<UnprotectedStringBuffer, IOException> read = IOUtil.readFullyAsString(input, StandardCharsets.US_ASCII, Task.PRIORITY_RATHER_IMPORTANT);
 		Namespace toLoad = ns;
-		new Task.Cpu<Void, NoException>("Read localized properties namespace file", Task.PRIORITY_RATHER_IMPORTANT) {
-			@Override
-			public Void run() {
-				List<Namespace.Language> languages = new LinkedList<>();
-				UnprotectedString s = new UnprotectedString(20);
-				do {
-					int c;
-					try { c = in.read(); }
-					catch (IOException e) {
-						sp.error(new Exception("Error reading localized properties namespace file "
-							+ path + ".languages", e));
-						in.closeAsync();
-						logger.error(sp.getError().getMessage());
-						return null;
-					}
-					if (c < 0) break;
-					if (c == ',') {
-						s.trim().toLowerCase();
-						if (s.length() == 0) continue;
-						Namespace.Language l = new Namespace.Language();
-						List<UnprotectedString> list = s.split('-');
-						l.tag = new String[list.size()];
-						int i = 0;
-						for (UnprotectedString us : list) l.tag[i++] = us.asString();
-						languages.add(l);
-						s.reset();
-						continue;
-					}
-					s.append((char)c);
-				} while (true);
-				s.trim();
-				if (s.length() > 0) {
-					Namespace.Language l = new Namespace.Language();
-					s.toLowerCase();
-					List<UnprotectedString> list = s.split('-');
-					l.tag = new String[list.size()];
-					int i = 0;
-					for (UnprotectedString us : list) l.tag[i++] = us.asString();
-					languages.add(l);
-				}
-				languages.sort(new Comparator<Namespace.Language>() {
-					@Override
-					public int compare(Namespace.Language l1, Namespace.Language l2) {
-						/* Order:
-						 *  tags are alphabetically ordered
-						 *  but tags xx-yy are before tag xx
-						 */
-						int i = 0;
-						do {
-							if (i == l1.tag.length) return 1;
-							if (i == l2.tag.length) return -1;
-							int c = l1.tag[i].compareTo(l2.tag[i]);
-							if (c != 0) return c;
-							i++;
-						} while (true);
-					}
-				});
-				toLoad.languages = languages.toArray(new Namespace.Language[languages.size()]);
-				// set parents
-				for (int i = 0; i < toLoad.languages.length; ++i) {
-					// they are ordered, so the parent is after
-					int nbI = toLoad.languages[i].tag.length;
-					for (int j = i + 1; j < toLoad.languages.length; ++j) {
-						int nbJ = toLoad.languages[j].tag.length;
-						if (nbJ >= nbI) continue;
-						if (ArrayUtil.equals(toLoad.languages[i].tag, 0, toLoad.languages[j].tag, 0, nbJ))
-							toLoad.languages[i].parent = toLoad.languages[j];
-						break;
-					}
-				}
-				sp.unblock();
-				in.closeAsync();
-				logger.info("Namespace " + namespace + " loaded with " + languages.size() + " languages from " + path);
-				return null;
+		read.listenAsyncSP(new Task.Cpu.FromRunnable("Read localized properties namespace file", Task.PRIORITY_RATHER_IMPORTANT, () -> {
+			List<Namespace.Language> languages = new LinkedList<>();
+			UnprotectedStringBuffer str = read.getResult();
+			for (UnprotectedStringBuffer s : str.split(',')) {
+				s.trim().toLowerCase();
+				if (s.length() == 0) continue;
+				Namespace.Language l = new Namespace.Language();
+				List<UnprotectedStringBuffer> list = s.split('-');
+				l.tag = new String[list.size()];
+				int i = 0;
+				for (UnprotectedStringBuffer us : list) l.tag[i++] = us.asString();
+				languages.add(l);
 			}
-		}.startOn(input.canStartReading(), true);
+			languages.sort(new Comparator<Namespace.Language>() {
+				@Override
+				public int compare(Namespace.Language l1, Namespace.Language l2) {
+					/* Order:
+					 *  tags are alphabetically ordered
+					 *  but tags xx-yy are before tag xx
+					 */
+					int i = 0;
+					do {
+						if (i == l1.tag.length) return 1;
+						if (i == l2.tag.length) return -1;
+						int c = l1.tag[i].compareTo(l2.tag[i]);
+						if (c != 0) return c;
+						i++;
+					} while (true);
+				}
+			});
+			toLoad.languages = languages.toArray(new Namespace.Language[languages.size()]);
+			// set parents
+			for (int i = 0; i < toLoad.languages.length; ++i) {
+				// they are ordered, so the parent is after
+				int nbI = toLoad.languages[i].tag.length;
+				for (int j = i + 1; j < toLoad.languages.length; ++j) {
+					int nbJ = toLoad.languages[j].tag.length;
+					if (nbJ >= nbI) continue;
+					if (ArrayUtil.equals(toLoad.languages[i].tag, 0, toLoad.languages[j].tag, 0, nbJ))
+						toLoad.languages[i].parent = toLoad.languages[j];
+					break;
+				}
+			}
+			sp.unblock();
+			logger.info("Namespace " + namespace + " loaded with " + languages.size() + " languages from " + path);
+		}), sp);
+		sp.listenInline(() -> { input.closeAsync(); });
+		sp.onError((error) -> {
+			logger.error("Error loading localized properties namespace file " + path + ".languages", error);
+		});
 		return sp;
 	}
 	
@@ -243,8 +214,7 @@ public class LocalizedProperties implements IMemoryManageable {
 				return lang.properties;
 			}
 		};
-		reader.startOn(cs.canStartReading(), false);
-		reader.getOutput().listenInlineSP(lang.loading);
+		reader.start().listenInline(lang.loading);
 	}
 
 	/** Localization. */

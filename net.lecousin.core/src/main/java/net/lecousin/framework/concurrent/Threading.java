@@ -28,11 +28,11 @@ public final class Threading {
 	
 	static Logger logger;
 	
-	public static boolean traceBlockingTasks = false;
-	public static boolean traceTaskTime = false;
-	public static boolean debugSynchronization = false;
-	public static boolean traceTaskDone = false;
-	public static boolean traceTasksNotDone = false;
+	public static boolean traceBlockingTasks = System.getProperty("lc.traceBlockingTasks") != null;
+	public static boolean traceTaskTime = System.getProperty("lc.traceTaskTime") != null;
+	public static boolean debugSynchronization = System.getProperty("lc.debugSynchronization") != null;
+	public static boolean traceTaskDone = System.getProperty("lc.traceTaskDone") != null;
+	public static boolean traceTasksNotDone = System.getProperty("lc.traceTasksNotDone") != null;
 	
 	/**
 	 * Initialize multi-threading.

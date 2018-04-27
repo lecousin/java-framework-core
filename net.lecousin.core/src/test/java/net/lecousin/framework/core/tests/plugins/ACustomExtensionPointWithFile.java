@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
@@ -29,9 +30,9 @@ public class ACustomExtensionPointWithFile implements CustomExtensionPoint {
 	@Override
 	public ISynchronizationPoint<Exception> loadPluginConfiguration(IO.Readable io,
 		ApplicationClassLoader libraryClassLoader, ISynchronizationPoint<?>... startOn) {
-		Task<UnprotectedStringBuffer, IOException> task = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL);
+		AsyncWork<UnprotectedStringBuffer, IOException> task = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL);
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		task.getOutput().listenInlineSP(() -> {
+		task.listenInlineSP(() -> {
 			pluginContent = task.getResult().asString();
 			sp.unblock();
 		}, sp);

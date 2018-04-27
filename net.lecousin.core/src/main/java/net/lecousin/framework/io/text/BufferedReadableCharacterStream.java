@@ -19,6 +19,7 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
+import net.lecousin.framework.util.UnprotectedString;
 
 /** Implement a buffered readable character stream from a readable IO. */
 public class BufferedReadableCharacterStream extends ConcurrentCloseable implements ICharacterStream.Readable.Buffered {
@@ -427,5 +428,52 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 			}
 		}).startOn(canStartReading(), true);
 		return result;
+	}
+	
+	@Override
+	public AsyncWork<UnprotectedString, IOException> readNextBufferAsync() {
+		if (back != -1) {
+			char c = (char)back;
+			back = -1;
+			return new AsyncWork<>(new UnprotectedString(c), null);
+		}
+		AsyncWork<UnprotectedString, IOException> result = new AsyncWork<>();
+		readNextBufferAsync(result);
+		return result;
+	}
+	
+	private void readNextBufferAsync(AsyncWork<UnprotectedString, IOException> result) {
+		if (chars == null) {
+			boolean full;
+			synchronized (ready) {
+				full = ready.isFull();
+				chars = ready.pollFirst();
+				if (chars == null && endReached) {
+					result.unblockSuccess(null);
+					return;
+				}
+				if (nextReady.hasError()) {
+					result.error(nextReady.getError());
+					return;
+				}
+			}
+			if (full && !endReached) bufferize();
+			if (chars == null) {
+				canStartReading().listenAsync(
+				new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readNextBufferAsync", getPriority(), () -> {
+					readNextBufferAsync(result);
+				}), result);
+				return;
+			}
+		}
+		char[] buf = new char[chars.remaining()];
+		chars.get(buf);
+		boolean full;
+		synchronized (ready) {
+			full = ready.isFull();
+			chars = ready.pollFirst();
+		}
+		if (full && !endReached) bufferize();
+		result.unblockSuccess(new UnprotectedString(buf));
 	}
 }

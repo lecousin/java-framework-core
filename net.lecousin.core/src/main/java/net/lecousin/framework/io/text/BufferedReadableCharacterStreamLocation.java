@@ -10,6 +10,7 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.ConcurrentCloseable;
+import net.lecousin.framework.util.UnprotectedString;
 
 /** Buffered readable character stream that calculate the line number and position on the current line while reading. */
 public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable implements ICharacterStream.Readable.Buffered {
@@ -139,6 +140,32 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 				return null;
 			}
 		}), true);
+		return result;
+	}
+	
+	@Override
+	public AsyncWork<UnprotectedString, IOException> readNextBufferAsync() {
+		AsyncWork<UnprotectedString, IOException> result = new AsyncWork<>();
+		AsyncWork<UnprotectedString, IOException> read = readNextBufferAsync();
+		read.listenAsync(
+		new Task.Cpu.FromRunnable("Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority(), () -> {
+			UnprotectedString str = read.getResult();
+			if (str == null) {
+				result.unblockSuccess(null);
+				return;
+			}
+			char[] buf = str.charArray();
+			int offset = str.charArrayStart();
+			int len = str.length();
+			for (int i = 0; i < len; ++i)
+				if (buf[offset + i] == '\n') {
+					line++;
+					lastLinePos = pos;
+					pos = 0;
+				} else if (buf[offset + i] != '\r')
+					pos++;
+			result.unblockSuccess(str);
+		}), result);
 		return result;
 	}
 	

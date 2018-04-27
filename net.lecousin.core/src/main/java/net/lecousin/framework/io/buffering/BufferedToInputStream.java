@@ -9,11 +9,13 @@ import net.lecousin.framework.io.IO;
 public class BufferedToInputStream extends InputStream {
 
 	/** Constructor. */
-	public BufferedToInputStream(IO.Readable.Buffered io) {
+	public BufferedToInputStream(IO.Readable.Buffered io, boolean closeAsync) {
 		this.io = io;
+		this.closeAsync = closeAsync;
 	}
 	
 	private IO.Readable.Buffered io;
+	private boolean closeAsync;
 	
 	@Override
 	public int read() throws IOException {
@@ -29,8 +31,11 @@ public class BufferedToInputStream extends InputStream {
 	
 	@Override
 	public void close() throws IOException {
-		try { io.close(); }
-		catch (Exception e) { throw IO.error(e); }
+		if (!closeAsync)
+			try { io.close(); }
+			catch (Exception e) { throw IO.error(e); }
+		else
+			io.closeAsync();
 	}
 	
 	@Override

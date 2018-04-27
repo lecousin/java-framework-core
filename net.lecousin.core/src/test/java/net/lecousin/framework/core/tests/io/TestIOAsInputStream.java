@@ -30,7 +30,7 @@ public class TestIOAsInputStream extends TestInputStream {
 	@SuppressWarnings("resource")
 	@Override
 	protected InputStream openStream() {
-		return IOAsInputStream.get(new FileIO.ReadOnly(testFile, Task.PRIORITY_NORMAL));
+		return IOAsInputStream.get(new FileIO.ReadOnly(testFile, Task.PRIORITY_NORMAL), false);
 	}
 	
 	@Override

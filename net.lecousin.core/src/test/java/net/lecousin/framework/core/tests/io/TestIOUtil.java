@@ -96,7 +96,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		ByteArrayIO io;
 		
 		io = new ByteArrayIO(data, "test");
-		Assert.assertEquals(expected, IOUtil.readFullyAsString(io, StandardCharsets.UTF_16, Task.PRIORITY_NORMAL).getOutput().blockResult(0).asString());
+		Assert.assertEquals(expected, IOUtil.readFullyAsString(io, StandardCharsets.UTF_16, Task.PRIORITY_NORMAL).blockResult(0).asString());
 		io.close();
 		
 		io = new ByteArrayIO(data, "test");

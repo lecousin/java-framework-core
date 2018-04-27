@@ -309,7 +309,7 @@ public final class Application {
 		JoinPoint<Exception> loading = new JoinPoint<>();
 		
 		// load preferences
-		ISynchronizationPoint<IOException> loadPref = app.loadPreferences();
+		ISynchronizationPoint<Exception> loadPref = app.loadPreferences();
 		loading.addToJoin(loadPref);
 		
 		// init locale
@@ -412,10 +412,10 @@ public final class Application {
 		savePreferences();
 	}
 	
-	private ISynchronizationPoint<IOException> loadingPreferences = null;
+	private ISynchronizationPoint<Exception> loadingPreferences = null;
 	
 	/** Load preferences. */
-	public synchronized ISynchronizationPoint<IOException> loadPreferences() {
+	public synchronized ISynchronizationPoint<Exception> loadPreferences() {
 		if (loadingPreferences != null) return loadingPreferences;
 		File f = new File(getProperty(PROPERTY_CONFIG_DIRECTORY));
 		f = new File(f, "preferences");
@@ -427,6 +427,7 @@ public final class Application {
 		getDefaultLogger().info("Loading preferences from " + f.getAbsolutePath());
 		loadingPreferences = LoadPropertiesFileTask.loadPropertiesFile(
 			f, StandardCharsets.UTF_8, Task.PRIORITY_IMPORTANT,
+			false,
 			new Listener<Properties>() {
 				@Override
 				public void fire(Properties props) {

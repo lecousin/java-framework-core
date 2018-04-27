@@ -100,7 +100,7 @@ public class TestXMLSerialization extends TestSerialization {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
 		// parser will close the IO, so we need to wrap it
-		builder.parse(IOAsInputStream.get(new SubIO.Readable.Seekable(io, 0, ((IO.KnownSize)io).getSizeSync(), io.getSourceDescription(), false)));
+		builder.parse(IOAsInputStream.get(new SubIO.Readable.Seekable(io, 0, ((IO.KnownSize)io).getSizeSync(), io.getSourceDescription(), false), false));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 	}
 	
@@ -109,12 +109,12 @@ public class TestXMLSerialization extends TestSerialization {
 	protected void checkSpec(IO.Readable.Seekable spec, Class<?> type, IO.Readable.Seekable serialization) throws Exception {
 		// parser will close the IO, so we need to wrap it
 		Schema schema = SchemaFactory.newInstance(XMLUtil.XSD_NAMESPACE_URI)
-			.newSchema(new StreamSource(IOAsInputStream.get(new SubIO.Readable.Seekable(spec, 0, ((IO.KnownSize)spec).getSizeSync(), spec.getSourceDescription(), false))));
+			.newSchema(new StreamSource(IOAsInputStream.get(new SubIO.Readable.Seekable(spec, 0, ((IO.KnownSize)spec).getSizeSync(), spec.getSourceDescription(), false), false)));
 		spec.seekSync(SeekType.FROM_BEGINNING, 0);
 		
 		Validator validator = schema.newValidator();
 		serialization.seekSync(SeekType.FROM_BEGINNING, 0);
-        validator.validate(new StreamSource(IOAsInputStream.get(new SubIO.Readable.Seekable(serialization, 0, ((IO.KnownSize)serialization).getSizeSync(), serialization.getSourceDescription(), false))));
+        validator.validate(new StreamSource(IOAsInputStream.get(new SubIO.Readable.Seekable(serialization, 0, ((IO.KnownSize)serialization).getSizeSync(), serialization.getSourceDescription(), false), false)));
 		serialization.seekSync(SeekType.FROM_BEGINNING, 0);
 	}
 	

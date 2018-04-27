@@ -14,11 +14,11 @@ import net.lecousin.framework.io.buffering.BufferedToInputStream;
 public class IOAsInputStream extends InputStream {
 
 	/** Get an instance for the given IO. */
-	public static InputStream get(IO.Readable io) {
+	public static InputStream get(IO.Readable io, boolean closeAsync) {
 		if (io instanceof IOFromInputStream)
 			return ((IOFromInputStream)io).getInputStream();
 		if (io instanceof IO.Readable.Buffered)
-			return new BufferedToInputStream((IO.Readable.Buffered)io);
+			return new BufferedToInputStream((IO.Readable.Buffered)io, closeAsync);
 		return new IOAsInputStream(io);
 	}
 	

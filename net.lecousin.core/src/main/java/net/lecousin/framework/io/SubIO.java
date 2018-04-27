@@ -245,9 +245,17 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 						if (ondone != null) ondone.run(new Pair<>(null, e));
 						return new AsyncWork<>(null, e);
 					}
+					int limit;
+					if (buffer.remaining() > size - pos) {
+						limit = buffer.limit();
+						buffer.limit((int)(buffer.position() + size - pos));
+					} else
+						limit = -1;
 					return ((IO.Readable.Buffered)io).readFullySyncIfPossible(buffer, (res) -> {
 						if (res.getValue1() != null && res.getValue1().intValue() > 0)
 							pos += res.getValue1().intValue();
+						if (limit != -1)
+							buffer.limit(limit);
 						if (ondone != null) ondone.run(res);
 					});
 				}

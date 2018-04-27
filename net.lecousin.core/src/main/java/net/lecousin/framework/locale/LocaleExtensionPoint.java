@@ -1,12 +1,11 @@
 package net.lecousin.framework.locale;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.application.ApplicationClassLoader;
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.plugins.CustomExtensionPoint;
@@ -30,19 +29,19 @@ public class LocaleExtensionPoint implements CustomExtensionPoint {
 	public ISynchronizationPoint<Exception> loadPluginConfiguration(
 		IO.Readable io, ApplicationClassLoader classLoader, ISynchronizationPoint<?>... startOn
 	) {
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		Task<Void,Exception> task = new Task.Cpu<Void,Exception>("Loading locale file", Task.PRIORITY_NORMAL) {
 			@SuppressWarnings("resource")
 			@Override
-			public Void run() throws IOException, CancelException {
+			public Void run() {
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 				LoadLibraryLocaleFile load = new LoadLibraryLocaleFile(stream, classLoader);
-				load.startOn(stream.canStartReading(), false);
-				load.getOutput().blockThrow(0);
+				load.start().listenInline(sp);
 				return null;
 			}
 		};
 		task.startOn(false, startOn);
-		return task.getOutput();
+		return sp;
 	}
 	
 }

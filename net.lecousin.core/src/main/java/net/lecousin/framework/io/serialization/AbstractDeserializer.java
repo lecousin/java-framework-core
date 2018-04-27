@@ -750,7 +750,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		if (io.isUnblocked()) {
 			if (io.hasError()) return new AsyncWork<>(null, io.getError());
 			if (io.getResult() == null) return new AsyncWork<>(null, null);
-			return new AsyncWork<>(IOAsInputStream.get(io.getResult()), null);
+			return new AsyncWork<>(IOAsInputStream.get(io.getResult(), false), null);
 		}
 		AsyncWork<InputStream, Exception> result = new AsyncWork<>();
 		io.listenInline(
@@ -758,7 +758,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 				if (inputStream == null)
 					result.unblockSuccess(null);
 				else
-					result.unblockSuccess(IOAsInputStream.get(inputStream));
+					result.unblockSuccess(IOAsInputStream.get(inputStream, false));
 			},
 			result
 		);
@@ -770,7 +770,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		if (io.isUnblocked()) {
 			if (io.hasError()) return new AsyncWork<>(null, io.getError());
 			if (io.getResult() == null) return new AsyncWork<>(null, null);
-			return new AsyncWork<>(IOAsInputStream.get(io.getResult()), null);
+			return new AsyncWork<>(IOAsInputStream.get(io.getResult(), false), null);
 		}
 		AsyncWork<InputStream, Exception> result = new AsyncWork<>();
 		io.listenInline(
@@ -778,7 +778,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 				if (inputStream == null)
 					result.unblockSuccess(null);
 				else
-					result.unblockSuccess(IOAsInputStream.get(inputStream));
+					result.unblockSuccess(IOAsInputStream.get(inputStream, false));
 			},
 			result
 		);

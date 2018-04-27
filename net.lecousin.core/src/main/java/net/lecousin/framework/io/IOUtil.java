@@ -1,7 +1,6 @@
 package net.lecousin.framework.io;
 
 import java.io.Closeable;
-import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,6 +28,7 @@ import net.lecousin.framework.mutable.MutableLong;
 import net.lecousin.framework.progress.WorkProgress;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
+import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /**
@@ -544,28 +544,58 @@ public final class IOUtil {
 	 * Read all bytes from the given Readable and convert it as a String using the given charset encoding.
 	 */
 	@SuppressWarnings("resource")
-	public static Task<UnprotectedStringBuffer,IOException> readFullyAsString(IO.Readable io, Charset charset, byte priority) {
-		IO.Readable.Buffered bio;
-		if (io instanceof IO.Readable.Buffered)
-			bio = (IO.Readable.Buffered)io;
-		else
-			bio = new PreBufferedReadable(io, 1024, priority, 8192, priority, 8);
-		Task<UnprotectedStringBuffer,IOException> task = new Task.Cpu<UnprotectedStringBuffer,IOException>(
-			"Read file as string: " + io.getSourceDescription(), priority
-		) {
-			@Override
-			public UnprotectedStringBuffer run() throws IOException {
-				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(bio, charset, 64, 128);
-				UnprotectedStringBuffer str = new UnprotectedStringBuffer();
-				do {
-					try { str.append(stream.read()); }
-					catch (EOFException e) { break; }
-				} while (true);
-				return str;
+	public static AsyncWork<UnprotectedStringBuffer,IOException> readFullyAsString(IO.Readable io, Charset charset, byte priority) {
+		AsyncWork<UnprotectedStringBuffer,IOException> result = new AsyncWork<>();
+		if (io instanceof IO.KnownSize) {
+			((IO.KnownSize)io).getSizeAsync().listenInline((size) -> {
+				new Task.Cpu.FromRunnable("Prepare readFullyAsString", priority, () -> {
+					byte[] buf = new byte[size.intValue()];
+					io.readFullyAsync(ByteBuffer.wrap(buf)).listenAsync(
+					new Task.Cpu.FromRunnable("readFullyAsString", priority, () -> {
+						try {
+							result.unblockSuccess(new UnprotectedStringBuffer(
+								charset.newDecoder().decode(ByteBuffer.wrap(buf))
+							));
+						} catch (IOException e) {
+							result.error(e);
+						}
+					}), result);
+				}).start();
+			}, result);
+			return result;
+		}
+		new Task.Cpu.FromRunnable("Read file as string: " + io.getSourceDescription(), priority,
+		() -> {
+			BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, charset, 1024, 128);
+			UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+			readFullyAsString(stream, str, result, priority);
+		}).startOn(io.canStartReading(), true);
+		return result;
+	}
+	
+	private static void readFullyAsString(
+		BufferedReadableCharacterStream stream, UnprotectedStringBuffer str,
+		AsyncWork<UnprotectedStringBuffer,IOException> result, byte priority
+	) {
+		do {
+			AsyncWork<UnprotectedString, IOException> read = stream.readNextBufferAsync();
+			if (read.isUnblocked()) {
+				if (read.hasError()) {
+					result.error(read.getError());
+					return;
+				}
+				if (read.getResult() == null) {
+					result.unblockSuccess(str);
+					return;
+				}
+				str.append(read.getResult());
+				continue;
 			}
-		};
-		task.startOn(bio.canStartReading(), false);
-		return task;
+			read.listenAsync(new Task.Cpu.FromRunnable("readFullyAsString: " + stream.getDescription(), priority, () -> {
+				readFullyAsString(stream, str, result, priority);
+			}), result);
+			return;
+		} while (true);
 	}
 	
 	/**
