@@ -238,10 +238,8 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			sp.error(e);
 			return;
 		}
-		@SuppressWarnings("resource")
 		IOFromInputStream io = new IOFromInputStream(
 			input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
-		@SuppressWarnings("resource")
 		BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 		LoadLibraryExtensionPointsFile load = new LoadLibraryExtensionPointsFile(stream, acl);
 		load.start().listenInline(() -> {
@@ -272,10 +270,8 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			sp.error(e);
 			return;
 		}
-		@SuppressWarnings("resource")
 		IOFromInputStream io = new IOFromInputStream(
 			input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
-		@SuppressWarnings("resource")
 		BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 		LoadLibraryPluginsFile load = new LoadLibraryPluginsFile(stream, acl);
 		load.start().listenInline(() -> {

@@ -27,6 +27,7 @@ public abstract class FullReadLines<T> {
 		return stream.getDescription();
 	}
 	
+	/** Start to read lines in a separate task. */
 	public final AsyncWork<T, Exception> start() {
 		AsyncWork<T, Exception> result = new AsyncWork<>();
 		resume(result);

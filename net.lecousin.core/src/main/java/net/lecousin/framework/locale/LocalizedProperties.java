@@ -111,7 +111,8 @@ public class LocalizedProperties implements IMemoryManageable {
 			}
 			input = new IOFromInputStream(in, path + ".languages", Threading.getUnmanagedTaskManager(), Task.PRIORITY_RATHER_IMPORTANT);
 		}
-		AsyncWork<UnprotectedStringBuffer, IOException> read = IOUtil.readFullyAsString(input, StandardCharsets.US_ASCII, Task.PRIORITY_RATHER_IMPORTANT);
+		AsyncWork<UnprotectedStringBuffer, IOException> read = IOUtil.readFullyAsString(
+			input, StandardCharsets.US_ASCII, Task.PRIORITY_RATHER_IMPORTANT);
 		Namespace toLoad = ns;
 		read.listenAsyncSP(new Task.Cpu.FromRunnable("Read localized properties namespace file", Task.PRIORITY_RATHER_IMPORTANT, () -> {
 			List<Namespace.Language> languages = new LinkedList<>();

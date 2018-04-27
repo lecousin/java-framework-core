@@ -16,10 +16,12 @@ public class ListenableLongProperty implements Listenable<Long> {
 	protected long value;
 	protected Event<Long> event = new Event<>();
 	
+	/** Return the current value. */
 	public long get() {
 		return value;
 	}
-	
+
+	/** Set a new value. */
 	public void set(long value) {
 		if (this.value == value) return;
 		long previous = this.value;
@@ -27,18 +29,22 @@ public class ListenableLongProperty implements Listenable<Long> {
 		event.fire(Long.valueOf(previous));
 	}
 	
+	/** Addition. */
 	public void add(long add) {
 		set(value + add);
 	}
 
+	/** Subtraction. */
 	public void sub(long sub) {
 		set(value - sub);
 	}
 	
+	/** Increment. */
 	public void inc() {
 		set(value + 1);
 	}
 	
+	/** Decrement. */
 	public void dec() {
 		set(value - 1);
 	}

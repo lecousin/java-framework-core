@@ -184,7 +184,9 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			}
 			
 			@Override
-			public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+			public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+				ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+			) {
 				return super.readFullySyncIfPossible(buffer, ondone);
 			}
 			
@@ -346,7 +348,9 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				}
 				
 				@Override
-				public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+				public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+					ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+				) {
 					return super.readFullySyncIfPossible(buffer, ondone);
 				}
 				

@@ -28,18 +28,22 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	protected IOType io;
 	protected ListenableLongProperty position;
 	
+	/** Register a listener to be called when position is changing. */
 	public void addPositionChangedListener(Listener<Long> listener) {
 		position.addListener(listener);
 	}
 
+	/** Register a listener to be called when position is changing. */
 	public void addPositionChangedListener(Runnable listener) {
 		position.addListener(listener);
 	}
-	
+
+	/** Remove the given listener. */
 	public void removePositionChangedListener(Listener<Long> listener) {
 		position.removeListener(listener);
 	}
 
+	/** Remove the given listener. */
 	public void removePositionChangedListener(Runnable listener) {
 		position.removeListener(listener);
 	}
@@ -179,7 +183,9 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 			}
 
 			@Override
-			public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+			public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+				ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+			) {
 				return super.readFullySyncIfPossible(buffer, ondone);
 			}
 		}

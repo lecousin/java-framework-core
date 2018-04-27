@@ -13,27 +13,40 @@ import net.lecousin.framework.util.Pair;
  * A collection listener allows to signal the following events:
  * new elements, elements removed, and elements changed.
  * 
+ * <p>
  * At initialization, the method elementsReady must be called once to set the collection's
  * initial elements. Then the other methods are used to signal modifications.
+ * </p>
  *
  * @param <T> type of elements
  */
 public interface CollectionListener<T> {
 	
+	/** First elements are ready. */
 	default void elementsReady(Collection<? extends T> elements) {
 		elementsAdded(elements);
 	}
 
+	/** Elements have been added. */
 	void elementsAdded(Collection<? extends T> elements);
 	
+	/** Elements have been removed. */
 	void elementsRemoved(Collection<? extends T> elements);
 	
+	/** Elements have changed. */
 	void elementsChanged(Collection<? extends T> elements);
 	
+	/** An error occured while getting elements. */
 	void error(Throwable error);
 	
+	/** Keeps a collection of elements, such as listeners can be added asynchronously.
+	 * It implements CollectionListener to get collection changes events, and allows listeners
+	 * to be added and removed even some events already occurred.
+ * @param <T> type of elements
+	 */
 	public static class Keep<T> implements CollectionListener<T> {
 		
+		/** Constructor. */
 		public Keep(Collection<T> implementation, byte listenersCallPriority) {
 			col = implementation;
 			priority = listenersCallPriority;
@@ -54,7 +67,9 @@ public interface CollectionListener<T> {
 			}
 			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
 				synchronized (l) {
-					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.elementsReady", priority, () -> {
+					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
+						"Call CollectionListener.elementsReady", priority,
+					() -> {
 						l.getValue1().elementsReady(elements);
 					});
 					task.startOnDone(l.getValue2());
@@ -72,7 +87,9 @@ public interface CollectionListener<T> {
 			}
 			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
 				synchronized (l) {
-					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.elementsAdded", priority, () -> {
+					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
+						"Call CollectionListener.elementsAdded", priority,
+					() -> {
 						l.getValue1().elementsAdded(elements);
 					});
 					task.startOnDone(l.getValue2());
@@ -90,7 +107,9 @@ public interface CollectionListener<T> {
 			}
 			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
 				synchronized (l) {
-					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.elementsRemoved", priority, () -> {
+					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
+						"Call CollectionListener.elementsRemoved", priority,
+					() -> {
 						l.getValue1().elementsRemoved(elements);
 					});
 					task.startOnDone(l.getValue2());
@@ -107,7 +126,9 @@ public interface CollectionListener<T> {
 			}
 			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
 				synchronized (l) {
-					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.elementsChanged", priority, () -> {
+					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
+						"Call CollectionListener.elementsChanged", priority,
+					() -> {
 						l.getValue1().elementsChanged(elements);
 					});
 					task.startOnDone(l.getValue2());
@@ -134,6 +155,7 @@ public interface CollectionListener<T> {
 			}
 		}
 		
+		/** Add a listener. */
 		public void addListener(CollectionListener<T> listener) {
 			synchronized (col) {
 				if (error != null)

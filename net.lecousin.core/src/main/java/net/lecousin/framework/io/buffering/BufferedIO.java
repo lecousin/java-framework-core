@@ -116,8 +116,8 @@ public abstract class BufferedIO extends BufferingManaged {
 			loading = io.readFullyAsync(
 				index == 0
 				? 0L
-				: (firstBufferSize + (index - 1) * (long)bufferSize)
-			, ByteBuffer.wrap(buffer.buffer));
+				: (firstBufferSize + (index - 1) * (long)bufferSize),
+				ByteBuffer.wrap(buffer.buffer));
 		}
 		operation(loading).listenInline(new Runnable() {
 			@Override
@@ -448,11 +448,22 @@ public abstract class BufferedIO extends BufferingManaged {
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+			ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+		) {
 			return super.readFullySyncIfPossible(pos, buffer, 0, ondone);
 		}
 		
-		public AsyncWork<Integer, IOException> readFullySyncIfPossible(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		/** While readAsync methods are supposed to do the job in a separate thread, this method
+		 * fills the given buffer synchronously if enough data is already buffered, else it finishes asynchronously.
+		 * The caller can check the returned AsyncWork by calling its method isUnblocked to know if the
+		 * read has been performed synchronously.
+		 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
+		 * but support also to work asynchronously without blocking a thread.
+		 */
+		public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+		) {
 			return super.readFullySyncIfPossible(pos, buffer, 0, ondone);
 		}
 	}
@@ -658,6 +669,13 @@ public abstract class BufferedIO extends BufferingManaged {
 			return super.readFullySyncIfPossible(pos, buffer, 0, ondone);
 		}
 		
+		/** While readAsync methods are supposed to do the job in a separate thread, this method
+		 * fills the given buffer synchronously if enough data is already buffered, else it finishes asynchronously.
+		 * The caller can check the returned AsyncWork by calling its method isUnblocked to know if the
+		 * read has been performed synchronously.
+		 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
+		 * but support also to work asynchronously without blocking a thread.
+		 */
 		public AsyncWork<Integer, IOException> readFullySyncIfPossible(
 			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
 		) {
@@ -1073,7 +1091,9 @@ public abstract class BufferedIO extends BufferingManaged {
 		return operation(done);
 	}
 	
-	protected AsyncWork<Integer, IOException> readFullySyncIfPossible(long pos, ByteBuffer buf, int alreadyDone, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	protected AsyncWork<Integer, IOException> readFullySyncIfPossible(
+		long pos, ByteBuffer buf, int alreadyDone, RunnableWithParameter<Pair<Integer, IOException>> ondone
+	) {
 		if (pos >= size) {
 			Integer r = Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1);
 			if (ondone != null) ondone.run(new Pair<>(r, null));

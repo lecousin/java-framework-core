@@ -752,7 +752,9 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		return readFullySyncIfPossible(buffer, 0, ondone);
 	}
 	
-	private AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, int alreadyDone, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	private AsyncWork<Integer, IOException> readFullySyncIfPossible(
+		ByteBuffer buffer, int alreadyDone, RunnableWithParameter<Pair<Integer, IOException>> ondone
+	) {
 		boolean ok = true;
 		synchronized (this) {
 			if (error != null) {
@@ -785,7 +787,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			AsyncWork<Integer, IOException> res = new AsyncWork<>();
 			readFullyAsync(buffer, (r) -> {
 				if (ondone != null) {
-					if (r.getValue1() != null) ondone.run(new Pair<>(Integer.valueOf(r.getValue1().intValue() + alreadyDone), null));
+					if (r.getValue1() != null) ondone.run(
+						new Pair<>(Integer.valueOf(r.getValue1().intValue() + alreadyDone), null));
 					else ondone.run(r);
 				}
 			}).listenInline((nb) -> {

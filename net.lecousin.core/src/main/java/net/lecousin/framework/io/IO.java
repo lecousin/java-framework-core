@@ -193,7 +193,8 @@ public interface IO extends IConcurrentCloseable {
 			 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
 			 * but support also to work asynchronously without blocking a thread.
 			 */
-			public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone);
+			public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+				ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone);
 
 			/** While readAsync methods are supposed to do the job in a separate thread, this method
 			 * fills the given buffer synchronously if enough data is already buffered, else it finishes asynchronously.

@@ -270,6 +270,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 		});
 	}
 	
+	/** Register a listener to be called only on success, with the result. */
 	public void listenInline(Listener<T> onSuccess) {
 		listenInline(new AsyncWorkListener<T,TError>() {
 			@Override

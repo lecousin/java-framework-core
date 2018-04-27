@@ -4,8 +4,12 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.PositionKnownWrapper;
 import net.lecousin.framework.progress.WorkProgress;
 
+/**
+ * Wraps an IO.Readable and make a WorkProgress progress while data is read on it.
+ */
 public class ReadableWithProgress extends PositionKnownWrapper.Readable implements IO.Readable {
 	
+	/** Constructor. */
 	public ReadableWithProgress(IO.Readable io, long size, WorkProgress progress, long work) {
 		super(io, 0);
 		this.size = size;
