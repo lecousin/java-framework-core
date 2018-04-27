@@ -161,6 +161,13 @@ public class ByteArrayIO extends ConcurrentCloseable
 	}
 	
 	@Override
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		Integer r = Integer.valueOf(readFullySync(buffer));
+		if (ondone != null) ondone.run(new Pair<>(r, null));
+		return new AsyncWork<>(r, null);
+	}
+	
+	@Override
 	public int readAsync() {
 		return read();
 	}

@@ -17,6 +17,8 @@ import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
 
+import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 public abstract class TestReadableBuffered extends TestReadableByteStream {
@@ -165,6 +167,75 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		});
 		done.blockThrow(0);
 		io.close();
+	}
+
+	@Test(timeout=120000)
+	public void testReadableBufferedReadFullySyncIfPossible() throws Exception {
+		Assume.assumeTrue(nbBuf > 0);
+		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
+		byte[] buf = new byte[testBuf.length];
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		new Task.Cpu.FromRunnable("Test readFullySyncIfPossible", Task.PRIORITY_NORMAL, () -> {
+			nextSyncIfPossible(io, 0, buf, sp);
+		}).start();
+		sp.blockThrow(0);
+		io.close();
+	}
+	
+	private void nextSyncIfPossible(IO.Readable.Buffered io, int index, byte[] buf, SynchronizationPoint<Exception> sp) {
+		MutableBoolean ondoneCalled = new MutableBoolean(false);
+		RunnableWithParameter<Pair<Integer, IOException>> ondone = (res) -> {
+			ondoneCalled.set(true);
+		};
+		do {
+			if (index == nbBuf) {
+				sp.unblock();
+				return;
+			}
+			ondoneCalled.set(false);
+			AsyncWork<Integer, IOException> r = io.readFullySyncIfPossible(ByteBuffer.wrap(buf), ondone);
+			if (r.isUnblocked()) {
+				if (r.hasError()) {
+					sp.error(r.getError());
+					return;
+				}
+				if (!ondoneCalled.get()) {
+					sp.error(new Exception("ondone not called"));
+					return;
+				}
+				if (r.getResult().intValue() != buf.length) {
+					sp.error(new Exception("Only " + r.getResult().intValue() + " bytes read on " + buf.length));
+					return;
+				}
+				try {
+					Assert.assertArrayEquals(testBuf, buf);
+				} catch (Throwable t) {
+					sp.error(new Exception(t));
+					return;
+				}
+				index++;
+				continue;
+			}
+			int i = index;
+			r.listenAsyncSP(new Task.Cpu.FromRunnable("Test readFullySyncIfPossible", Task.PRIORITY_NORMAL, () -> {
+				if (!ondoneCalled.get()) {
+					sp.error(new Exception("ondone not called"));
+					return;
+				}
+				if (r.getResult().intValue() != buf.length) {
+					sp.error(new Exception("Only " + r.getResult().intValue() + " bytes read on " + buf.length));
+					return;
+				}
+				try {
+					Assert.assertArrayEquals(testBuf, buf);
+				} catch (Throwable t) {
+					sp.error(new Exception(t));
+					return;
+				}
+				nextSyncIfPossible(io, i + 1, buf, sp);
+			}), sp);
+			return;
+		} while (true);
 	}
 	
 }

@@ -235,6 +235,24 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 				}
 				
 				@Override
+				public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+					ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+				) {
+					try {
+						if (((IO.Readable.Seekable)io).getPosition() != start + pos)
+							return readFullyAsync(buffer, ondone);
+					} catch (IOException e) {
+						if (ondone != null) ondone.run(new Pair<>(null, e));
+						return new AsyncWork<>(null, e);
+					}
+					return ((IO.Readable.Buffered)io).readFullySyncIfPossible(buffer, (res) -> {
+						if (res.getValue1() != null && res.getValue1().intValue() > 0)
+							pos += res.getValue1().intValue();
+						if (ondone != null) ondone.run(res);
+					});
+				}
+				
+				@Override
 				public int readAsync() throws IOException {
 					if (pos == size) return -1;
 					if (((IO.Readable.Seekable)io).getPosition() != start + pos) {

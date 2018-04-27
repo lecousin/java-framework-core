@@ -242,6 +242,69 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	}
 	
 	@Override
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		int done = 0;
+		do {
+			ByteBuffer b = null;
+			synchronized (this) {
+				if (isClosing() || isClosed()) {
+					IOException e = new IOException("IO closed");
+					if (ondone != null) ondone.run(new Pair<>(null, e));
+					return new AsyncWork<>(null, e);
+				}
+				if (!buffers.isEmpty())
+					b = buffers.get(0);
+				else if (eof) {
+					Integer r = Integer.valueOf(done > 0 ? done : -1);
+					if (ondone != null) ondone.run(new Pair<>(r, null));
+					return new AsyncWork<>(r, null);
+				} else if (!lock.isUnblocked()) {
+					if (done == 0)
+						return readFullyAsync(buffer, ondone);
+					AsyncWork<Integer, IOException> r = new AsyncWork<>();
+					readFullyAsync(buffer, (res) -> {
+						if (ondone != null) {
+							if (res.getValue1() != null) {
+								int n = res.getValue1().intValue();
+								if (n < 0) n = 0;
+								n += done;
+								ondone.run(new Pair<>(Integer.valueOf(n), null));
+							} else
+								ondone.run(res);
+						}
+					}).listenInline((nb) -> {
+						int n = nb.intValue();
+						if (n < 0) n = 0;
+						n += done;
+						r.unblockSuccess(Integer.valueOf(n));
+					}, r);
+					return r;
+				} else if (lock.hasError()) {
+					IOException e = new IOException("An error occured during the transfer of data", lock.getError());
+					if (ondone != null) ondone.run(new Pair<>(null, e));
+					return new AsyncWork<>(null, e);
+				}
+			}
+			int len = buffer.remaining();
+			buffer.put(b);
+			if (b.remaining() == 0) {
+				SynchronizationPoint<NoException> sp = null;
+				synchronized (this) {
+					buffers.removeFirst();
+					if (maxPendingBuffers > 0)
+						sp = lockMaxBuffers.pollFirst();
+				}
+				if (sp != null) sp.unblock();
+			}
+			if (!buffer.hasRemaining()) {
+				Integer r = Integer.valueOf(len + done);
+				if (ondone != null) ondone.run(new Pair<>(r, null));
+				return new AsyncWork<>(r, null);
+			}
+		} while (true);
+	}
+	
+	@Override
 	public int readAsync() throws IOException {
 		ByteBuffer b = null;
 		synchronized (this) {

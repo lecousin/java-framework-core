@@ -746,6 +746,68 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		}
 		return pos;
 	}
+	
+	@Override
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		return readFullySyncIfPossible(buffer, 0, ondone);
+	}
+	
+	private AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, int alreadyDone, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		boolean ok = true;
+		synchronized (this) {
+			if (error != null) {
+				if (ondone != null) ondone.run(new Pair<>(null, error));
+				return new AsyncWork<>(null, error);
+			}
+			if (current != null) {
+				if (!current.hasRemaining() && endReached) {
+					Integer r = Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1);
+					if (ondone != null) ondone.run(new Pair<>(r, null));
+					return new AsyncWork<>(r, null);
+				}
+			} else {
+				if (endReached) {
+					Integer r = Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1);
+					if (ondone != null) ondone.run(new Pair<>(r, null));
+					return new AsyncWork<>(r, null);
+				}
+				if (isClosing() || isClosed()) {
+					Integer r = Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1);
+					if (ondone != null) ondone.run(new Pair<>(r, null));
+					return new AsyncWork<>(r, null);
+				}
+				ok = false;
+			}
+		}
+		if (!ok) {
+			if (alreadyDone == 0)
+				return readFullyAsync(buffer, ondone);
+			AsyncWork<Integer, IOException> res = new AsyncWork<>();
+			readFullyAsync(buffer, (r) -> {
+				if (ondone != null) {
+					if (r.getValue1() != null) ondone.run(new Pair<>(Integer.valueOf(r.getValue1().intValue() + alreadyDone), null));
+					else ondone.run(r);
+				}
+			}).listenInline((nb) -> {
+				res.unblockSuccess(Integer.valueOf(alreadyDone + nb.intValue()));
+			}, res);
+			return res;
+		}
+		int len = buffer.remaining();
+		if (current.remaining() > len) {
+			int l = current.limit();
+			current.limit(current.position() + len);
+			buffer.put(current);
+			current.limit(l);
+			Integer r = Integer.valueOf(alreadyDone + len);
+			if (ondone != null) ondone.run(new Pair<>(r, null));
+			return new AsyncWork<>(r, null);
+		}
+		len = current.remaining();
+		buffer.put(current);
+		moveNextBuffer(true);
+		return readFullySyncIfPossible(buffer, len + alreadyDone, ondone);
+	}
 
 	@Override
 	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
@@ -792,5 +854,5 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		});
 		return operation(result);
 	}
-	
+
 }

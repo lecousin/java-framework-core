@@ -286,6 +286,19 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	}
 	
 	@Override
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		if (knownSize >= 0 && pos >= knownSize) {
+			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
+			return new AsyncWork<>(Integer.valueOf(-1), null);
+		}
+		if (pos >= ioPos) {
+			bufferizeTo(pos);
+			return readFullyAsync(buffer, ondone);
+		}
+		return buffered.readFullySyncIfPossible(pos, buffer, ondone);
+	}
+	
+	@Override
 	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		return readAsync(pos, buffer, ondone);
 	}
@@ -297,13 +310,16 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 			bufferizeTo(pos);
 			return -2;
 		}
-		if (buffered.getPosition() == pos) {
-			int r = buffered.readAsync();
-			if (r >= 0) pos++;
-			return r;
-		}
 		byte[] b = new byte[1];
-		buffered.readSync(pos, ByteBuffer.wrap(b)); // TODO can we find a way to be not blocking ?
+		AsyncWork<Integer, IOException> r = buffered.readFullySyncIfPossible(pos, ByteBuffer.wrap(b), null);
+		if (!r.isUnblocked())
+			return -2;
+		if (r.hasError())
+			throw r.getError();
+		if (r.isCancelled())
+			return -1;
+		if (r.getResult().intValue() <= 0)
+			return -1;
 		pos++;
 		return b[0] & 0xFF;
 	}

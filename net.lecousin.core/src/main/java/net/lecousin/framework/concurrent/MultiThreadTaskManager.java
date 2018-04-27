@@ -50,7 +50,9 @@ public class MultiThreadTaskManager extends FixedThreadTaskManager {
 	
 	@Override
 	protected TaskWorker createWorker() {
-		return new TaskWorker(getName() + " - Worker " + workerCount++, this);
+		int nb;
+		synchronized (this) { nb = workerCount++; }
+		return new TaskWorker(getName() + " - Worker " + nb, this);
 	}
 	
 	@Override

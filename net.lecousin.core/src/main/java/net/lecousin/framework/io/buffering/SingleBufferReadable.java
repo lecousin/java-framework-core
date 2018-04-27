@@ -109,6 +109,30 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 			fillNextBuffer();
 		return l;
 	}
+	
+	@Override
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		AtomicState s = state;
+		if (s.pos == s.len) {
+			if (s.eof) {
+				if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
+				return new AsyncWork<>(Integer.valueOf(-1), null);
+			}
+			return readFullyAsync(buffer, ondone);
+		}
+		int l = buffer.remaining();
+		if (l > s.len - s.pos) l = s.len - s.pos;
+		buffer.put(this.buffer, s.pos, l);
+		s.pos += l;
+		if (s.pos == s.len)
+			fillNextBuffer();
+		if (!buffer.hasRemaining()) {
+			Integer r = Integer.valueOf(l);
+			if (ondone != null) ondone.run(new Pair<>(r, null));
+			return new AsyncWork<>(r, null);
+		}
+		return operation(IOUtil.readFullyAsync(this, buffer, l, ondone));
+	}
 
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {

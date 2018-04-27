@@ -178,6 +178,10 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 				return super.readNextBufferAsync(ondone);
 			}
 
+			@Override
+			public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+				return super.readFullySyncIfPossible(buffer, ondone);
+			}
 		}
 
 	}
@@ -311,6 +315,21 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 			if (ondone != null)
 				ondone.run(result);
 		});
+	}
+	
+	protected AsyncWork<Integer, IOException> readFullySyncIfPossible(
+		ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+	) {
+		AsyncWork<Integer, IOException> res = new AsyncWork<>();
+		((IO.Readable.Buffered)io).readFullySyncIfPossible(buffer, (r) -> {
+			if (r.getValue1() != null)
+				position.add(r.getValue1().intValue());
+			if (ondone == null) return;
+			ondone.run(r);
+		}).listenInline((nb) -> {
+			res.unblockSuccess(nb);
+		}, res);
+		return res;
 	}
 	
 }

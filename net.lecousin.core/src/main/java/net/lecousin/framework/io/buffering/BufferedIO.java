@@ -446,6 +446,15 @@ public abstract class BufferedIO extends BufferingManaged {
 		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 			return super.readFullyAsync(pos, buf, 0, ondone);
 		}
+		
+		@Override
+		public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+			return super.readFullySyncIfPossible(pos, buffer, 0, ondone);
+		}
+		
+		public AsyncWork<Integer, IOException> readFullySyncIfPossible(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+			return super.readFullySyncIfPossible(pos, buffer, 0, ondone);
+		}
 	}
 
 	/** Read and write implementation of BufferedIO. */
@@ -640,6 +649,15 @@ public abstract class BufferedIO extends BufferingManaged {
 		@Override
 		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 			return super.readFullyAsync(pos, buf, 0, ondone);
+		}
+		
+		@Override
+		public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+			return super.readFullySyncIfPossible(pos, buffer, 0, null);
+		}
+		
+		public AsyncWork<Integer, IOException> readFullySyncIfPossible(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+			return super.readFullySyncIfPossible(pos, buffer, 0, null);
 		}
 		
 		@Override
@@ -1049,6 +1067,43 @@ public abstract class BufferedIO extends BufferingManaged {
 		done.forwardCancel(task.getOutput());
 		task.getOutput().forwardCancel(done);
 		return operation(done);
+	}
+	
+	protected AsyncWork<Integer, IOException> readFullySyncIfPossible(long pos, ByteBuffer buf, int alreadyDone, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		if (pos >= size) {
+			Integer r = Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1);
+			if (ondone != null) ondone.run(new Pair<>(r, null));
+			return new AsyncWork<Integer,IOException>(r, null);
+		}
+		int bufferIndex = getBufferIndex(pos);
+		Buffer buffer = useBufferAsync(bufferIndex);
+		SynchronizationPoint<NoException> sp = buffer.loading;
+		if (sp != null && !sp.isUnblocked())
+			return readFullyAsync(this.pos, buf, alreadyDone, ondone);
+		if (buffer.error != null) {
+			if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
+			return new AsyncWork<Integer,IOException>(null, buffer.error);
+		}
+		if (sp != null && sp.isCancelled())
+			return new AsyncWork<>(null, null, sp.getCancelEvent());
+		int start = getBufferOffset(pos);
+		int len = buf.remaining();
+		if (len > buffer.len - start) len = buffer.len - start;
+		buf.put(buffer.buffer, start, len);
+		buffer.lastRead = System.currentTimeMillis();
+		buffer.inUse--;
+		pos += len;
+		this.pos = pos;
+		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
+			int nextIndex = getBufferIndex(pos);
+			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
+		}
+		if (buf.remaining() == 0) {
+			Integer r = Integer.valueOf(alreadyDone + len);
+			if (ondone != null) ondone.run(new Pair<>(r, null));
+			return new AsyncWork<>(r, null);
+		}
+		return readFullySyncIfPossible(pos, buf, alreadyDone + len, ondone);
 	}
 	
 	protected AsyncWork<Void,IOException> increaseSize(long newSize) {

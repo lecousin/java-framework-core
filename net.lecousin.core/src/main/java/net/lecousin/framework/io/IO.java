@@ -185,6 +185,26 @@ public interface IO extends IConcurrentCloseable {
 			 * @return the next byte, or -1 if the end of the IO has been reached, or -2 if no more byte is available.
 			 */
 			public int readAsync() throws IOException;
+			
+			/** While readAsync methods are supposed to do the job in a separate thread, this method
+			 * fills the given buffer synchronously if enough data is already buffered, else it finishes asynchronously.
+			 * The caller can check the returned AsyncWork by calling its method isUnblocked to know if the
+			 * read has been performed synchronously.
+			 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
+			 * but support also to work asynchronously without blocking a thread.
+			 */
+			public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone);
+
+			/** While readAsync methods are supposed to do the job in a separate thread, this method
+			 * fills the given buffer synchronously if enough data is already buffered, else it finishes asynchronously.
+			 * The caller can check the returned AsyncWork by calling its method isUnblocked to know if the
+			 * read has been performed synchronously.
+			 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
+			 * but support also to work asynchronously without blocking a thread.
+			 */
+			public default AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer) {
+				return readFullySyncIfPossible(buffer, null);
+			}
 		}
 	}
 	

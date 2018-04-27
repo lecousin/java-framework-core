@@ -184,6 +184,11 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			}
 			
 			@Override
+			public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+				return super.readFullySyncIfPossible(buffer, ondone);
+			}
+			
+			@Override
 			public int readAsync() throws IOException {
 				return super.readAsync();
 			}
@@ -338,6 +343,11 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				@Override
 				public int readFully(byte[] buffer) throws IOException {
 					return super.readFully(buffer);
+				}
+				
+				@Override
+				public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+					return super.readFullySyncIfPossible(buffer, ondone);
 				}
 				
 				@Override
@@ -541,6 +551,86 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 	
 	protected int readFullySync(ByteBuffer buffer) throws IOException {
 		return IOUtil.readFully((IO.Readable)this, buffer);
+	}
+	
+	@SuppressWarnings("resource")
+	protected AsyncWork<Integer, IOException> readFullySyncIfPossible(
+		ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+	) {
+		if (ioIndex == ios.size()) {
+			Integer r = Integer.valueOf(-1);
+			if (ondone != null) ondone.run(new Pair<>(r, null));
+			return new AsyncWork<>(r, null);
+		}
+		IO.Readable.Buffered io = (IO.Readable.Buffered)ios.get(ioIndex);
+		AsyncWork<Integer, IOException> r = io.readFullySyncIfPossible(buffer);
+		if (r.isUnblocked()) {
+			if (!r.isSuccessful()) {
+				if (ondone != null && r.hasError()) ondone.run(new Pair<>(null, r.getError()));
+				return r;
+			}
+			int nb = r.getResult().intValue();
+			if (nb <= 0) {
+				if (sizes.get(ioIndex) == null)
+					sizes.set(ioIndex, Long.valueOf(posInIO));
+				return readFullyAsync(buffer, ondone);
+			}
+			posInIO += nb;
+			pos += nb;
+			if (!buffer.hasRemaining()) {
+				if (ondone != null) ondone.run(new Pair<>(r.getResult(), null));
+				return r;
+			}
+			AsyncWork<Integer, IOException> r2 = new AsyncWork<>();
+			readFullySyncIfPossible(buffer, (res) -> {
+				if (ondone == null) return;
+				if (res.getValue1() == null) ondone.run(res);
+				else {
+					int n = res.getValue1().intValue();
+					if (n < 0) n = nb;
+					else n = nb + n;
+					ondone.run(new Pair<>(Integer.valueOf(n), null));
+				}
+			}).listenInline((nb2) -> {
+				int n = nb2.intValue();
+				if (n < 0) n = nb;
+				else n = nb + n;
+				r2.unblockSuccess(Integer.valueOf(n));
+			}, r2);
+			return r2;
+		}
+		AsyncWork<Integer, IOException> r2 = new AsyncWork<>();
+		r.listenInline((nb) -> {
+			int n = nb.intValue();
+			if (n > 0) {
+				posInIO += n;
+				pos += n;
+			}
+			if (!buffer.hasRemaining()) {
+				if (ondone != null) ondone.run(new Pair<>(nb, null));
+				r2.unblockSuccess(nb);
+			} else
+				readFullyAsync(buffer, (res) -> {
+					if (ondone == null) return;
+					if (res.getValue1() == null) ondone.run(res);
+					else {
+						int n1 = n;
+						if (n1 < 0) n1 = 0;
+						int n2 = res.getValue1().intValue();
+						if (n2 < 0) n2 = n1;
+						else n2 += n1;
+						ondone.run(new Pair<>(Integer.valueOf(n2), null));
+					}
+				}) .listenInline((nb2) -> {
+					int n1 = n;
+					if (n1 < 0) n1 = 0;
+					int n2 = nb2.intValue();
+					if (n2 < 0) n2 = n1;
+					else n2 += n1;
+					r2.unblockSuccess(Integer.valueOf(n2));
+				}, r2);
+		}, r2);
+		return r2;
 	}
 	
 	@SuppressWarnings("resource")

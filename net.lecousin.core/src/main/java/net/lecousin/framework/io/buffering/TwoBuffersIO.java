@@ -268,6 +268,58 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		this.pos = (int)pos + l;
 		return l;
 	}
+	
+	@Override
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		if (nb1 < 0) return readFullyAsync(buffer, ondone);
+		int len = buffer.remaining();
+		int done = 0;
+		if (pos < nb1) {
+			int l = nb1 - pos;
+			if (l > len) l = len;
+			buffer.put(buf1, pos, l);
+			pos += l;
+			if (l == len) {
+				Integer r = Integer.valueOf(l);
+				if (ondone != null) ondone.run(new Pair<>(r, null));
+				return new AsyncWork<>(r, null);
+			}
+			len -= l;
+			done = l;
+		}
+		if (buf2 == null) {
+			Integer r = Integer.valueOf(done > 0 ? done : -1);
+			if (ondone != null) ondone.run(new Pair<>(r, null));
+			return new AsyncWork<>(r, null);
+		}
+		if (nb2 < 0) {
+			if (done == 0)
+				return readFullyAsync(buffer, ondone);
+			AsyncWork<Integer, IOException> r = new AsyncWork<>();
+			int d = done;
+			readFullyAsync(buffer, (res) -> {
+				if (ondone != null) {
+					if (res.getValue1() != null) ondone.run(new Pair<>(Integer.valueOf(d + res.getValue1().intValue()), null));
+					else ondone.run(res);
+				}
+			}).listenInline((nb) -> {
+				r.unblockSuccess(Integer.valueOf(nb.intValue() + d));
+			}, r);
+			return r;
+		}
+		if (pos >= nb1 + nb2) {
+			Integer r = Integer.valueOf(done > 0 ? done : -1);
+			if (ondone != null) ondone.run(new Pair<>(r, null));
+			return new AsyncWork<>(r, null);
+		}
+		int l = (nb1 + nb2) - pos;
+		if (l > len) l = len;
+		buffer.put(buf2, pos - nb1, l);
+		pos += l;
+		Integer r = Integer.valueOf(l + done);
+		if (ondone != null) ondone.run(new Pair<>(r, null));
+		return new AsyncWork<>(r, null);
+	}
 
 	private <T> AsyncWork<T, IOException> needRead1Async(Callable<T> onReady, RunnableWithParameter<Pair<T,IOException>> ondone) {
 		if (!read1.isUnblocked()) {

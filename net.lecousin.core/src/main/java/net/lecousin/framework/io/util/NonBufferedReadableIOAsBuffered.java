@@ -90,6 +90,11 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		return io.readFullyAsync(buffer, ondone);
 	}
+	
+	@Override
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		return io.readAsync(buffer, ondone);
+	}
 
 	@Override
 	public long skipSync(long n) throws IOException {
