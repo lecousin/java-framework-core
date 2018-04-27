@@ -592,6 +592,11 @@ public final class IOUtil {
 				continue;
 			}
 			read.listenAsync(new Task.Cpu.FromRunnable("readFullyAsString: " + stream.getDescription(), priority, () -> {
+				if (read.getResult() == null) {
+					result.unblockSuccess(str);
+					return;
+				}
+				str.append(read.getResult());
 				readFullyAsString(stream, str, result, priority);
 			}), result);
 			return;

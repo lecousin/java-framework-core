@@ -279,7 +279,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 		LoadLibraryPluginsFile load = new LoadLibraryPluginsFile(stream, acl);
 		load.start().listenInline(() -> {
-			loadExtensionPoints(urls, sp);
+			loadPlugins(urls, sp);
 		}, sp);
 	}
 }
