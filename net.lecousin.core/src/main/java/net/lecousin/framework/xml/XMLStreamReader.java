@@ -7,7 +7,6 @@ import java.util.LinkedList;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.encoding.DecimalNumber;
@@ -58,22 +57,24 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	 */
 	public static AsyncWork<XMLStreamReader, Exception> start(IO.Readable.Buffered io, int charactersBufferSize) {
 		AsyncWork<XMLStreamReader, Exception> result = new AsyncWork<>();
-		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>(
-			"Start reading XML " + io.getSourceDescription(), io.getPriority()
-		) {
-			@Override
-			public Void run() {
-				XMLStreamReader reader = new XMLStreamReader(io, charactersBufferSize);
-				try {
-					reader.start();
-					result.unblockSuccess(reader);
-				} catch (Exception e) {
-					result.unblockError(e);
-				}
-				return null;
+		new Task.Cpu.FromRunnable("Start reading XML " + io.getSourceDescription(), io.getPriority(), () -> {
+			XMLStreamReader reader = new XMLStreamReader(io, charactersBufferSize);
+			try {
+				Starter start = new Starter(io, reader.defaultEncoding, reader.charactersBuffersSize);
+				reader.stream = start.start();
+				reader.stream.canStartReading().listenAsync(
+				new Task.Cpu.FromRunnable("Start reading XML " + io.getSourceDescription(), io.getPriority(), () -> {
+					try {
+						reader.next();
+						result.unblockSuccess(reader);
+					} catch (Exception e) {
+						result.unblockError(e);
+					}
+				}), true);
+			} catch (Exception e) {
+				result.unblockError(e);
 			}
-		};
-		task.startOn(io.canStartReading(), true);
+		}).startOn(io.canStartReading(), true);
 		return result;
 	}
 
