@@ -25,7 +25,11 @@ public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 		Assert.assertTrue(xml.nextStartElement());
 		Assert.assertEquals("hello", xml.event.text.asString());
 		Assert.assertEquals("fr", xml.getAttributeValueWithPrefix("language", "code").asString());
+		Assert.assertNull(xml.getAttributeValueWithPrefix("language2", "code"));
+		Assert.assertNull(xml.getAttributeValueWithPrefix("language", "code2"));
 		Assert.assertEquals("fr", xml.getAttributeValueWithNamespaceURI("http://language", "code").asString());
+		Assert.assertNull(xml.getAttributeValueWithNamespaceURI("http://language2", "code"));
+		Assert.assertNull(xml.getAttributeValueWithNamespaceURI("http://language", "code2"));
 		Attribute a = xml.removeAttributeByFullName("language:code");
 		Assert.assertEquals("fr", a.value.asString());
 		xml.event.attributes.add(a);
@@ -129,9 +133,12 @@ public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 		Assert.assertEquals("Hello World", xml.readInnerText().trim().asString());
 	}
 	
+	public static final int ERROR_START = 1;
+	public static final int ERROR_END = 68;
+	
 	@Test(timeout=120000)
 	public void testErrors() {
-		for (int i = 1; i <= 15; ++i) {
+		for (int i = ERROR_START; i <= ERROR_END; ++i) {
 			String s = Integer.toString(i);
 			while (s.length() != 3) s = "0" + s;
 			try {

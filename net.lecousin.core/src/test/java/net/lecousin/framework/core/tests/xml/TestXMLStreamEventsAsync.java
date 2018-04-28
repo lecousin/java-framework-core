@@ -112,7 +112,7 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 	
 	@Test(timeout=120000)
 	public void testErrors() {
-		for (int i = 1; i <= 15; ++i) {
+		for (int i = TestXMLStreamEventsSync.ERROR_START; i <= TestXMLStreamEventsSync.ERROR_END; ++i) {
 			String s = Integer.toString(i);
 			while (s.length() != 3) s = "0" + s;
 			try {
