@@ -3,12 +3,12 @@
   <groupId>net.lecousin.framework</groupId>
   <artifactId>log.bridges</artifactId>
   <packaging>pom</packaging>
-  <version>0.10.0</version>
+  <version>0.11.0</version>
 
   <parent>
   	<groupId>net.lecousin</groupId>
   	<artifactId>core-parent-pom</artifactId>
-  	<version>0.10.0</version>
+  	<version>0.11.0</version>
   </parent>
   
   <modules>
@@ -36,12 +36,12 @@
   		<dependency>
   			<groupId>net.lecousin</groupId>
   			<artifactId>core</artifactId>
-  			<version>0.10.1</version>
+  			<version>0.11.0</version>
   		</dependency>
   		<dependency>
   			<groupId>net.lecousin</groupId>
   			<artifactId>core</artifactId>
-  			<version>0.10.1</version>
+  			<version>0.11.0</version>
   			<type>test-jar</type>
   		</dependency>
   	</dependencies>
