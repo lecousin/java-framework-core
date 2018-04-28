@@ -134,7 +134,7 @@ public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 	}
 	
 	public static final int ERROR_START = 1;
-	public static final int ERROR_END = 68;
+	public static final int ERROR_END = 79;
 	
 	@Test(timeout=120000)
 	public void testErrors() {

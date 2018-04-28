@@ -99,6 +99,20 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 		xml.start().blockThrow(0);
 		xml.searchElement("translation").blockThrow(0);
 		xml.nextStartElement().blockThrow(0); // hello
+		xml.nextStartElement().blockThrow(0); // french
+		xml.nextStartElement().blockThrow(0); // spanish
+		xml.nextStartElement().blockThrow(0); // english
+		try {
+			xml.nextStartElement().blockThrow(0); // no more
+			throw new AssertionError("No more start element was expected");
+		} catch (EOFException e) {
+			// expected
+		}
+
+		xml = parse("xml-test-suite/mine/002.xml");
+		xml.start().blockThrow(0);
+		xml.searchElement("translation").blockThrow(0);
+		xml.nextStartElement().blockThrow(0); // hello
 		xml.closeElement().blockThrow(0);
 	}
 	

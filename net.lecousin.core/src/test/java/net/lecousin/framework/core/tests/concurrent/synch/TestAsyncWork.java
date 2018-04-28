@@ -270,6 +270,18 @@ public class TestAsyncWork extends LCCoreAbstractTest {
 		Assert.assertTrue(sp.isUnblocked());
 		Assert.assertFalse(sp.hasError());
 		Assert.assertTrue(sp.isCancelled());
+		
+		aw = new AsyncWork<>();
+		result.set(new AssertionError("Listener not called"));
+		aw.listenInline((res) -> {
+			if (res != null && res.intValue() == 51)
+				result.set(null);
+			else
+				result.set(new AssertionError("Listener received wrong result: " + res));
+		});
+		aw.unblockSuccess(Integer.valueOf(51));
+		if (result.get() != null)
+			throw result.get();
 	}
 	
 	@Test(timeout=30000)

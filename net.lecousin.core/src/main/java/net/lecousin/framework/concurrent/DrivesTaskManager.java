@@ -57,10 +57,15 @@ public class DrivesTaskManager {
 	
 	/** Return the associated resource for the given file path. */
 	public Object getResource(String path) {
+		Map.Entry<String, Object> bestMatch = null;
 		synchronized (rootManagers) {
 			for (Map.Entry<String, Object> e : rootResources.entrySet())
-				if (path.startsWith(e.getKey()))
-					return e.getValue();
+				if (path.startsWith(e.getKey())) {
+					if (bestMatch == null || bestMatch.getKey().length() < e.getKey().length())
+						bestMatch = e;
+				}
+			if (bestMatch != null)
+				return bestMatch.getValue();
 		}
 		return null;
 	}
@@ -79,10 +84,15 @@ public class DrivesTaskManager {
 
 	/** Return the TaskManager for the given file path. */
 	public TaskManager getTaskManager(String path) {
+		Map.Entry<String, MonoThreadTaskManager> bestMatch = null;
 		synchronized (rootManagers) {
 			for (Map.Entry<String, MonoThreadTaskManager> e : rootManagers.entrySet())
-				if (path.startsWith(e.getKey()))
-					return e.getValue();
+				if (path.startsWith(e.getKey())) {
+					if (bestMatch == null || bestMatch.getKey().length() < e.getKey().length())
+						bestMatch = e;
+				}
+			if (bestMatch != null)
+				return bestMatch.getValue();
 		}
 		return null;
 	}
