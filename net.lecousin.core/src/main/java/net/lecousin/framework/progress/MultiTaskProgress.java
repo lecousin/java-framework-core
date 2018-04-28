@@ -37,11 +37,6 @@ public class MultiTaskProgress extends WorkProgressImpl implements WorkProgress.
 		WorkProgressUtil.propagateToParent(task, this, amount);
 	}
 	
-	/** Signal that no more task will be added, meaning that once all current sub-tasks are done, this WorkProgress is done. */
-	public void endOfTasks() {
-		jp.start();
-	}
-	
 	@Override
 	public List<? extends WorkProgress> getTasks() {
 		synchronized (tasks) {

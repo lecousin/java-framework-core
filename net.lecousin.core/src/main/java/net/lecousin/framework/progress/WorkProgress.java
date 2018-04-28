@@ -97,14 +97,16 @@ public interface WorkProgress {
 					progress.error(subTask.getSynch().getError());
 				else if (subTask.getSynch().isCancelled())
 					progress.cancel(subTask.getSynch().getCancelEvent());
-				else
+				else {
 					progress.progress(work - sent.get());
+					sent.set(work);
+				}
 			}
 		});
 		if (subTask.getSynch().isUnblocked()) return;
 		Runnable listener = () -> {
 			long done = subTask.getPosition() * work / subTask.getAmount();
-			if (sent.get() < done) {
+			if (sent.get() < done && !progress.getSynch().isUnblocked()) {
 				progress.progress(done - sent.get());
 				sent.set(done);
 			}

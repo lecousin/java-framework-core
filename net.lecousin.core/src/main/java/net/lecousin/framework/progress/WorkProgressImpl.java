@@ -47,6 +47,8 @@ public class WorkProgressImpl implements WorkProgress {
 	
 	@Override
 	public void setPosition(long position) {
+		if (position > amount) position = amount;
+		if (position < 0) position = 0;
 		if (position == this.position) return;
 		this.position = position;
 		changed();
@@ -59,9 +61,7 @@ public class WorkProgressImpl implements WorkProgress {
 	
 	@Override
 	public void progress(long amountDone) {
-		if (amountDone == 0) return;
-		position += amountDone;
-		changed();
+		setPosition(position + amountDone);
 	}
 	
 	@Override

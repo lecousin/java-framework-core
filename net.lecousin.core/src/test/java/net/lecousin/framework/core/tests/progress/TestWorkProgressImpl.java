@@ -1,8 +1,10 @@
 package net.lecousin.framework.core.tests.progress;
 
 import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.progress.WorkProgress;
 import net.lecousin.framework.progress.WorkProgressImpl;
 
 import org.junit.Assert;
@@ -97,6 +99,76 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		Assert.assertEquals(1, p.getAmount());
 		Assert.assertEquals(0, p.getRemainingWork());
 		Assert.assertEquals(1, p.getPosition());
+	}
+	
+	@Test(timeout=30000)
+	public void testLinks() throws Exception {
+		WorkProgressImpl main = new WorkProgressImpl(1000);
+		WorkProgressImpl sub1 = new WorkProgressImpl(1000);
+		WorkProgressImpl sub2 = new WorkProgressImpl(1000);
+		WorkProgressImpl sub3 = new WorkProgressImpl(1000);
+		WorkProgress.link(sub1, main, 200);
+		WorkProgress.link(sub2, main, 500);
+		WorkProgress.link(sub3, main, 250);
+		Task<?,?> task1 = new Task.Cpu.FromRunnable("task1", Task.PRIORITY_NORMAL, () -> {});
+		Task<?,?> task2 = new Task.Cpu.FromRunnable("task2", Task.PRIORITY_NORMAL, () -> {});
+		Task<?,?> task3 = new Task.Cpu.FromRunnable("task3", Task.PRIORITY_NORMAL, () -> {});
+		WorkProgress.linkTo(sub1, task1);
+		WorkProgress.linkTo(sub2, task2);
+		WorkProgress.linkTo(sub3, task3);
+		
+		Assert.assertEquals(0, main.getPosition());
+
+		Assert.assertEquals(0, sub2.getPosition());
+		task2.start().getOutput().blockThrow(0);
+		Assert.assertEquals(1000, sub2.getPosition());
+		Assert.assertEquals(500, main.getPosition());
+		
+		Assert.assertEquals(0, sub3.getPosition());
+		task3.start().getOutput().blockThrow(0);
+		Assert.assertEquals(1000, sub3.getPosition());
+		Assert.assertEquals(750, main.getPosition());
+		
+		Assert.assertEquals(0, sub1.getPosition());
+		task1.start().getOutput().blockThrow(0);
+		Assert.assertEquals(1000, sub1.getPosition());
+		Assert.assertEquals(950, main.getPosition());
+		
+		main = new WorkProgressImpl(1000);
+		sub1 = new WorkProgressImpl(1000);
+		WorkProgress.link(sub1, main, 200);
+		task1 = new Task.Cpu<Void,Exception>("task1", Task.PRIORITY_NORMAL) {
+			@Override
+			public Void run() throws Exception, CancelException {
+				throw new Exception("Test error");
+			}
+		};
+		WorkProgress.linkTo(sub1, task1);
+		Assert.assertFalse(main.getSynch().hasError());
+		Assert.assertFalse(sub1.getSynch().hasError());
+		task1.start().getOutput().block(0);
+		sub1.getSynch().block(5000);
+		Assert.assertTrue(sub1.getSynch().hasError());
+		main.getSynch().block(5000);
+		Assert.assertTrue(main.getSynch().hasError());
+		
+		main = new WorkProgressImpl(1000);
+		sub1 = new WorkProgressImpl(1000);
+		WorkProgress.link(sub1, main, 200);
+		task1 = new Task.Cpu<Void,Exception>("task1", Task.PRIORITY_NORMAL) {
+			@Override
+			public Void run() throws Exception, CancelException {
+				throw new CancelException("Test cancel");
+			}
+		};
+		WorkProgress.linkTo(sub1, task1);
+		Assert.assertFalse(main.getSynch().hasError());
+		Assert.assertFalse(sub1.getSynch().hasError());
+		task1.start().getOutput().block(0);
+		sub1.getSynch().block(5000);
+		Assert.assertTrue(sub1.getSynch().isCancelled());
+		main.getSynch().block(5000);
+		Assert.assertTrue(main.getSynch().isCancelled());
 	}
 	
 }

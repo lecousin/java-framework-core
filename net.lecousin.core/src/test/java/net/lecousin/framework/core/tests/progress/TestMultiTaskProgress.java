@@ -3,6 +3,7 @@ package net.lecousin.framework.core.tests.progress;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.progress.MultiTaskProgress;
 import net.lecousin.framework.progress.WorkProgress;
+import net.lecousin.framework.progress.WorkProgressImpl;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -47,6 +48,32 @@ public class TestMultiTaskProgress extends LCCoreAbstractTest {
 		Assert.assertEquals(600, t3.getAmount());
 		Assert.assertEquals(400, t3.getPosition());
 		Assert.assertEquals(200, t3.getRemainingWork());
+		
+		p = new MultiTaskProgress("Test");
+		t1 = new WorkProgressImpl(1000);
+		p.addTask(t1, 150);
+		p.doneOnSubTasksDone();
+		t2 = new WorkProgressImpl(2000);
+		p.addTask(t2, 200);
+		t3 = p.createTaskProgress(300, "Task3");
+		Assert.assertEquals(650, p.getAmount());
+		Assert.assertFalse(p.getSynch().isUnblocked());
+		Assert.assertEquals(0, p.getPosition());
+		t1.done();
+		try { Thread.sleep(1000); }
+		catch (InterruptedException e) {}
+		Assert.assertFalse(p.getSynch().isUnblocked());
+		Assert.assertEquals(150, p.getPosition());
+		t2.done();
+		try { Thread.sleep(1000); }
+		catch (InterruptedException e) {}
+		Assert.assertFalse(p.getSynch().isUnblocked());
+		Assert.assertEquals(350, p.getPosition());
+		t3.done();
+		try { Thread.sleep(1000); }
+		catch (InterruptedException e) {}
+		Assert.assertTrue(p.getSynch().isUnblocked());
+		Assert.assertEquals(650, p.getPosition());
 	}
 	
 }
