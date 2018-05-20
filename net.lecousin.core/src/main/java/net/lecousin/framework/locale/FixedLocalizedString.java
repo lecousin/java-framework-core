@@ -36,6 +36,16 @@ public class FixedLocalizedString implements ILocalizableString {
 	}
 	
 	@Override
+	public AsyncWork<String, NoException> appLocalization() {
+		return new AsyncWork<>(str, null);
+	}
+	
+	@Override
+	public String appLocalizationSync() {
+		return str;
+	}
+	
+	@Override
 	public boolean equals(Object obj) {
 		if (!(obj instanceof FixedLocalizedString)) return false;
 		return str.equals(((FixedLocalizedString)obj).str);
