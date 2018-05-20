@@ -49,7 +49,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		// stop spares
 		synchronized (spare) {
 			while (!spare.isEmpty())
-				spare.removeFirst().forceStop();
+				spare.removeFirst().forceStop(true);
 		}
 		// resume blocked threads
 		do {
@@ -67,7 +67,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		forceStopWorkers();
 		synchronized (spare) {
 			while (!spare.isEmpty())
-				spare.removeFirst().forceStop();
+				spare.removeFirst().forceStop(true);
 		}
 	}
 	
@@ -326,7 +326,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 					TaskWorker t = it.next();
 					if (t.lastUsed > 5 * 60000) {
 						Threading.logger.info("Spare thread not used since more than 5 minutes => stop it");
-						t.forceStop();
+						t.forceStop(true);
 						spare.removeInstance(t);
 						return null;
 					}

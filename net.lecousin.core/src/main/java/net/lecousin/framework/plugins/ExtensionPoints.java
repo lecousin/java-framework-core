@@ -8,6 +8,7 @@ import java.util.List;
 import net.lecousin.framework.adapter.AdapterRegistry;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.locale.LocaleExtensionPoint;
+import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.math.IntegerUnit;
 
 /** Extension points registry. */
@@ -122,6 +123,7 @@ public final class ExtensionPoints {
 			customs.trimToSize();
 		}
 		LCCore.getApplication().getDefaultLogger().info(s.toString());
+		logRemainingPlugins();
 	}
 	
 	/** Return all registered custom extension points. */
@@ -133,9 +135,12 @@ public final class ExtensionPoints {
 	
 	/** Print to the error console the plugins that are available without their corresponding extension point. */
 	public static void logRemainingPlugins() {
+		Logger logger = LCCore.getApplication().getDefaultLogger();
+		if (!logger.warn())
+			return;
 		synchronized (points) {
 			for (Plugin pi : waitingPlugins)
-				System.err.println("Plugin ignored because extension point is not loaded: " + pi.getClass().getName());
+				logger.warn("Plugin ignored because extension point is not loaded: " + pi.getClass().getName());
 		}
 	}
 	

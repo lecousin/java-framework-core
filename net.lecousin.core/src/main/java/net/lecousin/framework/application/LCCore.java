@@ -128,18 +128,31 @@ public final class LCCore {
 		return instance.getApplication();
 	}
 	
+	public static boolean isStopping() {
+		return stop != null;
+	}
+	
 	/** Stop the environement. */
 	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	public static void stop(boolean forceJvmToStop) {
-		stop = true;
-		synchronized (toDoInMainThread) {
-			toDoInMainThread.notify();
+		if (stop != null) {
+			new Exception("LCCore already stopped", stop).printStackTrace(System.err);
+			return;
 		}
-		if (instance != null) instance.stop();
-		if (forceJvmToStop) {
-			System.out.println("Stop JVM.");
-			System.exit(0);
-		}
+		stop = new Exception("LCCore stop requested here");
+		new Thread("Stopping LCCore") {
+			@Override
+			public void run() {
+				synchronized (toDoInMainThread) {
+					toDoInMainThread.notify();
+				}
+				if (instance != null) instance.stop();
+				if (forceJvmToStop) {
+					System.out.println("Stop JVM.");
+					System.exit(0);
+				}
+			}
+		}.start();
 	}
 	
 	/**
@@ -159,11 +172,11 @@ public final class LCCore {
 	}
 	
 	private static Thread mainThread = null;
-	private static boolean stop = false;
+	private static Exception stop = null;
 	private static TurnArray<Runnable> toDoInMainThread = new TurnArray<>(5);
 	
 	private static void mainThreadLoop() {
-		while (!stop) {
+		while (stop == null) {
 			Runnable todo = null;
 			synchronized (toDoInMainThread) {
 				if (toDoInMainThread.isEmpty()) {

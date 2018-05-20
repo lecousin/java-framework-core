@@ -96,6 +96,7 @@ public final class Application {
 	private Map<String, Object> data = new HashMap<>();
 	private ArrayList<Closeable> toCloseSync = new ArrayList<>();
 	private ArrayList<AsyncCloseable<?>> toCloseAsync = new ArrayList<>();
+	private ArrayList<Thread> toInterrupt = new ArrayList<>();
 	private boolean stopping = false;
 	
 	public long getStartTime() {
@@ -226,6 +227,16 @@ public final class Application {
 		synchronized (toCloseAsync) { toCloseAsync.remove(c); }
 	}
 	
+	/** Register a thread that must be interrupted on application shutdown. */
+	public void toInterruptOnShutdown(Thread t) {
+		synchronized (toInterrupt) { toInterrupt.add(t); }
+	}
+
+	/** Unregister a thread that must be interrupted on application shutdown. */
+	public void interrupted(Thread t) {
+		synchronized (toInterrupt) { toInterrupt.remove(t); }
+	}
+	
 	public boolean isStopping() {
 		return stopping;
 	}
@@ -288,6 +299,9 @@ public final class Application {
 			@SuppressWarnings("resource")
 			Console c = app.getConsole();
 			c.out("---- Application " + artifact.toString() + " ----");
+			c.out("Application arguments:");
+			for (String arg : app.commandLineArguments)
+				c.out(" - " + arg);
 			c.out("Environment variables:");
 			for (Map.Entry<String,String> var : System.getenv().entrySet())
 				c.out(" - " + var.getKey() + "=" + var.getValue());
@@ -363,6 +377,13 @@ public final class Application {
 				System.err.println("Error closing resource " + c);
 				t.printStackTrace(System.err);
 			}
+		}
+		
+		System.out.println(" * Stopping threads");
+		for (Thread t : new ArrayList<>(toInterrupt)) {
+			if (!t.isAlive()) continue;
+			System.out.println("     - " + t);
+			t.interrupt();
 		}
 
 		List<Pair<AsyncCloseable<?>,ISynchronizationPoint<?>>> closing = new LinkedList<>();

@@ -127,7 +127,10 @@ public final class Threading {
 							TaskScheduler.end();
 							synchronized (resources) {
 								for (TaskManager tm : resources.values())
-									tm.forceStop();
+									if (!tm.isStopped()) {
+										System.err.println("Force to stop " + tm.getName());
+										tm.forceStop();
+									}
 							}
 						}
 					} while (true);

@@ -204,8 +204,8 @@ public class StandaloneLCCore implements LCCore.Environment {
 			if (closing.isEmpty()) break;
 			try { Thread.sleep(100); }
 			catch (InterruptedException e) { break; }
-			if (System.currentTimeMillis() - start > 10000) {
-				System.out.println("Ressources are still closing, but we don't wait more than 10 seconds.");
+			if (System.currentTimeMillis() - start > 15000) {
+				System.out.println("Ressources are still closing, but we don't wait more than 15 seconds.");
 				break;
 			}
 		} while (true);
@@ -229,14 +229,15 @@ public class StandaloneLCCore implements LCCore.Environment {
 				}
 				nb++;
 				if ((count % 10) == 0) {
-					System.out.println("Thread: " + thread.getKey());
+					System.out.println("Thread: " + thread.getKey() + " [id " + thread.getKey().getId() + "]");
 					System.out.println(DebugUtil.createStackTrace(new StringBuilder(), thread.getValue()).toString());
 				}
 			}
 			if (nb == 0)
 				break;
-			if ((count % 10) == 0)
+			if ((count % 10) == 0) {
 				System.out.println("Waiting for threads to stop");
+			}
 			try { Thread.sleep(100); }
 			catch (InterruptedException e) { break; }
 			count++;

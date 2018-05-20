@@ -32,7 +32,8 @@ public class MultiThreadTaskManager extends FixedThreadTaskManager {
 	@Override
 	protected void forceStopWorkers() {
 		for (int i = getNbThreads() - 1; i >= 0; --i)
-			workers[i].forceStop();
+			if (workers[i].thread.isAlive())
+				workers[i].forceStop(false);
 	}
 	
 	@Override

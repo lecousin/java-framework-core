@@ -29,7 +29,7 @@ public class MonoThreadTaskManager extends FixedThreadTaskManager {
 	
 	@Override
 	protected void forceStopWorkers() {
-		worker.forceStop();
+		worker.forceStop(false);
 	}
 	
 	@Override

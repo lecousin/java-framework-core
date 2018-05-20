@@ -33,7 +33,13 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 	boolean blocked = false;
 	
 	@SuppressFBWarnings("NN_NAKED_NOTIFY")
-	void forceStop() {
+	void forceStop(boolean normal) {
+		if (!normal) {
+			StringBuilder s = new StringBuilder(200);
+			s.append("Task worker forced to stop: ");
+			debug(s, "");
+			System.err.print(s.toString());
+		}
 		stop = true;
 		synchronized (this) {
 			this.notifyAll();

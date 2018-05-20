@@ -42,6 +42,9 @@ public class ThreadPoolTaskManager extends TaskManager {
 	
 	@Override
 	protected void finishAndStopThreads() {
+		StringBuilder s = new StringBuilder();
+		printStats(s);
+		System.out.println(s.toString());
 	}
 	
 	@Override
@@ -62,11 +65,6 @@ public class ThreadPoolTaskManager extends TaskManager {
 		boolean stopped;
 		synchronized (taskPriorityManager) {
 			stopped = activeThreads.isEmpty();
-		}
-		if (stopped) {
-			StringBuilder s = new StringBuilder();
-			printStats(s);
-			System.out.println(s.toString());
 		}
 		return stopped;
 	}
