@@ -104,6 +104,25 @@ public final class Base64 {
 			decode4BytesBase64(input, i, decoded, pos);
 		return decoded;
 	}
+
+	/** Decode the given input. */
+	public static byte[] decode(byte[] input, int offset, int length) throws IOException {
+		int l = length;
+		if ((l % 4) != 0) l = (l / 4) * 4;
+		if (l == 0) return new byte[0];
+		int outLen = l * 3 / 4;
+		if (input[offset + l - 1] == '=') {
+			if (input[offset + l - 2] == '=')
+				outLen -= 2;
+			else
+				outLen -= 1;
+		}
+		byte[] decoded = new byte[outLen];
+		int pos = 0;
+		for (int i = 0; i < l; i += 4, pos += 3)
+			decode4BytesBase64(input, i + offset, decoded, pos);
+		return decoded;
+	}
 	
 	/** Decode the given input. */
 	public static byte[] decode(ByteBuffer input) throws IOException {

@@ -164,6 +164,8 @@ public final class StringUtil {
 	
 	/** Create a string for the given size, expressed in bytes or KB or MB or GB or TB, with 2 decimals. */
 	public static String size(Number size) {
+		if (size instanceof BigInteger)
+			return size((BigInteger)size);
 		return size(size.longValue());
 	}
 	
