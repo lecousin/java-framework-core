@@ -124,7 +124,7 @@ public final class ClassUtil {
 	}
 
 	/** Search a method compatible with the given parameters. */
-	public static <T> Method getMethodFor(Class<T> cl, String name, Object[] params) {
+	public static Method getMethodFor(Class<?> cl, String name, Object[] params) {
 		Method[] methods = cl.getMethods();
 		for (Method m : methods) {
 			if (!m.getName().equals(name))
@@ -148,6 +148,8 @@ public final class ClassUtil {
 					if (types[i].equals(short.class) && params[i] instanceof Short) continue;
 					if (types[i].equals(int.class) && params[i] instanceof Integer) continue;
 					if (types[i].equals(long.class) && params[i] instanceof Long) continue;
+					if (types[i].equals(float.class) && params[i] instanceof Float) continue;
+					if (types[i].equals(double.class) && params[i] instanceof Double) continue;
 				}
 				ok = false;
 				break;

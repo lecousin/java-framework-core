@@ -483,4 +483,25 @@ public final class ArrayUtil {
 			list.add(items[i]);
 		return list;
 	}
+
+	public static int search(byte[] array, byte[] toFind) {
+		return search(array, toFind, 0);
+	}
+	
+	public static int search(byte[] array, byte[] toFind, int start) {
+		int len = array.length;
+		int tfl = toFind.length;
+		for (int i = start; i < len - tfl; ++i) {
+			if (array[i] != toFind[0]) continue;
+			boolean ok = true;
+			for (int j = 1; j < tfl; ++j)
+				if (array[i + j] != toFind[j]) {
+					ok = false;
+					break;
+				}
+			if (ok)
+				return i;
+		}
+		return -1;
+	}
 }
