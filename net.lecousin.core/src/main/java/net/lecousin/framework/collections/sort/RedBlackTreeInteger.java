@@ -50,6 +50,11 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
 	public boolean isEmpty() {
         return root == null;
     }
+    
+    @Override
+    public void clear() {
+    	root = first = last = null;
+    }
 
 	// ----------------
 	// ---- search ----

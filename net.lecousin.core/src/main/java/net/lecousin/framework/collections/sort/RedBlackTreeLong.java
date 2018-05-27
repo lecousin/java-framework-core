@@ -52,6 +52,11 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
         return root == null;
     }
     
+    @Override
+    public void clear() {
+    	root = first = last = null;
+    }
+    
 	// ----------------
 	// ---- search ----
 	// ----------------

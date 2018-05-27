@@ -17,6 +17,9 @@ public interface Sorted<T> extends Iterable<T> {
 	/** Return true if this collection is empty. */
 	public boolean isEmpty();
 	
+	/** Clear this collection. */
+	public void clear();
+	
 	/** Return an iterator that iterates on the correct order. */
 	public Iterator<T> orderedIterator();
 	

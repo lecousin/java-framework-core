@@ -1,5 +1,8 @@
 package net.lecousin.framework.collections.map;
 
+import java.util.Iterator;
+
+import net.lecousin.framework.collections.LinkedIterators;
 import net.lecousin.framework.collections.sort.RedBlackTreeInteger;
 
 /**
@@ -83,6 +86,26 @@ public class IntegerMapRBT<T> implements IntegerMap<T> {
 	@Override
 	public int size() {
 		return size;
+	}
+	
+	@Override
+	public boolean isEmpty() {
+		return size == 0;
+	}
+	
+	@Override
+	public void clear() {
+		size = 0;
+		for (int i = buckets.length - 1; i >= 0; --i)
+			buckets[i].clear();
+	}
+	
+	@Override
+	public Iterator<T> values() {
+		LinkedIterators<T> it = new LinkedIterators<>();
+		for (int i = buckets.length - 1; i >= 0; --i)
+			it.addIterator(buckets[i].iterator());
+		return it;
 	}
 
 }

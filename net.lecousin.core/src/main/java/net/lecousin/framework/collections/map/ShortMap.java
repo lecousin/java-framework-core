@@ -4,7 +4,7 @@ package net.lecousin.framework.collections.map;
  * Interface for a Map that accept short keys (primitive type instead of Short).
  * @param <ValueType> type of values
  */
-public interface ShortMap<ValueType> {
+public interface ShortMap<ValueType> extends PrimitiveMap<ValueType> {
 
 	/** Put a value and return the previous value associated with this key, or null. */
 	public ValueType put(short key, ValueType entry);
@@ -18,10 +18,4 @@ public interface ShortMap<ValueType> {
 	/** Return true if the map contains the given key. */
 	public boolean containsKey(short key);
 	
-	/** Return the number of elements. */
-	public int size();
-	
-	/** Return true if this map is empty. */
-	public boolean isEmpty();
-
 }

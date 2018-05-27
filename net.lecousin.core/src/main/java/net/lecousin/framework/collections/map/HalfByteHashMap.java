@@ -1,5 +1,10 @@
 package net.lecousin.framework.collections.map;
 
+import java.util.Iterator;
+
+import net.lecousin.framework.collections.ArrayUtil;
+import net.lecousin.framework.collections.LinkedIterators;
+
 /**
  * This class uses the 4 lower bits of a byte as a hash code, then for each hash code
  * associates an ordered array.<br/>
@@ -205,6 +210,21 @@ public class HalfByteHashMap<T> implements ByteMap<T> {
 		array.elements = ne;
 		size--;
 		return e;
+	}
+
+	@Override
+	public void clear() {
+		size = 0;
+		for (int i = hashmap.length - 1; i >= 0; --i)
+			hashmap[i] = null;
+	}
+
+	@Override
+	public Iterator<T> values() {
+		LinkedIterators<T> it = new LinkedIterators<>();
+		for (int i = hashmap.length - 1; i >= 0; --i)
+			it.addIterator(ArrayUtil.iterator(hashmap[i].elements));
+		return it;
 	}
 	
 }

@@ -38,6 +38,12 @@ public class RedBlackTreeLongByRange<T> implements Sorted.AssociatedWithLong<T> 
 	}
 	
 	@Override
+	public void clear() {
+		size = 0;
+		ranges.clear();
+	}
+	
+	@Override
 	public void add(long value, T element) {
 		long r = value / rangeSize;
 		Node<RedBlackTreeLong<T>> e = ranges.get(r);
