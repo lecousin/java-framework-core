@@ -9,8 +9,8 @@ import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Threading;
 
 /**
- * A LockPoint is similar to a mutual exclusion, or a <i>synchronized</i> section, but using our threading system, allowing to do something else
- * while waiting for the lock to be unlocked.<br/>
+ * A LockPoint is similar to a mutual exclusion, but can be locked and unlocked by any thread.<br/>
+ * For example, a first thread can lock it, and a second thread (after some processing is done) can unlock it.<br/>
  * A LockPoint can also be seen as a SynchronizationPoint but <i>reusable</i>.<br/>
  * When a thread calls the lock method:<ul>
  * <li>if the lock point is not yet locked it becomes locked and the calling thread can continue working,
@@ -25,8 +25,7 @@ import net.lecousin.framework.concurrent.Threading;
  */
 public class LockPoint<TError extends Exception> implements ISynchronizationPoint<TError> {
 
-	private Thread lockingThread = null;
-	private int lockedTimes = 0;
+	private boolean locked = false;
 	private TError error = null;
 	private CancelException cancel = null;
 	private ArrayList<Runnable> listeners = null;
@@ -37,40 +36,30 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 			return;
 		if (error != null)
 			return;
-		Thread t = Thread.currentThread();
-		if (t == lockingThread) {
-			lockedTimes++;
-			return;
-		}
-		BlockedThreadHandler blockedHandler = null;
+		Thread t;
+		BlockedThreadHandler blockedHandler;
 		do {
 			synchronized (this) {
-				if (lockingThread == null) {
-					lockingThread = t;
-					lockedTimes = 1;
+				if (!locked) {
+					locked = true;
 					return;
 				}
-				if (blockedHandler == null)
-					blockedHandler = Threading.getBlockedThreadHandler(t);
-				if (blockedHandler == null) {
-					try { this.wait(0); }
-					catch (InterruptedException e) { /* ignore */ }
-					continue;
-				}
+				t = Thread.currentThread();
+				blockedHandler = Threading.getBlockedThreadHandler(t);
+				if (blockedHandler != null) break;
+				try { this.wait(0); }
+				catch (InterruptedException e) { continue; }
 			}
-			blockedHandler.blocked(this, 0);
 		} while (true);
+		blockedHandler.blocked(this, 0);
 	}
 	
 	/** Release the lock. */
 	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	public void unlock() {
 		ArrayList<Runnable> list;
-		Thread t = Thread.currentThread();
 		synchronized (this) {
-			if (t != lockingThread) return;
-			if (--lockedTimes > 0) return;
-			lockingThread = null;
+			locked = false;
 			list = listeners;
 			listeners = null;
 		}
@@ -85,13 +74,13 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 	
 	@Override
 	public boolean isUnblocked() {
-		return lockingThread == null;
+		return !locked;
 	}
 	
 	@Override
 	public void blockPause(long logAfter) {
 		synchronized (this) {
-			if (lockingThread == null) return;
+			if (!locked) return;
 			do {
 				long start = System.currentTimeMillis();
 				try { this.wait(logAfter + 1000); }
@@ -113,7 +102,7 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 	@Override
 	public void listenInline(Runnable r) {
 		synchronized (this) {
-			if (lockingThread == null) r.run();
+			if (!locked) r.run();
 			else {
 				if (listeners == null) listeners = new ArrayList<>();
 				listeners.add(r);
@@ -123,7 +112,7 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 	
 	@Override
 	public void block(long timeout) {
-		if (lockingThread == null) return;
+		if (!locked) return;
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		listenInline(new Runnable() {
 			@Override
