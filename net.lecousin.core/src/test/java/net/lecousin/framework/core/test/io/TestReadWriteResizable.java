@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import org.junit.Test;
 
 import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 
@@ -121,7 +122,7 @@ public abstract class TestReadWriteResizable extends TestIO {
 					sp.error(new Exception("ReadWrite must be empty at first"));
 					return;
 				}
-				AsyncWork<Void,IOException> op = io.setSizeAsync(1);
+				ISynchronizationPoint<IOException> op = io.setSizeAsync(1);
 				op.listenInline(new Runnable() {
 					@Override
 					public void run() {
@@ -163,7 +164,7 @@ public abstract class TestReadWriteResizable extends TestIO {
 													sp.error(new Exception("Resize error: new size is " + op.getResult().longValue() + ", expected is 10"));
 													return;
 												}
-												AsyncWork<Void,IOException> op = io.setSizeAsync(3);
+												ISynchronizationPoint<IOException> op = io.setSizeAsync(3);
 												op.listenInline(new Runnable() {
 													@Override
 													public void run() {

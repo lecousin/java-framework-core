@@ -1206,6 +1206,26 @@ public final class IOUtil {
 		});
 	}
 	
+	/** Listen to <code>toListen</code>, then calls <code>onReady</code> if it succeed.
+	 * In case of error or cancellation, the error or cancellation event is given to <code>onErrorOrCancel</code>.
+	 * If ondone is not null, it is called before <code>onReady</code> and <code>onErrorOrCancel</code>.
+	 */
+	public static <T> void listenOnDone(
+		ISynchronizationPoint<IOException> toListen, Runnable onReady, ISynchronizationPoint<IOException> onErrorOrCancel,
+		RunnableWithParameter<Pair<T,IOException>> ondone
+	) {
+		toListen.listenInline(
+			onReady,
+			(error) -> {
+				if (ondone != null) ondone.run(new Pair<>(null, error));
+				onErrorOrCancel.error(error);
+			},
+			(cancel) -> {
+				onErrorOrCancel.cancel(cancel);
+			}
+		);
+	}
+	
 	/** Get the size by seeking at the end if not an instanceof IO.KnownSize. */
 	public static long getSizeSync(IO.Readable.Seekable io) throws IOException {
 		if (io instanceof IO.KnownSize)

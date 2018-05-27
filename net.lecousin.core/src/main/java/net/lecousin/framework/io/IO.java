@@ -285,7 +285,7 @@ public interface IO extends IConcurrentCloseable {
 		public void setSizeSync(long newSize) throws IOException;
 		
 		/** Asynchronous resize. */
-		public AsyncWork<Void,IOException> setSizeAsync(long newSize);
+		public ISynchronizationPoint<IOException> setSizeAsync(long newSize);
 	}
 	
 	
