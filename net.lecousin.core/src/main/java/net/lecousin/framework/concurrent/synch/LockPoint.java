@@ -25,7 +25,8 @@ import net.lecousin.framework.concurrent.Threading;
  */
 public class LockPoint<TError extends Exception> implements ISynchronizationPoint<TError> {
 
-	private boolean locked = false;
+	private Thread lockingThread = null;
+	private int lockedTimes = 0;
 	private TError error = null;
 	private CancelException cancel = null;
 	private ArrayList<Runnable> listeners = null;
@@ -36,30 +37,40 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 			return;
 		if (error != null)
 			return;
-		Thread t;
-		BlockedThreadHandler blockedHandler;
+		Thread t = Thread.currentThread();
+		if (t == lockingThread) {
+			lockedTimes++;
+			return;
+		}
+		BlockedThreadHandler blockedHandler = null;
 		do {
 			synchronized (this) {
-				if (!locked) {
-					locked = true;
+				if (lockingThread == null) {
+					lockingThread = t;
+					lockedTimes = 1;
 					return;
 				}
-				t = Thread.currentThread();
-				blockedHandler = Threading.getBlockedThreadHandler(t);
-				if (blockedHandler != null) break;
-				try { this.wait(0); }
-				catch (InterruptedException e) { continue; }
+				if (blockedHandler == null)
+					blockedHandler = Threading.getBlockedThreadHandler(t);
+				if (blockedHandler == null) {
+					try { this.wait(0); }
+					catch (InterruptedException e) { /* ignore */ }
+					continue;
+				}
 			}
+			blockedHandler.blocked(this, 0);
 		} while (true);
-		blockedHandler.blocked(this, 0);
 	}
 	
 	/** Release the lock. */
 	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	public void unlock() {
 		ArrayList<Runnable> list;
+		Thread t = Thread.currentThread();
 		synchronized (this) {
-			locked = false;
+			if (t != lockingThread) return;
+			if (--lockedTimes > 0) return;
+			lockingThread = null;
 			list = listeners;
 			listeners = null;
 		}
@@ -74,13 +85,13 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 	
 	@Override
 	public boolean isUnblocked() {
-		return !locked;
+		return lockingThread == null;
 	}
 	
 	@Override
 	public void blockPause(long logAfter) {
 		synchronized (this) {
-			if (!locked) return;
+			if (lockingThread == null) return;
 			do {
 				long start = System.currentTimeMillis();
 				try { this.wait(logAfter + 1000); }
@@ -102,7 +113,7 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 	@Override
 	public void listenInline(Runnable r) {
 		synchronized (this) {
-			if (!locked) r.run();
+			if (lockingThread == null) r.run();
 			else {
 				if (listeners == null) listeners = new ArrayList<>();
 				listeners.add(r);
@@ -112,7 +123,7 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 	
 	@Override
 	public void block(long timeout) {
-		if (!locked) return;
+		if (lockingThread == null) return;
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		listenInline(new Runnable() {
 			@Override
