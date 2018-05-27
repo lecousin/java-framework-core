@@ -16,8 +16,8 @@ public interface CustomExtensionPoint {
 	
 	/** Load configuration. */
 	@SuppressWarnings("unused")
-	default ISynchronizationPoint<Exception> loadPluginConfiguration(
-		IO.Readable io, ApplicationClassLoader libraryClassLoader, ISynchronizationPoint<?>... startOn
+	default <T extends ClassLoader & ApplicationClassLoader> ISynchronizationPoint<Exception> loadPluginConfiguration(
+		IO.Readable io, T libraryClassLoader, ISynchronizationPoint<?>... startOn
 	) {
 		return null;
 	}

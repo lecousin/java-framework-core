@@ -1,6 +1,5 @@
 package net.lecousin.framework.core.tests.locale;
 
-import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -14,7 +13,7 @@ public class TestLocalizedProperties extends LCCoreAbstractTest {
 	@Test(timeout=30000)
 	public void testErrors() {
 		LocalizedProperties lp = LCCore.getApplication().getLocalizedProperties();
-		ApplicationClassLoader cl = LCCore.getApplication().getClassLoader();
+		ClassLoader cl = LCCore.getApplication().getClassLoader();
 		
 		ISynchronizationPoint<Exception> sp = lp.registerNamespace("test-error", "does/not/exist", cl);
 		try {

@@ -439,6 +439,24 @@ public final class IOUtil {
 		return result;
 	}
 	
+	public static AsyncWork<File, IOException> toTempFile(byte[] bytes) {
+		AsyncWork<FileIO.ReadWrite, IOException> createFile =
+				TemporaryFiles.get().createAndOpenFileAsync("net.lecousin.framework.io", "bytestofile");
+		AsyncWork<File, IOException> result = new AsyncWork<>();
+		createFile.listenInline(() -> {
+			File file = createFile.getResult().getFile();
+			createFile.getResult().writeAsync(ByteBuffer.wrap(bytes)).listenInline(() -> {
+				try {
+					createFile.getResult().close();
+					result.unblockSuccess(file);
+				} catch (Exception e) {
+					result.error(IO.error(e));
+				}
+			});
+		}, result);
+		return result;
+	}
+	
 	/**
 	 * Implement a synchronous read using an asynchronous one and blocking until it finishes.
 	 */

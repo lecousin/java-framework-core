@@ -28,8 +28,9 @@ public class ACustomExtensionPointWithFile implements CustomExtensionPoint {
 	public String pluginContent = null;
 	
 	@Override
-	public ISynchronizationPoint<Exception> loadPluginConfiguration(IO.Readable io,
-		ApplicationClassLoader libraryClassLoader, ISynchronizationPoint<?>... startOn) {
+	public <T extends ClassLoader & ApplicationClassLoader> ISynchronizationPoint<Exception> loadPluginConfiguration(
+		IO.Readable io, T libraryClassLoader, ISynchronizationPoint<?>... startOn
+	) {
 		AsyncWork<UnprotectedStringBuffer, IOException> task = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL);
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		task.listenInlineSP(() -> {

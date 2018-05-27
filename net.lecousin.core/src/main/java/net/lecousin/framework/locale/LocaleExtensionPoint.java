@@ -26,8 +26,8 @@ public class LocaleExtensionPoint implements CustomExtensionPoint {
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> loadPluginConfiguration(
-		IO.Readable io, ApplicationClassLoader classLoader, ISynchronizationPoint<?>... startOn
+	public <T extends ClassLoader & ApplicationClassLoader> ISynchronizationPoint<Exception> loadPluginConfiguration(
+		IO.Readable io, T classLoader, ISynchronizationPoint<?>... startOn
 	) {
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		Task<Void,Exception> task = new Task.Cpu<Void,Exception>("Loading locale file", Task.PRIORITY_NORMAL) {

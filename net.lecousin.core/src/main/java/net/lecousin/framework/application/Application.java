@@ -188,8 +188,9 @@ public final class Application {
 		return librariesManager;
 	}
 	
-	public ApplicationClassLoader getClassLoader() {
-		return rootClassLoader;
+	@SuppressWarnings("unchecked")
+	public <T extends ClassLoader & ApplicationClassLoader> T getClassLoader() {
+		return (T)rootClassLoader;
 	}
 	
 	/** Get a resource from the class loader as an IO.Readable. */
@@ -201,7 +202,7 @@ public final class Application {
 			} catch (IOException e) {
 				return null;
 			}
-		InputStream in = rootClassLoader.getResourceAsStream(filename);
+		InputStream in = ((ClassLoader)rootClassLoader).getResourceAsStream(filename);
 		if (in == null)
 			return null;
 		return new IOFromInputStream(in, filename, Threading.getUnmanagedTaskManager(), priority);

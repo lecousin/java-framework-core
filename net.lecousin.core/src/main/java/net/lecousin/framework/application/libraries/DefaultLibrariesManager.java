@@ -11,24 +11,20 @@ import java.util.LinkedList;
 import java.util.List;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import net.lecousin.framework.application.Application;
-import net.lecousin.framework.application.ApplicationClassLoader;
-import net.lecousin.framework.application.VersionSpecification;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
-import net.lecousin.framework.io.provider.IOProviderFromName;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.plugins.CustomExtensionPoint;
 import net.lecousin.framework.plugins.ExtensionPoints;
-import net.lecousin.framework.progress.WorkProgress;
 
 /**
  * Default implementation of LibrariesManager.
@@ -37,18 +33,29 @@ import net.lecousin.framework.progress.WorkProgress;
  */
 public class DefaultLibrariesManager implements LibrariesManager {
 
+	public DefaultLibrariesManager(File[] additionalClassPath) {
+		this.additionalClassPath = additionalClassPath;
+	}
+	
+	public DefaultLibrariesManager() {
+		this(null);
+	}
+	
+	@SuppressWarnings("unchecked")
 	@SuppressFBWarnings("DP_CREATE_CLASSLOADER_INSIDE_DO_PRIVILEGED")
 	@Override
-	public ApplicationClassLoader start(Application app) {
+	public DefaultApplicationClassLoader start(Application app) {
 		this.app = app;
-		acl = new DefaultApplicationClassLoader(app);
+		acl = new DefaultApplicationClassLoader(app, additionalClassPath);
 		new Start().start();
 		return acl;
 	}
 	
 	private Application app;
-	private ApplicationClassLoader acl;
+	private DefaultApplicationClassLoader acl;
 	private SynchronizationPoint<Exception> started = new SynchronizationPoint<>();
+	private File[] additionalClassPath;
+	private ArrayList<File> classPath;
 	
 	private class Start extends Task.Cpu<Void, NoException> {
 		private Start() {
@@ -57,7 +64,26 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		
 		@Override
 		public Void run() {
-			app.getDefaultLogger().info("Starting DefaultLibrariesManager with classpath = " + System.getProperty("java.class.path"));
+			String cp = System.getProperty("java.class.path");
+			app.getDefaultLogger().info("Starting DefaultLibrariesManager with classpath = " + cp);
+			URL[] addcp = acl.getURLs();
+			for (int i = 0; i < addcp.length; ++i)
+				app.getDefaultLogger().info(" - additional library: " + addcp[i].toString());
+			
+			String[] paths = cp.split(System.getProperty("path.separator"));
+			classPath = new ArrayList<>(paths.length);
+			for (String path : paths) {
+				path = path.trim();
+				if (path.length() == 0) continue;
+				File f = new File(path);
+				if (!f.exists()) continue;
+				classPath.add(f);
+			}
+			if (additionalClassPath != null)
+				for (File f : additionalClassPath)
+					classPath.add(f);
+			classPath.trimToSize();
+			additionalClassPath = null;
 			
 			SynchronizationPoint<Exception> sp = loadExtensionPoints();
 			
@@ -115,29 +141,10 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		return started;
 	}
 	
-	@Override
-	public boolean canLoadNewLibraries() {
-		return false;
-	}
-	
-	@Override
-	public AsyncWork<Library, Exception> loadNewLibrary(
-		String groupId, String artifactId, VersionSpecification version, boolean optional,
-		byte priority, WorkProgress progress, long work
-	) {
-		return new AsyncWork<>(null, new Exception("DefaultLibrariesManager cannot load new libraries"));
-	}
-
 	@SuppressWarnings("resource")
 	@Override
-	public IO.Readable getResourceFrom(ClassLoader cl, String path, byte priority) {
-		if (cl instanceof IOProviderFromName.Readable)
-			try { return ((IOProviderFromName.Readable)cl).provideReadableIO(path, priority); }
-			catch (IOException e) {
-				app.getDefaultLogger().info("Resource not found: " + path, e);
-				return null;
-			}
-		URL url = cl.getResource(path);
+	public IO.Readable getResource(String path, byte priority) {
+		URL url = acl.getResource(path);
 		if (url == null) {
 			app.getDefaultLogger().info("Resource not found: " + path);
 			return null;
@@ -157,32 +164,8 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	}
 	
 	@Override
-	public IO.Readable getResource(String groupId, String artifactId, String path, byte priority) {
-		return getResourceFrom(getClass(), path, priority);
-	}
-	
-	@Override
-	public Library getLibrary(ClassLoader cl) {
-		return null;
-	}
-	
-	@Override
-	public Library getLibrary(String groupId, String artifactId) {
-		return null;
-	}
-	
-	@Override
 	public List<File> getLibrariesLocations() {
-		String[] paths = System.getProperty("java.class.path").split(System.getProperty("path.separator"));
-		ArrayList<File> list = new ArrayList<>(paths.length);
-		for (String path : paths) {
-			path = path.trim();
-			if (path.length() == 0) continue;
-			File f = new File(path);
-			if (!f.exists()) continue;
-			list.add(f);
-		}
-		return list;
+		return classPath;
 	}
 	
 	private class CustomExtensionPointLoader extends Task.Cpu<Void, Exception> {

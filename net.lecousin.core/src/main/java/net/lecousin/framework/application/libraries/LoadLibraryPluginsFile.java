@@ -17,19 +17,19 @@ import net.lecousin.framework.util.UnprotectedStringBuffer;
 public class LoadLibraryPluginsFile extends FullReadLines<Void> {
 	
 	/** Constructor. */
-	public LoadLibraryPluginsFile(BufferedReadableCharacterStream stream, ApplicationClassLoader classLoader) {
+	public <T extends ClassLoader & ApplicationClassLoader> LoadLibraryPluginsFile(BufferedReadableCharacterStream stream, T classLoader) {
 		super("Initializing plugins: " + stream.getDescription(), stream, Task.PRIORITY_IMPORTANT, IO.OperationType.ASYNCHRONOUS);
 		this.classLoader = classLoader;
 	}
 	
-	private ApplicationClassLoader classLoader;
+	private ClassLoader classLoader;
 	
 	@Override
 	protected void processLine(UnprotectedStringBuffer line) throws IOException {
 		int i = line.indexOf(':');
 		if (i < 0) {
-			if (line.length() > 0 && classLoader.getApplication().getDefaultLogger().warn())
-				classLoader.getApplication().getDefaultLogger()
+			if (line.length() > 0 && ((ApplicationClassLoader)classLoader).getApplication().getDefaultLogger().warn())
+				((ApplicationClassLoader)classLoader).getApplication().getDefaultLogger()
 					.warn("Warning: plugins file " + getSourceDescription() + " contains an invalid line: " + line);
 			return;
 		}
@@ -39,8 +39,8 @@ public class LoadLibraryPluginsFile extends FullReadLines<Void> {
 		s = line.substring(i + 1);
 		s.trim();
 		String piName = s.asString();
-		if (classLoader.getApplication().getDefaultLogger().debug())
-			classLoader.getApplication().getDefaultLogger().debug("Plugin " + piName + " found for extension point " + epName);
+		if (((ApplicationClassLoader)classLoader).getApplication().getDefaultLogger().debug())
+			((ApplicationClassLoader)classLoader).getApplication().getDefaultLogger().debug("Plugin " + piName + " found for extension point " + epName);
 		try {
 			Class<?> cl = Class.forName(piName, true, classLoader);
 			if (!Plugin.class.isAssignableFrom(cl))

@@ -1,14 +1,14 @@
-package net.lecousin.framework.application.libraries;
+package net.lecousin.framework.application.libraries.artifacts;
 
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.application.Artifact;
 import net.lecousin.framework.application.Version;
 
 /** Library loaded. */
-public class Library {
+public class ArtifactLibrary {
 
 	/** Constructor. */
-	public Library(Artifact artifact, ApplicationClassLoader classLoader) {
+	public <T extends ClassLoader & ApplicationClassLoader> ArtifactLibrary(Artifact artifact, T classLoader) {
 		this.artifact = artifact;
 		this.classLoader = classLoader;
 	}
@@ -16,7 +16,8 @@ public class Library {
 	private Artifact artifact;
 	private ApplicationClassLoader classLoader;
 	
-	public ApplicationClassLoader getClassLoader() { return classLoader; }
+	@SuppressWarnings("unchecked")
+	public <T extends ClassLoader & ApplicationClassLoader> T getClassLoader() { return (T)classLoader; }
 	
 	public String getGroupId() { return artifact.groupId; }
 	

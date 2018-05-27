@@ -13,13 +13,13 @@ import net.lecousin.framework.util.UnprotectedStringBuffer;
 public class LoadLibraryLocaleFile extends FullReadLines<Void> {
 	
 	/** Constructor. */
-	public LoadLibraryLocaleFile(BufferedReadableCharacterStream stream, ApplicationClassLoader classLoader) {
+	public <T extends ClassLoader & ApplicationClassLoader> LoadLibraryLocaleFile(BufferedReadableCharacterStream stream, T classLoader) {
 		super("Initializing localized properties: " + stream.getDescription(),
 			stream, Task.PRIORITY_IMPORTANT, IO.OperationType.ASYNCHRONOUS);
 		this.classLoader = classLoader;
 	}
 	
-	private ApplicationClassLoader classLoader;
+	private ClassLoader classLoader;
 	
 	@Override
 	protected void processLine(UnprotectedStringBuffer line) {
@@ -29,7 +29,7 @@ public class LoadLibraryLocaleFile extends FullReadLines<Void> {
 		line = line.substring(i + 1);
 		line.trim();
 		s.trim();
-		classLoader.getApplication().getLocalizedProperties().registerNamespace(s.asString(), line.asString(), classLoader);
+		((ApplicationClassLoader)classLoader).getApplication().getLocalizedProperties().registerNamespace(s.asString(), line.asString(), classLoader);
 	}
 	
 	@Override
