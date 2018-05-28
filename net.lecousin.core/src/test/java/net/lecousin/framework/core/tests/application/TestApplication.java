@@ -8,7 +8,7 @@ import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.Artifact;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.Version;
-import net.lecousin.framework.application.libraries.artifacts.ArtifactLibrary;
+import net.lecousin.framework.application.libraries.artifacts.LoadedLibrary;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
@@ -93,7 +93,7 @@ public class TestApplication extends LCCoreAbstractTest {
 	@Test
 	public void testLibrary() {
 		Application app = LCCore.getApplication();
-		ArtifactLibrary lib = new ArtifactLibrary(new Artifact("mygroup", "myname", new Version("1")), app.getClassLoader());
+		LoadedLibrary lib = new LoadedLibrary(new Artifact("mygroup", "myname", new Version("1")), app.getClassLoader());
 		Assert.assertEquals(app.getClassLoader(), lib.getClassLoader());
 		Assert.assertEquals("mygroup", lib.getGroupId());
 		Assert.assertEquals("myname", lib.getArtifactId());

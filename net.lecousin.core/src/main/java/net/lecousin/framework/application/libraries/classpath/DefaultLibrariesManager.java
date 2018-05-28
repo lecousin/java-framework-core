@@ -1,4 +1,4 @@
-package net.lecousin.framework.application.libraries;
+package net.lecousin.framework.application.libraries.classpath;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +13,7 @@ import java.util.List;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import net.lecousin.framework.application.Application;
+import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;

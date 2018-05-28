@@ -1,4 +1,4 @@
-package net.lecousin.framework.application.libraries;
+package net.lecousin.framework.application.libraries.classpath;
 
 import java.io.File;
 import java.net.MalformedURLException;

@@ -19,7 +19,7 @@ import javax.servlet.ServletResponse;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.Artifact;
 import net.lecousin.framework.application.Version;
-import net.lecousin.framework.application.libraries.DefaultLibrariesManager;
+import net.lecousin.framework.application.libraries.classpath.DefaultLibrariesManager;
 import net.lecousin.framework.util.PropertiesUtil;
 
 public class BootstrapServlet extends GenericServlet {

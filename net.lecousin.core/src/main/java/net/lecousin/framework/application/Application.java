@@ -20,8 +20,8 @@ import java.util.concurrent.ThreadFactory;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
-import net.lecousin.framework.application.libraries.DefaultLibrariesManager;
 import net.lecousin.framework.application.libraries.LibrariesManager;
+import net.lecousin.framework.application.libraries.classpath.DefaultLibrariesManager;
 import net.lecousin.framework.concurrent.Console;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskMonitoring;

@@ -9,12 +9,12 @@ import net.lecousin.framework.progress.WorkProgress;
 public interface ArtifactsLibrariesManager extends LibrariesManager {
 
 	/** Load a new library. */
-	AsyncWork<ArtifactLibrary,Exception> loadNewLibrary(
+	AsyncWork<LoadedLibrary,Exception> loadNewLibrary(
 		String groupId, String artifactId, VersionSpecification version, boolean optional,
 		byte priority, WorkProgress progress, long work);
 
 	/** Return a loaded library, or null if not loaded. */
-	ArtifactLibrary getLibrary(String groupId, String artifactId);
+	LoadedLibrary getLibrary(String groupId, String artifactId);
 	
 	/** Open a resource from a specific library if possible, or return null if it does not exist. */
 	IO.Readable getResource(String groupId, String artifactId, String path, byte priority);
