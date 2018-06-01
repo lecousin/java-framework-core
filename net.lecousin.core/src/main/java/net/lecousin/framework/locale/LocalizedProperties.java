@@ -88,7 +88,7 @@ public class LocalizedProperties implements IMemoryManageable {
 		}
 		ns.classLoader = classLoader;
 		ns.path = path;
-		IOProvider.Readable provider = new IOProviderFromPathUsingClassloader(classLoader).get(path);
+		IOProvider.Readable provider = new IOProviderFromPathUsingClassloader(classLoader).get(path + ".languages");
 		IO.Readable input;
 		try { input = provider == null ? null : provider.provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT); }
 		catch (IOException e) {
