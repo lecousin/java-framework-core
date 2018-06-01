@@ -124,7 +124,7 @@ public final class ClassUtil {
 	}
 
 	/** Search a method compatible with the given parameters. */
-	public static Method getMethodFor(Class<?> cl, String name, Object[] params) {
+	public static Method getMethodFor(Class<?> cl, String name, Object... params) {
 		Method[] methods = cl.getMethods();
 		for (Method m : methods) {
 			if (!m.getName().equals(name))

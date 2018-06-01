@@ -6,7 +6,7 @@ import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 
 /** IOProvider from a file. */
-public class FileIOProvider implements IOProvider.ReadWrite.Seekable {
+public class FileIOProvider implements IOProvider.ReadWrite.Seekable.KnownSize.Resizable {
 
 	/** IOProvider from a file. */
 	public FileIOProvider(File file) {
@@ -18,19 +18,22 @@ public class FileIOProvider implements IOProvider.ReadWrite.Seekable {
 	
 	public File getFile() { return file; }
 	
+	@SuppressWarnings("unchecked")
 	@Override
-	public IO.Readable.Seekable provideIOReadableSeekable(byte priority) {
-		return new FileIO.ReadOnly(file, priority);
-	}
-	
-	@Override
-	public IO.Writable.Seekable provideIOWritableSeekable(byte priority) {
-		return new FileIO.WriteOnly(file, priority);
+	public <T extends IO.Readable.Seekable & IO.KnownSize> T provideIOReadableSeekableKnownSize(byte priority) {
+		return (T)new FileIO.ReadOnly(file, priority);
 	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> T provideIOReadWriteSeekable(byte priority) {
+	public <T extends IO.Writable.Seekable & IO.Resizable> T provideIOWritableSeekableResizable(byte priority) {
+		return (T)new FileIO.WriteOnly(file, priority);
+	}
+	
+	@SuppressWarnings("unchecked")
+	@Override
+	public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.Resizable>
+	T provideIOReadWriteSeekableResizable(byte priority) {
 		return (T)new FileIO.ReadWrite(file, priority);
 	}
 	

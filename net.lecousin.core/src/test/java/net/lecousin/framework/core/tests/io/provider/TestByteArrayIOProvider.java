@@ -14,7 +14,7 @@ public class TestByteArrayIOProvider extends LCCoreAbstractTest {
 		ByteArrayIOProvider provider = new ByteArrayIOProvider(new byte[100], "test");
 		provider.provideIOReadable(Task.PRIORITY_NORMAL).close();
 		provider.provideIOReadableSeekable(Task.PRIORITY_NORMAL).close();
-		provider.provideIOReadableSeekableDeterminedSize(Task.PRIORITY_NORMAL).close();
+		provider.provideIOReadableSeekableKnownSize(Task.PRIORITY_NORMAL).close();
 		provider.provideIOReadWrite(Task.PRIORITY_NORMAL).close();
 		provider.provideIOReadWriteSeekable(Task.PRIORITY_NORMAL).close();
 		provider.provideIOWritable(Task.PRIORITY_NORMAL).close();

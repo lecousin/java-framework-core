@@ -8,7 +8,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 import net.lecousin.framework.io.FileIO;
-import net.lecousin.framework.io.IO.Readable;
+import net.lecousin.framework.io.IO;
 
 /**
  * Class loader from a directory containing class files.
@@ -52,7 +52,7 @@ public class DirectoryClassLoader extends AbstractClassLoader {
 	}
 	
 	@Override
-	public Readable loadResourceAsIO(String name, byte priority) throws IOException {
+	public IO.Readable loadResourceAsIO(String name, byte priority) throws IOException {
 		File file = new File(dir, name);
 		if (!file.exists()) throw new FileNotFoundException(file.getAbsolutePath());
 		return new FileIO.ReadOnly(file, priority);

@@ -17,13 +17,14 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.provider.IOProviderFromName;
+import net.lecousin.framework.io.provider.IOProvider;
+import net.lecousin.framework.io.provider.IOProviderFrom;
 import net.lecousin.framework.util.Pair;
 
 /**
  * Abstract class loader.
  */
-public abstract class AbstractClassLoader extends ClassLoader implements ApplicationClassLoader, IOProviderFromName.Readable {
+public abstract class AbstractClassLoader extends ClassLoader implements ApplicationClassLoader, IOProviderFrom.Readable<String> {
 
 	static {
 		ClassLoader.registerAsParallelCapable();
@@ -155,19 +156,29 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	}
 	
 	@Override
-	public final IO.Readable provideReadableIO(String name, byte priority) throws IOException {
-		try { return loadResourceAsIO(name, priority); }
-		catch (FileNotFoundException e) {
-			if (subLoaders == null) throw e;
-			for (AbstractClassLoader sub : subLoaders) {
-				try {
-					return sub.provideReadableIO(name, priority);
-				} catch (FileNotFoundException e2) {
-					// not found
+	public final IOProvider.Readable get(String path) {
+		return new IOProvider.Readable() {
+			@Override
+			public IO.Readable provideIOReadable(byte priority) throws IOException {
+				try { return loadResourceAsIO(path, priority); }
+				catch (FileNotFoundException e) {
+					if (subLoaders == null) throw e;
+					for (AbstractClassLoader sub : subLoaders) {
+						try {
+							return sub.get(path).provideIOReadable(priority);
+						} catch (FileNotFoundException e2) {
+							// not found
+						}
+					}
+					throw e;
 				}
 			}
-			throw e;
-		}
+
+			@Override
+			public String getDescription() {
+				return path;
+			}
+		};
 	}
 
 	/** Search for a resource. */

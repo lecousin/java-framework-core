@@ -11,68 +11,343 @@ import net.lecousin.framework.io.IO;
 public interface IOProvider {
 
 	/** Description. */
-	public String getDescription();
+	String getDescription();
 	
-	/** Provide a IO.Readable. */
-	public static interface Readable extends IOProvider {
+	/** Provider for a IO.Readable. */
+	interface Readable extends IOProvider {
 		
 		/** Provide a IO.Readable. */
-		public IO.Readable provideIOReadable(byte priority) throws IOException;
+		IO.Readable provideIOReadable(byte priority) throws IOException;
 		
-		/** Provide a IO.Readable.Seekable. */
-		public static interface Seekable extends Readable {
+
+		/** Provider for a IO.Readable with KnownSize. */
+		interface KnownSize extends Readable {
 			@Override
-			public default IO.Readable provideIOReadable(byte priority) throws IOException {
+			default IO.Readable provideIOReadable(byte priority) throws IOException {
+				return provideIOReadableKnownSize(priority);
+			}
+
+			/** Provide a IO.Readable with KnownSize. */
+			<T extends IO.Readable & IO.KnownSize>
+			T provideIOReadableKnownSize(byte priority) throws IOException;
+		}
+		
+		/** Provider for a IO.Readable.Seekable. */
+		interface Seekable extends Readable {
+			@Override
+			default IO.Readable provideIOReadable(byte priority) throws IOException {
 				return provideIOReadableSeekable(priority);
 			}
 
 			/** Provide a IO.Readable.Seekable. */
-			public IO.Readable.Seekable provideIOReadableSeekable(byte priority) throws IOException;
+			IO.Readable.Seekable provideIOReadableSeekable(byte priority) throws IOException;
 			
-			/** Provide a IO.Readable.Seekable with DeterminedSize. */
-			public static interface DeterminedSize extends Seekable {
+			/** Provider for a IO.Readable.Seekable with KnownSize. */
+			interface KnownSize extends Seekable, IOProvider.Readable.KnownSize {
 				@Override
-				public default IO.Readable.Seekable provideIOReadableSeekable(byte priority) throws IOException {
-					return provideIOReadableSeekableDeterminedSize(priority);
+				default IO.Readable.Seekable provideIOReadableSeekable(byte priority) throws IOException {
+					return provideIOReadableSeekableKnownSize(priority);
+				}
+				
+				@Override
+				default <T extends IO.Readable & IO.KnownSize> T provideIOReadableKnownSize(byte priority) throws IOException {
+					return provideIOReadableSeekableKnownSize(priority);
 				}
 
-				/** Provide a IO.Readable.Seekable with DeterminedSize. */
-				public <T extends IO.Readable.Seekable & IO.KnownSize>
-				T provideIOReadableSeekableDeterminedSize(byte priority) throws IOException;
+				@Override
+				default IO.Readable provideIOReadable(byte priority) throws IOException {
+					return provideIOReadableSeekableKnownSize(priority);
+				}
+
+				/** Provide a IO.Readable.Seekable with KnownSize. */
+				<T extends IO.Readable.Seekable & IO.KnownSize>
+				T provideIOReadableSeekableKnownSize(byte priority) throws IOException;
 			}
 		}
 	}
 	
-	/** Provider a IO.Writable. */
-	public static interface Writable extends IOProvider {
-		/** Provider a IO.Writable. */
-		public IO.Writable provideIOWritable(byte priority) throws IOException;
-		
-		/** Provider a IO.Writable.Seekable. */
-		public static interface Seekable extends Writable {
+	/** Provider for a IO.Writable. */
+	interface Writable extends IOProvider {
+		/** Provide a IO.Writable. */
+		IO.Writable provideIOWritable(byte priority) throws IOException;
+
+
+		/** Provider for a IO.Writable with KnownSize. */
+		interface KnownSize extends Writable {
 			@Override
-			public default IO.Writable provideIOWritable(byte priority) throws IOException {
+			default IO.Writable provideIOWritable(byte priority) throws IOException {
+				return provideIOWritableKnownSize(priority);
+			}
+			
+			/** Provide a IO.Writable with IO.KnownSize. */
+			<T extends IO.Writable & IO.KnownSize>
+			T provideIOWritableKnownSize(byte priority) throws IOException;
+			
+			/** Provider for a IO.Writable with Resizable. */
+			interface Resizable extends KnownSize {
+				@Override
+				default <T extends IO.Writable & IO.KnownSize>
+				T provideIOWritableKnownSize(byte priority) throws IOException {
+					return provideIOWritableResizable(priority);
+				}
+				
+				/** Provide a IO.Writable with Resizable. */
+				<T extends IO.Writable & IO.Resizable>
+				T provideIOWritableResizable(byte priority) throws IOException;
+			}
+		}
+		
+		/** Provider for a IO.Writable.Seekable. */
+		interface Seekable extends Writable {
+			@Override
+			default IO.Writable provideIOWritable(byte priority) throws IOException {
 				return provideIOWritableSeekable(priority);
 			}
 
-			/** Provider a IO.Writable.Seekable. */
-			public IO.Writable.Seekable provideIOWritableSeekable(byte priority) throws IOException;
+			/** Provide a IO.Writable.Seekable. */
+			IO.Writable.Seekable provideIOWritableSeekable(byte priority) throws IOException;
+			
+			/** Provider for a IO.Writable.Seekable with KnownSize. */
+			interface KnownSize extends Seekable, IOProvider.Writable.KnownSize {
+				@Override
+				default IO.Writable.Seekable provideIOWritableSeekable(byte priority) throws IOException {
+					return provideIOWritableSeekableKnownSize(priority);
+				}
+				
+				@Override
+				default <T extends IO.Writable & IO.KnownSize> T provideIOWritableKnownSize(byte priority) throws IOException {
+					return provideIOWritableSeekableKnownSize(priority);
+				}
+				
+				@Override
+				default IO.Writable provideIOWritable(byte priority) throws IOException {
+					return Seekable.super.provideIOWritable(priority);
+				}
+				
+				/** Provide a IO.Writable.Seekable with IO.KnownSize. */
+				<T extends IO.Writable.Seekable & IO.KnownSize>
+				T provideIOWritableSeekableKnownSize(byte priority) throws IOException;
+				
+				/** Provider for a IO.Writable.Seekable with Resizable. */
+				interface Resizable extends IOProvider.Writable.Seekable.KnownSize, IOProvider.Writable.KnownSize.Resizable {
+					@Override
+					default <T extends IO.Writable.Seekable & IO.KnownSize>
+					T provideIOWritableSeekableKnownSize(byte priority) throws IOException {
+						return provideIOWritableSeekableResizable(priority);
+					}
+					
+					@Override
+					default <T extends IO.Writable & IO.Resizable>
+					T provideIOWritableResizable(byte priority) throws IOException {
+						return provideIOWritableSeekableResizable(priority);
+					}
+
+					@Override
+					default <T extends IO.Writable & IO.KnownSize>
+					T provideIOWritableKnownSize(byte priority) throws IOException {
+						return provideIOWritableSeekableResizable(priority);
+					}
+					
+					/** Provide a IO.Writable.Seekable with Resizable. */
+					<T extends IO.Writable.Seekable & IO.Resizable>
+					T provideIOWritableSeekableResizable(byte priority) throws IOException;
+				}
+			}
 		}
 	}
 	
 	/** Provider a IO Readable and Writable. */
-	public static interface ReadWrite extends Readable, Writable {
-		/** Provider a IO Readable and Writable. */
-		public <T extends IO.Readable & IO.Writable> T provideIOReadWrite(byte priority);
+	interface ReadWrite extends Readable, Writable {
+		@Override
+		default IO.Readable provideIOReadable(byte priority) throws IOException {
+			return provideIOReadWrite(priority);
+		}
 		
-		/** Provider a IO Readable.Seekable and Writable.Seekable. */
-		public static interface Seekable extends ReadWrite, Readable.Seekable, Writable.Seekable {
-			/** Provider a IO Readable.Seekable and Writable.Seekable. */
-			public <T extends IO.Readable.Seekable & IO.Writable.Seekable> T provideIOReadWriteSeekable(byte priority);
+		@Override
+		default IO.Writable provideIOWritable(byte priority) throws IOException {
+			return provideIOReadWrite(priority);
+		}
+		
+		/** Provider a IO Readable and Writable. */
+		<T extends IO.Readable & IO.Writable> T provideIOReadWrite(byte priority) throws IOException;
+		
+		interface KnownSize extends ReadWrite, Readable.KnownSize, Writable.KnownSize {
+			@Override
+			default <T extends IO.Readable & IO.Writable> T provideIOReadWrite(byte priority) throws IOException {
+				return provideIOReadWriteKnownSize(priority);
+			}
 			
 			@Override
-			public default <T extends IO.Readable & IO.Writable> T provideIOReadWrite(byte priority) {
+			default IO.Readable provideIOReadable(byte priority) throws IOException {
+				return provideIOReadWriteKnownSize(priority);
+			}
+			
+			@Override
+			default <T extends IO.Readable & IO.KnownSize> T provideIOReadableKnownSize(byte priority) throws IOException {
+				return provideIOReadWriteKnownSize(priority);
+			}
+
+			@Override
+			default IO.Writable provideIOWritable(byte priority) throws IOException {
+				return provideIOReadWriteKnownSize(priority);
+			}
+			
+			@Override
+			default <T extends IO.Writable & IO.KnownSize> T provideIOWritableKnownSize(byte priority) throws IOException {
+				return provideIOReadWriteKnownSize(priority);
+			}
+			
+			<T extends IO.Readable & IO.Writable & IO.KnownSize>
+			T provideIOReadWriteKnownSize(byte priority) throws IOException;
+
+			interface Resizable extends IOProvider.ReadWrite.KnownSize, IOProvider.Writable.KnownSize.Resizable {
+				@Override
+				default <T extends IO.Readable & IO.Writable & IO.KnownSize>
+				T provideIOReadWriteKnownSize(byte priority) throws IOException {
+					return provideIOReadWriteResizable(priority);
+				}
+
+				@Override
+				default <T extends IO.Writable & IO.KnownSize> T provideIOWritableKnownSize(byte priority) throws IOException {
+					return provideIOReadWriteResizable(priority);
+				}
+
+				<T extends IO.Readable & IO.Writable & IO.Resizable>
+				T provideIOReadWriteResizable(byte priority) throws IOException;
+			}
+		}
+		
+		/** Provider a IO Readable.Seekable and Writable.Seekable. */
+		interface Seekable extends ReadWrite, Readable.Seekable, Writable.Seekable {
+			/** Provider a IO Readable.Seekable and Writable.Seekable. */
+			<T extends IO.Readable.Seekable & IO.Writable.Seekable> T provideIOReadWriteSeekable(byte priority) throws IOException;
+
+			@Override
+			default IO.Readable provideIOReadable(byte priority) throws IOException {
 				return provideIOReadWriteSeekable(priority);
+			}
+
+			@Override
+			default IO.Readable.Seekable provideIOReadableSeekable(byte priority) throws IOException {
+				return provideIOReadWriteSeekable(priority);
+			}
+			
+			@Override
+			default IO.Writable provideIOWritable(byte priority) throws IOException {
+				return provideIOReadWriteSeekable(priority);
+			}
+			
+			@Override
+			default IO.Writable.Seekable provideIOWritableSeekable(byte priority) throws IOException {
+				return provideIOReadWriteSeekable(priority);
+			}
+			
+			@Override
+			default <T extends IO.Readable & IO.Writable> T provideIOReadWrite(byte priority) throws IOException {
+				return provideIOReadWriteSeekable(priority);
+			}
+			
+			interface KnownSize
+			extends IOProvider.ReadWrite.Seekable, IOProvider.ReadWrite.KnownSize,
+				IOProvider.Readable.Seekable.KnownSize, IOProvider.Writable.Seekable.KnownSize {
+				@Override
+				default <T extends IO.Readable.Seekable & IO.Writable.Seekable>
+				T provideIOReadWriteSeekable(byte priority) throws IOException {
+					return provideIOReadWriteSeekableKnownSize(priority);
+				}
+
+				@Override
+				default <T extends IO.Readable & IO.Writable> T provideIOReadWrite(byte priority) throws IOException {
+					return provideIOReadWriteSeekableKnownSize(priority);
+				}
+
+				@Override
+				default <T extends IO.Readable & IO.Writable & IO.KnownSize>
+				T provideIOReadWriteKnownSize(byte priority) throws IOException {
+					return provideIOReadWriteSeekableKnownSize(priority);
+				}
+				
+				@Override
+				default IO.Readable provideIOReadable(byte priority) throws IOException {
+					return provideIOReadWriteSeekableKnownSize(priority);
+				}
+
+				@Override
+				default IO.Writable provideIOWritable(byte priority) throws IOException {
+					return provideIOReadWriteSeekableKnownSize(priority);
+				}
+
+				@Override
+				default IO.Readable.Seekable provideIOReadableSeekable(byte priority) throws IOException {
+					return provideIOReadWriteSeekableKnownSize(priority);
+				}
+
+				@Override
+				default <T extends IO.Readable & IO.KnownSize> T provideIOReadableKnownSize(byte priority) throws IOException {
+					return provideIOReadWriteSeekableKnownSize(priority);
+				}
+
+				@Override
+				default <T extends IO.Readable.Seekable & IO.KnownSize>
+				T provideIOReadableSeekableKnownSize(byte priority) throws IOException {
+					return provideIOReadWriteSeekableKnownSize(priority);
+				}
+
+				@Override
+				default <T extends IO.Writable & IO.KnownSize> T provideIOWritableKnownSize(byte priority) throws IOException {
+					return provideIOReadWriteSeekableKnownSize(priority);
+				}
+
+				@Override
+				default <T extends IO.Writable.Seekable & IO.KnownSize>
+				T provideIOWritableSeekableKnownSize(byte priority) throws IOException {
+					return provideIOReadWriteSeekableKnownSize(priority);
+				}
+
+				@Override
+				default IO.Writable.Seekable provideIOWritableSeekable(byte priority) throws IOException {
+					return provideIOReadWriteSeekableKnownSize(priority);
+				}
+				
+				<T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.KnownSize>
+				T provideIOReadWriteSeekableKnownSize(byte priority) throws IOException;
+
+				interface Resizable
+				extends IOProvider.ReadWrite.Seekable.KnownSize, IOProvider.ReadWrite.KnownSize.Resizable,
+					IOProvider.Writable.Seekable.KnownSize.Resizable {
+					@Override
+					default <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.KnownSize>
+					T provideIOReadWriteSeekableKnownSize(byte priority) throws IOException {
+						return provideIOReadWriteSeekableResizable(priority);
+					}
+
+					@Override
+					default <T extends IO.Readable & IO.Writable & IO.KnownSize>
+					T provideIOReadWriteKnownSize(byte priority) throws IOException {
+						return provideIOReadWriteSeekableResizable(priority);
+					}
+
+					@Override
+					default <T extends IO.Writable & IO.KnownSize>
+					T provideIOWritableKnownSize(byte priority) throws IOException {
+						return provideIOReadWriteSeekableResizable(priority);
+					}
+
+					@Override
+					default <T extends IO.Writable.Seekable & IO.KnownSize>
+					T provideIOWritableSeekableKnownSize(byte priority) throws IOException {
+						return provideIOReadWriteSeekableResizable(priority);
+					}
+					
+					@Override
+					default <T extends IO.Readable & IO.Writable & IO.Resizable>
+					T provideIOReadWriteResizable(byte priority) throws IOException {
+						return provideIOReadWriteSeekableResizable(priority);
+					}
+					
+					<T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.Resizable>
+					T provideIOReadWriteSeekableResizable(byte priority) throws IOException;
+				}
 			}
 		}
 	}

@@ -1,7 +1,6 @@
 package net.lecousin.framework.locale;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,16 +15,15 @@ import net.lecousin.framework.application.Application;
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
-import net.lecousin.framework.io.provider.IOProviderFromName;
+import net.lecousin.framework.io.provider.IOProvider;
+import net.lecousin.framework.io.provider.IOProviderFromPathUsingClassloader;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.PropertiesReader;
 import net.lecousin.framework.log.Logger;
@@ -90,26 +88,20 @@ public class LocalizedProperties implements IMemoryManageable {
 		}
 		ns.classLoader = classLoader;
 		ns.path = path;
+		IOProvider.Readable provider = new IOProviderFromPathUsingClassloader(classLoader).get(path);
 		IO.Readable input;
-		if (classLoader instanceof IOProviderFromName.Readable)
-			try {
-				input = ((IOProviderFromName.Readable)classLoader)
-					.provideReadableIO(path + ".languages", Task.PRIORITY_RATHER_IMPORTANT);
-			} catch (IOException e) {
-				sp.error(new Exception("Localized properties for namespace " + namespace
-						+ " cannot be loaded because the file " + path + ".languages does not exist", e));
-				logger.error(sp.getError().getMessage());
-				return sp;
-			}
-		else {
-			InputStream in = classLoader.getResourceAsStream(path + ".languages");
-			if (in == null) {
-				sp.error(new Exception("Localized properties for namespace " + namespace
-					+ " cannot be loaded because the file " + path + ".languages does not exist"));
-				logger.error(sp.getError().getMessage());
-				return sp;
-			}
-			input = new IOFromInputStream(in, path + ".languages", Threading.getUnmanagedTaskManager(), Task.PRIORITY_RATHER_IMPORTANT);
+		try { input = provider == null ? null : provider.provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT); }
+		catch (IOException e) {
+			sp.error(new Exception("Localized properties for namespace " + namespace
+				+ " cannot be loaded because the file " + path + ".languages does not exist", e));
+			logger.error(sp.getError().getMessage());
+			return sp;
+		}
+		if (input == null) {
+			sp.error(new Exception("Localized properties for namespace " + namespace
+				+ " cannot be loaded because the file " + path + ".languages does not exist"));
+			logger.error(sp.getError().getMessage());
+			return sp;
 		}
 		AsyncWork<UnprotectedStringBuffer, IOException> read = IOUtil.readFullyAsString(
 			input, StandardCharsets.US_ASCII, Task.PRIORITY_RATHER_IMPORTANT);
@@ -178,24 +170,18 @@ public class LocalizedProperties implements IMemoryManageable {
 	@SuppressWarnings("resource")
 	private void load(Namespace ns, Namespace.Language lang) {
 		String path = ns.path + '.' + String.join("-", lang.tag);
+		IOProvider.Readable provider = new IOProviderFromPathUsingClassloader(ns.classLoader).get(path);
 		IO.Readable input;
-		if (ns.classLoader instanceof IOProviderFromName.Readable)
-			try {
-				input = ((IOProviderFromName.Readable)ns.classLoader)
-					.provideReadableIO(path, Task.PRIORITY_RATHER_IMPORTANT);
-			} catch (IOException e) {
-				lang.loading.error(new Exception("Localized properties file " + path + " does not exist", e));
-				logger.error(lang.loading.getError().getMessage());
-				return;
-			}
-		else {
-			InputStream in = ns.classLoader.getResourceAsStream(path);
-			if (in == null) {
-				lang.loading.error(new Exception("Localized properties file " + path + " does not exist"));
-				logger.error(lang.loading.getError().getMessage());
-				return;
-			}
-			input = new IOFromInputStream(in, path + ".languages", Threading.getUnmanagedTaskManager(), Task.PRIORITY_RATHER_IMPORTANT);
+		try { input = provider != null ? provider.provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT) : null; }
+		catch (IOException e) {
+			lang.loading.error(new Exception("Localized properties file " + path + " does not exist", e));
+			logger.error(lang.loading.getError().getMessage());
+			return;
+		}
+		if (input == null) {
+			lang.loading.error(new Exception("Localized properties file " + path + " does not exist"));
+			logger.error(lang.loading.getError().getMessage());
+			return;
 		}
 		if (!(input instanceof IO.Readable.Buffered))
 			input = new PreBufferedReadable(input, 4096, Task.PRIORITY_RATHER_IMPORTANT, 4096, Task.PRIORITY_RATHER_IMPORTANT, 16);

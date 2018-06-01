@@ -125,7 +125,7 @@ public class AppClassLoader {
 		IO.Readable io = null;
     	for (int i = 0; i < libs.size(); i++) {
     		AbstractClassLoader cl = libs.get(i);
-   			try { io = cl.provideReadableIO(name, priority); }
+   			try { io = cl.get(name).provideIOReadable(priority); }
    			catch (IOException e) { /* ignore */ }
     		if (io != null) return io;
     	}
@@ -156,14 +156,14 @@ public class AppClassLoader {
 		IO.Readable io = null;
     	// try with the first one
     	if (first != null)
-   			try { io = first.provideReadableIO(name, Task.PRIORITY_RATHER_IMPORTANT); }
+   			try { io = first.get(name).provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT); }
     		catch (IOException e) { /* not there */ }
     	// then, try on other libraries
     	if (io == null) {
         	for (int i = 0; i < libs.size(); i++) {
         		AbstractClassLoader cl = libs.get(i);
         		if (cl == first) continue;
-       			try { io = cl.provideReadableIO(name, Task.PRIORITY_RATHER_IMPORTANT); }
+       			try { io = cl.get(name).provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT); }
        			catch (IOException e) { /* not there */ }
         		if (io != null) break;
         	}

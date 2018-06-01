@@ -3,7 +3,6 @@ package net.lecousin.framework.application;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,7 +24,6 @@ import net.lecousin.framework.application.libraries.classpath.DefaultLibrariesMa
 import net.lecousin.framework.concurrent.Console;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskMonitoring;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
@@ -34,8 +32,8 @@ import net.lecousin.framework.concurrent.tasks.SavePropertiesFileTask;
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.IOFromInputStream;
-import net.lecousin.framework.io.provider.IOProviderFromName;
+import net.lecousin.framework.io.provider.IOProvider;
+import net.lecousin.framework.io.provider.IOProviderFromPathUsingClassloader;
 import net.lecousin.framework.locale.LocalizedProperties;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.LoggerFactory;
@@ -86,6 +84,7 @@ public final class Application {
 	private ThreadFactory threadFactory;
 	private LibrariesManager librariesManager;
 	private ApplicationClassLoader rootClassLoader;
+	private IOProviderFromPathUsingClassloader rootClassLoaderIOProvider;
 	private Console console;
 	private Properties preferences = null;
 	private Locale locale;
@@ -195,18 +194,15 @@ public final class Application {
 	}
 	
 	/** Get a resource from the class loader as an IO.Readable. */
-	@SuppressWarnings("resource")
 	public IO.Readable getResource(String filename, byte priority) {
-		if (rootClassLoader instanceof IOProviderFromName.Readable)
-			try {
-				return ((IOProviderFromName.Readable)rootClassLoader).provideReadableIO(filename, priority);
-			} catch (IOException e) {
-				return null;
-			}
-		InputStream in = ((ClassLoader)rootClassLoader).getResourceAsStream(filename);
-		if (in == null)
+		IOProvider.Readable provider = rootClassLoaderIOProvider.get(filename);
+		if (provider == null)
 			return null;
-		return new IOFromInputStream(in, filename, Threading.getUnmanagedTaskManager(), priority);
+		try {
+			return provider.provideIOReadable(priority);
+		} catch (IOException e) {
+			return null;
+		}
 	}
 	
 	/** Register an instance to close on application shutdown. */
@@ -351,6 +347,7 @@ public final class Application {
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		loading.listenInline(() -> {
 			app.rootClassLoader = librariesManager.start(app);
+			app.rootClassLoaderIOProvider = new IOProviderFromPathUsingClassloader((ClassLoader)app.rootClassLoader);
 			librariesManager.onLibrariesLoaded().listenInline(sp);
 		});
 		

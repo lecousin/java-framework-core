@@ -2,6 +2,7 @@ package net.lecousin.framework.application.development;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,7 +41,8 @@ import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Readable;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
-import net.lecousin.framework.io.provider.IOProviderFromName;
+import net.lecousin.framework.io.provider.IOProvider;
+import net.lecousin.framework.io.provider.IOProviderFromPathUsingClassloader;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.plugins.CustomExtensionPoint;
@@ -552,8 +554,9 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 			// extension points
 			AsyncWork<Void, Exception> ep = null;
 			try {
-				IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader()).provideReadableIO(
-					"META-INF/net.lecousin/extensionpoints", Task.PRIORITY_IMPORTANT);
+				IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader())
+					.get("META-INF/net.lecousin/extensionpoints")
+					.provideIOReadable(Task.PRIORITY_IMPORTANT);
 				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.PRIORITY_IMPORTANT, 1024,
 					Task.PRIORITY_RATHER_IMPORTANT, 8);
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(bio, StandardCharsets.UTF_8, 256, 32);
@@ -572,8 +575,8 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 				String path = custom.getPluginConfigurationFilePath();
 				if (path == null) continue;
 				try {
-					IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader()).provideReadableIO(
-						path, Task.PRIORITY_IMPORTANT);
+					IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader())
+						.get(path).provideIOReadable(Task.PRIORITY_IMPORTANT);
 					previous = custom.loadPluginConfiguration(io, lib.library.getClassLoader(), previous);
 					jp.addToJoin(previous);
 				} catch (FileNotFoundException e) {
@@ -586,8 +589,8 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 			}
 			// plugins
 			try {
-				IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader()).provideReadableIO(
-					"META-INF/net.lecousin/plugins", Task.PRIORITY_IMPORTANT);
+				IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader())
+					.get("META-INF/net.lecousin/plugins").provideIOReadable(Task.PRIORITY_IMPORTANT);
 				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.PRIORITY_IMPORTANT, 1024,
 					Task.PRIORITY_RATHER_IMPORTANT, 8);
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(bio, StandardCharsets.UTF_8, 256, 32);
@@ -744,12 +747,14 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 
 	/** Open a resource from the given class loader. */
 	public IO.Readable getResourceFrom(ClassLoader cl, String path, byte priority) {
-		if (cl instanceof IOProviderFromName.Readable)
-			try { return ((IOProviderFromName.Readable)cl).provideReadableIO(path, priority); }
-			catch (Throwable t) {
-				return null;
-			}
-		return appClassLoader.getResourceIO(path, priority);
+		IOProvider.Readable provider = new IOProviderFromPathUsingClassloader(cl).get(path);
+		if (provider == null)
+			return null;
+		try {
+			return provider.provideIOReadable(priority);
+		} catch (IOException e) {
+			return null;
+		}
 	}
 
 	@Override

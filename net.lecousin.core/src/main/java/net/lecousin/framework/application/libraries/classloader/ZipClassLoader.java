@@ -17,7 +17,6 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.IO.Readable;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.provider.FileIOProvider;
@@ -132,7 +131,7 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 
 	@SuppressWarnings("resource")
 	@Override
-	public Readable loadResourceAsIO(String name, byte priority) throws IOException {
+	public IO.Readable loadResourceAsIO(String name, byte priority) throws IOException {
 		ZipFile zip = getZip();
 		ZipEntry entry = zip.getEntry(name);
 		if (entry == null) throw new FileNotFoundException(name + " in zip file " + zipProvider.getDescription());
