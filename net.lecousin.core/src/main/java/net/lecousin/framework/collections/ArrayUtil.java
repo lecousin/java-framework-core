@@ -445,22 +445,6 @@ public final class ArrayUtil {
 		return new ArrayIterator<T>(a, a.length);
 	}
 	
-	/** Search a sequence of bytes in a byte array. */
-	public static int search(byte[] toFind, byte[] buf, int start, int len) {
-		if (len < toFind.length) return -1;
-		for (int i = 0; i <= len - toFind.length; ++i) {
-			if (buf[start + i] != toFind[0]) continue;
-			boolean ok = true;
-			for (int j = 1; j < toFind.length; ++j)
-				if (buf[start + i + j] != toFind[j]) {
-					ok = false;
-					break;
-				}
-			if (ok) return i;
-		}
-		return -1;
-	}
-	
 	/** Create a copy of the array. */
 	public static byte[] copy(byte[] a) {
 		byte[] c = new byte[a.length];
@@ -484,23 +468,30 @@ public final class ArrayUtil {
 		return list;
 	}
 
-	public static int search(byte[] array, byte[] toFind) {
-		return search(array, toFind, 0);
+	/** Search a sequence of bytes. */
+	public static int search(byte[] toFind, byte[] array) {
+		return search(toFind, array, 0);
 	}
 	
-	public static int search(byte[] array, byte[] toFind, int start) {
-		int len = array.length;
+	/** Search a sequence of bytes. */
+	public static int search(byte[] toFind, byte[] array, int start) {
+		return search(toFind, array, start, array.length - start);
+	}
+	
+	
+	/** Search a sequence of bytes. */
+	public static int search(byte[] toFind, byte[] array, int start, int len) {
 		int tfl = toFind.length;
-		for (int i = start; i < len - tfl; ++i) {
-			if (array[i] != toFind[0]) continue;
+		if (len < tfl) return -1;
+		for (int i = 0; i <= len - tfl; ++i) {
+			if (array[start + i] != toFind[0]) continue;
 			boolean ok = true;
 			for (int j = 1; j < tfl; ++j)
-				if (array[i + j] != toFind[j]) {
+				if (array[start + i + j] != toFind[j]) {
 					ok = false;
 					break;
 				}
-			if (ok)
-				return i;
+			if (ok) return i;
 		}
 		return -1;
 	}

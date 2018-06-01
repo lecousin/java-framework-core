@@ -20,21 +20,28 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.util.Triple;
 
+/**
+ * Application launcher in a development environment.
+ */
 public class DevLauncher {
 	
+	/** Print usage in the console. */
 	public static void printUsage() {
-		System.out.println("Usage: -groupId=<groupId> -artifactId=<artifactId> -version=<artifactVersion> -config=<path_to_lc=project.xml> -projects=<projects_paths> [-plugins=<plugins>] [-maven-repository=<path>]");
+		System.out.println(
+			"Usage: -groupId=<groupId> -artifactId=<artifactId> -version=<artifactVersion> "
+			+ "-config=<path_to_lc=project.xml> -projects=<projects_paths> [-plugins=<plugins>] [-maven-repository=<path>]");
 	}
 	
+	/** Main. */
 	public static void main(String[] args) {
 		// start the splash screen as soon as possible
-		SplashScreen _splash = null;
+		SplashScreen splashScreen = null;
 		if (!GraphicsEnvironment.isHeadless() && !"true".equals(System.getProperty("nosplash")))
-			_splash = new SplashScreen(true);
+			splashScreen = new SplashScreen(true);
 
 		//Threading.traceBlockingTasks = true;
 
-		final SplashScreen splash = _splash;
+		final SplashScreen splash = splashScreen;
 		//-XstartOnFirstThread
 		LCCore.keepMainThread(new Runnable() {
 			@Override
@@ -43,7 +50,12 @@ public class DevLauncher {
 				ArrayList<LibraryDescriptorLoader> loaders = new ArrayList<>(1);
 				loaders.add(pomLoader);
 				
-				String groupId = null, artifactId = null, version = null, config = null, projects = null, plugins = null;
+				String groupId = null;
+				String artifactId = null;
+				String version = null;
+				String config = null;
+				String projects = null;
+				String plugins = null;
 				String[] appParameters = new String[0];
 				for (int i = 0; i < args.length; ++i) {
 					if (args[i].startsWith("-groupId="))
@@ -64,9 +76,9 @@ public class DevLauncher {
 						if (dir.exists())
 							pomLoader.addRepository(new MavenLocalRepository(dir));
 					} else if (args[i].equals("-parameters")) {
-						appParameters = new String[args.length-i-1];
+						appParameters = new String[args.length - i - 1];
 						for (int j = 0; j < appParameters.length; ++j)
-							appParameters[j] = args[i+1+j];
+							appParameters[j] = args[i + 1 + j];
 						break;
 					} else {
 						System.err.println("Unknown option: " + args[i]);
@@ -75,15 +87,25 @@ public class DevLauncher {
 						return;
 					}
 				}
-				if (config == null) { System.err.println("Missing config parameter in command line"); LCCore.stop(true); return; }
-				if (groupId == null) { System.err.println("Missing groupId parameter in command line"); LCCore.stop(true); return; }
-				if (artifactId == null) { System.err.println("Missing artifactId parameter in command line"); LCCore.stop(true); return; }
-				if (version == null) { System.err.println("Missing version parameter in command line"); LCCore.stop(true); return; }
-				if (projects == null) { System.err.println("Missing projects parameter in command line"); LCCore.stop(true); return; }
+				boolean stop = true;
+				if (config == null) System.err.println("Missing config parameter in command line");
+				else if (groupId == null) System.err.println("Missing groupId parameter in command line");
+				else if (artifactId == null) System.err.println("Missing artifactId parameter in command line");
+				else if (version == null) System.err.println("Missing version parameter in command line");
+				else if (projects == null) System.err.println("Missing projects parameter in command line");
+				else stop = false;
+				if (stop) {
+					LCCore.stop(true);
+					return;
+				}
 
 				// load configuration file
 				File cfgFile = new File(config);
-				if (!cfgFile.exists() || !cfgFile.isFile()) { System.err.println("Configuration file does not exist"); LCCore.stop(true); return; }
+				if (!cfgFile.exists() || !cfgFile.isFile()) {
+					System.err.println("Configuration file does not exist");
+					LCCore.stop(true);
+					return;
+				}
 				if (splash != null) splash.setText("Reading application configuration");
 				ApplicationConfiguration cfg;
 				try { cfg = ApplicationConfiguration.load(cfgFile); }
@@ -97,7 +119,7 @@ public class DevLauncher {
 				File appDir = cfgFile.getParentFile();
 				
 				// add local maven repository
-				File dir = new File(System.getProperty("user.home")+"/.m2/repository");
+				File dir = new File(System.getProperty("user.home") + "/.m2/repository");
 				if (dir.exists())
 					pomLoader.addRepository(new MavenLocalRepository(dir));
 				
@@ -105,17 +127,23 @@ public class DevLauncher {
 				ArrayList<File> devPaths = new ArrayList<File>(s.length);
 				for (String path : s) {
 					dir = new File(path);
-					if (!dir.exists()) { System.err.println("Development path "+path+" does not exist"); continue; }
-					devPaths.add(dir);
+					if (!dir.exists())
+						System.err.println("Development path " + path + " does not exist");
+					else
+						devPaths.add(dir);
 				}
 				
 				if (splash != null) splash.endInit();
 				
 				// setup properties
-				if (cfg.properties.get(Application.PROPERTY_CONFIG_DIRECTORY) == null && System.getProperty(Application.PROPERTY_CONFIG_DIRECTORY) == null)
-					cfg.properties.put(Application.PROPERTY_CONFIG_DIRECTORY, System.getProperty("user.home")+"/.lc.apps/"+groupId+"/"+artifactId+"/cfg");
-				if (cfg.properties.get(Application.PROPERTY_LOG_DIRECTORY) == null && System.getProperty(Application.PROPERTY_LOG_DIRECTORY) == null)
-					cfg.properties.put(Application.PROPERTY_LOG_DIRECTORY, System.getProperty("user.home")+"/.lc.apps/"+groupId+"/"+artifactId+"/log");
+				if (cfg.properties.get(Application.PROPERTY_CONFIG_DIRECTORY) == null &&
+					System.getProperty(Application.PROPERTY_CONFIG_DIRECTORY) == null)
+					cfg.properties.put(Application.PROPERTY_CONFIG_DIRECTORY,
+						System.getProperty("user.home") + "/.lc.apps/" + groupId + "/" + artifactId + "/cfg");
+				if (cfg.properties.get(Application.PROPERTY_LOG_DIRECTORY) == null &&
+					System.getProperty(Application.PROPERTY_LOG_DIRECTORY) == null)
+					cfg.properties.put(Application.PROPERTY_LOG_DIRECTORY,
+						System.getProperty("user.home") + "/.lc.apps/" + groupId + "/" + artifactId + "/log");
 				
 				List<Triple<String,String,String>> addPlugins = new LinkedList<>();
 				if (plugins != null) {
@@ -124,12 +152,18 @@ public class DevLauncher {
 						plugin = plugin.trim();
 						if (plugin.length() == 0) continue;
 						int i = plugin.indexOf(':');
-						if (i < 0) { addPlugins.add(new Triple<>(plugin, null, null)); continue; }
+						if (i < 0) {
+							addPlugins.add(new Triple<>(plugin, null, null));
+							continue;
+						}
 						String pluginGroupId = plugin.substring(0, i);
 						plugin = plugin.substring(i + 1);
 						i = plugin.indexOf(':');
-						if (i < 0) { addPlugins.add(new Triple<>(pluginGroupId, plugin, null)); continue; }
-						addPlugins.add(new Triple<>(pluginGroupId, plugin.substring(0, i), plugin.substring(i+1)));
+						if (i < 0) {
+							addPlugins.add(new Triple<>(pluginGroupId, plugin, null));
+							continue;
+						}
+						addPlugins.add(new Triple<>(pluginGroupId, plugin.substring(0, i), plugin.substring(i + 1)));
 					}
 				}
 				DevLibrariesManager librariesManager = new DevLibrariesManager(devPaths, splash, loaders, appDir, cfg, addPlugins);

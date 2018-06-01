@@ -439,6 +439,7 @@ public final class IOUtil {
 		return result;
 	}
 	
+	/** Create a temporary file with the given content. */
 	public static AsyncWork<File, IOException> toTempFile(byte[] bytes) {
 		AsyncWork<FileIO.ReadWrite, IOException> createFile =
 				TemporaryFiles.get().createAndOpenFileAsync("net.lecousin.framework.io", "bytestofile");

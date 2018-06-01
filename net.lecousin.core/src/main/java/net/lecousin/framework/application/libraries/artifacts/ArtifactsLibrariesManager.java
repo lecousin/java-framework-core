@@ -6,6 +6,9 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.progress.WorkProgress;
 
+/**
+ * Libraries manager using artifacts.
+ */
 public interface ArtifactsLibrariesManager extends LibrariesManager {
 
 	/** Load a new library. */

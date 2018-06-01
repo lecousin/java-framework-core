@@ -40,7 +40,8 @@ public class LoadLibraryPluginsFile extends FullReadLines<Void> {
 		s.trim();
 		String piName = s.asString();
 		if (((ApplicationClassLoader)classLoader).getApplication().getDefaultLogger().debug())
-			((ApplicationClassLoader)classLoader).getApplication().getDefaultLogger().debug("Plugin " + piName + " found for extension point " + epName);
+			((ApplicationClassLoader)classLoader).getApplication().getDefaultLogger().debug(
+				"Plugin " + piName + " found for extension point " + epName);
 		try {
 			Class<?> cl = Class.forName(piName, true, classLoader);
 			if (!Plugin.class.isAssignableFrom(cl))

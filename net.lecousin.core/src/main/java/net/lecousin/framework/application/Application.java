@@ -188,6 +188,7 @@ public final class Application {
 		return librariesManager;
 	}
 	
+	/** Return the application class loader. */
 	@SuppressWarnings("unchecked")
 	public <T extends ClassLoader & ApplicationClassLoader> T getClassLoader() {
 		return (T)rootClassLoader;

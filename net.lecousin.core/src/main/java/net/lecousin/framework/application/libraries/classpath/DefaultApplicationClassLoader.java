@@ -38,7 +38,9 @@ public class DefaultApplicationClassLoader extends URLClassLoader implements App
 		for (int i = 0; i < files.length; ++i)
 			try {
 				urls[i] = files[i].toURI().toURL();
-			} catch (MalformedURLException e) {}
+			} catch (MalformedURLException e) {
+				// should not happen
+			}
 		return urls;
 	}
 

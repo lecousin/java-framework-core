@@ -29,7 +29,8 @@ public class LoadLibraryLocaleFile extends FullReadLines<Void> {
 		line = line.substring(i + 1);
 		line.trim();
 		s.trim();
-		((ApplicationClassLoader)classLoader).getApplication().getLocalizedProperties().registerNamespace(s.asString(), line.asString(), classLoader);
+		((ApplicationClassLoader)classLoader).getApplication().getLocalizedProperties()
+			.registerNamespace(s.asString(), line.asString(), classLoader);
 	}
 	
 	@Override

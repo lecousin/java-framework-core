@@ -9,6 +9,9 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 
+/**
+ * Application configuration, loaded from a lc-project.xml file.
+ */
 public class ApplicationConfiguration {
 
 	public String splash;
@@ -16,6 +19,7 @@ public class ApplicationConfiguration {
 	public String clazz;
 	public Map<String, String> properties = new HashMap<>();
 	
+	/** Load the given file. */
 	public static ApplicationConfiguration load(File file) throws Exception {
 		try (FileInputStream in = new FileInputStream(file)) {
 			XMLStreamReader xml = XMLInputFactory.newFactory().createXMLStreamReader(in);

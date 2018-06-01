@@ -10,12 +10,16 @@ import java.net.URL;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO.Readable;
 
+/**
+ * Class loader from a directory containing class files.
+ */
 public class DirectoryClassLoader extends AbstractClassLoader {
 
 	static {
 		ClassLoader.registerAsParallelCapable();
 	}
 	
+	/** Constructor. */
 	public DirectoryClassLoader(AppClassLoader appClassLoader, File dir) {
 		super(appClassLoader);
 		this.dir = dir;
@@ -24,7 +28,8 @@ public class DirectoryClassLoader extends AbstractClassLoader {
 	private File dir;
 	
 	@Override
-	public String getDescription() { return "DirectoryClassLoader from "+dir.getAbsolutePath(); }
+	public String getDescription() { return "DirectoryClassLoader from " + dir.getAbsolutePath(); }
+	
 	@Override
 	public String toString() { return getDescription(); }
 	
@@ -37,24 +42,24 @@ public class DirectoryClassLoader extends AbstractClassLoader {
 			byte[] buffer = new byte[size];
 			int pos = 0;
 			do {
-				int nb = in.read(buffer, pos, size-pos);
+				int nb = in.read(buffer, pos, size - pos);
 				if (nb <= 0) break;
 				pos += nb;
 			} while (pos < size);
-			if (pos < size) throw new IOException("File truncated: "+file.getAbsolutePath());
+			if (pos < size) throw new IOException("File truncated: " + file.getAbsolutePath());
 			return buffer;
 		}
 	}
 	
 	@Override
-	public Readable _getResourceAsIO(String name, byte priority) throws IOException {
+	public Readable loadResourceAsIO(String name, byte priority) throws IOException {
 		File file = new File(dir, name);
 		if (!file.exists()) throw new FileNotFoundException(file.getAbsolutePath());
 		return new FileIO.ReadOnly(file, priority);
 	}
 	
 	@Override
-	protected URL _getResourceURL(String name) {
+	protected URL loadResourceURL(String name) {
 		File file = new File(dir, name);
 		if (!file.exists()) return null;
 		try { return file.toURI().toURL(); }

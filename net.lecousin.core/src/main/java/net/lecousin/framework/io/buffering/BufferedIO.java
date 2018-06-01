@@ -97,10 +97,15 @@ public abstract class BufferedIO extends BufferingManaged {
 	
 	private interface BufferTable {
 		Buffer getOrAllocate(long index);
+		
 		Buffer getIfAllocated(long index);
+		
 		Buffer getForWrite(long index);
+		
 		void cancelAll();
+		
 		boolean removing(Buffer buffer);
+		
 		ISynchronizationPoint<NoException> decreaseSize(long newSize);
 	}
 	

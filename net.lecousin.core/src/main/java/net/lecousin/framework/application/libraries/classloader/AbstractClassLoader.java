@@ -20,12 +20,16 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.provider.IOProviderFromName;
 import net.lecousin.framework.util.Pair;
 
+/**
+ * Abstract class loader.
+ */
 public abstract class AbstractClassLoader extends ClassLoader implements ApplicationClassLoader, IOProviderFromName.Readable {
 
 	static {
 		ClassLoader.registerAsParallelCapable();
 	}
 
+	/** Constructor. */
 	public AbstractClassLoader(AppClassLoader appClassLoader) {
 		this.appClassLoader = appClassLoader;
 	}
@@ -37,19 +41,29 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 		return appClassLoader.getApplication();
 	}
 	
+	/** Return a description of this class loader. */
 	public abstract String getDescription();
 	
+	/** Load the content of a file. */
 	protected abstract byte[] loadFile(String name) throws IOException;
-	protected abstract IO.Readable _getResourceAsIO(String name, byte priority) throws IOException;
-	protected abstract URL _getResourceURL(String name);
+	
+	/** Load a resource as IO.Readable. */
+	protected abstract IO.Readable loadResourceAsIO(String name, byte priority) throws IOException;
+	
+	/** Search a resource. */
+	protected abstract URL loadResourceURL(String name);
 
 	private List<AbstractClassLoader> subLoaders = null;
+	
+	/** Add a class loader from a resource contained by this class loader, for example an inner jar file. */
 	public final void addSubLoader(AbstractClassLoader loader) {
 		if (subLoaders == null) subLoaders = new ArrayList<>();
 		subLoaders.add(loader);
 	}
 	
 	private static HashMap<String,Pair<Thread,JoinPoint<NoException>>> classLoadingSP = new HashMap<>();
+	
+	/** Get the synchronized object for loading the given class. */
 	public static ISynchronizationPoint<NoException> getClassLoadingSP(String name) {
 		synchronized (classLoadingSP) {
 			Pair<Thread,JoinPoint<NoException>> p = classLoadingSP.get(name);
@@ -67,6 +81,8 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 			return p.getValue2();
 		}
 	}
+	
+	/** Release the synchronized object for loading the given class. */
 	public static void releaseClassLoadingSP(String name) {
 		synchronized (classLoadingSP) {
 			Pair<Thread,JoinPoint<NoException>> sp = classLoadingSP.get(name);
@@ -120,14 +136,16 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 			Class<?> c = findLoadedClass(name);
 			if (c != null) return c;
 			try {
-				byte[] file = loadFile(name.replace('.', '/')+".class");
+				byte[] file = loadFile(name.replace('.', '/') + ".class");
 				return defineClass(name, file, 0, file.length);
 			} catch (FileNotFoundException e) {
 				if (subLoaders == null) throw e;
 				for (AbstractClassLoader sub : subLoaders) {
 					try {
 						return sub.loadClassInLibrary(name);
-					} catch (FileNotFoundException e2) {}
+					} catch (FileNotFoundException e2) {
+						// not found
+					}
 				}
 				throw e;
 			}
@@ -138,20 +156,23 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	
 	@Override
 	public final IO.Readable provideReadableIO(String name, byte priority) throws IOException {
-		try { return _getResourceAsIO(name, priority); }
+		try { return loadResourceAsIO(name, priority); }
 		catch (FileNotFoundException e) {
 			if (subLoaders == null) throw e;
 			for (AbstractClassLoader sub : subLoaders) {
 				try {
 					return sub.provideReadableIO(name, priority);
-				} catch (FileNotFoundException e2) {}
+				} catch (FileNotFoundException e2) {
+					// not found
+				}
 			}
 			throw e;
 		}
 	}
 
+	/** Search for a resource. */
 	public final URL getResourceURL(String name) {
-		URL url = _getResourceURL(name);
+		URL url = loadResourceURL(name);
 		if (url == null && subLoaders != null)
 			for (AbstractClassLoader sub : subLoaders) {
 				url = sub.getResourceURL(name);
@@ -160,8 +181,9 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 		return url;
 	}
 	
+	/** Search for all resources with the same path. */
 	public final Iterable<URL> getResourcesURL(String name) {
-		URL url = _getResourceURL(name);
+		URL url = loadResourceURL(name);
 		if (subLoaders == null)
 			return url != null ? Collections.singletonList(url) : null;
 		CompoundCollection<URL> list = new CompoundCollection<>();

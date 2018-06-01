@@ -18,7 +18,9 @@ import net.lecousin.framework.util.UnprotectedStringBuffer;
 public class LoadLibraryExtensionPointsFile extends FullReadLines<Void> {
 	
 	/** Constructor. */
-	public <T extends ClassLoader & ApplicationClassLoader> LoadLibraryExtensionPointsFile(BufferedReadableCharacterStream stream, T classLoader) {
+	public <T extends ClassLoader & ApplicationClassLoader> LoadLibraryExtensionPointsFile(
+		BufferedReadableCharacterStream stream, T classLoader
+	) {
 		super("Initializing extension points: " + stream.getDescription(), stream,
 				Task.PRIORITY_IMPORTANT, IO.OperationType.ASYNCHRONOUS);
 		this.classLoader = classLoader;

@@ -34,10 +34,12 @@ import net.lecousin.framework.plugins.ExtensionPoints;
  */
 public class DefaultLibrariesManager implements LibrariesManager {
 
+	/** Constructor with additional files to load. */
 	public DefaultLibrariesManager(File[] additionalClassPath) {
 		this.additionalClassPath = additionalClassPath;
 	}
 	
+	/** Constructor. */
 	public DefaultLibrariesManager() {
 		this(null);
 	}

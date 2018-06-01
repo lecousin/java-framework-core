@@ -8,8 +8,12 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.exception.NoException;
 
-public class MavenLocalRepository extends MavenRepository {
+/**
+ * Implementation of a Maven repository, using a local directory.
+ */
+public class MavenLocalRepository implements MavenRepository {
 
+	/** Constructor. */
 	public MavenLocalRepository(File dir) {
 		this.dir = dir;
 	}
@@ -27,7 +31,7 @@ public class MavenLocalRepository extends MavenRepository {
 		List<String> versions = new LinkedList<>();
 		for (File f : files) {
 			if (!f.isDirectory()) continue;
-			File p = new File(f, artifactId+'-'+f.getName()+".pom");
+			File p = new File(f, artifactId + '-' + f.getName() + ".pom");
 			if (!p.exists()) continue;
 			versions.add(f.getName());
 		}

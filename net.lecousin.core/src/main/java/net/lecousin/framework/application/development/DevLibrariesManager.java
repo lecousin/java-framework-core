@@ -18,14 +18,14 @@ import net.lecousin.framework.application.Artifact;
 import net.lecousin.framework.application.SplashScreen;
 import net.lecousin.framework.application.Version;
 import net.lecousin.framework.application.VersionSpecification;
-import net.lecousin.framework.application.libraries.artifacts.LoadedLibrary;
-import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor.Dependency;
-import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptorLoader.DependencyNode;
-import net.lecousin.framework.application.libraries.classloader.AbstractClassLoader;
-import net.lecousin.framework.application.libraries.classloader.AppClassLoader;
 import net.lecousin.framework.application.libraries.artifacts.ArtifactsLibrariesManager;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor;
+import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor.Dependency;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptorLoader;
+import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptorLoader.DependencyNode;
+import net.lecousin.framework.application.libraries.artifacts.LoadedLibrary;
+import net.lecousin.framework.application.libraries.classloader.AbstractClassLoader;
+import net.lecousin.framework.application.libraries.classloader.AppClassLoader;
 import net.lecousin.framework.application.libraries.classpath.DefaultApplicationClassLoader;
 import net.lecousin.framework.application.libraries.classpath.LoadLibraryExtensionPointsFile;
 import net.lecousin.framework.application.libraries.classpath.LoadLibraryPluginsFile;
@@ -50,9 +50,16 @@ import net.lecousin.framework.progress.WorkProgress;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.Triple;
 
+/**
+ * Libraries manager for development launcher.
+ */
 public class DevLibrariesManager implements ArtifactsLibrariesManager {
 
-	public DevLibrariesManager(ArrayList<File> devPaths, SplashScreen splash, List<LibraryDescriptorLoader> loaders, File appDir, ApplicationConfiguration cfg, List<Triple<String, String, String>> plugins) {
+	/** Constructor. */
+	public DevLibrariesManager(
+		ArrayList<File> devPaths, SplashScreen splash, List<LibraryDescriptorLoader> loaders,
+		File appDir, ApplicationConfiguration cfg, List<Triple<String, String, String>> plugins
+	) {
 		this.devPaths = devPaths;
 		this.splash = splash;
 		this.loaders = loaders;
@@ -134,7 +141,7 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 				int nb = devPaths.size();
 				long w = stepDevProjects;
 				for (File dir : devPaths) {
-					long step = w/nb--;
+					long step = w / nb--;
 					w -= step;
 					AsyncWork<? extends LibraryDescriptor, Exception> load = null;
 					for (LibraryDescriptorLoader loader : loaders)
@@ -168,7 +175,6 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 		jpDevProjects.listenAsync(new Task.Cpu<Void, NoException>("Load application libraries", Task.PRIORITY_IMPORTANT) {
 			@Override
 			public Void run() {
-				if (jpDevProjects.hasError()) { canStartApp.error(jpDevProjects.getError()); return null; }
 				LibraryDescriptor appLib = null;
 				for (AsyncWork<? extends LibraryDescriptor, Exception> p : devProjects) {
 					LibraryDescriptor lib = p.getResult();
@@ -204,11 +210,13 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 				loadApplicationLibrary(appLib, addPlugins, stepDependencies, stepVersionConflicts);
 				return null;
 			}
-		}, true);
+		}, canStartApp);
 		return defaultClassLoader;
 	}
 	
-	private void loadApplicationLibrary(LibraryDescriptor descr, List<LibraryDescriptor> addPlugins, long stepDependencies, long stepVersionConflicts) {
+	private void loadApplicationLibrary(
+		LibraryDescriptor descr, List<LibraryDescriptor> addPlugins, long stepDependencies, long stepVersionConflicts
+	) {
 		app.getDefaultLogger().debug("Building dependencies tree");
 		if (splash != null) splash.setText("Analyzing dependencies");
 
@@ -222,8 +230,6 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 		resolveConflicts.getOutput().listenInline(new Runnable() {
 			@Override
 			public void run() {
-				if (resolveConflicts.hasError()) { canStartApp.error(resolveConflicts.getError()); return; }
-
 				app.getDefaultLogger().debug("Dependencies analyzed, loading and initializing libraries");
 				
 				if (splash != null) splash.setText("Initializing libraries");
@@ -237,18 +243,22 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 					@Override
 					public Void run() {
 						if (canStartApp.hasError()) return null;
-						if (lib.load.hasError()) { canStartApp.error(lib.load.getError()); return null; }
 						app.getDefaultLogger().debug("Libraries initialized.");
 						ExtensionPoints.allPluginsLoaded();
 						canStartApp.unblock();
 						return null;
 					}
-				}, true);
+				}, canStartApp);
 			}
-		});
+		}, canStartApp);
 	}
 	
-	private void buildDependenciesTree(LibraryDescriptor descr, TreeWithParent<DependencyNode> tree, Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts, List<Pair<String, String>> exclusions, JoinPoint<NoException> jp, List<LibraryDescriptor> addPlugins, WorkProgress progress, long work) {
+	private void buildDependenciesTree(
+		LibraryDescriptor descr, TreeWithParent<DependencyNode> tree,
+		Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts,
+		List<Pair<String, String>> exclusions, JoinPoint<NoException> jp,
+		List<LibraryDescriptor> addPlugins,
+		WorkProgress progress, long work) {
 		// TODO keep optional that were not found to avoid searching again and again
 		List<LibraryDescriptor.Dependency> deps = descr.getDependencies();
 		if (addPlugins != null) {
@@ -258,16 +268,24 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 				newDeps.add(new LibraryDescriptor.Dependency() {
 					@Override
 					public String getGroupId() { return l.getGroupId(); }
+					
 					@Override
 					public String getArtifactId() { return l.getArtifactId(); }
+					
 					@Override
-					public VersionSpecification getVersionSpecification() { return new VersionSpecification.SingleVersion(l.getVersion()); }
+					public VersionSpecification getVersionSpecification() {
+						return new VersionSpecification.SingleVersion(l.getVersion());
+					}
+					
 					@Override
 					public String getClassifier() { return null; }
+					
 					@Override
 					public boolean isOptional() { return false; }
+					
 					@Override
 					public File getKnownLocation() { return l.getDirectory(); }
+					
 					@Override
 					public List<Pair<String, String>> getExcludedDependencies() { return new ArrayList<>(0); }
 				});
@@ -279,8 +297,11 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 				nb--;
 				continue;
 			}
-			app.getDefaultLogger().debug("Dependency: " + descr.getGroupId() + ':' + descr.getArtifactId() + ':' + descr.getVersionString() + " => " + dep.getGroupId() + ':' + dep.getArtifactId() + ':' + dep.getVersionSpecification());
-			long step = work/nb--;
+			app.getDefaultLogger().debug(
+				"Dependency: " + descr.getGroupId() + ':' + descr.getArtifactId() + ':'
+				+ descr.getVersionString() + " => " + dep.getGroupId() + ':' + dep.getArtifactId()
+				+ ':' + dep.getVersionSpecification());
+			long step = work / nb--;
 			work -= step;
 			
 			DependencyNode node = new DependencyNode();
@@ -294,7 +315,8 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 				if (depV == null)
 					node.descr = new AsyncWork<>(null, new Exception("Missing version in dependency"));
 				else
-					node.descr = descr.getLoader().loadLibrary(dep.getGroupId(), dep.getArtifactId(), depV, Task.PRIORITY_RATHER_IMPORTANT);
+					node.descr = descr.getLoader().loadLibrary(
+						dep.getGroupId(), dep.getArtifactId(), depV, Task.PRIORITY_RATHER_IMPORTANT);
 			}
 			TreeWithParent.Node<DependencyNode> n;
 			synchronized (tree) { n = tree.add(node); }
@@ -325,19 +347,23 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 							if (!excl.contains(e))
 								excl.add(e);
 						if (progress != null) progress.progress(step / 2);
-						buildDependenciesTree(node.descr.getResult(), n.getSubNodes(), artifacts, excl, jp, null, progress, step - step / 2);
+						buildDependenciesTree(node.descr.getResult(), n.getSubNodes(), artifacts, excl,
+							jp, null, progress, step - step / 2);
 					} else {
 						if (progress != null) progress.progress(step);
 						if (dep.isOptional()) {
 							// optional => no error
-							app.getDefaultLogger().debug("Dependency " + dep.getGroupId() + ':' + dep.getArtifactId() + ':' + dep.getVersionSpecification() + " not found, but optional");
+							app.getDefaultLogger().debug(
+								"Dependency " + dep.getGroupId() + ':' + dep.getArtifactId() + ':'
+								+ dep.getVersionSpecification() + " not found, but optional");
 							synchronized (tree) {
 								tree.removeInstance(node);
 							}
 							synchronized (artifacts) {
 								l.remove(n);
 								if (l.isEmpty()) {
-									Map<String, List<TreeWithParent.Node<DependencyNode>>> group = artifacts.get(dep.getGroupId());
+									Map<String, List<TreeWithParent.Node<DependencyNode>>> group =
+										artifacts.get(dep.getGroupId());
 									group.remove(dep.getArtifactId());
 									if (group.isEmpty())
 										artifacts.remove(dep.getGroupId());
@@ -362,17 +388,22 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 	}
 	
 	private class ResolveVersionConflicts extends Task.Cpu<Map<String, LibraryDescriptor>, Exception> {
-		private ResolveVersionConflicts(Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts, LibraryDescriptorLoader resolver, WorkProgress progress, long work) {
+		private ResolveVersionConflicts(
+			Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts,
+			LibraryDescriptorLoader resolver, WorkProgress progress, long work
+		) {
 			super("Resolve library version conflicts", Task.PRIORITY_IMPORTANT);
 			this.artifacts = artifacts;
 			this.resolver = resolver;
 			this.progress = progress;
 			this.work = work;
 		}
+		
 		private Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts;
 		private LibraryDescriptorLoader resolver;
 		private WorkProgress progress;
 		private long work;
+		
 		@Override
 		public Map<String, LibraryDescriptor> run() throws Exception {
 			if (progress != null) progress.setText("Resolving dependencies versions");
@@ -384,7 +415,10 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 					Map<Version, List<TreeWithParent.Node<DependencyNode>>> artifactVersions = new HashMap<>();
 					for (TreeWithParent.Node<DependencyNode> node : artifact.getValue()) {
 						if (node.getElement().descr.hasError()) {
-							app.getDefaultLogger().error("Dependency ignored: " + node.getElement().dep.getGroupId() + ':' + node.getElement().dep.getArtifactId() + " because of loading error", node.getElement().descr.getError());
+							app.getDefaultLogger().error(
+								"Dependency ignored: " + node.getElement().dep.getGroupId() + ':'
+								+ node.getElement().dep.getArtifactId() + " because of loading error",
+								node.getElement().descr.getError());
 							continue;
 						}
 						Version version = node.getElement().descr.getResult().getVersion();
@@ -402,16 +436,21 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 					}
 					if (artifactVersions.size() == 1) {
 						Version version = artifactVersions.keySet().iterator().next();
-						versions.put(group.getKey() + ':' + artifact.getKey(), artifactVersions.get(version).get(0).getElement().descr.getResult());
+						versions.put(group.getKey() + ':' + artifact.getKey(),
+							artifactVersions.get(version).get(0).getElement().descr.getResult());
 						continue;
 					}
 					Version version = resolver.resolveVersionConflict(group.getKey(), artifact.getKey(), artifactVersions);
 					if (version == null) {
 						// error
-						throw new Exception("Unable to resolve version conflict for library " + group.getKey() + ':' + artifact.getKey());
+						throw new Exception("Unable to resolve version conflict for library " + group.getKey() + ':'
+							+ artifact.getKey());
 					}
-					if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug("Version conflict for " + group.getKey() + ':' + artifact.getKey() + " resolved to " + artifactVersions.get(version).get(0).getElement().descr.getResult().getVersionString());
-					versions.put(group.getKey() + ':' + artifact.getKey(), artifactVersions.get(version).get(0).getElement().descr.getResult());
+					if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(
+						"Version conflict for " + group.getKey() + ':' + artifact.getKey() + " resolved to "
+							+ artifactVersions.get(version).get(0).getElement().descr.getResult().getVersionString());
+					versions.put(group.getKey() + ':' + artifact.getKey(),
+						artifactVersions.get(version).get(0).getElement().descr.getResult());
 				}
 			}
 			// TODO progress by step
@@ -427,12 +466,15 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 			this.versions = versions;
 			this.addPlugins = addPlugins;
 		}
+		
 		private Lib lib;
 		private Map<String, LibraryDescriptor> versions;
 		private List<LibraryDescriptor> addPlugins;
+		
 		@Override
 		public Void run() {
-			if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug("Loading " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString());
+			if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(
+				"Loading " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString());
 			
 			JoinPoint<Exception> jp = new JoinPoint<>();
 			for (LibraryDescriptor.Dependency dep : lib.descr.getDependencies()) {
@@ -474,12 +516,17 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 			jp.start();
 			File file = lib.descr.getClasses();
 			if (file != null) {
-				if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString() + " loaded from " + file.getAbsolutePath());
-				lib.library = new LoadedLibrary(new Artifact(lib.descr.getGroupId(), lib.descr.getArtifactId(), lib.descr.getVersion()), appClassLoader.add(file, null));
+				if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(
+					lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString()
+					+ " loaded from " + file.getAbsolutePath());
+				lib.library = new LoadedLibrary(new Artifact(lib.descr.getGroupId(), lib.descr.getArtifactId(),
+					lib.descr.getVersion()), appClassLoader.add(file, null));
 				jp.listenAsync(new Init(lib), lib.load);
 			} else {
-				if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug("No classes in " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString());
-				lib.library = new LoadedLibrary(new Artifact(lib.descr.getGroupId(), lib.descr.getArtifactId(), lib.descr.getVersion()), null);
+				if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug("No classes in " + lib.descr.getGroupId()
+					+ ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString());
+				lib.library = new LoadedLibrary(new Artifact(lib.descr.getGroupId(), lib.descr.getArtifactId(),
+					lib.descr.getVersion()), null);
 				jp.listenInline(lib.load);
 			}
 			return null;
@@ -491,24 +538,32 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 			super("Initialize library " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), Task.PRIORITY_IMPORTANT);
 			this.lib = lib;
 		}
+		
 		private Lib lib;
+		
 		@SuppressWarnings("resource")
 		@Override
 		public Void run() {
-			if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug("Initializing " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString());
+			if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(
+				"Initializing " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':'
+				+ lib.descr.getVersionString());
 			
 			JoinPoint<Exception> jp = new JoinPoint<>();
 			// extension points
 			AsyncWork<Void, Exception> ep = null;
 			try {
-				IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader()).provideReadableIO("META-INF/net.lecousin/extensionpoints", Task.PRIORITY_IMPORTANT);
-				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.PRIORITY_IMPORTANT, 1024, Task.PRIORITY_RATHER_IMPORTANT, 8);
+				IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader()).provideReadableIO(
+					"META-INF/net.lecousin/extensionpoints", Task.PRIORITY_IMPORTANT);
+				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.PRIORITY_IMPORTANT, 1024,
+					Task.PRIORITY_RATHER_IMPORTANT, 8);
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(bio, StandardCharsets.UTF_8, 256, 32);
 				ep = new LoadLibraryExtensionPointsFile(stream, lib.library.getClassLoader()).start();
 				jp.addToJoin(ep);
 			} catch (FileNotFoundException e) {
+				// ignore
 			} catch (Throwable t) {
-				lib.load.error(new Exception("Error reading file META-INF/net.lecousin/extensionpoints from library " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), t));
+				lib.load.error(new Exception("Error reading file META-INF/net.lecousin/extensionpoints from library "
+					+ lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), t));
 				return null;
 			}
 			// custom extension points
@@ -517,19 +572,24 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 				String path = custom.getPluginConfigurationFilePath();
 				if (path == null) continue;
 				try {
-					IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader()).provideReadableIO(path, Task.PRIORITY_IMPORTANT);
+					IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader()).provideReadableIO(
+						path, Task.PRIORITY_IMPORTANT);
 					previous = custom.loadPluginConfiguration(io, lib.library.getClassLoader(), previous);
 					jp.addToJoin(previous);
 				} catch (FileNotFoundException e) {
+					// ignore
 				} catch (Throwable t) {
-					lib.load.error(new Exception("Error reading file " + path + " from library " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), t));
+					lib.load.error(new Exception("Error reading file " + path + " from library " + lib.descr.getGroupId()
+						+ ':' + lib.descr.getArtifactId(), t));
 					return null;
 				}
 			}
 			// plugins
 			try {
-				IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader()).provideReadableIO("META-INF/net.lecousin/plugins", Task.PRIORITY_IMPORTANT);
-				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.PRIORITY_IMPORTANT, 1024, Task.PRIORITY_RATHER_IMPORTANT, 8);
+				IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader()).provideReadableIO(
+					"META-INF/net.lecousin/plugins", Task.PRIORITY_IMPORTANT);
+				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.PRIORITY_IMPORTANT, 1024,
+					Task.PRIORITY_RATHER_IMPORTANT, 8);
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(bio, StandardCharsets.UTF_8, 256, 32);
 				LoadLibraryPluginsFile task = new LoadLibraryPluginsFile(stream, lib.library.getClassLoader());
 				SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
@@ -539,15 +599,20 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 					previous.listenInlineSP(() -> { task.start().listenInlineSP(sp); }, sp);
 				jp.addToJoin(sp);
 			} catch (FileNotFoundException e) {
+				// ignore
 			} catch (Throwable t) {
-				lib.load.error(new Exception("Error reading file META-INF/net.lecousin/plugins from library " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), t));
+				lib.load.error(new Exception("Error reading file META-INF/net.lecousin/plugins from library "
+					+ lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), t));
 				return null;
 			}
 			jp.start();
 			jp.listenInline(new Runnable() {
 				@Override
 				public void run() {
-					if (jp.hasError()) { if (!lib.load.hasError()) lib.load.error(jp.getError()); return; }
+					if (jp.hasError()) {
+						if (!lib.load.hasError()) lib.load.error(jp.getError());
+						return;
+					}
 					lib.load.unblock();
 				}
 			});
@@ -561,7 +626,10 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 	}
 
 	@Override
-	public AsyncWork<LoadedLibrary, Exception> loadNewLibrary(String groupId, String artifactId, VersionSpecification version, boolean optional, byte priority, WorkProgress progress, long work) {
+	public AsyncWork<LoadedLibrary, Exception> loadNewLibrary(
+		String groupId, String artifactId, VersionSpecification version, boolean optional, byte priority,
+		WorkProgress progress, long work
+	) {
 		// TODO progress
 		// TODO lock to load only one library
 		String key = groupId + ':' + artifactId;
@@ -600,7 +668,8 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 					result.error(error);
 					return;
 				}
-				AsyncWork<? extends LibraryDescriptor, Exception> loadDescr = loaders.get(loaderIndex.get()).loadLibrary(groupId, artifactId, version, priority);
+				AsyncWork<? extends LibraryDescriptor, Exception> loadDescr =
+					loaders.get(loaderIndex.get()).loadLibrary(groupId, artifactId, version, priority);
 				Runnable next = this;
 				loadDescr.listenInline(new Runnable() {
 					@Override
@@ -623,28 +692,24 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 						}
 						buildDependenciesTree(l.descr, tree, artifacts, exclusions, treeDone, null, null, 0);
 						treeDone.start();
-						ResolveVersionConflicts resolveConflicts = new ResolveVersionConflicts(artifacts, l.descr.getLoader(), null, 0);
+						ResolveVersionConflicts resolveConflicts =
+							new ResolveVersionConflicts(artifacts, l.descr.getLoader(), null, 0);
 						resolveConflicts.startOn(treeDone, true);
-						resolveConflicts.getOutput().listenInline(new Runnable() {
-							@Override
-							public void run() {
-								if (resolveConflicts.hasError()) { result.error(resolveConflicts.getError()); return; }
+						resolveConflicts.getOutput().listenInline(() -> {
+							app.getDefaultLogger().debug("Dependencies analyzed, loading and initializing libraries");
 
-								app.getDefaultLogger().debug("Dependencies analyzed, loading and initializing libraries");
-
-								LoadLibrary load = new LoadLibrary(l, resolveConflicts.getResult(), null);
-								load.start();
-								l.load.listenInline(new Runnable() {
-									@Override
-									public void run() {
-										if (l.load.hasError())
-											result.error(l.load.getError());
-										else
-											result.unblockSuccess(l.library);
-									}
-								});
-							}
-						});
+							LoadLibrary load = new LoadLibrary(l, resolveConflicts.getResult(), null);
+							load.start();
+							l.load.listenInline(new Runnable() {
+								@Override
+								public void run() {
+									if (l.load.hasError())
+										result.error(l.load.getError());
+									else
+										result.unblockSuccess(l.library);
+								}
+							});
+						}, result);
 					}
 				});
 			}
@@ -677,6 +742,7 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 		return appClassLoader.getResourceIO(path, priority);
 	}
 
+	/** Open a resource from the given class loader. */
 	public IO.Readable getResourceFrom(ClassLoader cl, String path, byte priority) {
 		if (cl instanceof IOProviderFromName.Readable)
 			try { return ((IOProviderFromName.Readable)cl).provideReadableIO(path, priority); }
@@ -779,15 +845,18 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 	*/
 	
 	Task.Cpu<ISynchronizationPoint<Exception>, Exception> startApp() {
-		Task.Cpu<ISynchronizationPoint<Exception>, Exception> task = new Task.Cpu<ISynchronizationPoint<Exception>, Exception>(app.getGroupId() + ':' + app.getArtifactId() + ':' + app.getVersion().toString(), Task.PRIORITY_NORMAL) {
+		Task.Cpu<ISynchronizationPoint<Exception>, Exception> task =
+			new Task.Cpu<ISynchronizationPoint<Exception>, Exception>(
+				app.getGroupId() + ':' + app.getArtifactId() + ':' + app.getVersion().toString(), Task.PRIORITY_NORMAL
+			) {
 			@Override
 			public ISynchronizationPoint<Exception> run() throws Exception {
-				if (splash != null) splash.setText("Starting application "+appCfg.name);
+				if (splash != null) splash.setText("Starting application " + appCfg.name);
 				@SuppressWarnings("rawtypes")
 				Class cl;
 				cl = appLib.library.getClassLoader().loadClass(appCfg.clazz);
 				if (!ApplicationBootstrap.class.isAssignableFrom(cl))
-					throw new Exception("Application class "+appCfg.clazz+" must implements ApplicationBootstrap");
+					throw new Exception("Application class " + appCfg.clazz + " must implements ApplicationBootstrap");
 				ApplicationBootstrap startup = (ApplicationBootstrap)cl.newInstance();
 				WorkProgress progress = splash != null ? splash : new FakeWorkProgress();
 				ISynchronizationPoint<Exception> start = startup.start(app, progress);
@@ -797,7 +866,9 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 					public void run() {
 						/*
 						long end = System.nanoTime();
-						app.getConsole().out("Application started in "+(end-app.getStartTime())/1000000+"ms. ("+(start2-app.getStartTime())/1000000+"ms. of preparation, "+(start3.get()-start2)/1000000+"ms. loading libraries and "+(end-start3.get())/1000000+"ms. initializing application)");
+						app.getConsole().out("Application started in "+(end-app.getStartTime())/1000000+"ms. ("
+						+(start2-app.getStartTime())/1000000+"ms. of preparation, "+(start3.get()-start2)/1000000
+						+"ms. loading libraries and "+(end-start3.get())/1000000+"ms. initializing application)");
 						app.getConsole().out(Threading.printStats());
 						*/
 						splash = null;

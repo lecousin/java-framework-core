@@ -25,8 +25,17 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.event.AsyncEvent;
 import net.lecousin.framework.progress.WorkProgress;
 
+/**
+ * Splash screen that may be used while loading an application.
+ * It starts a new thread so the loading process can continue while the window is initializing,
+ * and avoid slowing down the loading process.
+ */
 public class SplashScreen extends Thread implements WorkProgress {
 	
+	/** Constructor.
+	 * @param devMode if true the screen is automatically closed after 20 seconds if the application is still loading.
+	 * 				This may be useful when debugging because else the splash screen remains in front of other windows.
+	 */
 	public SplashScreen(boolean devMode) {
 		super("Splash Screen");
 		this.devMode = devMode;
@@ -35,7 +44,9 @@ public class SplashScreen extends Thread implements WorkProgress {
 	
 	private boolean devMode;
 	JWindow win;
-	private JPanel logoContainer, titleContainer, bottom;
+	private JPanel logoContainer;
+	private JPanel titleContainer;
+	private JPanel bottom;
 	private JLabel progressText;
 	private JLabel progressSubText;
 	private JProgressBar progressBar;
@@ -46,11 +57,14 @@ public class SplashScreen extends Thread implements WorkProgress {
 	private JLabel title = null;
 	private boolean isCustomLogo = false;
 	
-	private String text = "", subText = "";
-	private long amount = 10000, worked = 0;
+	private String text = "";
+	private String subText = "";
+	private long amount = 10000;
+	private long worked = 0;
 	private SynchronizationPoint<Exception> synch = new SynchronizationPoint<>();
 	private AsyncEvent event = null;
 	
+	/** Close this window. */
 	public void close() {
 		JWindow w;
 		synchronized (this) {
@@ -156,11 +170,13 @@ public class SplashScreen extends Thread implements WorkProgress {
 		byte[] buffer = new byte[size];
 		try (InputStream in = getClass().getClassLoader().getResourceAsStream("net/lecousin/framework/core/logo_110x40.png")) {
 			do {
-				int nb = in.read(buffer, pos, size-pos);
+				int nb = in.read(buffer, pos, size - pos);
 				if (nb <= 0) break;
 				pos += nb;
 			} while (pos < size);
-		} catch (IOException e) {}
+		} catch (IOException e) {
+			// ignore, no logo
+		}
 		if (pos == size) {
 			synchronized (this) {
 				if (win != null)
@@ -225,9 +241,10 @@ public class SplashScreen extends Thread implements WorkProgress {
 		if (!win.isVisible())
 			win.setVisible(true);
 		Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-		win.setLocation(screen.width/2 - width/2, screen.height/2 - height/2);
+		win.setLocation(screen.width / 2 - width / 2, screen.height / 2 - height / 2);
 	}
 	
+	/** Change the logo. */
 	public synchronized void setLogo(ImageIcon logo, boolean isCustom) {
 		if (win == null) return;
 		this.logo = new JLabel(logo);
@@ -241,28 +258,32 @@ public class SplashScreen extends Thread implements WorkProgress {
 		update();
 	}
 
+	/** Load the default logo. */
 	public void loadDefaultLogo() {
 		int pos = 0;
 		int size = 18296;
 		byte[] buffer = new byte[size];
 		try (InputStream in = getClass().getClassLoader().getResourceAsStream("net/lecousin/framework/core/logo_200x200.png")) {
 			do {
-				int nb = in.read(buffer, pos, size-pos);
+				int nb = in.read(buffer, pos, size - pos);
 				if (nb <= 0) break;
 				pos += nb;
 			} while (pos < size);
-		} catch (IOException e) {}
+		} catch (IOException e) {
+			// ignore, no logo
+		}
 		if (pos == size)
 			setLogo(new ImageIcon(buffer), false);
 	}
 	
-	
+	/** Show application name. */
 	public synchronized void setApplicationName(String name) {
 		if (win == null) return;
-		title = new JLabel("Starting "+name+"...");
+		title = new JLabel("Starting " + name + "...");
 		update();
 	}
 	
+	/** End of initial startup. */
 	public synchronized void endInit() {
 		if (win == null) return;
 		progressText.setText("Starting framework...");
@@ -278,62 +299,75 @@ public class SplashScreen extends Thread implements WorkProgress {
 		amount = work;
 		updateProgress();
 	}
+	
 	@Override
 	public long getAmount() {
 		return amount;
 	}
+	
 	@Override
 	public synchronized void setPosition(long position) {
 		if (win == null) return;
 		worked = position;
 		updateProgress();
 	}
+	
 	@Override
 	public long getPosition() {
 		return worked;
 	}
+	
 	@Override
 	public long getRemainingWork() {
-		return amount-worked;
+		return amount - worked;
 	}
+	
 	@Override
-	public synchronized void progress(long amount_done) {
+	public synchronized void progress(long amountDone) {
 		if (win == null) return;
-		worked += amount_done;
+		worked += amountDone;
 		updateProgress();
 	}
+	
 	@Override
 	public synchronized void setText(String text) {
 		if (win == null) return;
 		this.text = text;
 		updateProgress();
 	}
+	
 	@Override
 	public String getText() {
 		return text;
 	}
+	
 	@Override
 	public synchronized void setSubText(String text) {
 		if (win == null) return;
 		subText = text;
 		updateProgress();
 	}
+	
 	@Override
 	public String getSubText() {
 		return subText;
 	}
+	
 	@Override
 	public void done() {
 		close(); // close window and unblock synch
 	}
+	
 	@Override
 	public void error(Exception error) {
 		synch.error(error);
 	}
+	
 	@Override
 	public void cancel(CancelException reason) {
 		synch.cancel(reason);
 	}
+	
 	@Override
 	public ISynchronizationPoint<Exception> getSynch() {
 		return synch;
@@ -346,6 +380,7 @@ public class SplashScreen extends Thread implements WorkProgress {
 			event.addListener(onchange);
 		}
 	}
+	
 	@Override
 	public void unlisten(Runnable onchange) {
 		synchronized (this) {
@@ -362,7 +397,7 @@ public class SplashScreen extends Thread implements WorkProgress {
 			progressText.setText(text);
 			progressSubText.setText(subText);
 		}
-		progressBar.setValue((int)(50+(10000*worked/amount)));
+		progressBar.setValue((int)(50 + (10000 * worked / amount)));
 		bottom.invalidate();
 		synchronized (this) {
 			if (event != null) event.fire();

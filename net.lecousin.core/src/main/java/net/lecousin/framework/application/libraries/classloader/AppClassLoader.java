@@ -19,8 +19,12 @@ import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.provider.FileIOProvider;
 import net.lecousin.framework.io.provider.IOProvider;
 
+/**
+ * Used to aggregate class loaders for an application.
+ */
 public class AppClassLoader {
 	
+	/** Constructor. */
 	public AppClassLoader(Application app) {
 		this.app = app;
 	}
@@ -32,6 +36,7 @@ public class AppClassLoader {
 		return app;
 	}
 	
+	/** Add a library. */
 	public AbstractClassLoader add(File location, Collection<String> exportedJars) {
 		AbstractClassLoader cl;
 		if (location.isDirectory())
@@ -52,25 +57,29 @@ public class AppClassLoader {
 			this.parent = parent;
 			this.jar = jar;
 		}
+		
 		private AbstractClassLoader parent;
 		private String jar;
+		
 		@Override
 		public String getDescription() {
-			return parent.getDescription()+"/"+jar;
+			return parent.getDescription() + "/" + jar;
 		}
 		
 		@Override
 		public IO.Readable provideIOReadable(byte priority) throws IOException {
-			return parent._getResourceAsIO(jar, priority);
+			return parent.loadResourceAsIO(jar, priority);
 		}
 	}
 	
+	/** Load a class, starting to search in a specific library (typically the one trying to load the class). */
 	public Class<?> loadClassFrom(String name, AbstractClassLoader first) throws ClassNotFoundException {
 		// try on the system one
-        try { return AppClassLoader.class.getClassLoader().loadClass(name); } catch (ClassNotFoundException e) {}
+		try { return AppClassLoader.class.getClassLoader().loadClass(name); }
+		catch (ClassNotFoundException e) { /* not found. */ }
 		Class<?> c = null;
-        // check it is not loaded on one of the library
-    	for (int i = 0; i < libs.size(); i++) {
+		// check it is not loaded on one of the library
+		for (int i = 0; i < libs.size(); i++) {
     		AbstractClassLoader cl = libs.get(i);
     		c = cl.isLoaded(name);
     		if (c != null) return c;
@@ -81,6 +90,7 @@ public class AppClassLoader {
     			c = first.loadClassInLibrary(name);
     			if (c != null) return c;
     		} catch (FileNotFoundException e) {
+    			// not found
     		} catch (IOException e) {
     			throw new ClassNotFoundException(e.getMessage());
     		}
@@ -93,19 +103,21 @@ public class AppClassLoader {
     			c = cl.loadClassInLibrary(name);
     			if (c != null) return c;
     		} catch (FileNotFoundException e) {
+    			// not found
     		} catch (IOException e) {
     			throw new ClassNotFoundException(e.getMessage());
     		}
     	}
-    		StringBuilder msg = new StringBuilder(512);
-    		msg.append("Class not found: ").append(name);
-    		msg.append("\r\nFrom class loader: ").append(first);
-    		msg.append("\r\nlibraries currently registered:");
-    		for (int i = 0; i < libs.size(); i++)
-    			msg.append("\r\n - ").append(libs.get(i).toString());
-        throw new ClassNotFoundException(msg.toString());
+		StringBuilder msg = new StringBuilder(512);
+		msg.append("Class not found: ").append(name);
+		msg.append("\r\nFrom class loader: ").append(first);
+		msg.append("\r\nlibraries currently registered:");
+		for (int i = 0; i < libs.size(); i++)
+			msg.append("\r\n - ").append(libs.get(i).toString());
+		throw new ClassNotFoundException(msg.toString());
 	}
 
+	/** Load a resource. */
 	@SuppressWarnings("resource")
 	public IO.Readable getResourceIO(String name, byte priority) {
 		if (name.length() == 0) return null;
@@ -113,7 +125,8 @@ public class AppClassLoader {
 		IO.Readable io = null;
     	for (int i = 0; i < libs.size(); i++) {
     		AbstractClassLoader cl = libs.get(i);
-   			try { io = cl.provideReadableIO(name, priority); } catch (IOException e) {}
+   			try { io = cl.provideReadableIO(name, priority); }
+   			catch (IOException e) { /* ignore */ }
     		if (io != null) return io;
     	}
        	// then try on the core one
@@ -122,18 +135,20 @@ public class AppClassLoader {
         return new IOFromInputStream(in, name, Threading.getUnmanagedTaskManager(), priority);
 	}
 	
+	/** Search a resource. */
 	public URL getResourceURL(String name) {
 		if (name.length() == 0) return null;
 		if (name.charAt(0) == '/') name = name.substring(1);
     	for (int i = 0; i < libs.size(); i++) {
     		AbstractClassLoader cl = libs.get(i);
-    		URL url = cl._getResourceURL(name);
+    		URL url = cl.loadResourceURL(name);
     		if (url != null) return url;
     	}
-       	// then try on the core one
+    	// then try on the core one
     	return AppClassLoader.class.getClassLoader().getResource(name);
 	}
 	
+	/** Load a resource, looking first into the given library. */
 	@SuppressWarnings("resource")
 	public InputStream getResourceAsStreamFrom(String name, AbstractClassLoader first) {
 		if (name.length() == 0) return null;
@@ -141,13 +156,15 @@ public class AppClassLoader {
 		IO.Readable io = null;
     	// try with the first one
     	if (first != null)
-   			try { io = first.provideReadableIO(name, Task.PRIORITY_RATHER_IMPORTANT); } catch (IOException e) {}
+   			try { io = first.provideReadableIO(name, Task.PRIORITY_RATHER_IMPORTANT); }
+    		catch (IOException e) { /* not there */ }
     	// then, try on other libraries
-        if (io == null) {
+    	if (io == null) {
         	for (int i = 0; i < libs.size(); i++) {
         		AbstractClassLoader cl = libs.get(i);
         		if (cl == first) continue;
-       			try { io = cl.provideReadableIO(name, Task.PRIORITY_RATHER_IMPORTANT); } catch (IOException e) {}
+       			try { io = cl.provideReadableIO(name, Task.PRIORITY_RATHER_IMPORTANT); }
+       			catch (IOException e) { /* not there */ }
         		if (io != null) break;
         	}
         }
@@ -157,6 +174,7 @@ public class AppClassLoader {
         return AppClassLoader.class.getClassLoader().getResourceAsStream(name);
 	}
 	
+	/** Search a resource, looking first into the given library. */
 	public URL getResourceFrom(String name, AbstractClassLoader first) {
 		if (name.length() == 0) return null;
 		if (name.charAt(0) == '/') name = name.substring(1);
@@ -165,7 +183,7 @@ public class AppClassLoader {
     	if (first != null)
    			url = first.getResourceURL(name);
     	// then, try on other libraries
-        if (url == null) {
+    	if (url == null) {
         	for (int i = 0; i < libs.size(); i++) {
         		AbstractClassLoader cl = libs.get(i);
         		if (cl == first) continue;
@@ -178,6 +196,7 @@ public class AppClassLoader {
         return url;
 	}
 
+	/** Search for resources. */
 	public Enumeration<URL> getResources(String name) throws IOException {
 		if (name.length() == 0) return null;
 		if (name.charAt(0) == '/') name = name.substring(1);

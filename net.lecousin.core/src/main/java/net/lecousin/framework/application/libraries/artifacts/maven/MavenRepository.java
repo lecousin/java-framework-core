@@ -4,10 +4,15 @@ import java.util.List;
 
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 
-public abstract class MavenRepository {
+/**
+ * Interface for a maven repository implementation.
+ */
+public interface MavenRepository {
 
-	public abstract List<String> getAvailableVersions(String groupId, String artifactId);
+	/** Return the list of available versions for the given artifact. */
+	List<String> getAvailableVersions(String groupId, String artifactId);
 	
-	public abstract AsyncWork<MavenPOM, Exception> load(String groupId, String artifactId, String version, MavenPOMLoader pomLoader, byte priority);
+	/** Load an artifact's POM file. */
+	AsyncWork<MavenPOM, Exception> load(String groupId, String artifactId, String version, MavenPOMLoader pomLoader, byte priority);
 	
 }

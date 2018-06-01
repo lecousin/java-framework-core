@@ -27,8 +27,12 @@ import net.lecousin.framework.xml.XMLStreamEvents.ElementContext;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 import net.lecousin.framework.xml.XMLStreamReader;
 
+/**
+ * Implementation of LibraryDescriptor from a Maven POM file.
+ */
 public class MavenPOM implements LibraryDescriptor {
 	
+	/** Load a POM file. */
 	@SuppressWarnings("resource")
 	public static AsyncWork<MavenPOM, Exception> load(File pomFile, byte priority, MavenPOMLoader pomLoader, boolean fromRepository) {
 		AsyncWork<MavenPOM, Exception> result = new AsyncWork<>();
@@ -55,25 +59,13 @@ public class MavenPOM implements LibraryDescriptor {
 					AsyncWork<XMLStreamReader, Exception> startXMLReader = XMLStreamReader.start(bio, size);
 					Reader read = pom.new Reader(startXMLReader, priority, fromRepository, pomFile, pomLoader);
 					read.startOn(startXMLReader, true);
-					read.getOutput().listenInline(new Runnable() {
-						@Override
-						public void run() {
-							if (read.hasError()) { result.error(read.getError()); return; }
-							if (read.isCancelled()) { result.cancel(read.getCancelEvent()); return; }
-							if (pom.parentLoading == null) {
-								pom.new Finalize(result, priority).start();
-								return;
-							}
-							pom.parentLoading.listenInline(new Runnable() {
-								@Override
-								public void run() {
-									if (pom.parentLoading.hasError()) { result.error(pom.parentLoading.getError()); return; }
-									if (pom.parentLoading.isCancelled()) { result.cancel(pom.parentLoading.getCancelEvent()); return; }
-									pom.new Finalize(result, priority).start();
-								}
-							});
+					read.getOutput().listenInline(() -> {
+						if (pom.parentLoading == null) {
+							pom.new Finalize(result, priority).start();
+							return;
 						}
-					});
+						pom.parentLoading.listenInline(() -> { pom.new Finalize(result, priority).start(); }, result);
+					}, result);
 				}), true);
 				return null;
 			}
@@ -104,6 +96,7 @@ public class MavenPOM implements LibraryDescriptor {
 	private static class Build {
 		private String outputDirectory;
 	}
+	
 	private Build build = new Build();
 	
 	private Map<String, String> properties = new HashMap<>();
@@ -111,6 +104,7 @@ public class MavenPOM implements LibraryDescriptor {
 	private List<Dependency> dependencies = new LinkedList<>();
 	private List<Dependency> dependencyManagement = new LinkedList<>();
 	
+	/** Dependency specified in the POM file. */
 	public class Dependency implements LibraryDescriptor.Dependency {
 		private String groupId;
 		private String artifactId;
@@ -124,16 +118,21 @@ public class MavenPOM implements LibraryDescriptor {
 		
 		@Override
 		public String getGroupId() { return groupId; }
+		
 		@Override
 		public String getArtifactId() { return artifactId; }
+		
 		@Override
 		public VersionSpecification getVersionSpecification() {
 			return parseVersionSpecification(version);
 		}
+		
 		@Override
 		public String getClassifier() { return classifier; }
+		
 		@Override
 		public boolean isOptional() { return optional; }
+		
 		@Override
 		public File getKnownLocation() {
 			if (systemPath == null) return null;
@@ -146,15 +145,18 @@ public class MavenPOM implements LibraryDescriptor {
 			}
 			return null;
 		}
+		
 		@Override
 		public List<Pair<String, String>> getExcludedDependencies() {
 			return exclusions;
 		}
 	}
 	
+	/** Additional repository location specified in the POM. */
 	public static class Repository {
-		
+		// TODO
 	}
+	
 	private List<Repository> repositories = new LinkedList<>();
 	
 	private static class Profile {
@@ -172,6 +174,7 @@ public class MavenPOM implements LibraryDescriptor {
 		private List<Dependency> dependencies = new LinkedList<>();
 		private List<Repository> repositories = new LinkedList<>();
 	}
+	
 	private static class ActivationOS {
 		private String name;
 		private String family;
@@ -188,10 +191,13 @@ public class MavenPOM implements LibraryDescriptor {
 	
 	@Override
 	public String getGroupId() { return groupId; }
+	
 	@Override
 	public String getArtifactId() { return artifactId; }
+	
 	@Override
 	public String getVersionString() { return version; }
+	
 	@Override
 	public Version getVersion() {
 		return new Version(version);
@@ -201,10 +207,12 @@ public class MavenPOM implements LibraryDescriptor {
 	public File getDirectory() {
 		return pomFile.getParentFile();
 	}
+	
 	@Override
 	public boolean hasClasses() {
 		return "jar".equals(packaging) || "bundle".equals(packaging);
 	}
+	
 	@Override
 	public File getClasses() {
 		if (!hasClasses()) return null;
@@ -232,17 +240,20 @@ public class MavenPOM implements LibraryDescriptor {
 	}
 
 	private class Reader extends Task.Cpu<Void, Exception> {
-		Reader(AsyncWork<XMLStreamReader, Exception> startXMLReader, byte priority, boolean fromRepository, File pomFile, MavenPOMLoader pomLoader) {
+		private Reader(AsyncWork<XMLStreamReader, Exception> startXMLReader, byte priority,
+			boolean fromRepository, File pomFile, MavenPOMLoader pomLoader) {
 			super("Read POM " + pomFile.getAbsolutePath(), priority);
 			this.startXMLReader = startXMLReader;
 			this.fromRepository = fromRepository;
 			this.pomFile = pomFile;
 			this.pomLoader = pomLoader;
 		}
+		
 		private AsyncWork<XMLStreamReader, Exception> startXMLReader;
 		private boolean fromRepository;
 		private File pomFile;
 		private MavenPOMLoader pomLoader;
+		
 		@Override
 		public Void run() throws Exception {
 			if (startXMLReader.hasError()) throw startXMLReader.getError();
@@ -292,7 +303,9 @@ public class MavenPOM implements LibraryDescriptor {
 				if (parentLoading == null) {
 					// TODO try to resolve properties ?
 					// TODO add repositories
-					parentLoading = pomLoader.loadLibrary(parentGroupId, parentArtifactId, new VersionSpecification.SingleVersion(new Version(parentVersion)), getPriority());
+					parentLoading = pomLoader.loadLibrary(
+						parentGroupId, parentArtifactId, new VersionSpecification.SingleVersion(new Version(parentVersion)),
+						getPriority());
 				}
 			}
 			return null;
@@ -551,13 +564,21 @@ public class MavenPOM implements LibraryDescriptor {
 			super("Finalize POM loading", priority);
 			this.result = result;
 		}
+		
 		private AsyncWork<MavenPOM, Exception> result;
+		
 		@Override
 		public Void run() {
 			Map<String, String> finalProperties = new HashMap<>();
 			if (parentLoading != null) {
-				if (parentLoading.hasError()) { result.error(new Exception("Error loading parent POM", parentLoading.getError())); return null; }
-				if (parentLoading.isCancelled()) { result.cancel(parentLoading.getCancelEvent()); return null; }
+				if (parentLoading.hasError()) {
+					result.error(new Exception("Error loading parent POM", parentLoading.getError()));
+					return null;
+				}
+				if (parentLoading.isCancelled()) {
+					result.cancel(parentLoading.getCancelEvent());
+					return null;
+				}
 				MavenPOM parent = parentLoading.getResult();
 				if (groupId == null) groupId = parent.groupId;
 				if (version == null) version = parent.version;
@@ -662,7 +683,7 @@ public class MavenPOM implements LibraryDescriptor {
 					it.remove();
 				}
 				if (!changed) break;
-			};
+			}
 		}
 		
 		private String resolve(String value, Map<String, String> properties) {
@@ -671,12 +692,12 @@ public class MavenPOM implements LibraryDescriptor {
 			if (i < 0) return value;
 			int j = value.indexOf('}', i + 2);
 			if (j < 0) return value;
-			String name = value.substring(i+2, j).trim();
+			String name = value.substring(i + 2, j).trim();
 			if (properties.containsKey(name)) {
 				StringBuffer s = new StringBuffer();
 				if (i > 0) s.append(value.substring(0, i));
 				s.append(properties.get(name));
-				if (j < value.length() - 1) s.append(value.substring(j+1));
+				if (j < value.length() - 1) s.append(value.substring(j + 1));
 				return resolve(s.toString(), properties);
 			}
 			if (name.equals("project.groupId")) {
@@ -738,7 +759,8 @@ public class MavenPOM implements LibraryDescriptor {
 		}
 		if (profile.activationPropertyName != null) {
 			if (profile.activationPropertyValue == null) {
-				if (!properties.containsKey(profile.activationPropertyName) && !finalProperties.containsKey(profile.activationPropertyName))
+				if (!properties.containsKey(profile.activationPropertyName) &&
+					!finalProperties.containsKey(profile.activationPropertyName))
 					return false;
 			} else {
 				String p1 = properties.get(profile.activationPropertyName);
@@ -774,6 +796,7 @@ public class MavenPOM implements LibraryDescriptor {
 		repositories.addAll(profile.repositories);
 	}
 
+	/** Parse a version specification in POM format. */
 	public static VersionSpecification parseVersionSpecification(String s) {
 		if (s == null) return null;
 		if (s.length() == 0) return null;
@@ -797,7 +820,7 @@ public class MavenPOM implements LibraryDescriptor {
 				return new VersionSpecification.SingleVersion(new Version(range));
 			}
 			Version min = new Version(range.substring(0, i).trim());
-			range = range.substring(i+1).trim();
+			range = range.substring(i + 1).trim();
 			Version max;
 			if (range.length() == 0 && excluded)
 				max = null;
