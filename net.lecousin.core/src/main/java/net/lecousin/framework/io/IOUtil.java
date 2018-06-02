@@ -19,6 +19,7 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
+import net.lecousin.framework.io.buffering.ByteBuffersIO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
@@ -251,6 +252,28 @@ public final class IOUtil {
 	}
 	
 	/**
+	 * Read the content of IO.Readable in memory and put it into a ByteBuffersIO.
+	 */
+	@SuppressWarnings("resource")
+	public static AsyncWork<ByteBuffersIO, IOException> readFullyAsync(IO.Readable io, int bufferSize) {
+		ByteBuffersIO bb = new ByteBuffersIO(false, io.getSourceDescription(), io.getPriority());
+		AsyncWork<ByteBuffersIO, IOException> result = new AsyncWork<>();
+		readFullyAsync(io, bufferSize, bb, result);
+		return result;
+	}
+	
+	private static void readFullyAsync(IO.Readable io, int bufferSize, ByteBuffersIO bb, AsyncWork<ByteBuffersIO, IOException> result) {
+		byte[] buffer = new byte[bufferSize];
+		AsyncWork<Integer, IOException> read = io.readFullyAsync(ByteBuffer.wrap(buffer));
+		read.listenAsync(new Task.Cpu.FromRunnable("readFully", io.getPriority(), () -> {
+			if (read.getResult().intValue() < bufferSize)
+				result.unblockSuccess(bb);
+			else
+				readFullyAsync(io, bufferSize, bb, result);
+		}), result);
+	}
+	
+	/**
 	 * Implement an asynchronous read using a task calling the synchronous one.
 	 * This must be used only if the synchronous read is using CPU.
 	 * @param io the readable to read from
@@ -419,6 +442,7 @@ public final class IOUtil {
 	
 	/**
 	 * Write the given Readable to a temporary file, and return the temporary file.
+	 * The given IO is closed when done.
 	 */
 	@SuppressWarnings("resource")
 	public static AsyncWork<File, IOException> toTempFile(IO.Readable io) {

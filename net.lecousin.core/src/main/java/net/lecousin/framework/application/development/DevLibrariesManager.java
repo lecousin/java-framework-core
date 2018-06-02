@@ -3,6 +3,7 @@ package net.lecousin.framework.application.development;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -286,7 +287,7 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 					public boolean isOptional() { return false; }
 					
 					@Override
-					public File getKnownLocation() { return l.getDirectory(); }
+					public URL getKnownLocation() { return l.getDirectory(); }
 					
 					@Override
 					public List<Pair<String, String>> getExcludedDependencies() { return new ArrayList<>(0); }
@@ -318,7 +319,8 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 					node.descr = new AsyncWork<>(null, new Exception("Missing version in dependency"));
 				else
 					node.descr = descr.getLoader().loadLibrary(
-						dep.getGroupId(), dep.getArtifactId(), depV, Task.PRIORITY_RATHER_IMPORTANT);
+						dep.getGroupId(), dep.getArtifactId(), depV,
+						Task.PRIORITY_RATHER_IMPORTANT, descr.getDependenciesAdditionalRepositories());
 			}
 			TreeWithParent.Node<DependencyNode> n;
 			synchronized (tree) { n = tree.add(node); }
@@ -516,21 +518,22 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 				}
 			}
 			jp.start();
-			File file = lib.descr.getClasses();
-			if (file != null) {
-				if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(
-					lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString()
-					+ " loaded from " + file.getAbsolutePath());
-				lib.library = new LoadedLibrary(new Artifact(lib.descr.getGroupId(), lib.descr.getArtifactId(),
-					lib.descr.getVersion()), appClassLoader.add(file, null));
-				jp.listenAsync(new Init(lib), lib.load);
-			} else {
-				if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug("No classes in " + lib.descr.getGroupId()
-					+ ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString());
-				lib.library = new LoadedLibrary(new Artifact(lib.descr.getGroupId(), lib.descr.getArtifactId(),
-					lib.descr.getVersion()), null);
-				jp.listenInline(lib.load);
-			}
+			lib.descr.getClasses().listenInline((file) -> {
+				if (file != null) {
+					if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(
+						lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString()
+						+ " loaded from " + file.getAbsolutePath());
+					lib.library = new LoadedLibrary(new Artifact(lib.descr.getGroupId(), lib.descr.getArtifactId(),
+						lib.descr.getVersion()), appClassLoader.add(file, null));
+					jp.listenAsync(new Init(lib), lib.load);
+				} else {
+					if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug("No classes in " + lib.descr.getGroupId()
+						+ ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString());
+					lib.library = new LoadedLibrary(new Artifact(lib.descr.getGroupId(), lib.descr.getArtifactId(),
+						lib.descr.getVersion()), null);
+					jp.listenInline(lib.load);
+				}
+			});
 			return null;
 		}
 	}
@@ -672,7 +675,7 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 					return;
 				}
 				AsyncWork<? extends LibraryDescriptor, Exception> loadDescr =
-					loaders.get(loaderIndex.get()).loadLibrary(groupId, artifactId, version, priority);
+					loaders.get(loaderIndex.get()).loadLibrary(groupId, artifactId, version, priority, new ArrayList<>(0));
 				Runnable next = this;
 				loadDescr.listenInline(new Runnable() {
 					@Override
@@ -766,7 +769,11 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 	}
 	
 	private void getLibrariesLocations(List<File> list, Lib lib) {
-		File f = lib.descr.getClasses();
+		File f;
+		try { f = lib.descr.getClasses().blockResult(0); }
+		catch (Exception e) {
+			return;
+		}
 		if (f == null) return;
 		if (list.contains(f)) return;
 		for (Dependency dep : lib.descr.getDependencies()) {

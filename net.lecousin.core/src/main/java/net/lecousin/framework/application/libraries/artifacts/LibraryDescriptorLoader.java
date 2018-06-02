@@ -21,7 +21,10 @@ public interface LibraryDescriptorLoader {
 	AsyncWork<? extends LibraryDescriptor, Exception> loadProject(File dir, byte priority);
 	
 	/** Search and load the library descriptor for the given group id, artifact id and version specification. */
-	AsyncWork<? extends LibraryDescriptor, Exception> loadLibrary(String groupId, String artifactId, VersionSpecification version, byte priority);
+	AsyncWork<? extends LibraryDescriptor, Exception> loadLibrary(
+		String groupId, String artifactId, VersionSpecification version,
+		byte priority, List<LibrariesRepository> additionalRepositories
+	);
 	
 	/** Tree node to build a dependency tree. */
 	public static class DependencyNode {

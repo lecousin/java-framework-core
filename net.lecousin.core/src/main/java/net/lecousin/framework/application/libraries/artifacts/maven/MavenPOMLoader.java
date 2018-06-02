@@ -1,6 +1,9 @@
 package net.lecousin.framework.application.libraries.artifacts.maven;
 
 import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -11,11 +14,14 @@ import net.lecousin.framework.application.Artifact;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.Version;
 import net.lecousin.framework.application.VersionSpecification;
+import net.lecousin.framework.application.libraries.artifacts.LibrariesRepository;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptorLoader;
 import net.lecousin.framework.collections.TreeWithParent;
 import net.lecousin.framework.collections.TreeWithParent.Node;
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 
 /**
@@ -32,11 +38,15 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 	
 	@Override
 	public AsyncWork<? extends LibraryDescriptor, Exception> loadProject(File dir, byte priority) {
-		return loadPOM(new File(dir, "pom.xml"), priority);
+		try {
+			return loadPOM(new File(dir, "pom.xml").toURI().toURL(), priority);
+		} catch (Exception e) {
+			return new AsyncWork<>(null, e);
+		}
 	}
 
 	/** Load a POM file. */
-	public synchronized AsyncWork<MavenPOM, Exception> loadPOM(File pomFile, byte priority) {
+	public synchronized AsyncWork<MavenPOM, Exception> loadPOM(URL pomFile, byte priority) {
 		if (logger == null)
 			logger = LCCore.getApplication().getLoggerFactory().getLogger(MavenPOMLoader.class);
 		/*
@@ -47,7 +57,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 		AsyncWork<MavenPOM, Exception> result = loadingByLocation.get(pomFile);
 		if (result != null)
 			return result;
-		if (logger.debug()) logger.debug("Loading POM " + pomFile.getAbsolutePath());
+		if (logger.debug()) logger.debug("Loading POM " + pomFile.toString());
 		result = new AsyncWork<>();
 		AsyncWork<MavenPOM, Exception> loadPOM = MavenPOM.load(pomFile, priority, this, false);
 		loadingByLocation.put(pomFile, result);
@@ -56,7 +66,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 			@Override
 			public void run() {
 				if (loadPOM.hasError()) {
-					if (logger.error()) logger.error("Unable to load POM " + pomFile.getAbsolutePath(), loadPOM.getError());
+					if (logger.error()) logger.error("Unable to load POM " + pomFile.toString(), loadPOM.getError());
 					res.error(loadPOM.getError());
 					return;
 				}
@@ -87,12 +97,16 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 	
 	@Override
 	public synchronized AsyncWork<MavenPOM, Exception> loadLibrary(
-		String groupId, String artifactId, VersionSpecification version, byte priority
+		String groupId, String artifactId, VersionSpecification version,
+		byte priority, List<LibrariesRepository> additionalRepositories
 	) {
 		if (logger == null)
 			logger = LCCore.getApplication().getLoggerFactory().getLogger(MavenPOMLoader.class);
-		ArrayList<MavenRepository> repos = new ArrayList<>(repositories.size());
+		List<MavenRepository> repos = additionalRepositories.isEmpty() ? new ArrayList<>(repositories.size()) : new LinkedList<>();
 		repos.addAll(repositories);
+		for (LibrariesRepository repo : additionalRepositories)
+			if (repo instanceof MavenRepository)
+				repos.add((MavenRepository)repo);
 		Map<String, Map<Version, AsyncWork<MavenPOM, Exception>>> group = loadingByName.get(groupId);
 		if (group == null) {
 			group = new HashMap<>();
@@ -115,15 +129,31 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 		if (r != null)
 			return r;
 		AsyncWork<MavenPOM, Exception> result = new AsyncWork<>();
-		for (MavenRepository repo : repos) {
-			if (logger.debug()) logger.debug(
-				"Search Maven artifact " + groupId + ':' + artifactId + ':' + version.toString() + " in " + repo.toString());
-			List<String> versions = repo.getAvailableVersions(groupId, artifactId);
+		loadFromRepository(groupId, artifactId, version, priority, repos, 0, artifact, result);
+		return result;
+	}
+	
+	private void loadFromRepository(
+		String groupId, String artifactId, VersionSpecification version, byte priority,
+		List<MavenRepository> repos, int repoIndex, Map<Version, AsyncWork<MavenPOM, Exception>> artifact,
+		AsyncWork<MavenPOM, Exception> result
+	) {
+		if (repoIndex == repos.size()) {
+			result.error(new Exception("Artifact not found: " + Artifact.toString(groupId, artifactId, version.toString())));
+			return;
+		}
+		MavenRepository repo = repos.get(repoIndex);
+		if (logger.debug()) logger.debug(
+			"Search Maven artifact " + groupId + ':' + artifactId + ':' + version.toString() + " in " + repo.toString());
+		AsyncWork<List<String>, NoException> getVersions = repo.getAvailableVersions(groupId, artifactId, priority);
+		getVersions.listenAsync(new Task.Cpu.FromRunnable("Search artifact", priority, () -> {
+			List<String> versions = getVersions.getResult();
 			if (versions == null || versions.isEmpty()) {
 				if (logger.debug()) logger.debug(
 					"No version found for artifact " + groupId + ':' + artifactId + ':' + version.toString()
 					+ " in " + repo.toString());
-				continue;
+				loadFromRepository(groupId, artifactId, version, priority, repos, repoIndex + 1, artifact, result);
+				return;
 			}
 			String bestVersionString = null;
 			Version bestVersion = null;
@@ -147,7 +177,10 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 				//"Version " + s + " is eligible for artifact " + groupId + ':' + artifactId + ':'
 				//+ version.toString() + " in " + repo.toString());
 			}
-			if (bestVersion == null) continue;
+			if (bestVersion == null) {
+				loadFromRepository(groupId, artifactId, version, priority, repos, repoIndex + 1, artifact, result);
+				return;
+			}
 			if (logger.debug()) logger.debug(
 				"Version " + bestVersionString + " found for artifact " + groupId + ':' + artifactId + ':'
 				+ version.toString() + " in " + repo.toString());
@@ -167,10 +200,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 						"Artifact not found: " + Artifact.toString(groupId, artifactId, version.toString())));
 				}
 			});
-			return result;
-		}
-		result.error(new Exception("Artifact not found: " + Artifact.toString(groupId, artifactId, version.toString())));
-		return result;
+		}), true);
 	}
 	
 	/** Add a repository. */
@@ -179,8 +209,30 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 	}
 	
 	private Map<String, Map<String, Map<Version, AsyncWork<MavenPOM, Exception>>>> loadingByName = new HashMap<>();
-	private Map<File, AsyncWork<MavenPOM, Exception>> loadingByLocation = new HashMap<>();
+	private Map<URL, AsyncWork<MavenPOM, Exception>> loadingByLocation = new HashMap<>();
 	private List<MavenRepository> repositories = new LinkedList<>();
+	private List<MavenRepository> knownRepositories = new LinkedList<>();
+	
+	MavenRepository getRepository(String url, boolean releasesEnabled, boolean snapshotsEnabled) {
+		for (MavenRepository repo : repositories)
+			if (repo.isSame(url, releasesEnabled, snapshotsEnabled))
+				return null;
+		for (MavenRepository repo : knownRepositories)
+			if (repo.isSame(url, releasesEnabled, snapshotsEnabled))
+				return repo;
+		if (url.startsWith("file:/")) {
+			try {
+				MavenLocalRepository local = new MavenLocalRepository(new File(new URI(url)), releasesEnabled, snapshotsEnabled);
+				knownRepositories.add(local);
+				return local;
+			} catch (URISyntaxException e) {
+				return null;
+			}
+		}
+		MavenRemoteRepository remote = new MavenRemoteRepository(url, releasesEnabled, snapshotsEnabled);
+		knownRepositories.add(remote);
+		return remote;
+	}
 	
 	@Override
 	public Version resolveVersionConflict(String groupId, String artifactId, Map<Version, List<Node<DependencyNode>>> artifactVersions) {

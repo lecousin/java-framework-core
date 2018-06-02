@@ -74,7 +74,7 @@ public class DevLauncher {
 						String path = args[i].substring(18);
 						File dir = new File(path);
 						if (dir.exists())
-							pomLoader.addRepository(new MavenLocalRepository(dir));
+							pomLoader.addRepository(new MavenLocalRepository(dir, true, true));
 					} else if (args[i].equals("-parameters")) {
 						appParameters = new String[args.length - i - 1];
 						for (int j = 0; j < appParameters.length; ++j)
@@ -121,7 +121,7 @@ public class DevLauncher {
 				// add local maven repository
 				File dir = new File(System.getProperty("user.home") + "/.m2/repository");
 				if (dir.exists())
-					pomLoader.addRepository(new MavenLocalRepository(dir));
+					pomLoader.addRepository(new MavenLocalRepository(dir, true, true));
 				
 				String[] s = projects.split(File.pathSeparator);
 				ArrayList<File> devPaths = new ArrayList<File>(s.length);
@@ -201,13 +201,15 @@ public class DevLauncher {
 					LCCore.stop(true);
 				}
 				ISynchronizationPoint<Exception> appClosed = startApp.getResult();
-				appClosed.block(0);
-				if (appClosed.isCancelled()) {
-					System.err.println("Application cancelled:");
-					appClosed.getCancelEvent().printStackTrace(System.err);
-				} else if (appClosed.hasError()) {
-					System.err.println("Error while running application:");
-					appClosed.getError().printStackTrace(System.err);
+				if (appClosed != null) {
+					appClosed.block(0);
+					if (appClosed.isCancelled()) {
+						System.err.println("Application cancelled:");
+						appClosed.getCancelEvent().printStackTrace(System.err);
+					} else if (appClosed.hasError()) {
+						System.err.println("Error while running application:");
+						appClosed.getError().printStackTrace(System.err);
+					}
 				}
 				LCCore.stop(true);
 			}
