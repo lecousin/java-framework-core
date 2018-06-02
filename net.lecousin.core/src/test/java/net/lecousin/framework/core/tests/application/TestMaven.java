@@ -95,6 +95,12 @@ public class TestMaven extends LCCoreAbstractTest {
 		ZipFile zip = new ZipFile(file);
 		Assert.assertNotNull(zip.getEntry("junit/runner/Version.class"));
 		zip.close();
+		
+		pom = repo.load("net.lecousin", "parent-pom", "0.8", pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
+		Assert.assertEquals("net.lecousin", pom.getGroupId());
+		Assert.assertEquals("parent-pom", pom.getArtifactId());
+		Assert.assertEquals("0.8", pom.getVersionString());
+		Assert.assertFalse(pom.hasClasses());
 
 		try {
 			pom = repo.load("junit", "doesnotexist", junit.runner.Version.id(), pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
@@ -103,6 +109,8 @@ public class TestMaven extends LCCoreAbstractTest {
 		} catch (Exception e) {
 			// ok
 		}
+		
+		repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2", false, true);
 	}
 	
 }

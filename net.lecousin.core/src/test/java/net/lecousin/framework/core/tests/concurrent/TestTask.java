@@ -2,9 +2,13 @@ package net.lecousin.framework.core.tests.concurrent;
 
 import java.io.File;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.mutable.MutableBoolean;
+import net.lecousin.framework.mutable.MutableInteger;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -79,11 +83,35 @@ public class TestTask extends LCCoreAbstractTest {
 			}
 		}.start();
 		
-		new Task.Cpu.FromRunnable(() -> {}, "test", Task.PRIORITY_NORMAL).start();
+		MutableBoolean ok = new MutableBoolean(false);
+		new Task.Cpu.FromRunnable(() -> {
+			ok.set(true);
+		}, "test", Task.PRIORITY_NORMAL).start().getOutput().block(0);
+		Assert.assertTrue(ok.get());
+		
+		MutableInteger i = new MutableInteger(0);
+		new Task.Cpu.FromRunnable(() -> {
+			i.inc();
+		}, "test", Task.PRIORITY_NORMAL, (r) -> {
+			i.inc();
+		}).start().getOutput().block(0);
+		Assert.assertEquals(2, i.get());
+		
+		Threading.traceTasksNotDone = true;
+		Task<Void, NoException> t = new Task.Cpu.FromRunnable(() -> {
+			i.inc();
+		}, "test", Task.PRIORITY_NORMAL, (r) -> {
+			i.inc();
+		});
+		t.getOutput().cancel(new CancelException("a cancel test"));
+		t.start();
+		Assert.assertTrue(t.isCancelled());
+		Threading.traceTasksNotDone = false;
 		
 		Task.OnFile.Parameter<Integer, Long, Exception> fileParam = new Task.OnFile.Parameter<Integer, Long, Exception>(new File("."), "test", Task.PRIORITY_NORMAL) {
 			@Override
 			public Long run() {
+				setDescription("My test task");
 				return null;
 			}
 		};
@@ -98,6 +126,20 @@ public class TestTask extends LCCoreAbstractTest {
 		};
 		fileParam.start(Integer.valueOf(5678));
 		Assert.assertEquals(5678, fileParam.getParameter().intValue());
+		
+		i.set(0);
+		Task.OnFile<Integer, Exception> onFile = new Task.OnFile<Integer, Exception>(new File("."), "test", Task.PRIORITY_NORMAL, (r) -> {
+			i.set(r.getValue1().intValue());
+		}) {
+			@Override
+			public Integer run() {
+				return Integer.valueOf(51);
+			}
+		};
+		Threading.traceTaskDone = true;
+		onFile.start().getOutput().block(0);
+		Assert.assertEquals(51, i.get());
+		Threading.traceTaskDone = false;
 		
 		Task.Unmanaged<Integer, Exception> unmanaged = new Task.Unmanaged<Integer, Exception>("test", Task.PRIORITY_NORMAL) {
 			@Override
