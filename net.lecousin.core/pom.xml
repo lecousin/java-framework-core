@@ -146,7 +146,7 @@
 					<excludes>
 						<exclude>**/development/*</exclude>
 						<exclude>net/lecousin/framework/application/libraries/classloader/*</exclude>
-						<exclude>**/ApplicationBootstrap.*</exclude>
+						<exclude>**/ApplicationBootstrap*.*</exclude>
 						<exclude>**/SplashScreen.*</exclude>
 						<exclude>**/ThreadingDebugHelper.*</exclude>
 						<exclude>**/TaskMonitoring.*</exclude>

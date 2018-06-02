@@ -3,7 +3,6 @@ package net.lecousin.framework.application.libraries.artifacts.maven;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -121,7 +120,7 @@ public class MavenLocalRepository implements MavenRepository {
 				return false;
 			if (!new File(uri).equals(dir))
 				return false;
-		} catch (URISyntaxException e) {
+		} catch (Exception e) {
 			return false;
 		}
 		return true;

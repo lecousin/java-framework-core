@@ -266,7 +266,10 @@ public final class IOUtil {
 		byte[] buffer = new byte[bufferSize];
 		AsyncWork<Integer, IOException> read = io.readFullyAsync(ByteBuffer.wrap(buffer));
 		read.listenAsync(new Task.Cpu.FromRunnable("readFully", io.getPriority(), () -> {
-			if (read.getResult().intValue() < bufferSize)
+			int nb = read.getResult().intValue();
+			if (nb > 0)
+				bb.addBuffer(buffer, 0, nb);
+			if (nb < bufferSize)
 				result.unblockSuccess(bb);
 			else
 				readFullyAsync(io, bufferSize, bb, result);

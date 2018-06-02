@@ -14,6 +14,7 @@ import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.io.provider.IOProviderFromURL;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.xml.XMLStreamEvents.ElementContext;
+import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 import net.lecousin.framework.xml.XMLStreamReader;
 
 /**
@@ -70,6 +71,8 @@ public class MavenRemoteRepository implements MavenRepository {
 				return new AsyncWork<>(null, null);
 			io = ((IOProvider.Readable)p).provideIOReadable(priority);
 		} catch (Exception e) {
+			if (logger.error())
+				logger.error("Unable to get IOProvider for " + url + path, e);
 			return new AsyncWork<>(null, null);
 		}
 		IO.Readable.Buffered bio;
@@ -81,22 +84,29 @@ public class MavenRemoteRepository implements MavenRepository {
 		AsyncWork<List<String>, NoException> result = new AsyncWork<>();
 		start.listenAsync(new Task.Cpu.FromRunnable("Read maven-metadata.xml", priority, () -> {
 			if (!start.isSuccessful()) {
+				if (logger.error())
+					logger.error("Error loading " + url + path, start.getError());
 				result.unblockSuccess(null);
 				return;
 			}
 			try {
 				XMLStreamReader xml = start.getResult();
-				if (!xml.goInto(xml.event.context.getLast(), "versioning", "versions")) {
+				while (!Type.START_ELEMENT.equals(xml.event.type)) xml.next();
+				if (!xml.goInto(xml.event.context.getFirst(), "versioning", "versions")) {
+					if (logger.error())
+						logger.error(url + path + " does not contain element versioning/versions");
 					result.unblockSuccess(null);
 					return;
 				}
-				ElementContext parent = xml.event.context.getLast();
+				ElementContext parent = xml.event.context.getFirst();
 				List<String> versions = new LinkedList<>();
 				while (xml.nextInnerElement(parent, "version")) {
 					versions.add(xml.readInnerText().asString());
 				}
 				result.unblockSuccess(versions);
 			} catch (Exception e) {
+				if (logger.error())
+					logger.error("Error parsing " + url + path, e);
 				result.unblockSuccess(null);
 			}
 		}), true);
