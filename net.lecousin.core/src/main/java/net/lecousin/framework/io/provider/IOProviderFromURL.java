@@ -3,7 +3,6 @@ package net.lecousin.framework.io.provider;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,7 +31,7 @@ public class IOProviderFromURL implements IOProviderFrom<URL> {
 			public IOProvider get(URL from) {
 				File file;
 				try { file = new File(from.toURI()); }
-				catch (URISyntaxException e) {
+				catch (Exception e) {
 					return null;
 				}
 				if (!file.exists())

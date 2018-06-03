@@ -99,6 +99,37 @@ public class MavenLocalRepository implements MavenRepository {
 	}
 	
 	@Override
+	public File loadFileSync(String groupId, String artifactId, String version, String classifier, String type) {
+		File d = new File(dir, groupId.replace('.', '/'));
+		if (!d.exists()) return null;
+		d = new File(d, artifactId);
+		if (!d.exists()) return null;
+		d = new File(d, version);
+		if (!d.exists()) return null;
+		StringBuilder name = new StringBuilder(100);
+		name.append(artifactId).append('-').append(version);
+		if (classifier != null && !classifier.isEmpty())
+			name.append('-').append(classifier);
+		if (type != null)
+			name.append('.').append(type);
+		else
+			name.append(".jar");
+		File file = new File(d, name.toString());
+		if (!file.exists()) return null;
+		return file;
+	}
+	
+	@Override
+	public AsyncWork<File, Exception> loadFile(String groupId, String artifactId, String version, String classifier, String type, byte priority) {
+		return new Task.OnFile<File, Exception>(dir, "Search file in Maven repository", priority) {
+			@Override
+			public File run() {
+				return loadFileSync(groupId, artifactId, version, classifier, type);
+			}
+		}.start().getOutput();
+	}
+	
+	@Override
 	public boolean isReleasesEnabled() {
 		return releasesEnabled;
 	}

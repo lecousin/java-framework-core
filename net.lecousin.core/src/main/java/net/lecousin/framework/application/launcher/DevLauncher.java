@@ -1,4 +1,4 @@
-package net.lecousin.framework.application.development;
+package net.lecousin.framework.application.launcher;
 
 import java.awt.GraphicsEnvironment;
 import java.io.File;
@@ -166,7 +166,8 @@ public class DevLauncher {
 						addPlugins.add(new Triple<>(pluginGroupId, plugin.substring(0, i), plugin.substring(i + 1)));
 					}
 				}
-				DevLibrariesManager librariesManager = new DevLibrariesManager(devPaths, splash, loaders, appDir, cfg, addPlugins);
+				DynamicLibrariesManager librariesManager =
+					new DynamicLibrariesManager(devPaths, splash, loaders, appDir, cfg, addPlugins);
 				
 				ISynchronizationPoint<Exception> start = Application.start(
 					new Artifact(groupId, artifactId, new Version(version)),

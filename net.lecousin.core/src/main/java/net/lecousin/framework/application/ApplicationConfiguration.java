@@ -2,6 +2,7 @@ package net.lecousin.framework.application;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,31 +23,36 @@ public class ApplicationConfiguration {
 	/** Load the given file. */
 	public static ApplicationConfiguration load(File file) throws Exception {
 		try (FileInputStream in = new FileInputStream(file)) {
-			XMLStreamReader xml = XMLInputFactory.newFactory().createXMLStreamReader(in);
-			while (xml.hasNext()) {
-				xml.next();
-				if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
-					if (!"project".equals(xml.getLocalName()))
-						throw new Exception("Root element of an lc-project.xml file must be <project>");
-					ApplicationConfiguration cfg = new ApplicationConfiguration();
-					boolean found = false;
-					while (xml.hasNext()) {
-						xml.next();
-						if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
-							if ("application".equals(xml.getLocalName())) {
-								found = true;
-								cfg.load(xml);
-								break;
-							}
+			return load(in);
+		}
+	}
+	
+	/** Load from the given stream. */
+	public static ApplicationConfiguration load(InputStream input) throws Exception {
+		XMLStreamReader xml = XMLInputFactory.newFactory().createXMLStreamReader(input);
+		while (xml.hasNext()) {
+			xml.next();
+			if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
+				if (!"project".equals(xml.getLocalName()))
+					throw new Exception("Root element of an lc-project.xml file must be <project>");
+				ApplicationConfiguration cfg = new ApplicationConfiguration();
+				boolean found = false;
+				while (xml.hasNext()) {
+					xml.next();
+					if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
+						if ("application".equals(xml.getLocalName())) {
+							found = true;
+							cfg.load(xml);
+							break;
 						}
 					}
-					if (!found)
-						throw new Exception("No application element found in lc-project.xml file");
-					return cfg;
 				}
+				if (!found)
+					throw new Exception("No application element found in lc-project.xml file");
+				return cfg;
 			}
-			throw new Exception("Nothing found in lc-project.xml file");
 		}
+		throw new Exception("Nothing found in lc-project.xml file");
 	}
 	
 	private void load(XMLStreamReader xml) throws Exception {

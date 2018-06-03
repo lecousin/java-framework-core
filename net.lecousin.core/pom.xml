@@ -144,7 +144,7 @@
   				<artifactId>jacoco-maven-plugin</artifactId>
 				<configuration>
 					<excludes>
-						<exclude>**/development/*</exclude>
+						<exclude>**/application/launcher/*</exclude>
 						<exclude>net/lecousin/framework/application/libraries/classloader/*</exclude>
 						<exclude>**/ApplicationBootstrap*.*</exclude>
 						<exclude>**/SplashScreen.*</exclude>

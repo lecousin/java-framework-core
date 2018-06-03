@@ -1,5 +1,6 @@
 package net.lecousin.framework.application.libraries.artifacts.maven;
 
+import java.io.File;
 import java.net.URL;
 import java.util.LinkedList;
 import java.util.List;
@@ -127,6 +128,18 @@ public class MavenRemoteRepository implements MavenRepository {
 			return new AsyncWork<>(null, e);
 		}
 	}
+
+	@Override
+	public File loadFileSync(String groupId, String artifactId, String version, String classifier, String type) {
+		return null;
+	}
+	
+	@Override
+	public AsyncWork<File, Exception> loadFile(String groupId, String artifactId, String version, String classifier, String type, byte priority) {
+		// TODO
+		return new AsyncWork<>(null, null);
+	}
+
 	
 	@Override
 	public String toString() {

@@ -1,4 +1,4 @@
-package net.lecousin.framework.application.development;
+package net.lecousin.framework.application.launcher;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -20,6 +20,7 @@ import net.lecousin.framework.application.Artifact;
 import net.lecousin.framework.application.SplashScreen;
 import net.lecousin.framework.application.Version;
 import net.lecousin.framework.application.VersionSpecification;
+import net.lecousin.framework.application.VersionSpecification.SingleVersion;
 import net.lecousin.framework.application.libraries.artifacts.ArtifactsLibrariesManager;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor.Dependency;
@@ -56,10 +57,10 @@ import net.lecousin.framework.util.Triple;
 /**
  * Libraries manager for development launcher.
  */
-public class DevLibrariesManager implements ArtifactsLibrariesManager {
+public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 
 	/** Constructor. */
-	public DevLibrariesManager(
+	public DynamicLibrariesManager(
 		ArrayList<File> devPaths, SplashScreen splash, List<LibraryDescriptorLoader> loaders,
 		File appDir, ApplicationConfiguration cfg, List<Triple<String, String, String>> plugins
 	) {
@@ -102,8 +103,8 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 		
 		long work = splash != null ? splash.getRemainingWork() : 0;
 		work = work - work * 40 / 100; // loading is 60%, 40% will be application startup
-		long stepDevProjects = work / 20; // 5%
-		long stepDependencies = work * 80 / 100; // 80%;
+		long stepDevProjects = devPaths != null ? work / 20 : 0; // 5%
+		long stepDependencies = work * (devPaths != null ? 80 : 85) / 100; // 80% for dev, else 85%
 		long stepVersionConflicts = work - stepDevProjects - stepDependencies; // 15%
 		// TODO LoadLibrary should make progress
 		
@@ -132,10 +133,19 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 					splash.loadDefaultLogo();
 			} else
 				splash.loadDefaultLogo();
-			splash.setText("Analyzing development projects");
 		}
 		
+		if (devPaths != null)
+			developmentMode(stepDevProjects, stepDependencies, stepVersionConflicts);
+		else
+			productionMode(stepDependencies, stepVersionConflicts);
+		return defaultClassLoader;
+	}
+	
+	private void developmentMode(long stepDevProjects, long stepDependencies, long stepVersionConflicts) {
 		// load dev projects
+		if (splash != null)
+			splash.setText("Analyzing development projects");
 		JoinPoint<Exception> jpDevProjects = new JoinPoint<>();
 		ArrayList<AsyncWork<? extends LibraryDescriptor, Exception>> devProjects = new ArrayList<>(devPaths.size());
 		Task.Cpu<Void, NoException> loadDevProjects = new Task.Cpu<Void, NoException>("Load development projects", Task.PRIORITY_IMPORTANT) {
@@ -196,7 +206,7 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 					return null;
 				}
 				
-				app.getDefaultLogger().debug("Development projects analyzed, loading application configuration file");
+				app.getDefaultLogger().debug("Development projects analyzed, loading application");
 				
 				List<LibraryDescriptor> addPlugins = new LinkedList<>();
 				for (Triple<String, String, String> t : loadPlugins) {
@@ -214,7 +224,47 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 				return null;
 			}
 		}, canStartApp);
-		return defaultClassLoader;
+	}
+
+	private void productionMode(long stepDependencies, long stepVersionConflicts) {
+		searchApplication(0, stepDependencies, stepVersionConflicts);
+	}
+	
+	private void searchApplication(int loaderIndex, long stepDependencies, long stepVersionConflicts) {
+		if (loaderIndex == loaders.size()) {
+			canStartApp.error(new Exception("Application nout found"));
+			return;
+		}
+		AsyncWork<? extends LibraryDescriptor, Exception> load = loaders.get(loaderIndex).loadLibrary(
+			app.getGroupId(), app.getArtifactId(), new SingleVersion(app.getVersion()),
+			Task.PRIORITY_IMPORTANT, new ArrayList<>(0));
+		load.listenInline(() -> {
+			if (!load.isSuccessful() || load.getResult() == null) {
+				searchApplication(loaderIndex + 1, stepDependencies, stepVersionConflicts);
+				return;
+			}
+			LibraryDescriptor appLib = load.getResult();
+			if (!appLib.hasClasses()) {
+				canStartApp.error(new Exception("Application project must provide classes"));
+				return;
+			}
+			app.getDefaultLogger().debug("Loading application");
+			
+			List<LibraryDescriptor> addPlugins = new LinkedList<>();
+			/* TODO
+			for (Triple<String, String, String> t : loadPlugins) {
+				for (AsyncWork<? extends LibraryDescriptor, Exception> p : devProjects) {
+					LibraryDescriptor lib = p.getResult();
+					if (!lib.getGroupId().equals(t.getValue1())) continue;
+					if (t.getValue2() != null && !lib.getArtifactId().equals(t.getValue2())) continue;
+					if (t.getValue3() != null && !lib.getVersionString().equals(t.getValue3())) continue;
+					addPlugins.add(lib);
+				}
+			}*/
+			
+			// load library
+			loadApplicationLibrary(appLib, addPlugins, stepDependencies, stepVersionConflicts);
+		});
 	}
 	
 	private void loadApplicationLibrary(
@@ -255,7 +305,7 @@ public class DevLibrariesManager implements ArtifactsLibrariesManager {
 			}
 		}, canStartApp);
 	}
-	
+
 	private void buildDependenciesTree(
 		LibraryDescriptor descr, TreeWithParent<DependencyNode> tree,
 		Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts,

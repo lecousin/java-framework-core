@@ -18,11 +18,18 @@ public class TestFileIOProvider extends LCCoreAbstractTest {
 		File f = TemporaryFiles.get().createFileSync("test", "fileioprovider");
 		FileIOProvider provider = new FileIOProvider(f);
 		provider.provideIOReadable(Task.PRIORITY_NORMAL).close();
+		provider.provideIOReadableKnownSize(Task.PRIORITY_NORMAL).close();
 		provider.provideIOReadableSeekable(Task.PRIORITY_NORMAL).close();
+		provider.provideIOReadableSeekableKnownSize(Task.PRIORITY_NORMAL).close();
 		provider.provideIOReadWrite(Task.PRIORITY_NORMAL).close();
+		provider.provideIOReadWriteKnownSize(Task.PRIORITY_NORMAL).close();
 		provider.provideIOReadWriteSeekable(Task.PRIORITY_NORMAL).close();
+		provider.provideIOReadWriteSeekableKnownSize(Task.PRIORITY_NORMAL).close();
+		provider.provideIOReadWriteSeekableResizable(Task.PRIORITY_NORMAL).close();
 		provider.provideIOWritable(Task.PRIORITY_NORMAL).close();
 		provider.provideIOWritableSeekable(Task.PRIORITY_NORMAL).close();
+		provider.provideIOWritableSeekableKnownSize(Task.PRIORITY_NORMAL).close();
+		provider.provideIOWritableSeekableResizable(Task.PRIORITY_NORMAL).close();
 		Assert.assertEquals(f.getAbsolutePath(), provider.getDescription());
 		Assert.assertEquals(f, provider.getFile());
 		try {
