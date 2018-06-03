@@ -384,9 +384,9 @@ public class MavenPOM implements LibraryDescriptor {
 						if (parentFile.isDirectory()) {
 							parentFile = new File(parentFile, "pom.xml");
 							if (parentFile.exists())
-								parentLoading = pomLoader.loadPOM(parentFile.toURI().toURL(), getPriority());
+								parentLoading = pomLoader.loadPOM(parentFile.toURI().toURL(), false, getPriority());
 						} else
-							parentLoading = pomLoader.loadPOM(parentFile.toURI().toURL(), getPriority());
+							parentLoading = pomLoader.loadPOM(parentFile.toURI().toURL(), false, getPriority());
 					}
 				}
 				if (parentLoading == null) {

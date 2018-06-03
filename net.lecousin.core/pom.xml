@@ -147,9 +147,9 @@
 						<exclude>**/application/launcher/*</exclude>
 						<exclude>net/lecousin/framework/application/libraries/classloader/*</exclude>
 						<exclude>**/ApplicationBootstrap*.*</exclude>
-						<exclude>**/SplashScreen.*</exclude>
-						<exclude>**/ThreadingDebugHelper.*</exclude>
-						<exclude>**/TaskMonitoring.*</exclude>
+						<exclude>**/SplashScreen*.*</exclude>
+						<exclude>**/ThreadingDebugHelper*.*</exclude>
+						<exclude>**/TaskMonitoring*.*</exclude>
 					</excludes>
 				</configuration>
 			</plugin>

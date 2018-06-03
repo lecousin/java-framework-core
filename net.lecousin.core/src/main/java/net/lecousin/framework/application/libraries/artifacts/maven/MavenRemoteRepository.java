@@ -123,7 +123,7 @@ public class MavenRemoteRepository implements MavenRepository {
 		if (logger.info())
 			logger.info("Downloading " + url + path);
 		try {
-			return pomLoader.loadPOM(new URL(url + path), priority);
+			return pomLoader.loadPOM(new URL(url + path), true, priority);
 		} catch (Exception e) {
 			return new AsyncWork<>(null, e);
 		}

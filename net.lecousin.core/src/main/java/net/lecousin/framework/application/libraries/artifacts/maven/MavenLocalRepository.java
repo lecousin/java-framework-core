@@ -87,7 +87,7 @@ public class MavenLocalRepository implements MavenRepository {
 					return null;
 				}
 				try {
-					pomLoader.loadPOM(pom.toURI().toURL(), priority).listenInline(result);
+					pomLoader.loadPOM(pom.toURI().toURL(), true, priority).listenInline(result);
 				} catch (MalformedURLException e) {
 					result.unblockSuccess(null);
 				}

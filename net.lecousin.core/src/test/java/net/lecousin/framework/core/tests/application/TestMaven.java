@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.List;
 import java.util.zip.ZipFile;
 
+import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor.Dependency;
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenLocalRepository;
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenPOM;
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenPOMLoader;
@@ -40,7 +41,8 @@ public class TestMaven extends LCCoreAbstractTest {
 		Assert.assertTrue(versions == null || versions.isEmpty());
 		
 		MavenPOMLoader pomLoader = new MavenPOMLoader();
-		
+		pomLoader.addRepository(repo);
+
 		MavenPOM pom = repo.load("junit", "junit", junit.runner.Version.id(), pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
 		Assert.assertEquals("junit", pom.getGroupId());
 		Assert.assertEquals("junit", pom.getArtifactId());
@@ -84,6 +86,7 @@ public class TestMaven extends LCCoreAbstractTest {
 		Assert.assertTrue(versions == null || versions.isEmpty());
 		
 		MavenPOMLoader pomLoader = new MavenPOMLoader();
+		pomLoader.addRepository(repo);
 		
 		MavenPOM pom = repo.load("junit", "junit", junit.runner.Version.id(), pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
 		Assert.assertEquals("junit", pom.getGroupId());
@@ -109,6 +112,20 @@ public class TestMaven extends LCCoreAbstractTest {
 		} catch (Exception e) {
 			// ok
 		}
+		
+		pom = repo.load("org.apache.pdfbox", "pdfbox", "2.0.9", pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
+		for (Dependency dep : pom.getDependencies()) {
+			dep.getGroupId();
+			dep.getArtifactId();
+			dep.getClassifier();
+			dep.getVersionSpecification();
+			dep.getExcludedDependencies();
+			dep.getKnownLocation();
+			dep.isOptional();
+		}
+		pom.getDependenciesAdditionalRepositories();
+		pom.getLoader();
+		pom.getDirectory();
 		
 		repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2", false, true);
 	}

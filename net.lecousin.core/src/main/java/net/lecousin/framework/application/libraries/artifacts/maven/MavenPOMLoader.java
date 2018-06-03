@@ -39,14 +39,14 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 	@Override
 	public AsyncWork<? extends LibraryDescriptor, Exception> loadProject(File dir, byte priority) {
 		try {
-			return loadPOM(new File(dir, "pom.xml").toURI().toURL(), priority);
+			return loadPOM(new File(dir, "pom.xml").toURI().toURL(), false, priority);
 		} catch (Exception e) {
 			return new AsyncWork<>(null, e);
 		}
 	}
 
 	/** Load a POM file. */
-	public synchronized AsyncWork<MavenPOM, Exception> loadPOM(URL pomFile, byte priority) {
+	public synchronized AsyncWork<MavenPOM, Exception> loadPOM(URL pomFile, boolean fromRepository, byte priority) {
 		if (logger == null)
 			logger = LCCore.getApplication().getLoggerFactory().getLogger(MavenPOMLoader.class);
 		/*
@@ -59,7 +59,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 			return result;
 		if (logger.debug()) logger.debug("Loading POM " + pomFile.toString());
 		result = new AsyncWork<>();
-		AsyncWork<MavenPOM, Exception> loadPOM = MavenPOM.load(pomFile, priority, this, false);
+		AsyncWork<MavenPOM, Exception> loadPOM = MavenPOM.load(pomFile, priority, this, fromRepository);
 		loadingByLocation.put(pomFile, result);
 		AsyncWork<MavenPOM, Exception> res = result;
 		loadPOM.listenInline(new Runnable() {
