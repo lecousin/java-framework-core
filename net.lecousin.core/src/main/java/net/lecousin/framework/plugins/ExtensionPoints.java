@@ -41,8 +41,10 @@ public final class ExtensionPoints {
 				}
 			}
 		}
-		for (Plugin pi : plugins)
-			point.addPlugin((T)pi);
+		synchronized (point) {
+			for (Plugin pi : plugins)
+				point.addPlugin((T)pi);
+		}
 	}
 	
 	/** Add a custom extension point. */
@@ -67,7 +69,9 @@ public final class ExtensionPoints {
 				return;
 			}
 		}
-		ep.addPlugin(pi);
+		synchronized (ep) {
+			ep.addPlugin(pi);
+		}
 	}
 	
 	/** Retrieve an extension point instance. */

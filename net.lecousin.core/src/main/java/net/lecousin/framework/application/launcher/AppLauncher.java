@@ -94,6 +94,7 @@ public class AppLauncher {
 					pomLoader.addRepository(repo);
 					repositories.add(repo);
 				}
+				// TODO should we really use the local repository (and so we need to parse settings.xml), or it should be given ?
 				
 				// load configuration file
 				File cfgFile = null;

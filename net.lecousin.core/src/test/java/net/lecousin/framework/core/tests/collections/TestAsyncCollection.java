@@ -24,6 +24,9 @@ public class TestAsyncCollection extends LCCoreAbstractTest {
 			},
 			() -> {
 				done.set(true);
+			},
+			(error) -> {
+				// TODO
 			}
 		);
 		

@@ -25,7 +25,10 @@ public interface ExtensionPoint<PluginClass extends Plugin> {
 	default void printInfo(StringBuilder s) {
 		s.append(getClass().getName()).append(":");
 		for (PluginClass pi : getPlugins()) {
-			s.append("\r\n\t- ").append(pi.getClass().getName());
+			if (pi != null)
+				s.append("\r\n\t- ").append(pi.getClass().getName());
+			else
+				s.append("\r\n\tNULL !!!");
 		}
 	}
 	

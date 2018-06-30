@@ -16,6 +16,7 @@ import net.lecousin.framework.application.Version;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptorLoader;
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenLocalRepository;
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenPOMLoader;
+import net.lecousin.framework.application.libraries.artifacts.maven.MavenSettings;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.util.Triple;
@@ -95,6 +96,7 @@ public class DevLauncher {
 				else if (projects == null) System.err.println("Missing projects parameter in command line");
 				else stop = false;
 				if (stop) {
+					printUsage();
 					LCCore.stop(true);
 					return;
 				}
@@ -119,7 +121,19 @@ public class DevLauncher {
 				File appDir = cfgFile.getParentFile();
 				
 				// add local maven repository
-				File dir = new File(System.getProperty("user.home") + "/.m2/repository");
+				File settings = new File(System.getProperty("user.home") + "/.m2/settings.xml");
+				String localRepo = System.getProperty("user.home") + "/.m2/repository";
+				if (settings.exists()) {
+					try {
+						MavenSettings ms = MavenSettings.load(settings);
+						if (ms.localRepository != null)
+							localRepo = ms.localRepository;
+					} catch (Exception e) {
+						System.err.println("Error reading Maven settings.xml");
+						e.printStackTrace(System.err);
+					}
+				}
+				File dir = new File(localRepo);
 				if (dir.exists())
 					pomLoader.addRepository(new MavenLocalRepository(dir, true, true));
 				

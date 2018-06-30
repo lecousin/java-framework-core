@@ -88,12 +88,8 @@ public final class LCCore {
 		started = true;
 		
 		// init logging system if not specified
-		if (System.getProperty("org.apache.commons.logging.Log") == null) {
-			try {
-				LCCore.class.getClassLoader().loadClass("net.lecousin.framework.log.bridges.ApacheCommonsLogging");
-				System.setProperty("org.apache.commons.logging.Log", "net.lecousin.framework.log.bridges.ApacheCommonsLogging");
-			} catch (Throwable t) { /* ignore */ }
-		}
+		if (System.getProperty("org.apache.commons.logging.Log") == null)
+			System.setProperty("org.apache.commons.logging.Log", "net.lecousin.framework.log.bridges.ApacheCommonsLogging");
 		
 		// register protocols
 		String protocols = System.getProperty("java.protocol.handler.pkgs");

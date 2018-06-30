@@ -17,11 +17,17 @@ public interface AsyncCollection<T> {
 	/** Called when new elements are ready. */
 	public void newElements(Collection<T> elements);
 	
-	/** Called when no more elements will come. */
+	/** Called when no more elements will come, and no error was encountered. */
 	public void done();
 	
 	/** Return true if the method done has been called already. */
 	public boolean isDone();
+	
+	/** Called if an error occured before all elements have been retrieved. */
+	public void error(Exception error);
+	
+	/** Return true if the method error has been called. */
+	public boolean hasError();
 	
 	/**
 	 * Simple implementation with a listener on both operations: newElements and done.
@@ -29,14 +35,17 @@ public interface AsyncCollection<T> {
 	 */
 	public static class Listen<T> implements AsyncCollection<T> {
 		/** Constructor. */
-		public Listen(Listener<Collection<T>> onElementsReady, Runnable onDone) {
+		public Listen(Listener<Collection<T>> onElementsReady, Runnable onDone, Listener<Exception> onError) {
 			this.onElementsReady = onElementsReady;
 			this.onDone = onDone;
+			this.onError = onError;
 		}
 		
 		private Listener<Collection<T>> onElementsReady;
 		private Runnable onDone;
 		private boolean isDone = false;
+		private Listener<Exception> onError;
+		private boolean hasError = false;
 		
 		@Override
 		public void newElements(Collection<T> elements) {
@@ -52,6 +61,17 @@ public interface AsyncCollection<T> {
 		@Override
 		public boolean isDone() {
 			return isDone;
+		}
+		
+		@Override
+		public void error(Exception error) {
+			if (onError != null) onError.fire(error);
+			hasError = true;
+		}
+		
+		@Override
+		public boolean hasError() {
+			return hasError;
 		}
 	}
 	
@@ -80,13 +100,23 @@ public interface AsyncCollection<T> {
 		
 		@Override
 		public synchronized void done() {
-			if (--remainingDone == 0)
+			if (--remainingDone == 0 && !collection.hasError())
 				collection.done();
 		}
 		
 		@Override
 		public boolean isDone() {
-			return remainingDone == 0;
+			return remainingDone == 0 && !collection.hasError();
+		}
+		
+		@Override
+		public void error(Exception error) {
+			collection.error(error);
+		}
+		
+		@Override
+		public boolean hasError() {
+			return collection.hasError();
 		}
 	}
 	
@@ -100,6 +130,9 @@ public interface AsyncCollection<T> {
 
 		/** Called when no more element will come. */
 		public void done();
+		
+		/** Called when an error occured while retrieving elements. */
+		public void error(Exception error);
 		
 		/** A refreshable collection is a collection that can be restarted, with new elements coming and replacing the previous ones.
 		 * @param <T> type of elements
@@ -116,8 +149,10 @@ public interface AsyncCollection<T> {
 	public static class Keep<T> implements AsyncCollection<T> {
 		private LinkedArrayList<T> list = new LinkedArrayList<T>(10);
 		private boolean done = false;
+		private Exception error = null;
 		private ArrayList<AsyncCollection<T>> listeners = new ArrayList<>(5);
 		private ArrayList<Runnable> doneListeners = new ArrayList<>(2);
+		private ArrayList<Listener<Exception>> errorListeners = new ArrayList<>(2);
 		
 		@Override
 		public void newElements(Collection<T> elements) {
@@ -161,6 +196,37 @@ public interface AsyncCollection<T> {
 			listener.run();
 		}
 		
+		@Override
+		public void error(Exception error) {
+			synchronized (this) {
+				this.error = error;
+			}
+			for (AsyncCollection<T> col : listeners)
+				col.error(error);
+			listeners = null;
+			for (Listener<Exception> r : errorListeners)
+				r.fire(error);
+			errorListeners = null;
+		}
+		
+		@Override
+		public boolean hasError() {
+			return error != null;
+		}
+		
+		/** Add a listener to be called when the error method is called.
+		 * If the error method has been already called, the listener is immediately called.
+		 */
+		public void onerror(Listener<Exception> listener) {
+			synchronized (this) {
+				if (error == null) {
+					errorListeners.add(listener);
+					return;
+				}
+			}
+			listener.fire(error);
+		}
+				
 		/** Send the elements of this collection to the given collection.
 		 * All elements already present in this collection are immediately given by calling the method newElements.
 		 * If the method done has been called already on this collection, the method done is also called
@@ -169,7 +235,7 @@ public interface AsyncCollection<T> {
 		public void provideTo(AsyncCollection<T> col) {
 			ArrayList<T> already = null;
 			synchronized (this) {
-				if (!done) {
+				if (!done && error == null) {
 					already = new ArrayList<>(list);
 					listeners.add(col);
 				}
@@ -179,7 +245,10 @@ public interface AsyncCollection<T> {
 				return;
 			}
 			col.newElements(list);
-			col.done();
+			if (error == null)
+				col.done();
+			else
+				col.error(error);
 		}
 		
 		/** Return the list containing the elements kept so far. */
