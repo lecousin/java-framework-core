@@ -127,6 +127,20 @@ public class TestMaven extends LCCoreAbstractTest {
 		pom.getLoader();
 		pom.getDirectory();
 		
+		pom = repo.load("com.google.guava", "guava-parent", "22.0", pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
+		for (Dependency dep : pom.getDependencies()) {
+			dep.getGroupId();
+			dep.getArtifactId();
+			dep.getClassifier();
+			dep.getVersionSpecification();
+			dep.getExcludedDependencies();
+			dep.getKnownLocation();
+			dep.isOptional();
+		}
+		pom.getDependenciesAdditionalRepositories();
+		pom.getLoader();
+		pom.getDirectory();
+		
 		repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2", false, true);
 	}
 	

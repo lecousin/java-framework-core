@@ -55,7 +55,7 @@ public class LinkedIterators<T> implements Iterator<T> {
 	
 	@Override
 	public void remove() {
-		if (current == null) throw new NoSuchElementException();
+		if (current == null) throw new IllegalStateException();
 		current.remove();
 	}
 	
