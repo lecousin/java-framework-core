@@ -1,6 +1,5 @@
 package net.lecousin.framework.concurrent;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.collections.sort.RedBlackTreeLong;
 import net.lecousin.framework.collections.sort.RedBlackTreeLongByRange;
 
@@ -74,13 +73,11 @@ class TaskScheduler extends Thread {
 		}
 	}
 	
-	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	static void end() {
 		instance.stop = true;
 		synchronized (instance) { instance.notify(); }
 	}
 	
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	@Override
 	public void run() {
 		long start = System.nanoTime();

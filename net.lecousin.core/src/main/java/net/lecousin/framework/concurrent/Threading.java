@@ -8,8 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.DrivesTaskManager.DrivesProvider;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -21,7 +19,6 @@ import net.lecousin.framework.util.AsyncCloseable;
 /**
  * Utility class to initialize and stop multi-threading, and utiliy methods for multi-threading.
  */
-@SuppressFBWarnings(value = "MS_SHOULD_BE_FINAL", justification = "Static flags can be set by application when debugging")
 public final class Threading {
 	
 	private Threading() { /* no instance */ }

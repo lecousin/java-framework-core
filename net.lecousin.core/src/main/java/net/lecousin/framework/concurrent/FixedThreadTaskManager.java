@@ -6,8 +6,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ThreadFactory;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -95,7 +93,6 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		
 		private TaskWorker worker;
 		
-		@SuppressFBWarnings("NN_NAKED_NOTIFY")
 		@Override
 		public void uncaughtException(Thread t, Throwable e) {
 			if (worker.currentTask != null) {
@@ -157,7 +154,6 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		}
 	}
 	
-	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	void imBlocked(TaskWorker worker) {
 		worker.blocked = true;
 		if (Threading.traceBlockingTasks) {

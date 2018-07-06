@@ -9,8 +9,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.math.TimeUnit.Day;
 import net.lecousin.framework.math.TimeUnit.Hour;
 import net.lecousin.framework.math.TimeUnit.Millisecond;
@@ -55,7 +53,6 @@ public interface IntegerUnit {
 	public static class ConverterRegistry implements ExtensionPoint<Converter> {
 
 		/** Constructor. */
-		@SuppressFBWarnings("ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD")
 		public ConverterRegistry() {
 			instance = this;
 			converters.add(new TimeUnit.Converter());

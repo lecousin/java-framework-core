@@ -3,7 +3,6 @@ package net.lecousin.framework.io.buffering;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -228,7 +227,6 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	@Override
 	public void setPriority(byte priority) { this.priority = priority; }
 	
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	private void start(int firstBuffer, byte firstBufferPriority, int nextBuffer, byte nextBufferPriority, int maxNbNextBuffersReady) {
 		if (nextBuffer < 0)
 			throw new IllegalArgumentException("next buffer size must be positive, or zero to disable it, given: " + nextBuffer);

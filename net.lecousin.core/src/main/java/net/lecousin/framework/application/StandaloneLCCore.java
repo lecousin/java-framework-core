@@ -9,8 +9,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.LCCoreVersion;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.concurrent.DrivesTaskManager.DrivesProvider;
@@ -76,7 +74,6 @@ public class StandaloneLCCore implements LCCore.Environment {
 		drivesProvider = provider;
 	}
 	
-	@SuppressFBWarnings("MS_SHOULD_BE_FINAL")
 	public static long logThreadingInterval = 30000;
 	
 	@Override

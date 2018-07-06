@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
@@ -37,7 +36,6 @@ public class ByteArrayIO extends ConcurrentCloseable
 	}
 	
 	/** Constructor. */
-	@SuppressFBWarnings("EI_EXPOSE_REP2")
 	public ByteArrayIO(byte[] data, String description) {
 		this.description = description;
 		array = data;
@@ -46,7 +44,6 @@ public class ByteArrayIO extends ConcurrentCloseable
 	}
 	
 	/** Constructor. */
-	@SuppressFBWarnings("EI_EXPOSE_REP2")
 	public ByteArrayIO(byte[] data, int bytesUsed, String description) {
 		this.description = description;
 		array = data;
@@ -404,7 +401,6 @@ public class ByteArrayIO extends ConcurrentCloseable
 		return new AsyncWork<>(r, null);
 	}
 	
-	@SuppressFBWarnings("EI_EXPOSE_REP")
 	public byte[] getArray() { return array; }
 	
 	public int getCapacity() { return array.length; }

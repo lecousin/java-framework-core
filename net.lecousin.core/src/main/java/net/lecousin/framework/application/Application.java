@@ -17,8 +17,6 @@ import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.application.libraries.classpath.DefaultLibrariesManager;
 import net.lecousin.framework.concurrent.Console;
@@ -140,7 +138,6 @@ public final class Application {
 		properties.put(name, value);
 	}
 	
-	@SuppressFBWarnings("EI_EXPOSE_REP")
 	public Map<String,String> getApplicationSpecificProperties() {
 		return properties;
 	}
@@ -153,7 +150,6 @@ public final class Application {
 		return console;
 	}
 	
-	@SuppressFBWarnings("UG_SYNC_SET_UNSYNC_GET")
 	public Locale getLocale() {
 		return locale;
 	}
@@ -170,7 +166,6 @@ public final class Application {
 		return localizedProperties;
 	}
 	
-	@SuppressFBWarnings("EI_EXPOSE_REP")
 	public String[] getLanguageTag() {
 		return languageTag;
 	}

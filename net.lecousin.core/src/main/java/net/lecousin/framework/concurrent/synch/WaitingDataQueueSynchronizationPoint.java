@@ -3,7 +3,6 @@ package net.lecousin.framework.concurrent.synch;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.CancelException;
@@ -59,7 +58,6 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	}
 	
 	/** Queue a new data, which may unblock a thread waiting for it. */
-	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	public void newDataReady(DataType data) {
 		ArrayList<Runnable> list;
 		synchronized (this) {
@@ -78,7 +76,6 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	}
 	
 	/** Signal that no more data will be queued, so any waiting thread can be unblocked. */
-	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	public void endOfData() {
 		ArrayList<Runnable> list = null;
 		synchronized (this) {

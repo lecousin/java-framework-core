@@ -3,7 +3,6 @@ package net.lecousin.framework.concurrent;
 import java.util.ArrayList;
 import java.util.List;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -298,7 +297,6 @@ public abstract class Task<T,TError extends Exception> {
 	/** Method to implement to execute the task. */
 	public abstract T run() throws TError, CancelException;
 	
-	@SuppressFBWarnings(value = "UWF_NULL_FIELD", justification = "To be set by sub-classes if needed")
 	protected JoinPoint<TError> taskJoin = null;
 	
 	@SuppressWarnings("unchecked")
@@ -516,7 +514,6 @@ public abstract class Task<T,TError extends Exception> {
 	
 	public boolean hasError() { return result.hasError(); }
 	
-	@SuppressFBWarnings("UG_SYNC_SET_UNSYNC_GET")
 	public byte getPriority() { return priority; }
 	
 	/** Change the priority of this task. */

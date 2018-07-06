@@ -2,8 +2,6 @@ package net.lecousin.framework.event;
 
 import java.util.ArrayList;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 /**
  * A SingleEvent is an event that can occur only once.
  * If a listener is added when the event already occured, the listener is fired immediately.
@@ -48,7 +46,6 @@ public class SingleEvent<T> implements Listenable<T> {
 		if (listenersRunnable.isEmpty()) listenersRunnable = null;
 	}
 	
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	@Override
 	public boolean hasListeners() {
 		return listeners != null || listenersRunnable != null;

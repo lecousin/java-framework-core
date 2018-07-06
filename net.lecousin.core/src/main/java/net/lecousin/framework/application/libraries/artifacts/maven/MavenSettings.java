@@ -9,17 +9,22 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 
+/**
+ * Information parsed from the settings.xml file for Maven.
+ */
 public class MavenSettings {
 
 	public String localRepository = null;
 	public ArrayList<String> activeProfiles = new ArrayList<>();
 	
+	/** Load a settings file. */
 	public static MavenSettings load(File file) throws Exception {
 		try (FileInputStream input = new FileInputStream(file)) {
 			return load(input);
 		}
 	}
 	
+	/** Load a settings file. */
 	public static MavenSettings load(InputStream input) throws Exception {
 		XMLStreamReader xml = XMLInputFactory.newFactory().createXMLStreamReader(input);
 		while (xml.hasNext()) {

@@ -3,8 +3,6 @@ package net.lecousin.framework.collections;
 import java.lang.reflect.Array;
 import java.util.NoSuchElementException;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 /**
  * Iterate on an array. It does not support the remove method.
  * @param <T> type of elements
@@ -15,14 +13,12 @@ public class ArrayIterator<T> implements java.util.Iterator<T> {
 	 * @param array the array
 	 * @param max number of elements in the array to iterate on
 	 */
-	@SuppressFBWarnings("EI_EXPOSE_REP2")
 	public ArrayIterator(T[] array, int max) {
 		this.array = array;
 		this.max = max;
 	}
 
 	/** Constructor. */
-	@SuppressFBWarnings("EI_EXPOSE_REP2")
 	public ArrayIterator(T[] array) {
 		this.array = array;
 		this.max = array.length;

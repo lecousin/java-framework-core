@@ -1,7 +1,5 @@
 package net.lecousin.framework.io.provider;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
 
@@ -9,7 +7,6 @@ import net.lecousin.framework.io.buffering.ByteArrayIO;
 public class ByteArrayIOProvider implements IOProvider.ReadWrite.Seekable.KnownSize {
 
 	/** Constructor. */
-	@SuppressFBWarnings("EI_EXPOSE_REP2")
 	public ByteArrayIOProvider(byte[] array, int bytesUsed, String description) {
 		this.array = array;
 		this.bytesUsed = bytesUsed;

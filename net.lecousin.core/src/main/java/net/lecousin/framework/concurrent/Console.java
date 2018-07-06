@@ -3,7 +3,6 @@ package net.lecousin.framework.concurrent;
 import java.io.Closeable;
 import java.io.PrintStream;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
@@ -93,7 +92,6 @@ public class Console implements Closeable {
 	private PrintStream out;
 	private PrintStream err;
 	
-	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	@Override
 	public void close() {
 		stop = true;

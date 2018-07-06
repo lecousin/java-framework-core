@@ -2,7 +2,6 @@ package net.lecousin.framework.concurrent;
 
 import java.util.ArrayList;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
@@ -32,7 +31,6 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 	boolean aside = false;
 	boolean blocked = false;
 	
-	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	void forceStop(boolean normal) {
 		if (!normal) {
 			StringBuilder s = new StringBuilder(200);
@@ -46,7 +44,6 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 		}
 	}
 	
-	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	void finishAndStop() {
 		finish = true;
 		synchronized (this) {
@@ -54,7 +51,6 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 		}
 	}
 	
-	@SuppressFBWarnings({"UW_UNCOND_WAIT","ML_SYNC_ON_UPDATED_FIELD","ML_SYNC_ON_FIELD_TO_GUARD_CHANGING_THAT_FIELD"})
 	@Override
 	public void run() {
 		ClassLoader initCL = thread.getContextClassLoader();

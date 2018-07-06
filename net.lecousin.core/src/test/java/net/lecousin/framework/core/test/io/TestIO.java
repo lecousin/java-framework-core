@@ -10,7 +10,6 @@ import java.util.Random;
 import org.junit.Assert;
 import org.junit.Test;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -22,7 +21,6 @@ public abstract class TestIO extends LCCoreAbstractTest {
 	
 	public static abstract class UsingTestData extends TestIO {
 
-		@SuppressFBWarnings("EI_EXPOSE_REP2")
 		public UsingTestData(byte[] testBuf, int nbBuf) {
 			this.testBuf = testBuf;
 			this.nbBuf = nbBuf;

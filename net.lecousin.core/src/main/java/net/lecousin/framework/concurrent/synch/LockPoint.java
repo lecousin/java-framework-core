@@ -3,7 +3,6 @@ package net.lecousin.framework.concurrent.synch;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Threading;
@@ -55,7 +54,6 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 	}
 	
 	/** Release the lock. */
-	@SuppressFBWarnings("NN_NAKED_NOTIFY")
 	public void unlock() {
 		ArrayList<Runnable> list;
 		synchronized (this) {

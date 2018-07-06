@@ -4,8 +4,6 @@ import java.nio.CharBuffer;
 import java.util.LinkedList;
 import java.util.List;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 /**
  * Unprotected and mutable string.
  * String in Java is immutable, and every modification or sub-string creates a new instance with a new character array.
@@ -39,7 +37,6 @@ public class UnprotectedString implements IString {
 	}
 
 	/** Create an UnprotectedString based on an existing character array. */
-	@SuppressFBWarnings("EI_EXPOSE_REP2")
 	public UnprotectedString(char[] chars, int offset, int len, int usableLength) {
 		this.chars = chars;
 		this.start = offset;
@@ -48,7 +45,6 @@ public class UnprotectedString implements IString {
 	}
 
 	/** Create an UnprotectedString based on an existing character array. */
-	@SuppressFBWarnings("EI_EXPOSE_REP2")
 	public UnprotectedString(char[] chars) {
 		this(chars, 0, chars.length, chars.length);
 	}
@@ -351,7 +347,6 @@ public class UnprotectedString implements IString {
 	}
 	
 	/** Return the underlying character array. */
-	@SuppressFBWarnings("EI_EXPOSE_REP")
 	public char[] charArray() {
 		return chars;
 	}

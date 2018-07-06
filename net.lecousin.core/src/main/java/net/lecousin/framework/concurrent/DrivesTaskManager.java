@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.collections.map.MapUtil;
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.util.Pair;
@@ -113,7 +112,6 @@ public class DrivesTaskManager {
 	/** Set the drives provider.
 	 * @throws IllegalStateException in case a provider is already set
 	 */
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	public void setDrivesProvider(DrivesProvider provider) throws IllegalStateException {
 		synchronized (this) {
 			if (drivesProvider != null) throw new IllegalStateException();

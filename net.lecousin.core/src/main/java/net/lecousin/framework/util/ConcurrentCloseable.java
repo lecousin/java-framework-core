@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -32,7 +30,6 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 	
 	protected abstract void closeResources(SynchronizationPoint<Exception> ondone);
 	
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	public boolean isClosing() {
 		return open && closing != null;
 	}
@@ -110,7 +107,6 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 		closing.blockThrow(0);
 	}
 	
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	@Override
 	public ISynchronizationPoint<Exception> closeAsync() {
 		synchronized (this) {

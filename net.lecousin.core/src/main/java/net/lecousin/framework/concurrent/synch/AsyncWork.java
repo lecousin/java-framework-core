@@ -3,7 +3,6 @@ package net.lecousin.framework.concurrent.synch;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
@@ -19,7 +18,6 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * @param <T> type of result
  * @param <TError> type of error
  */
-@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 public class AsyncWork<T,TError extends Exception> implements ISynchronizationPoint<TError> {
 
 	/** Constructor. */

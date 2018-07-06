@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.plugins.ExtensionPoint;
 
 /**
@@ -19,7 +18,6 @@ public class AdapterRegistry implements ExtensionPoint<Adapter> {
 	public static AdapterRegistry get() { return instance; }
 	
 	/** Constructor called by the extension points system. */
-	@SuppressFBWarnings("ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD")
 	public AdapterRegistry() {
 		if (instance != null) return;
 		instance = this;

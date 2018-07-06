@@ -1,6 +1,8 @@
 package net.lecousin.framework.core.tests.application;
 
+import java.io.Closeable;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
@@ -99,6 +101,25 @@ public class TestApplication extends LCCoreAbstractTest {
 		Assert.assertEquals("myname", lib.getArtifactId());
 		Assert.assertEquals("1", lib.getVersion().toString());
 		Assert.assertEquals("mygroup:myname:1", lib.toString());
+	}
+	
+	@Test
+	public void testLCCore() {
+		Closeable c = new Closeable() {
+			@Override
+			public void close() throws IOException {
+			}
+		};
+		LCCore.get().closed(c);
+		AsyncCloseable<Exception> ac = new AsyncCloseable<Exception>() {
+			@Override
+			public ISynchronizationPoint<Exception> closeAsync() {
+				return new SynchronizationPoint<>(true);
+			}
+		};
+		LCCore.get().closed(ac);
+		LCCore.get().isStopping();
+		LCCore.get().getSystemLibraries();
 	}
 	
 }

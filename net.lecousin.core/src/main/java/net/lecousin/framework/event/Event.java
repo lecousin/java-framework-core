@@ -2,8 +2,6 @@ package net.lecousin.framework.event;
 
 import java.util.ArrayList;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.application.LCCore;
 
 /**
@@ -41,7 +39,6 @@ public class Event<T> implements Listenable<T> {
 		if (listenersRunnable.isEmpty()) listenersRunnable = null;
 	}
 	
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	@Override
 	public boolean hasListeners() { return listeners != null || listenersRunnable != null; }
 	

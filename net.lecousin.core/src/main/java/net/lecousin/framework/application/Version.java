@@ -2,8 +2,6 @@ package net.lecousin.framework.application;
 
 import java.util.ArrayList;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 /**
  * A version is composed of several numbers, separated by a dot,
  * and optionally can end with text such as 'beta', 'snapshot'...
@@ -44,7 +42,6 @@ public class Version implements Comparable<Version> {
 	private int[] numbers;
 	private String end;
 	
-	@SuppressFBWarnings("EI_EXPOSE_REP")
 	public int[] getNumbers() { return numbers; }
 	
 	@Override

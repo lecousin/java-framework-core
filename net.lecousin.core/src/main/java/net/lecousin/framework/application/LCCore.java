@@ -2,12 +2,12 @@ package net.lecousin.framework.application;
 
 import java.io.Closeable;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.memory.MemoryManager;
+import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.util.AsyncCloseable;
 
 /**
@@ -129,13 +129,13 @@ public final class LCCore {
 	}
 	
 	/** Stop the environement. */
-	@SuppressFBWarnings("NN_NAKED_NOTIFY")
-	public static void stop(boolean forceJvmToStop) {
+	public static MutableBoolean stop(boolean forceJvmToStop) {
 		if (stop != null) {
 			new Exception("LCCore already stopped", stop).printStackTrace(System.err);
-			return;
+			return new MutableBoolean(true);
 		}
 		stop = new Exception("LCCore stop requested here");
+		MutableBoolean stopped = new MutableBoolean(false);
 		new Thread("Stopping LCCore") {
 			@Override
 			public void run() {
@@ -147,8 +147,13 @@ public final class LCCore {
 					System.out.println("Stop JVM.");
 					System.exit(0);
 				}
+				synchronized (stopped) {
+					stopped.set(true);
+					stopped.notifyAll();
+				}
 			}
 		}.start();
+		return stopped;
 	}
 	
 	/**

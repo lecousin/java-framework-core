@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -69,7 +67,6 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 		return null;
 	}
 	
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	@Override
 	protected void closeResources(SynchronizationPoint<Exception> ondone) {
 		buffers = null;
@@ -102,7 +99,6 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 		lock.error(error);
 	}
 	
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	@Override
 	public void endOfData() {
 		AsyncWork<?,?> lw;

@@ -3,7 +3,6 @@ package net.lecousin.framework.io.buffering;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.collections.LinkedArrayList;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -44,7 +43,6 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	private int totalSize = 0;
 	
 	/** Must be called only when no more modification are being done. */
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	public LinkedArrayList<Triple<byte[],Integer,Integer>> getBuffers() {
 		return buffers;
 	}

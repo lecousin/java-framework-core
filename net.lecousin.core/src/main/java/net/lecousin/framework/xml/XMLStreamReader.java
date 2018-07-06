@@ -772,7 +772,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	}
 	
 
-	private static boolean isNameStartChar(char c) {
+	/** Return true if the given character is a valid starting character for a name. */
+	public static boolean isNameStartChar(char c) {
 		if (c < 0xF8) {
 			if (c < 0x3A) return false; // :
 			if (c < 0xC0) {

@@ -10,8 +10,6 @@ import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.concurrent.Task;
@@ -45,7 +43,6 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	}
 	
 	@SuppressWarnings("unchecked")
-	@SuppressFBWarnings("DP_CREATE_CLASSLOADER_INSIDE_DO_PRIVILEGED")
 	@Override
 	public DefaultApplicationClassLoader start(Application app) {
 		this.app = app;

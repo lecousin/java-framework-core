@@ -14,7 +14,6 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.log.Logger.Level;
@@ -48,7 +47,6 @@ public class LoggerFactory {
 		return application;
 	}
 	
-	@SuppressFBWarnings("UG_SYNC_SET_UNSYNC_GET")
 	public Logger getDefault() {
 		return defaultLogger;
 	}

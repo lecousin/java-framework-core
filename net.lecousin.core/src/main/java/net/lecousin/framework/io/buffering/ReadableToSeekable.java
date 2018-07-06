@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -124,7 +122,6 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	}
 	
 	@Override
-	@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 	public long getSizeSync() throws IOException {
 		if (knownSize >= 0) return knownSize;
 		do {
