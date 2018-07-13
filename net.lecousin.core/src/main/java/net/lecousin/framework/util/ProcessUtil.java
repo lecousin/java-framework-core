@@ -12,8 +12,10 @@ import net.lecousin.framework.mutable.Mutable;
 /**
  * Utility methods with Process.
  */
-public class ProcessUtil {
+public final class ProcessUtil {
 
+	private ProcessUtil() { /* no instance */ }
+	
 	/**
 	 * Create a thread that wait for the given process to end, and call the given listener.
 	 */

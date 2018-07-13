@@ -61,6 +61,11 @@ public class TestClassUtil extends LCCoreAbstractTest {
 	}
 	
 	@Test(timeout=30000)
+	public void testGetAllMethodsInheritedFirst() {
+		ClassUtil.getAllMethodsInheritedFirst(Class2.class);
+	}
+	
+	@Test(timeout=30000)
 	public void testGettersAndSetters() {
 		Assert.assertNotNull(ClassUtil.getGetter(Class2.class, "myBoolean").getAnnotation(Property.class));
 		Assert.assertNull(ClassUtil.getGetter(Class2.class, "myBoolean2"));
@@ -118,4 +123,9 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(Integer.valueOf(11), ClassUtil.getFieldFromPath(root, "e2.sub2.i"));
 	}
 	
+	@Test(timeout=30000)
+	public void testGetMethods() {
+		Assert.assertEquals(1, ClassUtil.getMethods(Class2.class, "setMyBoolean", 1).size());
+	}
+
 }
