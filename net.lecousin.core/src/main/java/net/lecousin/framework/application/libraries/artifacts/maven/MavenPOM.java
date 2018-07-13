@@ -877,40 +877,66 @@ public class MavenPOM implements LibraryDescriptor {
 	private boolean checkProfile(Profile profile, Map<String, String> finalProperties) {
 		if (profile.activationOS != null) {
 			if (profile.activationOS.name != null) {
-				if (!System.getProperty("os.name").toLowerCase(Locale.US).equals(profile.activationOS.name.toLowerCase()))
+				String name = System.getProperty("os.name").toLowerCase(Locale.US);
+				String s = profile.activationOS.name.toLowerCase();
+				if (s.startsWith("!"))
+					if (name.equals(s.substring(1)))
+						return false;
+				if (!name.equals(s))
 					return false;
 			}
 			if (profile.activationOS.arch != null) {
-				if (!System.getProperty("os.arch").toLowerCase(Locale.US).equals(profile.activationOS.arch.toLowerCase()))
+				String arch = System.getProperty("os.arch").toLowerCase(Locale.US);
+				String s = profile.activationOS.arch.toLowerCase();
+				if (s.startsWith("!"))
+					if (arch.equals(s.substring(1)))
+						return false;
+				if (!arch.equals(s))
 					return false;
 			}
 			if (profile.activationOS.family != null) {
 				OSFamily family = SystemEnvironment.getOSFamily();
 				if (family == null)
 					return false;
-				if (!profile.activationOS.family.toLowerCase().equals(family.getName()))
+				String fam = profile.activationOS.family.toLowerCase();
+				String s = family.getName();
+				if (s.startsWith("!"))
+					if (fam.equals(s.substring(1)))
+						return false;
+				if (!fam.equals(s))
 					return false;
 			}
 			if (profile.activationOS.version != null) {
-				if (!System.getProperty("os.version").toLowerCase(Locale.US).equals(profile.activationOS.version.toLowerCase()))
+				String ver = System.getProperty("os.version").toLowerCase(Locale.US);
+				String s = profile.activationOS.version.toLowerCase();
+				if (s.startsWith("!"))
+					if (ver.equals(s.substring(1)))
+						return false;
+				if (!ver.equals(s))
 					return false;
 			}
 		}
 		if (profile.activationPropertyName != null) {
 			if (profile.activationPropertyValue == null) {
-				if (!properties.containsKey(profile.activationPropertyName) &&
-					!finalProperties.containsKey(profile.activationPropertyName))
+				String s = profile.activationPropertyName;
+				boolean presentExpected = !s.startsWith("!");
+				if (!presentExpected) s = s.substring(1);
+				if (presentExpected != properties.containsKey(s) &&
+					presentExpected != finalProperties.containsKey(s))
 					return false;
 			} else {
 				String p1 = properties.get(profile.activationPropertyName);
 				String p2 = finalProperties.get(profile.activationPropertyName);
+				String value = profile.activationPropertyName;
+				boolean presentExpected = !value.startsWith("!");
+				if (!presentExpected) value = value.substring(1);
 				if (p1 == null) {
 					if (p2 == null) return false;
-					if (!p2.equals(profile.activationPropertyName)) return false;
+					if (presentExpected != p2.equals(value)) return false;
 				}
-				if (!p1.equals(profile.activationPropertyName)) {
+				if (presentExpected != p1.equals(value)) {
 					if (p2 == null) return false;
-					if (!p2.equals(profile.activationPropertyName)) return false;
+					if (presentExpected != p2.equals(value)) return false;
 				}
 			}
 		}

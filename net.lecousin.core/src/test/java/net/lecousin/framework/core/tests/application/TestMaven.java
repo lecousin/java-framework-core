@@ -1,25 +1,39 @@
 package net.lecousin.framework.core.tests.application;
 
 import java.io.File;
+import java.io.InputStream;
 import java.util.List;
 import java.util.zip.ZipFile;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor.Dependency;
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenLocalRepository;
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenPOM;
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenPOMLoader;
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenRemoteRepository;
+import net.lecousin.framework.application.libraries.artifacts.maven.MavenSettings;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 public class TestMaven extends LCCoreAbstractTest {
 
 	@Test(timeout=120000)
 	public void testLocalRepository() throws Exception {
-		File repoDir = new File(new File(System.getProperty("user.home")), ".m2/repository");
+		File settings = new File(System.getProperty("user.home") + "/.m2/settings.xml");
+		String localRepo = System.getProperty("user.home") + "/.m2/repository";
+		if (settings.exists()) {
+			try {
+				MavenSettings ms = MavenSettings.load(settings);
+				if (ms.localRepository != null)
+					localRepo = ms.localRepository;
+			} catch (Exception e) {
+				System.err.println("Error reading Maven settings.xml");
+				e.printStackTrace(System.err);
+			}
+		}
+		File repoDir = new File(localRepo);
 		MavenLocalRepository repo = new MavenLocalRepository(repoDir, true, true);
 		repo.toString();
 
@@ -140,8 +154,45 @@ public class TestMaven extends LCCoreAbstractTest {
 		pom.getDependenciesAdditionalRepositories();
 		pom.getLoader();
 		pom.getDirectory();
+
+		
+		pom = repo.load("org.javassist", "javassist", "3.16.1-GA", pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
+		for (Dependency dep : pom.getDependencies()) {
+			dep.getGroupId();
+			dep.getArtifactId();
+			dep.getClassifier();
+			dep.getVersionSpecification();
+			dep.getExcludedDependencies();
+			dep.getKnownLocation();
+			dep.isOptional();
+		}
+		pom.getDependenciesAdditionalRepositories();
+		pom.getLoader();
+		pom.getDirectory();
+		
+		pom = repo.load("org.apache.maven.shared", "maven-filtering", "1.3", pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
+		for (Dependency dep : pom.getDependencies()) {
+			dep.getGroupId();
+			dep.getArtifactId();
+			dep.getClassifier();
+			dep.getVersionSpecification();
+			dep.getExcludedDependencies();
+			dep.getKnownLocation();
+			dep.isOptional();
+		}
+		pom.getDependenciesAdditionalRepositories();
+		pom.getLoader();
+		pom.getDirectory();
 		
 		repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2", false, true);
+	}
+	
+	@Test
+	public void testSettings() throws Exception {
+		InputStream in = getClass().getClassLoader().getResourceAsStream("app/maven/settings.xml");
+		MavenSettings settings = MavenSettings.load(in);
+		in.close();
+		Assert.assertEquals("/test/maven/local/repo", settings.localRepository);
 	}
 	
 }

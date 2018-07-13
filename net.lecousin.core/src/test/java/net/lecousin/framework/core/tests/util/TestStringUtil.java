@@ -1,6 +1,7 @@
 package net.lecousin.framework.core.tests.util;
 
 import java.math.BigInteger;
+import java.util.Locale;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.util.StringUtil;
@@ -132,12 +133,15 @@ public class TestStringUtil extends LCCoreAbstractTest {
 	}
 	
 	private static void testSize(long size, String str) {
+		Locale def = Locale.getDefault();
+		Locale.setDefault(Locale.US);
 		String s = StringUtil.size(size);
 		Assert.assertEquals(str, s);
 		s = StringUtil.size(new BigInteger(Long.toString(size)));
 		Assert.assertEquals(str, s);
 		long si = StringUtil.parseSize(s);
 		Assert.assertEquals(size, si);
+		Locale.setDefault(def);
 	}
 	
 	public static enum E1 {

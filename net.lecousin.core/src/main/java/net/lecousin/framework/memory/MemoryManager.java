@@ -183,12 +183,13 @@ logger.debug("No garbage collection since 2 minutes => free some cached data to 
 			if (logger.debug())
 				logMemory(Level.DEBUG);
 
+			/*
 			if (System.currentTimeMillis() - lastGC[0] > 15 * 60 * 1000) {
 				if (logger.debug()) logger.debug("No garbage collection since 15 minutes => force it");
 				System.gc();
 				if (logger.debug())
 					logMemory(Level.DEBUG);
-			}
+			}*/
 		}
 	}
 	

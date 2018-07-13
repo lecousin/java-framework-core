@@ -1194,7 +1194,7 @@ public abstract class BufferedIO extends BufferingManaged {
 			public ByteBuffer run() throws IOException, CancelException {
 				if (buffer.error != null)
 					throw buffer.error;
-				if (sp != null && sp.isCancelled())
+				if (sp.isCancelled())
 					throw sp.getCancelEvent();
 				int start = getBufferOffset(pos);
 				ByteBuffer buf = ByteBuffer.allocate(buffer.len - start);
