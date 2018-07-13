@@ -53,6 +53,26 @@ public class TestUnprotectedStringBuffer extends TestIString {
 		s = new UnprotectedStringBuffer();
 		s.addFirst(new UnprotectedString("abc"));
 		Assert.assertEquals("abc", s.asString());
+		
+		s = new UnprotectedStringBuffer();
+		Assert.assertEquals(0, s.getNbUsableUnprotectedStrings());
+		Assert.assertEquals(0, s.charAt(10));
+		Assert.assertEquals(0, s.fillUsAsciiBytes(new byte[10], 0));
+		Assert.assertTrue(s == s.substring(1));
+		Assert.assertTrue(s == s.substring(1, 2));
+		Assert.assertTrue(s == s.removeEndChars(10));
+		try {
+			s.setCharAt(0, ' ');
+			throw new AssertionError("must throw IllegalArgumentException");
+		} catch (IllegalArgumentException e) {}
+		
+		s.append(new UnprotectedString("hello"));
+		s.append(new UnprotectedString(" "));
+		s.append(new UnprotectedString("world"));
+		s.append(new UnprotectedString("!"));
+		s.removeStartChars(6);
+		Assert.assertEquals('w', s.charAt(0));
+		Assert.assertEquals(0, s.charAt(10));
 	}
 	
 }

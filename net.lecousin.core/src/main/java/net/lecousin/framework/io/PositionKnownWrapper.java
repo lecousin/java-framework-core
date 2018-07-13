@@ -270,6 +270,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	}
 	
 	protected long skipSync(long n) throws IOException {
+		if (n <= 0) return 0;
 		long skipped = ((IO.Readable)io).skipSync(n);
 		position.add(skipped);
 		return skipped;
