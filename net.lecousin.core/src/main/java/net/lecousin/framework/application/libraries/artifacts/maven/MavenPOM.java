@@ -327,6 +327,12 @@ public class MavenPOM implements LibraryDescriptor {
 		}
 		return list;
 	}
+	
+	public List<LibraryDescriptor.Dependency> getAllDependenciesAnyScope() {
+		ArrayList<LibraryDescriptor.Dependency> list = new ArrayList<>(dependencies.size());
+		list.addAll(dependencies);
+		return list;
+	}
 
 	private class Reader extends Task.Cpu<Void, Exception> {
 		private Reader(AsyncWork<XMLStreamReader, Exception> startXMLReader, byte priority,
@@ -742,18 +748,16 @@ public class MavenPOM implements LibraryDescriptor {
 			resolveProperties(properties, finalProperties);
 			
 			Profile defaultProfile = null;
-			Profile activeProfile = null;
+			List<Profile> activeProfiles = new LinkedList<>();
 			for (Profile profile : profiles) {
-				if (checkProfile(profile, finalProperties)) {
-					activeProfile = profile;
-					break;
-				}
-				if (profile.activeByDefault && defaultProfile == null)
+				if (checkProfile(profile, finalProperties))
+					activeProfiles.add(profile);
+				else if (profile.activeByDefault && defaultProfile == null)
 					defaultProfile = profile;
 			}
-			if (activeProfile == null) activeProfile = defaultProfile;
-			if (activeProfile != null)
-				addProfile(activeProfile);
+			if (activeProfiles.isEmpty() && defaultProfile != null) activeProfiles.add(defaultProfile);
+			for (Profile p : activeProfiles)
+				addProfile(p);
 
 			resolveProperties(properties, finalProperties);
 			properties = finalProperties;
@@ -879,40 +883,40 @@ public class MavenPOM implements LibraryDescriptor {
 			if (profile.activationOS.name != null) {
 				String name = System.getProperty("os.name").toLowerCase(Locale.US);
 				String s = profile.activationOS.name.toLowerCase();
-				if (s.startsWith("!"))
+				if (s.startsWith("!")) {
 					if (name.equals(s.substring(1)))
 						return false;
-				if (!name.equals(s))
+				} else if (!name.equals(s))
 					return false;
 			}
 			if (profile.activationOS.arch != null) {
 				String arch = System.getProperty("os.arch").toLowerCase(Locale.US);
 				String s = profile.activationOS.arch.toLowerCase();
-				if (s.startsWith("!"))
+				if (s.startsWith("!")) {
 					if (arch.equals(s.substring(1)))
 						return false;
-				if (!arch.equals(s))
+				} else if (!arch.equals(s))
 					return false;
 			}
 			if (profile.activationOS.family != null) {
 				OSFamily family = SystemEnvironment.getOSFamily();
 				if (family == null)
 					return false;
-				String fam = profile.activationOS.family.toLowerCase();
-				String s = family.getName();
-				if (s.startsWith("!"))
+				String fam = family.getName();
+				String s = profile.activationOS.family.toLowerCase();
+				if (s.startsWith("!")) {
 					if (fam.equals(s.substring(1)))
 						return false;
-				if (!fam.equals(s))
+				} else if (!fam.equals(s))
 					return false;
 			}
 			if (profile.activationOS.version != null) {
 				String ver = System.getProperty("os.version").toLowerCase(Locale.US);
 				String s = profile.activationOS.version.toLowerCase();
-				if (s.startsWith("!"))
+				if (s.startsWith("!")) {
 					if (ver.equals(s.substring(1)))
 						return false;
-				if (!ver.equals(s))
+				} else if (!ver.equals(s))
 					return false;
 			}
 		}

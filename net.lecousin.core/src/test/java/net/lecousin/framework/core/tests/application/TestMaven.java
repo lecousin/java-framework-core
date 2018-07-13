@@ -157,9 +157,10 @@ public class TestMaven extends LCCoreAbstractTest {
 
 		
 		pom = repo.load("org.javassist", "javassist", "3.16.1-GA", pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
-		for (Dependency dep : pom.getDependencies()) {
-			dep.getGroupId();
-			dep.getArtifactId();
+		boolean foundTools = false;
+		for (Dependency dep : pom.getAllDependenciesAnyScope()) {
+			if ("com.sun".equals(dep.getGroupId()) && "tools".equals(dep.getArtifactId()))
+				foundTools = true;
 			dep.getClassifier();
 			dep.getVersionSpecification();
 			dep.getExcludedDependencies();
@@ -169,9 +170,10 @@ public class TestMaven extends LCCoreAbstractTest {
 		pom.getDependenciesAdditionalRepositories();
 		pom.getLoader();
 		pom.getDirectory();
+		Assert.assertTrue("dependency com.sun/tools found", foundTools);
 		
 		pom = repo.load("org.apache.maven.shared", "maven-filtering", "1.3", pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
-		for (Dependency dep : pom.getDependencies()) {
+		for (Dependency dep : pom.getAllDependenciesAnyScope()) {
 			dep.getGroupId();
 			dep.getArtifactId();
 			dep.getClassifier();
