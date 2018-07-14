@@ -5,18 +5,17 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.core.test.io.TestIO;
-import net.lecousin.framework.core.test.io.TestReadWrite;
-import net.lecousin.framework.io.FileIO;
-import net.lecousin.framework.io.buffering.BufferedIO;
-import net.lecousin.framework.io.buffering.BufferingManager;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.core.test.io.TestIO;
+import net.lecousin.framework.core.test.io.TestReadWrite;
+import net.lecousin.framework.io.FileIO;
+import net.lecousin.framework.io.buffering.BufferedIO;
 
 @RunWith(Parameterized.class)
 public class TestBufferedIOReadWrite extends TestReadWrite {
@@ -51,14 +50,14 @@ public class TestBufferedIOReadWrite extends TestReadWrite {
 	@Before
 	public void initMemory() {
 		if (smallMemory)
-			BufferingManager.get().setMemoryLimits(48 * 1024, 64 * 1024, 4 * 1024);
+			BufferedIO.MemoryManagement.setMemoryLimits(48 * 1024, 64 * 1024, 4 * 1024);
 		else
-			BufferingManager.get().setMemoryLimits(BufferingManager.DEFAULT_MEMORY_THRESHOLD, BufferingManager.DEFAULT_MAX_MEMORY, BufferingManager.DEFAULT_TO_BE_WRITTEN_THRESHOLD);
+			BufferedIO.MemoryManagement.setMemoryLimits(BufferedIO.MemoryManagement.DEFAULT_MEMORY_THRESHOLD, BufferedIO.MemoryManagement.DEFAULT_MAX_MEMORY, BufferedIO.MemoryManagement.DEFAULT_TO_BE_WRITTEN_THRESHOLD);
 	}
 	
 	@After
 	public void resetMemory() {
-		BufferingManager.get().setMemoryLimits(BufferingManager.DEFAULT_MEMORY_THRESHOLD, BufferingManager.DEFAULT_MAX_MEMORY, BufferingManager.DEFAULT_TO_BE_WRITTEN_THRESHOLD);
+		BufferedIO.MemoryManagement.setMemoryLimits(BufferedIO.MemoryManagement.DEFAULT_MEMORY_THRESHOLD, BufferedIO.MemoryManagement.DEFAULT_MAX_MEMORY, BufferedIO.MemoryManagement.DEFAULT_TO_BE_WRITTEN_THRESHOLD);
 	}
 	
 	@SuppressWarnings({ "unchecked", "resource" })
@@ -66,7 +65,7 @@ public class TestBufferedIOReadWrite extends TestReadWrite {
 	protected BufferedIO.ReadWrite openReadWrite() throws Exception {
 		File tmpFile = File.createTempFile("test", "bufferedio.rw");
 		tmpFile.deleteOnExit();
-		return new BufferedIO.ReadWrite(new FileIO.ReadWrite(tmpFile, Task.PRIORITY_NORMAL), 4096, 0);
+		return new BufferedIO.ReadWrite(new FileIO.ReadWrite(tmpFile, Task.PRIORITY_NORMAL), 0, 4096, 4096, false);
 	}
 	
 }

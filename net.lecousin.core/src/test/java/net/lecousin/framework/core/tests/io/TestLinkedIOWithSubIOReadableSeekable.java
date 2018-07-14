@@ -36,7 +36,7 @@ public class TestLinkedIOWithSubIOReadableSeekable extends TestReadableSeekable 
 	@Override
 	protected IO.Readable.Seekable createReadableSeekableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
 		// this test may be very slow, let's add a buffered layer
-		BufferedIO.ReadOnly buffered = new BufferedIO.ReadOnly(file, 32768, f.realSize);
+		BufferedIO buffered = new BufferedIO(file, f.realSize, 32768, 32768, false);
 		IO.Readable.Seekable[] ios = new IO.Readable.Seekable[f.fragments.size()];
 		int i = 0;
 		for (RangeLong fragment : f.fragments)

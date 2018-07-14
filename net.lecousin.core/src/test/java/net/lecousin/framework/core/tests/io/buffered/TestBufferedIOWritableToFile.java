@@ -30,7 +30,7 @@ public class TestBufferedIOWritableToFile extends TestWritableToFile {
 	@SuppressWarnings("resource")
 	@Override
 	protected IO.Writable createWritableFromFile(File file) throws IOException {
-		return new BufferedIO.ReadWrite(new FileIO.ReadWrite(file, Task.PRIORITY_NORMAL), 4096, 0);
+		return new BufferedIO.ReadWrite(new FileIO.ReadWrite(file, Task.PRIORITY_NORMAL), 0, 4096, 4096, false);
 	}
-	
+
 }

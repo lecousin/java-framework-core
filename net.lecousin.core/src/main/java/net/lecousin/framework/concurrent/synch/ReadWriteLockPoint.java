@@ -38,6 +38,27 @@ public class ReadWriteLockPoint {
 		}
 		sp.block(0);
 	}
+
+	/** To call when a thread wants to enter read mode.
+	 * If read can start immediately, this method returns null.
+	 * If the lock point is used in write mode, this method will return a SynchronizationPoint unblocked when read can start.
+	 */
+	public SynchronizationPoint<NoException> startReadAsync() {
+		SynchronizationPoint<NoException> sp;
+		synchronized (this) {
+			if (!writer) {
+				// nobody is writing, we can read
+				readers++;
+				return null;
+			}
+			// if someone is writing, we need to wait
+			if (readerWaiting == null)
+				readerWaiting = new SynchronizationPoint<NoException>();
+			sp = readerWaiting;
+			readers++;
+		}
+		return sp;
+	}
 	
 	/** To call when the thread leaves the read mode and release this lock point. */
 	public void endRead() {
@@ -72,7 +93,27 @@ public class ReadWriteLockPoint {
 		}
 		sp.block(0);
 	}
-	
+
+	/** To call when a thread wants to enter write mode.
+	 * If write can start immediately, this method returns null.
+	 * If the lock point is used in read mode, this method will return a SynchronizationPoint unblocked when write can start.
+	 */
+	public SynchronizationPoint<NoException> startWriteAsync() {
+		SynchronizationPoint<NoException> sp;
+		synchronized (this) {
+			// if nobody is using the resource, we can start writing
+			if (readers == 0 && !writer) {
+				writer = true;
+				return null;
+			}
+			// someone is doing something, we need to block
+			sp = new SynchronizationPoint<NoException>();
+			if (writersWaiting == null) writersWaiting = new LinkedList<>();
+			writersWaiting.add(sp);
+		}
+		return sp;
+	}
+
 	/** To call when the thread leaves the write mode and release this lock point. */
 	public void endWrite() {
 		SynchronizationPoint<NoException> sp;
@@ -93,6 +134,15 @@ public class ReadWriteLockPoint {
 			}
 		}
 		sp.unblock();
+	}
+	
+	/**
+	 * Return true if there is currently neither reader or writer.
+	 * Note that this does not mean starting operation won't block because between the call of this method and the call to a startXXX method,
+	 * another thread may have called a startXXX method.
+	 */
+	public boolean isUsed() {
+		return readers > 0 || writer;
 	}
 	
 }

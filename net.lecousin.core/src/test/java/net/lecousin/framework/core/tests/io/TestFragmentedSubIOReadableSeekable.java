@@ -34,7 +34,7 @@ public class TestFragmentedSubIOReadableSeekable extends TestReadableSeekable {
 	@Override
 	protected IO.Readable.Seekable createReadableSeekableFromFile(ReadOnly file, long fileSize) throws Exception {
 		// this test may be very slow, let's add a buffered layer
-		BufferedIO.ReadOnly buffered = new BufferedIO.ReadOnly(file, 32768, f.realSize);
+		BufferedIO buffered = new BufferedIO(file, f.realSize, 32768, 32768, false);
 		return new FragmentedSubIO.Readable(buffered, f.fragments, true, "fragmented IO");
 	}
 	

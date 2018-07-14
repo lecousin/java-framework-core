@@ -27,7 +27,7 @@ public class TestBufferedIOReadableSeekable extends TestReadableSeekable {
 	
 	@Override
 	protected IO.Readable.Seekable createReadableSeekableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
-		return new BufferedIO.ReadOnly(file, 256, 512, fileSize, true);
+		return new BufferedIO(file, fileSize, 256, 512, true);
 	}
 	
 	// TODO test starting with a position which is not 0

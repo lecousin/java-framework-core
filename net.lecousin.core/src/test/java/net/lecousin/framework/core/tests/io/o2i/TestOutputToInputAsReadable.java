@@ -35,7 +35,7 @@ public class TestOutputToInputAsReadable extends TestReadable {
 		File f = File.createTempFile("test", "outputtoinput");
 		f.deleteOnExit();
 		FileIO.ReadWrite fio = new FileIO.ReadWrite(f, Task.PRIORITY_NORMAL);
-		BufferedIO.ReadWrite bio = new BufferedIO.ReadWrite(fio, 4096, 0);
+		BufferedIO.ReadWrite bio = new BufferedIO.ReadWrite(fio, 0, 4096, 4096, false);
 		OutputToInput o2i = new OutputToInput(bio, "test");
 		TestOutputToInput.writeBg(o2i, nbBuf, testBuf);
 		return o2i;

@@ -36,7 +36,7 @@ public class TestLinkedIOWithSubIOReadableBuffered extends TestReadableBuffered 
 	@SuppressWarnings("resource")
 	@Override
 	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
-		BufferedIO.ReadOnly bio = new BufferedIO.ReadOnly(file, 4096, file.getSizeSync());
+		BufferedIO bio = new BufferedIO(file, file.getSizeSync(), 4096, 4096, true);
 		IO.Readable.Buffered[] ios = new IO.Readable.Buffered[f.fragments.size()];
 		int i = 0;
 		for (RangeLong fragment : f.fragments)

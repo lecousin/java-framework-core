@@ -27,7 +27,7 @@ public class TestBufferedIOReadableBuffered extends TestReadableBuffered {
 	
 	@Override
 	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
-		return new BufferedIO.ReadOnly(file, 256, 512, fileSize, true);
+		return new BufferedIO(file, fileSize, 256, 512, true);
 	}
 	
 }

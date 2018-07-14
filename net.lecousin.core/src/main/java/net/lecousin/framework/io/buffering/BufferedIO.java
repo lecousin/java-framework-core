@@ -7,749 +7,1516 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-import net.lecousin.framework.collections.LinkedArrayList;
+import net.lecousin.framework.application.Application;
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.map.LongMap;
 import net.lecousin.framework.collections.map.LongMapRBT;
-import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.collections.sort.OldestList;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
+import net.lecousin.framework.concurrent.synch.ReadWriteLockPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.memory.IMemoryManageable;
+import net.lecousin.framework.memory.MemoryManager;
+import net.lecousin.framework.util.ConcurrentCloseable;
+import net.lecousin.framework.util.Filter;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
+import net.lecousin.framework.util.StringUtil;
 
 /**
  * BufferedIO is often the best buffering implementation when we need both bufferization and seek operations.
  * <br/>
- * Basically, it keeps an ordered list of buffers corresponding to the different parts of the IO.
- * A buffer may loaded into memory, and so read and write operations can be done, or null if not loaded.
- * A buffer loaded into memory and which has not been used after some time will be freed automatically
- * by a background task.
+ * Basically, it keeps a list of buffers corresponding to the different parts of the IO.
+ * On first usage, a part of the IO is loaded into memory, and so read and write operations can be done quickly.
+ * After some time without being used, a buffer can be unloaded to free memory.
  * <br/>
- * Write operations are delayed: the data is kept in memory, so can be modified again or read, then a background
- * task will perform the real write operation.
+ * For a BufferedIO.ReadWrite, write operations are delayed: the data is kept in memory, so can be modified again or read quickly.
+ * After 30 seconds without new write operation on a buffer, or if too much data has been written in memory and not yet flushed on
+ * the underlying IO, a buffer is automatically flushed.
  * <br/>
- * BufferedIOs are managed by a singleton BufferingManager.
- * The BufferingManager is responsible for the background tasks: write operations and free buffer no longer used.
- * All BufferedIOs are managed together, so the BufferingManager can decide of operations based on memory usage.
+ * <br/>
+ * BufferedIOs are managed by the BufferedIO.MemoryManagement class.
+ * It is responsible for the background tasks: write operations and free buffer no longer used.
+ * <br/>
+ * All BufferedIOs are managed together, so the MemoryManagement can decide of operations based on memory usage
+ * considering all instances of BufferedIO.
+ * <br/>
  * It checks regularly what is used and not used and which write operations need to be done. In case a maximum memory
  * is reached, and new memory is needed, it will free memory first. But it will try to do operations in background
  * as much as possible, and will decide to free memory when it detects we are close to reach the maximum memory usage.
- * Using a single BufferingManager for all BufferedIOs allows to manage memory globally for the application, so
- * many BufferedIOs can be used together while controlling the memory usage, and giving priority to buffers recently used. 
+ * <br/>
+ * Using a single MemoryManagement for all BufferedIOs allows to manage memory globally for the application, so
+ * many BufferedIOs can be used together while controlling the memory usage, and giving priority to buffers recently used.
  */
-public abstract class BufferedIO extends BufferingManaged {
+public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seekable, IO.Readable.Buffered, IO.KnownSize {
 
-	protected BufferedIO(IO.Readable.Seekable io, int bufferSize, long size) throws IOException {
-		this(io, bufferSize, bufferSize, size, true);
-	}
-	
-	protected BufferedIO(
-		IO.Readable.Seekable io,
-		int firstBufferSize,
-		int bufferSize,
-		long size,
-		boolean startReadSecondBufferWhenFirstBufferFullyRead)
-	throws IOException {
-		this.manager = BufferingManager.get();
-		this.pos = io.getPosition();
-		if (this.pos >= firstBufferSize)
-			firstBufferSize = bufferSize; // if we are not starting from the first buffer, there is no need for a different size
-		this.io = io;
-		this.firstBufferSize = firstBufferSize;
-		this.bufferSize = bufferSize;
-		this.size = size;
-		this.startReadSecondBufferWhenFirstBufferFullyRead = startReadSecondBufferWhenFirstBufferFullyRead;
-		int nbBuffers = size <= firstBufferSize ? 1 : (int)((size - firstBufferSize) / bufferSize) + 2;
-		if (nbBuffers < 10000)
-			bufferTable = new BufferTableArray(nbBuffers);
-		else
-			bufferTable = new BufferTableMapping();
-		loadBuffer(getBufferIndex(this.pos));
-	}
-	
-	protected BufferingManager manager;
-	protected IO.Readable.Seekable io;
-	private BufferTable bufferTable;
-	private int firstBufferSize;
-	private int bufferSize;
-	protected long size;
-	protected long pos;
-	protected boolean startReadSecondBufferWhenFirstBufferFullyRead = true;
-	
-	/** Buffer. */
-	protected static class Buffer extends BufferingManager.Buffer {
-		private Buffer(BufferedIO owner, long index) {
-			this.owner = owner;
-			this.index = index;
+	/** Manages memory usage and delayed write operations of BufferedIO instances. */
+	public static class MemoryManagement implements IMemoryManageable {
+		
+		/** By default set to 55MB. */
+		public static final int DEFAULT_MEMORY_THRESHOLD = 55 * 1024 * 1024;
+		/** By default set to 64MB. */
+		public static final int DEFAULT_MAX_MEMORY = 64 * 1024 * 1024;
+		/** By default set to 12MB. */
+		public static final int DEFAULT_TO_BE_WRITTEN_THRESHOLD = 12 * 1024 * 1024;
+		
+		public static long getMemoryThreshold() { return get().memoryThreshold; }
+		
+		public static long getMaxMemory() { return get().maxMemory; }
+		
+		public static long getToBeWrittenThreshold() { return get().toBeWrittenThreshold; }
+		
+		/** Set the memory limits.
+		 * @param memoryThreshold when this threshold is reached, it accelerates freeing some memory
+		 * @param maxMemory maximum memory to use
+		 * @param toBeWrittenThreshold when this threshold is reached, pending writes are executed
+		 */
+		public static void setMemoryLimits(long memoryThreshold, long maxMemory, long toBeWrittenThreshold) {
+			MemoryManagement instance = get();
+			instance.maxMemory = maxMemory;
+			instance.memoryThreshold = memoryThreshold;
+			instance.toBeWrittenThreshold = toBeWrittenThreshold;
+		}
+
+		/** Return the instance associated with the current Application. */
+		private static synchronized MemoryManagement get() {
+			Application app = LCCore.getApplication();
+			MemoryManagement instance = app.getInstance(MemoryManagement.class);
+			if (instance == null) {
+				instance = new MemoryManagement();
+				app.setInstance(MemoryManagement.class, instance);
+			}
+			return instance;
 		}
 		
+		private MemoryManagement() {
+			background = new Background();
+			background.start();
+			MemoryManager.register(this);
+		}
+		
+		private Background background;
+		private Buffer head = null;
+		private Buffer tail = null;
+		private long usedMemory = 0;
+		private long maxMemory = DEFAULT_MAX_MEMORY;
+		private long memoryThreshold = DEFAULT_MEMORY_THRESHOLD;
+		private long toBeWritten = 0;
+		private long toBeWrittenThreshold = DEFAULT_TO_BE_WRITTEN_THRESHOLD;
+		private long lastFree = 0;
+		
+		private void newBuffer(Buffer b) {
+			synchronized (this) {
+				b.previous = tail;
+				if (head == null)
+					head = tail = b;
+				else {
+					b.previous = tail;
+					tail.next = b;
+					tail = b;
+				}
+				
+				usedMemory += b.data.length;
+				if (usedMemory > maxMemory) {
+					long now = System.currentTimeMillis();
+					if (now - lastFree < 5000)
+						freeBuffers(50, true);
+					else if (now - lastFree < 15000)
+						freeBuffers(25, true);
+					else
+						freeBuffers(10, true);
+					background.executeNextOccurenceNow(Task.PRIORITY_RATHER_IMPORTANT);
+				} else if (usedMemory > memoryThreshold) {
+					background.executeNextOccurenceNow(Task.PRIORITY_NORMAL);
+				}
+			}
+		}
+		
+		private void toWrite(Buffer b) {
+			synchronized (this) {
+				if (b.lastWrite == 0) {
+					b.lastWrite = System.currentTimeMillis();
+					toBeWritten += b.data.length;
+					if (toBeWritten >= toBeWrittenThreshold)
+						background.executeNextOccurenceNow(Task.PRIORITY_RATHER_IMPORTANT);
+				} else
+					b.lastWrite = System.currentTimeMillis();
+			}
+		}
+		
+		private ISynchronizationPoint<IOException> close(BufferedIO owner) {
+			JoinPoint<IOException> jp = new JoinPoint<>();
+			synchronized (this) {
+				Buffer b = head;
+				while (b != null) {
+					if (b.owner != owner) {
+						b = b.next;
+						continue;
+					}
+					if (b.previous == null)
+						head = b.next;
+					else
+						b.previous.next = b.next;
+					if (b.next == null)
+						tail = b.previous;
+					else
+						b.next.previous = b.previous;
+					SynchronizationPoint<NoException> write = b.usage.startWriteAsync();
+					if (write == null) {
+						if (b.lastWrite == 0)
+							b.usage.endWrite();
+						else {
+							jp.addToJoin(1);
+							Buffer bb = b;
+							b.owner.flush(b).listenInline(() -> {
+								bb.usage.endWrite();
+								jp.joined();
+							});
+						}
+					} else {
+						jp.addToJoin(1);
+						Buffer bb = b;
+						write.listenInline(() -> {
+							if (bb.lastWrite == 0) {
+								bb.usage.endWrite();
+								jp.joined();
+							} else {
+								bb.owner.flush(bb).listenInline(() -> {
+									bb.usage.endWrite();
+									jp.joined();
+								});
+							}
+						});
+					}
+					b = b.next;
+				}
+			}
+			jp.start();
+			return jp;
+		}
+
+		private void freeBuffers(int nb, boolean urgent) {
+			long now = System.currentTimeMillis();
+			OldestList<Buffer> oldest = new OldestList<>(nb);
+			synchronized (this) {
+				for (Buffer b = head; b != null; b = b.next) {
+					if (b.owner.closing) continue;
+					if (b.usage.isUsed()) continue;
+					if (b.lastWrite > 0) continue;
+					if (!urgent && now - b.lastRead < 2000) continue;
+					oldest.add(b.lastRead, b);
+				}
+				for (Buffer b : oldest) {
+					if (b.owner.closing) continue;
+					if (b.usage.isUsed()) continue;
+					if (b.lastWrite > 0) continue;
+					if (!b.owner.bufferTable.remove(b, false)) continue;
+					if (b.previous == null)
+						head = b.next;
+					else
+						b.previous.next = b.next;
+					if (b.next == null)
+						tail = b.previous;
+					else
+						b.next.previous = b.previous;
+					usedMemory -= b.data.length;
+					b.data = null;
+				}
+				lastFree = System.currentTimeMillis();
+			}
+		}
+		
+		private void remove(Buffer b) {
+			synchronized (this) {
+				b.owner.bufferTable.remove(b, true);
+				if (b.previous == null)
+					head = b.next;
+				else
+					b.previous.next = b.next;
+				if (b.next == null)
+					tail = b.previous;
+				else
+					b.next.previous = b.previous;
+				usedMemory -= b.data.length;
+				b.data = null;
+			}
+		}
+		
+		@Override
+		public String getDescription() {
+			return "BufferedIO Memory Management";
+		}
+		
+		@Override
+		public List<String> getItemsDescription() {
+			List<String> list = new ArrayList<>(1);
+			list.add("Buffers: " + StringUtil.size(usedMemory));
+			return list;
+		}
+		
+		@Override
+		public void freeMemory(FreeMemoryLevel level) {
+			background.executeNextOccurenceNow(Task.PRIORITY_RATHER_IMPORTANT);
+			switch (level) {
+			default:
+			case EXPIRED_ONLY:
+				freeBuffers(5, false);
+				break;
+			case LOW:
+				freeBuffers(10, false);
+				break;
+			case MEDIUM:
+				freeBuffers(25, false);
+				break;
+			case URGENT:
+				freeBuffers(200, true);
+				break;
+			}
+		}
+		
+		private class Background extends Task.Cpu<Void,NoException> {
+			public Background() {
+				super("BufferedIO Memory Management", Task.PRIORITY_LOW);
+				executeEvery(30000, 45000);
+			}
+			
+			@Override
+			public Void run() {
+				setPriority(Task.PRIORITY_LOW);
+				long now = System.currentTimeMillis();
+				int old = 0;
+				OldestList<Buffer> oldestToBeWritten = null;
+				if (toBeWritten >= toBeWrittenThreshold)
+					oldestToBeWritten = new OldestList<>(50);
+				synchronized (MemoryManagement.this) {
+					for (Buffer b = head; b != null; b = b.next) {
+						if (b.owner.closing) continue;
+						if (b.usage.isUsed()) continue;
+						if (b.lastWrite > 0) {
+							if (now - b.lastWrite >= 30000)
+								flush(b);
+							else if (oldestToBeWritten != null)
+								oldestToBeWritten.add(b.lastWrite, b);
+						} else if (now - b.lastRead > 15 * 60 * 1000)
+							old++;
+					}
+				}
+				if (oldestToBeWritten != null) {
+					long target = toBeWritten - toBeWrittenThreshold + toBeWrittenThreshold / 10;
+					synchronized (MemoryManagement.this) {
+						for (Buffer b : oldestToBeWritten) {
+							if (b.owner.closing) continue;
+							if (b.usage.isUsed()) continue;
+							if (b.lastWrite == 0) continue;
+							if (flush(b))
+								target -= b.data.length;
+							if (target < 0) break;
+						}
+					}
+				}
+				if (now - lastFree > 5 * 60 * 1000)
+					freeBuffers(10, false);
+				else if (old > 0)
+					freeBuffers(5, false);
+				return null;
+			}
+			
+			private boolean flush(Buffer b) {
+				SynchronizationPoint<NoException> ready = b.usage.startWriteAsync();
+				if (ready != null) {
+					ready.listenInline(() -> { b.usage.endWrite(); });
+					return false;
+				}
+				if (b.lastWrite == 0) {
+					b.usage.endWrite();
+					return false;
+				}
+				ISynchronizationPoint<IOException> flushing = b.owner.flush(b);
+				flushing.listenInline(() -> {
+					if (b.lastRead < b.lastWrite)
+						b.lastRead = b.lastWrite;
+					if (flushing.isSuccessful()) {
+						flushed(b);
+					}
+					b.usage.endWrite();
+				});
+				return true;
+			}
+			
+		}
+
+		private void flushed(Buffer b) {
+			b.lastWrite = 0;
+			synchronized (MemoryManagement.this) {
+				toBeWritten -= b.data.length;
+			}
+		}
+		
+	}
+	
+	private static class Buffer {
+		private BufferedIO owner;
 		private long index;
-		private SynchronizationPoint<NoException> loading;
-		private IOException error;
+		private byte[] data;
+		private long lastRead = 0;
+		private long lastWrite = 0;
+		private SynchronizationPoint<IOException> loaded = new SynchronizationPoint<>();
+		private ReadWriteLockPoint usage = new ReadWriteLockPoint();
+		private Buffer next;
+		private Buffer previous;
 	}
 	
 	private interface BufferTable {
-		Buffer getOrAllocate(long index);
+		public Buffer needBufferSync(long index, boolean newAtTheEnd);
 		
-		Buffer getIfAllocated(long index);
+		public AsyncWork<Buffer, NoException> needBufferAsync(long index, boolean newAtTheEnd);
 		
-		Buffer getForWrite(long index);
+		public boolean remove(Buffer buffer, boolean force);
 		
-		void cancelAll();
+		public void setSize(long nbBuffersBefore, long nbBuffersAfter);
 		
-		boolean removing(Buffer buffer);
-		
-		ISynchronizationPoint<NoException> decreaseSize(long newSize);
+		public ISynchronizationPoint<IOException> flush();
 	}
 	
-	private class BufferTableArray implements BufferTable {
-		public BufferTableArray(int nbBuffers) {
-			if (nbBuffers <= 10)
-				buffers = new ArrayList<>(nbBuffers);
-			else {
-				if (nbBuffers <= 100) // up to 10 arrays of 10 elements
-					buffers = new LinkedArrayList<>(10);
-				else if (nbBuffers <= 200) // up to 10 arrays of 20 elements
-					buffers = new LinkedArrayList<>(20);
-				else if (nbBuffers <= 450) // up to 15 arrays of 30 elements
-					buffers = new LinkedArrayList<>(30);
-				else if (nbBuffers <= 1000) // up to 20 arrays of 50 elements
-					buffers = new LinkedArrayList<>(50);
-				else
-					buffers = new LinkedArrayList<>(100); // arrays of 100
-			}
-
+	private class ArrayBufferTable implements BufferTable {
+		private ArrayBufferTable(int nbBuffers) {
+			buffers = new Buffer[nbBuffers];
 		}
 		
-		private List<Buffer> buffers;
+		private Buffer[] buffers;
 		
 		@Override
-		public Buffer getOrAllocate(long index) {
-			int l = buffers.size();
-			while (l <= index)
-				buffers.add(new Buffer(BufferedIO.this, l++));
-			return buffers.get((int)index);
-		}
-		
-		@Override
-		public Buffer getIfAllocated(long index) {
-			return index < buffers.size() ? buffers.get((int)index) : null;
-		}
-		
-		@Override
-		public Buffer getForWrite(long index) {
-			boolean isNew = false;
-			Buffer buffer;
+		public Buffer needBufferSync(long index, boolean newAtTheEnd) {
+			int i = (int)index;
+			Buffer b;
+			boolean isNew;
 			synchronized (this) {
-				if (index == buffers.size()) {
-					buffer = new Buffer(BufferedIO.this, index);
-					buffer.buffer = new byte[index == 0 ? firstBufferSize : bufferSize];
-					buffer.len = 0;
-					buffer.inUse = 1;
-					buffers.add(buffer);
+				if (newAtTheEnd && i == buffers.length) {
+					Buffer[] newArray = new Buffer[i + 1];
+					System.arraycopy(buffers, 0, newArray, 0, buffers.length);
+					buffers = newArray;
+				}
+				if ((b = buffers[i]) == null) {
+					b = new Buffer();
+					b.owner = BufferedIO.this;
+					b.index = index;
+					b.data = new byte[index == 0 ? firstBufferSize : bufferSize];
+					buffers[i] = b;
 					isNew = true;
+					b.usage.startRead();
 				} else {
-					buffer = buffers.get((int)index);
-					if (buffer.buffer == null && (buffer.loading == null || buffer.loading.isUnblocked())) {
-						buffer.buffer = new byte[index == 0 ? firstBufferSize : bufferSize];
-						buffer.len = 0;
-						isNew = true;
-					}
-					buffer.inUse++;
+					isNew = false;
+					b.lastRead = System.currentTimeMillis();
 				}
 			}
-			if (isNew) manager.newBuffer(buffer);
-			return buffer;
-		}
-		
-		@Override
-		public void cancelAll() {
-			for (Buffer b : buffers) {
-				manager.removeBuffer(b);
-				synchronized (b) {
-					if (b.loading != null) b.loading.cancel(new CancelException("BufferedIO.cancelAll"));
-					b.loading = null;
-					if (b.flushing != null)
-						while (!b.flushing.isEmpty())
-							b.flushing.removeFirst().cancel(new CancelException("BufferedIO.cancelAll"));
-					b.flushing = null;
-				}
+			if (isNew) {
+				memory.newBuffer(b);
+				if (newAtTheEnd)
+					b.loaded.unblock();
+				else
+					load(b);
+				return b;
 			}
-		}
-		
-		@Override
-		public boolean removing(Buffer buffer) {
-			if (buffer.loading == null) return true;
-			if (!buffer.loading.isUnblocked()) return false;
-			buffer.loading = null;
-			return true;
-		}
-		
-		@Override
-		public ISynchronizationPoint<NoException> decreaseSize(long newSize) {
-			JoinPoint<Exception> jp = new JoinPoint<>();
-			long lastBufferIndex = newSize == 0 ? -1 : getBufferIndex(newSize - 1);
+			b.usage.startRead();
+			// in case it was been removed while not in the synchronized section, we need to check it is still the correct buffer
 			synchronized (this) {
-				for (int i = buffers.size() - 1; i >= lastBufferIndex && i >= 0; --i) {
-					Buffer buffer = buffers.get(i);
-					synchronized (buffer) {
-						if (buffer.loading != null && !buffer.loading.isUnblocked())
-							jp.addToJoin(buffer.loading);
-						if (buffer.flushing != null)
-							for (AsyncWork<?,?> f : buffer.flushing)
-								jp.addToJoin(f);
-						if (i != lastBufferIndex) {
-							buffer.lastRead = System.currentTimeMillis();
-							buffer.lastWrite = 0;
-						}
-					}
+				if (buffers[i] == b)
+					return b;
+			}
+			b.usage.endRead();
+			return needBufferSync(index, newAtTheEnd);
+		}
+		
+		@Override
+		public AsyncWork<Buffer, NoException> needBufferAsync(long index, boolean newAtTheEnd) {
+			int i = (int)index;
+			Buffer b;
+			boolean isNew;
+			synchronized (this) {
+				if (newAtTheEnd && i == buffers.length) {
+					Buffer[] newArray = new Buffer[i + 1];
+					System.arraycopy(buffers, 0, newArray, 0, buffers.length);
+					buffers = newArray;
+				}
+				if ((b = buffers[i]) == null) {
+					b = new Buffer();
+					b.owner = BufferedIO.this;
+					b.index = index;
+					b.data = new byte[index == 0 ? firstBufferSize : bufferSize];
+					buffers[i] = b;
+					isNew = true;
+					b.usage.startRead();
+				} else {
+					isNew = false;
+					b.lastRead = System.currentTimeMillis();
 				}
 			}
-			jp.start();
-			SynchronizationPoint<NoException> sp = new SynchronizationPoint<>();
-			jp.listenAsync(new Task.Cpu<Void,NoException>("Decrease size of BufferedIO", getPriority()) {
-				@Override
-				public Void run() {
-					Buffer lastBuffer = null;
-					LinkedList<Buffer> removed = new LinkedList<>();
-					synchronized (BufferTableArray.this) {
-						while (buffers.size() > lastBufferIndex + 1) {
-							Buffer buffer = buffers.remove(buffers.size() - 1);
-							if (buffer.buffer != null)
-								removed.add(buffer);
-						}
-						if (newSize > 0) lastBuffer = buffers.get((int)lastBufferIndex);
-					}
-					while (!removed.isEmpty())
-						manager.removeBuffer(removed.removeFirst());
-					// decrease size of last buffer if any
-					if (lastBuffer != null) {
-						int lastBufferSize;
-						if (newSize <= firstBufferSize)
-							lastBufferSize = (int)newSize;
-						else
-							lastBufferSize = (int)((newSize - firstBufferSize) % bufferSize);
-						lastBuffer.len = lastBufferSize;
-						lastBuffer.lastRead = System.currentTimeMillis();
-					}
-					sp.unblock();
-					return null;
+			if (isNew) {
+				memory.newBuffer(b);
+				if (newAtTheEnd)
+					b.loaded.unblock();
+				else
+					load(b);
+				return new AsyncWork<>(b, null);
+			}
+			SynchronizationPoint<NoException> sp = b.usage.startReadAsync();
+			if (sp == null || sp.isUnblocked()) {
+				synchronized (this) {
+					if (buffers[i] == b)
+						return new AsyncWork<>(b, null);
 				}
-			}, true);
-			return sp;
+				b.usage.endRead();
+				return needBufferAsync(index, newAtTheEnd);
+			}
+			AsyncWork<Buffer, NoException> result = new AsyncWork<>();
+			Buffer bb = b;
+			sp.listenInline(() -> {
+				synchronized (this) {
+					if (buffers[i] == bb) {
+						result.unblockSuccess(bb);
+						return;
+					}
+				}
+				bb.usage.endRead();
+				needBufferAsync(index, newAtTheEnd).listenInline(result);
+			});
+			return result;
 		}
+		
+		@Override
+		public boolean remove(Buffer buffer, boolean force) {
+			do {
+				SynchronizationPoint<?> sp;
+				synchronized (this) {
+					int i = (int)buffer.index;
+					if (buffers[i] != buffer)
+						return true;
+					sp = buffer.usage.startWriteAsync();
+					if (sp == null) {
+						buffer.usage.endWrite();
+						sp = buffer.loaded;
+						if (sp.isUnblocked()) {
+							if (buffer.lastWrite > 0 && !force)
+								return false;
+							buffers[i] = null;
+							return true;
+						}
+						if (!force)
+							return false;
+					} else {
+						sp.listenInline(() -> { buffer.usage.endWrite(); });
+						if (!force)
+							return false;
+					}
+				}
+				sp.block(0);
+			} while (true);
+		}
+		
+		@Override
+		public void setSize(long nbBuffersBefore, long nbBuffersAfter) {
+			Buffer[] removedArray;
+			Buffer lastPrevious;
+			synchronized (this) {
+				if (nbBuffersAfter > nbBuffersBefore) {
+					// only need to increase array size
+					Buffer[] newArray = new Buffer[(int)nbBuffersAfter];
+					System.arraycopy(buffers, 0, newArray, 0, buffers.length);
+					buffers = newArray;
+					return;
+				}
+				// we need to ensure there is no flush in progress on the removed buffers and the last buffer
+				// this is done by the remove function in which we do a startWrite
+				Buffer[] newArray = new Buffer[(int)nbBuffersAfter];
+				System.arraycopy(buffers, 0, newArray, 0, newArray.length);
+				removedArray = new Buffer[(int)(nbBuffersBefore - nbBuffersAfter)];
+				System.arraycopy(buffers, newArray.length, removedArray, 0, removedArray.length);
+				buffers = newArray;
+				lastPrevious = nbBuffersAfter == 0 ? null : buffers[newArray.length - 1];
+			}
+			// make sure the last buffer is not flushing
+			if (lastPrevious != null)
+				lastPrevious.usage.startWrite();
+			// remove buffers
+			for (Buffer b : removedArray)
+				memory.remove(b);
+
+			if (lastPrevious != null)
+				lastPrevious.usage.endWrite();
+		}
+		
+		@Override
+		public ISynchronizationPoint<IOException> flush() {
+			LinkedList<Buffer> toFlush = new LinkedList<>();
+			synchronized (this) {
+				for (Buffer b : buffers)
+					if (b != null && b.lastWrite > 0)
+						toFlush.add(b);
+			}
+			return BufferedIO.this.flush(toFlush, (b) -> {
+				synchronized (ArrayBufferTable.this) {
+					return buffers[(int)b.index] == b;
+				}
+			});
+		}
+		
 	}
 	
-	private class BufferTableMapping implements BufferTable {
+	private class MapBufferTable implements BufferTable {
 		private LongMap<Buffer> map = new LongMapRBT<>(10000);
 
 		@Override
-		public Buffer getOrAllocate(long index) {
-			Buffer b = map.get(index);
-			if (b == null) {
-				b = new Buffer(BufferedIO.this, index);
-				map.put(index, b);
-			}
-			return b;
-		}
-		
-		@Override
-		public Buffer getIfAllocated(long index) {
-			return map.get(index);
-		}
-		
-		@Override
-		public Buffer getForWrite(long index) {
-			boolean isNew = false;
-			Buffer buffer;
+		public Buffer needBufferSync(long index, boolean newAtTheEnd) {
+			Buffer b;
+			boolean isNew;
 			synchronized (this) {
-				buffer = map.get(index);
-				if (buffer == null) {
-					buffer = new Buffer(BufferedIO.this, index);
-					buffer.buffer = new byte[index == 0 ? firstBufferSize : bufferSize];
-					buffer.len = 0;
-					buffer.inUse = 1;
-					map.put(index, buffer);
+				if ((b = map.get(index)) == null) {
+					b = new Buffer();
+					b.owner = BufferedIO.this;
+					b.index = index;
+					b.data = new byte[index == 0 ? firstBufferSize : bufferSize];
+					map.put(index, b);
 					isNew = true;
+					b.usage.startRead();
 				} else {
-					if (buffer.buffer == null && (buffer.loading == null || buffer.loading.isUnblocked())) {
-						buffer.buffer = new byte[index == 0 ? firstBufferSize : bufferSize];
-						buffer.len = 0;
-						isNew = true;
-					}
-					buffer.inUse++;
+					isNew = false;
+					b.lastRead = System.currentTimeMillis();
 				}
 			}
-			if (isNew) manager.newBuffer(buffer);
-			return buffer;
-		}
-		
-		@Override
-		public void cancelAll() {
-			for (Iterator<Buffer> it = map.values(); it.hasNext(); ) {
-				Buffer b = it.next();
-				manager.removeBuffer(b);
-				synchronized (b) {
-					if (b.loading != null) b.loading.cancel(new CancelException("BufferedIO.cancelAll"));
-					b.loading = null;
-					if (b.flushing != null)
-						while (!b.flushing.isEmpty())
-							b.flushing.removeFirst().cancel(new CancelException("BufferedIO.cancelAll"));
-					b.flushing = null;
-				}
-			}
-			map.clear();
-		}
-		
-		@Override
-		public boolean removing(Buffer buffer) {
-			if (buffer.loading != null) {
-				if (!buffer.loading.isUnblocked()) return false;
-				buffer.loading = null;
-			}
-			map.remove(buffer.index);
-			return true;
-		}
-		
-		@Override
-		public ISynchronizationPoint<NoException> decreaseSize(long newSize) {
-			JoinPoint<Exception> jp = new JoinPoint<>();
-			long lastBufferIndex = newSize == 0 ? -1 : getBufferIndex(newSize - 1);
-			synchronized (this) {
-				for (Iterator<Buffer> it = map.values(); it.hasNext(); ) {
-					Buffer buffer = it.next();
-					if (buffer.index < lastBufferIndex) continue;
-					synchronized (buffer) {
-						if (buffer.loading != null && !buffer.loading.isUnblocked())
-							jp.addToJoin(buffer.loading);
-						if (buffer.flushing != null)
-							for (AsyncWork<?,?> f : buffer.flushing)
-								jp.addToJoin(f);
-						if (buffer.index != lastBufferIndex) {
-							buffer.lastRead = System.currentTimeMillis();
-							buffer.lastWrite = 0;
-						}
-					}
-				}
-			}
-			jp.start();
-			SynchronizationPoint<NoException> sp = new SynchronizationPoint<>();
-			jp.listenAsync(new Task.Cpu<Void,NoException>("Decrease size of BufferedIO", getPriority()) {
-				@Override
-				public Void run() {
-					Buffer lastBuffer = null;
-					LinkedList<Buffer> removed = new LinkedList<>();
-					synchronized (BufferTableMapping.this) {
-						for (Iterator<Buffer> it = map.values(); it.hasNext(); ) {
-							Buffer buffer = it.next();
-							if (buffer.index <= lastBufferIndex) continue;
-							it.remove();
-							if (buffer.buffer != null)
-								removed.add(buffer);
-						}
-						if (newSize > 0) lastBuffer = map.get(lastBufferIndex);
-					}
-					while (!removed.isEmpty())
-						manager.removeBuffer(removed.removeFirst());
-					// decrease size of last buffer if any
-					if (lastBuffer != null) {
-						int lastBufferSize;
-						if (newSize <= firstBufferSize)
-							lastBufferSize = (int)newSize;
-						else
-							lastBufferSize = (int)((newSize - firstBufferSize) % bufferSize);
-						lastBuffer.len = lastBufferSize;
-						lastBuffer.lastRead = System.currentTimeMillis();
-					}
-					sp.unblock();
-					return null;
-				}
-			}, true);
-			return sp;
-		}
-	}
-	
-	protected void loadBuffer(long index) {
-		Buffer buffer;
-		synchronized (bufferTable) {
-			buffer = bufferTable.getOrAllocate(index);
-			if (buffer.buffer != null) return;
-			if (buffer.loading != null) return;
-			buffer.loading = new SynchronizationPoint<>();
-		}
-		AsyncWork<Integer,IOException> loading;
-		synchronized (buffer) {
-			buffer.buffer = new byte[index == 0 ? firstBufferSize : bufferSize];
-			loading = io.readFullyAsync(
-				index == 0
-				? 0L
-				: (firstBufferSize + (index - 1) * bufferSize),
-				ByteBuffer.wrap(buffer.buffer));
-		}
-		operation(loading).listenInline(new Runnable() {
-			@Override
-			public void run() {
-				SynchronizationPoint<NoException> sp;
-				synchronized (buffer) {
-					sp = buffer.loading;
-					if (sp == null) return;
-				}
-				if (!loading.isSuccessful()) {
-					if (loading.isCancelled()) sp.cancel(loading.getCancelEvent());
-					else {
-						buffer.error = loading.getError();
-						sp.unblock();
-					}
-					buffer.buffer = null;
-					return;
-				}
-				buffer.len = loading.getResult().intValue();
-				if (buffer.len < 0) buffer.len = 0;
-				buffer.lastRead = System.currentTimeMillis();
-				manager.newBuffer(buffer);
-				sp.unblock();
-			}
-		});
-	}
-	
-	/** Load the buffer if needed. */
-	protected Buffer useBufferAsync(long index) {
-		do {
-			Buffer b = null;
-			try {
-				synchronized (bufferTable) {
-					b = bufferTable.getIfAllocated(index);
-				}
-				if (b != null) {
-					synchronized (b) {
-						b.inUse++;
-						if (b.buffer == null && (b.loading == null || b.loading.isUnblocked()) && b.error == null)
-							loadBuffer(index);
-					}
-					return b;
-				}
-				loadBuffer(index);
-			} catch (Throwable t) {
-				if (closing) {
-					b = new Buffer(this, index);
-					b.loading = new SynchronizationPoint<>(new CancelException("IO closed"));
-					return b;
-				}
-				if (b == null) b = new Buffer(this, index);
-				b.error = IO.error(t);
-				b.loading = new SynchronizationPoint<>(true);
+			if (isNew) {
+				memory.newBuffer(b);
+				if (newAtTheEnd)
+					b.loaded.unblock();
+				else
+					load(b);
 				return b;
 			}
-		} while (true);
+			b.usage.startRead();
+			// in case it was been removed while not in the synchronized section, we need to check it is still the correct buffer
+			synchronized (this) {
+				if (map.get(index) == b)
+					return b;
+			}
+			b.usage.endRead();
+			return needBufferSync(index, newAtTheEnd);
+		}
+		
+		@Override
+		public AsyncWork<Buffer, NoException> needBufferAsync(long index, boolean newAtTheEnd) {
+			Buffer b;
+			boolean isNew;
+			synchronized (this) {
+				if ((b = map.get(index)) == null) {
+					b = new Buffer();
+					b.owner = BufferedIO.this;
+					b.index = index;
+					b.data = new byte[index == 0 ? firstBufferSize : bufferSize];
+					map.put(index, b);
+					isNew = true;
+					b.usage.startRead();
+				} else {
+					isNew = false;
+					b.lastRead = System.currentTimeMillis();
+				}
+			}
+			if (isNew) {
+				memory.newBuffer(b);
+				if (newAtTheEnd)
+					b.loaded.unblock();
+				else
+					load(b);
+				return new AsyncWork<>(b, null);
+			}
+			SynchronizationPoint<NoException> sp = b.usage.startReadAsync();
+			if (sp == null || sp.isUnblocked()) {
+				synchronized (this) {
+					if (map.get(index) == b)
+						return new AsyncWork<>(b, null);
+				}
+				b.usage.endRead();
+				return needBufferAsync(index, newAtTheEnd);
+			}
+			AsyncWork<Buffer, NoException> result = new AsyncWork<>();
+			Buffer bb = b;
+			sp.listenInline(() -> {
+				synchronized (this) {
+					if (map.get(index) == bb) {
+						result.unblockSuccess(bb);
+						return;
+					}
+				}
+				bb.usage.endRead();
+				needBufferAsync(index, newAtTheEnd).listenInline(result);
+			});
+			return result;
+		}
+			
+		@Override
+		public boolean remove(Buffer buffer, boolean force) {
+			do {
+				SynchronizationPoint<?> sp;
+				synchronized (this) {
+					if (map.get(buffer.index) != buffer)
+						return true;
+					sp = buffer.usage.startWriteAsync();
+					if (sp == null) {
+						buffer.usage.endWrite();
+						sp = buffer.loaded;
+						if (sp.isUnblocked()) {
+							if (buffer.lastWrite > 0 && !force)
+								return false;
+							map.remove(buffer.index);
+							return true;
+						}
+						if (!force)
+							return false;
+					} else {
+						sp.listenInline(() -> { buffer.usage.endWrite(); });
+						if (!force)
+							return false;
+					}
+				}
+				sp.block(0);
+			} while (true);
+		}
+
+		@Override
+		public void setSize(long nbBuffersBefore, long nbBuffersAfter) {
+			LinkedList<Buffer> removed;
+			Buffer lastPrevious;
+			synchronized (this) {
+				if (nbBuffersAfter > nbBuffersBefore) {
+					// only new buffers, nothing to do
+					return;
+				}
+				// we need to ensure there is no flush in progress on the removed buffers and the last buffer
+				// this is done by the remove function in which we do a startWrite
+				removed = new LinkedList<>();
+				lastPrevious = null;
+				for (Iterator<Buffer> it = map.values(); it.hasNext(); ) {
+					Buffer b = it.next();
+					if (b.index == nbBuffersAfter) lastPrevious = b;
+					if (b.index < nbBuffersAfter) continue;
+					removed.add(b);
+				}
+			}
+			// make sure the last buffer is not flushing
+			if (lastPrevious != null)
+				lastPrevious.usage.startWrite();
+			// remove buffers
+			for (Buffer b : removed)
+				memory.remove(b);
+
+			if (lastPrevious != null)
+				lastPrevious.usage.endWrite();
+		}
+		
+		@Override
+		public ISynchronizationPoint<IOException> flush() {
+			LinkedList<Buffer> toFlush = new LinkedList<>();
+			synchronized (this) {
+				for (Iterator<Buffer> it = map.values(); it.hasNext(); ) {
+					Buffer b = it.next();
+					if (b.lastWrite > 0)
+						toFlush.add(b);
+				}
+			}
+			return BufferedIO.this.flush(toFlush, (b) -> {
+				synchronized (MapBufferTable.this) {
+					return map.get(b.index) == b;
+				}
+			});
+		}
+		
 	}
 	
-	/** Load the buffer if needed and wait for it. */
-	protected Buffer useBufferSync(long index) throws IOException {
-		Buffer b = useBufferAsync(index);
-		SynchronizationPoint<NoException> sp = b.loading;
-		if (sp != null) sp.block(0);
-		if (b.error != null) throw b.error;
-		return b;
+	/** Constructor. */
+	public BufferedIO(IO.Readable.Seekable io, long size, int firstBufferSize, int nextBuffersSize, boolean preLoadNextBuffer) {
+		this.io = io;
+		try {
+			position = io.getPosition();
+		} catch (IOException e) {
+			position = 0;
+		}
+		this.memory = MemoryManagement.get();
+		this.size = size;
+		this.firstBufferSize = firstBufferSize;
+		this.bufferSize = nextBuffersSize;
+		this.preLoadNextBuffer = preLoadNextBuffer;
+		long nbBuffers = size <= firstBufferSize ? 1 : ((size - firstBufferSize) / bufferSize) + 2;
+		if (nbBuffers < 10000)
+			bufferTable = new ArrayBufferTable((int)nbBuffers);
+		else
+			bufferTable = new MapBufferTable();
+		if (preLoadNextBuffer)
+			preLoadBuffer(position);
+	}
+
+	/** Constructor. */
+	public BufferedIO(IO.Readable.Seekable io, int firstBufferSize, int nextBuffersSize, boolean preLoadNextBuffer) throws IOException {
+		this(io, IOUtil.getSizeSync(io), firstBufferSize, nextBuffersSize, preLoadNextBuffer);
+	}
+	
+	protected MemoryManagement memory;
+	protected IO.Readable.Seekable io;
+	protected long position = 0;
+	protected long size;
+	protected boolean closing = false;
+	protected BufferTable bufferTable;
+	protected boolean preLoadNextBuffer;
+	protected int firstBufferSize;
+	protected int bufferSize;
+	
+	private void load(Buffer b) {
+		long pos = b.index == 0 ? 0 : (firstBufferSize + bufferSize * (b.index - 1));
+		int len = size - pos < b.data.length ? (int)(size - pos) : b.data.length;
+		if (len == 0) {
+			b.loaded.unblock();
+			return;
+		}
+		AsyncWork<Integer, IOException> read = io.readFullyAsync(pos, ByteBuffer.wrap(b.data, 0, len));
+		read.listenInline((nb) -> {
+			if (nb.intValue() != len)
+				b.loaded.error(new IOException("Only " + nb + " bytes read at " + pos + " but expected was " + len));
+			else
+				b.loaded.unblock();
+		}, b.loaded);
 	}
 	
 	protected long getBufferIndex(long pos) {
-		if (pos < firstBufferSize) return 0;
-		return (((pos - firstBufferSize) / bufferSize)) + 1;
+		if (pos < firstBufferSize)
+			return 0;
+		return ((pos - firstBufferSize) / bufferSize) + 1;
 	}
 	
 	protected int getBufferOffset(long pos) {
-		if (pos < firstBufferSize) return (int)pos;
-		pos -= firstBufferSize;
-		return (int)(pos % bufferSize);
+		if (pos < firstBufferSize)
+			return (int)pos;
+		return (int)((pos - firstBufferSize) % bufferSize);
 	}
 	
-	protected long getBufferStart(long index) {
-		if (index == 0) return 0;
-		if (index == 1) return firstBufferSize;
-		return firstBufferSize + ((index - 1) * bufferSize);
+	protected long getBufferPosition(long index) {
+		if (index == 0)
+			return 0;
+		return firstBufferSize + (index - 1) * bufferSize;
 	}
 	
-	/** Ask to cancel all buffers. This can be used before to close if the data is not needed anymore
-	 * so there is no need to write pending buffers when closing.
-	 */
-	public void cancelAll() {
-		synchronized (bufferTable) {
-			bufferTable.cancelAll();
+	private ISynchronizationPoint<IOException> flush(Buffer b) {
+		long pos = getBufferPosition(b.index);
+		int len = b.data.length;
+		if (pos + len > size) len = (int)(size - pos);
+		if (len == 0)
+			return new SynchronizationPoint<>(true);
+		return ((IO.Writable.Seekable)io).writeAsync(pos, ByteBuffer.wrap(b.data, 0, len));
+	}
+	
+	private ISynchronizationPoint<IOException> flush(LinkedList<Buffer> list, Filter<Buffer> filter) {
+		JoinPoint<IOException> jp = new JoinPoint<>();
+		jp.addToJoin(list.size());
+		flushNext(list, filter, jp, 0);
+		jp.start();
+		return jp;
+	}
+	
+	private void flushNext(LinkedList<Buffer> list, Filter<Buffer> filter, JoinPoint<IOException> jp, int recurs) {
+		if (list.isEmpty()) return;
+		Buffer b = list.removeFirst();
+		SynchronizationPoint<NoException> sp = b.usage.startWriteAsync();
+		if (sp == null)
+			doFlush(b, jp, list, filter, recurs);
+		else
+			sp.listenAsync(new Task.Cpu.FromRunnable("BufferedIO.flush", getPriority(), () -> {
+				doFlush(b, jp, list, filter, 0);
+			}), true);
+	}
+	
+	private void doFlush(Buffer b, JoinPoint<IOException> jp, LinkedList<Buffer> list, Filter<Buffer> filter, int recurs) {
+		if (!filter.accept(b)) {
+			b.usage.endWrite();
+			jp.joined();
+			flushNext(list, filter, jp, recurs + 1);
+			return;
 		}
+		ISynchronizationPoint<IOException> flush = flush(b);
+		flush.listenInline(() -> {
+			b.usage.endWrite();
+			if (flush.isSuccessful())
+				memory.flushed(b);
+			jp.joined();
+		});
+		if (recurs > 250) {
+			new Task.Cpu.FromRunnable("BufferedIO.flush", getPriority(), () -> {
+				flushNext(list, filter, jp, 0);
+			}).start();
+			return;
+		}
+		flushNext(list, filter, jp, recurs + 1);
+	}
+	
+	protected void preLoadBuffer(long pos) {
+		if (closing) return;
+		if (pos == size) return;
+		new Task.Cpu.FromRunnable("Pre-load next buffer in BufferedIO", io.getPriority(), () -> {
+			long bufferIndex = getBufferIndex(pos);
+			AsyncWork<Buffer, NoException> b = bufferTable.needBufferAsync(bufferIndex, false);
+			b.listenInline(() -> {
+				b.getResult().lastRead = System.currentTimeMillis();
+				b.getResult().usage.endRead();
+			});
+		}).start();		
 	}
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
-		return manager.close(this);
-	}
-	
-	@Override
-	ISynchronizationPoint<Exception> closed() {
-		return io.closeAsync();
+	protected ISynchronizationPoint<Exception> closeUnderlyingResources() {
+		closing = true;
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		memory.close(this).listenInlineSP(() -> {
+			io.closeAsync().listenInline(sp);
+		}, sp);
+		return sp;
 	}
 	
 	@Override
 	protected void closeResources(SynchronizationPoint<Exception> ondone) {
 		io = null;
 		bufferTable = null;
+		memory = null;
 		ondone.unblock();
 	}
 	
 	@Override
-	boolean removing(BufferingManager.Buffer buffer) {
-		Buffer b = (Buffer)buffer;
-		synchronized (bufferTable) {
-			return bufferTable.removing(b);
-		}
+	public byte getPriority() {
+		return io != null ? io.getPriority() : Task.PRIORITY_NORMAL;
 	}
 	
 	@Override
-	AsyncWork<?,IOException> flushWrite(BufferingManager.Buffer buffer) {
-		long pos;
-		if (((Buffer)buffer).index == 0) pos = 0;
-		else if (((Buffer)buffer).index == 1) pos = firstBufferSize;
-		else pos = firstBufferSize + ((((Buffer)buffer).index - 1) * bufferSize);
-		return ((IO.Writable.Seekable)io).writeAsync(pos, ByteBuffer.wrap(buffer.buffer, 0, buffer.len));
+	public void setPriority(byte priority) {
+		io.setPriority(priority);
 	}
 	
-	protected ISynchronizationPoint<IOException> flush() {
-		return manager.fullFlush(this);
+	@Override
+	public String getSourceDescription() {
+		return io.getSourceDescription();
 	}
 	
-	/** Read-only implementation of BufferedIO. */
-	public static class ReadOnly extends BufferedIO implements IO.Readable.Seekable, IO.Readable.Buffered, IO.KnownSize {
-		
-		/** Constructor. */
-		public ReadOnly(IO.Readable.Seekable io, int bufferSize, long size) throws IOException {
-			super(io, bufferSize, size);
+	@Override
+	public IO getWrappedIO() {
+		return io;
+	}
+	
+	@Override
+	public TaskManager getTaskManager() {
+		return Threading.getCPUTaskManager();
+	}
+	
+	@Override
+	public long getSizeSync() {
+		return size;
+	}
+	
+	@Override
+	public AsyncWork<Long, IOException> getSizeAsync() {
+		return new AsyncWork<>(Long.valueOf(size), null);
+	}
+	
+	@Override
+	public long getPosition() {
+		return position;
+	}
+	
+	@Override
+	public int read() throws IOException {
+		if (closing)
+			throw new IOException("IO closed");
+		if (position == size)
+			return -1;
+		long bufferIndex = getBufferIndex(position);
+		Buffer b = bufferTable.needBufferSync(bufferIndex, false);
+		b.loaded.block(0);
+		if (b.loaded.isCancelled()) {
+			b.usage.endRead();
+			return -1;
 		}
-		
-		/** Constructor. */
-		public ReadOnly(
-			IO.Readable.Seekable io, 
-			int firstBufferSize, 
-			int bufferSize, 
-			long size, 
-			boolean startReadSecondBufferWhenFirstBufferFullyRead)
-		throws IOException {
-			super(io, firstBufferSize, bufferSize, size, startReadSecondBufferWhenFirstBufferFullyRead);
+		if (b.loaded.hasError()) {
+			b.usage.endRead();
+			throw b.loaded.getError();
 		}
-		
-		@Override
-		public ISynchronizationPoint<IOException> canStartReading() {
-			return super.canStartReading();
+		int r = b.data[getBufferOffset(position)];
+		position++;
+		b.lastRead = System.currentTimeMillis();
+		b.usage.endRead();
+		if (preLoadNextBuffer && position < size && getBufferIndex(position) != bufferIndex)
+			preLoadBuffer(position);
+		return r;
+	}
+	
+	@Override
+	public int read(byte[] buffer, int offset, int len) throws IOException {
+		if (closing)
+			throw new IOException("IO closed");
+		if (position == size)
+			return -1;
+		long bufferIndex = getBufferIndex(position);
+		Buffer b = bufferTable.needBufferSync(bufferIndex, false);
+		b.loaded.block(0);
+		if (b.loaded.isCancelled()) {
+			b.usage.endRead();
+			return -1;
 		}
-		
-		@Override
-		public IO getWrappedIO() {
-			return io;
+		if (b.loaded.hasError()) {
+			b.usage.endRead();
+			throw b.loaded.getError();
 		}
-		
-		@Override
-		public String getSourceDescription() {
-			if (io == null) return "";
-			return io.getSourceDescription();
-		}
-		
-		@Override
-		public byte getPriority() {
-			if (io == null) return Task.PRIORITY_NORMAL;
-			return io.getPriority();
-		}
-		
-		@Override
-		public void setPriority(byte priority) {
-			io.setPriority(priority);
-		}
-		
-		@Override
-		public TaskManager getTaskManager() {
-			return Threading.getCPUTaskManager();
-		}
-		
-		@Override
-		public long getPosition() {
-			return pos;
-		}
-		
-		@Override
-		public long getSizeSync() {
-			return size;
-		}
-		
-		@Override
-		public AsyncWork<Long, IOException> getSizeAsync() {
-			AsyncWork<Long, IOException> sp = new AsyncWork<>();
-			sp.unblockSuccess(Long.valueOf(size));
-			return sp;
-		}
-		
-		@Override
-		public int skip(int skip) {
-			return (int)skipSync(skip);
-		}
-		
-		@Override
-		public long skipSync(long skip) {
-			if (pos + skip > size) skip = size - pos;
-			if (pos + skip < 0) skip = -pos;
-			pos += skip;
-			if (pos < size)
-				loadBuffer(getBufferIndex(pos));
-			return skip;
-		}
-		
-		@Override
-		public long seekSync(SeekType type, long move) {
-			switch (type) {
-			case FROM_BEGINNING:
-				pos = move;
-				break;
-			case FROM_END:
-				pos = size - move;
-				break;
-			case FROM_CURRENT:
-				pos += move;
-				break;
-			default: break;
-			}
-			if (pos < 0) pos = 0;
-			if (pos > size) pos = size;
-			return pos;
-		}
-		
-		@Override
-		public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-			seekSync(type, move);
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(pos), null));
-			return new AsyncWork<Long,IOException>(Long.valueOf(pos), null);
-		}
-		
-		@Override
-		public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
-			long skipped = skipSync(n);
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(skipped), null));
-			return new AsyncWork<Long,IOException>(Long.valueOf(skipped), null);
-		}
-		
-		@Override
-		public int read() throws IOException {
-			return super.read();
-		}
-		
-		@Override
-		public int read(byte[] buf, int offset, int len) throws IOException {
-			return super.read(buf, offset, len);
-		}
-		
-		@Override
-		public int readFully(byte[] buf) throws IOException {
-			return super.readFully(buf);
-		}
-		
-		@Override
-		public int readSync(long pos, ByteBuffer buf) throws IOException {
-			return super.readSync(pos, buf);
-		}
-		
-		@Override
-		public int readSync(ByteBuffer buf) throws IOException {
-			return super.readSync(pos, buf);
-		}
-		
-		@Override
-		public int readAsync() throws IOException {
-			return super.readAsync();
-		}
-		
-		@Override
-		public AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			return super.readAsync(pos, buf, ondone);
-		}
-		
-		@Override
-		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			return super.readAsync(pos, buf, ondone);
-		}
-		
-		@Override
-		public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
-			return super.readNextBufferAsync(ondone);
-		}
-		
-		@Override
-		public int readFullySync(long pos, ByteBuffer buf) throws IOException {
-			return super.readFullySync(pos, buf);
-		}
-		
-		@Override
-		public int readFullySync(ByteBuffer buf) throws IOException {
-			return super.readFullySync(pos, buf);
-		}
-		
-		@Override
-		public AsyncWork<Integer,IOException> readFullyAsync(
-			long pos, ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone)
-		{
-			return super.readFullyAsync(pos, buf, 0, ondone);
-		}
-		
-		@Override
-		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			return super.readFullyAsync(pos, buf, 0, ondone);
-		}
-		
-		@Override
-		public AsyncWork<Integer, IOException> readFullySyncIfPossible(
-			ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
-		) {
-			return super.readFullySyncIfPossible(pos, buffer, 0, ondone);
-		}
-		
-		/** While readAsync methods are supposed to do the job in a separate thread, this method
-		 * fills the given buffer synchronously if enough data is already buffered, else it finishes asynchronously.
-		 * The caller can check the returned AsyncWork by calling its method isUnblocked to know if the
-		 * read has been performed synchronously.
-		 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
-		 * but support also to work asynchronously without blocking a thread.
-		 */
-		public AsyncWork<Integer, IOException> readFullySyncIfPossible(
-			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
-		) {
-			return super.readFullySyncIfPossible(pos, buffer, 0, ondone);
-		}
+		int off = getBufferOffset(position);
+		if (len > b.data.length - off) len = b.data.length - off;
+		if (position + len > size) len = (int)(size - position);
+		System.arraycopy(b.data, off, buffer, offset, len);
+		position += len;
+		b.lastRead = System.currentTimeMillis();
+		b.usage.endRead();
+		if (preLoadNextBuffer && position < size && getBufferIndex(position) != bufferIndex)
+			preLoadBuffer(position);
+		return len;
 	}
 
-	/** Read and write implementation of BufferedIO. */
-	public static class ReadWrite
-		extends BufferedIO
-		implements IO.Readable.Seekable, IO.Readable.Buffered, IO.Writable.Seekable, IO.Writable.Buffered,
-			IO.KnownSize, IO.Resizable {
-		
-		/** Constructor. */
-		public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.Resizable>
-		ReadWrite(T io, int bufferSize, long size)throws IOException {
-			super(io, bufferSize, size);
+	@Override
+	public int readSync(long pos, ByteBuffer buffer) throws IOException {
+		if (closing)
+			throw new IOException("IO closed");
+		if (pos >= size)
+			return -1;
+		long bufferIndex = getBufferIndex(pos);
+		Buffer b = bufferTable.needBufferSync(bufferIndex, false);
+		b.loaded.block(0);
+		if (b.loaded.isCancelled()) {
+			b.usage.endRead();
+			return -1;
 		}
+		if (b.loaded.hasError()) {
+			b.usage.endRead();
+			throw b.loaded.getError();
+		}
+		int off = getBufferOffset(pos);
+		int len = buffer.remaining();
+		if (len > b.data.length - off) len = b.data.length - off;
+		if (pos + len > size) len = (int)(size - pos);
+		buffer.put(b.data, off, len);
+		position = pos + len;
+		b.lastRead = System.currentTimeMillis();
+		b.usage.endRead();
+		if (preLoadNextBuffer && position < size && getBufferIndex(position) != bufferIndex)
+			preLoadBuffer(position);
+		return len;
+	}
+	
+	@Override
+	public int readSync(ByteBuffer buffer) throws IOException {
+		return readSync(position, buffer);
+	}
+	
+	@Override
+	public int readFullySync(long pos, ByteBuffer buffer) throws IOException {
+		if (closing)
+			throw new IOException("IO closed");
+		if (pos >= size)
+			return -1;
+		long bufferIndex = getBufferIndex(pos);
+		Buffer b = bufferTable.needBufferSync(bufferIndex, false);
+		b.loaded.block(0);
+		if (b.loaded.isCancelled()) {
+			b.usage.endRead();
+			return -1;
+		}
+		if (b.loaded.hasError()) {
+			b.usage.endRead();
+			throw b.loaded.getError();
+		}
+		int len = buffer.remaining();
+		if (pos + len > size) len = (int)(size - pos);
+		for (long nextPos = pos + (bufferIndex == 0 ? firstBufferSize : bufferSize); nextPos < pos + len; nextPos = nextPos + bufferSize)
+			preLoadBuffer(nextPos);
+		int off = getBufferOffset(pos);
+		if (len > b.data.length - off) len = b.data.length - off;
+		buffer.put(b.data, off, len);
+		position = pos + len;
+		b.lastRead = System.currentTimeMillis();
+		b.usage.endRead();
+		if (!buffer.hasRemaining()) {
+			if (preLoadNextBuffer && position < size && getBufferIndex(position) != bufferIndex)
+				preLoadBuffer(position);
+			return len;
+		}
+		int total = len;
+		do {
+			pos += len;
+			if (pos == size) break;
+			bufferIndex = getBufferIndex(pos);
+			b = bufferTable.needBufferSync(bufferIndex, false);
+			b.loaded.block(0);
+			if (b.loaded.isCancelled()) {
+				b.usage.endRead();
+				return total;
+			}
+			if (b.loaded.hasError()) {
+				b.usage.endRead();
+				throw b.loaded.getError();
+			}
+			len = buffer.remaining();
+			if (pos + len > size) len = (int)(size - pos);
+			off = getBufferOffset(pos);
+			if (len > b.data.length - off) len = b.data.length - off;
+			buffer.put(b.data, off, len);
+			position = pos + len;
+			total += len;
+			b.lastRead = System.currentTimeMillis();
+			b.usage.endRead();
+		} while (buffer.hasRemaining());
+		if (preLoadNextBuffer && position < size && getBufferIndex(position) != bufferIndex)
+			preLoadBuffer(position);
+		return total;
+	}
+	
+	@Override
+	public int readFullySync(ByteBuffer buffer) throws IOException {
+		return readFullySync(position, buffer);
+	}
+	
+	@Override
+	public int readFully(byte[] buffer) throws IOException {
+		return readFullySync(position, ByteBuffer.wrap(buffer));
+	}
+	
+	@Override
+	public ISynchronizationPoint<IOException> canStartReading() {
+		if (position == size)
+			return new SynchronizationPoint<>(true);
+		if (closing)
+			return new SynchronizationPoint<>(new IOException("IO closed"));
+		long bufferIndex = getBufferIndex(position);
+		AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
+		if (getBuffer.isUnblocked()) {
+			Buffer b = getBuffer.getResult();
+			b.usage.endRead();
+			return b.loaded;
+		}
+		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+		getBuffer.listenInline(() -> {
+			Buffer b = getBuffer.getResult();
+			b.lastRead = System.currentTimeMillis();
+			b.loaded.listenInline(sp);
+			b.usage.endRead();
+		});
+		return sp;
+	}
+	
+	@Override
+	public int readAsync() throws IOException {
+		if (closing)
+			throw new IOException("IO closed");
+		if (position == size)
+			return -1;
+		long bufferIndex = getBufferIndex(position);
+		AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
+		if (!getBuffer.isUnblocked()) {
+			getBuffer.listenInline(() -> {
+				Buffer b = getBuffer.getResult();
+				b.lastRead = System.currentTimeMillis();
+				b.usage.endRead();
+			});
+			return -2;
+		}
+		Buffer b = getBuffer.getResult();
+		if (!b.loaded.isUnblocked()) {
+			b.lastRead = System.currentTimeMillis();
+			b.usage.endRead();
+			return -2;
+		}
+		if (b.loaded.isCancelled()) {
+			b.usage.endRead();
+			return -1;
+		}
+		if (b.loaded.hasError()) {
+			b.usage.endRead();
+			throw b.loaded.getError();
+		}
+		int r = b.data[getBufferOffset(position)];
+		position++;
+		b.lastRead = System.currentTimeMillis();
+		b.usage.endRead();
+		if (preLoadNextBuffer && position < size && getBufferIndex(position) != bufferIndex)
+			preLoadBuffer(position);
+		return r;
+	}
+	
+	@Override
+	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		if (closing) {
+			IOException err = new IOException("IO closed");
+			if (ondone != null) ondone.run(new Pair<>(null, err));
+			return new AsyncWork<>(null, err);
+		}
+		if (pos >= size) {
+			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
+			return new AsyncWork<>(Integer.valueOf(-1), null);
+		}
+		long bufferIndex = getBufferIndex(pos);
+		AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
+		AsyncWork<Integer, IOException> result = new AsyncWork<>();
+		readAsync(pos, buffer, getBuffer, ondone, result);
+		return operation(result);
+	}
+	
+	private void readAsync(
+		long pos, ByteBuffer buffer, AsyncWork<Buffer, NoException> getBuffer,
+		RunnableWithParameter<Pair<Integer, IOException>> ondone, AsyncWork<Integer, IOException> result
+	) {
+		getBuffer.listenInline(() -> {
+			Buffer b = getBuffer.getResult();
+			b.loaded.listenAsync(new Task.Cpu.FromRunnable("BufferedIO.readAsync", io.getPriority(), () -> {
+				if (b.loaded.hasError()) {
+					if (ondone != null) ondone.run(new Pair<>(null, b.loaded.getError()));
+					result.error(b.loaded.getError());
+					b.usage.endRead();
+					return;
+				}
+				if (b.loaded.isCancelled()) {
+					result.cancel(b.loaded.getCancelEvent());
+					b.usage.endRead();
+					return;
+				}
+				int off = getBufferOffset(pos);
+				int len = buffer.remaining();
+				if (len > b.data.length - off) len = b.data.length - off;
+				if (pos + len > size) len = (int)(size - pos);
+				buffer.put(b.data, off, len);
+				position = pos + len;
+				b.lastRead = System.currentTimeMillis();
+				b.usage.endRead();
+				if (preLoadNextBuffer && position < size && getBufferIndex(position) != b.index)
+					preLoadBuffer(position);
+				Integer nb = Integer.valueOf(len);
+				if (ondone != null) ondone.run(new Pair<>(nb, null));
+				result.unblockSuccess(nb);
+			}), true);
+		});
+	}
+	
+	@Override
+	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		return readAsync(position, buffer, ondone);
+	}
+	
+	@Override
+	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
+		if (closing) {
+			IOException err = new IOException("IO closed");
+			if (ondone != null) ondone.run(new Pair<>(null, err));
+			return new AsyncWork<>(null, err);
+		}
+		if (position >= size) {
+			if (ondone != null) ondone.run(new Pair<>(null, null));
+			return new AsyncWork<>(null, null);
+		}
+		long bufferIndex = getBufferIndex(position);
+		AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
+		AsyncWork<ByteBuffer, IOException> result = new AsyncWork<>();
+		readNextBufferAsync(getBuffer, ondone, result);
+		return operation(result);
+	}
+	
+	private void readNextBufferAsync(
+		AsyncWork<Buffer, NoException> getBuffer,
+		RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone, AsyncWork<ByteBuffer, IOException> result
+	) {
+		getBuffer.listenInline(() -> {
+			Buffer b = getBuffer.getResult();
+			b.loaded.listenAsync(new Task.Cpu.FromRunnable("BufferedIO.readAsync", io.getPriority(), () -> {
+				if (b.loaded.hasError()) {
+					if (ondone != null) ondone.run(new Pair<>(null, b.loaded.getError()));
+					result.error(b.loaded.getError());
+					b.usage.endRead();
+					return;
+				}
+				if (b.loaded.isCancelled()) {
+					result.cancel(b.loaded.getCancelEvent());
+					b.usage.endRead();
+					return;
+				}
+				int off = getBufferOffset(position);
+				int len = b.data.length - off;
+				if (position + len > size) len = (int)(size - position);
+				byte[] bb = new byte[len];
+				System.arraycopy(b.data, off, bb, 0, len);
+				ByteBuffer res = ByteBuffer.wrap(bb);
+				position = position + len;
+				b.lastRead = System.currentTimeMillis();
+				b.usage.endRead();
+				if (preLoadNextBuffer && position < size && getBufferIndex(position) != b.index)
+					preLoadBuffer(position);
+				if (ondone != null) ondone.run(new Pair<>(res, null));
+				result.unblockSuccess(res);
+			}), true);
+		});
+	}
+
+	@Override
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		return readFullySyncIfPossible(position, buffer, ondone);
+	}
+	
+	/** While readAsync methods are supposed to do the job in a separate thread, this method
+	 * fills the given buffer synchronously if enough data is already buffered, else it finishes asynchronously.
+	 * The caller can check the returned AsyncWork by calling its method isUnblocked to know if the
+	 * read has been performed synchronously.
+	 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
+	 * but support also to work asynchronously without blocking a thread.
+	 */
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+		long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+	) {
+		if (closing) {
+			IOException err = new IOException("IO closed");
+			if (ondone != null) ondone.run(new Pair<>(null, err));
+			return new AsyncWork<>(null, err);
+		}
+		if (pos >= size) {
+			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
+			return new AsyncWork<>(Integer.valueOf(-1), null);
+		}
+		long bufferIndex = getBufferIndex(pos);
+		AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
+		if (!getBuffer.isUnblocked()) {
+			AsyncWork<Integer, IOException> result = new AsyncWork<>();
+			getBuffer.listenInline(() -> {
+				readFullyAsync(buffer, ondone).listenInline(result);
+				Buffer b = getBuffer.getResult();
+				b.usage.endRead();
+			});
+			return result;
+		}
+		Buffer b = getBuffer.getResult();
+		if (!b.loaded.isUnblocked()) {
+			AsyncWork<Integer, IOException> result = new AsyncWork<>();
+			b.loaded.listenInline(() -> {
+				readFullyAsync(buffer, ondone).listenInline(result);
+				b.usage.endRead();
+			});
+			return result;
+		}
+		if (b.loaded.hasError()) {
+			IOException err = b.loaded.getError();
+			b.usage.endRead();
+			if (ondone != null) ondone.run(new Pair<>(null, err));
+			return new AsyncWork<>(null, err);
+		}
+		if (b.loaded.isCancelled()) {
+			AsyncWork<Integer, IOException> result = new AsyncWork<>(null, null, b.loaded.getCancelEvent());
+			b.usage.endRead();
+			return result;
+		}
+		int len = buffer.remaining();
+		if (pos + len > size) len = (int)(size - pos);
+		for (long nextPos = pos + (bufferIndex == 0 ? firstBufferSize : bufferSize);
+			nextPos < pos + len; nextPos = nextPos + bufferSize)
+			preLoadBuffer(nextPos);
+		int off = getBufferOffset(pos);
+		if (len > b.data.length - off) len = b.data.length - off;
+		buffer.put(b.data, off, len);
+		pos += len;
+		position = pos;
+		b.lastRead = System.currentTimeMillis();
+		b.usage.endRead();
+		if (!buffer.hasRemaining()) {
+			if (preLoadNextBuffer && position < size && getBufferIndex(position) != bufferIndex)
+				preLoadBuffer(position);
+			Integer nb = Integer.valueOf(len);
+			if (ondone != null) ondone.run(new Pair<>(nb, null));
+			return new AsyncWork<>(nb, null);
+		}
+		AsyncWork<Integer, IOException> result = new AsyncWork<>();
+		int l = len;
+		readFullySyncIfPossible(buffer, null).listenInline(
+			(nb) -> {
+				Integer res = Integer.valueOf(nb.intValue() > 0 ? nb.intValue() + l : l);
+				if (ondone != null) ondone.run(new Pair<>(res, null));
+				result.unblockSuccess(res);
+			},
+			(error) -> {
+				if (ondone != null) ondone.run(new Pair<>(null, error));
+				result.error(error);
+			},
+			(cancel) -> {
+				result.cancel(cancel);
+			}
+		);
+		return result;
+	}
+	
+	@Override
+	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		return IOUtil.readFullyAsync(this, pos, buffer, ondone);
+	}
+	
+	@Override
+	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		return readFullyAsync(position, buffer, ondone);
+	}
+	
+	@Override
+	public long skipSync(long n) {
+		long prev = position;
+		position += n;
+		if (position > size) position = size;
+		if (position < 0) position = 0;
+		return position - prev;
+	}
+	
+	@Override
+	public int skip(int skip) {
+		return (int)skipSync(skip);
+	}
+	
+	@Override
+	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+		Long l = Long.valueOf(skipSync(n));
+		if (ondone != null) ondone.run(new Pair<>(l, null));
+		return new AsyncWork<>(l, null);
+	}
+	
+	@Override
+	public long seekSync(SeekType type, long move) {
+		switch (type) {
+		case FROM_BEGINNING:
+			position = move;
+			break;
+		case FROM_END:
+			position = size - move;
+			break;
+		case FROM_CURRENT:
+			position += move;
+			break;
+		default:
+			break;
+		}
+		if (position > size) position = size;
+		if (position < 0) position = 0;
+		return position;
+	}
+	
+	@Override
+	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+		Long l = Long.valueOf(seekSync(type, move));
+		if (ondone != null) ondone.run(new Pair<>(l, null));
+		return new AsyncWork<>(l, null);
+	}
+	
+	/** Writable BufferedIO. */
+	public static class ReadWrite extends BufferedIO implements IO.Writable.Seekable, IO.Writable.Buffered, IO.Resizable {
 		
 		/** Constructor. */
-		public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.Resizable>
-		ReadWrite(
-			T io, int firstBufferSize, int bufferSize, long size, boolean startReadSecondBufferWhenFirstBufferFullyRead
+		public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.Resizable> ReadWrite(
+			T io, long size, int firstBufferSize, int nextBuffersSize, boolean preLoadNextBuffer
+		) {
+			super(io, size, firstBufferSize, nextBuffersSize, preLoadNextBuffer);
+		}
+
+		/** Constructor. */
+		public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.Resizable> ReadWrite(
+			T io, int firstBufferSize, int nextBuffersSize, boolean preLoadNextBuffer
 		) throws IOException {
-			super(io, firstBufferSize, bufferSize, size, startReadSecondBufferWhenFirstBufferFullyRead);
+			this(io, IOUtil.getSizeSync(io), firstBufferSize, nextBuffersSize, preLoadNextBuffer);
+		}
+
+		@Override
+		public void write(byte value) throws IOException {
+			if (closing)
+				throw new IOException("IO closed");
+			long bufferIndex = getBufferIndex(position);
+			Buffer b;
+			b = bufferTable.needBufferSync(bufferIndex, position == size);
+			b.loaded.block(0);
+			if (b.loaded.hasError())
+				throw b.loaded.getError();
+			b.data[getBufferOffset(position)] = value;
+			position++;
+			if (position > size) size = position;
+			memory.toWrite(b);
+			b.usage.endRead();
+			if (preLoadNextBuffer && position < size && getBufferIndex(position) != bufferIndex)
+				preLoadBuffer(position);
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> canStartReading() {
-			return super.canStartReading();
+		public void write(byte[] buffer, int offset, int length) throws IOException {
+			do {
+				if (closing)
+					throw new IOException("IO closed");
+				long bufferIndex = getBufferIndex(position);
+				Buffer b;
+				b = bufferTable.needBufferSync(bufferIndex, position == size);
+				b.loaded.block(0);
+				if (b.loaded.hasError())
+					throw b.loaded.getError();
+				int off = getBufferOffset(position);
+				int len = b.data.length - off;
+				if (len > length) len = length;
+				System.arraycopy(buffer, offset, b.data, off, len);
+				position += len;
+				if (position > size) size = position;
+				memory.toWrite(b);
+				b.usage.endRead();
+				if (len == length) {
+					if (preLoadNextBuffer && position < size && getBufferIndex(position) != bufferIndex)
+						preLoadBuffer(position);
+					return;
+				}
+				offset += len;
+				length -= len;
+			} while (true);
+		}
+		
+		@Override
+		public int writeSync(long pos, ByteBuffer buffer) throws IOException {
+			if (pos > size) setSizeSync(pos);
+			int total = 0;
+			do {
+				if (closing)
+					throw new IOException("IO closed");
+				long bufferIndex = getBufferIndex(pos);
+				Buffer b;
+				b = bufferTable.needBufferSync(bufferIndex, pos == size);
+				b.loaded.block(0);
+				if (b.loaded.hasError())
+					throw b.loaded.getError();
+				int off = getBufferOffset(pos);
+				int len = buffer.remaining();
+				if (len > b.data.length - off) len = b.data.length - off;
+				buffer.get(b.data, off, len);
+				pos += len;
+				position = pos;
+				if (position > size) size = position;
+				memory.toWrite(b);
+				b.usage.endRead();
+				total += len;
+				if (!buffer.hasRemaining()) {
+					if (preLoadNextBuffer && position < size && getBufferIndex(position) != bufferIndex)
+						preLoadBuffer(position);
+					return total;
+				}
+			} while (true);
+		}
+		
+		@Override
+		public int writeSync(ByteBuffer buffer) throws IOException {
+			return writeSync(position, buffer);
 		}
 		
 		@Override
@@ -758,913 +1525,155 @@ public abstract class BufferedIO extends BufferingManaged {
 		}
 		
 		@Override
-		public IO getWrappedIO() {
-			return io;
-		}
-		
-		@Override
-		public String getSourceDescription() {
-			if (io == null) return "";
-			return io.getSourceDescription();
-		}
-		
-		@Override
-		public byte getPriority() {
-			if (io == null) return Task.PRIORITY_NORMAL;
-			return io.getPriority();
-		}
-		
-		@Override
-		public void setPriority(byte priority) {
-			io.setPriority(priority);
-		}
-		
-		@Override
-		public TaskManager getTaskManager() {
-			return Threading.getCPUTaskManager();
-		}
-		
-		@Override
-		public long getPosition() {
-			return pos;
-		}
-		
-		@Override
-		public long getSizeSync() {
-			return size;
-		}
-		
-		@Override
-		public AsyncWork<Long, IOException> getSizeAsync() {
-			AsyncWork<Long, IOException> sp = new AsyncWork<>();
-			sp.unblockSuccess(Long.valueOf(size));
-			return sp;
-		}
-		
-		@Override
-		public int skip(int skip) {
-			return (int)skipSync(skip);
-		}
-		
-		@Override
-		public long skipSync(long skip) {
-			if (pos + skip > size) skip = size - pos;
-			if (pos + skip < 0) skip = -pos;
-			pos += skip;
-			if (pos < size)
-				loadBuffer(getBufferIndex(pos));
-			return skip;
-		}
-		
-		@Override
-		public long seekSync(SeekType type, long move) {
-			switch (type) {
-			case FROM_BEGINNING:
-				pos = move;
-				break;
-			case FROM_END:
-				pos = size - move;
-				break;
-			case FROM_CURRENT:
-				pos += move;
-				break;
-			default: break;
-			}
-			if (pos < 0) pos = 0;
-			if (pos > size) pos = size;
-			return pos;
-		}
-		
-		@Override
-		public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-			seekSync(type, move);
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(pos), null));
-			return new AsyncWork<Long,IOException>(Long.valueOf(pos), null);
-		}
-		
-		@Override
-		public AsyncWork<Long, IOException> seekAsync(SeekType type, long move) {
-			return net.lecousin.framework.io.IO.Writable.Seekable.super.seekAsync(type, move);
-		}
-		
-		@Override
-		public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
-			long skipped = skipSync(n);
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(skipped), null));
-			return new AsyncWork<Long,IOException>(Long.valueOf(skipped), null);
-		}
-		
-		@Override
-		public int read() throws IOException {
-			return super.read();
-		}
-		
-		@Override
-		public int read(byte[] buf, int offset, int len) throws IOException {
-			return super.read(buf, offset, len);
-		}
-		
-		@Override
-		public int readFully(byte[] buf) throws IOException {
-			return super.readFully(buf);
-		}
-		
-		@Override
-		public int readSync(long pos, ByteBuffer buf) throws IOException {
-			return super.readSync(pos, buf);
-		}
-		
-		@Override
-		public int readSync(ByteBuffer buf) throws IOException {
-			return super.readSync(pos, buf);
-		}
-		
-		@Override
-		public int readAsync() throws IOException {
-			return super.readAsync();
-		}
-
-		@Override
-		public AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			return super.readAsync(pos, buf, ondone);
-		}
-		
-		@Override
-		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			return super.readAsync(pos, buf, ondone);
-		}
-		
-		@Override
-		public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
-			return super.readNextBufferAsync(ondone);
-		}
-		
-		@Override
-		public int readFullySync(long pos, ByteBuffer buf) throws IOException {
-			return super.readFullySync(pos, buf);
-		}
-		
-		@Override
-		public int readFullySync(ByteBuffer buf) throws IOException {
-			return super.readFullySync(pos, buf);
-		}
-		
-		@Override
-		public AsyncWork<Integer,IOException> readFullyAsync(
-			long pos, ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone)
-		{
-			return super.readFullyAsync(pos, buf, 0, ondone);
-		}
-		
-		@Override
-		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			return super.readFullyAsync(pos, buf, 0, ondone);
-		}
-		
-		@Override
-		public AsyncWork<Integer, IOException> readFullySyncIfPossible(
-			ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
-		) {
-			return super.readFullySyncIfPossible(pos, buffer, 0, ondone);
-		}
-		
-		/** While readAsync methods are supposed to do the job in a separate thread, this method
-		 * fills the given buffer synchronously if enough data is already buffered, else it finishes asynchronously.
-		 * The caller can check the returned AsyncWork by calling its method isUnblocked to know if the
-		 * read has been performed synchronously.
-		 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
-		 * but support also to work asynchronously without blocking a thread.
-		 */
-		public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+		public AsyncWork<Integer, IOException> writeAsync(
 			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
 		) {
-			return super.readFullySyncIfPossible(pos, buffer, 0, ondone);
+			if (closing) {
+				IOException err = new IOException("IO closed");
+				if (ondone != null) ondone.run(new Pair<>(null, err));
+				return new AsyncWork<>(null, err);
+			}
+			if (pos > size) {
+				ISynchronizationPoint<IOException> resize = setSizeAsync(pos);
+				AsyncWork<Integer, IOException> result = new AsyncWork<>();
+				resize.listenInline(() -> {
+					if (resize.hasError()) {
+						if (ondone != null) ondone.run(new Pair<>(null, resize.getError()));
+						result.error(resize.getError());
+					} else
+						writeAsync(pos, buffer, ondone).listenInline(result);
+				});
+				return result;
+			}
+			long bufferIndex = getBufferIndex(pos);
+			AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, pos == size);
+			AsyncWork<Integer, IOException> result = new AsyncWork<>();
+			writeAsync(pos, buffer, getBuffer, ondone, result, 0);
+			return operation(result);
+		}
+		
+		private void writeAsync(
+			long pos, ByteBuffer buffer, AsyncWork<Buffer, NoException> getBuffer,
+			RunnableWithParameter<Pair<Integer, IOException>> ondone, AsyncWork<Integer, IOException> result, int done
+		) {
+			getBuffer.listenInline(() -> {
+				Buffer b = getBuffer.getResult();
+				b.loaded.listenAsync(new Task.Cpu.FromRunnable("BufferedIO.writeAsync", io.getPriority(), () -> {
+					if (b.loaded.hasError()) {
+						if (ondone != null) ondone.run(new Pair<>(null, b.loaded.getError()));
+						result.error(b.loaded.getError());
+						b.usage.endRead();
+						return;
+					}
+					if (b.loaded.isCancelled()) {
+						result.cancel(b.loaded.getCancelEvent());
+						b.usage.endRead();
+						return;
+					}
+					int off = getBufferOffset(pos);
+					int len = buffer.remaining();
+					if (len > b.data.length - off) len = b.data.length - off;
+					buffer.get(b.data, off, len);
+					position = pos + len;
+					if (position > size) size = position;
+					memory.toWrite(b);
+					b.usage.endRead();
+					if (preLoadNextBuffer && position < size && getBufferIndex(position) != b.index)
+						preLoadBuffer(position);
+					if (!buffer.hasRemaining()) {
+						Integer nb = Integer.valueOf(len + done);
+						if (ondone != null) ondone.run(new Pair<>(nb, null));
+						result.unblockSuccess(nb);
+					} else {
+						long bufferIndex = getBufferIndex(pos + len);
+						AsyncWork<Buffer, NoException> getNextBuffer =
+							bufferTable.needBufferAsync(bufferIndex, pos + len == size);
+						writeAsync(pos + len, buffer, getNextBuffer, ondone, result, done + len);
+					}
+				}), true);
+			});
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> writeAsync(
-			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone)
-		{
-			return super.writeAsync(pos, buffer, 0, ondone);
-		}
-		
-		@Override
-		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			return super.writeAsync(pos, buffer, 0, ondone);
-		}
-
-		@Override
-		public int writeSync(long pos, ByteBuffer buffer) throws IOException {
-			return super.writeSync(pos, buffer, 0);
-		}
-		
-		@Override
-		public int writeSync(ByteBuffer buffer) throws IOException {
-			return super.writeSync(pos, buffer, 0);
+		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+			return writeAsync(position, buffer, ondone);
 		}
 		
 		@Override
 		public void setSizeSync(long newSize) throws IOException {
-			if (newSize == size) return;
-			try {
-				if (newSize > size)
-					operation(increaseSize(newSize)).blockThrow(0);
-				else
-					operation(decreaseSize(newSize)).blockThrow(0);
-			} catch (CancelException e) {
-				throw new IOException("Cancelled", e);
+			long nbBuffersBefore = size <= firstBufferSize ? 1 : ((size - firstBufferSize) / bufferSize) + 2;
+			long nbBuffersAfter = newSize <= firstBufferSize ? 1 : ((newSize - firstBufferSize) / bufferSize) + 2;
+			if (nbBuffersBefore == nbBuffersAfter) {
+				if (newSize < size) {
+					Buffer b = bufferTable.needBufferSync(nbBuffersAfter - 1, false);
+					b.usage.endRead();
+					b.usage.startWrite(); // make sure we are not currently flushing after the new size
+					size = newSize;
+					b.usage.endWrite();
+				} else
+					size = newSize;
+				if (position > size) position = size;
+				((IO.Resizable)io).setSizeSync(newSize);
+				return;
 			}
+			if (nbBuffersAfter > nbBuffersBefore) {
+				((IO.Resizable)io).setSizeSync(newSize);
+				size = newSize;
+				bufferTable.setSize(nbBuffersBefore, nbBuffersAfter);
+				if (position > size) position = size;
+				return;
+			}
+			bufferTable.setSize(nbBuffersBefore, nbBuffersAfter);
+			size = newSize;
+			((IO.Resizable)io).setSizeSync(newSize);
+			if (position > size) position = size;
 		}
 		
 		@Override
 		public ISynchronizationPoint<IOException> setSizeAsync(long newSize) {
-			if (newSize == size) return new AsyncWork<>(null, null);
-			if (newSize > size) return operation(increaseSize(newSize));
-			return operation(decreaseSize(newSize));
-		}
-		
-		@Override
-		public void write(byte b) throws IOException {
-			super.write(b);
-		}
-		
-		@Override
-		public void write(byte[] buf, int offset, int length) throws IOException {
-			super.write(buf, offset, length);
+			int nbBuffersBefore = size <= firstBufferSize ? 1 : (int)((size - firstBufferSize) / bufferSize) + 2;
+			int nbBuffersAfter = newSize <= firstBufferSize ? 1 : (int)((newSize - firstBufferSize) / bufferSize) + 2;
+			if (nbBuffersBefore == nbBuffersAfter) {
+				if (newSize < size) {
+					Buffer b = bufferTable.needBufferSync(nbBuffersAfter - 1, false);
+					b.usage.endRead();
+					b.usage.startWrite(); // make sure we are not currently flushing after the new size
+					size = newSize;
+					b.usage.endWrite();
+					if (position > size) position = size;
+					return ((IO.Resizable)io).setSizeAsync(newSize);
+				}
+				size = newSize;
+				if (position > size) position = size;
+				return ((IO.Resizable)io).setSizeAsync(newSize);
+			}
+			if (nbBuffersAfter > nbBuffersBefore) {
+				SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+				((IO.Resizable)io).setSizeAsync(newSize).listenAsync(
+				new Task.Cpu.FromRunnable("BufferedIO.setSizeAsync", io.getPriority(), () -> {
+					size = newSize;
+					bufferTable.setSize(nbBuffersBefore, nbBuffersAfter);
+					if (position > size) position = size;
+					sp.unblock();
+				}), sp);
+				return sp;
+			}
+			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+			new Task.Cpu.FromRunnable("BufferedIO.setSizeAsync", io.getPriority(), () -> {
+				bufferTable.setSize(nbBuffersBefore, nbBuffersAfter);
+				((IO.Resizable)io).setSizeAsync(newSize).listenInline(sp);
+				size = newSize;
+				if (position > size) position = size;
+				sp.unblock();
+			}).start();
+			return sp;
 		}
 		
 		@Override
 		public ISynchronizationPoint<IOException> flush() {
-			return super.flush();
-		}
-	}	
-
-	protected ISynchronizationPoint<IOException> canStartReading() {
-		long i = getBufferIndex(pos);
-		Buffer buffer;
-		synchronized (bufferTable) {
-			buffer = bufferTable.getIfAllocated(i);
-			if (buffer == null) buffer = bufferTable.getIfAllocated(0);
-		}
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		if (buffer == null) {
-			sp.unblock();
-			return sp;
-		}
-		SynchronizationPoint<NoException> l = buffer.loading;
-		if (l != null && !l.isUnblocked()) {
-			Buffer b = buffer;
-			l.listenInline(new Runnable() {
-				@Override
-				public void run() {
-					if (b.error != null)
-						sp.error(b.error);
-					else
-						sp.unblock();
-				}
-			});
-			return sp;
-		}
-		if (buffer.error != null)
-			sp.error(buffer.error);
-		else
-			sp.unblock();
-		return sp;
-	}
-	
-	protected int read() throws IOException {
-		if (pos == size) return -1;
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer = useBufferSync(bufferIndex);
-		buffer.lastRead = System.currentTimeMillis();
-		byte b = buffer.buffer[getBufferOffset(pos)];
-		pos++;
-		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-			long nextIndex = getBufferIndex(pos);
-			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-		}
-		buffer.inUse--;
-		return b & 0xFF;
-	}
-
-	protected int read(byte[] buf, int offset, int len) throws IOException {
-		if (pos == size) return -1;
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer = useBufferSync(bufferIndex);
-		int start = getBufferOffset(pos);
-		if (len > buffer.len - start) len = buffer.len - start;
-		System.arraycopy(buffer.buffer, start, buf, offset, len);
-		buffer.lastRead = System.currentTimeMillis();
-		buffer.inUse--;
-		pos += len;
-		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-			long nextIndex = getBufferIndex(pos);
-			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-		}
-		return len;
-	}
-	
-	protected int readSync(long pos, ByteBuffer buf) throws IOException {
-		if (pos >= size)
-			return -1;
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer = useBufferSync(bufferIndex);
-		int start = getBufferOffset(pos);
-		int len = buf.remaining();
-		int max = buffer.len - start;
-		if (len > max) len = max;
-		if (len <= 0)
-			return 0;
-		buf.put(buffer.buffer, start, len);
-		buffer.lastRead = System.currentTimeMillis();
-		buffer.inUse--;
-		pos += len;
-		this.pos = pos;
-		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-			long nextIndex = getBufferIndex(pos);
-			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-		}
-		return len;
-	}
-	
-	protected int readAsync() throws IOException {
-		if (pos == size) return -1;
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer = useBufferAsync(bufferIndex);
-		SynchronizationPoint<NoException> sp = buffer.loading;
-		if (sp != null && !sp.isUnblocked()) {
-			buffer.lastRead = System.currentTimeMillis();
-			buffer.inUse--;
-			return -2;
-		}
-		if (buffer.error != null) throw buffer.error;
-		byte b = buffer.buffer[getBufferOffset(pos)];
-		buffer.inUse--;
-		pos++;
-		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-			long nextIndex = getBufferIndex(pos);
-			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-		}
-		return b & 0xFF;
-	}
-	
-	protected AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		if (pos >= size) {
-			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(0), null));
-			return new AsyncWork<Integer,IOException>(Integer.valueOf(0), null);
-		}
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer = useBufferAsync(bufferIndex);
-		SynchronizationPoint<NoException> sp = buffer.loading;
-		if (sp == null) {
-			// already loaded
-			if (buffer.error != null) {
-				if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
-				return new AsyncWork<Integer,IOException>(null, buffer.error);
-			}
-		}
-		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>("Read in BufferedIO", getPriority(), ondone) {
-			@Override
-			public Integer run() throws IOException, CancelException {
-				if (buffer.error != null)
-					throw buffer.error;
-				if (sp != null && sp.isCancelled())
-					throw sp.getCancelEvent();
-				int start = getBufferOffset(pos);
-				if (start >= buffer.len) {
-					buffer.inUse--;
-					if (pos < size)
-						throw new IOException("Unexpected buffer size: IO size is " + size
-							+ ", length of buffer " + bufferIndex + " is " + buffer.len
-							+ ", expected is " + (size - getBufferStart(bufferIndex)));
-					return Integer.valueOf(0);
-				}
-				int len = buf.remaining();
-				if (len > buffer.len - start) len = buffer.len - start;
-				buf.put(buffer.buffer, start, len);
-				buffer.lastRead = System.currentTimeMillis();
-				buffer.inUse--;
-				long p = pos + len;
-				BufferedIO.this.pos = p;
-				if (p < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-					long nextIndex = getBufferIndex(p);
-					if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-				}
-				return Integer.valueOf(len);
-			}
-		};
-		if (sp == null || sp.isUnblocked()) task.start();
-		else task.startOn(sp, true);
-		return operation(task.getOutput());
-	}
-	
-	protected AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
-		if (pos >= size) {
-			if (ondone != null) ondone.run(new Pair<>(null, null));
-			return new AsyncWork<>(null, null);
-		}
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer = useBufferAsync(bufferIndex);
-		SynchronizationPoint<NoException> sp = buffer.loading;
-		if (sp == null || sp.isUnblocked()) {
-			// already loaded
-			if (buffer.error != null) {
-				if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
-				return new AsyncWork<>(null, buffer.error);
-			}
-			if (sp != null && sp.isCancelled())
-				return new AsyncWork<>(null, null, sp.getCancelEvent());
-			int start = getBufferOffset(pos);
-			ByteBuffer buf = ByteBuffer.allocate(buffer.len - start);
-			buf.put(buffer.buffer, start, buffer.len - start);
-			buffer.lastRead = System.currentTimeMillis();
-			buffer.inUse--;
-			long p = pos + buffer.len - start;
-			this.pos = p;
-			if (p < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-				long nextIndex = getBufferIndex(p);
-				if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-			}
-			buf.flip();
-			if (ondone != null) ondone.run(new Pair<>(buf, null));
-			return new AsyncWork<>(buf, null);
-		}
-		Task<ByteBuffer,IOException> task = new Task.Cpu<ByteBuffer,IOException>("Read in BufferedIO", getPriority(), ondone) {
-			@Override
-			public ByteBuffer run() throws IOException, CancelException {
-				if (buffer.error != null)
-					throw buffer.error;
-				if (sp.isCancelled())
-					throw sp.getCancelEvent();
-				int start = getBufferOffset(pos);
-				ByteBuffer buf = ByteBuffer.allocate(buffer.len - start);
-				buf.put(buffer.buffer, start, buffer.len - start);
-				buffer.lastRead = System.currentTimeMillis();
-				buffer.inUse--;
-				long p = pos + buffer.len - start;
-				BufferedIO.this.pos = p;
-				if (p < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-					long nextIndex = getBufferIndex(p);
-					if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-				}
-				buf.flip();
-				return buf;
-			}
-		};
-		task.startOn(sp, true);
-		return operation(task.getOutput());
-	}
-
-	protected int readFully(byte[] buf) throws IOException {
-		if (pos == size) return -1;
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer = useBufferSync(bufferIndex);
-		int start = getBufferOffset(pos);
-		int len = buf.length;
-		if (len > buffer.len - start) len = buffer.len - start;
-		System.arraycopy(buffer.buffer, start, buf, 0, len);
-		buffer.lastRead = System.currentTimeMillis();
-		buffer.inUse--;
-		pos += len;
-		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-			long nextIndex = getBufferIndex(pos);
-			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-		}
-		if (len == buf.length) return len;
-		int bufPos = len;
-		int remaining = buf.length - bufPos;
-		while (pos < size && remaining > 0) {
-			int nb = read(buf, bufPos, remaining);
-			if (nb <= 0) break;
-			bufPos += nb;
-			remaining -= nb;
-		}
-		return bufPos;
-	}
-	
-	protected int readFullySync(long pos, ByteBuffer buf) throws IOException {
-		if (pos >= size) return -1;
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer = useBufferSync(bufferIndex);
-		int start = getBufferOffset(pos);
-		int len = buf.remaining();
-		if (len > buffer.len - start) len = buffer.len - start;
-		buf.put(buffer.buffer, start, len);
-		buffer.lastRead = System.currentTimeMillis();
-		buffer.inUse--;
-		pos += len;
-		this.pos = pos;
-		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-			long nextIndex = getBufferIndex(pos);
-			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-		}
-		if (buf.remaining() == 0) return len;
-		int bufPos = len;
-		while (pos < size && buf.remaining() > 0) {
-			int nb = readSync(pos, buf);
-			if (nb <= 0) break;
-			bufPos += nb;
-			pos += nb;
-		}
-		return bufPos;
-	}
-	
-	protected AsyncWork<Integer,IOException> readFullyAsync(
-		long pos, ByteBuffer buf, int alreadyDone, RunnableWithParameter<Pair<Integer,IOException>> ondone)
-	{
-		if (pos >= size) {
-			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1),null));
-			return new AsyncWork<Integer,IOException>(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1),null);
-		}
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer = useBufferAsync(bufferIndex);
-		SynchronizationPoint<NoException> sp = buffer.loading;
-		if (sp == null) {
-			// already loaded
-			if (buffer.error != null) {
-				if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
-				return new AsyncWork<Integer,IOException>(null, buffer.error);
-			}
-		}
-		AsyncWork<Integer, IOException> done = new AsyncWork<Integer, IOException>();
-		Task<Void,IOException> task = new Task.Cpu<Void,IOException>("Read in BufferedIO at " + pos, getPriority()) {
-			@Override
-			public Void run() throws IOException, CancelException {
-				if (buffer.error != null) {
-					if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
-					done.unblockError(buffer.error);
-					throw buffer.error;
-				}
-				if (sp != null && sp.isCancelled())
-					throw sp.getCancelEvent();
-				int start = getBufferOffset(pos);
-				if (start >= buffer.len) {
-					buffer.inUse--;
-					if (pos < size) {
-						IOException err = new IOException("Unexpected buffer size: IO size is " + size
-							+ ", and length of buffer " + bufferIndex + " is " + buffer.len);
-						if (ondone != null) ondone.run(new Pair<>(null, err));
-						done.error(err);
-					} else {
-						if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1),null));
-						done.unblockSuccess(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1));
-					}
-					return null;
-				}
-				int len = buf.remaining();
-				if (len > buffer.len - start) len = buffer.len - start;
-				buf.put(buffer.buffer, start, len);
-				buffer.lastRead = System.currentTimeMillis();
-				buffer.inUse--;
-				long p = pos + len;
-				BufferedIO.this.pos = p;
-				if (p < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-					long nextIndex = getBufferIndex(p);
-					if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-				}
-				if (buf.remaining() == 0) {
-					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(alreadyDone + len), null));
-					done.unblockSuccess(Integer.valueOf(alreadyDone + len));
-					return null;
-				}
-				int previous = alreadyDone + len;
-				AsyncWork<Integer,IOException> next = readFullyAsync(p, buf, 0, null);
-				next.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (next.isSuccessful()) {
-							int result = previous;
-							if (next.getResult().intValue() > 0)
-								result += next.getResult().intValue();
-							if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(result), null));
-							done.unblockSuccess(Integer.valueOf(result));
-							return;
-						}
-						if (next.isCancelled()) {
-							done.unblockCancel(next.getCancelEvent());
-							return;
-						}
-						if (ondone != null) ondone.run(new Pair<>(null, next.getError()));
-						done.unblockError(next.getError());
-					}
-				});
-				return null;
-			}
-		};
-		if (sp == null || sp.isUnblocked()) task.start();
-		else task.startOn(sp, true);
-		done.forwardCancel(task.getOutput());
-		task.getOutput().forwardCancel(done);
-		return operation(done);
-	}
-	
-	protected AsyncWork<Integer, IOException> readFullySyncIfPossible(
-		long pos, ByteBuffer buf, int alreadyDone, RunnableWithParameter<Pair<Integer, IOException>> ondone
-	) {
-		if (pos >= size) {
-			Integer r = Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1);
-			if (ondone != null) ondone.run(new Pair<>(r, null));
-			return new AsyncWork<Integer,IOException>(r, null);
-		}
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer = useBufferAsync(bufferIndex);
-		SynchronizationPoint<NoException> sp = buffer.loading;
-		if (sp != null && !sp.isUnblocked())
-			return readFullyAsync(this.pos, buf, alreadyDone, ondone);
-		if (buffer.error != null) {
-			if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
-			return new AsyncWork<Integer,IOException>(null, buffer.error);
-		}
-		if (sp != null && sp.isCancelled())
-			return new AsyncWork<>(null, null, sp.getCancelEvent());
-		int start = getBufferOffset(pos);
-		int len = buf.remaining();
-		if (len > buffer.len - start) len = buffer.len - start;
-		buf.put(buffer.buffer, start, len);
-		buffer.lastRead = System.currentTimeMillis();
-		buffer.inUse--;
-		pos += len;
-		this.pos = pos;
-		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-			long nextIndex = getBufferIndex(pos);
-			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-		}
-		if (buf.remaining() == 0) {
-			Integer r = Integer.valueOf(alreadyDone + len);
-			if (ondone != null) ondone.run(new Pair<>(r, null));
-			return new AsyncWork<>(r, null);
-		}
-		return readFullySyncIfPossible(pos, buf, alreadyDone + len, ondone);
-	}
-	
-	protected ISynchronizationPoint<IOException> increaseSize(long newSize) {
-		ISynchronizationPoint<IOException> resize = ((IO.Resizable)io).setSizeAsync(newSize);
-		SynchronizationPoint<NoException> lastBuffer = null;
-		
-		long prevIndex = size > 0 ? getBufferIndex(size - 1) : 0;
-		long firstIndex = getBufferIndex(size);
-		long lastIndex = getBufferIndex(newSize - 1);
-		
-		if (prevIndex == firstIndex && size > 0) {
-			// we will need to load that buffer to modify it
-			Buffer buffer = useBufferAsync(prevIndex);
-			lastBuffer = buffer.loading;
-			if (lastBuffer == null || lastBuffer.isUnblocked()) {
-				if (lastIndex > prevIndex)
-					buffer.len = buffer.buffer.length;
-				else
-					buffer.len = (int)(newSize - getBufferStart(prevIndex));
-				buffer.lastRead = System.currentTimeMillis();
-				buffer.inUse--;
-			} else {
-				lastBuffer.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (lastIndex > prevIndex)
-							buffer.len = buffer.buffer.length;
-						else
-							buffer.len = (int)(newSize - getBufferStart(prevIndex));
-						buffer.lastRead = System.currentTimeMillis();
-						buffer.inUse--;
-					}
-				});
-			}
-			firstIndex++;
-		}
-		JoinPoint<Exception> jp = new JoinPoint<>();
-		LinkedList<Buffer> newBuffers = new LinkedList<>();
-		synchronized (bufferTable) {
-			while (firstIndex <= lastIndex) {
-				Buffer b = bufferTable.getOrAllocate(firstIndex);
-				if (b.buffer == null && (b.loading == null || b.loading.isUnblocked())) {
-					b.buffer = new byte[firstIndex > 0 ? bufferSize : firstBufferSize];
-					newBuffers.add(b);
-				}
-				if (b.loading != null && !b.loading.isUnblocked()) {
-					long i = firstIndex;
-					Buffer buf = b;
-					b.loading.listenInline(() -> {
-						buf.len = i < lastIndex ? buf.buffer.length : (int)(newSize - getBufferStart(i));
-						buf.lastRead = System.currentTimeMillis();
-					});
-					jp.addToJoin(b.loading);
-				} else {
-					b.len = firstIndex < lastIndex ? b.buffer.length : (int)(newSize - getBufferStart(firstIndex));
-					b.lastRead = System.currentTimeMillis();
-				}
-				firstIndex++;
-			}
-		}
-		while (!newBuffers.isEmpty())
-			manager.newBuffer(newBuffers.removeFirst());
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		if (lastBuffer != null)
-			jp.addToJoin(lastBuffer);
-		jp.start();
-		resize.listenInline(() -> {
-			if (jp.isUnblocked()) {
-				size = newSize;
-				sp.unblock();
-			} else jp.listenInline(new Runnable() {
-				@Override
-				public void run() {
-					size = newSize;
-					sp.unblock();
-				}
-			});
-		}, sp);
-		return sp;
-	}
-	
-	protected ISynchronizationPoint<IOException> decreaseSize(long newSize) {
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
-		if (newSize < 0) newSize = 0;
-		// we need to remove the buffers, and ensure there is no waiting operation on them
-		ISynchronizationPoint<NoException> sp = bufferTable.decreaseSize(newSize);
-		long ns = newSize;
-		sp.listenInline(() -> {
-			ISynchronizationPoint<IOException> resize = ((IO.Resizable)io).setSizeAsync(ns);
-			resize.listenInline(() -> {
-				size = ns;
-				if (pos > size) pos = size;
-				result.unblock();
-			}, result);
-		});
-		return result;
-	}
-
-	protected AsyncWork<Integer, IOException> writeAsync(
-		long pos, ByteBuffer buf, int alreadyDone, RunnableWithParameter<Pair<Integer,IOException>> ondone)
-	{
-		if (closing)
-			return new AsyncWork<>(null, null, new CancelException("IO closed"));
-		if (pos > size) {
-			ISynchronizationPoint<IOException> resize = increaseSize(pos);
-			size = pos;
-			AsyncWork<Integer,IOException> sp = new AsyncWork<>();
-			IOUtil.listenOnDone(resize, () -> {
-				AsyncWork<Integer, IOException> write = writeAsync(pos, buf, alreadyDone, null);
-				IOUtil.listenOnDone(write, sp, ondone);
-			}, sp, ondone);
-			return operation(sp);
+			return bufferTable.flush();
 		}
 		
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer;
-		if (pos < size || (size > 0 && getBufferIndex(size - 1) == bufferIndex))
-			buffer = useBufferAsync(bufferIndex);
-		else {
-			BufferTable table = this.bufferTable;
-			if (closing || table == null)
-				return new AsyncWork<>(null, null, new CancelException("IO closed"));
-			buffer = table.getForWrite(bufferIndex);
-		}
-		SynchronizationPoint<NoException> sp = buffer.loading;
-		AsyncWork<Integer,IOException> done = new AsyncWork<>();
-		Task<Void,NoException> task = new Task.Cpu<Void, NoException>("Writting to BufferedIO", getPriority()) {
-			@Override
-			public Void run() {
-				if (buffer.error != null) {
-					if (ondone != null) ondone.run(new Pair<>(null, buffer.error));
-					done.unblockError(buffer.error);
-					return null;
-				}
-				if (sp != null && sp.isCancelled()) {
-					done.cancel(sp.getCancelEvent());
-					return null;
-				}
-				if (closing) {
-					done.cancel(new CancelException("IO closed"));
-					return null;
-				}
-				int start = getBufferOffset(pos);
-				int len = buf.remaining();
-				if (len > buffer.buffer.length - start) len = buffer.buffer.length - start;
-				buf.get(buffer.buffer, start, len);
-				if (start + len > buffer.len)
-					buffer.len = start + len;
-				manager.toBeWritten(buffer);
-				buffer.inUse--;
-				long p = pos + len;
-				BufferedIO.this.pos = p;
-				if (p < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-					long nextIndex = getBufferIndex(p);
-					if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-				} else if (p > size)
-					size = p;
-				if (buf.remaining() == 0) {
-					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(len + alreadyDone), null));
-					done.unblockSuccess(Integer.valueOf(len + alreadyDone));
-					return null;
-				}
-				AsyncWork<Integer,IOException> next = writeAsync(p, buf, len + alreadyDone, null);
-				IOUtil.listenOnDone(next, done, ondone);
-				return null;
-			}
-		};
-		task.getOutput().forwardCancel(done);
-		if (sp == null || sp.isUnblocked())
-			task.start();
-		else
-			sp.listenAsync(task, true);
-		return operation(done);
 	}
 	
-	protected int writeSync(long pos, ByteBuffer buf, int alreadyDone) throws IOException {
-		if (pos > size) {
-			ISynchronizationPoint<IOException> resize = increaseSize(pos);
-			size = pos;
-			try { resize.blockThrow(0); }
-			catch (CancelException e) {
-				throw new IOException("Cancelled", e);
-			}
-		}
-		
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer;
-		if (pos < size || (size > 0 && getBufferIndex(size - 1) == bufferIndex))
-			buffer = useBufferAsync(bufferIndex);
-		else
-			buffer = bufferTable.getForWrite(bufferIndex);
-		SynchronizationPoint<NoException> sp = buffer.loading;
-		if (sp != null && !sp.isUnblocked())
-			sp.block(0);
-		if (buffer.error != null)
-			throw buffer.error;
-		int start = getBufferOffset(pos);
-		int len = buf.remaining();
-		if (len > buffer.buffer.length - start) len = buffer.buffer.length - start;
-		buf.get(buffer.buffer, start, len);
-		if (start + len > buffer.len)
-			buffer.len = start + len;
-		manager.toBeWritten(buffer);
-		buffer.inUse--;
-		long p = pos + len;
-		this.pos = p;
-		if (p < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-			long nextIndex = getBufferIndex(p);
-			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-		} else if (p > size)
-			size = p;
-		if (buf.remaining() == 0) return alreadyDone + len;
-		return writeSync(p, buf, alreadyDone + len);
-	}
-	
-	protected void write(byte[] buf, int offset, int length) throws IOException {
-		do {
-			long bufferIndex = getBufferIndex(pos);
-			Buffer buffer;
-			if (pos < size || (size > 0 && getBufferIndex(size - 1) == bufferIndex))
-				buffer = useBufferAsync(bufferIndex);
-			else
-				buffer = bufferTable.getForWrite(bufferIndex);
-			SynchronizationPoint<NoException> sp = buffer.loading;
-			if (sp != null && !sp.isUnblocked())
-				sp.block(0);
-			if (buffer.error != null)
-				throw buffer.error;
-			int start = getBufferOffset(pos);
-			int len = length;
-			if (len > buffer.buffer.length - start) len = buffer.buffer.length - start;
-			System.arraycopy(buf, offset, buffer.buffer, start, len);
-			if (start + len > buffer.len)
-				buffer.len = start + len;
-			manager.toBeWritten(buffer);
-			buffer.inUse--;
-			pos += len;
-			offset += len;
-			length -= len;
-			if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-				long nextIndex = getBufferIndex(pos);
-				if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-			} else if (pos > size)
-				size = pos;
-		} while (length > 0);
-	}
-	
-	protected void write(byte b) throws IOException {
-		long bufferIndex = getBufferIndex(pos);
-		Buffer buffer;
-		if (pos < size || (size > 0 && getBufferIndex(size - 1) == bufferIndex))
-			buffer = useBufferAsync(bufferIndex);
-		else
-			buffer = bufferTable.getForWrite(bufferIndex);
-		SynchronizationPoint<NoException> sp = buffer.loading;
-		if (sp != null && !sp.isUnblocked())
-			sp.block(0);
-		if (buffer.error != null)
-			throw buffer.error;
-		int start = getBufferOffset(pos);
-		buffer.buffer[start] = b;
-		if (start + 1 > buffer.len)
-			buffer.len = start + 1;
-		manager.toBeWritten(buffer);
-		buffer.inUse--;
-		pos++;
-		if (pos < size && (bufferIndex != 0 || startReadSecondBufferWhenFirstBufferFullyRead)) {
-			long nextIndex = getBufferIndex(pos);
-			if (nextIndex != bufferIndex) loadBuffer(nextIndex);
-		} else if (pos > size)
-			size = pos;
-	}
 }

@@ -54,7 +54,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 		file.deleteOnExit();
 		@SuppressWarnings("resource")
 		FileIO.ReadWrite fio = new FileIO.ReadWrite(file, io.getPriority());
-		buffered = new BufferedIO.ReadWrite(fio, 512, bufferSize, 0L, false);
+		buffered = new BufferedIO.ReadWrite(fio, 0L, 512, bufferSize, false);
 		readNextBuffer();
 	}
 	
@@ -73,7 +73,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	@Override
 	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		JoinPoint<Exception> jp = new JoinPoint<>();
-		buffered.cancelAll();
+		// TODO buffered.cancelAll();
 		buffering.unblockCancel(new CancelException("IO closed"));
 		jp.addToJoin(buffered.closeAsync());
 		jp.addToJoin(io.closeAsync());

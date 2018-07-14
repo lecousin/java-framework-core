@@ -52,7 +52,7 @@ public class TestSubIOReadableBuffered extends TestReadableBuffered {
 	@SuppressWarnings("resource")
 	@Override
 	protected Seekable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws IOException {
-		BufferedIO.ReadOnly buffered = new BufferedIO.ReadOnly(file, 8192, file.getSizeSync());
+		BufferedIO buffered = new BufferedIO(file, file.getSizeSync(), 8192, 8192, false);
 		return new SubIO.Readable.Seekable.Buffered(buffered, (long)nbBufSkippedStart * testBuf.length, fileSize, "test subio", true);
 	}
 	

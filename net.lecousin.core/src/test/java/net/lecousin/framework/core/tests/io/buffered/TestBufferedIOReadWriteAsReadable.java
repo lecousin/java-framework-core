@@ -32,7 +32,7 @@ public class TestBufferedIOReadWriteAsReadable extends TestReadable {
 		File f = file.getFile();
 		file.close();
 		FileIO.ReadWrite frw = new FileIO.ReadWrite(f, Task.PRIORITY_NORMAL);
-		return new BufferedIO.ReadWrite(frw, 256, 512, fileSize, true);
+		return new BufferedIO.ReadWrite(frw, fileSize, 256, 512, true);
 	}
 	
 }

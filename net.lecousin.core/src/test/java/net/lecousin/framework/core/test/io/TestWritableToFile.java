@@ -43,7 +43,7 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 			io.readFullySync(ByteBuffer.wrap(b));
 			if (!ArrayUtil.equals(testBuf, b))
 				throw new Exception("Invalid data at " + (i * testBuf.length)
-					+ ", read is:\r\n" + new String(b) + "\r\nexpected was: " + new String(testBuf));
+					+ ", read is:\r\n" + new String(b) + "\r\nexpected was: " + new String(testBuf) + "\r\ntemp file is: " + file.getAbsolutePath());
 		}
 		io.close();
 	}

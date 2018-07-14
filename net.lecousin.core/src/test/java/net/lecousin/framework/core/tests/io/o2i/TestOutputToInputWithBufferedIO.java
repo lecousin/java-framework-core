@@ -34,7 +34,7 @@ public class TestOutputToInputWithBufferedIO extends TestOutputToInput {
 		File file = File.createTempFile("test", "outputtoinput");
 		file.deleteOnExit();
 		FileIO.ReadWrite fio = new FileIO.ReadWrite(file, Task.PRIORITY_NORMAL);
-		BufferedIO.ReadWrite bio = new BufferedIO.ReadWrite(fio, 4096, 0);
+		BufferedIO.ReadWrite bio = new BufferedIO.ReadWrite(fio, 0, 4096, 4096, false);
 		return new OutputToInput(bio, "test");
 	}
 	

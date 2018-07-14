@@ -30,7 +30,7 @@ public class TestBufferedIOReadWriteBuffered extends TestReadWriteBuffered {
 	protected BufferedIO.ReadWrite openReadWriteBuffered() throws Exception {
 		File tmpFile = File.createTempFile("test", "bufferedio.rw");
 		tmpFile.deleteOnExit();
-		return new BufferedIO.ReadWrite(new FileIO.ReadWrite(tmpFile, Task.PRIORITY_NORMAL), 4096, 0);
+		return new BufferedIO.ReadWrite(new FileIO.ReadWrite(tmpFile, Task.PRIORITY_NORMAL), 0, 4096, 4096, false);
 	}
 	
 }
