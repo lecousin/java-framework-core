@@ -61,11 +61,11 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	/** Manages memory usage and delayed write operations of BufferedIO instances. */
 	public static class MemoryManagement implements IMemoryManageable {
 		
-		/** By default set to 55MB. */
-		public static final int DEFAULT_MEMORY_THRESHOLD = 55 * 1024 * 1024;
-		/** By default set to 64MB. */
-		public static final int DEFAULT_MAX_MEMORY = 64 * 1024 * 1024;
-		/** By default set to 12MB. */
+		/** By default set to 72 MB. */
+		public static final int DEFAULT_MEMORY_THRESHOLD = 72 * 1024 * 1024;
+		/** By default set to 96 MB. */
+		public static final int DEFAULT_MAX_MEMORY = 96 * 1024 * 1024;
+		/** By default set to 12 MB. */
 		public static final int DEFAULT_TO_BE_WRITTEN_THRESHOLD = 12 * 1024 * 1024;
 		
 		public static long getMemoryThreshold() { return get().memoryThreshold; }
@@ -169,6 +169,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 						tail = b.previous;
 					else
 						b.next.previous = b.previous;
+					jp.addToJoin(b.loaded);
 					SynchronizationPoint<NoException> write = b.usage.startWriteAsync();
 					if (write == null) {
 						if (b.lastWrite == 0)
@@ -292,10 +293,11 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 			public Void run() {
 				setPriority(Task.PRIORITY_LOW);
 				long now = System.currentTimeMillis();
-				int old = 0;
+				int old1 = 0;
+				int old2 = 0;
 				OldestList<Buffer> oldestToBeWritten = null;
 				if (toBeWritten >= toBeWrittenThreshold)
-					oldestToBeWritten = new OldestList<>(50);
+					oldestToBeWritten = new OldestList<>(32);
 				synchronized (MemoryManagement.this) {
 					for (Buffer b = head; b != null; b = b.next) {
 						if (b.owner.closing) continue;
@@ -305,8 +307,10 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 								flush(b);
 							else if (oldestToBeWritten != null)
 								oldestToBeWritten.add(b.lastWrite, b);
-						} else if (now - b.lastRead > 15 * 60 * 1000)
-							old++;
+						} else if (now - b.lastRead > 5 * 60 * 1000)
+							old1++;
+						else if (now - b.lastRead > 15 * 60 * 1000)
+							old2++;
 					}
 				}
 				if (oldestToBeWritten != null) {
@@ -324,8 +328,10 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 				}
 				if (now - lastFree > 5 * 60 * 1000)
 					freeBuffers(10, false);
-				else if (old > 0)
-					freeBuffers(5, false);
+				else if (old2 > 0)
+					freeBuffers(old2 > 10 ? old2 / 2 : 5, false);
+				else if (old1 > 5)
+					freeBuffers(old1 / 2, false);
 				return null;
 			}
 			
@@ -1041,7 +1047,8 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		}
 		int len = buffer.remaining();
 		if (pos + len > size) len = (int)(size - pos);
-		for (long nextPos = pos + (bufferIndex == 0 ? firstBufferSize : bufferSize); nextPos < pos + len; nextPos = nextPos + bufferSize)
+		for (long nextPos = pos + (bufferIndex == 0 ? firstBufferSize : bufferSize), count = 0;
+			nextPos < pos + len && count < 5; nextPos = nextPos + bufferSize, ++count)
 			preLoadBuffer(nextPos);
 		int off = getBufferOffset(pos);
 		if (len > b.data.length - off) len = b.data.length - off;
@@ -1324,8 +1331,8 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		}
 		int len = buffer.remaining();
 		if (pos + len > size) len = (int)(size - pos);
-		for (long nextPos = pos + (bufferIndex == 0 ? firstBufferSize : bufferSize);
-			nextPos < pos + len; nextPos = nextPos + bufferSize)
+		for (long nextPos = pos + (bufferIndex == 0 ? firstBufferSize : bufferSize), count = 0;
+			nextPos < pos + len && count < 5; nextPos = nextPos + bufferSize, ++count)
 			preLoadBuffer(nextPos);
 		int off = getBufferOffset(pos);
 		if (len > b.data.length - off) len = b.data.length - off;

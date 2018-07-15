@@ -13,7 +13,7 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	public StandaloneTaskPriorityManager() {
 		ready = new TurnArray[Task.NB_PRIORITES];
 		for (byte i = 0; i < Task.NB_PRIORITES; ++i)
-			ready[i] = new TurnArray<>(25);
+			ready[i] = new TurnArray<>(64);
 	}
 
 	private TurnArray<Task<?,?>>[] ready;
