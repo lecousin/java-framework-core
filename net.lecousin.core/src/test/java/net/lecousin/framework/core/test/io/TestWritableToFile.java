@@ -14,6 +14,7 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
 
@@ -35,9 +36,10 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 		return file;
 	}
 	
-	public static void checkFile(File file, byte[] testBuf, int nbBuf) throws Exception {
+	public static void checkFile(File file, byte[] testBuf, int nbBuf, long offset) throws Exception {
 		@SuppressWarnings("resource")
 		FileIO.ReadOnly io = new FileIO.ReadOnly(file, Task.PRIORITY_NORMAL);
+		io.seekSync(SeekType.FROM_BEGINNING, offset);
 		byte[] b = new byte[testBuf.length];
 		for (int i = 0; i < nbBuf; ++i) {
 			io.readFullySync(ByteBuffer.wrap(b));
@@ -58,6 +60,11 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 		super.basicTests(io);
 		((IO.Writable)io).canStartWriting();
 	}
+	
+	/** Can be overridden in case of a SubIO when checking file content. */
+	public long getFileOffset() {
+		return 0;
+	}
 
 	@Test(timeout=120000)
 	public void testWriteBufferByBufferSync() throws Exception {
@@ -74,7 +81,7 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 		}
 		flush(io);
 		io.close();
-		checkFile(file, testBuf, nbBuf);
+		checkFile(file, testBuf, nbBuf, getFileOffset());
 	}
 	
 	@Test(timeout=120000)
@@ -125,7 +132,7 @@ public abstract class TestWritableToFile extends TestIO.UsingTestData {
 		sp.blockThrow(0);
 		flush(io);
 		io.close();
-		checkFile(file, testBuf, nbBuf);
+		checkFile(file, testBuf, nbBuf, getFileOffset());
 	}	
 
 }

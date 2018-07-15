@@ -59,4 +59,9 @@ public class TestSubIOWritableSeekableToFile extends TestWritableToFile {
 		return new SubIO.Writable.Seekable(fio, nbBufSkippedStart * testBuf.length, size, "test subio", true);
 	}
 	
+	@Override
+	public long getFileOffset() {
+		return nbBufSkippedStart * testBuf.length;
+	}
+	
 }

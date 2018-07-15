@@ -41,6 +41,11 @@ public abstract class TestWritableSeekableToFile extends TestIO.UsingTestData {
 	protected IO getIOForCommonTests() throws Exception {
 		return createWritableSeekableFromFile(createFile());
 	}
+
+	/** Can be overridden in case of a SubIO when checking file content. */
+	public long getFileOffset() {
+		return 0;
+	}
 	
 	@SuppressWarnings("resource")
 	@Test
@@ -64,7 +69,7 @@ public abstract class TestWritableSeekableToFile extends TestIO.UsingTestData {
 		
 		flush(io);
 		io.close();
-		TestWritableToFile.checkFile(file, testBuf, nbBuf);
+		TestWritableToFile.checkFile(file, testBuf, nbBuf, getFileOffset());
 	}
 	
 	@SuppressWarnings("resource")
@@ -94,7 +99,7 @@ public abstract class TestWritableSeekableToFile extends TestIO.UsingTestData {
 		
 		flush(io);
 		io.close();
-		TestWritableToFile.checkFile(file, testBuf, nbBuf);
+		TestWritableToFile.checkFile(file, testBuf, nbBuf, getFileOffset());
 	}
 	
 	@Test
@@ -167,7 +172,7 @@ public abstract class TestWritableSeekableToFile extends TestIO.UsingTestData {
 		sp.blockThrow(0);
 		flush(io);
 		io.close();
-		TestWritableToFile.checkFile(file, testBuf, nbBuf);
+		TestWritableToFile.checkFile(file, testBuf, nbBuf, getFileOffset());
 	}
 
 	@Test
@@ -260,7 +265,7 @@ public abstract class TestWritableSeekableToFile extends TestIO.UsingTestData {
 		sp.blockThrow(0);
 		flush(io);
 		io.close();
-		TestWritableToFile.checkFile(file, testBuf, nbBuf);
+		TestWritableToFile.checkFile(file, testBuf, nbBuf, getFileOffset());
 	}	
 	
 }

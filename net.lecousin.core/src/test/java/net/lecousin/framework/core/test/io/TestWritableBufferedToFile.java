@@ -24,6 +24,11 @@ public abstract class TestWritableBufferedToFile extends TestIO.UsingTestData {
 		return createWritableBufferedFromFile(TestWritableToFile.createFile());
 	}
 	
+	/** Can be overridden in case of a SubIO when checking file content. */
+	public long getFileOffset() {
+		return 0;
+	}
+	
 	@Test(timeout=120000)
 	public void testWriteBufferByBufferInBuffered() throws Exception {
 		File file = TestWritableWrapper.createFile();
@@ -33,7 +38,7 @@ public abstract class TestWritableBufferedToFile extends TestIO.UsingTestData {
 		io.flush().blockThrow(0);
 		flush(io);
 		io.close();
-		TestWritableToFile.checkFile(file, testBuf, nbBuf);
+		TestWritableToFile.checkFile(file, testBuf, nbBuf, getFileOffset());
 	}
 
 	@Test(timeout=120000)
@@ -46,7 +51,7 @@ public abstract class TestWritableBufferedToFile extends TestIO.UsingTestData {
 		io.flush().blockThrow(0);
 		flush(io);
 		io.close();
-		TestWritableToFile.checkFile(file, testBuf, nbBuf);
+		TestWritableToFile.checkFile(file, testBuf, nbBuf, getFileOffset());
 	}
 	
 }
