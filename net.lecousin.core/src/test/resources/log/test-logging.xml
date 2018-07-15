@@ -66,6 +66,15 @@
 		level="DEBUG"
 		pattern="%d{HH:mm:ss.SSS} [%level] &lt;%logger{20}&gt; %m"
 	/>
+	<Appender
+		name="smallAppender"
+		class="net.lecousin.framework.log.appenders.RollingFileAppender"
+		level="TRACE"
+		pattern="%level %logger{10} %m"
+		size="1K"
+		files="2"
+		path="${net.lecousin.application.log.directory}/log_small.txt"
+	/>
 	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger1" appender="appender1" level="DEBUG"></Logger>
 	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger2" appender="appender2" level="INFO"></Logger>
 	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger3" appender="appender3" level="DEBUG"></Logger>
@@ -73,5 +82,6 @@
 	<Logger name="net.lecousin.framework.core.tests.log.Loggers$Logger5" appender="appender5" level="WARN"></Logger>
 	<Logger name="net.lecousin.framework.core.tests.log.Loggers$LoggerForPattern" appender="appenderForPattern" level="TRACE"></Logger>
 	<Logger name="test" appender="appenderTest" level="TRACE"></Logger>
+	<Logger name="testSmallFile" appender="smallAppender" level="TRACE"></Logger>
 	<Default appender="console"/>
 </LoggingConfiguration>

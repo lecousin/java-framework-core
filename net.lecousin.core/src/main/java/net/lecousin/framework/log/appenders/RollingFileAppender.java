@@ -137,25 +137,13 @@ public class RollingFileAppender implements Appender, Closeable {
 					if (!file.exists()) {
 						File dir = file.getParentFile();
 						if (!dir.exists())
-							if (!dir.mkdirs()) {
-								Exception error = new Exception("Cannot create log directory: "
-									+ dir.getAbsolutePath());
-								factory.getApplication().getConsole().err(error);
-								result.error(error);
-								return null;
-							}
+							if (!dir.mkdirs())
+								return error("Cannot create log directory: " + dir.getAbsolutePath(), null, result);
 						try {
-							if (!file.createNewFile()) {
-								Exception error = new Exception("Cannot create log file: " + file.getAbsolutePath());
-								factory.getApplication().getConsole().err(error);
-								result.error(error);
-								return null;
-							}
+							if (!file.createNewFile())
+								return error("Cannot create log file: " + file.getAbsolutePath(), null, result);
 						} catch (Exception e) {
-							Exception error = new Exception("Cannot create log file: " + file.getAbsolutePath(), e);
-							factory.getApplication().getConsole().err(error);
-							result.error(error);
-							return null;
+							return error("Cannot create log file: " + file.getAbsolutePath(), e, result);
 						}
 					}
 					output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
@@ -200,39 +188,24 @@ public class RollingFileAppender implements Appender, Closeable {
 						File dir = file.getParentFile();
 						File f = new File(dir, file.getName() + '.' + maxFiles);
 						if (f.exists())
-							if (!f.delete()) {
-								result.error(new Exception("Unable to remove log file " + f.getAbsolutePath()));
-								return null;
-							}
+							if (!f.delete())
+								return error("Unable to remove log file " + f.getAbsolutePath(), null, result);
 						for (int i = maxFiles - 1; i >= 1; --i) {
 							f = new File(dir, file.getName() + '.' + i);
 							if (f.exists())
-								if (!f.renameTo(new File(dir, file.getName() + '.' + (i + 1)))) {
-									result.error(new Exception("Unable to rename log file "
-										+ f.getAbsolutePath()));
-									return null;
-								}
+								if (!f.renameTo(new File(dir, file.getName() + '.' + (i + 1))))
+									return error(
+										"Unable to rename log file " + f.getAbsolutePath(), null, result);
 						}
 						f = new File(dir, file.getName() + ".1");
-						if (!file.renameTo(f)) {
-							Exception error = new Exception("Cannot rename log file from " + file.getAbsolutePath()
-								+ " to " + f.getAbsolutePath());
-							factory.getApplication().getConsole().err(error);
-							result.error(error);
-							return null;
-						}
+						if (!file.renameTo(f))
+							return error("Cannot rename log file from " + file.getAbsolutePath()
+								+ " to " + f.getAbsolutePath(), null, result);
 						try {
-							if (!file.createNewFile()) {
-								Exception error = new Exception("Cannot create log file: " + file.getAbsolutePath());
-								factory.getApplication().getConsole().err(error);
-								result.error(error);
-								return null;
-							}
+							if (!file.createNewFile())
+								return error("Cannot create log file: " + file.getAbsolutePath(), null, result);
 						} catch (Throwable t) {
-							Exception error = new Exception("Cannot create log file: " + file.getAbsolutePath(), t);
-							factory.getApplication().getConsole().err(error);
-							result.error(error);
-							return null;
+							return error("Cannot create log file: " + file.getAbsolutePath(), t, result);
 						}
 						output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
 						output.writeAsync(log).listenInlineSP(() -> { result.unblockSuccess(null); }, result);
@@ -260,8 +233,7 @@ public class RollingFileAppender implements Appender, Closeable {
 			msg.append('\n');
 			opStack.write(new AppendLog(ByteBuffer.wrap(msg.toString().getBytes(StandardCharsets.UTF_8))));
 		} catch (Exception e) {
-			factory.getApplication().getConsole().err("Error logging in file " + file.getAbsolutePath() + ": " + e.getMessage());
-			factory.getApplication().getConsole().err(e);
+			factory.getApplication().getConsole().err(new Exception("Error logging in file " + file.getAbsolutePath(), e));
 			try { if (output != null) output.close(); }
 			catch (Throwable t) { /* ignore */ }
 			output = null;
@@ -286,7 +258,7 @@ public class RollingFileAppender implements Appender, Closeable {
 	@Override
 	public synchronized void close() throws IOException {
 		closed = true;
-		if (first) {
+		if (!first) {
 			try {
 				opStack.flush().blockThrow(0);
 				if (output != null)
@@ -304,4 +276,10 @@ public class RollingFileAppender implements Appender, Closeable {
 		return opStack.flush();
 	}
 	
+	private Void error(String message, Throwable cause, AsyncWork<Void, Exception> result) {
+		Exception error = new Exception(message, cause);
+		factory.getApplication().getConsole().err(error);
+		result.error(error);
+		return null;
+	}
 }

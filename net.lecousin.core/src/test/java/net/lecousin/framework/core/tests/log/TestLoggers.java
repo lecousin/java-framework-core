@@ -19,8 +19,11 @@ import net.lecousin.framework.core.tests.log.Loggers.Logger4;
 import net.lecousin.framework.core.tests.log.Loggers.Logger5;
 import net.lecousin.framework.core.tests.log.Loggers.LoggerForPattern;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.log.LogPattern;
 import net.lecousin.framework.log.Logger;
+import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.LoggerFactory;
+import net.lecousin.framework.log.appenders.RollingFileAppender;
 import net.lecousin.framework.util.StringUtil;
 
 public class TestLoggers extends LCCoreAbstractTest {
@@ -99,7 +102,7 @@ public class TestLoggers extends LCCoreAbstractTest {
 		expected.append(' ');
 		expected.append("test");
 		expected.append(' ');
-		expected.append(76);
+		expected.append(79);
 		expected.append(' ');
 		expected.append("TestLoggers.java");
 		expected.append(' ');
@@ -121,6 +124,64 @@ public class TestLoggers extends LCCoreAbstractTest {
 		logger.trace("test", new Exception());
 
 		factory.getDefault().info("Test log message");
+		
+		// test rolling
+		
+		logger = factory.getLogger("testSmallFile");
+		logger.info("A first message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("A second message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("A third message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("A fourth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("A fifth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("A sixth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("A seventh message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("A message to almost reach the maximum size of 1KB");
+		factory.flush().blockThrow(0);
+		Assert.assertTrue(new File(dir, "log_small.txt").exists());
+		Assert.assertFalse(new File(dir, "log_small.txt.1").exists());
+		Assert.assertFalse(new File(dir, "log_small.txt.2").exists());
+		Assert.assertFalse(new File(dir, "log_small.txt.3").exists());
+		logger.info("/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/");
+		logger.info("file2 - A first message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file2 - A second message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file2 - A third message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file2 - A fourth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file2 - A fifth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file2 - A sixth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file2 - A seventh message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		factory.flush().blockThrow(0);
+		Assert.assertTrue(new File(dir, "log_small.txt").exists());
+		Assert.assertTrue(new File(dir, "log_small.txt.1").exists());
+		Assert.assertFalse(new File(dir, "log_small.txt.2").exists());
+		Assert.assertFalse(new File(dir, "log_small.txt.3").exists());
+		logger.info("/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/");
+		logger.info("file3 - A first message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file3 - A second message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file3 - A third message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file3 - A fourth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file3 - A fifth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file3 - A sixth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file3 - A seventh message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		factory.flush().blockThrow(0);
+		Assert.assertTrue(new File(dir, "log_small.txt").exists());
+		Assert.assertTrue(new File(dir, "log_small.txt.1").exists());
+		Assert.assertTrue(new File(dir, "log_small.txt.2").exists());
+		Assert.assertFalse(new File(dir, "log_small.txt.3").exists());
+		logger.info("/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/");
+		logger.info("file4 - A first message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file4 - A second message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file4 - A third message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file4 - A fourth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file4 - A fifth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file4 - A sixth message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		logger.info("file4 - A seventh message to take some space *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+		factory.flush().blockThrow(0);
+		Assert.assertTrue(new File(dir, "log_small.txt").exists());
+		Assert.assertTrue(new File(dir, "log_small.txt.1").exists());
+		Assert.assertTrue(new File(dir, "log_small.txt.2").exists());
+		Assert.assertFalse(new File(dir, "log_small.txt.3").exists());
+		
+		new RollingFileAppender(factory, new File(dir, "toto").getAbsolutePath(), Level.DEBUG, new LogPattern("hello world"), 10, 1).close();
 	}
 	
 	private static void produceLogs(Logger log) {
