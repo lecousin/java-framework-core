@@ -11,6 +11,11 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.util.LimitAsyncOperations;
+import net.lecousin.framework.concurrent.util.LimitAsyncOperations.Executor;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -108,57 +113,152 @@ public class RollingFileAppender implements Appender, Closeable {
 	private LogPattern pattern;
 	private Level level;
 	private boolean closed = false;
+	private LimitAsyncOperations<FileLogOperation, Void, Exception> opStack =
+		new LimitAsyncOperations<FileLogOperation, Void, Exception>(100, new Executor<FileLogOperation, Void, Exception>() {
+
+		@Override
+		public AsyncWork<Void, Exception> execute(FileLogOperation data) {
+			return data.execute();
+		}
+		
+	});
+	
+	private static interface FileLogOperation {
+		AsyncWork<Void, Exception> execute();
+	}
+	
+	private class OpenLogFile implements FileLogOperation {
+		@Override
+		public AsyncWork<Void, Exception> execute() {
+			AsyncWork<Void, Exception> result = new AsyncWork<>();
+			new Task.OnFile<Void, NoException>(file, "Open log file", Task.PRIORITY_RATHER_LOW) {
+				@Override
+				public Void run() {
+					if (!file.exists()) {
+						File dir = file.getParentFile();
+						if (!dir.exists())
+							if (!dir.mkdirs()) {
+								Exception error = new Exception("Cannot create log directory: "
+									+ dir.getAbsolutePath());
+								factory.getApplication().getConsole().err(error);
+								result.error(error);
+								return null;
+							}
+						try {
+							if (!file.createNewFile()) {
+								Exception error = new Exception("Cannot create log file: " + file.getAbsolutePath());
+								factory.getApplication().getConsole().err(error);
+								result.error(error);
+								return null;
+							}
+						} catch (Exception e) {
+							Exception error = new Exception("Cannot create log file: " + file.getAbsolutePath(), e);
+							factory.getApplication().getConsole().err(error);
+							result.error(error);
+							return null;
+						}
+					}
+					output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
+					output.seekAsync(SeekType.FROM_END, 0).listenInlineSP(() -> {
+						output.writeAsync(
+							ByteBuffer.wrap(("\nStart logging with max size = " + maxSize
+								+ " and max files = " + maxFiles + "\n\n")
+							.getBytes(StandardCharsets.UTF_8)))
+						.listenInlineSP(() -> {
+							result.unblockSuccess(null);
+						}, result);
+					}, result);
+					return null;
+				}
+			}.start();
+			return result;
+		}
+	}
+	
+	private class AppendLog implements FileLogOperation {
+		
+		public AppendLog(ByteBuffer log) {
+			this.log = log;
+		}
+		
+		private ByteBuffer log;
+		
+		@Override
+		public AsyncWork<Void, Exception> execute() {
+			AsyncWork<Void, Exception> result = new AsyncWork<>();
+			long fileSize;
+			try {
+				fileSize = output.getSizeSync();
+			} catch (Exception e) {
+				result.error(e);
+				return result;
+			}
+			if (fileSize >= maxSize) {
+				output.closeAsync().listenAsync(new Task.OnFile<Void, NoException>(file, "Roll log file", Task.PRIORITY_RATHER_LOW) {
+					@Override
+					public Void run() {
+						File dir = file.getParentFile();
+						File f = new File(dir, file.getName() + '.' + maxFiles);
+						if (f.exists())
+							if (!f.delete()) {
+								result.error(new Exception("Unable to remove log file " + f.getAbsolutePath()));
+								return null;
+							}
+						for (int i = maxFiles - 1; i >= 1; --i) {
+							f = new File(dir, file.getName() + '.' + i);
+							if (f.exists())
+								if (!f.renameTo(new File(dir, file.getName() + '.' + (i + 1)))) {
+									result.error(new Exception("Unable to rename log file "
+										+ f.getAbsolutePath()));
+									return null;
+								}
+						}
+						f = new File(dir, file.getName() + ".1");
+						if (!file.renameTo(f)) {
+							Exception error = new Exception("Cannot rename log file from " + file.getAbsolutePath()
+								+ " to " + f.getAbsolutePath());
+							factory.getApplication().getConsole().err(error);
+							result.error(error);
+							return null;
+						}
+						try {
+							if (!file.createNewFile()) {
+								Exception error = new Exception("Cannot create log file: " + file.getAbsolutePath());
+								factory.getApplication().getConsole().err(error);
+								result.error(error);
+								return null;
+							}
+						} catch (Throwable t) {
+							Exception error = new Exception("Cannot create log file: " + file.getAbsolutePath(), t);
+							factory.getApplication().getConsole().err(error);
+							result.error(error);
+							return null;
+						}
+						output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
+						output.writeAsync(log).listenInlineSP(() -> { result.unblockSuccess(null); }, result);
+						return null;
+					}
+				}, result);
+				return result;
+			}
+			output.writeAsync(log).listenInlineSP(() -> { result.unblockSuccess(null); }, result);
+			return result;
+		}
+	}
+	
+	private boolean first = true;
 	
 	@Override
 	public synchronized void append(Log log) {
 		if (closed) return;
 		try {
-			if (output == null) {
-				if (!file.exists()) {
-					File dir = file.getParentFile();
-					if (!dir.exists())
-						if (!dir.mkdirs()) {
-							factory.getApplication().getConsole()
-								.err("Cannot create log directory: " + dir.getAbsolutePath());
-							return;
-						}
-					if (!file.createNewFile()) {
-						factory.getApplication().getConsole().err("Cannot create log file: " + file.getAbsolutePath());
-						return;
-					}
-				}
-				output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
-				output.seekSync(SeekType.FROM_END, 0);
-				output.writeSync(
-					ByteBuffer.wrap(("\nStart logging with max size = " + maxSize + " and max files = " + maxFiles + "\n\n")
-					.getBytes(StandardCharsets.UTF_8)));
-			}
-			if (output.getSizeSync() >= maxSize) {
-				output.close();
-				File dir = file.getParentFile();
-				File f = new File(dir, file.getName() + '.' + maxFiles);
-				if (f.exists()) if (!f.delete()) return;
-				for (int i = maxFiles - 1; i >= 1; --i) {
-					f = new File(dir, file.getName() + '.' + i);
-					if (f.exists())
-						if (!f.renameTo(new File(dir, file.getName() + '.' + (i + 1))))
-							return;
-				}
-				f = new File(dir, file.getName() + ".1");
-				if (!file.renameTo(f)) {
-					factory.getApplication().getConsole()
-						.err("Cannot rename log file from " + file.getAbsolutePath() + " to " + f.getAbsolutePath());
-					return;
-				}
-				if (!file.createNewFile()) {
-					factory.getApplication().getConsole().err("Cannot create log file: " + file.getAbsolutePath());
-					return;
-				}
-				output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
+			if (first) {
+				opStack.write(new OpenLogFile());
+				first = false;
 			}
 			StringBuilder msg = pattern.generate(log);
 			msg.append('\n');
-			output.writeSync(ByteBuffer.wrap(msg.toString().getBytes(StandardCharsets.UTF_8)));
+			opStack.write(new AppendLog(ByteBuffer.wrap(msg.toString().getBytes(StandardCharsets.UTF_8))));
 		} catch (Exception e) {
 			factory.getApplication().getConsole().err("Error logging in file " + file.getAbsolutePath() + ": " + e.getMessage());
 			factory.getApplication().getConsole().err(e);
@@ -186,11 +286,22 @@ public class RollingFileAppender implements Appender, Closeable {
 	@Override
 	public synchronized void close() throws IOException {
 		closed = true;
-		if (output != null) {
-			try { output.close(); }
-			catch (Exception e) { throw IO.error(e); }
+		if (first) {
+			try {
+				opStack.flush().blockThrow(0);
+				if (output != null)
+					output.close();
+			} catch (Exception e) {
+				throw IO.error(e);
+			}
 			output = null;
+			first = true;
 		}
+	}
+	
+	@Override
+	public ISynchronizationPoint<Exception> flush() {
+		return opStack.flush();
 	}
 	
 }

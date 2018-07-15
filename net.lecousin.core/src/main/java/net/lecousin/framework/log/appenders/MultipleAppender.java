@@ -7,6 +7,8 @@ import java.util.Map;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 
+import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.LoggerFactory;
@@ -100,6 +102,15 @@ public class MultipleAppender implements Appender {
 	@Override
 	public boolean needsLocation() {
 		return location;
+	}
+	
+	@Override
+	public ISynchronizationPoint<Exception> flush() {
+		JoinPoint<Exception> jp = new JoinPoint<>();
+		for (Appender a : appenders)
+			jp.addToJoin(a.flush());
+		jp.start();
+		return jp;
 	}
 	
 }

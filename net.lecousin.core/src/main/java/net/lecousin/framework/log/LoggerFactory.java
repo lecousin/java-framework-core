@@ -15,7 +15,9 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.application.Application;
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.appenders.Appender;
 import net.lecousin.framework.log.appenders.ConsoleAppender;
@@ -28,6 +30,7 @@ public class LoggerFactory {
 	private Appender defaultAppender;
 	private Map<String, Logger> loggers = new HashMap<>(50);
 	private Logger defaultLogger;
+	private Map<String,Appender> appenders = new HashMap<String,Appender>();
 	
 	/** Constructor. */
 	public LoggerFactory(Application app) {
@@ -76,7 +79,13 @@ public class LoggerFactory {
 	
 	/** Return a synchronization point that will be unblocked as soon as all pending logs have been written. */
 	public ISynchronizationPoint<Exception> flush() {
-		return thread.flush();
+		JoinPoint<Exception> jp = new JoinPoint<>();
+		thread.flush().listenAsync(new Task.Cpu.FromRunnable("Flushing log appenders", Task.PRIORITY_IMPORTANT, () -> {
+			for (Appender a : appenders.values())
+				jp.addToJoin(a.flush());
+			jp.start();
+		}), true);
+		return jp;
 	}
 	
 	/** Configure a logger with an appender. */
@@ -194,7 +203,6 @@ public class LoggerFactory {
 	}
 	
 	private void readLoggingConfiguration(XMLStreamReader reader) throws Exception {
-		Map<String,Appender> appenders = new HashMap<String,Appender>();
 		reader.next();
 		while (reader.hasNext()) {
 			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
