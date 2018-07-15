@@ -16,6 +16,8 @@ import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadWrite;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.buffering.BufferedIO;
+import net.lecousin.framework.memory.IMemoryManageable.FreeMemoryLevel;
+import net.lecousin.framework.memory.MemoryManager;
 
 @RunWith(Parameterized.class)
 public class TestBufferedIOReadWrite extends TestReadWrite {
@@ -53,11 +55,18 @@ public class TestBufferedIOReadWrite extends TestReadWrite {
 			BufferedIO.MemoryManagement.setMemoryLimits(48 * 1024, 64 * 1024, 4 * 1024);
 		else
 			BufferedIO.MemoryManagement.setMemoryLimits(BufferedIO.MemoryManagement.DEFAULT_MEMORY_THRESHOLD, BufferedIO.MemoryManagement.DEFAULT_MAX_MEMORY, BufferedIO.MemoryManagement.DEFAULT_TO_BE_WRITTEN_THRESHOLD);
+		BufferedIO.MemoryManagement.getMaxMemory();
+		BufferedIO.MemoryManagement.getMemoryThreshold();
+		BufferedIO.MemoryManagement.getToBeWrittenThreshold();
 	}
 	
 	@After
 	public void resetMemory() {
 		BufferedIO.MemoryManagement.setMemoryLimits(BufferedIO.MemoryManagement.DEFAULT_MEMORY_THRESHOLD, BufferedIO.MemoryManagement.DEFAULT_MAX_MEMORY, BufferedIO.MemoryManagement.DEFAULT_TO_BE_WRITTEN_THRESHOLD);
+		MemoryManager.freeMemory(FreeMemoryLevel.LOW);
+		MemoryManager.freeMemory(FreeMemoryLevel.EXPIRED_ONLY);
+		MemoryManager.freeMemory(FreeMemoryLevel.MEDIUM);
+		MemoryManager.freeMemory(FreeMemoryLevel.URGENT);
 	}
 	
 	@SuppressWarnings({ "unchecked", "resource" })

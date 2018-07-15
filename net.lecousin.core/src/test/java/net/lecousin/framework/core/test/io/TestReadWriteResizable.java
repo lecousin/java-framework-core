@@ -107,6 +107,22 @@ public abstract class TestReadWriteResizable extends TestIO {
 		s = io.getPosition();
 		if (s != 20) throw new Exception("Write error: new position is " + s + ", expected is 20");
 		
+		io.setSizeSync(1024 * 1024);
+		s = io.getSizeSync();
+		if (s != 1024 * 1024) throw new Exception("Write error: new size is " + s + ", expected is 1024 * 1024");
+		io.writeSync(768 * 1024, ByteBuffer.wrap(new byte[] { 1, 2, 3 }));
+		s = io.getSizeSync();
+		if (s != 1024 * 1024) throw new Exception("Write error: new size is " + s + ", expected is 1024 * 1024");
+		io.writeSync(1024 * 1024, ByteBuffer.wrap(new byte[] { 1, 2, 3, 4, 5 }));
+		s = io.getSizeSync();
+		if (s != 1024 * 1024 + 5) throw new Exception("Write error: new size is " + s + ", expected is 1024 * 1024 + 5");
+		io.writeSync(2 * 1024 * 1024, ByteBuffer.wrap(new byte[] { 1, 2, 3, 4, 5 }));
+		s = io.getSizeSync();
+		if (s != 2 * 1024 * 1024 + 5) throw new Exception("Write error: new size is " + s + ", expected is 2 * 1024 * 1024 + 5");
+		io.setSizeSync(0);
+		s = io.getSizeSync();
+		if (s != 0) throw new Exception("Write error: new size is " + s + ", expected is 0");
+		
 		io.close();
 	}
 	

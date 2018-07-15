@@ -244,9 +244,8 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 			}
 		}
 		
-		private void remove(Buffer b) {
+		private void removeReference(Buffer b) {
 			synchronized (this) {
-				b.owner.bufferTable.remove(b, true);
 				if (b.previous == null)
 					head = b.next;
 				else
@@ -547,27 +546,24 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 				}
 				return;
 			}
-			Buffer[] removedArray;
-			Buffer lastPrevious;
+			// we need to ensure there is no flush in progress on the removed buffers and the last buffer
 			synchronized (this) {
-				// we need to ensure there is no flush in progress on the removed buffers and the last buffer
-				// this is done by the remove function in which we do a startWrite
+				// first, we remove the reference to those buffers from MemoryManagement so it won't do any new operation on them
+				for (int i = (int)nbBuffersAfter; i < nbBuffersBefore; ++i)
+					if (buffers[i] != null) {
+						Buffer b = buffers[i];
+						// the remove calls startWrite so we make sure it is not accessed anymore
+						remove(b, true);
+						memory.removeReference(b);
+					}
+				if (nbBuffersAfter > 0 && buffers[(int)(nbBuffersAfter - 1)] != null)
+					buffers[(int)(nbBuffersAfter - 1)].usage.startWrite();
 				Buffer[] newArray = new Buffer[(int)nbBuffersAfter];
 				System.arraycopy(buffers, 0, newArray, 0, newArray.length);
-				removedArray = new Buffer[(int)(nbBuffersBefore - nbBuffersAfter)];
-				System.arraycopy(buffers, newArray.length, removedArray, 0, removedArray.length);
 				buffers = newArray;
-				lastPrevious = nbBuffersAfter == 0 ? null : buffers[newArray.length - 1];
+				if (nbBuffersAfter > 0 && buffers[(int)(nbBuffersAfter - 1)] != null)
+					buffers[(int)(nbBuffersAfter - 1)].usage.endWrite();
 			}
-			// make sure the last buffer is not flushing
-			if (lastPrevious != null)
-				lastPrevious.usage.startWrite();
-			// remove buffers
-			for (Buffer b : removedArray)
-				memory.remove(b);
-
-			if (lastPrevious != null)
-				lastPrevious.usage.endWrite();
 		}
 		
 		@Override
@@ -723,6 +719,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 					if (b.index == nbBuffersAfter) lastPrevious = b;
 					if (b.index < nbBuffersAfter) continue;
 					removed.add(b);
+					memory.removeReference(b);
 				}
 			}
 			// make sure the last buffer is not flushing
@@ -730,7 +727,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 				lastPrevious.usage.startWrite();
 			// remove buffers
 			for (Buffer b : removed)
-				memory.remove(b);
+				remove(b, true);
 
 			if (lastPrevious != null)
 				lastPrevious.usage.endWrite();
