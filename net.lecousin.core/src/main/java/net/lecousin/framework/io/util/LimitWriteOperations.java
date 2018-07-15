@@ -3,7 +3,6 @@ package net.lecousin.framework.io.util;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -43,40 +42,44 @@ public class LimitWriteOperations {
 			synchronized (waiting) {
 				if (lastWrite.isCancelled()) return lastWrite;
 				if (waiting.isEmpty() && lastWrite.isUnblocked()) {
-					LCCore.getApplication().getConsole().out("write direct");
-					lastWrite = io.writeAsync(buffer);
-					lastWrite.listenInline(
-						(nb) -> { writeDone(buffer, null); },
-						(error) -> { writeDone(buffer, null); },
-						(cancel) -> { writeDone(buffer, cancel); }
+					AsyncWork<Integer,IOException> res = io.writeAsync(buffer);
+					AsyncWork<Integer,IOException> done = new AsyncWork<>();
+					lastWrite = done;
+					res.listenInline(
+						(nb) -> {
+							writeDone(buffer, null);
+							done.unblockSuccess(nb);
+						},
+						(error) -> {
+							writeDone(buffer, null);
+							done.error(error);
+						},
+						(cancel) -> {
+							writeDone(buffer, cancel);
+							done.cancel(cancel);
+						}
 					);
 					return lastWrite;
 				}
 				if (!waiting.isFull()) {
-					LCCore.getApplication().getConsole().out("push write");
 					AsyncWork<Integer,IOException> res = new AsyncWork<>();
 					waiting.addLast(new Pair<>(buffer, res));
 					lastWrite = res;
 					return res;
 				}
-				LCCore.getApplication().getConsole().out("waiting has " + waiting.size());
 				if (lock != null)
 					throw new IOException("Concurrent write");
 				lock = new SynchronizationPoint<>();
 				lk = lock;
 			}
-			LCCore.getApplication().getConsole().out("block");
 			lk.block(0);
-			LCCore.getApplication().getConsole().out("unblocked");
 		} while (true);
 	}
 	
 	protected void writeDone(@SuppressWarnings("unused") ByteBuffer buffer, CancelException cancelled) {
-		LCCore.getApplication().getConsole().out("writeDone");
 		SynchronizationPoint<NoException> sp = null;
 		synchronized (waiting) {
 			Pair<ByteBuffer,AsyncWork<Integer,IOException>> b = waiting.pollFirst();
-			LCCore.getApplication().getConsole().out("b = " + b);
 			if (b != null) {
 				if (lock != null) {
 					sp = lock;
@@ -93,16 +96,16 @@ public class LimitWriteOperations {
 					Pair<ByteBuffer,AsyncWork<Integer,IOException>> bb = b;
 					write.listenInline(
 						(nb) -> {
-							bb.getValue2().unblockSuccess(nb);
 							writeDone(buf, null);
+							bb.getValue2().unblockSuccess(nb);
 						},
 						(error) -> {
-							bb.getValue2().error(error);
 							writeDone(buf, null);
+							bb.getValue2().error(error);
 						},
 						(cancel) -> {
-							bb.getValue2().cancel(cancel);
 							writeDone(buf, cancel);
+							bb.getValue2().cancel(cancel);
 						}
 					);
 				}
