@@ -253,7 +253,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		int nbBuf = this.nbBuf;
 		if (nbBuf > 5000) nbBuf = 5000 + rand.nextInt(1000); // limit size because too long
 		// write randomly
-		FragmentedRangeLong toWrite = new FragmentedRangeLong(new RangeLong(0, nbBuf * testBuf.length));
+		FragmentedRangeLong toWrite = new FragmentedRangeLong(new RangeLong(0, nbBuf * testBuf.length - 1));
 		while (!toWrite.isEmpty()) {
 			int rangeIndex = rand.nextInt(toWrite.size());
 			RangeLong range = toWrite.get(rangeIndex);
@@ -263,7 +263,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			if (range.min + startPos + len - 1 > range.max) len = (int)(range.max - (range.min + startPos) + 1);
 			ByteBuffer buf = ByteBuffer.wrap(testBuf, bufOffset, len);
 			io.writeSync(range.min + startPos, buf);
-			Assert.assertEquals(0, buf.remaining());
+			Assert.assertEquals("Remaining data not written at position " + (range.min + startPos) + " on " + len, 0, buf.remaining());
 			Assert.assertEquals("Write at a given position should not change the IO cursor", 0, io.getPosition());
 			if (range.max == range.min + startPos + len - 1) {
 				toWrite.removeRange(range.min + startPos, range.max);

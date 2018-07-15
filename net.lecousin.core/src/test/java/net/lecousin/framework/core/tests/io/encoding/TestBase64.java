@@ -40,6 +40,8 @@ public class TestBase64 extends LCCoreAbstractTest {
 		Assert.assertEquals((byte)'T', buf[10]);
 		Assert.assertEquals((byte)'h', buf[11]);
 		Assert.assertEquals((byte)'i', buf[12]);
+		
+		Assert.assertArrayEquals("This is a test".getBytes(StandardCharsets.UTF_8), Base64.decode("   VGhpcyBpcyBhIHRlc3Q=".getBytes(StandardCharsets.UTF_8), 3, 20));
 	}
 	
 	@SuppressWarnings("resource")

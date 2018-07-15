@@ -15,6 +15,9 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
  * and will be written as soon as the previous write is finished.
  * At the end of all write operations, you can use the method onDone to get a synchronization point that will be unblocked
  * as soon as the last write operation is finished.
+ * <br/>
+ * In case of many write operations, this class may queue many buffers to be written, then using an important amount of memory.
+ * You can consider using {@link net.lecousin.framework.io.util.LimitWriteOperations} class instead.
  */
 public class IOWritePool {
 	
