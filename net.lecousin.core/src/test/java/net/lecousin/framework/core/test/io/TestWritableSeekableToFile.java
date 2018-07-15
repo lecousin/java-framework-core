@@ -47,7 +47,9 @@ public abstract class TestWritableSeekableToFile extends TestIO.UsingTestData {
 	public void testWriteSyncRandomly() throws Exception {
 		File file = createFile();
 		IO.Writable.Seekable io = createWritableSeekableFromFile(file);
+		Assert.assertEquals(0, io.getPosition());
 		((IO.Resizable)io).setSizeSync(nbBuf * testBuf.length);
+		Assert.assertEquals(0, io.getPosition());
 
 		ArrayList<Integer> offsets = new ArrayList<Integer>(nbBuf);
 		for (int i = 0; i < nbBuf; ++i) offsets.add(Integer.valueOf(i));
@@ -57,6 +59,7 @@ public abstract class TestWritableSeekableToFile extends TestIO.UsingTestData {
 			int nb = io.writeSync(offset.intValue()*testBuf.length, ByteBuffer.wrap(testBuf));
 			if (nb != testBuf.length)
 				throw new Exception("Only "+nb+" bytes written at "+(offset.intValue()*testBuf.length));
+			Assert.assertEquals("Write at a given position should not change the IO cursor", 0, io.getPosition());
 		}
 		
 		flush(io);
@@ -98,7 +101,9 @@ public abstract class TestWritableSeekableToFile extends TestIO.UsingTestData {
 	public void testWriteAsyncRandomly() throws Exception {
 		File file = createFile();
 		IO.Writable.Seekable io = createWritableSeekableFromFile(file);
+		Assert.assertEquals(0, io.getPosition());
 		((IO.Resizable)io).setSizeSync(nbBuf * testBuf.length);
+		Assert.assertEquals(0, io.getPosition());
 		
 		LinkedArrayList<Integer> offsets = new LinkedArrayList<Integer>(20);
 		for (int i = 0; i < nbBuf; ++i) offsets.add(Integer.valueOf(i));
@@ -136,6 +141,12 @@ public abstract class TestWritableSeekableToFile extends TestIO.UsingTestData {
 					
 					if (write.get().getResult().intValue() != testBuf.length) {
 						sp.error(new Exception("Unexpected number of bytes written at " + (offset.get()*testBuf.length) + " (" + write.get().getResult().intValue() + "/" + testBuf.length + " bytes read)"));
+						return;
+					}
+					try {
+						Assert.assertEquals("Write at a given position should not change the IO cursor", 0, io.getPosition());
+					} catch (Throwable t) {
+						sp.error(new Exception(t));
 						return;
 					}
 	

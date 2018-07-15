@@ -42,6 +42,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	@Test(timeout=300000)
 	public void testSeekableByteByByteSync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
+		Assert.assertEquals(0, io.getPosition());
 		byte[] b = new byte[1];
 		ByteBuffer buffer = ByteBuffer.wrap(b);
 		ArrayList<Integer> offsets = new ArrayList<Integer>(nbBuf);
@@ -69,6 +70,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 				if (b[0] != testBuf[j])
 					throw new Exception("Invalid byte "+(b[0]&0xFF)+" at "+(i*testBuf.length+j));
 			}
+			Assert.assertEquals("Read at a given position should not change the IO cursor", 0, io.getPosition());
 		}
 		buffer.clear();
 		if (io.readSync((long)nbBuf * testBuf.length, buffer) > 0)
@@ -79,6 +81,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	@Test(timeout=300000)
 	public void testSeekableByteByByteAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
+		Assert.assertEquals(0, io.getPosition());
 		byte[] b = new byte[1];
 		ByteBuffer buffer = ByteBuffer.wrap(b);
 		ArrayList<Integer> offsets = new ArrayList<Integer>(nbBuf);
@@ -129,6 +132,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 						sp.error(new Exception("Invalid byte "+(b[0]&0xFF)+" at "+(offset.get()*testBuf.length+j.get())));
 						return;
 					}
+					try {
+						Assert.assertEquals("Read at a given position should not change the IO cursor", 0, io.getPosition());
+					} catch (Throwable t) {
+						sp.error(new Exception(t));
+						return;
+					}
 	
 					if (j.inc() == testBuf.length) {
 						if (offsets.isEmpty()) {
@@ -165,6 +174,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	@Test(timeout=120000)
 	public void testSeekableBufferByBufferFullySync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
+		Assert.assertEquals(0, io.getPosition());
 		byte[] b = new byte[testBuf.length];
 		ByteBuffer buffer = ByteBuffer.wrap(b);
 		ArrayList<Integer> offsets = new ArrayList<Integer>(nbBuf);
@@ -178,6 +188,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 				throw new Exception("Only "+nb+" bytes read at "+(offset.intValue()*testBuf.length));
 			if (!ArrayUtil.equals(b, testBuf))
 				throw new Exception("Invalid read at "+(offset.intValue()*testBuf.length));
+			Assert.assertEquals("Read at a given position should not change the IO cursor", 0, io.getPosition());
 		}
 		buffer.clear();
 		if (io.readFullySync((long)nbBuf * testBuf.length, buffer) > 0)
@@ -188,6 +199,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	@Test(timeout=120000)
 	public void testSeekableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
+		Assert.assertEquals(0, io.getPosition());
 		SynchronizationPoint<Exception> sp = _testSeekableBufferByBufferFullyAsync(io);
 		sp.blockThrow(0);
 		io.close();
@@ -245,6 +257,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 						sp.error(new Exception("Invalid data read at "+(offset.get()*testBuf.length)));
 						return;
 					}
+					try {
+						Assert.assertEquals("Read at a given position should not change the IO cursor", 0, io.getPosition());
+					} catch (Throwable t) {
+						sp.error(new Exception(t));
+						return;
+					}
 	
 					if (offsets.isEmpty()) {
 						// read again to test we cannot read beyond the end of the file
@@ -270,6 +288,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	@Test(timeout=300000)
 	public void testConcurrentAccessToSeekableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
+		Assert.assertEquals(0, io.getPosition());
 		int nbConc = Runtime.getRuntime().availableProcessors() * 3;
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		jp.addToJoin(nbConc);

@@ -119,7 +119,9 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			
 			@Override
 			public int readSync(ByteBuffer buffer) throws IOException {
-				return super.readSync(pos, buffer);
+				int nb = super.readSync(pos, buffer);
+				if (nb > 0) pos += nb;
+				return nb;
 			}
 			
 			@Override
@@ -131,7 +133,11 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			
 			@Override
 			public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-				return super.readAsync(pos, buffer, ondone);
+				return super.readAsync(pos, buffer, (res) -> {
+					if (res.getValue1() != null && res.getValue1().intValue() > 0)
+						pos += res.getValue1().intValue();
+					if (ondone != null) ondone.run(res);
+				});
 			}
 			
 			@Override
@@ -141,7 +147,9 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			
 			@Override
 			public int readFullySync(ByteBuffer buffer) throws IOException {
-				return super.readFullySync(pos, buffer);
+				int nb = super.readFullySync(pos, buffer);
+				if (nb > 0) pos += nb;
+				return nb;
 			}
 			
 			@Override
@@ -155,7 +163,11 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			public AsyncWork<Integer,IOException> readFullyAsync(
 				ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 			) {
-				return super.readFullyAsync(pos, buffer, ondone);
+				return super.readFullyAsync(pos, buffer, (res) -> {
+					if (res.getValue1() != null && res.getValue1().intValue() > 0)
+						pos += res.getValue1().intValue();
+					if (ondone != null) ondone.run(res);
+				});
 			}
 			
 			@Override
@@ -368,7 +380,9 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			
 			@Override
 			public int writeSync(ByteBuffer buffer) throws IOException {
-				return super.writeSync(pos, buffer);
+				int nb = super.writeSync(pos, buffer);
+				if (nb > 0) pos += nb;
+				return nb;
 			}
 			
 			@Override
@@ -382,7 +396,11 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			public AsyncWork<Integer, IOException> writeAsync(
 				ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
 			) {
-				return super.writeAsync(pos, buffer, ondone);
+				return super.writeAsync(pos, buffer, (res) -> {
+					if (res.getValue1() != null && res.getValue1().intValue() > 0)
+						pos += res.getValue1().intValue();
+					if (ondone != null) ondone.run(res);
+				});
 			}
 			
 			@Override
@@ -422,7 +440,9 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		
 		@Override
 		public int readSync(ByteBuffer buffer) throws IOException {
-			return super.readSync(pos, buffer);
+			int nb = super.readSync(pos, buffer);
+			if (nb > 0) pos += nb;
+			return nb;
 		}
 		
 		@Override
@@ -434,7 +454,11 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		
 		@Override
 		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			return super.readAsync(pos, buffer, ondone);
+			return super.readAsync(pos, buffer, (res) -> {
+				if (res.getValue1() != null && res.getValue1().intValue() > 0)
+					pos += res.getValue1().intValue();
+				if (ondone != null) ondone.run(res);
+			});
 		}
 		
 		@Override
@@ -444,7 +468,9 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		
 		@Override
 		public int readFullySync(ByteBuffer buffer) throws IOException {
-			return super.readFullySync(pos, buffer);
+			int nb = super.readFullySync(pos, buffer);
+			if (nb > 0) pos += nb;
+			return nb;
 		}
 		
 		@Override
@@ -458,7 +484,11 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		public AsyncWork<Integer,IOException> readFullyAsync(
 			ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
 		) {
-			return super.readFullyAsync(pos, buffer, ondone);
+			return super.readFullyAsync(pos, buffer, (res) -> {
+				if (res.getValue1() != null && res.getValue1().intValue() > 0)
+					pos += res.getValue1().intValue();
+				if (ondone != null) ondone.run(res);
+			});
 		}
 		
 		@Override
@@ -498,7 +528,9 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		
 		@Override
 		public int writeSync(ByteBuffer buffer) throws IOException {
-			return super.writeSync(pos, buffer);
+			int nb = super.writeSync(pos, buffer);
+			if (nb > 0) pos += nb;
+			return nb;
 		}
 		
 		@Override
@@ -510,7 +542,11 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		
 		@Override
 		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-			return super.writeAsync(pos, buffer, ondone);
+			return super.writeAsync(pos, buffer, (res) -> {
+				if (res.getValue1() != null && res.getValue1().intValue() > 0)
+					pos += res.getValue1().intValue();
+				if (ondone != null) ondone.run(res);
+			});
 		}
 	}
 
@@ -634,7 +670,6 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			buffer.limit((int)(buffer.position() + size - pos));
 		}
 		int nb = ((IO.Readable.Seekable)io).readSync(start + pos, buffer);
-		this.pos = pos + nb;
 		if (limit != -1) buffer.limit(limit);
 		return nb;
 	}
@@ -653,8 +688,6 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		int plimit = limit;
 		return ((IO.Readable.Seekable)io).readAsync(start + pos, buffer, (result) -> {
-			if (result.getValue1() != null)
-				SubIO.this.pos = pos + result.getValue1().intValue();
 			if (plimit != -1)
 				buffer.limit(plimit);
 			if (ondone != null) ondone.run(result);
@@ -669,7 +702,6 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			buffer.limit((int)(buffer.position() + size - pos));
 		}
 		int nb = ((IO.Readable.Seekable)io).readFullySync(start + pos, buffer);
-		this.pos = pos + nb;
 		if (limit != -1) buffer.limit(limit);
 		return nb;
 	}
@@ -685,8 +717,6 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		int plimit = limit;
 		return ((IO.Readable.Seekable)io).readFullyAsync(start + pos, buffer, (result) -> {
-			if (result.getValue1() != null)
-				SubIO.this.pos = pos + result.getValue1().intValue();
 			if (plimit != -1)
 				buffer.limit(plimit);
 			if (ondone != null) ondone.run(result);
@@ -769,7 +799,6 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			buffer.limit((int)(buffer.position() + size - pos));
 		}
 		int nb = ((IO.Writable.Seekable)io).writeSync(start + pos, buffer);
-		this.pos = pos + nb;
 		if (limit != -1) buffer.limit(limit);
 		return nb;
 	}
@@ -786,8 +815,6 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		int plimit = limit;
 		return ((IO.Writable.Seekable)io).writeAsync(start + pos, buffer, (result) -> {
-			if (result.getValue1() != null)
-				SubIO.this.pos = pos + result.getValue1().intValue();
 			if (plimit != -1)
 				buffer.limit(plimit);
 			if (ondone != null) ondone.run(result);

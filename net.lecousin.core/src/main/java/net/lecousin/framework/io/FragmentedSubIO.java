@@ -65,7 +65,11 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		
 		@Override
 		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			return super.readAsync(pos, buffer, ondone);
+			return super.readAsync(pos, buffer, (res) -> {
+				if (res.getValue1() != null && res.getValue1().intValue() > 0)
+					pos += res.getValue1().intValue();
+				if (ondone != null) ondone.run(res);
+			});
 		}
 
 		@Override
@@ -77,7 +81,9 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		
 		@Override
 		public int readSync(ByteBuffer buffer) throws IOException {
-			return super.readSync(pos, buffer);
+			int nb = super.readSync(pos, buffer);
+			if (nb > 0) pos += nb;
+			return nb;
 		}
 		
 		@Override
@@ -92,12 +98,18 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		
 		@Override
 		public int readFullySync(ByteBuffer buffer) throws IOException {
-			return super.readFullySync(pos, buffer);
+			int nb = super.readFullySync(pos, buffer);
+			if (nb > 0) pos += nb;
+			return nb;
 		}
 		
 		@Override
 		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-			return readFullyAsync(pos, buffer, ondone);
+			return readFullyAsync(pos, buffer, (res) -> {
+				if (res.getValue1() != null && res.getValue1().intValue() > 0)
+					pos += res.getValue1().intValue();
+				if (ondone != null) ondone.run(res);
+			});
 		}
 		
 		@Override
@@ -140,7 +152,9 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 
 		@Override
 		public int writeSync(ByteBuffer buffer) throws IOException {
-			return super.writeSync(pos, buffer);
+			int nb = super.writeSync(pos, buffer);
+			if (nb > 0) pos += nb;
+			return nb;
 		}
 
 		@Override
@@ -152,7 +166,11 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 
 		@Override
 		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-			return super.writeAsync(pos, buffer, ondone);
+			return super.writeAsync(pos, buffer, (res) -> {
+				if (res.getValue1() != null && res.getValue1().intValue() > 0)
+					pos += res.getValue1().intValue();
+				if (ondone != null) ondone.run(res);
+			});
 		}
 	}
 	
@@ -220,21 +238,11 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 					@Override
 					public void run(Pair<Integer, IOException> param) {
 						buffer.limit(prevLimit);
-						if (param.getValue1() != null)
-							FragmentedSubIO.this.pos = pos + param.getValue1().intValue();
 						if (ondone != null) ondone.run(param);
 					}
 				});
 			}
-			return operation(((IO.Readable.Seekable)io).readAsync(r.min + start, buffer,
-			new RunnableWithParameter<Pair<Integer,IOException>>() {
-				@Override
-				public void run(Pair<Integer, IOException> param) {
-					if (param.getValue1() != null)
-						FragmentedSubIO.this.pos = pos + param.getValue1().intValue();
-					if (ondone != null) ondone.run(param);
-				}
-			}));
+			return operation(((IO.Readable.Seekable)io).readAsync(r.min + start, buffer, ondone));
 		}
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 		if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(0), null));
@@ -262,7 +270,6 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 			} else {
 				len = ((IO.Readable.Seekable)io).readSync(r.min + start, buffer);
 			}
-			this.pos = pos + len;
 			return len;
 		}
 		return 0;
@@ -289,7 +296,6 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 			} else {
 				len = ((IO.Readable.Seekable)io).readFullySync(r.min + start, buffer);
 			}
-			this.pos = pos + len;
 			done += len;
 			if (!buffer.hasRemaining()) return done;
 			// continue on next fragment
@@ -370,7 +376,6 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 			} else {
 				len = ((IO.Writable.Seekable)io).writeSync(r.min + start, buffer);
 			}
-			this.pos = pos + len;
 			return len;
 		}
 		return 0;
@@ -396,21 +401,11 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 					@Override
 					public void run(Pair<Integer, IOException> param) {
 						buffer.limit(prevLimit);
-						if (param.getValue1() != null)
-							FragmentedSubIO.this.pos = pos + param.getValue1().intValue();
 						if (ondone != null) ondone.run(param);
 					}
 				});
 			}
-			return operation(((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer,
-			new RunnableWithParameter<Pair<Integer,IOException>>() {
-				@Override
-				public void run(Pair<Integer, IOException> param) {
-					if (param.getValue1() != null)
-						FragmentedSubIO.this.pos = pos + param.getValue1().intValue();
-					if (ondone != null) ondone.run(param);
-				}
-			}));
+			return operation(((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer, ondone));
 		}
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 		if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(0), null));

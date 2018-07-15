@@ -130,7 +130,9 @@ public class ByteArrayIO extends ConcurrentCloseable
 	
 	@Override
 	public int readFullySync(ByteBuffer buffer) {
-		return readFullySync(pos, buffer);
+		int nb = readFullySync(pos, buffer);
+		if (nb > 0) pos += nb;
+		return nb;
 	}
 	
 	@Override
@@ -138,12 +140,9 @@ public class ByteArrayIO extends ConcurrentCloseable
 		if (pos > size) pos = size;
 		int len = buffer.remaining();
 		if (len > size - pos) len = size - (int)pos;
-		if (len == 0) {
-			this.pos = (int)pos;
+		if (len == 0)
 			return 0;
-		}
 		buffer.put(array, (int)pos, len);
-		this.pos = ((int)pos) + len;
 		return len;
 	}
 	
@@ -282,8 +281,7 @@ public class ByteArrayIO extends ConcurrentCloseable
 			array = a;
 		}
 		buffer.get(array, (int)pos, len);
-		this.pos = (int)(pos + len);
-		if (this.pos > size) size = this.pos;
+		if (pos + len > size) size = (int)(pos + len);
 		return len;
 	}
 	

@@ -134,7 +134,9 @@ public interface IO extends IConcurrentCloseable {
 		/** Returns the number of bytes skipped. */
 		public default AsyncWork<Long,IOException> skipAsync(long n) { return skipAsync(n, null); }
 		
-		/** Add read operations to read at a specific position. */
+		/** Add read operations to read at a specific position.
+		 * Important note: operations with a given position must not change the cursor position.
+		 */
 		public interface Seekable extends IO.Readable, IO.Seekable {
 			/** Same as {@link IO.Readable#readSync(ByteBuffer)} but read at the given position.
 			 * The current position is changed to the given position plus the number of bytes read. */
@@ -242,7 +244,9 @@ public interface IO extends IConcurrentCloseable {
 		@Override
 		public default AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer) { return writeAsync(buffer, null); }
 		
-		/** Add operations to write at a specific position. */
+		/** Add operations to write at a specific position.
+		 * Important note: operations with a given position must not change the cursor position.
+		 */
 		public interface Seekable extends Writable, IO.Seekable {
 			
 			/** Same as {@link IO.Writable#writeSync(ByteBuffer)} but at the given position.

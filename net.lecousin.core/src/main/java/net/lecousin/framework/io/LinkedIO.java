@@ -1021,7 +1021,6 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				int nb = io.readSync(pos - p, buffer);
 				ioIndex = i;
 				posInIO = pos - p + nb;
-				this.pos = pos + nb;
 				return nb;
 			}
 			p += s.longValue();
@@ -1059,7 +1058,6 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				AsyncWork<Integer, IOException> result = io.readAsync(pos - p, buffer, (res) -> {
 					if (res.getValue1() != null) {
 						posInIO += res.getValue1().intValue();
-						LinkedIO.this.pos = pos + res.getValue1().intValue();
 					}
 					if (ondone != null) ondone.run(res);
 				});
@@ -1098,7 +1096,6 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				int nb = io.writeSync(pos - p, buffer);
 				ioIndex = i;
 				posInIO = pos - p + nb;
-				this.pos = pos + nb;
 				return nb;
 			}
 			p += s.longValue();
@@ -1134,7 +1131,6 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				AsyncWork<Integer, IOException> result = io.writeAsync(pos - p, buffer, (res) -> {
 					if (res.getValue1() != null) {
 						posInIO += res.getValue1().intValue();
-						LinkedIO.this.pos = pos + res.getValue1().intValue();
 					}
 					if (ondone != null) ondone.run(res);
 				});

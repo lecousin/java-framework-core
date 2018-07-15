@@ -297,7 +297,11 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	
 	@Override
 	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return readAsync(pos, buffer, ondone);
+		return readAsync(pos, buffer, (res) -> {
+			if (res.getValue1() != null && res.getValue1().intValue() > 0)
+				pos += res.getValue1().intValue();
+			if (ondone != null) ondone.run(res);
+		});
 	}
 	
 	@Override
@@ -342,8 +346,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 				AsyncWork<Integer,IOException> read = buffered.readAsync(pos, buffer);
 				IOUtil.listenOnDone(read, (res) -> {
 					int nb = res.intValue();
-					if (nb > 0) ReadableToSeekable.this.pos = pos + nb;
-					else if (knownSize >= 0 && pos < knownSize)
+					if (nb <= 0 && knownSize >= 0 && pos < knownSize)
 						LCCore.getApplication().getDefaultLogger().error(
 							"Unexpected end on ReadableToSeekable: no byte read at "
 							+ pos + " but knownSize is " + knownSize);
@@ -414,7 +417,9 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	
 	@Override
 	public int readFullySync(ByteBuffer buffer) throws IOException {
-		return readFullySync(pos, buffer);
+		int nb = readFullySync(pos, buffer);
+		if (nb > 0) pos += nb;
+		return nb;
 	}
 	
 	@Override
@@ -425,14 +430,14 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 		waitPosition(pos + len - 1);
 		if (pos >= ioPos) return -1;
 		int nb = buffered.readFullySync(pos, buffer);
-		if (nb > 0)
-			this.pos = pos + nb;
 		return nb;
 	}
 	
 	@Override
 	public int readSync(ByteBuffer buffer) throws IOException {
-		return readSync(pos, buffer);
+		int nb = readSync(pos, buffer);
+		if (nb > 0) pos += nb;
+		return nb;
 	}
 	
 	@Override
@@ -440,8 +445,6 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 		if (!waitPosition(pos))
 			return -1;
 		int nb = buffered.readSync(pos, buffer);
-		if (nb > 0)
-			this.pos = pos + nb;
 		return nb;
 	}
 	

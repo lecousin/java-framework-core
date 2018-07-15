@@ -74,6 +74,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		int nbBuf = this.nbBuf;
 		if (nbBuf > 25000) nbBuf = 25000; // make test faster
 		T io = openReadWrite();
+		Assert.assertEquals(0, io.getPosition());
 		LinkedList<Integer> buffersToWrite = new LinkedList<>();
 		LinkedList<Integer> buffersToRead = new LinkedList<>();
 		for (int i = 0; i < nbBuf; ++i) buffersToWrite.add(Integer.valueOf(i));
@@ -142,6 +143,12 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 					}
 					if (buf.remaining() > 0) {
 						done.error(new IOException("Buffer not fully consumed by write operation"));
+						return;
+					}
+					try {
+						Assert.assertEquals("Write at a given position should not change the IO cursor", 0, io.getPosition());
+					} catch (Throwable t) {
+						done.error(new IOException(t));
 						return;
 					}
 					synchronized (buffersToRead) {
@@ -220,6 +227,12 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 								+ "\r\nExpected is:\r\n" + new String(testBuf)));
 							return;
 						}
+						try {
+							Assert.assertEquals("Read at a given position should not change the IO cursor", 0, io.getPosition());
+						} catch (Throwable t) {
+							done.error(new IOException(t));
+							return;
+						}
 						done.unblock();
 					}
 				});
@@ -236,6 +249,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testRandomPartialWriteSync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		T io = openReadWrite();
+		Assert.assertEquals(0, io.getPosition());
 		int nbBuf = this.nbBuf;
 		if (nbBuf > 5000) nbBuf = 5000 + rand.nextInt(1000); // limit size because too long
 		// write randomly
@@ -250,6 +264,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			ByteBuffer buf = ByteBuffer.wrap(testBuf, bufOffset, len);
 			io.writeSync(range.min + startPos, buf);
 			Assert.assertEquals(0, buf.remaining());
+			Assert.assertEquals("Write at a given position should not change the IO cursor", 0, io.getPosition());
 			if (range.max == range.min + startPos + len - 1) {
 				toWrite.removeRange(range.min + startPos, range.max);
 				continue;
@@ -258,6 +273,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			if (range.min + startPos + len + len2 - 1 > range.max) len2 = (int)(range.max - (range.min + startPos + len) + 1);
 			io.writeSync(range.min + startPos + len, ByteBuffer.wrap(testBuf, 0, len2));
 			toWrite.removeRange(range.min + startPos, range.min + startPos + len + len2 - 1);
+			Assert.assertEquals("Write at a given position should not change the IO cursor", 0, io.getPosition());
 		}
 		// read
 		io.seekSync(SeekType.FROM_BEGINNING, 0);

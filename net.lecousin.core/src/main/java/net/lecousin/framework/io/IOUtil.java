@@ -206,13 +206,18 @@ public final class IOUtil {
 	) {
 		AsyncWork<Integer,IOException> read = io.readAsync(pos, buffer);
 		if (read.isUnblocked()) {
-			if (ondone != null) {
-				if (read.getError() != null) ondone.run(new Pair<>(null, read.getError()));
-				else if (read.getResult() != null) ondone.run(new Pair<>(read.getResult(), null));
+			if (!read.isSuccessful()) {
+				if (ondone != null && read.getError() != null) ondone.run(new Pair<>(null, read.getError()));
+				return read;
 			}
-			if (!read.isSuccessful()) return read;
-			if (!buffer.hasRemaining()) return read;
-			if (read.getResult().intValue() <= 0) return read;
+			if (!buffer.hasRemaining()) {
+				if (ondone != null && read.getResult() != null) ondone.run(new Pair<>(read.getResult(), null));
+				return read;
+			}
+			if (read.getResult().intValue() <= 0) {
+				if (ondone != null) ondone.run(new Pair<>(read.getResult(), null));
+				return read;
+			}
 		}
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 		MutableInteger total = new MutableInteger(0);

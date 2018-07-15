@@ -94,9 +94,59 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 
 	@Override
 	public synchronized int readSync(long pos, ByteBuffer buffer) {
-		if (pos != this.pos)
-			skipSync(pos - this.pos);
-		return readSync(buffer);
+		// seek to given pos
+		int bufferIndex = this.bufferIndex;
+		int bufferPos = this.bufferPos;
+		long n = pos - this.pos;
+		if (n > 0) {
+			long rem = n;
+			while (bufferIndex < buffers.size() && rem > 0) {
+				int l = buffers.get(bufferIndex).getValue3().intValue() - bufferPos;
+				if (l > rem) {
+					bufferPos += rem;
+					rem = 0;
+					break;
+				}
+				rem -= l;
+				bufferPos = 0;
+				bufferIndex++;
+			}
+		} else {
+			if (this.pos + n < 0) n = -this.pos;
+			long rem = -n;
+			while (rem > 0) {
+				if (bufferPos >= rem) {
+					bufferPos -= rem;
+					break;
+				}
+				rem -= bufferPos;
+				if (bufferIndex == 0) {
+					bufferPos = 0;
+					n += rem;
+					break;
+				}
+				bufferIndex--;
+				bufferPos = buffers.get(bufferIndex).getValue3().intValue();
+			}
+		}
+		
+		if (bufferIndex == buffers.size())
+			return -1;
+		int done = 0;
+		while (bufferIndex < buffers.size() && buffer.hasRemaining()) {
+			Triple<byte[],Integer,Integer> b = buffers.get(bufferIndex);
+			int len = buffer.remaining();
+			if (len > b.getValue3().intValue() - bufferPos)
+				len = b.getValue3().intValue() - bufferPos;
+			buffer.put(b.getValue1(), b.getValue2().intValue() + bufferPos, len);
+			bufferPos += len;
+			done += len;
+			if (bufferPos == b.getValue3().intValue()) {
+				bufferIndex++;
+				bufferPos = 0;
+			}
+		}
+		return done;
 	}
 	
 	@Override

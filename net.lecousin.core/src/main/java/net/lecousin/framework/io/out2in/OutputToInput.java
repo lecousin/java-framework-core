@@ -148,14 +148,15 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 		int nb;
 		lockIO.lock();
 		nb = ((IO.Readable.Seekable)io).readSync(pos, buffer);
-		readPos = pos + nb;
 		lockIO.unlock();
 		return nb;
 	}
 	
 	@Override
 	public int readSync(ByteBuffer buffer) throws IOException {
-		return readSync(readPos, buffer);
+		int nb = readSync(readPos, buffer);
+		if (nb > 0) readPos += nb;
+		return nb;
 	}
 	
 	@Override
@@ -165,13 +166,16 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	
 	@Override
 	public int readFullySync(long pos, ByteBuffer buffer) throws IOException {
-		readPos = pos;
-		return readFullySync(buffer);
+		return IOUtil.readFullySync(this, pos, buffer);
 	}
 	
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return readAsync(readPos, buffer, ondone);
+		return readAsync(readPos, buffer, (res) -> {
+			if (res.getValue1() != null && res.getValue1().intValue() > 0)
+				readPos += res.getValue1().intValue();
+			if (ondone != null) ondone.run(res);
+		});
 	}
 	
 	@Override
@@ -184,7 +188,6 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 		if (pos >= writePos) {
 			if (eof) {
 				if (pos >= writePos) {
-					readPos = writePos;
 					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
 					return new AsyncWork<Integer, IOException>(Integer.valueOf(-1), null);
 				}
@@ -212,16 +215,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 			@Override
 			public Void run() {
 				lockIO.lock();
-				((IO.Readable.Seekable)io).readAsync(pos, buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
-					@Override
-					public void run(Pair<Integer, IOException> param) {
-						if (param.getValue1() != null)
-							readPos = pos + param.getValue1().intValue();
-						else
-							readPos = pos;
-						if (ondone != null) ondone.run(param);
-					}
-				}).listenInline(result);
+				((IO.Readable.Seekable)io).readAsync(pos, buffer, ondone).listenInline(result);
 				lockIO.unlock();
 				return null;
 			}

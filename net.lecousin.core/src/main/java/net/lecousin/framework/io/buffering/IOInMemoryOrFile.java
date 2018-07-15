@@ -192,7 +192,9 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 
 	@Override
 	public int writeSync(ByteBuffer buffer) throws IOException {
-		return writeSync(pos, buffer);
+		int nb = writeSync(pos, buffer);
+		if (nb > 0) pos += nb;
+		return nb;
 	}
 	
 	@Override
@@ -224,7 +226,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 				p += l;
 			} while (rem > 0);
 			if (pos + len <= maxSizeInMemory) {
-				this.pos = p;
 				if (p > size) size = p;
 				return len;
 			}
@@ -235,7 +236,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 			
 			int inFil = ((IO.Writable.Seekable)file).writeSync(0, buffer);
 			if (inFil < len - inMem) len = inMem + inFil;
-			this.pos = pos + len;
 			if (pos + len > size) size = pos + len;
 			return len;
 		}
@@ -244,7 +244,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 		if (file == null)
 			createFileSync();
 		int nb = ((IO.Writable.Seekable)file).writeSync(pos - maxSizeInMemory, buffer);
-		this.pos = pos + nb;
 		if (pos + nb > size) size = pos + nb;
 		return nb;
 	}
@@ -267,7 +266,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 			if (pos + len <= maxSizeInMemory) {
 				// all go to memory
 				Task<Integer,IOException> task = new WriteInMemory((int)pos, buffer, len, ondone);
-				this.pos = pos + len;
 				if (pos + len > size) size = pos + len;
 				task.start();
 				return operation(task.getOutput());
@@ -287,7 +285,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 				memReady = mem.getOutput();
 			AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 			Mutable<AsyncWork<Integer,IOException>> fil = new Mutable<>(null);
-			this.pos = pos + len;
 			if (pos + len > size) size = pos + len;
 			IOUtil.listenOnDone(memReady,
 			(res) -> {
@@ -309,7 +306,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 		}
 		// all go to file
 		if (file != null) {
-			this.pos = pos + len;
 			if (pos + len > size) size = pos + len;
 			AsyncWork<Integer,IOException> task = ((IO.Writable.Seekable)file).writeAsync(pos - maxSizeInMemory, buffer, ondone);
 			return operation(task);
@@ -317,7 +313,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 		AsyncWork<Integer,IOException> result = new AsyncWork<>();
 		long p = pos;
 		createFileAsync().listenInline(() -> {
-			this.pos = p + len;
 			if (p + len > size) size = p + len;
 			AsyncWork<Integer,IOException> task = ((IO.Writable.Seekable)file).writeAsync(p - maxSizeInMemory, buffer, ondone);
 			operation(task).listenInline(result);
@@ -327,7 +322,11 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 	
 	@Override
 	public AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return writeAsync(pos, buffer, ondone);
+		return writeAsync(pos, buffer, (res) -> {
+			if (res.getValue1() != null && res.getValue1().intValue() > 0)
+				pos += res.getValue1().intValue();
+			if (ondone != null) ondone.run(res);
+		});
 	}
 
 	@Override
@@ -475,7 +474,9 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 	
 	@Override
 	public int readSync(ByteBuffer buffer) throws IOException {
-		return readSync(pos, buffer);
+		int nb = readSync(pos, buffer);
+		if (nb > 0) pos += nb;
+		return nb;
 	}
 	
 	@Override
@@ -503,7 +504,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 				rem -= l;
 				p += l;
 			} while (rem > 0 && buffer.remaining() > 0);
-			this.pos = pos + len;
 			return len;
 		}
 
@@ -517,16 +517,14 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 		} else
 			nb = ((IO.Readable.Seekable)file).readSync(pos - maxSizeInMemory, buffer);
 		
-		if (nb > 0)
-			this.pos = pos + nb;
-		else
-			this.pos = pos;
 		return nb;
 	}
 
 	@Override
 	public int readFullySync(ByteBuffer buffer) throws IOException {
-		return readFullySync(pos, buffer);
+		int nb = readFullySync(pos, buffer);
+		if (nb > 0) pos += nb;
+		return nb;
 	}
 	
 	@Override
@@ -549,14 +547,12 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 			if (pos + len > maxSizeInMemory)
 				len = (int)(maxSizeInMemory - pos);
 			ReadInMemory task = new ReadInMemory((int)pos, len, buffer, ondone);
-			this.pos = pos + len;
 			operation(task);
 			task.start();
 			return task.getOutput();
 		}
 		// data in file
 		AsyncWork<Integer,IOException> task;
-		final long p = pos;
 		if (len < buffer.remaining()) {
 			int limit = buffer.limit();
 			buffer.limit(buffer.position() + len);
@@ -565,8 +561,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 					@Override
 					public void run(Pair<Integer, IOException> param) {
 						buffer.limit(limit);
-						if (param.getValue1() != null)
-							IOInMemoryOrFile.this.pos = p + param.getValue1().intValue();
 						if (ondone != null) ondone.run(param);
 					}
 				}
@@ -576,8 +570,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 				new RunnableWithParameter<Pair<Integer,IOException>>() {
 					@Override
 					public void run(Pair<Integer, IOException> param) {
-						if (param.getValue1() != null)
-							IOInMemoryOrFile.this.pos = p + param.getValue1().intValue();
 						if (ondone != null) ondone.run(param);
 					}
 				}
@@ -587,7 +579,11 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 	
 	@Override
 	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return readAsync(pos, buffer, ondone);
+		return readAsync(pos, buffer, (res) -> {
+			if (res.getValue1() != null && res.getValue1().intValue() > 0)
+				pos += res.getValue1().intValue();
+			if (ondone != null) ondone.run(res);
+		});
 	}
 	
 	@Override
@@ -606,12 +602,11 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 			if (pos + len > maxSizeInMemory) {
 				// not all
 				mem = new ReadInMemory((int)pos, (int)(maxSizeInMemory - pos), buffer, null);
-				pos = this.pos = maxSizeInMemory;
+				pos = maxSizeInMemory;
 				len -= (int)(maxSizeInMemory - pos);
 				operation(mem.start());
 			} else {
 				mem = operation(new ReadInMemory((int)pos, len, buffer, ondone));
-				this.pos = pos + len;
 				mem.start();
 				return mem.getOutput();
 			}
@@ -643,7 +638,11 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 	
 	@Override
 	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return readFullyAsync(pos, buffer, ondone);
+		return readFullyAsync(pos, buffer, (res) -> {
+			if (res.getValue1() != null && res.getValue1().intValue() > 0)
+				pos += res.getValue1().intValue();
+			if (ondone != null) ondone.run(res);
+		});
 	}
 	
 	private AsyncWork<Integer,IOException> readFromFile(
@@ -657,8 +656,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 				@Override
 				public void run(Pair<Integer, IOException> param) {
 					buffer.limit(limit);
-					if (param.getValue1() != null)
-						IOInMemoryOrFile.this.pos = maxSizeInMemory + pos + param.getValue1().intValue();
 					if (ondone != null) ondone.run(param);
 				}
 			});
@@ -666,8 +663,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 			task = ((IO.Readable.Seekable)file).readFullyAsync(pos, buffer, new RunnableWithParameter<Pair<Integer,IOException>>() {
 				@Override
 				public void run(Pair<Integer, IOException> param) {
-					if (param.getValue1() != null)
-						IOInMemoryOrFile.this.pos = maxSizeInMemory + pos + param.getValue1().intValue();
 					if (ondone != null) ondone.run(param);
 				}
 			});

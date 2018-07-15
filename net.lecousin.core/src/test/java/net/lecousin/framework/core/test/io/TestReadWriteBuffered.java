@@ -55,11 +55,13 @@ public abstract class TestReadWriteBuffered extends TestIO.UsingTestData {
 	void testWriteThenReadBufferedWithSkipSync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		T io = openReadWriteBuffered();
+		Assert.assertEquals(0, io.getPosition());
 		io.canStartWriting();
 		// make the file have its final size to be able to use SEEK_END
 		io.writeSync(nbBuf * testBuf.length - 1, ByteBuffer.wrap(testBuf, 0, 1));
+		Assert.assertEquals(0, io.getPosition());
 		io.canStartWriting();
-		int pos = nbBuf * testBuf.length;
+		int pos = 0;
 		// write randomly using skip or skipSync
 		LinkedList<Integer> todo = new LinkedList<>();
 		for (int i = 0; i < nbBuf; ++i) todo.add(Integer.valueOf(i));

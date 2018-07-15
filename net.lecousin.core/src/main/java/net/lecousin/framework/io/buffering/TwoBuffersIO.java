@@ -245,7 +245,9 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 
 	@Override
 	public int readSync(ByteBuffer buffer) throws IOException {
-		return readSync(pos, buffer);
+		int nb = readSync(pos, buffer);
+		if (nb > 0) pos += nb;
+		return nb;
 	}
 	
 	@Override
@@ -256,7 +258,6 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			int l = nb1 - (int)pos;
 			if (l > len) l = len;
 			buffer.put(buf1, (int)pos, l);
-			this.pos = (int)pos + l;
 			return l;
 		}
 		if (buf2 == null) return -1;
@@ -265,7 +266,6 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		int l = (nb1 + nb2) - (int)pos;
 		if (l > len) l = len;
 		buffer.put(buf2, (int)pos - nb1, l);
-		this.pos = (int)pos + l;
 		return l;
 	}
 	
@@ -408,7 +408,11 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return readAsync(pos, buffer, ondone);
+		return readAsync(pos, buffer, (res) -> {
+			if (res.getValue1() != null && res.getValue1().intValue() > 0)
+				pos += res.getValue1().intValue();
+			if (ondone != null) ondone.run(res);
+		});
 	}
 	
 	@Override
@@ -430,7 +434,6 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 					int l = nb1 - (int)pos;
 					if (l > len) l = len;
 					buffer.put(buf1, (int)pos, l);
-					TwoBuffersIO.this.pos = (int)pos + l;
 					return Integer.valueOf(l);
 				}
 			};
@@ -457,7 +460,6 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 				int l = (nb1 + nb2) - (int)pos;
 				if (l > len) l = len;
 				buffer.put(buf2, (int)pos - nb1, l);
-				TwoBuffersIO.this.pos = (int)pos + l;
 				return Integer.valueOf(l);
 			}
 		};
@@ -575,7 +577,9 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	
 	@Override
 	public int readFullySync(ByteBuffer buffer) throws IOException {
-		return readFullySync(pos, buffer);
+		int nb = readFullySync(pos, buffer);
+		if (nb > 0) pos += nb;
+		return nb;
 	}
 	
 	@Override
@@ -587,7 +591,6 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			int l = nb1 - (int)pos;
 			if (l > len) l = len;
 			buffer.put(buf1, (int)pos, l);
-			this.pos = (int)pos + l;
 			if (l == len) return l;
 			pos += l;
 			len -= l;
@@ -599,7 +602,6 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		int l = (nb1 + nb2) - (int)pos;
 		if (l > len) l = len;
 		buffer.put(buf2, (int)pos - nb1, l);
-		this.pos = (int)pos + l;
 		return l + done;
 	}
 

@@ -9,6 +9,7 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.IO.Seekable.SeekType;
 
 public abstract class TestReadWriteResizable extends TestIO {
 
@@ -62,8 +63,9 @@ public abstract class TestReadWriteResizable extends TestIO {
 		s = io.getSizeSync();
 		if (s != 12) throw new Exception("Write error: new size is " + s + ", expected is 12");
 		s = io.getPosition();
-		if (s != 12) throw new Exception("Write error: new position is " + s + ", expected is 12");
+		if (s != 1) throw new Exception("Write error: new position is " + s + ", expected is 1");
 
+		io.seekSync(SeekType.FROM_BEGINNING, 12);
 		io.setSizeSync(10);
 		s = io.getSizeSync();
 		if (s != 10) throw new Exception("Resize error: new size is " + s + ", expected is 10");

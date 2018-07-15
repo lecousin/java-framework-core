@@ -126,40 +126,39 @@ public class MemoryIO extends ConcurrentCloseable
 
 	@Override
 	public int readSync(ByteBuffer buffer) {
-		return readSync(pos, buffer);
+		int nb = readSync(pos, buffer);
+		if (nb > 0) pos += nb;
+		return nb;
 	}
 	
 	@Override
 	public int readSync(long pos, ByteBuffer buffer) {
 		int p = (int)pos;
 		if (p > size) p = size;
-		if (p == size) {
-			this.pos = p;
+		if (p == size)
 			return 0;
-		}
 		int index = p / bufferSize;
 		int bufferPos = p % bufferSize;
 		int len = buffer.remaining();
 		if (len > size - p) len = size - p;
 		if (len > bufferSize - bufferPos) len = bufferSize - bufferPos;
 		buffer.put(buffers[index], bufferPos, len);
-		this.pos = p + len;
 		return len;
 	}
 	
 	@Override
 	public int readFullySync(ByteBuffer buffer) {
-		return readFullySync(pos, buffer);
+		int nb = readFullySync(pos, buffer);
+		if (nb > 0) pos += nb;
+		return nb;
 	}
 	
 	@Override
 	public int readFullySync(long pos, ByteBuffer buffer) {
 		int p = (int)pos;
 		if (p > size) p = size;
-		if (p == size) {
-			this.pos = p;
+		if (p == size)
 			return 0;
-		}
 		int index = p / bufferSize;
 		int bufferPos = p % bufferSize;
 		int offset = 0;
@@ -170,10 +169,8 @@ public class MemoryIO extends ConcurrentCloseable
 			buffer.put(buffers[index], bufferPos, len);
 			offset += len;
 			p += len;
-			if (buffer.remaining() == 0 || p == size) {
-				this.pos = p;
+			if (buffer.remaining() == 0 || p == size)
 				return offset;
-			}
 			index++;
 			bufferPos = 0;
 		} while (true);
@@ -373,7 +370,9 @@ public class MemoryIO extends ConcurrentCloseable
 	
 	@Override
 	public int writeSync(ByteBuffer buffer) {
-		return writeSync(pos, buffer);
+		int nb = writeSync(pos, buffer);
+		if (nb > 0) pos += nb;
+		return nb;
 	}
 	
 	@Override
@@ -404,7 +403,6 @@ public class MemoryIO extends ConcurrentCloseable
 			done += len;
 			if (p > size) size = p;
 		}
-		this.pos = p;
 		return done;
 	}
 	

@@ -26,6 +26,7 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	protected FileAccess file;
+	protected long position = 0;
 	
 	/** Can start reading or writing. */
 	public ISynchronizationPoint<IOException> canStart() {
@@ -74,7 +75,7 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 		}
 		
 		@Override
-		public long getPosition() throws IOException {
+		public long getPosition() {
 			return super.getPosition();
 		}
 		
@@ -155,7 +156,7 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 		}
 		
 		@Override
-		public long getPosition() throws IOException {
+		public long getPosition() {
 			return super.getPosition();
 		}
 		
@@ -220,7 +221,7 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 		}
 		
 		@Override
-		public long getPosition() throws IOException {
+		public long getPosition() {
 			return super.getPosition();
 		}
 		
@@ -318,24 +319,34 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 		}
 	}
 	
-	protected long getPosition() throws IOException {
-		return file.getPosition();
+	protected long getPosition() {
+		return position;
 	}
 	
 	protected long seekSync(SeekType type, long move) throws IOException {
-		return file.seek(type, move, false);
+		return position = file.seek(type, move, false);
 	}
 	
 	protected AsyncWork<Long,IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return operation(file.seekAsync(type, move, false, ondone).getOutput());
+		return operation(file.seekAsync(type, move, false, (res) -> {
+			if (res.getValue1() != null)
+				position = res.getValue1().intValue();
+			if (ondone != null) ondone.run(res);
+		}).getOutput());
 	}
 	
 	protected long skipSync(long n) throws IOException {
-		return file.skip(n);
+		long change = file.skip(n);
+		position += change;
+		return change;
 	}
 	
 	protected AsyncWork<Long,IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		return operation(file.skipAsync(n, ondone).getOutput());
+		return operation(file.skipAsync(n, (res) -> {
+			if (res.getValue1() != null)
+				position += res.getValue1().intValue();
+			if (ondone != null) ondone.run(res);
+		}).getOutput());
 	}
 	
 	@Override
@@ -352,9 +363,11 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	
 	protected void setSizeSync(long size) throws IOException {
 		file.setSize(size);
+		if (position > size) position = size;
 	}
 	
 	protected AsyncWork<Void,IOException> setSizeAsync(long size) {
+		if (position > size) position = size;
 		return operation(file.setSizeAsync(size).getOutput());
 	}
 	
@@ -369,7 +382,9 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	protected int readSync(ByteBuffer buffer) throws IOException {
-		return file.read(-1, buffer);
+		int nb = file.read(position, buffer);
+		if (nb > 0) position += nb;
+		return nb;
 	}
 	
 	protected int readSync(long pos, ByteBuffer buffer) throws IOException {
@@ -377,7 +392,11 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	protected AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return operation(file.readAsync(-1, buffer, ondone).getOutput());
+		return operation(file.readAsync(position, buffer, (res) -> {
+			if (res.getValue1() != null && res.getValue1().intValue() > 0)
+				position += res.getValue1().intValue();
+			if (ondone != null) ondone.run(res);
+		}).getOutput());
 	}
 	
 	protected AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
@@ -385,7 +404,9 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	protected int readFullySync(ByteBuffer buffer) throws IOException {
-		return file.readFully(-1, buffer);
+		int nb = file.readFully(position, buffer);
+		if (nb > 0) position += nb;
+		return nb;
 	}
 	
 	protected int readFullySync(long pos, ByteBuffer buffer) throws IOException {
@@ -393,7 +414,11 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	protected AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return operation(file.readFullyAsync(-1, buffer, ondone).getOutput());
+		return operation(file.readFullyAsync(position, buffer, (res) -> {
+			if (res.getValue1() != null && res.getValue1().intValue() > 0)
+				position += res.getValue1().intValue();
+			if (ondone != null) ondone.run(res);
+		}).getOutput());
 	}
 	
 	protected AsyncWork<Integer,IOException>
@@ -402,7 +427,10 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	protected int writeSync(ByteBuffer buffer) throws IOException {
-		return file.write(-1, buffer);
+		int nb = file.write(position, buffer);
+		if (nb > 0) position += nb;
+		return nb;
+
 	}
 	
 	protected int writeSync(long pos, ByteBuffer buffer) throws IOException {
@@ -410,7 +438,11 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	protected AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		return operation(file.writeAsync(-1, buffer, ondone).getOutput());
+		return operation(file.writeAsync(position, buffer, (res) -> {
+			if (res.getValue1() != null && res.getValue1().intValue() > 0)
+				position += res.getValue1().intValue();
+			if (ondone != null) ondone.run(res);
+		}).getOutput());
 	}
 	
 	protected AsyncWork<Integer,IOException> writeAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
