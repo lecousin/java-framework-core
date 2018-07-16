@@ -701,7 +701,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				if (ioIndex == ios.size() - 1) {
 					ioIndex++;
 					posInIO = 0;
-					IOUtil.success(null, ondone);
+					IOUtil.success(null, result, ondone);
 					return;
 				}
 				nextIOAsync(new Runnable() {

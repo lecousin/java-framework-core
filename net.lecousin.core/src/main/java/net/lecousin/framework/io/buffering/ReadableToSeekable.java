@@ -332,7 +332,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 						return;
 					}
 					if (bufferize.hasError()) {
-						IOUtil.error(bufferize.getError(), ondone);
+						IOUtil.error(bufferize.getError(), result, ondone);
 						return;
 					}
 				}
@@ -368,7 +368,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 						return null;
 					}
 					if (!bufferize.isSuccessful()) {
-						IOUtil.error(bufferize.getError(), ondone);
+						IOUtil.error(bufferize.getError(), result, ondone);
 						return null;
 					}
 				}
