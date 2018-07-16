@@ -84,14 +84,8 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		@Override
 		public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
 			// seek does not need any task, we can do it sync
-			try {
-				Long r = Long.valueOf(seekSync(type, move));
-				if (ondone != null) ondone.run(new Pair<>(r, null));
-				return new AsyncWork<>(r, null);
-			} catch (IOException e) {
-				if (ondone != null) ondone.run(new Pair<>(null, e));
-				return new AsyncWork<>(null,e);
-			}
+			try { return IOUtil.success(Long.valueOf(seekSync(type, move)), ondone); }
+			catch (IOException e) { return IOUtil.error(e, ondone); }
 		}
 
 	}
@@ -279,22 +273,13 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			if (l > len) l = len;
 			buffer.put(buf1, pos, l);
 			pos += l;
-			if (l == len) {
-				Integer r = Integer.valueOf(l);
-				if (ondone != null) ondone.run(new Pair<>(r, null));
-				return new AsyncWork<>(r, null);
-			}
+			if (l == len) return IOUtil.success(Integer.valueOf(l), ondone);
 			len -= l;
 			done = l;
 		}
-		if (buf2 == null) {
-			Integer r = Integer.valueOf(done > 0 ? done : -1);
-			if (ondone != null) ondone.run(new Pair<>(r, null));
-			return new AsyncWork<>(r, null);
-		}
+		if (buf2 == null) return IOUtil.success(Integer.valueOf(done > 0 ? done : -1), ondone);
 		if (nb2 < 0) {
-			if (done == 0)
-				return readFullyAsync(buffer, ondone);
+			if (done == 0) return readFullyAsync(buffer, ondone);
 			AsyncWork<Integer, IOException> r = new AsyncWork<>();
 			int d = done;
 			readFullyAsync(buffer, (res) -> {
@@ -307,18 +292,12 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			}, r);
 			return r;
 		}
-		if (pos >= nb1 + nb2) {
-			Integer r = Integer.valueOf(done > 0 ? done : -1);
-			if (ondone != null) ondone.run(new Pair<>(r, null));
-			return new AsyncWork<>(r, null);
-		}
+		if (pos >= nb1 + nb2) return IOUtil.success(Integer.valueOf(done > 0 ? done : -1), ondone);
 		int l = (nb1 + nb2) - pos;
 		if (l > len) l = len;
 		buffer.put(buf2, pos - nb1, l);
 		pos += l;
-		Integer r = Integer.valueOf(l + done);
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<>(r, null);
+		return IOUtil.success(Integer.valueOf(l + done), ondone);
 	}
 
 	private <T> AsyncWork<T, IOException> needRead1Async(Callable<T> onReady, RunnableWithParameter<Pair<T,IOException>> ondone) {
@@ -326,21 +305,16 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			AsyncWork<T, IOException> sp = new AsyncWork<>();
 			IOUtil.listenOnDone(read1, new Task.Cpu.FromRunnable("TwoBuffersIO", io.getPriority(), () -> {
 				try {
-					T r = onReady.call();
-					if (ondone != null) ondone.run(new Pair<>(r, null));
-					sp.unblockSuccess(r);
+					IOUtil.success(onReady.call(), sp, ondone);
 				} catch (Exception e) {
-					IOException err = IO.error(e);
-					if (ondone != null) ondone.run(new Pair<>(null, err));
-					sp.unblockError(err);
+					IOUtil.error(IO.error(e), sp, ondone);
 				}
 			}), sp, ondone);
 			return operation(sp);
 		}
 		if (!read1.isSuccessful()) {
 			IOException e = read1.isCancelled() ? IO.error(read1.getCancelEvent()) : read1.getError();
-			if (ondone != null) ondone.run(new Pair<>(null, e));
-			return new AsyncWork<>(null, e);
+			return IOUtil.error(e, ondone);
 		}
 		nb1 = read1.getResult().intValue();
 		if (nb1 < 0) nb1 = 0;
@@ -352,13 +326,9 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			AsyncWork<T, IOException> sp = new AsyncWork<>();
 			IOUtil.listenOnDone(read1, new Task.Cpu.FromRunnable("TwoBuffersIO", io.getPriority(), () -> {
 				try {
-					T r = onReady.call();
-					if (ondone != null) ondone.run(new Pair<>(r, null));
-					sp.unblockSuccess(r);
+					IOUtil.success(onReady.call(), sp, ondone);
 				} catch (Exception e) {
-					IOException err = IO.error(e);
-					if (ondone != null) ondone.run(new Pair<>(null, err));
-					sp.unblockError(err);
+					IOUtil.error(IO.error(e), sp, ondone);
 				}
 			}), sp, ondone);
 			return operation(sp);
@@ -367,21 +337,16 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			AsyncWork<T, IOException> sp = new AsyncWork<>();
 			IOUtil.listenOnDone(read2, new Task.Cpu.FromRunnable("TwoBuffersIO", io.getPriority(), () -> {
 				try {
-					T r = onReady.call();
-					if (ondone != null) ondone.run(new Pair<>(r, null));
-					sp.unblockSuccess(r);
+					IOUtil.success(onReady.call(), sp, ondone);
 				} catch (Exception e) {
-					IOException err = IO.error(e);
-					if (ondone != null) ondone.run(new Pair<>(null, err));
-					sp.unblockError(err);
+					IOUtil.error(IO.error(e), sp, ondone);
 				}
 			}), sp, ondone);
 			return operation(sp);
 		}
 		if (!read2.isSuccessful()) {
 			IOException e = read2.isCancelled() ? IO.error(read2.getCancelEvent()) : read2.getError();
-			if (ondone != null) ondone.run(new Pair<>(null, e));
-			return new AsyncWork<>(null, e);
+			return IOUtil.error(e, ondone);
 		}
 		nb2 = read2.getResult().intValue();
 		if (nb2 < 0) nb2 = 0;
@@ -440,20 +405,14 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			operation(task).start();
 			return task.getOutput();
 		}
-		if (buf2 == null) {
-			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
-			return new AsyncWork<>(Integer.valueOf(-1), null);
-		}
+		if (buf2 == null) return IOUtil.success(Integer.valueOf(-1), ondone);
 		if (nb2 < 0) {
 			AsyncWork<Integer, IOException> res = needRead2Async(() -> {
 				return Integer.valueOf(readSync(pos, buffer));
 			}, ondone);
 			if (res != null) return res;
 		}
-		if (pos >= nb1 + nb2) {
-			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
-			return new AsyncWork<>(Integer.valueOf(-1), null);
-		}
+		if (pos >= nb1 + nb2) return IOUtil.success(Integer.valueOf(-1), ondone);
 		Task<Integer,IOException> task = new Task.Cpu<Integer, IOException>("readAsync on TwoBuffersIO", this.getPriority(), ondone) {
 			@Override
 			public Integer run() {
@@ -514,38 +473,24 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 				read1.listenAsync(task, true);
 				return operation(task).getOutput();
 			}
-			if (read1.hasError()) {
-				if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
-				return new AsyncWork<>(null, read1.getError());
-			}
-			if (read1.isCancelled())
-				return new AsyncWork<>(null, null, read1.getCancelEvent());
+			if (read1.hasError()) return IOUtil.error(read1.getError(), ondone);
+			if (read1.isCancelled()) return new AsyncWork<>(null, null, read1.getCancelEvent());
 			nb1 = read1.getResult().intValue();
 			if (nb1 < 0) nb1 = 0;
-			if (nb1 == 0) {
-				if (ondone != null) ondone.run(new Pair<>(null, null));
-				return new AsyncWork<>(null, null);
-			}
+			if (nb1 == 0) return IOUtil.success(null, ondone);
 		}
 		if (pos < nb1) {
 			operation(task.start());
 			return task.getOutput();
 		}
-		if (buf2 == null) {
-			if (ondone != null) ondone.run(new Pair<>(null, null));
-			return new AsyncWork<>(null, null);
-		}
+		if (buf2 == null) return IOUtil.success(null, ondone);
 		if (nb2 < 0) {
 			if (!read1.isUnblocked()) {
 				read1.listenAsync(task, true);
 				return operation(task).getOutput();
 			}
-			if (read1.hasError()) {
-				if (ondone != null) ondone.run(new Pair<>(null, read1.getError()));
-				return new AsyncWork<>(null, read1.getError());
-			}
-			if (read1.isCancelled())
-				return new AsyncWork<>(null, null, read1.getCancelEvent());
+			if (read1.hasError()) return IOUtil.error(read1.getError(), ondone);
+			if (read1.isCancelled()) return new AsyncWork<>(null, null, read1.getCancelEvent());
 			if (read2 == null) {
 				operation(task.start());
 				return task.getOutput();
@@ -554,23 +499,13 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 				read2.listenAsync(task, true);
 				return operation(task).getOutput();
 			}
-			if (read2.hasError()) {
-				if (ondone != null) ondone.run(new Pair<>(null, read2.getError()));
-				return new AsyncWork<>(null, read2.getError());
-			}
-			if (read2.isCancelled())
-				return new AsyncWork<>(null, null, read2.getCancelEvent());
+			if (read2.hasError()) return IOUtil.error(read2.getError(), ondone);
+			if (read2.isCancelled()) return new AsyncWork<>(null, null, read2.getCancelEvent());
 			nb2 = read2.getResult().intValue();
 			if (nb2 < 0) nb2 = 0;
-			if (nb2 == 0) {
-				if (ondone != null) ondone.run(new Pair<>(null, null));
-				return new AsyncWork<>(null, null);
-			}
+			if (nb2 == 0) return IOUtil.success(null, ondone);
 		}
-		if (pos >= nb1 + nb2) {
-			if (ondone != null) ondone.run(new Pair<>(null, null));
-			return new AsyncWork<>(null, null);
-		}
+		if (pos >= nb1 + nb2) return IOUtil.success(null, ondone);
 		operation(task.start());
 		return task.getOutput();
 	}
@@ -656,13 +591,9 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (skip < 0) {
 			if (-skip > pos) skip = -pos;
 			pos += skip;
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(skip), null));
-			return new AsyncWork<>(Long.valueOf(skip),null);
+			return IOUtil.success(Long.valueOf(skip), ondone);
 		}
-		if (skip == 0) {
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
-			return new AsyncWork<>(Long.valueOf(0),null);
-		}
+		if (skip == 0) return IOUtil.success(Long.valueOf(0), ondone);
 		if (nb1 < 0) {
 			long s = skip;
 			AsyncWork<Long, IOException> res = needRead1Async(() -> {
@@ -675,17 +606,13 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (pos < nb1) {
 			if (pos + skip <= nb1) {
 				pos += skip;
-				if (ondone != null) ondone.run(new Pair<>(Long.valueOf(skip), null));
-				return new AsyncWork<>(Long.valueOf(skip),null);
+				return IOUtil.success(Long.valueOf(skip), ondone);
 			}
 			done = nb1 - pos;
 			pos = nb1;
 			skip -= done;
 		}
-		if (buf2 == null) {
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done), null));
-			return new AsyncWork<>(Long.valueOf(done),null);
-		}
+		if (buf2 == null) return IOUtil.success(Long.valueOf(done), ondone);
 		if (nb2 < 0) {
 			long s = skip;
 			long d = done;
@@ -694,19 +621,14 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			}, ondone);
 			if (res != null) return res;
 		}
-		if (pos >= nb1 + nb2) {
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done), null));
-			return new AsyncWork<>(Long.valueOf(done),null);
-		}
+		if (pos >= nb1 + nb2) return IOUtil.success(Long.valueOf(done), ondone);
 		if (pos + skip <= nb1 + nb2) {
 			pos += skip;
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(skip + done), null));
-			return new AsyncWork<>(Long.valueOf(skip + done),null);
+			return IOUtil.success(Long.valueOf(skip + done), ondone);
 		}
 		done += (nb1 + nb2) - pos;
 		pos = nb1 + nb2;
-		if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done), null));
-		return new AsyncWork<>(Long.valueOf(done),null);
+		return IOUtil.success(Long.valueOf(done), ondone);
 	}
 
 	@Override

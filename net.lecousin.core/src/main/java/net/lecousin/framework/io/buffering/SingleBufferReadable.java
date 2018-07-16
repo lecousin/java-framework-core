@@ -114,10 +114,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
 		AtomicState s = state;
 		if (s.pos == s.len) {
-			if (s.eof) {
-				if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
-				return new AsyncWork<>(Integer.valueOf(-1), null);
-			}
+			if (s.eof) return IOUtil.success(Integer.valueOf(-1), ondone);
 			return readFullyAsync(buffer, ondone);
 		}
 		int l = buffer.remaining();
@@ -126,11 +123,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 		s.pos += l;
 		if (s.pos == s.len)
 			fillNextBuffer();
-		if (!buffer.hasRemaining()) {
-			Integer r = Integer.valueOf(l);
-			if (ondone != null) ondone.run(new Pair<>(r, null));
-			return new AsyncWork<>(r, null);
-		}
+		if (!buffer.hasRemaining()) return IOUtil.success(Integer.valueOf(l), ondone);
 		return operation(IOUtil.readFullyAsync(this, buffer, l, ondone));
 	}
 
@@ -255,10 +248,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 	@Override
 	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
 		AtomicState s = state;
-		if (s.pos == s.len && s.eof) {
-			if (ondone != null) ondone.run(new Pair<>(null, null));
-			return new AsyncWork<>(null, null);
-		}
+		if (s.pos == s.len && s.eof) return IOUtil.success(null, ondone);
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
 			@Override
 			public ByteBuffer run() throws IOException, CancelException {

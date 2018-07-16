@@ -72,8 +72,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 
 	@Override
 	public synchronized int readSync(ByteBuffer buffer) {
-		if (bufferIndex == buffers.size())
-			return -1;
+		if (bufferIndex == buffers.size()) return -1;
 		int done = 0;
 		while (bufferIndex < buffers.size() && buffer.hasRemaining()) {
 			Triple<byte[],Integer,Integer> b = buffers.get(bufferIndex);
@@ -130,8 +129,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 			}
 		}
 		
-		if (bufferIndex == buffers.size())
-			return -1;
+		if (bufferIndex == buffers.size()) return -1;
 		int done = 0;
 		while (bufferIndex < buffers.size() && buffer.hasRemaining()) {
 			Triple<byte[],Integer,Integer> b = buffers.get(bufferIndex);
@@ -151,9 +149,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-		Integer r = Integer.valueOf(readFullySync(buffer));
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<>(r, null);
+		return IOUtil.success(Integer.valueOf(readFullySync(buffer)), ondone);
 	}
 	
 	@Override
@@ -183,8 +179,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
 			@Override
 			public ByteBuffer run() {
-				if (bufferIndex == buffers.size())
-					return null;
+				if (bufferIndex == buffers.size()) return null;
 				Triple<byte[],Integer,Integer> b = buffers.get(bufferIndex);
 				int len = b.getValue3().intValue() - bufferPos;
 				ByteBuffer buf = ByteBuffer.wrap(b.getValue1(), b.getValue2().intValue() + bufferPos, len);
@@ -259,9 +254,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 
 	@Override
 	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		Long r = Long.valueOf(skipSync(n));
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<>(r,null);
+		return IOUtil.success(Long.valueOf(skipSync(n)), ondone);
 	}
 
 	@Override
@@ -291,8 +284,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 
 	@Override
 	public synchronized int read() {
-		if (bufferIndex == buffers.size())
-			return -1;
+		if (bufferIndex == buffers.size()) return -1;
 		Triple<byte[],Integer,Integer> buf = buffers.get(bufferIndex);
 		byte b = buf.getValue1()[buf.getValue2().intValue() + bufferPos];
 		if (++bufferPos == buf.getValue3().intValue()) {
@@ -352,9 +344,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 
 	@Override
 	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		Long r = Long.valueOf(seekSync(type, move));
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<>(r, null);
+		return IOUtil.success(Long.valueOf(seekSync(type, move)), ondone);
 	}
 
 	@Override
@@ -391,11 +381,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 
 	@Override
 	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
-		if (!copyBuffers) {
-			Integer r = Integer.valueOf(writeSync(buffer));
-			if (ondone != null) ondone.run(new Pair<>(r, null));
-			return new AsyncWork<>(r, null);
-		}
+		if (!copyBuffers) return IOUtil.success(Integer.valueOf(writeSync(buffer)), ondone);
 		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone).getOutput());
 	}
 	

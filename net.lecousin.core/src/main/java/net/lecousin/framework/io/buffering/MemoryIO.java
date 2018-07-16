@@ -135,8 +135,7 @@ public class MemoryIO extends ConcurrentCloseable
 	public int readSync(long pos, ByteBuffer buffer) {
 		int p = (int)pos;
 		if (p > size) p = size;
-		if (p == size)
-			return 0;
+		if (p == size) return 0;
 		int index = p / bufferSize;
 		int bufferPos = p % bufferSize;
 		int len = buffer.remaining();
@@ -157,8 +156,7 @@ public class MemoryIO extends ConcurrentCloseable
 	public int readFullySync(long pos, ByteBuffer buffer) {
 		int p = (int)pos;
 		if (p > size) p = size;
-		if (p == size)
-			return 0;
+		if (p == size) return 0;
 		int index = p / bufferSize;
 		int bufferPos = p % bufferSize;
 		int offset = 0;
@@ -178,9 +176,7 @@ public class MemoryIO extends ConcurrentCloseable
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-		Integer r = Integer.valueOf(readFullySync(buffer));
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<>(r, null);
+		return IOUtil.success(Integer.valueOf(readFullySync(buffer)), ondone);
 	}
 	
 	@Override
@@ -210,10 +206,7 @@ public class MemoryIO extends ConcurrentCloseable
 
 	@Override
 	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
-		if (pos == size) {
-			if (ondone != null) ondone.run(new Pair<>(null, null));
-			return new AsyncWork<>(null, null);
-		}
+		if (pos == size) return IOUtil.success(null, ondone);
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
 			@Override
 			public ByteBuffer run() {
@@ -278,9 +271,7 @@ public class MemoryIO extends ConcurrentCloseable
 	
 	@Override
 	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		Long r = Long.valueOf(seekSync(type, move));
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<>(r, null);
+		return IOUtil.success(Long.valueOf(seekSync(type, move)), ondone);
 	}
 	
 	@Override
@@ -312,9 +303,7 @@ public class MemoryIO extends ConcurrentCloseable
 	
 	@Override
 	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		Long r = Long.valueOf(skipSync(n));
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<>(r, null);
+		return IOUtil.success(Long.valueOf(skipSync(n)), ondone);
 	}
 	
 	@Override

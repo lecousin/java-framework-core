@@ -1259,6 +1259,34 @@ public final class IOUtil {
 		);
 	}
 	
+	/** Shortcut to transfer an error to ondone if it is not null, and to the AsyncWork. */
+	public static <TResult, TError extends Exception>
+	void error(TError error, AsyncWork<TResult, TError> result, RunnableWithParameter<Pair<TResult, TError>> ondone) {
+		if (ondone != null) ondone.run(new Pair<>(null, error));
+		result.error(error);
+	}
+	
+	/** Shortcut to transfer an error to ondone if it is not null, and create an AsyncWork with this error. */
+	public static <TResult, TError extends Exception>
+	AsyncWork<TResult, TError> error(TError error, RunnableWithParameter<Pair<TResult, TError>> ondone) {
+		if (ondone != null) ondone.run(new Pair<>(null, error));
+		return new AsyncWork<>(null, error);
+	}
+	
+	/** Shortcut to transfer a result to ondone if it is not null, and to the AsyncWork. */
+	public static <TResult, TError extends Exception>
+	void success(TResult res, AsyncWork<TResult, TError> result, RunnableWithParameter<Pair<TResult, TError>> ondone) {
+		if (ondone != null) ondone.run(new Pair<>(res, null));
+		result.unblockSuccess(res);
+	}
+	
+	/** Shortcut to transfer a result to ondone if it is not null, and create an AsyncWork with this result. */
+	public static <TResult, TError extends Exception>
+	AsyncWork<TResult, TError> success(TResult result, RunnableWithParameter<Pair<TResult, TError>> ondone) {
+		if (ondone != null) ondone.run(new Pair<>(result, null));
+		return new AsyncWork<>(result, null);
+	}	
+	
 	/** Get the size by seeking at the end if not an instanceof IO.KnownSize. */
 	public static long getSizeSync(IO.Readable.Seekable io) throws IOException {
 		if (io instanceof IO.KnownSize)

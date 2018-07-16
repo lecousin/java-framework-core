@@ -417,15 +417,9 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
 		SynchronizationPoint<NoException> sp = null;
 		synchronized (this) {
-			if (error != null) {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
-				return new AsyncWork<Integer,IOException>(null, error);
-			}
+			if (error != null) return IOUtil.error(error, ondone);
 			if (current == null) {
-				if (endReached) {
-					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
-					return new AsyncWork<Integer,IOException>(Integer.valueOf(-1), null);
-				}
+				if (endReached) return IOUtil.success(Integer.valueOf(-1), ondone);
 				if (isClosing() || isClosed()) return new AsyncWork<>(null, null, new CancelException("IO closed"));
 				if (dataReady == null) dataReady = new SynchronizationPoint<>();
 				sp = dataReady;
@@ -552,14 +546,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	@Override
 	public AsyncWork<Long,IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
 		synchronized (this) {
-			if (error != null) {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
-				return new AsyncWork<Long,IOException>(null, error);
-			}
-			if (n <= 0) {
-				if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
-				return new AsyncWork<Long,IOException>(Long.valueOf(0), null);
-			}
+			if (error != null) return IOUtil.error(error, ondone);
+			if (n <= 0) return IOUtil.success(Long.valueOf(0), ondone);
 			Task<Long,IOException> t = new Task.Cpu<Long,IOException>(
 				"Skipping data from pre-buffered IO " + getSourceDescription(), priority, ondone
 			) {
@@ -755,27 +743,15 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	) {
 		boolean ok = true;
 		synchronized (this) {
-			if (error != null) {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
-				return new AsyncWork<>(null, error);
-			}
+			if (error != null) return IOUtil.error(error, ondone);
 			if (current != null) {
-				if (!current.hasRemaining() && endReached) {
-					Integer r = Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1);
-					if (ondone != null) ondone.run(new Pair<>(r, null));
-					return new AsyncWork<>(r, null);
-				}
+				if (!current.hasRemaining() && endReached)
+					return IOUtil.success(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1), ondone);
 			} else {
-				if (endReached) {
-					Integer r = Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1);
-					if (ondone != null) ondone.run(new Pair<>(r, null));
-					return new AsyncWork<>(r, null);
-				}
-				if (isClosing() || isClosed()) {
-					Integer r = Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1);
-					if (ondone != null) ondone.run(new Pair<>(r, null));
-					return new AsyncWork<>(r, null);
-				}
+				if (endReached)
+					return IOUtil.success(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1), ondone);
+				if (isClosing() || isClosed())
+					return IOUtil.success(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1), ondone);
 				ok = false;
 			}
 		}
@@ -814,15 +790,10 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
 		SynchronizationPoint<NoException> sp;
 		synchronized (this) {
-			if (error != null) {
-				if (ondone != null) ondone.run(new Pair<>(null, null));
-				return new AsyncWork<>(null, error);
-			}
+			if (error != null) return IOUtil.error(error, ondone);
 			if (current != null) {
-				if (!current.hasRemaining() && endReached) {
-					if (ondone != null) ondone.run(new Pair<>(null, null));
-					return new AsyncWork<>(null, null);
-				}
+				if (!current.hasRemaining() && endReached)
+					return IOUtil.success(null, ondone);
 				Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>(
 					"Read next buffer", getPriority(), ondone
 				) {
@@ -838,10 +809,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				operation(task.start());
 				return task.getOutput();
 			}
-			if (endReached) {
-				if (ondone != null) ondone.run(new Pair<>(null, null));
-				return new AsyncWork<>(null, null);
-			}
+			if (endReached) return IOUtil.success(null, ondone);
 			if (isClosing() || isClosed()) return new AsyncWork<>(null, null, new CancelException("IO closed"));
 			if (dataReady == null) dataReady = new SynchronizationPoint<>();
 			sp = dataReady;

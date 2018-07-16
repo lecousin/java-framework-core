@@ -284,10 +284,8 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-		if (knownSize >= 0 && pos >= knownSize) {
-			if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
-			return new AsyncWork<>(Integer.valueOf(-1), null);
-		}
+		if (knownSize >= 0 && pos >= knownSize)
+			return IOUtil.success(Integer.valueOf(-1), ondone);
 		if (pos >= ioPos) {
 			bufferizeTo(pos);
 			return readFullyAsync(buffer, ondone);
@@ -313,14 +311,10 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 		}
 		byte[] b = new byte[1];
 		AsyncWork<Integer, IOException> r = buffered.readFullySyncIfPossible(pos, ByteBuffer.wrap(b), null);
-		if (!r.isUnblocked())
-			return -2;
-		if (r.hasError())
-			throw r.getError();
-		if (r.isCancelled())
-			return -1;
-		if (r.getResult().intValue() <= 0)
-			return -1;
+		if (!r.isUnblocked()) return -2;
+		if (r.hasError()) throw r.getError();
+		if (r.isCancelled()) return -1;
+		if (r.getResult().intValue() <= 0) return -1;
 		pos++;
 		return b[0] & 0xFF;
 	}
@@ -338,8 +332,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 						return;
 					}
 					if (bufferize.hasError()) {
-						if (ondone != null) ondone.run(new Pair<>(null, bufferize.getError()));
-						result.unblockError(bufferize.getError());
+						IOUtil.error(bufferize.getError(), ondone);
 						return;
 					}
 				}
@@ -375,8 +368,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 						return null;
 					}
 					if (!bufferize.isSuccessful()) {
-						if (ondone != null) ondone.run(new Pair<>(null, bufferize.getError()));
-						result.unblockError(bufferize.getError());
+						IOUtil.error(bufferize.getError(), ondone);
 						return null;
 					}
 				}
@@ -442,8 +434,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	
 	@Override
 	public int readSync(long pos, ByteBuffer buffer) throws IOException {
-		if (!waitPosition(pos))
-			return -1;
+		if (!waitPosition(pos)) return -1;
 		int nb = buffered.readSync(pos, buffer);
 		return nb;
 	}

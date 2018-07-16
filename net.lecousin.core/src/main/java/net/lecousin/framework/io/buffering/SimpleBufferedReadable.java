@@ -165,21 +165,14 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
 		AtomicState s = state;
 		if (s.pos == s.len) {
-			if (s.buffer == null) {
-				if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
-				return new AsyncWork<>(Integer.valueOf(-1), null);
-			}
+			if (s.buffer == null) return IOUtil.success(Integer.valueOf(-1), ondone);
 			return readFullyAsync(buffer, ondone);
 		}
 		int l = buffer.remaining();
 		if (l > state.len - state.pos) l = state.len - state.pos;
 		buffer.put(state.buffer, state.pos, l);
 		state.pos += l;
-		if (!buffer.hasRemaining()) {
-			Integer r = Integer.valueOf(l);
-			if (ondone != null) ondone.run(new Pair<>(r, null));
-			return new AsyncWork<>(r, null);
-		}
+		if (!buffer.hasRemaining()) return IOUtil.success(Integer.valueOf(l), ondone);
 		return IOUtil.readFullyAsync(this, buffer, l, ondone);
 	}
 	
@@ -215,10 +208,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	@Override
 	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
 		AtomicState s = state;
-		if (s.pos == s.len && s.buffer == null) {
-			if (ondone != null) ondone.run(new Pair<>(null, null));
-			return new AsyncWork<>(null, null);
-		}
+		if (s.pos == s.len && s.buffer == null) return IOUtil.success(null, ondone);
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
 			@Override
 			public ByteBuffer run() throws IOException, CancelException {
@@ -283,20 +273,14 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 
 	@Override
 	public AsyncWork<Long,IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		if (state.buffer == null || n <= 0) {
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
-			return new AsyncWork<Long,IOException>(Long.valueOf(0),null);
-		}
+		if (state.buffer == null || n <= 0) return IOUtil.success(Long.valueOf(0), ondone);
 		if (n <= state.len - state.pos) {
 			state.pos += (int)n;
 			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(n), null));
 			return new AsyncWork<Long,IOException>(Long.valueOf(n),null);
 		}
 		AsyncWork<Integer,IOException> currentRead = readTask;
-		if (currentRead == null) {
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
-			return new AsyncWork<Long,IOException>(Long.valueOf(0),null);
-		}
+		if (currentRead == null) return IOUtil.success(Long.valueOf(0), ondone);
 		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Skipping bytes", io.getPriority(), ondone) {
 			@Override
 			public Long run() throws IOException, CancelException {

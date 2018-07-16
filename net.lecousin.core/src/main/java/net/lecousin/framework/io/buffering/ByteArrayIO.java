@@ -12,6 +12,7 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
@@ -140,8 +141,7 @@ public class ByteArrayIO extends ConcurrentCloseable
 		if (pos > size) pos = size;
 		int len = buffer.remaining();
 		if (len > size - pos) len = size - (int)pos;
-		if (len == 0)
-			return 0;
+		if (len == 0) return 0;
 		buffer.put(array, (int)pos, len);
 		return len;
 	}
@@ -158,9 +158,7 @@ public class ByteArrayIO extends ConcurrentCloseable
 	
 	@Override
 	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-		Integer r = Integer.valueOf(readFullySync(buffer));
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<>(r, null);
+		return IOUtil.success(Integer.valueOf(readFullySync(buffer)), ondone);
 	}
 	
 	@Override
@@ -204,10 +202,7 @@ public class ByteArrayIO extends ConcurrentCloseable
 	
 	@Override
 	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
-		if (pos == size) {
-			if (ondone != null) ondone.run(new Pair<>(null, null));
-			return new AsyncWork<>(null, null);
-		}
+		if (pos == size) return IOUtil.success(null, ondone);
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>(
 			"Read remaining bytes from ByteArrayIO", getPriority(), ondone
 		) {
@@ -362,9 +357,7 @@ public class ByteArrayIO extends ConcurrentCloseable
 	
 	@Override
 	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		Long r = Long.valueOf(seekSync(type, move));
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<>(r, null);
+		return IOUtil.success(Long.valueOf(seekSync(type, move)), ondone);
 	}
 	
 	@Override
@@ -394,9 +387,7 @@ public class ByteArrayIO extends ConcurrentCloseable
 	
 	@Override
 	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
-		Long r = Long.valueOf(skipSync(n));
-		if (ondone != null) ondone.run(new Pair<>(r, null));
-		return new AsyncWork<>(r, null);
+		return IOUtil.success(Long.valueOf(skipSync(n)), ondone);
 	}
 	
 	public byte[] getArray() { return array; }

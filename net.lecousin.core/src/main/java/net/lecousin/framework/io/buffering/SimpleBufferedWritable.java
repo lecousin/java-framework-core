@@ -11,6 +11,7 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
@@ -191,8 +192,7 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 						AsyncWork<Integer,IOException> flush;
 						try { flush = flushBufferAsync(); }
 						catch (IOException e) {
-							if (ondone != null) ondone.run(new Pair<>(null, e));
-							result.unblockError(e);
+							IOUtil.error(e, result, ondone);
 							return null;
 						}
 						if (flush != null) {
@@ -201,8 +201,7 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 								@Override
 								public void run() {
 									if (!flush.isSuccessful()) {
-										if (ondone != null) ondone.run(new Pair<>(null, flush.getError()));
-										result.unblockError(flush.getError());
+										IOUtil.error(flush.getError(), result , ondone);
 										return;
 									}
 									writeAsync(buf, dd, result, ondone);
