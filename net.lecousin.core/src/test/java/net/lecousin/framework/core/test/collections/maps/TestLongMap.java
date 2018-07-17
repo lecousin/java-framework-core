@@ -70,6 +70,7 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 		Assert.assertFalse(map.containsKey(1));
 		Assert.assertNull(map.get(0));
 		Assert.assertNull(map.get(1));
+		Assert.assertFalse(map.values().hasNext());
 	}
 	
 	protected void checkMap(LongMap<Object> map, HashMap<Long, Object> checkMap) {

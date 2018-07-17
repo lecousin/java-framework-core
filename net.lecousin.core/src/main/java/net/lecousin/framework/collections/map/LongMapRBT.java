@@ -97,14 +97,15 @@ public class LongMapRBT<T> implements LongMap<T> {
 	public void clear() {
 		size = 0;
 		for (int i = buckets.length - 1; i >= 0; --i)
-			buckets[i].clear();
+			buckets[i] = null;
 	}
 	
 	@Override
 	public Iterator<T> values() {
 		LinkedIterators<T> it = new LinkedIterators<>();
 		for (int i = buckets.length - 1; i >= 0; --i)
-			it.addIterator(buckets[i].iterator());
+			if (buckets[i] != null)
+				it.addIterator(buckets[i].iterator());
 		return it;
 	}
 

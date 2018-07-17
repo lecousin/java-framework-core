@@ -328,6 +328,7 @@ public class MavenPOM implements LibraryDescriptor {
 		return list;
 	}
 	
+	/** Returns all declared dependencies (getDependencies only return 'compile' dependencies). */
 	public List<LibraryDescriptor.Dependency> getAllDependenciesAnyScope() {
 		ArrayList<LibraryDescriptor.Dependency> list = new ArrayList<>(dependencies.size());
 		list.addAll(dependencies);

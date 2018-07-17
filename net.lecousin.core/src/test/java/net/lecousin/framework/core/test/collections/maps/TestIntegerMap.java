@@ -64,6 +64,7 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 		Assert.assertFalse(map.containsKey(1));
 		Assert.assertNull(map.get(0));
 		Assert.assertNull(map.get(1));
+		Assert.assertFalse(map.values().hasNext());
 	}
 	
 	protected void checkMap(IntegerMap<Object> map, HashMap<Integer, Object> checkMap) {

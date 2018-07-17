@@ -584,7 +584,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	}
 	
 	private class MapBufferTable implements BufferTable {
-		private LongMap<Buffer> map = new LongMapRBT<>(10000);
+		private LongMap<Buffer> map = new LongMapRBT<>(2500);
 
 		@Override
 		public Buffer needBufferSync(long index, boolean newAtTheEnd) {
@@ -716,7 +716,10 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 				lastPrevious = null;
 				for (Iterator<Buffer> it = map.values(); it.hasNext(); ) {
 					Buffer b = it.next();
-					if (b.index == nbBuffersAfter) lastPrevious = b;
+					if (b.index == nbBuffersAfter - 1) {
+						lastPrevious = b;
+						continue;
+					}
 					if (b.index < nbBuffersAfter) continue;
 					removed.add(b);
 					memory.removeReference(b);
@@ -755,11 +758,8 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	/** Constructor. */
 	public BufferedIO(IO.Readable.Seekable io, long size, int firstBufferSize, int nextBuffersSize, boolean preLoadNextBuffer) {
 		this.io = io;
-		try {
-			position = io.getPosition();
-		} catch (IOException e) {
-			position = 0;
-		}
+		try { position = io.getPosition(); }
+		catch (IOException e) { position = 0; }
 		this.memory = MemoryManagement.get();
 		this.size = size;
 		this.firstBufferSize = firstBufferSize;
@@ -878,14 +878,15 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	protected void preLoadBuffer(long pos) {
 		if (closing) return;
 		if (pos == size) return;
-		new Task.Cpu.FromRunnable("Pre-load next buffer in BufferedIO", io.getPriority(), () -> {
+		operation(new Task.Cpu.FromRunnable("Pre-load next buffer in BufferedIO", io.getPriority(), () -> {
+			if (closing) return;
 			long bufferIndex = getBufferIndex(pos);
 			AsyncWork<Buffer, NoException> b = bufferTable.needBufferAsync(bufferIndex, false);
 			b.listenInline(() -> {
 				b.getResult().lastRead = System.currentTimeMillis();
 				b.getResult().usage.endRead();
 			});
-		}).start();		
+		})).start();		
 	}
 	
 	@Override

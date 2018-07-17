@@ -62,6 +62,7 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 		Assert.assertFalse(map.containsKey((byte)1));
 		Assert.assertNull(map.get((byte)0));
 		Assert.assertNull(map.get((byte)1));
+		Assert.assertFalse(map.values().hasNext());
 	}
 	
 	protected void checkMap(ByteMap<Object> map, HashMap<Byte, Object> checkMap) {
