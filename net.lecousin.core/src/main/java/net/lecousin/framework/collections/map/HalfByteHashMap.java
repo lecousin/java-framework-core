@@ -223,7 +223,8 @@ public class HalfByteHashMap<T> implements ByteMap<T> {
 	public Iterator<T> values() {
 		LinkedIterators<T> it = new LinkedIterators<>();
 		for (int i = hashmap.length - 1; i >= 0; --i)
-			it.addIterator(ArrayUtil.iterator(hashmap[i].elements));
+			if (hashmap[i] != null)
+				it.addIterator(ArrayUtil.iterator(hashmap[i].elements));
 		return it;
 	}
 	
