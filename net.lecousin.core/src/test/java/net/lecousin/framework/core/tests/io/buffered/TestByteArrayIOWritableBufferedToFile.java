@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collection;
 
+import org.junit.Assert;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -31,7 +32,10 @@ public class TestByteArrayIOWritableBufferedToFile extends TestWritableBufferedT
 	@Override
 	protected IO.Writable.Buffered createWritableBufferedFromFile(File file) {
 		this.file = file;
-		return new ByteArrayIO("test");
+		ByteArrayIO io = new ByteArrayIO(16, "test");
+		io.toByteBuffer();
+		Assert.assertEquals(16, io.getCapacity());
+		return io;
 	}
 
 	@Override

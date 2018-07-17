@@ -72,7 +72,7 @@ public abstract class TestReadWriteResizable extends TestIO {
 		s = io.getPosition();
 		if (s != 10) throw new Exception("Resize error: new position is " + s + ", expected is 10");
 
-		io.setSizeSync(0);
+		io.setSizeAsync(0).blockThrow(0);
 		s = io.getSizeSync();
 		if (s != 0) throw new Exception("Resize error: new size is " + s + ", expected is 0");
 		s = io.getPosition();

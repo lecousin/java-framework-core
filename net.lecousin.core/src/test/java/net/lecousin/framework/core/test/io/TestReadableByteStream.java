@@ -75,6 +75,12 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 		}
 		if (io.read() != -1)
 			throw new Exception("Remaining byte(s) at the end of the file");
+		try {
+			io.readByte();
+			throw new AssertionError("EOFException expected");
+		} catch (EOFException e) {
+			// ok
+		}
 		io.close();
 	}
 	
