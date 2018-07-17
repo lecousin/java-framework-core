@@ -46,7 +46,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			buf.position(0);
 			int nb = io.writeSync(buf);
 			if (nb != testBuf.length)
-				throw new Exception("Write only " + nb + " bytes");
+				throw new Exception("Write only " + nb + " bytes for buffer " + i);
 			if (buf.remaining() > 0)
 				throw new Exception("Buffer not fully consumed by write operation");
 		}

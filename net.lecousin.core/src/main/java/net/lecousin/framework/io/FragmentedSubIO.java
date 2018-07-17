@@ -359,6 +359,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 	protected int writeSync(long pos, ByteBuffer buffer) throws IOException {
 		Iterator<RangeLong> it = fragments.iterator();
 		long p = 0;
+		int total = 0;
 		while (it.hasNext()) {
 			RangeLong r = it.next();
 			long s = r.max - r.min + 1;
@@ -376,9 +377,13 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 			} else {
 				len = ((IO.Writable.Seekable)io).writeSync(r.min + start, buffer);
 			}
-			return len;
+			total += len;
+			pos += len;
+			p += s;
+			if (!buffer.hasRemaining())
+				return total;
 		}
-		return 0;
+		return total;
 	}
 
 	protected AsyncWork<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
@@ -391,26 +396,40 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 				p += s;
 				continue;
 			}
-			long start = pos - p;
-			int len = buffer.remaining();
-			if (start + len > s) {
-				int prevLimit = buffer.limit();
-				buffer.limit((int)(prevLimit - ((start + len) - s)));
-				return ((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer,
-				new RunnableWithParameter<Pair<Integer,IOException>>() {
-					@Override
-					public void run(Pair<Integer, IOException> param) {
-						buffer.limit(prevLimit);
-						if (ondone != null) ondone.run(param);
-					}
-				});
-			}
-			return operation(((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer, ondone));
+			AsyncWork<Integer,IOException> sp = new AsyncWork<>();
+			writeAsync(it, r, p, 0, pos, buffer, ondone, sp);
+			return operation(sp);
 		}
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 		if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(0), null));
 		sp.unblockSuccess(Integer.valueOf(0));
 		return sp;
+	}
+	
+	protected void writeAsync(
+		Iterator<RangeLong> it, RangeLong r, long p, int done, long pos,
+		ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone, AsyncWork<Integer,IOException> sp
+	) {
+		long start = pos - p;
+		int len = buffer.remaining();
+		long s = r.max - r.min + 1;
+		if (start + len > s) {
+			int prevLimit = buffer.limit();
+			buffer.limit((int)(prevLimit - ((start + len) - s)));
+			IOUtil.listenOnDone(((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer), (nb) -> {
+				buffer.limit(prevLimit);
+				int i = nb.intValue();
+				if (!buffer.hasRemaining() || !it.hasNext()) {
+					IOUtil.success(Integer.valueOf(i), sp, ondone);
+					return;
+				}
+				writeAsync(it, it.next(), p + s, done + i, pos + i, buffer, ondone, sp);
+			}, sp, ondone);
+			return;
+		}
+		IOUtil.listenOnDone(((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer), (nb) -> {
+			IOUtil.success(Integer.valueOf(nb.intValue() + done), sp, ondone);
+		}, sp, ondone);
 	}
 	
 }
