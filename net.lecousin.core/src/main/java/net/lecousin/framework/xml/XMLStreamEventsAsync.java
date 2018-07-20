@@ -135,6 +135,14 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		return result;
 	}
 	
+	protected boolean check(ISynchronizationPoint<Exception> op, ISynchronizationPoint<Exception> result) {
+		if (op.hasError()) {
+			result.error(op.getError());
+			return false;
+		}
+		return true;
+	}
+	
 	/** Read inner text and close element. */
 	public AsyncWork<UnprotectedStringBuffer, Exception> readInnerText() {
 		if (!Type.START_ELEMENT.equals(event.type))
@@ -151,10 +159,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		ISynchronizationPoint<Exception> next = next();
 		do {
 			if (next.isUnblocked()) {
-				if (next.hasError()) {
-					result.error(next.getError());
-					return;
-				}
+				if (!check(next, result)) return;
 				if (Type.COMMENT.equals(event.type)) {
 					next = next();
 					continue;
@@ -236,10 +241,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
 		ISynchronizationPoint<Exception> n = next;
 		next.listenInline(() -> {
-			if (n.hasError()) {
-				result.error(n.getError());
-				return;
-			}
+			if (!check(n, result)) return;
 			if (Type.END_ELEMENT.equals(event.type)) {
 				if (event.context.getFirst() == ctx) {
 					result.unblock();
@@ -311,10 +313,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		AsyncWork<Boolean, Exception> next = nextInnerElement(parent);
 		do {
 			if (!next.isUnblocked()) break;
-			if (next.hasError()) {
-				result.error(next.getError());
-				return;
-			}
+			if (!check(next, result)) return;
 			if (!next.getResult().booleanValue()) {
 				result.unblockSuccess(texts);
 				return;
@@ -322,10 +321,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 			String name = event.text.asString();
 			AsyncWork<UnprotectedStringBuffer, Exception> read = readInnerText();
 			if (read.isUnblocked()) {
-				if (read.hasError()) {
-					result.error(read.getError());
-					return;
-				}
+				if (!check(read, result)) return;
 				texts.put(name, read.getResult().asString());
 				next = nextInnerElement(parent);
 				continue;
@@ -341,10 +337,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 			new ParsingTask(() -> {
 				AsyncWork<UnprotectedStringBuffer, Exception> read = readInnerText();
 				if (read.isUnblocked()) {
-					if (read.hasError()) {
-						result.error(read.getError());
-						return;
-					}
+					if (!check(read, result)) return;
 					texts.put(name, read.getResult().asString());
 					readInnerElementsText(parent, texts, result);
 					return;

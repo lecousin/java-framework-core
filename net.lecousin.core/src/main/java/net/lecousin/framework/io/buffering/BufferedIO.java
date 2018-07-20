@@ -947,21 +947,26 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		return position;
 	}
 	
+	private static boolean waitFor(Buffer b) throws IOException {
+		b.loaded.block(0);
+		if (b.loaded.isCancelled()) {
+			b.usage.endRead();
+			return false;
+		}
+		if (b.loaded.hasError()) {
+			b.usage.endRead();
+			throw b.loaded.getError();
+		}
+		return true;
+	}
+	
 	@Override
 	public int read() throws IOException {
 		if (closing) throw new IOException("IO closed");
 		if (position == size) return -1;
 		long bufferIndex = getBufferIndex(position);
 		Buffer b = bufferTable.needBufferSync(bufferIndex, false);
-		b.loaded.block(0);
-		if (b.loaded.isCancelled()) {
-			b.usage.endRead();
-			return -1;
-		}
-		if (b.loaded.hasError()) {
-			b.usage.endRead();
-			throw b.loaded.getError();
-		}
+		if (!waitFor(b)) return -1;
 		int r = b.data[getBufferOffset(position)];
 		position++;
 		b.lastRead = System.currentTimeMillis();
@@ -977,15 +982,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		if (position == size) return -1;
 		long bufferIndex = getBufferIndex(position);
 		Buffer b = bufferTable.needBufferSync(bufferIndex, false);
-		b.loaded.block(0);
-		if (b.loaded.isCancelled()) {
-			b.usage.endRead();
-			return -1;
-		}
-		if (b.loaded.hasError()) {
-			b.usage.endRead();
-			throw b.loaded.getError();
-		}
+		if (!waitFor(b)) return -1;
 		int off = getBufferOffset(position);
 		if (len > b.data.length - off) len = b.data.length - off;
 		if (position + len > size) len = (int)(size - position);
@@ -1004,15 +1001,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		if (pos >= size) return -1;
 		long bufferIndex = getBufferIndex(pos);
 		Buffer b = bufferTable.needBufferSync(bufferIndex, false);
-		b.loaded.block(0);
-		if (b.loaded.isCancelled()) {
-			b.usage.endRead();
-			return -1;
-		}
-		if (b.loaded.hasError()) {
-			b.usage.endRead();
-			throw b.loaded.getError();
-		}
+		if (!waitFor(b)) return -1;
 		int off = getBufferOffset(pos);
 		int len = buffer.remaining();
 		if (len > b.data.length - off) len = b.data.length - off;
@@ -1039,15 +1028,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		if (pos >= size) return -1;
 		long bufferIndex = getBufferIndex(pos);
 		Buffer b = bufferTable.needBufferSync(bufferIndex, false);
-		b.loaded.block(0);
-		if (b.loaded.isCancelled()) {
-			b.usage.endRead();
-			return -1;
-		}
-		if (b.loaded.hasError()) {
-			b.usage.endRead();
-			throw b.loaded.getError();
-		}
+		if (!waitFor(b)) return -1;
 		int len = buffer.remaining();
 		if (pos + len > size) len = (int)(size - pos);
 		for (long nextPos = pos + (bufferIndex == 0 ? firstBufferSize : bufferSize), count = 0;
@@ -1069,15 +1050,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 			if (pos == size) break;
 			bufferIndex = getBufferIndex(pos);
 			b = bufferTable.needBufferSync(bufferIndex, false);
-			b.loaded.block(0);
-			if (b.loaded.isCancelled()) {
-				b.usage.endRead();
-				return total;
-			}
-			if (b.loaded.hasError()) {
-				b.usage.endRead();
-				throw b.loaded.getError();
-			}
+			if (!waitFor(b)) return total;
 			len = buffer.remaining();
 			if (pos + len > size) len = (int)(size - pos);
 			off = getBufferOffset(pos);
@@ -1126,6 +1099,20 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 			b.usage.endRead();
 		});
 		return sp;
+	}
+	
+	private static <T> boolean checkLoaded(Buffer b, AsyncWork<T, IOException> result, RunnableWithParameter<Pair<T, IOException>> ondone) {
+		if (b.loaded.hasError()) {
+			IOUtil.error(b.loaded.getError(), result, ondone);
+			b.usage.endRead();
+			return false;
+		}
+		if (b.loaded.isCancelled()) {
+			result.cancel(b.loaded.getCancelEvent());
+			b.usage.endRead();
+			return false;
+		}
+		return true;
 	}
 	
 	@Override
@@ -1183,16 +1170,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		getBuffer.listenInline(() -> {
 			Buffer b = getBuffer.getResult();
 			b.loaded.listenAsync(new Task.Cpu.FromRunnable("BufferedIO.readAsync", io.getPriority(), () -> {
-				if (b.loaded.hasError()) {
-					IOUtil.error(b.loaded.getError(), result, ondone);
-					b.usage.endRead();
-					return;
-				}
-				if (b.loaded.isCancelled()) {
-					result.cancel(b.loaded.getCancelEvent());
-					b.usage.endRead();
-					return;
-				}
+				if (!checkLoaded(b, result, ondone)) return;
 				int off = getBufferOffset(pos);
 				int len = buffer.remaining();
 				if (len > b.data.length - off) len = b.data.length - off;
@@ -1236,16 +1214,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		getBuffer.listenInline(() -> {
 			Buffer b = getBuffer.getResult();
 			b.loaded.listenAsync(new Task.Cpu.FromRunnable("BufferedIO.readAsync", io.getPriority(), () -> {
-				if (b.loaded.hasError()) {
-					IOUtil.error(b.loaded.getError(), result, ondone);
-					b.usage.endRead();
-					return;
-				}
-				if (b.loaded.isCancelled()) {
-					result.cancel(b.loaded.getCancelEvent());
-					b.usage.endRead();
-					return;
-				}
+				if (!checkLoaded(b, result, ondone)) return;
 				long pos = position;
 				int off = getBufferOffset(pos);
 				int len = b.data.length - off;
@@ -1535,16 +1504,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 			getBuffer.listenInline(() -> {
 				Buffer b = getBuffer.getResult();
 				b.loaded.listenAsync(new Task.Cpu.FromRunnable("BufferedIO.writeAsync", io.getPriority(), () -> {
-					if (b.loaded.hasError()) {
-						IOUtil.error(b.loaded.getError(), result, ondone);
-						b.usage.endRead();
-						return;
-					}
-					if (b.loaded.isCancelled()) {
-						result.cancel(b.loaded.getCancelEvent());
-						b.usage.endRead();
-						return;
-					}
+					if (!checkLoaded(b, result, ondone)) return;
 					int off = getBufferOffset(pos);
 					int len = buffer.remaining();
 					if (len > b.data.length - off) len = b.data.length - off;

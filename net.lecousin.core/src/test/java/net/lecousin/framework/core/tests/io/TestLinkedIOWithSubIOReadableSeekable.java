@@ -41,7 +41,7 @@ public class TestLinkedIOWithSubIOReadableSeekable extends TestReadableSeekable 
 		int i = 0;
 		for (RangeLong fragment : f.fragments)
 			ios[i++] = new SubIO.Readable.Seekable(buffered, fragment.min, fragment.getLength(), "fragment " + i, false);
-		LinkedIO.Readable.Seekable res = new LinkedIO.Readable.Seekable("linked IO", ios);
+		LinkedIO.Readable.Seekable res = new LinkedIO.Readable.Seekable.DeterminedSize("linked IO", ios);
 		res.addCloseListener(() -> {
 			buffered.closeAsync();
 		});
