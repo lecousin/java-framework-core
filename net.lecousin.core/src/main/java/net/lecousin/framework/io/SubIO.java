@@ -563,7 +563,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 	public byte getPriority() { return io != null ? io.getPriority() : Task.PRIORITY_NORMAL; }
 	
 	@Override
-	public void setPriority(byte priority) { io.setPriority(priority); }
+	public void setPriority(byte priority) { if (io != null) io.setPriority(priority); }
 	
 	@Override
 	protected ISynchronizationPoint<?> closeUnderlyingResources() {

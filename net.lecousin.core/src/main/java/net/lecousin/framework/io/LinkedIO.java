@@ -3,7 +3,6 @@ package net.lecousin.framework.io;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collection;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -26,11 +25,6 @@ import net.lecousin.framework.util.RunnableWithParameter;
  */
 public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 
-	protected LinkedIO(String description, Collection<IO> ios) {
-		this.description = description;
-		this.ios = new ArrayList<>(ios);
-	}
-	
 	protected LinkedIO(String description, IO[] ios) {
 		this.description = description;
 		this.ios = new ArrayList<>(ios.length);
