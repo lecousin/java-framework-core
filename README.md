@@ -17,22 +17,22 @@ is recommended for better performances on disk operations (detection of physical
 [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/master)
 
  - core [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.12.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.12.0)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.13.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.13.0)
  
  - core.javaee [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.javaee.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core.javaee%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.12.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core.javaee/0.12.0)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.13.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core.javaee/0.13.0)
  
  - log.bridges.commons-logging [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin.framework/log.bridges.commons-logging.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin.framework%22%20AND%20a%3A%22log.bridges.commons-logging%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.12.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.12.0)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.13.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.13.0)
  
  - log.bridges.slf4j [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin.framework/log.bridges.slf4j.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin.framework%22%20AND%20a%3A%22log.bridges.slf4j%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.12.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.slf4j/0.12.0)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.13.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.slf4j/0.13.0)
 
-### Branch 0.12
+### Branch 0.13
 
-![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.12 "Build Status")
-![build status](https://ci.appveyor.com/api/projects/status/github/lecousin/java-framework-core?branch=0.12&svg=true "Build Status")
-[![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/0.12/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/0.12)
+![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.13 "Build Status")
+![build status](https://ci.appveyor.com/api/projects/status/github/lecousin/java-framework-core?branch=0.13&svg=true "Build Status")
+[![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/0.13/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/0.13)
 
 ## Multi-threading
 
