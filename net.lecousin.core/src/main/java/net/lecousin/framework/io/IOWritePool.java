@@ -40,8 +40,7 @@ public class IOWritePool {
 				writing.listenInline(listener);
 				return;
 			}
-			if (writing.hasError())
-				throw writing.getError();
+			if (writing.hasError()) throw writing.getError();
 			buffers.add(buffer);
 		}
 	}
@@ -51,14 +50,10 @@ public class IOWritePool {
 	 */
 	public SynchronizationPoint<IOException> onDone() {
 		synchronized (buffers) {
-			if (writing == null)
-				return new SynchronizationPoint<>(true);
-			if (writing.hasError())
-				return new SynchronizationPoint<IOException>(writing.getError());
-			if (writing.isCancelled())
-				return new SynchronizationPoint<IOException>(writing.getCancelEvent());
-			if (waitDone == null)
-				waitDone = new SynchronizationPoint<>();
+			if (writing == null) return new SynchronizationPoint<>(true);
+			if (writing.hasError()) return new SynchronizationPoint<IOException>(writing.getError());
+			if (writing.isCancelled()) return new SynchronizationPoint<IOException>(writing.getCancelEvent());
+			if (waitDone == null) waitDone = new SynchronizationPoint<>();
 		}
 		return waitDone;
 	}
@@ -81,14 +76,12 @@ public class IOWritePool {
 
 		@Override
 		public void error(IOException error) {
-			if (waitDone != null)
-				waitDone.error(error);
+			if (waitDone != null) waitDone.error(error);
 		}
 
 		@Override
 		public void cancelled(CancelException event) {
-			if (waitDone != null)
-				waitDone.cancel(event);
+			if (waitDone != null) waitDone.cancel(event);
 		}
 		
 	}

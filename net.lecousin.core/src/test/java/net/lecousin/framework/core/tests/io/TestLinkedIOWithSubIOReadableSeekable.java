@@ -8,8 +8,8 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import net.lecousin.framework.core.test.io.TestFragmented;
-import net.lecousin.framework.core.test.io.TestReadableSeekable;
 import net.lecousin.framework.core.test.io.TestFragmented.FragmentedFile;
+import net.lecousin.framework.core.test.io.TestReadableSeekable;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.LinkedIO;
@@ -52,5 +52,4 @@ public class TestLinkedIOWithSubIOReadableSeekable extends TestReadableSeekable 
 	protected boolean canSetPriority() {
 		return !f.fragments.isEmpty() && f.nbBuf > 0;
 	}
-
 }

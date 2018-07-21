@@ -924,7 +924,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				if (sizes.get(i) == null) {
 					@SuppressWarnings("resource")
 					IO.Readable.Seekable io = (IO.Readable.Seekable)ios.get(i);
-					sizes.set(ioIndex,  Long.valueOf(io.seekSync(SeekType.FROM_END, 0)));
+					sizes.set(i,  Long.valueOf(io.seekSync(SeekType.FROM_END, 0)));
 				}
 				p += sizes.get(i).longValue();
 			}
