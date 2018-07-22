@@ -28,7 +28,7 @@ import net.lecousin.framework.util.StringUtil;
 
 public class TestLoggers extends LCCoreAbstractTest {
 
-	@Test
+	@Test(timeout=120000)
 	public void test() throws Exception {
 		Application app = LCCore.getApplication();
 		File dir = new File(app.getProperty(Application.PROPERTY_LOG_DIRECTORY));
