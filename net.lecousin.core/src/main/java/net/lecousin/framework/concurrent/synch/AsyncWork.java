@@ -2,6 +2,10 @@ package net.lecousin.framework.concurrent.synch;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
@@ -18,7 +22,7 @@ import net.lecousin.framework.util.RunnableWithParameter;
  * @param <T> type of result
  * @param <TError> type of error
  */
-public class AsyncWork<T,TError extends Exception> implements ISynchronizationPoint<TError> {
+public class AsyncWork<T,TError extends Exception> implements ISynchronizationPoint<TError>, Future<T> {
 
 	/** Constructor. */
 	public AsyncWork() {}
@@ -533,6 +537,39 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 		error = null;
 		cancel = null;
 		listenersInline = null;
+	}
+	
+	/* --- Future implementation --- */
+	
+	@Override
+	public T get() throws InterruptedException, ExecutionException {
+		block(0);
+		if (!isUnblocked()) throw new InterruptedException();
+		if (hasError()) throw new ExecutionException(error);
+		if (isCancelled()) throw new ExecutionException(cancel);
+		return result;
+	}
+	
+	@Override
+	public T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+		block(unit.toMillis(timeout));
+		if (!isUnblocked()) throw new TimeoutException();
+		if (hasError()) throw new ExecutionException(error);
+		if (isCancelled()) throw new ExecutionException(cancel);
+		return result;
+	}
+	
+	// skip checkstyle: OverloadMethodsDeclarationOrder
+	@Override
+	public boolean cancel(boolean mayInterruptIfRunning) {
+		if (isUnblocked()) return false;
+		cancel(new CancelException("Cancelled"));
+		return true;
+	}
+	
+	@Override
+	public boolean isDone() {
+		return isUnblocked();
 	}
 	
 }

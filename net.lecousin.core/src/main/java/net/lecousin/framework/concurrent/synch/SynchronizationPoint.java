@@ -2,6 +2,10 @@ package net.lecousin.framework.concurrent.synch;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
@@ -15,7 +19,7 @@ import net.lecousin.framework.log.Logger;
  * Simplest implementation of a synchronization point.
  * @param <TError> type of exception it may raise
  */
-public class SynchronizationPoint<TError extends Exception> implements ISynchronizationPoint<TError> {
+public class SynchronizationPoint<TError extends Exception> implements ISynchronizationPoint<TError>, Future<Void> {
 
 	/** Constructor. */
 	public SynchronizationPoint() {}
@@ -198,4 +202,38 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 		cancelled = null;
 		error = null;
 	}
+
+	/* --- Future implementation --- */
+	
+	@Override
+	public Void get() throws InterruptedException, ExecutionException {
+		block(0);
+		if (!isUnblocked()) throw new InterruptedException();
+		if (hasError()) throw new ExecutionException(error);
+		if (isCancelled()) throw new ExecutionException(cancelled);
+		return null;
+	}
+	
+	@Override
+	public Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+		block(unit.toMillis(timeout));
+		if (!isUnblocked()) throw new TimeoutException();
+		if (hasError()) throw new ExecutionException(error);
+		if (isCancelled()) throw new ExecutionException(cancelled);
+		return null;
+	}
+	
+	// skip checkstyle: OverloadMethodsDeclarationOrder
+	@Override
+	public boolean cancel(boolean mayInterruptIfRunning) {
+		if (isUnblocked()) return false;
+		cancel(new CancelException("Cancelled"));
+		return true;
+	}
+	
+	@Override
+	public boolean isDone() {
+		return isUnblocked();
+	}
+	
 }

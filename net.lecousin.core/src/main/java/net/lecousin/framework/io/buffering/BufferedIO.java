@@ -703,7 +703,6 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 
 		@Override
 		public void setSize(long nbBuffersBefore, long nbBuffersAfter) {
-			LinkedList<Buffer> removed;
 			Buffer lastPrevious;
 			synchronized (this) {
 				if (nbBuffersAfter > nbBuffersBefore) {
@@ -712,7 +711,6 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 				}
 				// we need to ensure there is no flush in progress on the removed buffers and the last buffer
 				// this is done by the remove function in which we do a startWrite
-				removed = new LinkedList<>();
 				lastPrevious = null;
 				for (Iterator<Buffer> it = map.values(); it.hasNext(); ) {
 					Buffer b = it.next();
@@ -721,19 +719,15 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 						continue;
 					}
 					if (b.index < nbBuffersAfter) continue;
-					removed.add(b);
+					remove(b, true);
 					memory.removeReference(b);
 				}
 			}
 			// make sure the last buffer is not flushing
-			if (lastPrevious != null)
+			if (lastPrevious != null) {
 				lastPrevious.usage.startWrite();
-			// remove buffers
-			for (Buffer b : removed)
-				remove(b, true);
-
-			if (lastPrevious != null)
 				lastPrevious.usage.endWrite();
+			}
 		}
 		
 		@Override
