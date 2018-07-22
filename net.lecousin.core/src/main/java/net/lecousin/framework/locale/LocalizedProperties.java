@@ -349,6 +349,7 @@ public class LocalizedProperties implements IMemoryManageable {
 		}
 		synchronized (namespaces) {
 			for (Namespace ns : namespaces.values()) {
+				if (ns.languages != null)
 				for (Namespace.Language lang : ns.languages) {
 					synchronized (lang) {
 						if (lang.loading == null) continue;
@@ -370,16 +371,18 @@ public class LocalizedProperties implements IMemoryManageable {
 		boolean first = true;
 		synchronized (namespaces) {
 			for (Namespace ns : namespaces.values()) {
-				List<String> found = new LinkedList<>();
-				for (Namespace.Language l : ns.languages) {
-					String tag = String.join("-", l.tag);
-					if (first) avail.add(tag);
-					else found.add(tag);
-				}
-				if (first) first = false;
-				else for (Iterator<String> it = avail.iterator(); it.hasNext(); ) {
-					if (!found.contains(it.next()))
-						it.remove();
+				if (ns.languages != null) {
+					List<String> found = new LinkedList<>();
+					for (Namespace.Language l : ns.languages) {
+						String tag = String.join("-", l.tag);
+						if (first) avail.add(tag);
+						else found.add(tag);
+					}
+					if (first) first = false;
+					else for (Iterator<String> it = avail.iterator(); it.hasNext(); ) {
+						if (!found.contains(it.next()))
+							it.remove();
+					}
 				}
 			}
 		}

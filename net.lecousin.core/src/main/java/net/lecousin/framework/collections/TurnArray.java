@@ -627,7 +627,7 @@ public class TurnArray<T> implements Deque<T> {
 				end--;
 				return;
 			}
-			System.arraycopy(array, index + 1, array, index, end - 1);
+			System.arraycopy(array, index + 1, array, index, end - index);
 			array[--end] = null;
 			return;
 		} finally {

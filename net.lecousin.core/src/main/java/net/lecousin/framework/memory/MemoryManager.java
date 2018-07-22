@@ -273,7 +273,10 @@ logger.debug("No garbage collection since 2 minutes => free some cached data to 
 		}
 		for (IMemoryManageable m : list) {
 			if (logger.debug()) logger.debug("Free memory level " + level.name() + " on " + m.getDescription());
-			m.freeMemory(level);
+			try { m.freeMemory(level); }
+			catch (Throwable t) {
+				logger.error("Error freeing memory from " + m.getDescription(), t);
+			}
 		}
 	}
 	
