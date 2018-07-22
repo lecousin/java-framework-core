@@ -1,8 +1,9 @@
 package net.lecousin.framework.io.util;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.io.IO;
 
 /**
@@ -36,9 +37,9 @@ public class LimitWriteOperationsReuseBuffers extends LimitWriteOperations {
 	}
 	
 	@Override
-	protected void writeDone(ByteBuffer buffer, CancelException cancelled) {
+	protected void writeDone(ByteBuffer buffer, AsyncWork<Integer, IOException> result) {
 		buffers.freeBuffer(buffer);
-		super.writeDone(buffer, cancelled);
+		super.writeDone(buffer, result);
 	}
 
 }

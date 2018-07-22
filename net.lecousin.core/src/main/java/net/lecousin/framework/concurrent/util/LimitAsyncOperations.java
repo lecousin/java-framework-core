@@ -32,6 +32,9 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 	private TurnArray<Pair<InputType,AsyncWork<OutputResultType,OutputErrorType>>> waiting;
 	private SynchronizationPoint<NoException> lock = null;
 	private AsyncWork<OutputResultType, OutputErrorType> lastWrite = new AsyncWork<>(null, null);
+	private CancelException cancelled = null;
+	private OutputErrorType error = null;
+	private boolean isReady = true;
 	
 	/**
 	 * Executor of write operation.
@@ -54,33 +57,26 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 		do {
 			SynchronizationPoint<NoException> lk;
 			synchronized (waiting) {
-				if (lastWrite.isCancelled()) return lastWrite;
-				if (waiting.isEmpty() && lastWrite.isUnblocked()) {
-					AsyncWork<OutputResultType, OutputErrorType> res = executor.execute(data);
-					AsyncWork<OutputResultType, OutputErrorType> done = new AsyncWork<>();
-					lastWrite = done;
-					res.listenInline(
-						(nb) -> {
-							writeDone(data, null);
-							done.unblockSuccess(nb);
-						},
-						(error) -> {
-							writeDone(data, null);
-							done.error(error);
-						},
-						(cancel) -> {
-							writeDone(data, cancel);
-							done.cancel(cancel);
-						}
-					);
-					return lastWrite;
+				// if cancelled or errored, return immediately
+				if (error != null) return new AsyncWork<>(null, error);
+				if (cancelled != null) return new AsyncWork<>(null, null, cancelled);
+				
+				AsyncWork<OutputResultType, OutputErrorType> op;
+				// if ready, write immediately
+				if (isReady) {
+					isReady = false;
+					op = lastWrite = executor.execute(data);
+					lastWrite.listenInline(new WriteListener(data, op, null));
+					return op;
 				}
+				// not ready
 				if (!waiting.isFull()) {
-					AsyncWork<OutputResultType, OutputErrorType> res = new AsyncWork<>();
-					waiting.addLast(new Pair<>(data, res));
-					lastWrite = res;
-					return res;
+					op = new AsyncWork<>();
+					waiting.addLast(new Pair<>(data, op));
+					lastWrite = op;
+					return op;
 				}
+				// full
 				if (lock != null)
 					throw new IOException("Concurrent write");
 				lock = new SynchronizationPoint<>();
@@ -89,44 +85,52 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 			lk.block(0);
 		} while (true);
 	}
-	
-	protected void writeDone(@SuppressWarnings("unused") InputType data, CancelException cancelled) {
-		SynchronizationPoint<NoException> sp = null;
-		synchronized (waiting) {
-			Pair<InputType, AsyncWork<OutputResultType, OutputErrorType>> b = waiting.pollFirst();
-			if (b != null) {
+
+	private class WriteListener implements Runnable {
+		public WriteListener(
+			InputType data, AsyncWork<OutputResultType, OutputErrorType> op, AsyncWork<OutputResultType, OutputErrorType> result
+		) {
+			this.data = data;
+			this.op = op;
+			this.result = result;
+		}
+		
+		private InputType data;
+		private AsyncWork<OutputResultType, OutputErrorType> op;
+		private AsyncWork<OutputResultType, OutputErrorType> result;
+		
+		@Override
+		public void run() {
+			SynchronizationPoint<NoException> lk = null;
+			synchronized (waiting) {
 				if (lock != null) {
-					sp = lock;
+					lk = lock;
 					lock = null;
 				}
-				if (cancelled != null) {
-					while (b != null) {
-						b.getValue2().cancel(cancelled);
-						b = waiting.pollFirst();
-					}
-				} else {
-					InputType newData = b.getValue1();
-					AsyncWork<OutputResultType, OutputErrorType> write = executor.execute(newData);
-					Pair<InputType, AsyncWork<OutputResultType, OutputErrorType>> bb = b;
-					write.listenInline(
-						(nb) -> {
-							writeDone(newData, null);
-							bb.getValue2().unblockSuccess(nb);
-						},
-						(error) -> {
-							writeDone(newData, null);
-							bb.getValue2().error(error);
-						},
-						(cancel) -> {
-							writeDone(newData, cancel);
-							bb.getValue2().cancel(cancel);
-						}
-					);
+				if (op.hasError()) error = op.getError();
+				else if (op.isCancelled()) cancelled = op.getCancelEvent();
+				else {
+					Pair<InputType, AsyncWork<OutputResultType, OutputErrorType>> b = waiting.pollFirst();
+					if (b != null) {
+						// something is waiting
+						AsyncWork<OutputResultType, OutputErrorType> newOp = executor.execute(b.getValue1());
+						lastWrite = newOp;
+						newOp.listenInline(new WriteListener(b.getValue1(), newOp, b.getValue2()));
+					} else
+						isReady = true;
 				}
 			}
+			if (result != null)
+				op.listenInline(result);
+			if (lk != null)
+				lk.unblock();
+			writeDone(data, op);
 		}
-		if (sp != null)
-			sp.unblock();
+	}
+	
+	@SuppressWarnings("unused")
+	protected void writeDone(InputType data, AsyncWork<OutputResultType, OutputErrorType> result) {
+		// to be overriden if needed
 	}
 	
 	/** Return the last pending operation, or null. */
@@ -136,8 +140,22 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 	
 	/** Same as getLastPendingOperation but never return null (return an unblocked synchronization point instead). */
 	public ISynchronizationPoint<OutputErrorType> flush() {
-		ISynchronizationPoint<OutputErrorType> sp = getLastPendingOperation();
-		if (sp == null) sp = new SynchronizationPoint<>(true);
+		SynchronizationPoint<OutputErrorType> sp = new SynchronizationPoint<>();
+		Runnable callback = new Runnable() {
+			@Override
+			public void run() {
+				AsyncWork<OutputResultType, OutputErrorType> last = null;
+				synchronized (waiting) {
+					if (error != null) sp.error(error);
+					else if (cancelled != null) sp.cancel(cancelled);
+					else if (isReady) sp.unblock();
+					else last = lastWrite;
+				}
+				if (last != null)
+					last.listenInline(this);
+			}
+		};
+		callback.run();
 		return sp;
 	}
 
