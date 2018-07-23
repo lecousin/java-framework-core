@@ -30,7 +30,8 @@ public class DevLauncher {
 	public static void printUsage() {
 		System.out.println(
 			"Usage: -groupId=<groupId> -artifactId=<artifactId> -version=<artifactVersion> "
-			+ "-config=<path_to_lc=project.xml> -projects=<projects_paths> [-plugins=<plugins>] [-maven-repository=<path>]");
+			+ "-config=<path_to_lc=project.xml> -projects=<projects_paths> [-plugins=<plugins>] [-maven-repository=<path>]"
+			+ "[-parameters ...]");
 	}
 	
 	/** Main. */

@@ -161,7 +161,7 @@ public class AppLauncher {
 					new Artifact(groupId, artifactId, new Version(version)),
 					appParameters,
 					cfg.properties,
-					true,
+					false,
 					Executors.defaultThreadFactory(),
 					librariesManager
 				);
@@ -209,7 +209,7 @@ public class AppLauncher {
 	/** Print usage in the console. */
 	public static void printUsage() {
 		System.out.println(
-			"Usage: -groupId=<groupId> -artifactId=<artifactId> -version=<artifactVersion> [-maven-repository=<path>]");
+			"Usage: -groupId=<groupId> -artifactId=<artifactId> -version=<artifactVersion> [-maven-repository=<path>] [-parameters <application parameters>]");
 	}
 	
 }
