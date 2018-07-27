@@ -5,7 +5,9 @@ import java.util.Locale;
 /**
  * Get information about the system such as type of operating system, based on environment properties.
  */
-public class SystemEnvironment {
+public final class SystemEnvironment {
+	
+	private SystemEnvironment() { /* no instance */ }
 
 	/** Type of operating system. */
 	public static enum OSFamily {

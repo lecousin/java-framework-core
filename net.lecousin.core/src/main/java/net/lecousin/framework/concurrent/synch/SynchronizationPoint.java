@@ -81,7 +81,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 		Application app = LCCore.getApplication();
 		Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
 		while (true) {
-			if (log == null || !log.debug())
+			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
 					try { listeners.get(i).run(); }
 					catch (Throwable t) { log.error(

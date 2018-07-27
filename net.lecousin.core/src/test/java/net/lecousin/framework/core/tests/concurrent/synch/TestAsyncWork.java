@@ -325,6 +325,7 @@ public class TestAsyncWork extends LCCoreAbstractTest {
 			
 			AsyncWork<Integer, Exception> aw2 = new AsyncWork<>();
 			aw2.listenInline(() -> { aw2.listenInline(() -> {}); });
+			for (Object l : aw2.getAllListeners()) l.toString();
 			aw2.cancel(new CancelException("test"));
 			
 			try {
