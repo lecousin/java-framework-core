@@ -78,19 +78,19 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		while (listeners != null) {
-			Application app = LCCore.getApplication();
-			Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
+		Application app = LCCore.getApplication();
+		Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
+		while (true) {
 			if (log == null || !log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
 					try { listeners.get(i).run(); }
-					catch (Throwable t) { app.getDefaultLogger().error(
+					catch (Throwable t) { log.error(
 						"Exception thrown by an inline listener of SynchronizationPoint", t); }
 			else
 				for (int i = 0; i < listeners.size(); ++i) {
 					long start = System.nanoTime();
 					try { listeners.get(i).run(); }
-					catch (Throwable t) { app.getDefaultLogger().error(
+					catch (Throwable t) { log.error(
 						"Exception thrown by an inline listener of SynchronizationPoint", t); }
 					long time = System.nanoTime() - start;
 					if (time > 1000000) // more than 1ms

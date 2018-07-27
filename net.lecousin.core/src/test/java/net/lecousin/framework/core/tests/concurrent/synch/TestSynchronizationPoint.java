@@ -1,5 +1,11 @@
 package net.lecousin.framework.core.tests.concurrent.synch;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -7,9 +13,6 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.mutable.MutableInteger;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 public class TestSynchronizationPoint extends LCCoreAbstractTest {
 
@@ -279,6 +282,69 @@ public class TestSynchronizationPoint extends LCCoreAbstractTest {
 		try { Thread.sleep(100); } catch (InterruptedException e) {}
 		spbp2.unblock();
 		spbp2.blockPause(1);
+	}
+	
+	@Test(timeout=30000)
+	public void testFuture() {
+		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Assert.assertFalse(sp.isDone());
+		sp.unblock();
+		try {
+			Assert.assertNull(sp.get());
+			Assert.assertNull(sp.get(1, TimeUnit.SECONDS));
+			Assert.assertTrue(sp.isDone());
+			Assert.assertFalse(sp.cancel(true));
+		} catch (Exception e) {
+			throw new AssertionError(e);
+		}
+		
+		sp = new SynchronizationPoint<>();
+		Assert.assertFalse(sp.isDone());
+		sp.cancel(new CancelException("test"));
+		try {
+			sp.get();
+			throw new AssertionError();
+		} catch (ExecutionException e) {
+			Assert.assertTrue(e.getCause() instanceof CancelException);
+		} catch (Throwable t) {
+			throw new AssertionError(t);
+		}
+		try {
+			sp.get(1, TimeUnit.SECONDS);
+			throw new AssertionError();
+		} catch (ExecutionException e) {
+			Assert.assertTrue(e.getCause() instanceof CancelException);
+		} catch (Throwable t) {
+			throw new AssertionError(t);
+		}
+		Assert.assertTrue(sp.isDone());
+		Assert.assertFalse(sp.cancel(true));
+		
+		sp = new SynchronizationPoint<>();
+		Assert.assertTrue(sp.cancel(true));
+		Assert.assertTrue(sp.isDone());
+
+		sp = new SynchronizationPoint<>();
+		Assert.assertFalse(sp.isDone());
+		sp.error(new Exception("test"));
+		try {
+			sp.get();
+			throw new AssertionError();
+		} catch (ExecutionException e) {
+			Assert.assertTrue(e.getCause() instanceof Exception);
+		} catch (Throwable t) {
+			throw new AssertionError(t);
+		}
+		try {
+			sp.get(1, TimeUnit.SECONDS);
+			throw new AssertionError();
+		} catch (ExecutionException e) {
+			Assert.assertTrue(e.getCause() instanceof Exception);
+		} catch (Throwable t) {
+			throw new AssertionError(t);
+		}
+		Assert.assertTrue(sp.isDone());
+		Assert.assertFalse(sp.cancel(true));
 	}
 	
 }

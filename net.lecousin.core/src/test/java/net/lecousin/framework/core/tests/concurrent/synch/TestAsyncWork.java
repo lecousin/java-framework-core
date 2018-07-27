@@ -1,5 +1,12 @@
 package net.lecousin.framework.core.tests.concurrent.synch;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
@@ -8,13 +15,12 @@ import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListenerReady.
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.log.Logger;
+import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.RunnableWithParameter;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 public class TestAsyncWork extends LCCoreAbstractTest {
 
@@ -282,6 +288,120 @@ public class TestAsyncWork extends LCCoreAbstractTest {
 		aw.unblockSuccess(Integer.valueOf(51));
 		if (result.get() != null)
 			throw result.get();
+		
+		aw = new AsyncWork<>();
+		result.set(null);
+		aw.listenInline((res) -> { result.set(new AssertionError("Listener onSuccess called")); });
+		aw.error(new Exception());
+		if (result.get() != null)
+			throw result.get();
+
+		aw = new AsyncWork<>();
+		result.set(null);
+		aw.listenInline((res) -> { result.set(new AssertionError("Listener onSuccess called")); });
+		aw.cancel(new CancelException("test"));
+		if (result.get() != null)
+			throw result.get();
+
+		try {
+			AsyncWork<Integer, Exception> aw1 = new AsyncWork<>();
+			aw1.listenInline(() -> { aw1.listenInline(() -> {}); });
+			aw1.error(new Exception());
+			
+			AsyncWork<Integer, Exception> aw2 = new AsyncWork<>();
+			aw2.listenInline(() -> { aw2.listenInline(() -> {}); });
+			aw2.cancel(new CancelException("test"));
+		} finally {
+		}
+		
+		Logger log = LCCore.get().getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class);
+		log.setLevel(Level.INFO);
+		
+		try {
+			
+			AsyncWork<Integer, Exception> aw1 = new AsyncWork<>();
+			aw1.listenInline(() -> { aw1.listenInline(() -> {}); });
+			aw1.error(new Exception());
+			
+			AsyncWork<Integer, Exception> aw2 = new AsyncWork<>();
+			aw2.listenInline(() -> { aw2.listenInline(() -> {}); });
+			aw2.cancel(new CancelException("test"));
+			
+			try {
+				aw2.blockResult(0);
+				throw new AssertionError("Should be cancelled");
+			} catch (CancelException e) {
+				// ok
+			} catch (Throwable t) {
+				throw new AssertionError("Should be cancelled", t);
+			}
+			
+		} finally {
+			log.setLevel(Level.DEBUG);
+		}
+	}
+	
+	@Test(timeout=30000)
+	public void testFuture() {
+		AsyncWork<Integer, Exception> aw = new AsyncWork<>();
+		Assert.assertFalse(aw.isDone());
+		aw.unblockSuccess(Integer.valueOf(51));
+		try {
+			Assert.assertEquals(51, aw.get().intValue());
+			Assert.assertEquals(51, aw.get(1, TimeUnit.SECONDS).intValue());
+			Assert.assertTrue(aw.isDone());
+			Assert.assertFalse(aw.cancel(true));
+		} catch (Exception e) {
+			throw new AssertionError(e);
+		}
+		
+		aw = new AsyncWork<>();
+		Assert.assertFalse(aw.isDone());
+		aw.cancel(new CancelException("test"));
+		try {
+			aw.get();
+			throw new AssertionError();
+		} catch (ExecutionException e) {
+			Assert.assertTrue(e.getCause() instanceof CancelException);
+		} catch (Throwable t) {
+			throw new AssertionError(t);
+		}
+		try {
+			aw.get(1, TimeUnit.SECONDS);
+			throw new AssertionError();
+		} catch (ExecutionException e) {
+			Assert.assertTrue(e.getCause() instanceof CancelException);
+		} catch (Throwable t) {
+			throw new AssertionError(t);
+		}
+		Assert.assertTrue(aw.isDone());
+		Assert.assertFalse(aw.cancel(true));
+		
+		aw = new AsyncWork<>();
+		Assert.assertTrue(aw.cancel(true));
+		Assert.assertTrue(aw.isDone());
+
+		aw = new AsyncWork<>();
+		Assert.assertFalse(aw.isDone());
+		aw.error(new Exception("test"));
+		try {
+			aw.get();
+			throw new AssertionError();
+		} catch (ExecutionException e) {
+			Assert.assertTrue(e.getCause() instanceof Exception);
+		} catch (Throwable t) {
+			throw new AssertionError(t);
+		}
+		try {
+			aw.get(1, TimeUnit.SECONDS);
+			throw new AssertionError();
+		} catch (ExecutionException e) {
+			Assert.assertTrue(e.getCause() instanceof Exception);
+		} catch (Throwable t) {
+			throw new AssertionError(t);
+		}
+		Assert.assertTrue(aw.isDone());
+		Assert.assertFalse(aw.cancel(true));
 	}
 	
 	@Test(timeout=30000)

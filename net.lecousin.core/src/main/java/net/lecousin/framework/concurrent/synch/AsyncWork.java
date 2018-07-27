@@ -309,19 +309,19 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
+		Application app = LCCore.getApplication();
+		Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
 		while (true) {
-			Application app = LCCore.getApplication();
-			Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
-			if (log == null || !log.debug())
+			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
 					try { listeners.get(i).ready(result); }
-					catch (Throwable t) { app.getDefaultLogger().error(
+					catch (Throwable t) { log.error(
 						"Exception thrown by an inline listener of AsyncWork: " + listeners.get(i), t); }
 			else
 				for (int i = 0; i < listeners.size(); ++i) {
 					long start = System.nanoTime();
 					try { listeners.get(i).ready(result); }
-					catch (Throwable t) { app.getDefaultLogger().error(
+					catch (Throwable t) { log.error(
 						"Exception thrown by an inline listener of AsyncWork: " + listeners.get(i), t); }
 					long time = System.nanoTime() - start;
 					if (time > 1000000) // more than 1ms
@@ -356,16 +356,16 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
+		Application app = LCCore.getApplication();
+		Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
 		while (true) {
-			Application app = LCCore.getApplication();
-			Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
-			if (log == null || !log.debug())
+			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
 					try { listeners.get(i).error(error); }
-					catch (Throwable t) { app.getDefaultLogger().error(
+					catch (Throwable t) { log.error(
 							"Exception thrown by an inline listener of AsyncWork, cancel it: " + listeners.get(i), t);
 						try { listeners.get(i).cancelled(new CancelException("Error in listener", t)); }
-						catch (Throwable t2) { app.getDefaultLogger().error(
+						catch (Throwable t2) { log.error(
 							"Exception thrown while cancelling inline listener of AsyncWork after error: "
 							+ listeners.get(i), t2); }
 					}
@@ -373,12 +373,11 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 				for (int i = 0; i < listeners.size(); ++i) {
 					long start = System.nanoTime();
 					try { listeners.get(i).error(error); }
-					catch (Throwable t) {
-						app.getDefaultLogger().error(
+					catch (Throwable t) { log.error(
 							"Exception thrown by an inline listener of AsyncWork, cancel it: "
 							+ listeners.get(i), t);
 						try { listeners.get(i).cancelled(new CancelException("Error in listener", t)); }
-						catch (Throwable t2) { app.getDefaultLogger().error(
+						catch (Throwable t2) { log.error(
 							"Exception thrown while cancelling inline listener of AsyncWork after error: "
 							+ listeners.get(i), t2); }
 					}
@@ -420,19 +419,19 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
+		Application app = LCCore.getApplication();
+		Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
 		while (true) {
-			Application app = LCCore.getApplication();
-			Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
-			if (log == null || !log.debug())
+			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
 					try { listeners.get(i).cancelled(event); }
-					catch (Throwable t) { app.getDefaultLogger().error(
+					catch (Throwable t) { log.error(
 						"Exception thrown by an inline listener of AsyncWork: " + listeners.get(i), t); }
 			else
 				for (int i = 0; i < listeners.size(); ++i) {
 					long start = System.nanoTime();
 					try { listeners.get(i).cancelled(event); }
-					catch (Throwable t) { app.getDefaultLogger().error(
+					catch (Throwable t) { log.error(
 						"Exception thrown by an inline listener of AsyncWork: " + listeners.get(i), t); }
 					long time = System.nanoTime() - start;
 					if (time > 1000000) // more than 1ms
