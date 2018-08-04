@@ -365,10 +365,9 @@ public class LinkedArrayList<T> implements List<T> {
 	}
 	
 	/** Remove all elements from the first array, and return an array containing them. */
-	@SuppressWarnings("unchecked")
-	public T[] removeFirstArray() {
-		if (size == 0) return (T[])new Object[0];
-		T[] a = (T[])new Object[head.size];
+	public T[] removeFirstArray(Class<T> cl) {
+		if (size == 0) return ArrayUtil.createGenericArrayOf(0, cl);
+		T[] a = ArrayUtil.createGenericArrayOf(head.size, cl);
 		System.arraycopy(head.array, 0, a, 0, head.size);
 		if (head == tail) {
 			head = tail = null;

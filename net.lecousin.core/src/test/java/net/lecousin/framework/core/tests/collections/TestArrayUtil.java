@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import net.lecousin.framework.collections.ArrayIterator;
@@ -271,11 +272,39 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(2, a.length);
 		Assert.assertEquals(10, a[0].intValue());
 		Assert.assertEquals(20, a[1].intValue());
+		
+		a = ArrayUtil.createGenericArrayOf(10, Integer.class);
+		Assert.assertEquals(10, a.length);
+		Assert.assertTrue(ArrayUtil.remove(a, Integer.valueOf(51)) == a);
+		
+		Assert.assertArrayEquals(new byte[] { 51,  24, 78 }, ArrayUtil.copy(new byte[] { 51,  24, 78 }));
+		Assert.assertArrayEquals(new int[] { 12, 87, 36412}, ArrayUtil.toArray(Arrays.asList(Integer.valueOf(12), Integer.valueOf(87), Integer.valueOf(36412))));
+		Assert.assertArrayEquals(new int[] { 15, 3 }, ArrayUtil.toArray(ArrayUtil.newArrayList(new Integer[] { Integer.valueOf(15), Integer.valueOf(3) })));
+		
+		Assert.assertEquals(-1, ArrayUtil.search(new byte[] { 5, 6 }, new byte[] {}));
+		Assert.assertEquals(-1, ArrayUtil.search(new byte[] { 5, 6 }, new byte[] { 4, 5, 7, 6 }));
+		Assert.assertEquals(0, ArrayUtil.search(new byte[] { 5, 6 }, new byte[] { 5, 6, 7, 8 }));
+		Assert.assertEquals(1, ArrayUtil.search(new byte[] { 5, 6 }, new byte[] { 4, 5, 6, 7 }));
+		Assert.assertEquals(2, ArrayUtil.search(new byte[] { 5, 6 }, new byte[] { 3, 4, 5, 6 }));
+		Assert.assertEquals(-1, ArrayUtil.search(new byte[] { 5, 6 }, new byte[] { 5 }));
+		Assert.assertEquals(-1, ArrayUtil.search(new byte[] { 5, 6 }, new byte[] { 6 }));
 	}
 	
 	@Test(timeout=30000)
 	public void testArrayIterator() {
-		ArrayIterator<Integer> it = new ArrayIterator<>(new Integer[] { Integer.valueOf(10), Integer.valueOf(20) });
+		Iterator<Integer> it = new ArrayIterator<>(new Integer[] { Integer.valueOf(10), Integer.valueOf(20) });
+		Assert.assertTrue(it.hasNext());
+		Assert.assertEquals(10, it.next().intValue());
+		Assert.assertTrue(it.hasNext());
+		Assert.assertEquals(20, it.next().intValue());
+		Assert.assertFalse(it.hasNext());
+		try {
+			it.next();
+			throw new AssertionError("Iterator must throw NoSuchElementException");
+		} catch (NoSuchElementException e) {
+		}
+		
+		it = ArrayUtil.iterator(new Integer[] { Integer.valueOf(10), Integer.valueOf(20) });
 		Assert.assertTrue(it.hasNext());
 		Assert.assertEquals(10, it.next().intValue());
 		Assert.assertTrue(it.hasNext());

@@ -19,10 +19,43 @@ public abstract class TestList extends TestCollection {
 	@Test(timeout=120000)
 	public void testList() {
 		List<Long> l = createLongCollection();
+		check(l);
+		
+		try {
+			l.get(10);
+			throw new AssertionError("Expected exception: IndexOutOfBoundsException");
+		} catch (IndexOutOfBoundsException e) {}
+		try {
+			l.remove(10);
+			throw new AssertionError("Expected exception: IndexOutOfBoundsException");
+		} catch (IndexOutOfBoundsException e) {}
+		try {
+			l.set(3, Long.valueOf(10));
+			throw new AssertionError("Expected exception: IndexOutOfBoundsException");
+		} catch (IndexOutOfBoundsException e) {}
+		
+		
 		l.add(0, Long.valueOf(1));
 		l.add(1, Long.valueOf(2));
 		l.add(2, Long.valueOf(3));
-		Assert.assertTrue(l.size() == 3);
+		check(l, 1, 2, 3);
+	
+		try {
+			l.remove(-10);
+			throw new AssertionError("Expected exception: IndexOutOfBoundsException");
+		} catch (IndexOutOfBoundsException e) {}
+		try {
+			l.remove(3);
+			throw new AssertionError("Expected exception: IndexOutOfBoundsException");
+		} catch (IndexOutOfBoundsException e) {}
+		try {
+			l.set(-2, Long.valueOf(11));
+			throw new AssertionError("Expected exception: IndexOutOfBoundsException");
+		} catch (IndexOutOfBoundsException e) {}
+		try {
+			l.set(3, Long.valueOf(11));
+			throw new AssertionError("Expected exception: IndexOutOfBoundsException");
+		} catch (IndexOutOfBoundsException e) {}
 		
 		Iterator<Long> it = l.iterator();
 		Assert.assertTrue(it.hasNext());
@@ -34,19 +67,16 @@ public abstract class TestList extends TestCollection {
 		Assert.assertFalse(it.hasNext());
 		
 		l.add(0, Long.valueOf(0));
-		Assert.assertTrue(l.size() == 4);
-		Assert.assertTrue(l.get(0).equals(Long.valueOf(0)));
-		Assert.assertTrue(l.get(1).equals(Long.valueOf(1)));
-		Assert.assertTrue(l.get(2).equals(Long.valueOf(2)));
-		Assert.assertTrue(l.get(3).equals(Long.valueOf(3)));
+		check (l, 0, 1, 2, 3);
 
 		l.add(2, Long.valueOf(100));
-		Assert.assertTrue(l.size() == 5);
-		Assert.assertTrue(l.get(0).equals(Long.valueOf(0)));
-		Assert.assertTrue(l.get(1).equals(Long.valueOf(1)));
-		Assert.assertTrue(l.get(2).equals(Long.valueOf(100)));
-		Assert.assertTrue(l.get(3).equals(Long.valueOf(2)));
-		Assert.assertTrue(l.get(4).equals(Long.valueOf(3)));
+		check (l, 0, 1, 100, 2, 3);
+		
+		Assert.assertEquals(0, l.subList(0, 0).size());
+		check(l.subList(0, 2), 0, 1);
+		check(l.subList(1, 1));
+		check(l.subList(1, 4), 1, 100, 2);
+		check(l.subList(3, 5), 2, 3);
 		
 		l.clear();
 		Assert.assertTrue(l.size() == 0);
@@ -291,7 +321,7 @@ public abstract class TestList extends TestCollection {
 		Assert.assertEquals(arr.size(), l.size());
 		for (int i = 0; i < arr.size(); ++i)
 			Assert.assertEquals("At index " + i, arr.get(i), l.get(i));
-
+		
 		// set(index)
 		for (int i = 0; i < arr.size(); ++i) {
 			arr.set(i, Long.valueOf(i));
@@ -300,9 +330,16 @@ public abstract class TestList extends TestCollection {
 		Assert.assertEquals(arr.size(), l.size());
 		for (int i = 0; i < arr.size(); ++i)
 			Assert.assertEquals("At index " + i, arr.get(i), l.get(i));
-
-		// TODO subList
-		
 	}
 	
+	protected void check(List<Long> l, long... expectedValues) {
+		Assert.assertEquals(expectedValues.length, l.size());
+		Iterator<Long> it = l.iterator();
+		for (int i = 0; i < expectedValues.length; ++i) {
+			Assert.assertTrue(it.hasNext());
+			Assert.assertTrue(it.next().equals(Long.valueOf(expectedValues[i])));
+		}
+		Assert.assertFalse(it.hasNext());
+	}
+
 }

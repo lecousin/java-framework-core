@@ -139,6 +139,9 @@ public class TestCollectionListener extends LCCoreAbstractTest {
 		
 		keep.removeListener(listener2);
 		keep.removeListener(listener);
+
+		keep.removeListener(listener2);
+		keep.removeListener(listener);
 	}
 	
 }

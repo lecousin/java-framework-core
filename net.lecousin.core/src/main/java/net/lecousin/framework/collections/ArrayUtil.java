@@ -143,7 +143,7 @@ public final class ArrayUtil {
 		if (a2 == null) return false;
 		if (a1.length != a2.length) return false;
 		for (int i = 0; i < a1.length; ++i)
-			if (!a1[i].equals(a2[i])) return false;
+			if (!ObjectUtil.equalsOrNull(a1[i], a2[i])) return false;
 		return true;
 	}
 	
@@ -419,11 +419,12 @@ public final class ArrayUtil {
 		int found = 0;
 		for (int i = 0; i < a.length; ++i) {
 			T e = a[i];
-			if (found == 0 && e.equals(elem)) {
+			if (found == 0 && ObjectUtil.equalsOrNull(e, elem)) {
 				found = 1;
 				continue;
 			}
-			na[i - found] = e;
+			if (found > 0 || i < a.length - 1)
+				na[i - found] = e;
 		}
 		if (found == 0) return a;
 		return na;
