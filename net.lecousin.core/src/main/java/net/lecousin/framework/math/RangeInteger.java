@@ -1,5 +1,11 @@
 package net.lecousin.framework.math;
 
+import java.text.ParseException;
+
+import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.StringParser;
+import net.lecousin.framework.util.StringParser.Parse;
+
 /**
  * Range of integer values, with a minimum and maximum.
  */
@@ -15,6 +21,33 @@ public class RangeInteger {
 	public RangeInteger(RangeInteger copy) {
 		this.min = copy.min;
 		this.max = copy.max;
+	}
+	
+	/** Parse from a String. */
+	@Parse
+	public RangeInteger(String string) throws ParseException, NumberFormatException {
+		if (string == null || string.isEmpty())
+			throw new ParseException("Empty string", 0);
+		char c = string.charAt(0);
+		if (c == ']' || c == '[') {
+			int sep = string.indexOf('-');
+			if (sep < 0)
+				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]", 1);
+			min = Integer.parseInt(string.substring(1, sep));
+			if (c == ']') min++;
+			c = string.charAt(string.length() - 1);
+			if (c != ']' && c != '[')
+				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]",
+					string.length() - 1);
+			max = Integer.parseInt(string.substring(sep + 1, string.length() - 1));
+			if (c == '[') max--;
+			if (max < min) {
+				int i = min;
+				min = max;
+				max = i;
+			}
+		} else
+			min = max = Integer.parseInt(string);
 	}
 	
 	public int min;
@@ -46,6 +79,24 @@ public class RangeInteger {
 		return new RangeInteger(Math.max(min, r.min), Math.min(max, r.max));
 	}
 	
+	/** Remove the intersection between this range and the given range, and return the range before and the range after the intersection. */
+	public Pair<RangeInteger,RangeInteger> removeIntersect(RangeInteger o) {
+		if (o.max < min || o.min > max) // o is outside: no intersection
+			return new Pair<>(copy(), null);
+		if (o.min <= min) {
+			// nothing before
+			if (o.max >= max)
+				return new Pair<>(null, null); // o is fully overlapping this
+			return new Pair<>(null, new RangeInteger(o.max + 1, max));
+		}
+		if (o.max >= max) {
+			// nothing after
+			return new Pair<>(new RangeInteger(min, o.min - 1), null);
+		}
+		// in the middle
+		return new Pair<>(new RangeInteger(min, o.min - 1), new RangeInteger(o.max + 1, max));
+	}
+	
 	public int getLength() {
 		return max - min + 1;
 	}
@@ -53,6 +104,14 @@ public class RangeInteger {
 	@Override
 	public String toString() {
 		return "[" + min + "-" + max + "]";
+	}
+	
+	/** Parser from String to RangeInteger. */
+	public static class Parser implements StringParser<RangeInteger> {
+		@Override
+		public RangeInteger parse(String string) throws ParseException {
+			return new RangeInteger(string);
+		}
 	}
 	
 }

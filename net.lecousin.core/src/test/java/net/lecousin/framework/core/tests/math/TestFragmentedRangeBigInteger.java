@@ -4,32 +4,44 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.math.FragmentedRangeBigInteger;
 import net.lecousin.framework.math.RangeBigInteger;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 public class TestFragmentedRangeBigInteger extends LCCoreAbstractTest {
 
-	@Test
-	public void test() {
+	@Test(timeout=30000)
+	public void test() throws Exception {
 		FragmentedRangeBigInteger f = new FragmentedRangeBigInteger();
 		Assert.assertEquals(0, f.size());
 		Assert.assertEquals(BigInteger.ZERO, f.getMin());
 		Assert.assertEquals(BigInteger.ZERO, f.getMax());
 		Assert.assertNull(f.removeFirstValue());
 		Assert.assertEquals(0, FragmentedRangeBigInteger.intersect(new FragmentedRangeBigInteger(), new FragmentedRangeBigInteger()).size());
+		Assert.assertNull(f.removeBiggestRange());
+		f.removeRange(BigInteger.valueOf(10), BigInteger.valueOf(20));
 		// 12
 		f.addValue(BigInteger.valueOf(12));
 		Assert.assertEquals(1, f.size());
 		Assert.assertEquals(0, FragmentedRangeBigInteger.intersect(f, new FragmentedRangeBigInteger()).size());
 		Assert.assertEquals(0, FragmentedRangeBigInteger.intersect(new FragmentedRangeBigInteger(), f).size());
+		Assert.assertEquals(BigInteger.valueOf(12), f.removeFirstValue());
+		Assert.assertEquals(0, f.size());
+		f.addValue(BigInteger.valueOf(12));
+		Assert.assertEquals(1, f.size());
 		// 10-15
 		f.addRange(new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(15)));
 		Assert.assertEquals(1, f.size());
 		f = new FragmentedRangeBigInteger();
+		// 10-15
+		f.addRange(new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(15)));
+		Assert.assertEquals(1, f.size());
+		// remove
+		Assert.assertEquals(new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(15)), f.removeBiggestRange());
+		Assert.assertEquals(0, f.size());
 		// 10-15
 		f.addRange(new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(15)));
 		Assert.assertEquals(1, f.size());
@@ -79,6 +91,7 @@ public class TestFragmentedRangeBigInteger extends LCCoreAbstractTest {
 		Assert.assertFalse(f.containsRange(BigInteger.valueOf(99), BigInteger.valueOf(120)));
 		Assert.assertFalse(f.containsRange(BigInteger.valueOf(130), BigInteger.valueOf(160)));
 		Assert.assertFalse(f.containsRange(BigInteger.valueOf(300), BigInteger.valueOf(400)));
+		Assert.assertTrue(f.containsRange(BigInteger.valueOf(500), BigInteger.valueOf(120)));
 
 		// 9-31, 100-155, 175-180, 190-250
 		f.addRange(BigInteger.valueOf(151), BigInteger.valueOf(155));
@@ -141,9 +154,23 @@ public class TestFragmentedRangeBigInteger extends LCCoreAbstractTest {
 			new RangeBigInteger(BigInteger.valueOf(157), BigInteger.valueOf(400)),
 			new RangeBigInteger(BigInteger.valueOf(500), BigInteger.valueOf(500)));
 		
+		f.addRange(BigInteger.valueOf(159), BigInteger.valueOf(162));
+		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
+				new RangeBigInteger(BigInteger.valueOf(100), BigInteger.valueOf(155)),
+				new RangeBigInteger(BigInteger.valueOf(157), BigInteger.valueOf(400)),
+				new RangeBigInteger(BigInteger.valueOf(500), BigInteger.valueOf(500)));
+		
 		check(FragmentedRangeBigInteger.intersect(f, new FragmentedRangeBigInteger(new RangeBigInteger(BigInteger.valueOf(90), BigInteger.valueOf(450)))),
 			new RangeBigInteger(BigInteger.valueOf(100), BigInteger.valueOf(155)),
 			new RangeBigInteger(BigInteger.valueOf(157), BigInteger.valueOf(400)));
+		FragmentedRangeBigInteger f2 = new FragmentedRangeBigInteger();
+		f2.add(new RangeBigInteger(BigInteger.valueOf(18), BigInteger.valueOf(20)));
+		f2.add(new RangeBigInteger(BigInteger.valueOf(200), BigInteger.valueOf(300)));
+		f2.add(new RangeBigInteger(BigInteger.valueOf(350), BigInteger.valueOf(450)));
+		check(FragmentedRangeBigInteger.intersect(f, f2),
+			new RangeBigInteger(BigInteger.valueOf(18), BigInteger.valueOf(20)),
+			new RangeBigInteger(BigInteger.valueOf(200), BigInteger.valueOf(300)),
+			new RangeBigInteger(BigInteger.valueOf(350), BigInteger.valueOf(400)));
 		check(f.copy(), new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
 			new RangeBigInteger(BigInteger.valueOf(100), BigInteger.valueOf(155)),
 			new RangeBigInteger(BigInteger.valueOf(157), BigInteger.valueOf(400)),
@@ -190,6 +217,45 @@ public class TestFragmentedRangeBigInteger extends LCCoreAbstractTest {
 		f.removeRange(BigInteger.valueOf(125), BigInteger.valueOf(145));
 		check(f, new RangeBigInteger(BigInteger.valueOf(14), BigInteger.valueOf(31)),
 			new RangeBigInteger(BigInteger.valueOf(500), BigInteger.valueOf(500)));
+		
+		f = new FragmentedRangeBigInteger();
+		f.addRange(BigInteger.valueOf(10), BigInteger.valueOf(20));
+		f.addRange(BigInteger.valueOf(30), BigInteger.valueOf(40));
+		f.addRange(BigInteger.valueOf(50), BigInteger.valueOf(60));
+		f.addRange(BigInteger.valueOf(70), BigInteger.valueOf(80));
+		f.addRange(BigInteger.valueOf(90), BigInteger.valueOf(100));
+		f.addRange(BigInteger.valueOf(25), BigInteger.valueOf(75));
+		check(f, new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(20)), new RangeBigInteger(BigInteger.valueOf(25), BigInteger.valueOf(80)), new RangeBigInteger(BigInteger.valueOf(90), BigInteger.valueOf(100)));
+		f.addRange(BigInteger.valueOf(24), BigInteger.valueOf(85));
+		check(f, new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(20)), new RangeBigInteger(BigInteger.valueOf(24), BigInteger.valueOf(85)), new RangeBigInteger(BigInteger.valueOf(90), BigInteger.valueOf(100)));
+		f.addValue(BigInteger.valueOf(21));
+		check(f, new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(21)), new RangeBigInteger(BigInteger.valueOf(24), BigInteger.valueOf(85)), new RangeBigInteger(BigInteger.valueOf(90), BigInteger.valueOf(100)));
+		f.addValue(BigInteger.valueOf(15));
+		check(f, new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(21)), new RangeBigInteger(BigInteger.valueOf(24), BigInteger.valueOf(85)), new RangeBigInteger(BigInteger.valueOf(90), BigInteger.valueOf(100)));
+		f.removeRange(BigInteger.valueOf(19), BigInteger.valueOf(21));
+		check(f, new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(18)), new RangeBigInteger(BigInteger.valueOf(24), BigInteger.valueOf(85)), new RangeBigInteger(BigInteger.valueOf(90), BigInteger.valueOf(100)));
+		f.removeRange(BigInteger.valueOf(10), BigInteger.valueOf(18));
+		check(f, new RangeBigInteger(BigInteger.valueOf(24), BigInteger.valueOf(85)), new RangeBigInteger(BigInteger.valueOf(90), BigInteger.valueOf(100)));
+		f.removeRange(BigInteger.valueOf(24), BigInteger.valueOf(87));
+		check(f, new RangeBigInteger(BigInteger.valueOf(90), BigInteger.valueOf(100)));
+		
+		try { f = new FragmentedRangeBigInteger.Parser().parse("{hello}"); throw new AssertionError("Error case"); } catch (Exception e) {}
+		try { f = new FragmentedRangeBigInteger.Parser().parse("world"); throw new AssertionError("Error case"); } catch (Exception e) {}
+		try { f = new FragmentedRangeBigInteger.Parser().parse("{[10-20]"); throw new AssertionError("Error case"); } catch (Exception e) {}
+		f = new FragmentedRangeBigInteger.Parser().parse(null);
+		check(f);
+		f = new FragmentedRangeBigInteger.Parser().parse("");
+		check(f);
+		f = new FragmentedRangeBigInteger.Parser().parse("[10-20]");
+		check(f, new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(20)));
+		f = new FragmentedRangeBigInteger.Parser().parse("[10-20],[30-40]");
+		check(f, new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(20)), new RangeBigInteger(BigInteger.valueOf(30), BigInteger.valueOf(40)));
+		f = new FragmentedRangeBigInteger.Parser().parse("[10-20],");
+		check(f, new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(20)));
+		f = new FragmentedRangeBigInteger.Parser().parse("{[10-20], ,[30-40],}");
+		check(f, new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(20)), new RangeBigInteger(BigInteger.valueOf(30), BigInteger.valueOf(40)));
+		f = new FragmentedRangeBigInteger.Parser().parse("{[10-20],[30-40],[12-18]},[50-60]");
+		check(f, new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(20)), new RangeBigInteger(BigInteger.valueOf(30), BigInteger.valueOf(40)));
 	}
 	
 	private static void check(List<RangeBigInteger> list, RangeBigInteger... expected) {

@@ -1,6 +1,10 @@
 package net.lecousin.framework.math;
 
+import java.text.ParseException;
+
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.StringParser;
+import net.lecousin.framework.util.StringParser.Parse;
 
 /**
  * Range of long values, with a minimum and maximum.
@@ -19,9 +23,38 @@ public class RangeLong {
 		this.max = copy.max;
 	}
 	
+	/** Parse from a String. */
+	@Parse
+	public RangeLong(String string) throws ParseException, NumberFormatException {
+		if (string == null || string.isEmpty())
+			throw new ParseException("Empty string", 0);
+		char c = string.charAt(0);
+		if (c == ']' || c == '[') {
+			int sep = string.indexOf('-');
+			if (sep < 0)
+				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]", 1);
+			min = Long.parseLong(string.substring(1, sep));
+			if (c == ']') min++;
+			c = string.charAt(string.length() - 1);
+			if (c != ']' && c != '[')
+				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]",
+					string.length() - 1);
+			max = Long.parseLong(string.substring(sep + 1, string.length() - 1));
+			if (c == '[') max--;
+			if (max < min) {
+				long i = min;
+				min = max;
+				max = i;
+			}
+		} else
+			min = max = Long.parseLong(string);
+	}
+	
 	public long min;
 	public long max;
-	
+
+	public RangeLong copy() { return new RangeLong(min,max); }
+
 	@Override
 	public boolean equals(Object obj) {
 		if (obj == null || !(obj instanceof RangeLong)) return false;
@@ -44,43 +77,41 @@ public class RangeLong {
 	}
 	
 	/** Return the intersection between this range and the given range. */
-	public RangeLong intersect(RangeLong o) {
-		if (o.min < min) {
-			if (o.max < min) return null; // o is before
-			return new RangeLong(min, o.max > max ? max : o.max);
-		}
-		if (max < o.min) return null; // this is before
-		return new RangeLong(o.min, o.max > max ? max : o.max);
+	public RangeLong intersect(RangeLong r) {
+		if (min > r.max) return null;
+		if (max < r.min) return null;
+		return new RangeLong(Math.max(min, r.min), Math.min(max, r.max));
 	}
 	
 	/** Remove the intersection between this range and the given range, and return the range before and the range after the intersection. */
 	public Pair<RangeLong,RangeLong> removeIntersect(RangeLong o) {
-		RangeLong before;
-		RangeLong after;
-		if (min < o.min) {
-			if (max < o.min) {
-				before = new RangeLong(this);
-				after = null;
-			} else {
-				before = new RangeLong(min, o.min);
-				if (o.max >= max)
-					after = null;
-				else
-					after = new RangeLong(max + 1, o.max);
-			}
-		} else {
-			before = null;
-			if (max <= o.max)
-				after = null;
-			else
-				after = new RangeLong(max + 1, o.max);
+		if (o.max < min || o.min > max) // o is outside: no intersection
+			return new Pair<>(copy(), null);
+		if (o.min <= min) {
+			// nothing before
+			if (o.max >= max)
+				return new Pair<>(null, null); // o is fully overlapping this
+			return new Pair<>(null, new RangeLong(o.max + 1, max));
 		}
-		return new Pair<RangeLong,RangeLong>(before, after);
+		if (o.max >= max) {
+			// nothing after
+			return new Pair<>(new RangeLong(min, o.min - 1), null);
+		}
+		// in the middle
+		return new Pair<>(new RangeLong(min, o.min - 1), new RangeLong(o.max + 1, max));
 	}
 	
 	@Override
 	public String toString() {
 		return "[" + min + "-" + max + "]";
+	}
+	
+	/** Parser from String to RangeInteger. */
+	public static class Parser implements StringParser<RangeLong> {
+		@Override
+		public RangeLong parse(String string) throws ParseException {
+			return new RangeLong(string);
+		}
 	}
 	
 }

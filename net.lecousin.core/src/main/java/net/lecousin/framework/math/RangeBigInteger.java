@@ -1,6 +1,11 @@
 package net.lecousin.framework.math;
 
 import java.math.BigInteger;
+import java.text.ParseException;
+
+import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.StringParser;
+import net.lecousin.framework.util.StringParser.Parse;
 
 /**
  * Range of integer values, with a minimum and maximum.
@@ -19,8 +24,37 @@ public class RangeBigInteger {
 		this.max = copy.max;
 	}
 	
+	/** Parse from a String. */
+	@Parse
+	public RangeBigInteger(String string) throws ParseException, NumberFormatException {
+		if (string == null || string.isEmpty())
+			throw new ParseException("Empty string", 0);
+		char c = string.charAt(0);
+		if (c == ']' || c == '[') {
+			int sep = string.indexOf('-');
+			if (sep < 0)
+				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]", 1);
+			min = new BigInteger(string.substring(1, sep));
+			if (c == ']') min = min.add(BigInteger.ONE);
+			c = string.charAt(string.length() - 1);
+			if (c != ']' && c != '[')
+				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]",
+					string.length() - 1);
+			max = new BigInteger(string.substring(sep + 1, string.length() - 1));
+			if (c == '[') max = max.subtract(BigInteger.ONE);
+			if (max.compareTo(min) < 0) {
+				BigInteger i = min;
+				min = max;
+				max = i;
+			}
+		} else
+			min = max = new BigInteger(string);
+	}
+	
 	public BigInteger min;
 	public BigInteger max;
+	
+	public RangeBigInteger copy() { return new RangeBigInteger(min,max); }
 	
 	@Override
 	public boolean equals(Object obj) {
@@ -40,13 +74,28 @@ public class RangeBigInteger {
 	}
 	
 	/** Return the intersection between this range and the given range. */
-	public RangeBigInteger intersect(RangeBigInteger o) {
-		if (o.min.compareTo(min) < 0) {
-			if (o.max.compareTo(min) < 0) return null; // o is before
-			return new RangeBigInteger(min, o.max.compareTo(max) > 0 ? max : o.max);
+	public RangeBigInteger intersect(RangeBigInteger r) {
+		if (min.compareTo(r.max) > 0) return null;
+		if (max.compareTo(r.min) < 0) return null;
+		return new RangeBigInteger(min.compareTo(r.min) <= 0 ? r.min : min, max.compareTo(r.max) <= 0 ? max : r.max);
+	}
+	
+	/** Remove the intersection between this range and the given range, and return the range before and the range after the intersection. */
+	public Pair<RangeBigInteger,RangeBigInteger> removeIntersect(RangeBigInteger o) {
+		if (o.max.compareTo(min) < 0 || o.min.compareTo(max) > 0) // o is outside: no intersection
+			return new Pair<>(copy(), null);
+		if (o.min.compareTo(min) <= 0) {
+			// nothing before
+			if (o.max.compareTo(max) >= 0)
+				return new Pair<>(null, null); // o is fully overlapping this
+			return new Pair<>(null, new RangeBigInteger(o.max.add(BigInteger.ONE), max));
 		}
-		if (max.compareTo(o.min) < 0) return null; // this is before
-		return new RangeBigInteger(o.min, o.max.compareTo(max) > 0 ? max : o.max);
+		if (o.max.compareTo(max) >= 0) {
+			// nothing after
+			return new Pair<>(new RangeBigInteger(min, o.min.subtract(BigInteger.ONE)), null);
+		}
+		// in the middle
+		return new Pair<>(new RangeBigInteger(min, o.min.subtract(BigInteger.ONE)), new RangeBigInteger(o.max.add(BigInteger.ONE), max));
 	}
 	
 	public BigInteger getLength() {
@@ -58,4 +107,12 @@ public class RangeBigInteger {
 		return "[" + min.toString() + "-" + max.toString() + "]";
 	}
 	
+	/** Parser from String to RangeInteger. */
+	public static class Parser implements StringParser<RangeBigInteger> {
+		@Override
+		public RangeBigInteger parse(String string) throws ParseException {
+			return new RangeBigInteger(string);
+		}
+	}
+
 }

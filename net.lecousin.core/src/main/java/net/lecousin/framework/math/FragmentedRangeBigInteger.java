@@ -1,9 +1,13 @@
 package net.lecousin.framework.math;
 
 import java.math.BigInteger;
+import java.text.ParseException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
+
+import net.lecousin.framework.util.StringParser;
+import net.lecousin.framework.util.StringParser.Parse;
 
 /**
  * List of RangeBigInteger representing a fragmented data.
@@ -21,6 +25,26 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 	public FragmentedRangeBigInteger(RangeBigInteger r) {
 		super();
 		add(r);
+	}
+	
+	/** Parse from string. */
+	@Parse
+	public FragmentedRangeBigInteger(String string) throws ParseException, NumberFormatException {
+		if (string == null || string.isEmpty())
+			return;
+		char c = string.charAt(0);
+		if (c == '{') {
+			int end = string.indexOf('}');
+			if (end < 0)
+				throw new ParseException("Missing }", 0);
+			string = string.substring(1, end);
+		}
+		String[] ranges = string.split(",");
+		for (String range : ranges) {
+			range = range.trim();
+			if (range.isEmpty()) continue;
+			addRange(new RangeBigInteger(range));
+		}
 	}
 	
 	/** Return the intersection between the 2 fragmented data. */
@@ -316,6 +340,14 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 		}
 		s.append("}");
 		return s.toString();
+	}
+	
+	/** String parser. */
+	public static class Parser implements StringParser<FragmentedRangeBigInteger> {
+		@Override
+		public FragmentedRangeBigInteger parse(String string) throws ParseException {
+			return new FragmentedRangeBigInteger(string);
+		}
 	}
 	
 }

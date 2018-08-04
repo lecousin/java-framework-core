@@ -12,23 +12,35 @@ import org.junit.Test;
 
 public class TestFragmentedRangeInteger extends LCCoreAbstractTest {
 
-	@Test
-	public void test() {
+	@Test(timeout=30000)
+	public void test() throws Exception {
 		FragmentedRangeInteger f = new FragmentedRangeInteger();
 		Assert.assertEquals(0, f.size());
 		Assert.assertEquals(Integer.MAX_VALUE, f.getMin());
 		Assert.assertEquals(Integer.MIN_VALUE, f.getMax());
 		Assert.assertNull(f.removeFirstValue());
 		Assert.assertEquals(0, FragmentedRangeInteger.intersect(new FragmentedRangeInteger(), new FragmentedRangeInteger()).size());
+		Assert.assertNull(f.removeBiggestRange());
+		f.remove(10, 20);
 		// 12
 		f.addValue(12);
 		Assert.assertEquals(1, f.size());
 		Assert.assertEquals(0, FragmentedRangeInteger.intersect(f, new FragmentedRangeInteger()).size());
 		Assert.assertEquals(0, FragmentedRangeInteger.intersect(new FragmentedRangeInteger(), f).size());
+		Assert.assertEquals(12, f.removeFirstValue().intValue());
+		Assert.assertEquals(0, f.size());
+		f.addValue(12);
+		Assert.assertEquals(1, f.size());
 		// 10-15
 		f.addRange(new RangeInteger(10, 15));
 		Assert.assertEquals(1, f.size());
 		f = new FragmentedRangeInteger();
+		f.addRange(new RangeInteger(10, 15));
+		Assert.assertEquals(1, f.size());
+		// remove
+		Assert.assertEquals(new RangeInteger(10, 15), f.removeBiggestRange());
+		Assert.assertEquals(0, f.size());
+		// 10-15
 		f.addRange(new RangeInteger(10, 15));
 		Assert.assertEquals(1, f.size());
 		// 10-20
@@ -76,6 +88,7 @@ public class TestFragmentedRangeInteger extends LCCoreAbstractTest {
 		Assert.assertFalse(f.containsRange(99, 120));
 		Assert.assertFalse(f.containsRange(130, 160));
 		Assert.assertFalse(f.containsRange(300, 400));
+		Assert.assertTrue(f.containsRange(500, 120));
 
 		// 9-31, 100-155, 175-180, 190-250
 		f.addRange(151, 155);
@@ -120,8 +133,16 @@ public class TestFragmentedRangeInteger extends LCCoreAbstractTest {
 		f.addValue(500);
 		check(f, new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 400), new RangeInteger(500, 500));
 		
+		f.addRange(159, 162);
+		check(f, new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 400), new RangeInteger(500, 500));
+		
 		check(FragmentedRangeInteger.intersect(f, new FragmentedRangeInteger(new RangeInteger(90, 450))),
 			new RangeInteger(100, 155), new RangeInteger(157, 400));
+		FragmentedRangeInteger f2 = new FragmentedRangeInteger();
+		f2.add(new RangeInteger(18, 20));
+		f2.add(new RangeInteger(200, 300));
+		f2.add(new RangeInteger(350, 450));
+		check(FragmentedRangeInteger.intersect(f, f2), new RangeInteger(18, 20), new RangeInteger(200, 300), new RangeInteger(350, 400));
 		check(f.copy(), new RangeInteger(14, 31), new RangeInteger(100, 155), new RangeInteger(157, 400), new RangeInteger(500, 500));
 		
 		Assert.assertNull(f.removeBestRangeForSize(1000));
@@ -147,6 +168,45 @@ public class TestFragmentedRangeInteger extends LCCoreAbstractTest {
 		// 14-31, 500-500
 		f.remove(125, 145);
 		check(f, new RangeInteger(14, 31), new RangeInteger(500, 500));
+		
+		f = new FragmentedRangeInteger();
+		f.addRange(10, 20);
+		f.addRange(30, 40);
+		f.addRange(50, 60);
+		f.addRange(70, 80);
+		f.addRange(90, 100);
+		f.addRange(25, 75);
+		check(f, new RangeInteger(10, 20), new RangeInteger(25, 80), new RangeInteger(90, 100));
+		f.addRange(24, 85);
+		check(f, new RangeInteger(10, 20), new RangeInteger(24, 85), new RangeInteger(90, 100));
+		f.addValue(21);
+		check(f, new RangeInteger(10, 21), new RangeInteger(24, 85), new RangeInteger(90, 100));
+		f.addValue(15);
+		check(f, new RangeInteger(10, 21), new RangeInteger(24, 85), new RangeInteger(90, 100));
+		f.remove(19, 21);
+		check(f, new RangeInteger(10, 18), new RangeInteger(24, 85), new RangeInteger(90, 100));
+		f.remove(10, 18);
+		check(f, new RangeInteger(24, 85), new RangeInteger(90, 100));
+		f.remove(24, 87);
+		check(f, new RangeInteger(90, 100));
+		
+		try { f = new FragmentedRangeInteger.Parser().parse("{hello}"); throw new AssertionError("Error case"); } catch (Exception e) {}
+		try { f = new FragmentedRangeInteger.Parser().parse("world"); throw new AssertionError("Error case"); } catch (Exception e) {}
+		try { f = new FragmentedRangeInteger.Parser().parse("{[10-20]"); throw new AssertionError("Error case"); } catch (Exception e) {}
+		f = new FragmentedRangeInteger.Parser().parse(null);
+		check(f);
+		f = new FragmentedRangeInteger.Parser().parse("");
+		check(f);
+		f = new FragmentedRangeInteger.Parser().parse("[10-20]");
+		check(f, new RangeInteger(10, 20));
+		f = new FragmentedRangeInteger.Parser().parse("[10-20],[30-40]");
+		check(f, new RangeInteger(10, 20), new RangeInteger(30, 40));
+		f = new FragmentedRangeInteger.Parser().parse("[10-20],");
+		check(f, new RangeInteger(10, 20));
+		f = new FragmentedRangeInteger.Parser().parse("{[10-20], ,[30-40],}");
+		check(f, new RangeInteger(10, 20), new RangeInteger(30, 40));
+		f = new FragmentedRangeInteger.Parser().parse("{[10-20],[30-40],[12-18]},[50-60]");
+		check(f, new RangeInteger(10, 20), new RangeInteger(30, 40));
 	}
 	
 	private static void check(List<RangeInteger> list, RangeInteger... expected) {

@@ -3,32 +3,44 @@ package net.lecousin.framework.core.tests.math;
 import java.util.Arrays;
 import java.util.List;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.math.FragmentedRangeLong;
 import net.lecousin.framework.math.RangeLong;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 public class TestFragmentedRangeLong extends LCCoreAbstractTest {
 
-	@Test
-	public void test() {
+	@Test(timeout=30000)
+	public void test() throws Exception {
 		FragmentedRangeLong f = new FragmentedRangeLong();
 		Assert.assertEquals(0, f.size());
 		Assert.assertEquals(Long.MAX_VALUE, f.getMin());
 		Assert.assertEquals(Long.MIN_VALUE, f.getMax());
 		Assert.assertNull(f.removeFirstValue());
 		Assert.assertEquals(0, FragmentedRangeLong.intersect(new FragmentedRangeLong(), new FragmentedRangeLong()).size());
+		Assert.assertNull(f.removeBiggestRange());
+		f.removeRange(10, 20);
 		// 12
 		f.addValue(12);
 		Assert.assertEquals(1, f.size());
 		Assert.assertEquals(0, FragmentedRangeLong.intersect(f, new FragmentedRangeLong()).size());
 		Assert.assertEquals(0, FragmentedRangeLong.intersect(new FragmentedRangeLong(), f).size());
+		Assert.assertEquals(12, f.removeFirstValue().longValue());
+		Assert.assertEquals(0, f.size());
+		f.addValue(12);
+		Assert.assertEquals(1, f.size());
 		// 10-15
 		f.addRange(new RangeLong(10, 15));
 		Assert.assertEquals(1, f.size());
 		f = new FragmentedRangeLong();
+		// 10-15
+		f.addRange(new RangeLong(10, 15));
+		Assert.assertEquals(1, f.size());
+		// remove
+		Assert.assertEquals(new RangeLong(10, 15), f.removeBiggestRange());
+		Assert.assertEquals(0, f.size());
 		// 10-15
 		f.addRange(new RangeLong(10, 15));
 		Assert.assertEquals(1, f.size());
@@ -78,6 +90,7 @@ public class TestFragmentedRangeLong extends LCCoreAbstractTest {
 		Assert.assertFalse(f.containsRange(99, 120));
 		Assert.assertFalse(f.containsRange(130, 160));
 		Assert.assertFalse(f.containsRange(300, 400));
+		Assert.assertTrue(f.containsRange(500, 120));
 
 		// 9-31, 100-155, 175-180, 190-250
 		f.addRange(151, 155);
@@ -121,9 +134,17 @@ public class TestFragmentedRangeLong extends LCCoreAbstractTest {
 		// 14-31, 100-155, 157-400, 500-500
 		f.addValue(500);
 		check(f, new RangeLong(14, 31), new RangeLong(100, 155), new RangeLong(157, 400), new RangeLong(500, 500));
+		
+		f.addRange(159, 162);
+		check(f, new RangeLong(14, 31), new RangeLong(100, 155), new RangeLong(157, 400), new RangeLong(500, 500));
 
 		check(FragmentedRangeLong.intersect(f, new FragmentedRangeLong(new RangeLong(90, 450))),
 			new RangeLong(100, 155), new RangeLong(157, 400));
+		FragmentedRangeLong f2 = new FragmentedRangeLong();
+		f2.add(new RangeLong(18, 20));
+		f2.add(new RangeLong(200, 300));
+		f2.add(new RangeLong(350, 450));
+		check(FragmentedRangeLong.intersect(f, f2), new RangeLong(18, 20), new RangeLong(200, 300), new RangeLong(350, 400));
 		check(f.copy(), new RangeLong(14, 31), new RangeLong(100, 155), new RangeLong(157, 400), new RangeLong(500, 500));
 		
 		Assert.assertNull(f.removeBestRangeForSize(1000));
@@ -149,6 +170,45 @@ public class TestFragmentedRangeLong extends LCCoreAbstractTest {
 		// 14-31, 500-500
 		f.removeRange(125, 145);
 		check(f, new RangeLong(14, 31), new RangeLong(500, 500));
+		
+		f = new FragmentedRangeLong();
+		f.addRange(10, 20);
+		f.addRange(30, 40);
+		f.addRange(50, 60);
+		f.addRange(70, 80);
+		f.addRange(90, 100);
+		f.addRange(25, 75);
+		check(f, new RangeLong(10, 20), new RangeLong(25, 80), new RangeLong(90, 100));
+		f.addRange(24, 85);
+		check(f, new RangeLong(10, 20), new RangeLong(24, 85), new RangeLong(90, 100));
+		f.addValue(21);
+		check(f, new RangeLong(10, 21), new RangeLong(24, 85), new RangeLong(90, 100));
+		f.addValue(15);
+		check(f, new RangeLong(10, 21), new RangeLong(24, 85), new RangeLong(90, 100));
+		f.removeRange(19, 21);
+		check(f, new RangeLong(10, 18), new RangeLong(24, 85), new RangeLong(90, 100));
+		f.removeRange(10, 18);
+		check(f, new RangeLong(24, 85), new RangeLong(90, 100));
+		f.removeRange(24, 87);
+		check(f, new RangeLong(90, 100));
+		
+		try { f = new FragmentedRangeLong.Parser().parse("{hello}"); throw new AssertionError("Error case"); } catch (Exception e) {}
+		try { f = new FragmentedRangeLong.Parser().parse("world"); throw new AssertionError("Error case"); } catch (Exception e) {}
+		try { f = new FragmentedRangeLong.Parser().parse("{[10-20]"); throw new AssertionError("Error case"); } catch (Exception e) {}
+		f = new FragmentedRangeLong.Parser().parse(null);
+		check(f);
+		f = new FragmentedRangeLong.Parser().parse("");
+		check(f);
+		f = new FragmentedRangeLong.Parser().parse("[10-20]");
+		check(f, new RangeLong(10, 20));
+		f = new FragmentedRangeLong.Parser().parse("[10-20],[30-40]");
+		check(f, new RangeLong(10, 20), new RangeLong(30, 40));
+		f = new FragmentedRangeLong.Parser().parse("[10-20],");
+		check(f, new RangeLong(10, 20));
+		f = new FragmentedRangeLong.Parser().parse("{[10-20], ,[30-40],}");
+		check(f, new RangeLong(10, 20), new RangeLong(30, 40));
+		f = new FragmentedRangeLong.Parser().parse("{[10-20],[30-40],[12-18]},[50-60]");
+		check(f, new RangeLong(10, 20), new RangeLong(30, 40));
 	}
 	
 	private static void check(List<RangeLong> list, RangeLong... expected) {
