@@ -75,14 +75,10 @@ public class TestRedBlackTreeLong extends TestSortedAssociatedWithLong {
 		Assert.assertNull(tree.getPrevious(50));
 		Assert.assertNull(tree.getPrevious(52));
 		Assert.assertNull(tree.getPrevious(tree.get(51)));
-		Assert.assertNull(tree.getPrevious(tree.get(50)));
-		Assert.assertNull(tree.getPrevious(tree.get(52)));
 		Assert.assertNull(tree.getNext(51));
 		Assert.assertNull(tree.getNext(50));
 		Assert.assertNull(tree.getNext(52));
 		Assert.assertNull(tree.getNext(tree.get(51)));
-		Assert.assertNull(tree.getNext(tree.get(50)));
-		Assert.assertNull(tree.getNext(tree.get(52)));
 		Assert.assertTrue(tree.contains(51, o));
 		tree.removeKey(51);
 		Assert.assertEquals(0, tree.size());
