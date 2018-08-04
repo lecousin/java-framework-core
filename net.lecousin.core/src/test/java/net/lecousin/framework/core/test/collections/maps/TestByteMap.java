@@ -1,6 +1,7 @@
 package net.lecousin.framework.core.test.collections.maps;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Random;
@@ -55,6 +56,18 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 		checkEmpty(map);
 	}
 	
+	@Test(timeout=30000)
+	public void testClear() {
+		ByteMap<Object> map = createByteMap();
+		checkEmpty(map);
+		map.clear();
+		checkEmpty(map);
+		for (int i = 10; i < 100; ++i)
+			map.put((byte)i, Integer.valueOf(i));
+		map.clear();
+		checkEmpty(map);
+	}
+	
 	protected void checkEmpty(ByteMap<Object> map) {
 		Assert.assertEquals(0, map.size());
 		Assert.assertTrue(map.isEmpty());
@@ -78,6 +91,12 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 				Assert.assertNull(map.get(b));
 			b++;
 		} while (b != Byte.MIN_VALUE);
+		Iterator<Object> values = map.values();
+		for (int i = 0; i < checkMap.size(); ++i) {
+			Assert.assertTrue(values.hasNext());
+			Assert.assertTrue(checkMap.containsValue(values.next()));
+		}
+		Assert.assertFalse(values.hasNext());
 	}
 	
 	protected void put(byte b, ByteMap<Object> map, HashMap<Byte, Object> checkMap) {

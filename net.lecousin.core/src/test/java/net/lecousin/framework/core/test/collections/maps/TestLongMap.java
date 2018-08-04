@@ -1,6 +1,7 @@
 package net.lecousin.framework.core.test.collections.maps;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Random;
@@ -63,6 +64,18 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 		checkEmpty(map);
 	}
 	
+	@Test(timeout=30000)
+	public void testClear() {
+		LongMap<Object> map = createLongMap();
+		checkEmpty(map);
+		map.clear();
+		checkEmpty(map);
+		for (int i = 10; i < 100; ++i)
+			map.put(i, Integer.valueOf(i));
+		map.clear();
+		checkEmpty(map);
+	}
+	
 	protected void checkEmpty(LongMap<Object> map) {
 		Assert.assertEquals(0, map.size());
 		Assert.assertTrue(map.isEmpty());
@@ -80,6 +93,12 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 			Assert.assertTrue("containsKey(" + e.getKey() + ") returns false", map.containsKey(e.getKey().longValue()));
 			Assert.assertEquals(e.getValue(), map.get(e.getKey().longValue()));
 		}
+		Iterator<Object> values = map.values();
+		for (int i = 0; i < checkMap.size(); ++i) {
+			Assert.assertTrue(values.hasNext());
+			Assert.assertTrue(checkMap.containsValue(values.next()));
+		}
+		Assert.assertFalse(values.hasNext());
 	}
 	
 	protected void put(long i, LongMap<Object> map, HashMap<Long, Object> checkMap) {
