@@ -50,7 +50,7 @@ public interface IntegerUnit {
 	}
 	
 	/** Extension point from converters. */
-	public static class ConverterRegistry implements ExtensionPoint<Converter> {
+	public static final class ConverterRegistry implements ExtensionPoint<Converter> {
 
 		/** Constructor. */
 		public ConverterRegistry() {
@@ -89,7 +89,9 @@ public interface IntegerUnit {
 	}
 	
 	/** Registry to convert a string into an IntegerUnit. */
-	public static class ParserRegistry {
+	public static final class ParserRegistry {
+		
+		private ParserRegistry() { /* no instance */ }
 		
 		private static final Map<String, Class<? extends IntegerUnit>> units = new HashMap<>();
 		

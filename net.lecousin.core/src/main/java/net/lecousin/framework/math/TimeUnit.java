@@ -4,23 +4,28 @@ package net.lecousin.framework.math;
 public interface TimeUnit extends IntegerUnit {
 
 	/** Milliseconds time unit. */
-	public static class Millisecond implements TimeUnit {
+	public static final class Millisecond implements TimeUnit {
+		private Millisecond() { /* no instance. */ }
 	}
 	
 	/** Seconds time unit. */
-	public static class Second implements TimeUnit {
+	public static final class Second implements TimeUnit {
+		private Second() { /* no instance. */ }
 	}
 	
 	/** Minutes time unit. */
-	public static class Minute implements TimeUnit {
+	public static final class Minute implements TimeUnit {
+		private Minute() { /* no instance. */ }
 	}
 	
 	/** Hour time unit. */
-	public static class Hour implements TimeUnit {
+	public static final class Hour implements TimeUnit {
+		private Hour() { /* no instance. */ }
 	}
 	
 	/** Day time unit. */
-	public static class Day implements TimeUnit {
+	public static final class Day implements TimeUnit {
+		private Day() { /* no instance. */ }
 	}
 	
 	/** Converter between time units. */

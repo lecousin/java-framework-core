@@ -209,7 +209,7 @@ public class AppLauncher {
 	/** Print usage in the console. */
 	public static void printUsage() {
 		System.out.println(
-			"Usage: -groupId=<groupId> -artifactId=<artifactId> -version=<artifactVersion> [-maven-repository=<path>] [-parameters <application parameters>]");
+"Usage: -groupId=<groupId> -artifactId=<artifactId> -version=<artifactVersion> [-maven-repository=<path>] [-parameters <application parameters>]");
 	}
 	
 }
