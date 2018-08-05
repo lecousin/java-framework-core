@@ -473,8 +473,8 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		}
 		skipped = io.skipSync(-2 * testBuf.length);
 		if (io instanceof IO.Readable.Seekable) {
-			if (skipped != testBuf.length + testBuf.length / 2)
-				throw new Exception("Skip beyond beginning of IO on Readable.Seekable is supposed to go to the offset 0. Skipping " + (-2 * testBuf.length) + " returned " + skipped + " but expected was " + (testBuf.length + testBuf.length / 2));
+			if (skipped != -((testBuf.length + testBuf.length / 2) - 10))
+				throw new Exception("Skip beyond beginning of IO on Readable.Seekable is supposed to go to the offset 0. Skipping " + (-2 * testBuf.length) + " returned " + skipped + " but expected was " + (-((testBuf.length + testBuf.length / 2) - 10)));
 		} else {
 			if (skipped != 0)
 				throw new Exception("Readable is not supposed to be able to skip with a negative value, skipping -10 bytes returned " + skipped + " while 0 was expected.");

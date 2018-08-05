@@ -277,6 +277,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	}
 
 	protected AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+		if (n <= 0) return IOUtil.success(Long.valueOf(0), ondone);
 		return ((IO.Readable)io).skipAsync(n, (result) -> {
 			Long nb = result.getValue1();
 			if (nb != null)
