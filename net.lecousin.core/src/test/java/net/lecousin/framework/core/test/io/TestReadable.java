@@ -471,16 +471,16 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 			if (skipped != 0)
 				throw new Exception("Readable is not supposed to be able to skip with a negative value, skipping -10 bytes returned " + skipped + " while 0 was expected.");
 		}
+		io.readSync(buffer);
+		Assert.assertEquals("Invalid byte read after skipSync with negative value", testBuf[testBuf.length / 2 + (int)skipped], b[0]);
 		skipped = io.skipSync(-2 * testBuf.length);
 		if (io instanceof IO.Readable.Seekable) {
-			if (skipped != -((testBuf.length + testBuf.length / 2) - 10))
-				throw new Exception("Skip beyond beginning of IO on Readable.Seekable is supposed to go to the offset 0. Skipping " + (-2 * testBuf.length) + " returned " + skipped + " but expected was " + (-((testBuf.length + testBuf.length / 2) - 10)));
+			if (skipped != -((testBuf.length + testBuf.length / 2) - 10 + 1))
+				throw new Exception("Skip beyond beginning of IO on Readable.Seekable is supposed to go to the offset 0. Skipping " + (-2 * testBuf.length) + " returned " + skipped + " but expected was " + (-((testBuf.length + testBuf.length / 2) - 10 + 1)));
 		} else {
 			if (skipped != 0)
 				throw new Exception("Readable is not supposed to be able to skip with a negative value, skipping -10 bytes returned " + skipped + " while 0 was expected.");
 		}
-		io.readSync(buffer);
-		Assert.assertEquals("Invalid byte read after skipSync with negative value", testBuf[testBuf.length / 2 + (int)skipped], b[0]);
 		io.close();
 	}
 

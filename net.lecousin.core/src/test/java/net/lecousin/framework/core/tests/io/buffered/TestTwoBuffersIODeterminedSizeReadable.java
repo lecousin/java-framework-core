@@ -27,7 +27,7 @@ public class TestTwoBuffersIODeterminedSizeReadable extends TestReadable {
 	@Override
 	protected TwoBuffersIO createReadableFromFile(FileIO.ReadOnly file, long fileSize) {
 		if (fileSize <= 40000)
-			return new TwoBuffersIO.DeterminedSize(file, (int)fileSize, 10);
+			return new TwoBuffersIO.DeterminedSize(file, (int)fileSize, 0);
 		return new TwoBuffersIO.DeterminedSize(file, 40000, (int)(fileSize - 40000));
 	}
 	

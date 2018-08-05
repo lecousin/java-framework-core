@@ -36,12 +36,60 @@ public class TestBase64 extends LCCoreAbstractTest {
 		Assert.assertEquals("That is a test!", new String(Base64.decode("VGhhdCBpcyBhIHRlc3Qh=")));
 		
 		byte[] buf = new byte[100];
-		Base64.decode4BytesBase64("VGhp".getBytes("US-ASCII"), buf, 10);
+		Assert.assertEquals(3, Base64.decode4BytesBase64("VGhp".getBytes("US-ASCII"), buf, 10));
 		Assert.assertEquals((byte)'T', buf[10]);
 		Assert.assertEquals((byte)'h', buf[11]);
 		Assert.assertEquals((byte)'i', buf[12]);
 		
 		Assert.assertArrayEquals("This is a test".getBytes(StandardCharsets.UTF_8), Base64.decode("   VGhpcyBpcyBhIHRlc3Q=".getBytes(StandardCharsets.UTF_8), 3, 20));
+		
+		Assert.assertEquals(1, Base64.decode4BytesBase64("a0==".getBytes("US-ASCII"), buf, 0));
+		Assert.assertEquals((byte)'k', buf[0]);
+		Assert.assertEquals(1, Base64.decode4BytesBase64(ByteBuffer.wrap("a0==".getBytes("US-ASCII")), buf, 3));
+		Assert.assertEquals((byte)'k', buf[3]);
+		Assert.assertEquals(1, Base64.decode4BytesBase64(CharBuffer.wrap("a0==".toCharArray()), buf, 5));
+		Assert.assertEquals((byte)'k', buf[5]);
+		Assert.assertEquals(1, Base64.decode4BytesBase64(CharBuffer.wrap("a0=".toCharArray()), buf, 6));
+		Assert.assertEquals((byte)'k', buf[6]);
+		try {
+			Base64.decode4BytesBase64(CharBuffer.wrap("a0=x".toCharArray()), buf, 7);
+			throw new AssertionError("Error expected");
+		} catch (IOException e) {}
+		Assert.assertEquals(2, Base64.decode4BytesBase64(CharBuffer.wrap("a01=".toCharArray()), buf, 20));
+		Assert.assertEquals((byte)'k', buf[20]);
+		Assert.assertEquals((byte)'M', buf[21]);
+		try {
+			Base64.decode4BytesBase64(CharBuffer.wrap("a0}=".toCharArray()), buf, 50);
+			throw new AssertionError("Error expected");
+		} catch (IOException e) {}
+		
+		Assert.assertEquals(0, Base64.decode(new byte[0]).length);
+		byte[] b2 = Base64.decode("a0==".getBytes("US-ASCII"));
+		Assert.assertEquals(1, b2.length);
+		Assert.assertEquals((byte)'k', b2[0]);
+
+		Assert.assertEquals(0, Base64.decode(new byte[0], 0, 0).length);
+		b2 = Base64.decode("a0==".getBytes("US-ASCII"), 0, 4);
+		Assert.assertEquals(1, b2.length);
+		Assert.assertEquals((byte)'k', b2[0]);
+		b2 = Base64.decode("a0=".getBytes("US-ASCII"), 0, 3);
+		Assert.assertEquals(0, b2.length);
+		b2 = Base64.decode(ByteBuffer.wrap("a0==".getBytes("US-ASCII")));
+		Assert.assertEquals(1, b2.length);
+		Assert.assertEquals((byte)'k', b2[0]);
+		b2 = Base64.decode(CharBuffer.wrap("a0==".toCharArray()));
+		Assert.assertEquals(1, b2.length);
+		Assert.assertEquals((byte)'k', b2[0]);
+		b2 = Base64.decode(CharBuffer.wrap("a01=".toCharArray()));
+		Assert.assertEquals(2, b2.length);
+		Assert.assertEquals((byte)'k', b2[0]);
+		Assert.assertEquals((byte)'M', b2[1]);
+
+		b2 = Base64.decode("VGhp".getBytes("US-ASCII"), 0, 4);
+		Assert.assertEquals(3, b2.length);
+		Assert.assertEquals((byte)'T', b2[0]);
+		Assert.assertEquals((byte)'h', b2[1]);
+		Assert.assertEquals((byte)'i', b2[2]);
 	}
 	
 	@SuppressWarnings("resource")

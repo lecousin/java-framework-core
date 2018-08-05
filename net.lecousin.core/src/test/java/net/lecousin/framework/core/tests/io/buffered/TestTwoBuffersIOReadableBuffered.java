@@ -26,7 +26,9 @@ public class TestTwoBuffersIOReadableBuffered extends TestReadableBuffered {
 	
 	@Override
 	protected TwoBuffersIO createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) {
-		return new TwoBuffersIO(file, 40000, (int)(fileSize - 40000));
+		int second = (int)(fileSize - 39999);
+		if (second <= 0) second = 10;
+		return new TwoBuffersIO(file, 39999, second);
 	}
 	
 }
