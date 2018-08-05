@@ -153,4 +153,16 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		tmp1.delete();
 		tmp2.delete();
 	}
+	
+	@Test(timeout=120000)
+	public void testToTempFile() throws Exception {
+		byte[] b = new byte[65000];
+		for (int i = 0; i < b.length; ++i)
+			b[i] = (byte)(i % 167);
+		File f = IOUtil.toTempFile(b).blockResult(0);
+		b = IOUtil.readFully(f, Task.PRIORITY_NORMAL).blockResult(0);
+		for (int i = 0; i < b.length; ++i)
+			Assert.assertEquals((byte)(i % 167), b[i]);
+		f.delete();
+	}
 }

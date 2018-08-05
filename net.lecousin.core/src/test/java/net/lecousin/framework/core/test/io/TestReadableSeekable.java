@@ -114,7 +114,6 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 						sp.error(new Exception("Method readAsync didn't call ondone before listeners"));
 						return;
 					}
-					onDoneBefore.set(false);
 					
 					if (offsets.isEmpty() && j.get() == testBuf.length) {
 						if (read.get().getResult().intValue() > 0) {
@@ -156,7 +155,13 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 					}
 	
 					buffer.clear();
-					read.set(io.readAsync(offset.get()*testBuf.length+j.get(), buffer, ondone));
+					if ((j.get() % 7) == 0) {
+						onDoneBefore.set(true);
+						read.set(io.readAsync(offset.get()*testBuf.length+j.get(), buffer, null));
+					} else {
+						onDoneBefore.set(false);
+						read.set(io.readAsync(offset.get()*testBuf.length+j.get(), buffer, ondone));
+					}
 				} while (read.get().isUnblocked());
 				read.get().listenInline(this);
 			}
@@ -239,7 +244,6 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 						sp.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
 						return;
 					}
-					onDoneBefore.set(false);
 					
 					if (offset.get() == nbBuf) {
 						if (read.get().getResult().intValue() > 0) {
@@ -272,7 +276,13 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 					}
 	
 					buffer.clear();
-					read.set(io.readFullyAsync(offset.get()*testBuf.length, buffer, ondone));
+					if ((offset.get() % 7) == 0) {
+						onDoneBefore.set(true);
+						read.set(io.readFullyAsync(offset.get()*testBuf.length, buffer, null));
+					} else {
+						onDoneBefore.set(false);
+						read.set(io.readFullyAsync(offset.get()*testBuf.length, buffer, ondone));
+					}
 				} while (read.get().isUnblocked());
 				read.get().listenInline(this);
 			}
@@ -402,12 +412,18 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
-		RunnableWithParameter<Pair<Long,IOException>> ondone = new RunnableWithParameter<Pair<Long,IOException>>() {
-			@Override
-			public void run(Pair<Long, IOException> param) {
-				onDoneBefore.set(true);
-			}
-		};
+		RunnableWithParameter<Pair<Long,IOException>> ondone;
+		if ((expectedPosition % 3) == 0) {
+			onDoneBefore.set(true);
+			ondone = null;
+		} else {
+			ondone = new RunnableWithParameter<Pair<Long,IOException>>() {
+				@Override
+				public void run(Pair<Long, IOException> param) {
+					onDoneBefore.set(true);
+				}
+			};
+		}
 
 		startOn.listenInline(new Runnable() {
 			@Override
@@ -428,7 +444,8 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 							sp.error(new Exception("Method seekAsync didn't call ondone before listeners"));
 							return;
 						}
-						onDoneBefore.set(false);
+						if (ondone != null)
+							onDoneBefore.set(false);
 						long p = seek.getResult().longValue();
 						if (p != expectedPosition) {
 							sp.error(new Exception("Invalid seek: returned position " + p + ", expected is " + expectedPosition + " after seek(" + type + ", " + move + ")"));

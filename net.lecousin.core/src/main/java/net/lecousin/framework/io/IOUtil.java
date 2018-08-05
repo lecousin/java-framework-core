@@ -140,20 +140,15 @@ public final class IOUtil {
 					if (ondone != null) ondone.run(new Pair<>(read.getResult(), null));
 					return read;
 				}
-				if (read.getResult().intValue() <= 0) {
-					if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(done), null));
-					return new AsyncWork<>(Integer.valueOf(done), null);
-				}
-				if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(read.getResult().intValue() + done),null));
-				return new AsyncWork<>(Integer.valueOf(read.getResult().intValue() + done),null);
+				if (read.getResult().intValue() <= 0) return success(Integer.valueOf(done), ondone);
+				return success(Integer.valueOf(read.getResult().intValue() + done), ondone);
 			}
 			if (read.getResult().intValue() <= 0) {
 				if (done == 0) {
 					if (ondone != null) ondone.run(new Pair<>(read.getResult(), null));
 					return read;
 				}
-				if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(done), null));
-				return new AsyncWork<>(Integer.valueOf(done), null);
+				return success(Integer.valueOf(done), ondone);
 			}
 			return readFullyAsync(io, buffer, read.getResult().intValue() + done, ondone);
 		}

@@ -146,7 +146,6 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 						done.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
 						return;
 					}
-					onDoneBefore.set(false);
 					if (res.hasError()) {
 						done.error(res.getError());
 						return;
@@ -185,7 +184,13 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 					}
 					i.inc();
 					buffer.clear();
-					read.set(io.readFullyAsync(buffer, ondone));
+					if ((i.get() % 7) == 0) {
+						onDoneBefore.set(true);
+						read.set(io.readFullyAsync(buffer, null));
+					} else {
+						onDoneBefore.set(false);
+						read.set(io.readFullyAsync(buffer, ondone));
+					}
 				} while (read.get().isUnblocked());
 				read.get().listenInline(this);
 			}
@@ -388,7 +393,10 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 				}
 				pos.inc();
 				// kind of random skip, but always the same to reproduce bug if any
-				skip.set(io.skipAsync(toSkip.get(), ondone));
+				if ((toSkip.get() % 7) == 0)
+					skip.set(io.skipAsync(toSkip.get(), null));
+				else
+					skip.set(io.skipAsync(toSkip.get(), ondone));
 				skip.get().listenInline(skipListener.get());
 			}
 		};
@@ -419,6 +427,8 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 				pos.add(skipped);
 				// kind of random skip, but always the same to reproduce bug if any
 				toSkip.set(toSkip.get() + 1 + toSkip.get()/2);
+				if ((toSkip.get() % 7) == 0)
+					onDoneBefore.set(true);
 				if (pos.get() >= size) {
 					result.unblock();
 					return;
@@ -433,6 +443,13 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		read.get().listenInline(readListener);
 		
 		result.blockThrow(0);
+		
+		long skipped = io.skipAsync(-(nbBuf + 2) * testBuf.length).blockResult(0).longValue();
+		if (io instanceof IO.Readable.Seekable) {
+			Assert.assertEquals(-pos.get(), skipped);
+		} else {
+			Assert.assertEquals(0, skipped);
+		}
 		
 		io.close();
 	}
@@ -450,6 +467,14 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		if (io instanceof IO.Readable.Seekable) {
 			if (skipped != -10)
 				throw new Exception("Readable.Seekable is supposed to be able to skip with a negative value, skipping -10 bytes returned " + skipped);
+		} else {
+			if (skipped != 0)
+				throw new Exception("Readable is not supposed to be able to skip with a negative value, skipping -10 bytes returned " + skipped + " while 0 was expected.");
+		}
+		skipped = io.skipSync(-2 * testBuf.length);
+		if (io instanceof IO.Readable.Seekable) {
+			if (skipped != testBuf.length + testBuf.length / 2)
+				throw new Exception("Skip beyond beginning of IO on Readable.Seekable is supposed to go to the offset 0. Skipping " + (-2 * testBuf.length) + " returned " + skipped + " but expected was " + (testBuf.length + testBuf.length / 2));
 		} else {
 			if (skipped != 0)
 				throw new Exception("Readable is not supposed to be able to skip with a negative value, skipping -10 bytes returned " + skipped + " while 0 was expected.");
