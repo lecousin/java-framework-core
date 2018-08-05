@@ -3,12 +3,10 @@
   <parent>
     <groupId>net.lecousin.framework</groupId>
     <artifactId>log.bridges</artifactId>
-    <version>0.13.1</version>
+    <version>0.13.2</version>
     <relativePath>..</relativePath>
   </parent>
   <artifactId>log.bridges.slf4j</artifactId>
-  <version>0.13.1</version>
-  
   
 	<name>lecousin.net logging system bridge for SLF4J</name>
 	<description>Bridge from SLF4J to lecousin.net core logging system</description>

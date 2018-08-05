@@ -1,14 +1,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<artifactId>core</artifactId>
-	<version>0.13.1</version>
 	
 	<parent>
 		<groupId>net.lecousin</groupId>
 		<artifactId>core-parent-pom</artifactId>
-		<version>0.13.1</version>
+		<version>0.13.2</version>
 	</parent>
+
+	<artifactId>core</artifactId>
 
 	<name>lecousin.net Java core framework</name>
 	<description>Multi-threading, flexible IO</description>
