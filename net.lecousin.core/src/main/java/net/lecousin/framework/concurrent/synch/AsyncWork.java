@@ -7,7 +7,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.CancelException;
@@ -309,8 +308,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		Application app = LCCore.getApplication();
-		Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
+		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class);
 		while (true) {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
@@ -356,8 +354,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		Application app = LCCore.getApplication();
-		Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
+		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class);
 		while (true) {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
@@ -419,8 +416,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		Application app = LCCore.getApplication();
-		Logger log = app.isReleaseMode() ? null : app.getLoggerFactory().getLogger(SynchronizationPoint.class);
+		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class);
 		while (true) {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
