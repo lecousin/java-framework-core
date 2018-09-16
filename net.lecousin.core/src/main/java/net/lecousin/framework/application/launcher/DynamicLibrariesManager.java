@@ -15,6 +15,7 @@ import javax.swing.ImageIcon;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationBootstrap;
+import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.application.ApplicationConfiguration;
 import net.lecousin.framework.application.Artifact;
 import net.lecousin.framework.application.SplashScreen;
@@ -29,7 +30,6 @@ import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptorL
 import net.lecousin.framework.application.libraries.artifacts.LoadedLibrary;
 import net.lecousin.framework.application.libraries.classloader.AbstractClassLoader;
 import net.lecousin.framework.application.libraries.classloader.AppClassLoader;
-import net.lecousin.framework.application.libraries.classpath.DefaultApplicationClassLoader;
 import net.lecousin.framework.application.libraries.classpath.LoadLibraryExtensionPointsFile;
 import net.lecousin.framework.application.libraries.classpath.LoadLibraryPluginsFile;
 import net.lecousin.framework.collections.TreeWithParent;
@@ -75,7 +75,6 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	private Application app;
 	private File appDir;
 	private AppClassLoader appClassLoader;
-	private DefaultApplicationClassLoader defaultClassLoader;
 	private ArrayList<File> devPaths;
 	private SplashScreen splash;
 	private List<LibraryDescriptorLoader> loaders;
@@ -92,12 +91,10 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	
 	private Map<String, Lib> libraries = new HashMap<>();
 	
-	@SuppressWarnings("unchecked")
 	@Override
-	public DefaultApplicationClassLoader start(Application app) {
+	public ApplicationClassLoader start(Application app) {
 		this.app = app;
 		this.appClassLoader = new AppClassLoader(app);
-		this.defaultClassLoader = new DefaultApplicationClassLoader(app, null);
 		
 		app.getDefaultLogger().debug("Start loading application in development mode");
 		
@@ -139,7 +136,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			developmentMode(stepDevProjects, stepDependencies, stepVersionConflicts);
 		else
 			productionMode(stepDependencies, stepVersionConflicts);
-		return defaultClassLoader;
+		return this.appClassLoader;
 	}
 	
 	private void developmentMode(long stepDevProjects, long stepDependencies, long stepVersionConflicts) {
@@ -608,8 +605,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			AsyncWork<Void, Exception> ep = null;
 			try {
 				IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader())
-					.get("META-INF/net.lecousin/extensionpoints")
-					.provideIOReadable(Task.PRIORITY_IMPORTANT);
+					.open("META-INF/net.lecousin/extensionpoints", Task.PRIORITY_IMPORTANT);
 				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.PRIORITY_IMPORTANT, 1024,
 					Task.PRIORITY_RATHER_IMPORTANT, 8);
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(bio, StandardCharsets.UTF_8, 256, 32);
@@ -629,7 +625,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 				if (path == null) continue;
 				try {
 					IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader())
-						.get(path).provideIOReadable(Task.PRIORITY_IMPORTANT);
+						.open(path, Task.PRIORITY_IMPORTANT);
 					previous = custom.loadPluginConfiguration(io, lib.library.getClassLoader(), previous);
 					jp.addToJoin(previous);
 				} catch (FileNotFoundException e) {
@@ -643,7 +639,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			// plugins
 			try {
 				IO.Readable io = ((AbstractClassLoader)lib.library.getClassLoader())
-					.get("META-INF/net.lecousin/plugins").provideIOReadable(Task.PRIORITY_IMPORTANT);
+					.open("META-INF/net.lecousin/plugins", Task.PRIORITY_IMPORTANT);
 				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.PRIORITY_IMPORTANT, 1024,
 					Task.PRIORITY_RATHER_IMPORTANT, 8);
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(bio, StandardCharsets.UTF_8, 256, 32);

@@ -65,4 +65,16 @@ public class DirectoryClassLoader extends AbstractClassLoader {
 		try { return file.toURI().toURL(); }
 		catch (MalformedURLException e) { return null; }
 	}
+	
+	@Override
+	protected Object getResourcePointer(String path) {
+		File file = new File(dir, path);
+		if (!file.exists() || file.isDirectory()) return null;
+		return file;
+	}
+	
+	@Override
+	protected IO.Readable openResourcePointer(Object pointer, byte priority) {
+		return new FileIO.ReadOnly((File)pointer, priority);
+	}
 }

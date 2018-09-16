@@ -53,7 +53,7 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 	
 	@Override
 	public void run() {
-		ClassLoader initCL = thread.getContextClassLoader();
+		// TODO ClassLoader initCL = thread.getContextClassLoader();
 		while (!stop) {
 			// check if we are supposed to pause
 			AsyncWork<TaskWorker,NoException> waitPause = manager.getPauseToDo();
@@ -81,13 +81,13 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 				currentTask.status = Task.STATUS_RUNNING;
 				currentTask.nextExecution = 0;
 			}
-			thread.setContextClassLoader(currentTask.getApplication().getClassLoader());
+			// TODO thread.setContextClassLoader(currentTask.getApplication().getClassLoader());
 			long start = System.nanoTime();
 			currentTask.execute();
 			if (Threading.traceTaskTime)
 				Threading.logger.debug("Task done in " + (System.nanoTime() - start) + "ns: " + currentTask.description);
 			lastUsed = System.currentTimeMillis();
-			thread.setContextClassLoader(initCL);
+			// TODO thread.setContextClassLoader(initCL);
 			Task<?,?> t = currentTask;
 			currentTask = null;
 			tasksDone++;

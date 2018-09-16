@@ -42,7 +42,6 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		this(null);
 	}
 	
-	@SuppressWarnings("unchecked")
 	@Override
 	public DefaultApplicationClassLoader start(Application app) {
 		this.app = app;

@@ -6,10 +6,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.collections.ArrayUtil;
@@ -165,6 +167,10 @@ public class LocalizedProperties implements IMemoryManageable {
 	 */
 	public ISynchronizationPoint<Exception> registerNamespaceFrom(Class<?> cl, String namespace, String subPath) {
 		return registerNamespace(namespace, ClassUtil.getPackageName(cl).replace('.', '/') + '/' + subPath, cl.getClassLoader());
+	}
+	
+	public Set<String> getDeclaredNamespaces() {
+		return namespaces.keySet();
 	}
 	
 	@SuppressWarnings("resource")
@@ -387,6 +393,60 @@ public class LocalizedProperties implements IMemoryManageable {
 			}
 		}
 		return avail;
+	}
+	
+	public Set<String> getNamespaceLanguages(String namespace) {
+		Set<String> list = new HashSet<>();
+		Namespace ns = namespaces.get(namespace);
+		if (ns != null && ns.languages != null)
+			for (Namespace.Language l : ns.languages)
+				list.add(String.join("-", l.tag));
+		return list;
+	}
+	
+	public AsyncWork<Map<String, String>, Exception> getNamespaceContent(String namespace, String[] languageTag) {
+		AsyncWork<Map<String, String>, Exception> result = new AsyncWork<>();
+		Namespace ns;
+		synchronized (namespaces) {
+			ns = namespaces.get(namespace);
+		}
+		if (ns == null) {
+			result.error(new Exception("Unknown namespace " + namespace));
+			return result;
+		}
+		ns.loading.listenInline(new Runnable() {
+			@Override
+			public void run() {
+				if (!ns.loading.isUnblocked()) {
+					// namespace has been overriden and is reloading
+					ns.loading.listenInline(this, result);
+					return;
+				}
+				for (Namespace.Language l : ns.languages)
+					if (ArrayUtil.equals(l.tag, languageTag)) {
+						boolean needsLoading = false;
+						synchronized (l) {
+							if (l.loading == null) {
+								l.loading = new SynchronizationPoint<>();
+								needsLoading = true;
+							}
+						}
+						l.loading.listenInline(new Runnable() {
+							@Override
+							public void run() {
+								synchronized (l) {
+									result.unblockSuccess(new HashMap<>(l.properties));
+								}
+							}
+						}, result);
+						if (needsLoading)
+							load(ns, l);
+						return;
+					}
+				result.error(new Exception("Language not found in namespace " + namespace));
+			}
+		}, result);
+		return result;
 	}
 	
 }

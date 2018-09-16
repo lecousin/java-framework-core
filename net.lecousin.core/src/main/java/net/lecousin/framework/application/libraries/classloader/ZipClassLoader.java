@@ -141,6 +141,26 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 			Threading.getUnmanagedTaskManager(), priority);
 	}
 	
+	@Override
+	protected Object getResourcePointer(String path) {
+		ZipFile zip;
+		try  { zip = getZip(); } catch (IOException e) { return null; }
+		ZipEntry entry = zip.getEntry(path);
+		if (entry == null) return null;
+		if (entry.isDirectory()) return null;
+		return entry;
+	}
+	
+	@Override
+	protected IO.Readable openResourcePointer(Object pointer, byte priority) throws IOException {
+		ZipFile zip = getZip();
+		ZipEntry entry = (ZipEntry)pointer;
+		return new IOFromInputStream.KnownSize(
+			zip.getInputStream(entry), entry.getSize(),
+			zipProvider.getDescription() + "/" + entry.getName(),
+			Threading.getUnmanagedTaskManager(), priority);
+	}
+	
 	@SuppressWarnings("resource")
 	@Override
 	protected URL loadResourceURL(String name) {
@@ -191,4 +211,5 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 			return zip.getInputStream(entry);
 		}
 	}
+
 }

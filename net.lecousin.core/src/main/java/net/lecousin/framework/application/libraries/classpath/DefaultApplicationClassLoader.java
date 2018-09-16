@@ -7,6 +7,8 @@ import java.net.URLClassLoader;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
+import net.lecousin.framework.io.provider.IOProvider;
+import net.lecousin.framework.io.provider.IOProviderFromPathUsingClassloader;
 
 /**
  * Default implementation of ApplicationClassLoader.
@@ -22,13 +24,20 @@ public class DefaultApplicationClassLoader extends URLClassLoader implements App
 	public DefaultApplicationClassLoader(Application app, File[] additionalClassPath) {
 		super(getURLs(additionalClassPath), DefaultApplicationClassLoader.class.getClassLoader());
 		this.app = app;
+		ioProvider = new IOProviderFromPathUsingClassloader(this);
 	}
 	
 	private Application app;
+	private IOProviderFromPathUsingClassloader ioProvider;
 	
 	@Override
 	public Application getApplication() {
 		return app;
+	}
+	
+	@Override
+	public IOProvider.Readable getIOProvider(String filename) {
+		return ioProvider.get(filename);
 	}
 	
 	private static URL[] getURLs(File[] files) {

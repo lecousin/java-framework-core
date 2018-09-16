@@ -215,6 +215,7 @@ public class DevLauncher {
 						startApp.getError().printStackTrace(System.err);
 					}
 					LCCore.stop(true);
+					return;
 				}
 				ISynchronizationPoint<Exception> appClosed = startApp.getResult();
 				if (appClosed != null) {

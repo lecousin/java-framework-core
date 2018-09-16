@@ -1,6 +1,8 @@
 package net.lecousin.framework.xml.serialization;
 
 import java.io.EOFException;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -15,6 +17,7 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.buffering.IOInMemoryOrFile;
@@ -69,18 +72,33 @@ public class XMLDeserializer extends AbstractDeserializer {
 	protected XMLStreamEventsAsync input;
 	
 	/** Deserialize from a file accessible from the classpath. */
-	@SuppressWarnings({ "unchecked", "resource" })
+	@SuppressWarnings("resource")
 	public static <T> AsyncWork<T, Exception> deserializeResource(String resourcePath, Class<T> type, byte priority) {
 		IO.Readable io = LCCore.getApplication().getResource(resourcePath, priority);
+		if (io == null) return new AsyncWork<>(null, new FileNotFoundException("Resource not found: " + resourcePath));
+		AsyncWork<T, Exception> result = deserialize(io, type);
+		result.listenInline(() -> { io.closeAsync(); });
+		return result;
+	}
+	
+	/** Deserialize from a file. */
+	@SuppressWarnings("resource")
+	public static <T> AsyncWork<T, Exception> deserializeFile(File file, Class<T> type, byte priority) {
+		IO.Readable io = new FileIO.ReadOnly(file, priority);
+		AsyncWork<T, Exception> result = deserialize(io, type);
+		result.listenInline(() -> { io.closeAsync(); });
+		return result;
+	}
+	
+	/** Deserialize from a IO.Readable. */
+	@SuppressWarnings("unchecked")
+	public static <T> AsyncWork<T, Exception> deserialize(IO.Readable input, Class<T> type) {
 		XMLDeserializer deserializer = new XMLDeserializer(null, type.getSimpleName());
-		AsyncWork<Object, Exception> res = deserializer.deserialize(new TypeDefinition(type), io, new ArrayList<>(0));
+		AsyncWork<Object, Exception> res = deserializer.deserialize(new TypeDefinition(type), input, new ArrayList<>(0));
 		AsyncWork<T, Exception> result = new AsyncWork<>();
-		res.listenInline(() -> {
-			io.closeAsync();
-			if (res.hasError()) result.error(res.getError());
-			else if (res.isCancelled()) result.cancel(res.getCancelEvent());
-			else result.unblockSuccess((T)res.getResult());
-		});
+		res.listenInline((obj) -> {
+			result.unblockSuccess((T)obj);
+		}, result);
 		return result;
 	}
 	

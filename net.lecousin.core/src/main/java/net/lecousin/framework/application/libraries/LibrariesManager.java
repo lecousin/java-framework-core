@@ -14,7 +14,7 @@ public interface LibrariesManager {
 	/** This method is automatically called on application startup so this libraries manager
 	 * can initialize and load libraries as needed for the given application.
 	 */
-	<T extends ClassLoader & ApplicationClassLoader> T start(Application app);
+	ApplicationClassLoader start(Application app);
 	
 	/** Return a synchronization point which is blocked until this libraries manager has been initialized
 	 * and has loaded all required libraries. */

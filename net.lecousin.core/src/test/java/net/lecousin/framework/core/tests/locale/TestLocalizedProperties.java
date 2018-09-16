@@ -13,7 +13,7 @@ public class TestLocalizedProperties extends LCCoreAbstractTest {
 	@Test(timeout=30000)
 	public void testErrors() {
 		LocalizedProperties lp = LCCore.getApplication().getLocalizedProperties();
-		ClassLoader cl = LCCore.getApplication().getClassLoader();
+		ClassLoader cl = getClass().getClassLoader();
 		
 		ISynchronizationPoint<Exception> sp = lp.registerNamespace("test-error", "does/not/exist", cl);
 		try {

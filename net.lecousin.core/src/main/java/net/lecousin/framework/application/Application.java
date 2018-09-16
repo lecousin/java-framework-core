@@ -31,7 +31,6 @@ import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.provider.IOProvider;
-import net.lecousin.framework.io.provider.IOProviderFromPathUsingClassloader;
 import net.lecousin.framework.locale.LocalizedProperties;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.LoggerFactory;
@@ -67,6 +66,9 @@ public final class Application {
 			this.properties = new Hashtable<>(properties);
 		else
 			this.properties = new Hashtable<>();
+		this.properties.put("groupId", artifact.groupId);
+		this.properties.put("artifactId", artifact.artifactId);
+		this.properties.put("version", artifact.version.toString());
 		this.debugMode = debugMode;
 		this.threadFactory = threadFactory;
 		this.librariesManager = librariesManager;
@@ -81,8 +83,7 @@ public final class Application {
 	private boolean debugMode;
 	private ThreadFactory threadFactory;
 	private LibrariesManager librariesManager;
-	private ApplicationClassLoader rootClassLoader;
-	private IOProviderFromPathUsingClassloader rootClassLoaderIOProvider;
+	private ApplicationClassLoader appClassLoader;
 	private Console console;
 	private Properties preferences = null;
 	private Locale locale;
@@ -183,14 +184,13 @@ public final class Application {
 	}
 	
 	/** Return the application class loader. */
-	@SuppressWarnings("unchecked")
-	public <T extends ClassLoader & ApplicationClassLoader> T getClassLoader() {
-		return (T)rootClassLoader;
+	public ApplicationClassLoader getClassLoader() {
+		return appClassLoader;
 	}
 	
 	/** Get a resource from the class loader as an IO.Readable. */
 	public IO.Readable getResource(String filename, byte priority) {
-		IOProvider.Readable provider = rootClassLoaderIOProvider.get(filename);
+		IOProvider.Readable provider = appClassLoader.getIOProvider(filename);
 		if (provider == null)
 			return null;
 		try {
@@ -341,8 +341,7 @@ public final class Application {
 		loading.start();
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		loading.listenInline(() -> {
-			app.rootClassLoader = librariesManager.start(app);
-			app.rootClassLoaderIOProvider = new IOProviderFromPathUsingClassloader((ClassLoader)app.rootClassLoader);
+			app.appClassLoader = librariesManager.start(app);
 			librariesManager.onLibrariesLoaded().listenInline(sp);
 		});
 		

@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Enumeration;
 
 import net.lecousin.framework.application.Application;
+import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.collections.CompoundCollection;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
@@ -18,20 +19,24 @@ import net.lecousin.framework.io.IOAsInputStream;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.provider.FileIOProvider;
 import net.lecousin.framework.io.provider.IOProvider;
+import net.lecousin.framework.io.provider.IOProviderFromPathUsingClassloader;
 
 /**
  * Used to aggregate class loaders for an application.
  */
-public class AppClassLoader {
+public class AppClassLoader implements ApplicationClassLoader {
 	
 	/** Constructor. */
 	public AppClassLoader(Application app) {
 		this.app = app;
+		coreIOProvider = new IOProviderFromPathUsingClassloader(AppClassLoader.class.getClassLoader());
 	}
 	
 	private Application app;
 	private ArrayList<AbstractClassLoader> libs = new ArrayList<>();
+	private IOProviderFromPathUsingClassloader coreIOProvider;
 	
+	@Override
 	public Application getApplication() {
 		return app;
 	}
@@ -125,7 +130,7 @@ public class AppClassLoader {
 		IO.Readable io = null;
     	for (int i = 0; i < libs.size(); i++) {
     		AbstractClassLoader cl = libs.get(i);
-   			try { io = cl.get(name).provideIOReadable(priority); }
+   			try { io = cl.open(name, priority); }
    			catch (IOException e) { /* ignore */ }
     		if (io != null) return io;
     	}
@@ -156,14 +161,14 @@ public class AppClassLoader {
 		IO.Readable io = null;
     	// try with the first one
     	if (first != null)
-   			try { io = first.get(name).provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT); }
+   			try { io = first.open(name, Task.PRIORITY_RATHER_IMPORTANT); }
     		catch (IOException e) { /* not there */ }
     	// then, try on other libraries
     	if (io == null) {
         	for (int i = 0; i < libs.size(); i++) {
         		AbstractClassLoader cl = libs.get(i);
         		if (cl == first) continue;
-       			try { io = cl.get(name).provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT); }
+       			try { io = cl.open(name, Task.PRIORITY_RATHER_IMPORTANT); }
        			catch (IOException e) { /* not there */ }
         		if (io != null) break;
         	}
@@ -210,4 +215,41 @@ public class AppClassLoader {
         return list.enumeration();
 	}
 	
+	@Override
+	public IOProvider.Readable getIOProvider(String name) {
+		return getIOProviderFrom(name, null);
+	}
+	
+	/** Search for a resource. */
+	public IOProvider.Readable getIOProviderFrom(String name, AbstractClassLoader first) {
+		if (name.length() == 0) return null;
+		if (name.charAt(0) == '/') name = name.substring(1);
+		IOProvider.Readable provider = null;
+    	// try with the first one
+    	if (first != null)
+   			provider = first.get(name);
+    	// then, try on other libraries
+    	if (provider == null) {
+        	for (int i = 0; i < libs.size(); i++) {
+        		AbstractClassLoader cl = libs.get(i);
+        		if (cl == first) continue;
+       			provider = cl.get(name);
+        		if (provider != null) break;
+        	}
+        }
+        if (provider != null)
+        	return provider;
+       	// then try on the core one
+        return coreIOProvider.get(name);
+	}
+	
+	@Override
+	public Class<?> loadClass(String className) throws ClassNotFoundException {
+		return loadClassFrom(className, null);
+	}
+	
+	@Override
+	public URL getResource(String filename) {
+		return getResourceFrom(filename, null);
+	}
 }

@@ -53,7 +53,11 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	
 	/** Search a resource. */
 	protected abstract URL loadResourceURL(String name);
-
+	
+	protected abstract Object getResourcePointer(String path);
+	
+	protected abstract IO.Readable openResourcePointer(Object pointer, byte priority) throws IOException;
+	
 	private List<AbstractClassLoader> subLoaders = null;
 	
 	/** Add a class loader from a resource contained by this class loader, for example an inner jar file. */
@@ -157,21 +161,26 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	
 	@Override
 	public final IOProvider.Readable get(String path) {
+		Object pointer = getResourcePointer(path);
+		AbstractClassLoader cl = this;
+		if (pointer == null) {
+			if (subLoaders != null)
+				for (AbstractClassLoader sub : subLoaders) {
+					pointer = sub.getResourcePointer(path);
+					if (pointer != null) {
+						cl = sub;
+						break;
+					}
+				}
+			if (pointer == null)
+				return null;
+		}
+		Object ptr = pointer;
+		AbstractClassLoader owner = cl;
 		return new IOProvider.Readable() {
 			@Override
 			public IO.Readable provideIOReadable(byte priority) throws IOException {
-				try { return loadResourceAsIO(path, priority); }
-				catch (FileNotFoundException e) {
-					if (subLoaders == null) throw e;
-					for (AbstractClassLoader sub : subLoaders) {
-						try {
-							return sub.get(path).provideIOReadable(priority);
-						} catch (FileNotFoundException e2) {
-							// not found
-						}
-					}
-					throw e;
-				}
+				return owner.openResourcePointer(ptr, priority);
 			}
 
 			@Override
@@ -179,6 +188,25 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 				return path;
 			}
 		};
+	}
+	
+	/** Open a resource. */
+	public final IO.Readable open(String path, byte priority) throws IOException {
+		Object pointer = getResourcePointer(path);
+		AbstractClassLoader cl = this;
+		if (pointer == null) {
+			if (subLoaders != null)
+				for (AbstractClassLoader sub : subLoaders) {
+					pointer = sub.getResourcePointer(path);
+					if (pointer != null) {
+						cl = sub;
+						break;
+					}
+				}
+			if (pointer == null)
+				throw new FileNotFoundException(path);
+		}
+		return cl.openResourcePointer(pointer, priority);
 	}
 
 	/** Search for a resource. */
@@ -219,6 +247,11 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	@Override
 	public InputStream getResourceAsStream(String name) {
 		return appClassLoader.getResourceAsStreamFrom(name, this);
+	}
+	
+	@Override
+	public IOProvider.Readable getIOProvider(String filename) {
+		return appClassLoader.getIOProviderFrom(filename, this);
 	}
 	
 }
