@@ -3,6 +3,7 @@ package net.lecousin.framework.progress;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 
 /** Implementation of WorkProgress, composed of sub-WorkProgress. */
@@ -13,7 +14,7 @@ public class MultiTaskProgress extends WorkProgressImpl implements WorkProgress.
 		super(0, text);
 	}
 
-	protected ArrayList<WorkProgress> tasks = new ArrayList<>();
+	protected ArrayList<SubTask> tasks = new ArrayList<>();
 	protected JoinPoint<Exception> jp = null;
 	
 	/** Create a sub-progress for the given amount of work (this amount is added to the total amount to be done). */
@@ -22,23 +23,34 @@ public class MultiTaskProgress extends WorkProgressImpl implements WorkProgress.
 		SubWorkProgress task = new SubWorkProgress(this, amount, amount, text);
 		synchronized (tasks) {
 			tasks.add(task);
-			if (jp != null) jp.addToJoin(task.getSynch());
+			if (jp != null) jp.addToJoinDoNotCancel(task.getSynch());
 		}
 		return task;
 	}
 	
-	/** Add the given sub-progress as a sub-task for the given amount of work (this amount is added to the total amount to be done). */
-	public void addTask(WorkProgress task, long amount) {
+	@Override
+	public SubTask addTask(WorkProgress task, long amount) {
+		SubTask.Wrapper wrapper = new SubTask.Wrapper(task, amount);
 		this.amount += amount;
 		synchronized (tasks) {
-			tasks.add(task);
-			if (jp != null) jp.addToJoin(task.getSynch());
+			tasks.add(wrapper);
+			if (jp != null) jp.addToJoinDoNotCancel(task.getSynch());
 		}
 		WorkProgressUtil.propagateToParent(task, this, amount);
+		return wrapper;
+	}
+
+	@Override
+	public void removeTask(SubTask subTask) {
+		synchronized (tasks) {
+			tasks.remove(subTask);
+			if (jp != null && !subTask.getProgress().getSynch().isUnblocked())
+				subTask.getProgress().getSynch().cancel(new CancelException("Sub-task removed"));
+		}
 	}
 	
 	@Override
-	public List<? extends WorkProgress> getTasks() {
+	public List<? extends SubTask> getTasks() {
 		synchronized (tasks) {
 			return new ArrayList<>(tasks);
 		}
@@ -49,7 +61,7 @@ public class MultiTaskProgress extends WorkProgressImpl implements WorkProgress.
 		if (jp != null) return;
 		synchronized (tasks) {
 			jp = new JoinPoint<>();
-			for (WorkProgress task : tasks) jp.addToJoin(task.getSynch());
+			for (SubTask task : tasks) jp.addToJoinDoNotCancel(task.getProgress().getSynch());
 		}
 		jp.listenInline(new Runnable() {
 			@Override

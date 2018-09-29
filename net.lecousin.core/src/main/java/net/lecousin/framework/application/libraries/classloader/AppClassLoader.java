@@ -14,12 +14,14 @@ import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.collections.CompoundCollection;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOAsInputStream;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.provider.FileIOProvider;
 import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.io.provider.IOProviderFromPathUsingClassloader;
+import net.lecousin.framework.util.Filter;
 
 /**
  * Used to aggregate class loaders for an application.
@@ -252,4 +254,14 @@ public class AppClassLoader implements ApplicationClassLoader {
 	public URL getResource(String filename) {
 		return getResourceFrom(filename, null);
 	}
+	
+	/** Scan libraries to find classes. */
+	public void scanLibraries(
+		String rootPackage, boolean includeSubPackages,
+		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+	) {
+		for (AbstractClassLoader cl : libs)
+			cl.scan(rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);
+	}
+	
 }

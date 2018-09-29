@@ -1167,11 +1167,16 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 				if (!checkLoaded(b, result, ondone)) return;
 				int off = getBufferOffset(pos);
 				int len = buffer.remaining();
-				if (len > b.data.length - off) len = b.data.length - off;
-				if (pos + len > size) len = (int)(size - pos);
-				buffer.put(b.data, off, len);
-				b.lastRead = System.currentTimeMillis();
-				b.usage.endRead();
+				try {
+					if (len > b.data.length - off) len = b.data.length - off;
+					if (pos + len > size) len = (int)(size - pos);
+					buffer.put(b.data, off, len);
+					b.lastRead = System.currentTimeMillis();
+				} catch (Throwable t) {
+					result.error(new IOException("Error reading from BufferedIO buffer at " + off + ", len=" + len, t));
+				} finally {
+					b.usage.endRead();
+				}
 				if (preLoadNextBuffer && pos + len < size && getBufferIndex(pos + len) != b.index)
 					preLoadBuffer(pos + len);
 				Integer nb = Integer.valueOf(len);

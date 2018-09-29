@@ -395,6 +395,7 @@ public class LocalizedProperties implements IMemoryManageable {
 		return avail;
 	}
 	
+	/** Return the languages declared for the given namespace. */
 	public Set<String> getNamespaceLanguages(String namespace) {
 		Set<String> list = new HashSet<>();
 		Namespace ns = namespaces.get(namespace);
@@ -404,6 +405,7 @@ public class LocalizedProperties implements IMemoryManageable {
 		return list;
 	}
 	
+	/** Return the localizable properties for the given namespace and language. */
 	public AsyncWork<Map<String, String>, Exception> getNamespaceContent(String namespace, String[] languageTag) {
 		AsyncWork<Map<String, String>, Exception> result = new AsyncWork<>();
 		Namespace ns;

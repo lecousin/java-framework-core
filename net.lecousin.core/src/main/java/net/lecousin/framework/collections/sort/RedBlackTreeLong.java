@@ -672,9 +672,14 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     public Iterator<T> iterator() { return new RBTreeIterator(root); }
     
     public Iterator<Node<T>> nodeIteratorOrdered() { return new NodeIteratorOrdered<T>(root); }
+
+    public Iterator<Node<T>> nodeIteratorReverse() { return new NodeIteratorReverseOrder<T>(root); }
     
     @Override
     public Iterator<T> orderedIterator() { return new IteratorOrdered<T>(root); }
+    
+    @Override
+    public Iterator<T> reverseOrderIterator() { return new IteratorReverseOrder<T>(root); }
     
     private class RBTreeIterator implements Iterator<T> {
     	private RBTreeIterator(Node<T> node) {
@@ -763,4 +768,56 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     	public T next() { return it.next().getElement(); }
     }
     
+    private static class NodeIteratorReverseOrder<T> implements Iterator<Node<T>> {
+    	private NodeIteratorReverseOrder(Node<T> root) {
+    		next = root;
+    		if (root == null) return;
+    		parents = new ArrayList<Node<T>>(root.n / 2);
+    		// go to the right
+    		while (next.right != null) {
+    			parents.add(next);
+    			next = next.right;
+    		}
+    	}
+    	
+    	private ArrayList<Node<T>> parents;
+    	private Node<T> next;
+    	
+    	@Override
+    	public boolean hasNext() { return next != null; }
+    	
+    	@Override
+    	public Node<T> next() {
+    		Node<T> res = next;
+    		if (next.left != null) {
+    			next = next.left;
+    			while (next.right != null) {
+    				parents.add(next);
+    				next = next.right;
+    			}
+    			return res;
+    		}
+    		if (parents.isEmpty()) {
+    			next = null;
+    			return res;
+    		}
+    		next = parents.remove(parents.size() - 1);
+    		return res;
+    	}
+    }
+
+    private static class IteratorReverseOrder<T> implements Iterator<T> {
+    	private IteratorReverseOrder(Node<T> root) {
+    		it = new NodeIteratorReverseOrder<>(root);
+    	}
+    	
+    	private NodeIteratorReverseOrder<T> it;
+    	
+    	@Override
+    	public boolean hasNext() { return it.hasNext(); }
+    	
+    	@Override
+    	public T next() { return it.next().getElement(); }
+    }
+
 }

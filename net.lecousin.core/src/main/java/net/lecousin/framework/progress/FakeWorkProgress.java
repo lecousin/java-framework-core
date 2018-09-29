@@ -78,4 +78,12 @@ public class FakeWorkProgress implements WorkProgress {
 	@Override
 	public void unlisten(Runnable onchange) {
 	}
+	
+	@Override
+	public void interruptEvents() {
+	}
+	
+	@Override
+	public void resumeEvents(boolean trigger) {
+	}
 }

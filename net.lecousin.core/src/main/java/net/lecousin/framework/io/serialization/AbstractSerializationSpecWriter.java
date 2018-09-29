@@ -86,6 +86,8 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 		Class<?> type = typeDef.getBase();
 		
 		if (type.isArray()) {
+			if (byte[].class.equals(type))
+				return specifyByteArrayValue(context, rules);
 			Class<?> elementType = type.getComponentType();
 			CollectionContext ctx = new CollectionContext(context, null, typeDef, new TypeDefinition(elementType));
 			return specifyCollectionValue(ctx, rules);
@@ -201,6 +203,14 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 
 	protected abstract ISynchronizationPoint<? extends Exception> specifyIOReadableValue(
 		SerializationContext context, List<SerializationRule> rules);
+	
+	// *** byte[] ***
+	
+	protected ISynchronizationPoint<? extends Exception> specifyByteArrayValue(
+		SerializationContext context, List<SerializationRule> rules
+	) {
+		return specifyIOReadableValue(context, rules);
+	}
 	
 	// *** object ***
 	

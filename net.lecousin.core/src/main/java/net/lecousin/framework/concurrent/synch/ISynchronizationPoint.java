@@ -195,6 +195,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		onCancel((reason) -> { sp.cancel(reason); });
 	}
 	
+	/** If this synchronization point is errored, the given synchronization point will be unblocked as well with the same error. */
+	default void forwardError(ISynchronizationPoint<TError> sp) {
+		onError((error) -> { sp.error(error); });
+	}
+	
 	/** Start the given task when this synchronization point is unblocked. */
 	default void listenAsync(Task<?,? extends Exception> task, boolean evenIfErrorOrCancel) {
 		task.startOn(this, evenIfErrorOrCancel);

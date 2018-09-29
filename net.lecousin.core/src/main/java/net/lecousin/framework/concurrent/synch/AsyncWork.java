@@ -145,7 +145,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 		else if (cancel != null) listener.cancelled(cancel);
 		else listener.ready(result);
 	}
-
+	
 	/** Forward the result, error, or cancellation to the given AsyncWork. */
 	public void listenInline(AsyncWork<T,TError> sp) {
 		listenInline(new AsyncWorkListener<T,TError>() {
@@ -290,6 +290,26 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			@Override
 			public String toString() {
 				return "Delegate to listener " + onSuccess;
+			}
+		});
+	}
+	
+	/** Forward the result, error, or cancellation to the given AsyncWork. */
+	public void listenInlineGenericError(AsyncWork<T, Exception> sp) {
+		listenInline(new AsyncWorkListener<T,TError>() {
+			@Override
+			public void ready(T result) {
+				sp.unblockSuccess(result);
+			}
+			
+			@Override
+			public void error(TError error) {
+				sp.unblockError(error);
+			}
+			
+			@Override
+			public void cancelled(CancelException event) {
+				sp.unblockCancel(event);
 			}
 		});
 	}

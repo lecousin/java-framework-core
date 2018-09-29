@@ -8,6 +8,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.io.util.FileInfo;
 import net.lecousin.framework.progress.WorkProgress;
 
@@ -17,6 +18,16 @@ import net.lecousin.framework.progress.WorkProgress;
  */
 public class DirectoryReader extends Task.OnFile<DirectoryReader.Result,AccessDeniedException> {
 	
+	/** Constructor. */
+	public DirectoryReader(TaskManager taskManager, File dir, byte priority, Request request, WorkProgress progress) {
+		super(taskManager, "Reading directory " + dir.getAbsolutePath(), priority);
+		this.dir = dir;
+		this.request = request;
+		this.progress = progress;
+		if (progress != null)
+			WorkProgress.linkTo(progress, this);
+	}
+
 	/** Constructor. */
 	public DirectoryReader(File dir, byte priority, Request request, WorkProgress progress) {
 		super(dir, "Reading directory " + dir.getAbsolutePath(), priority);
@@ -28,13 +39,18 @@ public class DirectoryReader extends Task.OnFile<DirectoryReader.Result,AccessDe
 	}
 
 	/** Constructor. */
+	public DirectoryReader(TaskManager taskManager, File dir, byte priority, Request request) {
+		this(taskManager, dir, priority, request, null);
+	}
+	
+	/** Constructor. */
 	public DirectoryReader(File dir, byte priority, Request request) {
 		this(dir, priority, request, null);
 	}
 	
-	private File dir;
-	private Request request;
-	private WorkProgress progress;
+	protected File dir;
+	protected Request request;
+	protected WorkProgress progress;
 	
 	public File getDirectory() { return dir; }
 	
@@ -45,6 +61,36 @@ public class DirectoryReader extends Task.OnFile<DirectoryReader.Result,AccessDe
 		public boolean getCreation = false;
 		public boolean getIsSymbolicLink = false;
 		public boolean getSize = false;
+		
+		/** Request to get the last modified date. */
+		public Request getLastModified() {
+			this.getLastModified = true;
+			return this;
+		}
+		
+		/** Request to get the last access date. */
+		public Request getLastAccess() {
+			this.getLastAccess = true;
+			return this;
+		}
+		
+		/** Request to get the creation date. */
+		public Request getCreation() {
+			this.getCreation = true;
+			return this;
+		}
+		
+		/** Request to know if a file is a symbolic link. */
+		public Request getIsSymbolicLink() {
+			this.getIsSymbolicLink = true;
+			return this;
+		}
+		
+		/** Request to get the file size. */
+		public Request getSize() {
+			this.getSize = true;
+			return this;
+		}
 	}
 	
 	/** Result. */

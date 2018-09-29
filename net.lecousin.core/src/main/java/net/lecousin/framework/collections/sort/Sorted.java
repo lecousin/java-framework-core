@@ -23,6 +23,9 @@ public interface Sorted<T> extends Iterable<T> {
 	/** Return an iterator that iterates on the correct order. */
 	public Iterator<T> orderedIterator();
 	
+	/** Return an iterator that iterates on the correct order. */
+	public Iterator<T> reverseOrderIterator();
+	
 	/** Interface for sorted list where elements are associated with long values to sort them.
 	 * @param <T> type of elements
 	 */

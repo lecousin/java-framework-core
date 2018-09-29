@@ -39,6 +39,7 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.concurrent.tasks.drives.FullReadFileTask;
+import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Readable;
@@ -51,6 +52,7 @@ import net.lecousin.framework.plugins.CustomExtensionPoint;
 import net.lecousin.framework.plugins.ExtensionPoints;
 import net.lecousin.framework.progress.FakeWorkProgress;
 import net.lecousin.framework.progress.WorkProgress;
+import net.lecousin.framework.util.Filter;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.Triple;
 
@@ -937,6 +939,14 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		};
 		task.start();
 		return task;
+	}
+	
+	@Override
+	public void scanLibraries(
+		String rootPackage, boolean includeSubPackages, Filter<String> packageFilter, Filter<String> classFilter,
+		Listener<Class<?>> classScanner
+	) {
+		appClassLoader.scanLibraries(rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);
 	}
 	
 }

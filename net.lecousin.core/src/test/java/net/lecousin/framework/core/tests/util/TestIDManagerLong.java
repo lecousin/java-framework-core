@@ -1,17 +1,18 @@
 package net.lecousin.framework.core.tests.util;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.encoding.HexaDecimalEncoder;
 import net.lecousin.framework.util.IDManagerLong;
-
-import org.junit.Assert;
-import org.junit.Test;
+import net.lecousin.framework.util.StringEncoding;
 
 public class TestIDManagerLong extends LCCoreAbstractTest {
 
 	@Test(timeout=30000)
 	public void test() {
-		IDManagerLong idm = new IDManagerLong(new HexaDecimalEncoder());
+		IDManagerLong idm = new IDManagerLong(new StringEncoding.EncodedLong(new HexaDecimalEncoder()));
 		Assert.assertEquals("0100000000000000", idm.allocate());
 		Assert.assertEquals("0200000000000000", idm.allocate());
 		Assert.assertEquals("0300000000000000", idm.allocate());

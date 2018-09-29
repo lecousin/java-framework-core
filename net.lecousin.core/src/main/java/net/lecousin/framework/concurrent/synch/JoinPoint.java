@@ -92,6 +92,22 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
 	}
 	
+	/** Similar to addToJoin, but in case the synchronization point is cancelled,
+	 * it is simply consider as done, and do not cancel this JoinPoint. */
+	public synchronized void addToJoinDoNotCancel(ISynchronizationPoint<? extends TError> sp) {
+		nbToJoin++;
+		sp.listenInline(new Runnable() {
+			@Override
+			public void run() {
+				if (sp.hasError())
+					error(sp.getError());
+				else
+					joined();
+			}
+		});
+		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
+	}
+	
 	/**
 	 * Start this JoinPoint, so as soon as the number of waited events becomes zero, this JoinPoint becomes unblocked.
 	 */

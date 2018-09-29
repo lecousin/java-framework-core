@@ -172,6 +172,11 @@ public class RedBlackTreeLongByRange<T> implements Sorted.AssociatedWithLong<T> 
 	public Iterator<T> orderedIterator() {
 		return new OrderedIt();
 	}
+    
+    @Override
+    public Iterator<T> reverseOrderIterator() {
+    	return new ReverseOrderIt();
+    }
 
 	private class OrderedIt implements Iterator<T> {
 		public OrderedIt() {
@@ -192,6 +197,44 @@ public class RedBlackTreeLongByRange<T> implements Sorted.AssociatedWithLong<T> 
 				if (itRange.hasNext()) {
 					RedBlackTreeLong<T> rbt = itRange.next();
 					subIt = rbt.orderedIterator();
+					continue;
+				}
+				break;
+			} while (true);
+		}
+		
+		@Override
+		public boolean hasNext() {
+			return subIt != null;
+		}
+		
+		@Override
+		public T next() {
+			T e = subIt.next();
+			if (!subIt.hasNext()) forward();
+			return e;
+		}
+	}
+
+	private class ReverseOrderIt implements Iterator<T> {
+		public ReverseOrderIt() {
+			itRange = ranges.reverseOrderIterator();
+			subIt = null;
+			forward();
+		}
+		
+		private Iterator<RedBlackTreeLong<T>> itRange;
+		private Iterator<T> subIt;
+		
+		private void forward() {
+			do {
+				if (subIt != null) {
+					if (subIt.hasNext()) return;
+					subIt = null;
+				}
+				if (itRange.hasNext()) {
+					RedBlackTreeLong<T> rbt = itRange.next();
+					subIt = rbt.reverseOrderIterator();
 					continue;
 				}
 				break;

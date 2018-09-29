@@ -12,9 +12,11 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import net.lecousin.framework.application.libraries.classpath.DefaultLibrariesManager;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
@@ -23,6 +25,7 @@ import net.lecousin.framework.io.provider.FileIOProvider;
 import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.memory.IMemoryManageable;
 import net.lecousin.framework.memory.MemoryManager;
+import net.lecousin.framework.util.Filter;
 
 /**
  * JAR class loader.
@@ -209,6 +212,19 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 			ZipFile zip = getZip();
 			ZipEntry entry = zip.getEntry(url.getPath().substring(1));
 			return zip.getInputStream(entry);
+		}
+	}
+	
+	@Override
+	protected void scan(
+		String rootPackage, boolean includeSubPackages,
+		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+	) {
+		try {
+			DefaultLibrariesManager.scanJarLibrary(this, getZip(),
+				rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);
+		} catch (Throwable t) {
+			// ignore
 		}
 	}
 

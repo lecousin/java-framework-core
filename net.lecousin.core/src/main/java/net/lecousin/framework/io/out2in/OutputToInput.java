@@ -82,6 +82,18 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	}
 	
 	@Override
+	public boolean isFullDataAvailable() {
+		return eof;
+	}
+	
+	@Override
+	public long getAvailableDataSize() {
+		try { if (io instanceof IO.KnownSize) return ((IO.KnownSize)io).getSizeSync(); }
+		catch (Throwable t) { /* ignore */ }
+		return -1;
+	}
+	
+	@Override
 	public ISynchronizationPoint<IOException> canStartWriting() {
 		return ((IO.Writable)io).canStartWriting();
 	}

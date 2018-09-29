@@ -389,6 +389,20 @@ public class SplashScreen extends Thread implements WorkProgress {
 		}
 	}
 	
+	private boolean eventInterrupted;
+	
+	@Override
+	public void interruptEvents() {
+		eventInterrupted = true;
+	}
+	
+	@Override
+	public void resumeEvents(boolean trigger) {
+		eventInterrupted = false;
+		if (trigger)
+			updateProgress();
+	}
+	
 	private void updateProgress() {
 		if (subText.length() == 0) {
 			progressText.setText("");
@@ -399,8 +413,9 @@ public class SplashScreen extends Thread implements WorkProgress {
 		}
 		progressBar.setValue((int)(50 + (10000 * worked / amount)));
 		bottom.invalidate();
-		synchronized (this) {
-			if (event != null) event.fire();
-		}
+		if (!eventInterrupted)
+			synchronized (this) {
+				if (event != null) event.fire();
+			}
 	}
 }

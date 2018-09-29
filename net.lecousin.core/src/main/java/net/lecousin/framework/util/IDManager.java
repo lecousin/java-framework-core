@@ -12,4 +12,7 @@ public interface IDManager {
 	/** Free the given identifier. */
 	public void free(String id);
 	
+	/** Declare an identifier as used so it cannot be allocated. */
+	public void used(String id);
+	
 }

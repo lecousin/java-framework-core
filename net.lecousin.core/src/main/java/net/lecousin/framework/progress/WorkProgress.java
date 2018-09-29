@@ -48,6 +48,12 @@ public interface WorkProgress {
 	/** Remove a listener to call on every change in the progress. */
 	public void unlisten(Runnable onchange);
 	
+	/** Stop triggering events to listener, this may be useful before doing several modifications. */
+	public void interruptEvents();
+	
+	/** Resume triggering events after a call to interruptEvents(), and optionally trigger an event now. */
+	public void resumeEvents(boolean trigger);
+	
 	/** Return the text describing the work being done. */
 	public String getText();
 
@@ -62,8 +68,48 @@ public interface WorkProgress {
 	
 	/** Interface for a multi-task progress, which is composed of sub-WorkProgress. */
 	public interface MultiTask {
+		
+		/** Interface for a sub-task. */
+		public interface SubTask {
+			/** Amount of work on the parent done by this sub-task. */
+			public long getWorkOnParent();
+			
+			/** Progress of this sub-task. */
+			public WorkProgress getProgress();
+			
+			/** Simple implementation of SubTask. */
+			public static class Wrapper implements SubTask {
+				
+				/** Constructor. */
+				public Wrapper(WorkProgress progress, long amount) {
+					this.progress = progress;
+					this.amount = amount;
+				}
+				
+				protected WorkProgress progress;
+				protected long amount;
+
+				@Override
+				public long getWorkOnParent() {
+					return amount;
+				}
+
+				@Override
+				public WorkProgress getProgress() {
+					return progress;
+				}
+				
+			}
+		}
+		
 		/** Return the sub-WorkProgress. */
-		public List<? extends WorkProgress> getTasks();
+		public List<? extends SubTask> getTasks();
+		
+		/** Add the given sub-progress as a sub-task for the given amount of work (this amount is added to the total amount to be done). */
+		public SubTask addTask(WorkProgress task, long amount);
+		
+		/** Remove a sub-task, but the amount of the parent remains unchanged. */
+		public void removeTask(SubTask subTask);
 	}
 	
 	/** Link this WorkProgress with the given synchronization point: once the synchronization point is unblocked,

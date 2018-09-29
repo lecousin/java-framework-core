@@ -60,7 +60,7 @@ public class TestXMLSerialization extends TestSerialization {
 			@Override
 			protected ISynchronizationPoint<IOException> initializeSerialization(Writable output) {
 				bout = new SimpleBufferedWritable(output, 5);
-				this.output = new XMLWriter(new BufferedWritableCharacterStream(bout, StandardCharsets.UTF_8, 3), includeXMLDeclaration);
+				this.output = new XMLWriter(new BufferedWritableCharacterStream(bout, StandardCharsets.UTF_8, 3), includeXMLDeclaration, false);
 				if (namespaces == null)
 					namespaces = new HashMap<>();
 				if (!namespaces.containsKey(XMLUtil.XSI_NAMESPACE_URI))

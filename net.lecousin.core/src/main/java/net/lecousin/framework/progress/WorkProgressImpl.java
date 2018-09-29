@@ -30,6 +30,7 @@ public class WorkProgressImpl implements WorkProgress {
 	protected String text;
 	protected String subText;
 	protected SynchronizationPoint<Exception> synch = new SynchronizationPoint<>();
+	protected boolean eventsInterrupted = false;
 	protected AsyncEvent event = null;
 	
 	@Override
@@ -131,7 +132,20 @@ public class WorkProgressImpl implements WorkProgress {
 		}
 	}
 	
+	@Override
+	public void interruptEvents() {
+		eventsInterrupted = true;
+	}
+	
+	@Override
+	public void resumeEvents(boolean trigger) {
+		eventsInterrupted = false;
+		if (trigger)
+			changed();
+	}
+	
 	protected void changed() {
+		if (eventsInterrupted) return;
 		synchronized (this) {
 			if (event != null) event.fire();
 		}

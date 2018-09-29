@@ -29,21 +29,26 @@ public class XMLWriter {
 
 	/** Constructor. */
 	@SuppressWarnings("resource")
-	public XMLWriter(IO.Writable.Buffered output, Charset encoding, boolean includeXMLDeclaration) {
-		this(new BufferedWritableCharacterStream(output, encoding != null ? encoding : StandardCharsets.UTF_8, 4096), includeXMLDeclaration);
+	public XMLWriter(IO.Writable.Buffered output, Charset encoding, boolean includeXMLDeclaration, boolean pretty) {
+		this(new BufferedWritableCharacterStream(output, encoding != null ? encoding : StandardCharsets.UTF_8, 4096),
+			includeXMLDeclaration, pretty);
 	}
 	
 	/** Constructor. */
-	public XMLWriter(ICharacterStream.Writable.Buffered output, boolean includeXMLDeclaration) {
+	public XMLWriter(ICharacterStream.Writable.Buffered output, boolean includeXMLDeclaration, boolean pretty) {
 		this.output = output;
 		writer = new CharacterStreamWritePool(output);
 		this.includeXMLDeclaration = includeXMLDeclaration;
+		this.pretty = pretty;
 	}
 	
 	private ICharacterStream.Writable.Buffered output;
 	private CharacterStreamWritePool writer;
 	private boolean includeXMLDeclaration;
+	private boolean pretty;
+	private int indent = 0;
 	private LinkedList<Context> context = new LinkedList<>();
+	private short lastNodeType = 0;
 	
 	private static final class Context {
 		private String namespaceURI = null;
@@ -92,6 +97,8 @@ public class XMLWriter {
 	private static final char[] END_CDATA = new char[] { ']', ']' };
 	private static final char[] START_COMMENT = new char[] { '<', '!', '-', '-', ' ' };
 	private static final char[] END_COMMENT = new char[] { ' ', '-', '-', '>' };
+	
+	private static final char[] PRETTY_END_TAG = new char[] { '>', '\n' };
 	
 	/**
 	 * Start the document with the XML processing instruction if needed, and opening the root element.
@@ -151,6 +158,11 @@ public class XMLWriter {
 		return output.flush();
 	}
 	
+	protected void indent() {
+		for (int i = 0; i < indent; ++i)
+			writer.write('\t');
+	}
+	
 	/** Add an attribute to the current element. */
 	public ISynchronizationPoint<IOException> addAttribute(CharSequence name, CharSequence value) {
 		Context ctx = context.peekFirst();
@@ -175,18 +187,27 @@ public class XMLWriter {
 			return new SynchronizationPoint<>(new IOException("XML document closed"));
 		if (!ctx.open)
 			return new SynchronizationPoint<>(new IOException("Opening tag already closed"));
+		return endOfAttributes(ctx);
+	}
+	
+	protected ISynchronizationPoint<IOException> endOfAttributes(Context ctx) {
 		ctx.open = false;
-		return writer.write('>');
+		if (!pretty)
+			return writer.write('>');
+		indent++;
+		return writer.write(PRETTY_END_TAG);
 	}
 	
 	/** Open a new element. */
 	public ISynchronizationPoint<IOException> openElement(String namespaceURI, String localName, Map<String, String> namespaces) {
+		if (lastNodeType == Node.TEXT_NODE)
+			writer.write('\n');
+		lastNodeType = Node.ELEMENT_NODE;
 		Context ctx = context.peekFirst();
 		if (ctx == null)
 			return new SynchronizationPoint<>(new IOException("XML document closed"));
 		if (ctx.open) {
-			ctx.open = false;
-			writer.write('>');
+			endOfAttributes(ctx);
 		}
 		ctx = new Context();
 		ctx.namespaces = namespaces != null && !namespaces.isEmpty() ? new HashMap<>(namespaces) : null;
@@ -195,6 +216,7 @@ public class XMLWriter {
 		ctx.open = true;
 		context.addFirst(ctx);
 		String ns = getNamespace(namespaceURI);
+		indent();
 		writer.write('<');
 		if (ns != null && ns.length() > 0) {
 			writer.write(ns);
@@ -217,22 +239,34 @@ public class XMLWriter {
 	
 	/** Close the current element. */
 	public ISynchronizationPoint<IOException> closeElement() {
+		if (lastNodeType == Node.TEXT_NODE)
+			writer.write('\n');
+		lastNodeType = Node.ELEMENT_NODE;
 		Context ctx = context.peekFirst();
 		if (ctx == null)
 			return new SynchronizationPoint<>(new IOException("XML document closed"));
 		if (ctx.open) {
 			context.removeFirst();
-			return writer.write(CLOSE_EMPTY_TAG);
+			if (!pretty)
+				return writer.write(CLOSE_EMPTY_TAG);
+			writer.write(CLOSE_EMPTY_TAG);
+			return writer.write('\n');
 		}
 		String ns = getNamespace(ctx.namespaceURI);
 		context.removeFirst();
+		if (pretty) {
+			indent--;
+			indent();
+		}
 		writer.write(START_CLOSE);
 		if (ns != null && ns.length() > 0) {
 			writer.write(ns);
 			writer.write(':');
 		}
 		writer.write(ctx.localName);
-		return writer.write('>');
+		if (!pretty)
+			return writer.write('>');
+		return writer.write(PRETTY_END_TAG);
 	}
 	
 	/** Add text inside the current element. */
@@ -240,10 +274,12 @@ public class XMLWriter {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
 			return new SynchronizationPoint<>(new IOException("XML document closed"));
-		if (ctx.open) {
-			ctx.open = false;
-			writer.write('>');
-		}
+		if (ctx.open)
+			endOfAttributes(ctx);
+		if (!pretty || lastNodeType == Node.TEXT_NODE)
+			return writer.write(escape(text));
+		indent();
+		lastNodeType = Node.TEXT_NODE;
 		return writer.write(escape(text));
 	}
 	
@@ -252,25 +288,37 @@ public class XMLWriter {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
 			return new SynchronizationPoint<>(new IOException("XML document closed"));
-		if (ctx.open) {
-			ctx.open = false;
-			writer.write('>');
+		if (ctx.open)
+			endOfAttributes(ctx);
+		if (pretty) {
+			writer.write('\n');
+			indent();
 		}
 		writer.write(START_CDATA);
 		writer.write(data);
-		return writer.write(END_CDATA);
+		if (!pretty)
+			return writer.write(END_CDATA);
+		lastNodeType = Node.CDATA_SECTION_NODE;
+		writer.write(END_CDATA);
+		return writer.write('\n');
 	}
 	
 	/** Add a comment inside the current element. */
 	public ISynchronizationPoint<IOException> addComment(CharSequence comment) {
 		Context ctx = context.peekFirst();
-		if (ctx != null && ctx.open) {
-			ctx.open = false;
-			writer.write('>');
+		if (ctx != null && ctx.open)
+			endOfAttributes(ctx);
+		if (pretty) {
+			writer.write('\n');
+			indent();
 		}
 		writer.write(START_COMMENT);
 		writer.write(comment);
-		return writer.write(END_COMMENT);
+		if (!pretty)
+			return writer.write(END_COMMENT);
+		lastNodeType = Node.COMMENT_NODE;
+		writer.write(END_COMMENT);
+		return writer.write('\n');
 	}
 	
 	/** Write the given DOM element. */

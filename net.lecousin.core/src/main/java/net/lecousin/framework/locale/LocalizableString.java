@@ -22,6 +22,18 @@ public class LocalizableString implements ILocalizableString {
 	private String string;
 	private Object[] values;
 	
+	public String getNamespace() {
+		return namespace;
+	}
+	
+	public String getString() {
+		return string;
+	}
+	
+	public Object[] getValues() {
+		return values;
+	}
+	
 	@Override
 	public AsyncWork<String, NoException> localize(String[] languageTag) {
 		return LCCore.getApplication().getLocalizedProperties().localize(languageTag, namespace, string, values);

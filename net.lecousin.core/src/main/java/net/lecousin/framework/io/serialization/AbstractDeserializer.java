@@ -1,5 +1,6 @@
 package net.lecousin.framework.io.serialization;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -20,6 +21,7 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOAsInputStream;
+import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
@@ -149,8 +151,11 @@ public abstract class AbstractDeserializer implements Deserializer {
 	) {
 		Class<?> c = type.getBase();
 		
-		if (c.isArray())
+		if (c.isArray()) {
+			if (byte[].class.equals(c))
+				return (AsyncWork<T, Exception>)deserializeByteArrayValue(context, rules);
 			return (AsyncWork<T, Exception>)deserializeCollectionValue(context, type, path, rules);
+		}
 		
 		if (boolean.class.equals(c))
 			return (AsyncWork<T, Exception>)deserializeBooleanValue(false);
@@ -799,6 +804,54 @@ public abstract class AbstractDeserializer implements Deserializer {
 	protected abstract AsyncWork<IO.Readable, Exception> deserializeIOReadableAttributeValue(
 		AttributeContext context, List<SerializationRule> rules);
 	
+	// *** byte[] by default using IO ***
+	
+	protected AsyncWork<byte[], Exception> deserializeByteArrayValue(SerializationContext context, List<SerializationRule> rules) {
+		AsyncWork<IO.Readable, Exception> io = deserializeIOReadableValue(context, rules);
+		AsyncWork<byte[], IOException> res = new AsyncWork<>();
+		AsyncWork<byte[], Exception> result = new AsyncWork<>();
+		res.listenInlineGenericError(result);
+		if (io.isUnblocked()) {
+			if (io.hasError()) return new AsyncWork<>(null, io.getError());
+			if (io.getResult() == null) return new AsyncWork<>(null, null);
+			IOUtil.readFully(io.getResult(), res);
+			return result;
+		}
+		io.listenInline(
+			(r) -> {
+				if (r == null)
+					result.unblockSuccess(null);
+				else
+					IOUtil.readFully(r, res);
+			},
+			result
+		);
+		return result;
+	}
+	
+	protected AsyncWork<byte[], Exception> deserializeByteArrayAttributeValue(AttributeContext context, List<SerializationRule> rules) {
+		AsyncWork<IO.Readable, Exception> io = deserializeIOReadableAttributeValue(context, rules);
+		AsyncWork<byte[], IOException> res = new AsyncWork<>();
+		AsyncWork<byte[], Exception> result = new AsyncWork<>();
+		res.listenInlineGenericError(result);
+		if (io.isUnblocked()) {
+			if (io.hasError()) return new AsyncWork<>(null, io.getError());
+			if (io.getResult() == null) return new AsyncWork<>(null, null);
+			IOUtil.readFully(io.getResult(), res);
+			return result;
+		}
+		io.listenInline(
+			(r) -> {
+				if (r == null)
+					result.unblockSuccess(null);
+				else
+					IOUtil.readFully(r, res);
+			},
+			result
+		);
+		return result;
+	}
+	
 	// *** Object ***
 
 	@SuppressWarnings("unchecked")
@@ -974,8 +1027,11 @@ public abstract class AbstractDeserializer implements Deserializer {
 		Class<?> c = type.getBase();
 		rules = addRulesForAttribute(a, rules);
 		
-		if (c.isArray())
+		if (c.isArray()) {
+			if (byte[].class.equals(c))
+				return deserializeByteArrayAttributeValue(context, rules);
 			return deserializeCollectionAttributeValue(context, path, rules);
+		}
 		
 		if (boolean.class.equals(c))
 			return deserializeBooleanAttributeValue(context, false);

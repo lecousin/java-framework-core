@@ -77,6 +77,11 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	protected boolean includeXMLDeclaration;
 	protected IO.Writable.Buffered bout;
 	protected XMLWriter output;
+	protected boolean pretty;
+	
+	public void setPretty(boolean pretty) {
+		this.pretty = pretty;
+	}
 	
 	@Override
 	protected ISynchronizationPoint<IOException> initializeSpecWriter(IO.Writable output) {
@@ -84,7 +89,7 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 			bout = (IO.Writable.Buffered)output;
 		else
 			bout = new SimpleBufferedWritable(output, bufferSize);
-		this.output = new XMLWriter(bout, encoding, includeXMLDeclaration);
+		this.output = new XMLWriter(bout, encoding, includeXMLDeclaration, pretty);
 		if (this.namespaces == null) this.namespaces = new HashMap<>();
 		if (!this.namespaces.containsKey(XMLUtil.XSI_NAMESPACE_URI))
 			this.namespaces.put(XMLUtil.XSI_NAMESPACE_URI, "xsi");

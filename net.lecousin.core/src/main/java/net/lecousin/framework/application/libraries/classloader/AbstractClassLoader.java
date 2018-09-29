@@ -15,10 +15,12 @@ import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.collections.CompoundCollection;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
+import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.io.provider.IOProviderFrom;
+import net.lecousin.framework.util.Filter;
 import net.lecousin.framework.util.Pair;
 
 /**
@@ -57,6 +59,9 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	protected abstract Object getResourcePointer(String path);
 	
 	protected abstract IO.Readable openResourcePointer(Object pointer, byte priority) throws IOException;
+	
+	protected abstract void scan(String rootPackage, boolean includeSubPackages,
+		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner);
 	
 	private List<AbstractClassLoader> subLoaders = null;
 	

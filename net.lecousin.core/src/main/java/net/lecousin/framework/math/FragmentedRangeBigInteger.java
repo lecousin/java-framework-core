@@ -190,6 +190,24 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 		}
 		return false;
 	}
+	
+	/** Return true if this fragmented range contains at least one value of the given range. */
+	public boolean containsOneValueIn(RangeBigInteger range) {
+		for (RangeBigInteger r : this) {
+			if (r.max.compareTo(range.min) < 0) continue;
+			if (r.min.compareTo(range.max) > 0) break;
+			return true;
+		}
+		return false;
+	}
+	
+	/** Return true if this fragmented range contains at least one value of the given ranges. */
+	public boolean containsOneValueIn(Collection<RangeBigInteger> ranges) {
+		for (RangeBigInteger r : ranges)
+			if (containsOneValueIn(r))
+				return true;
+		return false;
+	}
 
 	/** Return the minimum value. */
 	public BigInteger getMin() {

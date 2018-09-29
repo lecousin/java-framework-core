@@ -15,6 +15,7 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
+import net.lecousin.framework.io.buffering.ByteArrayIO;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
@@ -92,6 +93,8 @@ public abstract class AbstractSerializer implements Serializer {
 		Class<?> type = value.getClass();
 		
 		if (type.isArray()) {
+			if (value instanceof byte[])
+				return serializeByteArrayValue(context, (byte[])value, path, rules);
 			Class<?> elementType = type.getComponentType();
 			CollectionContext ctx = new CollectionContext(context, value, typeDef, new TypeDefinition(elementType));
 			return serializeCollectionValue(ctx, path, rules);
@@ -274,6 +277,8 @@ public abstract class AbstractSerializer implements Serializer {
 		Class<?> type = value.getClass();
 		
 		if (type.isArray()) {
+			if (byte[].class.equals(type))
+				return serializeByteArrayAttribute(context, (byte[])value, path, rules);
 			Class<?> elementType = type.getComponentType();
 			CollectionContext ctx = new CollectionContext(
 				context, value, context.getAttribute().getType(), new TypeDefinition(elementType));
@@ -473,4 +478,18 @@ public abstract class AbstractSerializer implements Serializer {
 
 	protected abstract ISynchronizationPoint<? extends Exception> serializeIOReadableAttribute(
 		AttributeContext context, IO.Readable io, String path, List<SerializationRule> rules);
+	
+	// *** byte[] by default using IO ***
+	
+	protected ISynchronizationPoint<? extends Exception> serializeByteArrayValue(
+		SerializationContext context, byte[] bytes, String path, List<SerializationRule> rules
+	) {
+		return serializeIOReadableValue(context, new ByteArrayIO(bytes, "serialization of byte[]"), path, rules);
+	}
+	
+	protected ISynchronizationPoint<? extends Exception> serializeByteArrayAttribute(
+			AttributeContext context, byte[] bytes, String path, List<SerializationRule> rules
+	) {
+		return serializeIOReadableAttribute(context, new ByteArrayIO(bytes, "serialization of byte[]"), path, rules);
+	}
 }

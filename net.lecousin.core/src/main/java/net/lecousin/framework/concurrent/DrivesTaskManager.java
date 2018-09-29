@@ -31,7 +31,7 @@ public class DrivesTaskManager {
 				String path = root.getAbsolutePath();
 				if (path.charAt(path.length() - 1) != File.separatorChar)
 					path += File.separatorChar;
-				Object resource = new Object();
+				Object resource = root;
 				MonoThreadTaskManager tm = new MonoThreadTaskManager("Drive " + path, resource, threadFactory, taskPriorityManager);
 				tm.start();
 				rootResources.put(path, resource);

@@ -4,6 +4,7 @@ import java.text.ParseException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.NoSuchElementException;
 
 import net.lecousin.framework.util.StringParser;
 import net.lecousin.framework.util.StringParser.Parse;
@@ -181,6 +182,24 @@ public class FragmentedRangeLong extends LinkedList<RangeLong> {
 		return false;
 	}
 	
+	/** Return true if this fragmented range contains at least one value of the given range. */
+	public boolean containsOneValueIn(RangeLong range) {
+		for (RangeLong r : this) {
+			if (r.max < range.min) continue;
+			if (r.min > range.max) break;
+			return true;
+		}
+		return false;
+	}
+	
+	/** Return true if this fragmented range contains at least one value of the given ranges. */
+	public boolean containsOneValueIn(Collection<RangeLong> ranges) {
+		for (RangeLong r : ranges)
+			if (containsOneValueIn(r))
+				return true;
+		return false;
+	}
+	
 	/** Return the minimum value. */
 	public long getMin() {
 		if (isEmpty()) return Long.MAX_VALUE;
@@ -309,6 +328,21 @@ public class FragmentedRangeLong extends LinkedList<RangeLong> {
 		for (RangeLong r : this)
 			total += r.max - r.min + 1;
 		return total;
+	}
+	
+	/** Remove a value by index. */
+	public long removeValueAt(long index) throws NoSuchElementException {
+		for (RangeLong r : this) {
+			long nb = r.max - r.min + 1;
+			if (index >= nb) {
+				index -= nb;
+				continue;
+			}
+			long value = r.min + index;
+			removeValue(value);
+			return value;
+		}
+		throw new NoSuchElementException();
 	}
 	
 	/** Add the given ranges. */

@@ -374,6 +374,12 @@ public interface IO extends IConcurrentCloseable {
 		
 		/** Signal that no more data will be written by the producer because of an error. */
 		public void signalErrorBeforeEndOfData(IOException error);
+		
+		/** Return true if endOfData has been already called. */ 
+		public boolean isFullDataAvailable();
+		
+		/** If available, return the size. A negative value means no size available. */
+		public long getAvailableDataSize();
 	}
 	
 }

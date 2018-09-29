@@ -82,6 +82,11 @@ public class XMLSerializer extends AbstractSerializer {
 	protected boolean includeXMLDeclaration;
 	protected IO.Writable.Buffered bout;
 	protected XMLWriter output;
+	protected boolean pretty = false;
+	
+	public void setPretty(boolean pretty) {
+		this.pretty = pretty;
+	}
 	
 	@Override
 	protected ISynchronizationPoint<IOException> initializeSerialization(IO.Writable output) {
@@ -89,7 +94,7 @@ public class XMLSerializer extends AbstractSerializer {
 			bout = (IO.Writable.Buffered)output;
 		else
 			bout = new SimpleBufferedWritable(output, bufferSize);
-		this.output = new XMLWriter(bout, encoding, includeXMLDeclaration);
+		this.output = new XMLWriter(bout, encoding, includeXMLDeclaration, pretty);
 		if (namespaces == null)
 			namespaces = new HashMap<>();
 		if (!namespaces.containsKey(XMLUtil.XSI_NAMESPACE_URI))

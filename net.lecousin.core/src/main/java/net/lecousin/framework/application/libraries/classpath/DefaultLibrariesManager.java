@@ -9,8 +9,11 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import net.lecousin.framework.application.Application;
+import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -18,12 +21,14 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.plugins.CustomExtensionPoint;
 import net.lecousin.framework.plugins.ExtensionPoints;
+import net.lecousin.framework.util.Filter;
 
 /**
  * Default implementation of LibrariesManager.
@@ -259,5 +264,100 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		load.start().listenInline(() -> {
 			loadPlugins(urls, sp);
 		}, sp);
+	}
+	
+	@Override
+	public void scanLibraries(
+		String rootPackage, boolean includeSubPackages,
+		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+	) {
+		List<File> files = getLibrariesLocations();
+		for (File f : files) {
+			if (f.isDirectory())
+				scanDirectoryLibrary(app.getClassLoader(), f, rootPackage,
+					includeSubPackages, packageFilter, classFilter, classScanner);
+			else
+				scanJarLibrary(app.getClassLoader(), f, rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);
+		}
+	}
+	
+	/** Scan a directory looking for class files. */
+	public static void scanDirectoryLibrary(
+		ApplicationClassLoader classLoader, File dir, String rootPackage, boolean includeSubPackages,
+		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+	) {
+		String pkgPath = rootPackage.replace('.', '/');
+		File rootDir = new File(dir, pkgPath);
+		if (!rootDir.exists()) return;
+		scanClasses(classLoader, rootDir, rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);
+	}
+	
+	private static void scanClasses(
+		ApplicationClassLoader classLoader, File dir, String pkgName, boolean includeSubPackages,
+		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+	) {
+		File[] files = dir.listFiles();
+		if (files == null) return;
+		boolean filtered = packageFilter != null && !packageFilter.accept(pkgName);
+		for (File f : files) {
+			if (f.isDirectory()) {
+				if (!includeSubPackages) continue;
+				scanClasses(classLoader, f, pkgName + '.' + f.getName(), true, packageFilter, classFilter, classScanner);
+			} else if (!filtered) {
+				if (f.getName().endsWith(".class")) {
+					String name = pkgName + '.' + f.getName().substring(0, f.getName().length() - 6);
+					if (classFilter == null || classFilter.accept(name)) {
+						try {
+							Class<?> cl = classLoader.loadClass(name);
+							classScanner.fire(cl);
+						} catch (Throwable t) {
+							// ignore
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	/** Scan a JAR looking for class files. */
+	public static void scanJarLibrary(
+		ApplicationClassLoader classLoader, File file, String rootPackage, boolean includeSubPackages,
+		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+	) {
+		try (ZipFile jar = new ZipFile(file)) {
+			scanJarLibrary(classLoader, jar, rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);
+		} catch (Throwable t) {
+			// ignore
+		}
+	}
+	
+	/** Scan a JAR looking for class files. */
+	public static void scanJarLibrary(
+		ApplicationClassLoader classLoader, ZipFile jar, String rootPackage, boolean includeSubPackages,
+		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+	) {
+		String pkgPath = rootPackage.length() > 0 ? rootPackage.replace('.', '/') + '/' : "";
+		Enumeration<? extends ZipEntry> entries = jar.entries();
+		while (entries.hasMoreElements()) {
+			ZipEntry f = entries.nextElement();
+			if (f.isDirectory()) continue;
+			String name = f.getName();
+			if (!name.startsWith(pkgPath)) continue;
+			if (!name.endsWith(".class")) continue;
+			name = name.substring(0, name.length() - 6);
+			name = name.replace('/', '.');
+			int i = name.lastIndexOf('.');
+			String pkg = i > 0 ? name.substring(0, i) : "";
+			if (includeSubPackages || pkg.equals(rootPackage)) {
+				if (packageFilter != null && !packageFilter.accept(pkg)) continue;
+				if (classFilter != null && !classFilter.accept(name)) continue;
+				try {
+					Class<?> cl = classLoader.loadClass(name);
+					classScanner.fire(cl);
+				} catch (Throwable t) {
+					// ignore
+				}
+			}
+		}
 	}
 }

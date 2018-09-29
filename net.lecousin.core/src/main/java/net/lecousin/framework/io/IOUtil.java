@@ -86,6 +86,48 @@ public final class IOUtil {
 		return read;
 	}
 	
+	/** Read fully into a byte[], and unblock the given result upon completion. */
+	public static void readFully(IO.Readable io, AsyncWork<byte[], IOException> result) {
+		if (io instanceof IO.KnownSize) {
+			AsyncWork<Long, IOException> getSize = ((IO.KnownSize) io).getSizeAsync();
+			Runnable launchRead = () -> {
+				if (getSize.hasError()) result.error(getSize.getError());
+				else if (getSize.isCancelled()) result.cancel(getSize.getCancelEvent());
+				else {
+					long size = getSize.getResult().longValue();
+					if (size > Integer.MAX_VALUE) {
+						result.error(new IOException("IO too large to be read into memory"));
+						return;
+					}
+					byte[] bytes;
+					try { bytes = new byte[(int)size]; }
+					catch (Throwable t) {
+						result.error(IO.error(t));
+						return;
+					}
+					readFullyAsync(io, ByteBuffer.wrap(bytes), (r) -> {
+						if (r.getValue2() != null)
+							result.error(r.getValue2());
+						else
+							result.unblockSuccess(bytes);
+					});
+				}
+			};
+			if (getSize.isUnblocked()) {
+				launchRead.run();
+				return;
+			}
+			getSize.listenAsync(new Task.Cpu.FromRunnable("readFully", io.getPriority(), launchRead), true);
+			return;
+		}
+		AsyncWork<ByteBuffersIO, IOException> read = readFullyAsync(io, 65536);
+		read.listenAsync(new Task.Cpu.FromRunnable("readFully: convert ByteArraysIO into byte[]", io.getPriority(), () -> {
+			if (read.hasError()) result.error(read.getError());
+			else if (read.isCancelled()) result.cancel(read.getCancelEvent());
+			else result.unblockSuccess(read.getResult().createSingleByteArray());
+		}), result);
+	}
+	
 	/**
 	 * Fill the remaining bytes of the given buffer.
 	 * @param io the readable to read from

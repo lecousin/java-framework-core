@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -394,8 +395,11 @@ public class XMLDeserializer extends AbstractDeserializer {
 					break;
 				}
 			if (found) continue;
-			// not found => set as null, except if it is a primitive
+			// not found => set as null
+			// except if it is a primitive
 			if (a.getType().getBase().isPrimitive()) continue;
+			// except if it is a collection
+			if (Collection.class.isAssignableFrom(a.getType().getBase())) continue;
 			a.setValue(context.getInstance(), null);
 		}
 	}
@@ -576,6 +580,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	private void readBase64(Base64Decoder decoder, IOInMemoryOrFile io, AsyncWork<IO.Readable, Exception> result) {
 		if (Type.TEXT.equals(input.event.type)) {
+			input.event.text.trim();
 			if (input.event.text.length() == 0) {
 				readNextBase64(decoder, io, result);
 				return;

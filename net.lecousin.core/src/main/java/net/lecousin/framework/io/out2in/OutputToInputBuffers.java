@@ -119,6 +119,22 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 		});
 	}
 	
+	
+	@Override
+	public boolean isFullDataAvailable() {
+		return eof;
+	}
+	
+	@Override
+	public long getAvailableDataSize() {
+		long total = 0;
+		synchronized (this) {
+			for (ByteBuffer b : buffers)
+				total += b.remaining();
+		}
+		return total;
+	}
+	
 	@Override
 	public ISynchronizationPoint<IOException> canStartWriting() {
 		return new SynchronizationPoint<>(true);
@@ -190,6 +206,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 			if (eof) return new SynchronizationPoint<>(true);
 			if (lock.hasError()) return lock;
 		}
+		if (lock.isUnblocked()) lock.lock();
 		return lock;
 	}
 	

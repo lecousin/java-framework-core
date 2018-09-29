@@ -6,7 +6,9 @@ import java.util.List;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.util.Filter;
 
 /** Allows to load libraries and get information about loaded ones. */
 public interface LibrariesManager {
@@ -25,5 +27,9 @@ public interface LibrariesManager {
 
 	/** Return the list of libraries loaded. Each File may be a file in case of a JAR, or a directory. */
 	List<File> getLibrariesLocations();
+	
+	/** Go through each library to scan its content. */
+	void scanLibraries(String rootPackage, boolean includeSubPackages,
+		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner);
 	
 }

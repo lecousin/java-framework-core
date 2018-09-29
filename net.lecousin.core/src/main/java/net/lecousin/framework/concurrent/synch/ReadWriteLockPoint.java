@@ -44,12 +44,19 @@ public class ReadWriteLockPoint {
 	 * If the lock point is used in write mode, this method will return a SynchronizationPoint unblocked when read can start.
 	 */
 	public SynchronizationPoint<NoException> startReadAsync() {
+		return startReadAsync(false);
+	}
+
+	/** To call when a thread wants to enter read mode.
+	 * If the lock point is used in write mode, this method will return a SynchronizationPoint unblocked when read can start.
+	 */
+	public SynchronizationPoint<NoException> startReadAsync(boolean returnNullIfReady) {
 		SynchronizationPoint<NoException> sp;
 		synchronized (this) {
 			if (!writer) {
 				// nobody is writing, we can read
 				readers++;
-				return null;
+				return returnNullIfReady ? null : new SynchronizationPoint<>(true);
 			}
 			// if someone is writing, we need to wait
 			if (readerWaiting == null)
@@ -99,12 +106,20 @@ public class ReadWriteLockPoint {
 	 * If the lock point is used in read mode, this method will return a SynchronizationPoint unblocked when write can start.
 	 */
 	public SynchronizationPoint<NoException> startWriteAsync() {
+		return startWriteAsync(false);
+	}
+	
+	/** To call when a thread wants to enter write mode.
+	 * If write can start immediately, this method returns null.
+	 * If the lock point is used in read mode, this method will return a SynchronizationPoint unblocked when write can start.
+	 */
+	public SynchronizationPoint<NoException> startWriteAsync(boolean returnNullIfReady) {
 		SynchronizationPoint<NoException> sp;
 		synchronized (this) {
 			// if nobody is using the resource, we can start writing
 			if (readers == 0 && !writer) {
 				writer = true;
-				return null;
+				return returnNullIfReady ? null : new SynchronizationPoint<>(true);
 			}
 			// someone is doing something, we need to block
 			sp = new SynchronizationPoint<NoException>();

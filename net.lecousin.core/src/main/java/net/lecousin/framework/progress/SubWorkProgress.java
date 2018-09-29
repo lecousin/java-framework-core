@@ -1,7 +1,7 @@
 package net.lecousin.framework.progress;
 
 /** Implementation of WorkProgress for a sub-aork, that will transmit its progression to its parent. */
-public class SubWorkProgress extends WorkProgressImpl {
+public class SubWorkProgress extends WorkProgressImpl implements WorkProgress.MultiTask.SubTask {
 
 	/** Constructor. */
 	public SubWorkProgress(WorkProgress parent, long parentWork, long amount, String text, String subText) {
@@ -25,7 +25,8 @@ public class SubWorkProgress extends WorkProgressImpl {
 	private long parentWork;
 	
 	private void updateParent() {
-		long newProgress = getPosition() * parentWork / getAmount();
+		long amount = getAmount();
+		long newProgress = amount > 0 ? getPosition() * parentWork / amount : 0;
 		if (newProgress != parentProgress) {
 			parent.progress(newProgress - parentProgress);
 			parentProgress = newProgress;
@@ -54,6 +55,16 @@ public class SubWorkProgress extends WorkProgressImpl {
 	public void done() {
 		super.done();
 		updateParent();
+	}
+
+	@Override
+	public long getWorkOnParent() {
+		return parentWork;
+	}
+
+	@Override
+	public WorkProgress getProgress() {
+		return this;
 	}
 	
 }
