@@ -28,11 +28,11 @@ is recommended for better performances on disk operations (detection of physical
  - log.bridges.slf4j [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin.framework/log.bridges.slf4j.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin.framework%22%20AND%20a%3A%22log.bridges.slf4j%22)
  [![Javadoc](https://img.shields.io/badge/javadoc-0.13.3-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.slf4j/0.13.3)
 
-### Branch 0.13
+### Current development - branch dev
 
-![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=0.13 "Build Status")
-![build status](https://ci.appveyor.com/api/projects/status/github/lecousin/java-framework-core?branch=0.13&svg=true "Build Status")
-[![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/0.13/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/0.13)
+![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=dev "Build Status")
+![build status](https://ci.appveyor.com/api/projects/status/github/lecousin/java-framework-core?branch=dev&svg=true "Build Status")
+[![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/dev/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/dev)
 
 ## Multi-threading
 

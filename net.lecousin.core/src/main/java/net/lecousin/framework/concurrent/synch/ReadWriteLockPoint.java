@@ -44,7 +44,7 @@ public class ReadWriteLockPoint {
 	 * If the lock point is used in write mode, this method will return a SynchronizationPoint unblocked when read can start.
 	 */
 	public SynchronizationPoint<NoException> startReadAsync() {
-		return startReadAsync(false);
+		return startReadAsync(true);
 	}
 
 	/** To call when a thread wants to enter read mode.
@@ -106,7 +106,7 @@ public class ReadWriteLockPoint {
 	 * If the lock point is used in read mode, this method will return a SynchronizationPoint unblocked when write can start.
 	 */
 	public SynchronizationPoint<NoException> startWriteAsync() {
-		return startWriteAsync(false);
+		return startWriteAsync(true);
 	}
 	
 	/** To call when a thread wants to enter write mode.
