@@ -59,6 +59,12 @@ public class TestFragmentedRangeLong extends LCCoreAbstractTest {
 		// 9-31
 		f.addValue(31);
 		Assert.assertEquals(1, f.size());
+		
+		Assert.assertFalse(f.containsOneValueIn(new RangeLong(0, 8)));
+		Assert.assertFalse(f.containsOneValueIn(new RangeLong(35, 50)));
+		Assert.assertTrue(f.containsOneValueIn(new RangeLong(10, 50)));
+		Assert.assertTrue(f.containsOneValueIn(new RangeLong(5, 9)));
+		Assert.assertTrue(f.containsOneValueIn(new RangeLong(31, 50)));
 
 		// 9-31, 100-150, 200-250
 		f.addRanges(Arrays.asList(new RangeLong(100, 150), new RangeLong(200, 250)));

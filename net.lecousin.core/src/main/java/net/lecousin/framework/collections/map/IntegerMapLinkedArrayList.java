@@ -45,6 +45,7 @@ public class IntegerMapLinkedArrayList<T> implements IntegerMap<T> {
 	public void clear() {
 		for (LinkedArrayList<Entry<T>> bucket : buckets)
 			bucket.clear();
+		size = 0;
 	}
 
 	@Override
@@ -58,6 +59,7 @@ public class IntegerMapLinkedArrayList<T> implements IntegerMap<T> {
 				return previous;
 			}
 		buckets[b].add(new Entry<T>(key, entry));
+		size++;
 		return null;
 	}
 
@@ -79,6 +81,7 @@ public class IntegerMapLinkedArrayList<T> implements IntegerMap<T> {
 			Entry<T> e = it.next();
 			if (e.key == key) {
 				it.remove();
+				size--;
 				return e.value;
 			}
 		}

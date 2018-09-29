@@ -51,7 +51,9 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 			readHalfSync(o2i, (nbRead % 2) == 0, b);
 			nbRead++;
 		}
+		Assert.assertFalse(o2i.isFullDataAvailable());
 		o2i.endOfData();
+		Assert.assertTrue(o2i.isFullDataAvailable());
 		while (nbRead < nbBuf * 2) {
 			readHalfSync(o2i, (nbRead % 2) == 0, b);
 			nbRead++;

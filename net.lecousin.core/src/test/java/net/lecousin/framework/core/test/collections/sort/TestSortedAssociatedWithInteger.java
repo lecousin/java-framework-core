@@ -166,6 +166,19 @@ public abstract class TestSortedAssociatedWithInteger extends LCCoreAbstractTest
 		}
 		Assert.assertEquals(sorted.size(), nb);
 		Assert.assertFalse(it2.hasNext());
+
+		it1 = sorted.reverseOrderIterator();
+		it2 = order.descendingIterator();
+		nb = 0;
+		while (it1.hasNext()) {
+			Assert.assertTrue(it2.hasNext());
+			Object o = it1.next();
+			Integer i = it2.next();
+			Assert.assertEquals(i.intValue(), -((Integer)o).intValue());
+			nb++;
+		}
+		Assert.assertEquals(sorted.size(), nb);
+		Assert.assertFalse(it2.hasNext());
 	}
 	
 }
