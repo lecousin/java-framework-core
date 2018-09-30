@@ -17,16 +17,16 @@ is recommended for better performances on disk operations (detection of physical
 [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/master)
 
  - core [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.14.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.14.0)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.14.1-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.14.1)
  
  - core.javaee [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.javaee.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core.javaee%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.14.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core.javaee/0.14.0)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.14.1-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core.javaee/0.14.1)
  
  - log.bridges.commons-logging [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin.framework/log.bridges.commons-logging.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin.framework%22%20AND%20a%3A%22log.bridges.commons-logging%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.14.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.14.0)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.14.1-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.14.1)
  
  - log.bridges.slf4j [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin.framework/log.bridges.slf4j.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin.framework%22%20AND%20a%3A%22log.bridges.slf4j%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.14.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.slf4j/0.14.0)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.14.1-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.slf4j/0.14.1)
 
 ### Current development - branch dev
 
