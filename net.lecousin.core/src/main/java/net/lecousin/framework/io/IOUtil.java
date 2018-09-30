@@ -1322,7 +1322,16 @@ public final class IOUtil {
 	AsyncWork<TResult, TError> success(TResult result, RunnableWithParameter<Pair<TResult, TError>> ondone) {
 		if (ondone != null) ondone.run(new Pair<>(result, null));
 		return new AsyncWork<>(result, null);
-	}	
+	}
+	
+	/** Shortcut to transfer error or cancellation. */
+	public static <TResult, TError extends Exception>
+	void notSuccess(ISynchronizationPoint<TError> sp, AsyncWork<TResult, TError> result, RunnableWithParameter<Pair<TResult, TError>> ondone) {
+		if (sp.hasError())
+			error(sp.getError(), result, ondone);
+		else
+			result.cancel(sp.getCancelEvent());
+	}
 	
 	/** Get the size by seeking at the end if not an instanceof IO.KnownSize. */
 	public static long getSizeSync(IO.Readable.Seekable io) throws IOException {

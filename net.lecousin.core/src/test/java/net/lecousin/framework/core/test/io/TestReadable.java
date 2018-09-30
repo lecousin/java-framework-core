@@ -143,11 +143,11 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 						return;
 					}
 					if (!onDoneBefore.get()) {
-						done.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
+						done.error(new Exception("Method readFullyAsync didn't call ondone before listeners on buffer " + i.get()));
 						return;
 					}
 					if (res.hasError()) {
-						done.error(res.getError());
+						done.error(new Exception("Error reading buffer " + i.get(), res.getError()));
 						return;
 					}
 					if (i.get() < nbBuf) {

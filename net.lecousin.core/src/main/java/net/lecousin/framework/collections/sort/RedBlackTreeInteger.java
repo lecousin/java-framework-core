@@ -272,31 +272,66 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     /**
      * Returns the node containing the highest value strictly lower than the given one.
      */
-    public Node<T> searchNearestLower(int value) {
+    public Node<T> searchNearestLower(int value, boolean acceptEquals) {
     	if (root == null) return null;
-    	return searchNearestLower(root, value);
+    	return searchNearestLower(root, value, acceptEquals);
     }
     
-    private Node<T> searchNearestLower(Node<T> node, int value) {
+    private Node<T> searchNearestLower(Node<T> node, int value, boolean acceptEquals) {
     	if (value < node.value) {
     		if (node.left == null) return null;
-    		return searchNearestLower(node.left, value);
+    		return searchNearestLower(node.left, value, acceptEquals);
     	}
     	if (value > node.value) {
     		if (node.right == null) return node;
-    		if (value > node.right.value) return searchNearestLower(node.right, value);
+    		if (value > node.right.value) return searchNearestLower(node.right, value, acceptEquals);
     		if (value == node.right.value) {
-    			Node<T> n = searchNearestLower(node.right, value);
+    			if (acceptEquals) return node.right;
+    			Node<T> n = searchNearestLower(node.right, value, acceptEquals);
     			if (n == null) return node;
     			return n;
     		}
-    		Node<T> n = searchNearestLower(node.right, value);
+    		Node<T> n = searchNearestLower(node.right, value, acceptEquals);
     		if (n == null) return node;
     		return n;
     	}
+    	if (acceptEquals) return node;
     	if (node.left == null) return null;
     	Node<T> n = node.left;
     	while (n.right != null) n = n.right;
+    	return n;
+    }
+    
+    /**
+     * Returns the node containing the lowest value strictly higher than the given one.
+     */
+    public Node<T> searchNearestHigher(int value, boolean acceptEquals) {
+    	if (root == null) return null;
+    	return searchNearestHigher(root, value, acceptEquals);
+    }
+    
+    private Node<T> searchNearestHigher(Node<T> node, int value, boolean acceptEquals) {
+    	if (value > node.value) {
+    		if (node.right == null) return null;
+    		return searchNearestHigher(node.right, value, acceptEquals);
+    	}
+    	if (value < node.value) {
+    		if (node.left == null) return node;
+    		if (value < node.left.value) return searchNearestHigher(node.left, value, acceptEquals);
+    		if (value == node.left.value) {
+    			if (acceptEquals) return node.left;
+    			Node<T> n = searchNearestHigher(node.left, value, acceptEquals);
+    			if (n == null) return node;
+    			return n;
+    		}
+    		Node<T> n = searchNearestHigher(node.left, value, acceptEquals);
+    		if (n == null) return node;
+    		return n;
+    	}
+    	if (acceptEquals) return node;
+    	if (node.right == null) return null;
+    	Node<T> n = node.right;
+    	while (n.left != null) n = n.left;
     	return n;
     }
     
@@ -667,6 +702,8 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     
     @Override
     public Iterator<T> iterator() { return new RBTreeIterator(root); }
+
+    public Iterator<Node<T>> nodeIterator() { return new RBTreeNodeIterator(root); }
     
     public Iterator<Node<T>> nodeIteratorOrdered() { return new NodeIteratorOrdered<T>(root); }
 
@@ -710,6 +747,41 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     		T e = rightIterator.next();
     		if (!rightIterator.hasNext()) rightIterator = null;
     		return e;
+    	}
+    }
+    
+    private class RBTreeNodeIterator implements Iterator<Node<T>> {
+    	private RBTreeNodeIterator(Node<T> node) {
+    		this.node = node;
+    	}
+    	
+    	private Node<T> node;
+    	private RBTreeNodeIterator leftIterator = null;
+    	private RBTreeNodeIterator rightIterator = null;
+    	
+    	@Override
+    	public boolean hasNext() {
+    		if (node != null || leftIterator != null || rightIterator != null) return true;
+    		return false;
+    	}
+    	
+    	@Override
+    	public Node<T> next() {
+    		if (node != null) {
+    			if (node.left != null) leftIterator = new RBTreeNodeIterator(node.left);
+    			if (node.right != null) rightIterator = new RBTreeNodeIterator(node.right);
+    			Node<T> n = node;
+    			node = null;
+    			return n;
+    		}
+    		if (leftIterator != null) {
+    			Node<T> n = leftIterator.next();
+    			if (!leftIterator.hasNext()) leftIterator = null;
+    			return n;
+    		}
+    		Node<T> n = rightIterator.next();
+    		if (!rightIterator.hasNext()) rightIterator = null;
+    		return n;
     	}
     }
     

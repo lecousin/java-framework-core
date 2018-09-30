@@ -304,6 +304,39 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     	return n;
     }
     
+    /**
+     * Returns the node containing the lowest value strictly higher than the given one.
+     */
+    public Node<T> searchNearestHigher(long value, boolean acceptEquals) {
+    	if (root == null) return null;
+    	return searchNearestHigher(root, value, acceptEquals);
+    }
+    
+    private Node<T> searchNearestHigher(Node<T> node, long value, boolean acceptEquals) {
+    	if (value > node.value) {
+    		if (node.right == null) return null;
+    		return searchNearestHigher(node.right, value, acceptEquals);
+    	}
+    	if (value < node.value) {
+    		if (node.left == null) return node;
+    		if (value < node.left.value) return searchNearestHigher(node.left, value, acceptEquals);
+    		if (value == node.left.value) {
+    			if (acceptEquals) return node.left;
+    			Node<T> n = searchNearestHigher(node.left, value, acceptEquals);
+    			if (n == null) return node;
+    			return n;
+    		}
+    		Node<T> n = searchNearestHigher(node.left, value, acceptEquals);
+    		if (n == null) return node;
+    		return n;
+    	}
+    	if (acceptEquals) return node;
+    	if (node.right == null) return null;
+    	Node<T> n = node.right;
+    	while (n.left != null) n = n.left;
+    	return n;
+    }
+    
 	// -----------------
 	// --- insertion ---
 	// -----------------
@@ -671,6 +704,8 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     @Override
     public Iterator<T> iterator() { return new RBTreeIterator(root); }
     
+    public Iterator<Node<T>> nodeIterator() { return new RBTreeNodeIterator(root); }
+    
     public Iterator<Node<T>> nodeIteratorOrdered() { return new NodeIteratorOrdered<T>(root); }
 
     public Iterator<Node<T>> nodeIteratorReverse() { return new NodeIteratorReverseOrder<T>(root); }
@@ -716,6 +751,41 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     	}
     }
     
+    private class RBTreeNodeIterator implements Iterator<Node<T>> {
+    	private RBTreeNodeIterator(Node<T> node) {
+    		this.node = node;
+    	}
+    	
+    	private Node<T> node;
+    	private RBTreeNodeIterator leftIterator = null;
+    	private RBTreeNodeIterator rightIterator = null;
+    	
+    	@Override
+    	public boolean hasNext() {
+    		if (node != null || leftIterator != null || rightIterator != null) return true;
+    		return false;
+    	}
+    	
+    	@Override
+    	public Node<T> next() {
+    		if (node != null) {
+    			if (node.left != null) leftIterator = new RBTreeNodeIterator(node.left);
+    			if (node.right != null) rightIterator = new RBTreeNodeIterator(node.right);
+    			Node<T> n = node;
+    			node = null;
+    			return n;
+    		}
+    		if (leftIterator != null) {
+    			Node<T> n = leftIterator.next();
+    			if (!leftIterator.hasNext()) leftIterator = null;
+    			return n;
+    		}
+    		Node<T> n = rightIterator.next();
+    		if (!rightIterator.hasNext()) rightIterator = null;
+    		return n;
+    	}
+    }
+
     private static class NodeIteratorOrdered<T> implements Iterator<Node<T>> {
     	private NodeIteratorOrdered(Node<T> root) {
     		next = root;
