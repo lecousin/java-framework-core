@@ -225,6 +225,7 @@ public abstract class Task<T,TError extends Exception> {
 
 	/** Constructor. */
 	public Task(TaskManager manager, String description, byte priority, RunnableWithParameter<Pair<T,TError>> ondone) {
+		assert manager != null;
 		this.app = LCCore.getApplication();
 		this.manager = manager;
 		this.description = description;

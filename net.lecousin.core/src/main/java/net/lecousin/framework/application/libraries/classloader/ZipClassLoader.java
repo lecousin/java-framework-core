@@ -82,7 +82,7 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 	
 	@Override
 	public String getDescription() {
-		return "ZipClassLoader: " + zipProvider.getDescription();
+		return "ZipClassLoader: " + zipProvider.getDescription() + " (" + (zip == null ? "unloaded" : "loaded") + ")";
 	}
 	
 	@Override

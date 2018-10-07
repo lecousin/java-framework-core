@@ -180,6 +180,23 @@ logger.debug("No garbage collection since 5 minutes => free most of cached data 
 logger.debug("No garbage collection since 2 minutes => free some cached data to try to shrink the memory used by the JVM");
 				freeMemory(FreeMemoryLevel.LOW);
 			}
+
+			if (System.currentTimeMillis() - lastGC[0] > 25 * 60 * 1000) {
+				long total = Runtime.getRuntime().totalMemory();
+				long allocate = total / 50; // 2%
+				long free = Runtime.getRuntime().freeMemory();
+				if (allocate > free / 10) allocate = free / 10;
+				if (allocate > 1024 * 1024) allocate = 1024 * 1024;
+				if (logger.debug() && allocate > 0)
+logger.debug("No garbage collection since 25 minutes => make some garbage to induce a collection sooner = " + StringUtil.size(allocate));
+				while (allocate > 0) {
+					int len = allocate > 4096 ? 4096 : (int)allocate;
+					byte[] tmp = new byte[len];
+					tmp[0] = 51;
+					allocate -= len;
+				}
+			}
+
 			if (logger.debug())
 				logMemory(Level.DEBUG);
 

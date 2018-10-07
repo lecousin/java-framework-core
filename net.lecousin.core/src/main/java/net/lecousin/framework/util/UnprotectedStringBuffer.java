@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -862,6 +863,11 @@ public class UnprotectedStringBuffer implements IString {
 		return new CS();
 	}
 	
+	/** Create a writable CharacterStream from this string. */
+	public ICharacterStream.Writable.Buffered asWritableCharacterStream() {
+		return new WCS();
+	}
+	
 	/** CharacterStream implementation. */
 	protected class CS extends ConcurrentCloseable implements ICharacterStream.Readable.Buffered {
 		private int buffer = 0;
@@ -995,6 +1001,74 @@ public class UnprotectedStringBuffer implements IString {
 		public ISynchronizationPoint<IOException> canStartReading() {
 			return new SynchronizationPoint<>(true);
 		}
+	}
+	
+	/** CharacterStream implementation. */
+	protected class WCS extends ConcurrentCloseable implements ICharacterStream.Writable.Buffered {
+		private byte priority = Task.PRIORITY_NORMAL;
+
+		@Override
+		public void writeSync(char[] c, int offset, int length) {
+			append(c, offset, length);
+		}
+
+		@Override
+		public void writeSync(char c) throws IOException {
+			append(c);
+		}
+		
+		@Override
+		public ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length) {
+			return new Task.Cpu<Void, IOException>("UnprotectedStringBuffer.writeAsync", priority) {
+				@Override
+				public Void run() throws IOException, CancelException {
+					append(c, offset, length);
+					return null;
+				}
+			}.start().getOutput();
+		}
+
+		@Override
+		public ISynchronizationPoint<IOException> writeAsync(char c) {
+			append(c);
+			return new SynchronizationPoint<>(true);
+		}
+
+		@Override
+		public ISynchronizationPoint<IOException> flush() {
+			return new SynchronizationPoint<>(true);
+		}
+
+		@Override
+		public byte getPriority() {
+			return priority;
+		}
+		
+		@Override
+		public void setPriority(byte priority) {
+			this.priority = priority;
+		}
+
+		@Override
+		protected ISynchronizationPoint<?> closeUnderlyingResources() {
+			return null;
+		}
+		
+		@Override
+		protected void closeResources(SynchronizationPoint<Exception> ondone) {
+			ondone.unblock();
+		}
+		
+		@Override
+		public String getDescription() {
+			return "UnprotectedStringBuffer";
+		}
+		
+		@Override
+		public Charset getEncoding() {
+			return StandardCharsets.UTF_16;
+		}
+
 	}
 	
 	/** Encode this string with the given charset and write the result on the given writable IO. */

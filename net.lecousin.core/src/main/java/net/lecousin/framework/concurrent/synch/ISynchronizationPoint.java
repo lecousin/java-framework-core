@@ -86,6 +86,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 				else if (isCancelled()) onCancel.fire(getCancelEvent());
 				else onReady.run();
 			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.listenInline:" + onReady;
+			}
 		});
 	}
 	
@@ -97,6 +102,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 				if (hasError()) onErrorOrCancel.error(getError());
 				else if (isCancelled()) onErrorOrCancel.cancel(getCancelEvent());
 				else onReady.run();
+			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.listenInline:" + onReady;
 			}
 		});
 	}
@@ -115,6 +125,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 				else
 					sp.unblock();
 			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.listenInline: " + sp;
+			}
 		});
 	}
 	
@@ -126,6 +141,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 				if (hasError()) onErrorOrCancel.error(getError());
 				else if (isCancelled()) onErrorOrCancel.cancel(getCancelEvent());
 				else onReady.run();
+			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.listenInline: " + onReady;
 			}
 		});
 	}
@@ -142,6 +162,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 				else
 					sp.unblock();
 			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.listenInlineSP: " + sp;
+			}
 		});
 	}
 	
@@ -152,12 +177,27 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			public void run() {
 				sp.unblock();
 			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.synchWithNoError: " + sp;
+			}
 		});
 	}
 	
 	/** Call the given listener, only when this synchronization point is unblocked without error or cancellation. */
 	default void onSuccess(Runnable listener) {
-		listenInline(() -> { if (isSuccessful()) listener.run(); });
+		listenInline(new Runnable() {
+			@Override
+			public void run() {
+				if (isSuccessful()) listener.run();
+			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.onSuccess: " + listener;
+			}
+		});
 	}
 	
 	/** Call the given listener, only when this synchronization point is unblocked with an error. */
@@ -166,6 +206,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			@Override
 			public void run() {
 				if (hasError()) listener.fire(getError());
+			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.onError: " + listener;
 			}
 		});
 	}
@@ -177,6 +222,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			public void run() {
 				if (hasError()) listener.fire(getError());
 			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.onException: " + listener;
+			}
 		});
 	}
 	
@@ -186,6 +236,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			@Override
 			public void run() {
 				if (isCancelled()) listener.fire(getCancelEvent());
+			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.onCancel: " + listener;
 			}
 		});
 	}
@@ -215,6 +270,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 				task.start();
 				task.getOutput().onCancel((cancel) -> { if (!onErrorOrCancel.isUnblocked()) onErrorOrCancel.cancel(cancel); });
 			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.listenAsync: " + task.getDescription();
+			}
 		}, onErrorOrCancel);
 	}
 
@@ -227,6 +287,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			public void run() {
 				task.start();
 				task.getOutput().onCancel((cancel) -> { if (!onErrorOrCancel.isUnblocked()) onErrorOrCancel.cancel(cancel); });
+			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.listenAsyncSP: " + task.getDescription();
 			}
 		}, onErrorOrCancel);
 	}

@@ -329,8 +329,13 @@ public class LocalizedProperties implements IMemoryManageable {
 	public List<String> getItemsDescription() {
 		ArrayList<String> items = new ArrayList<>(namespaces.size());
 		synchronized (namespaces) {
-			for (String ns : namespaces.keySet())
-				items.add("Localized properties for namespace " + ns);
+			for (String ns : namespaces.keySet()) {
+				int loaded = 0;
+				Namespace n = namespaces.get(ns);
+				for (Namespace.Language lang : n.languages)
+					if (lang.loading != null) loaded++;
+				items.add("Localized properties for namespace " + ns + " (" + loaded + " language(s) loaded)");
+			}
 		}
 		return items;
 	}

@@ -231,6 +231,25 @@ public final class StringUtil {
 		throw new NumberFormatException("Invalid size unit: " + s);
 	}
 	
+	/** Create a string for the given duration. */
+	public static String duration(long ms) {
+		StringBuilder s = new StringBuilder(20);
+		if (ms > 60 * 60 * 1000) {
+			s.append(ms / (60 * 60 * 1000)).append('h');
+			ms %= 60 * 60 * 1000;
+		}
+		if (s.length() > 0 || ms > 60 * 1000) {
+			s.append(ms / (60 * 1000)).append('m');
+			ms %= 60 * 1000;
+		}
+		if (s.length() > 0 || ms > 1000) {
+			s.append(ms / (1000)).append('s');
+			ms %= 1000;
+		}
+		s.append(ms).append("ms");
+		return s.toString();
+	}
+	
 	/** Count the number of occurences. */
 	public static int count(String string, String toSearch) {
 		int pos = 0;

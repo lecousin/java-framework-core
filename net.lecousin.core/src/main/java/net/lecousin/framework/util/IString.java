@@ -1,6 +1,12 @@
 package net.lecousin.framework.util;
 
+import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CoderResult;
+import java.nio.charset.CodingErrorAction;
 import java.util.List;
 
 /**
@@ -16,6 +22,11 @@ public interface IString extends CharSequence {
 	
 	/** Append characters. */
 	public IString append(char[] chars, int offset, int len);
+	
+	/** Append characters. */
+	public default IString append(char[] chars) {
+		return append(chars, 0, chars.length);
+	}
 	
 	/** Append characters. */
 	public IString append(CharSequence s);
@@ -132,5 +143,34 @@ public interface IString extends CharSequence {
 	
 	/** Convert into an array of character buffers. */
 	public CharBuffer[] asCharBuffers();
+	
+	/** Encode this string into a ByteBuffer using the specified charset. */
+	public default ByteBuffer encode(Charset cs) {
+		CharBuffer[] cbs = asCharBuffers();
+		int len = length();
+		CharsetEncoder ce = cs.newEncoder();
+        int en = (int)(len * ce.maxBytesPerChar());
+        byte[] ba = new byte[en];
+        if (len == 0)
+            return ByteBuffer.wrap(ba);
+        ce.onMalformedInput(CodingErrorAction.REPLACE)
+          .onUnmappableCharacter(CodingErrorAction.REPLACE)
+          .reset();
+        ByteBuffer bb = ByteBuffer.wrap(ba);
+        try {
+        	CoderResult cr = null;
+        	for (int i = 0; i < cbs.length; ++i)
+        		cr = ce.encode(cbs[i], bb, i == cbs.length - 1);
+            if (!cr.isUnderflow())
+                cr.throwException();
+            cr = ce.flush(bb);
+            if (!cr.isUnderflow())
+                cr.throwException();
+        } catch (CharacterCodingException x) {
+            throw new Error(x);
+        }
+        bb.flip();
+        return bb;
+	}
 	
 }

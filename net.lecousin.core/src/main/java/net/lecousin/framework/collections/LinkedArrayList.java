@@ -367,8 +367,13 @@ public class LinkedArrayList<T> implements List<T> {
 	/** Remove all elements from the first array, and return an array containing them. */
 	public T[] removeFirstArray(Class<T> cl) {
 		if (size == 0) return ArrayUtil.createGenericArrayOf(0, cl);
-		T[] a = ArrayUtil.createGenericArrayOf(head.size, cl);
-		System.arraycopy(head.array, 0, a, 0, head.size);
+		T[] a;
+		if (head.size == head.array.length) {
+			a = head.array;
+		} else {
+			a = ArrayUtil.createGenericArrayOf(head.size, cl);
+			System.arraycopy(head.array, 0, a, 0, head.size);
+		}
 		if (head == tail) {
 			head = tail = null;
 			size = 0;
@@ -393,6 +398,31 @@ public class LinkedArrayList<T> implements List<T> {
 		a.size = length;
 		head = a;
 		size += length;
+	}
+	
+	/** Insert elements at the end of this collection. */
+	public void appendArray(T[] array, int offset, int length) {
+		if (length == 0) return;
+		if (size + length > arraySize * 100) double_size();
+		if (tail != null) {
+			// first we fill the tail
+			while (tail.size < arraySize && length > 0) {
+				tail.add(array[offset++]);
+				length--;
+				size++;
+			}
+			if (length == 0) return;
+		}
+		do {
+			Array<T> a = new Array<>(arraySize, tail, null);
+			tail = a;
+			int len = length > arraySize ? arraySize : length;
+			System.arraycopy(a, offset, a.array, 0, len);
+			a.size = len;
+			size += len;
+			offset += len;
+			length -= len;
+		} while (length > 0);
 	}
 	
 	@Override

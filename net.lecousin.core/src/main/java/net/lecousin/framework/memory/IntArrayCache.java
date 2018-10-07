@@ -11,8 +11,12 @@ import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.collections.sort.RedBlackTreeInteger;
 import net.lecousin.framework.collections.sort.RedBlackTreeInteger.Node;
 
+/**
+ * Cache of int[] useful when arrays of same size may be needed, to avoid memory allocation and garbage collection.
+ */
 public class IntArrayCache implements IMemoryManageable {
 	
+	/** Get the default instance. */
 	public static IntArrayCache getInstance() {
 		Application app = LCCore.getApplication();
 		synchronized (IntArrayCache.class) {
@@ -24,10 +28,14 @@ public class IntArrayCache implements IMemoryManageable {
 		}
 	}
 	
-	public int MAX_BUFFERS_BY_SIZE_UNDER_128KB = 20;
-	public int MAX_BUFFERS_BY_SIZE_ABOVE_128KB = 8;
-	public int MAX_TOTAL_SIZE = 16 * 1024 * 1024;
-	public long TIME_BEFORE_TO_REMOVE_ONE = 5 * 60 * 1000; // every 5 minutes
+	/** Maximum number of buffers of the same size to keep, when size is under 128K, default to 20. */
+	public int maxBuffersBySizeUnder128KB = 20;
+	/** Maximum number of buffers of the same size to keep, when size is above 128K, default to 8. */
+	public int maxBuffersBySizeAbove128KB = 8;
+	/** Maximum total size of buffers to keep in this cache. */
+	public int maxTotalSize = 16 * 1024 * 1024;
+	/** Time before a cached buffer can be removed to free memory. */
+	public long timeBeforeToRemove = 5 * 60 * 1000; // every 5 minutes
 
 	private static class ArraysBySize {
 		private TurnArray<int[]> arrays;
@@ -43,6 +51,7 @@ public class IntArrayCache implements IMemoryManageable {
 		MemoryManager.register(this);
 	}
 	
+	/** Get an array. */
 	public int[] get(int size, boolean acceptGreater) {
 		Node<ArraysBySize> node;
 		int[] buf;
@@ -68,15 +77,16 @@ public class IntArrayCache implements IMemoryManageable {
 		return buf;
 	}
 	
+	/** Put an array in the cache. */
 	public void free(int[] array) {
 		int len = array.length;
 		synchronized (arraysBySize) {
-			if (totalSize + len > MAX_TOTAL_SIZE) return;
+			if (totalSize + len > maxTotalSize) return;
 			Node<ArraysBySize> node = arraysBySize.get(len);
 			if (node == null) {
 				ArraysBySize arrays = new ArraysBySize();
 				arrays.arrays = new TurnArray<>(
-					len >= 128 * 1024 ? MAX_BUFFERS_BY_SIZE_ABOVE_128KB : MAX_BUFFERS_BY_SIZE_UNDER_128KB);
+					len >= 128 * 1024 ? maxBuffersBySizeAbove128KB : maxBuffersBySizeUnder128KB);
 				arrays.arrays.add(array);
 				arrays.lastCachedTime = System.currentTimeMillis();
 				arraysBySize.add(len, arrays);
@@ -107,13 +117,13 @@ public class IntArrayCache implements IMemoryManageable {
 		switch (level) {
 		default:
 		case EXPIRED_ONLY:
-			freeMemory(now - TIME_BEFORE_TO_REMOVE_ONE, 1);
+			freeMemory(now - timeBeforeToRemove, 1);
 			break;
 		case LOW:
-			freeMemory(now - TIME_BEFORE_TO_REMOVE_ONE / 2, 2);
+			freeMemory(now - timeBeforeToRemove / 2, 2);
 			break;
 		case MEDIUM:
-			freeMemory(now - TIME_BEFORE_TO_REMOVE_ONE / 3, 5);
+			freeMemory(now - timeBeforeToRemove / 3, 5);
 			break;
 		case URGENT:
 			synchronized (arraysBySize) {

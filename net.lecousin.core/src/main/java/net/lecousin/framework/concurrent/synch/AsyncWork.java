@@ -203,6 +203,11 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			public void cancelled(CancelException event) {
 				oncancel.fire(event);
 			}
+			
+			@Override
+			public String toString() {
+				return "AsyncWork.listenInline: " + onready;
+			}
 		});
 	}
 	
@@ -223,6 +228,11 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			public void cancelled(CancelException event) {
 				onErrorAndCancel.cancel(event);
 			}
+			
+			@Override
+			public String toString() {
+				return "AsyncWork.listenInline: " + onready;
+			}
 		});
 	}
 
@@ -242,6 +252,11 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			@Override
 			public void cancelled(CancelException event) {
 				onErrorAndCancel.cancel(event);
+			}
+			
+			@Override
+			public String toString() {
+				return "AsyncWork.listenInline: " + onready;
 			}
 		});
 	}
@@ -266,7 +281,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			
 			@Override
 			public String toString() {
-				return "Delegate to Runnable " + r;
+				return "AsyncWork.listenInline: " + r;
 			}
 		});
 	}
@@ -289,7 +304,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			
 			@Override
 			public String toString() {
-				return "Delegate to listener " + onSuccess;
+				return "AsyncWork.listenInline: " + onSuccess;
 			}
 		});
 	}
