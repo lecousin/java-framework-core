@@ -104,7 +104,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	protected ISynchronizationPoint<Exception> createAndStartReader(IO.Readable input) {
-		XMLStreamReaderAsync reader = new XMLStreamReaderAsync(input, forceEncoding, 8192);
+		XMLStreamReaderAsync reader = new XMLStreamReaderAsync(input, forceEncoding, 8192, 4);
 		this.input = reader;
 		reader.setMaximumTextSize(maxTextSize);
 		reader.setMaximumCDataSize(maxTextSize);

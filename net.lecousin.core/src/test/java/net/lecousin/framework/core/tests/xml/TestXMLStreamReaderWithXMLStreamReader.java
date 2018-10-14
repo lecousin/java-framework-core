@@ -24,7 +24,7 @@ public class TestXMLStreamReaderWithXMLStreamReader extends TestXMLStreamEventsW
 	
 	@Override
 	protected XMLStreamReader start(IO.Readable input) throws Exception {
-		XMLStreamReader xml = new XMLStreamReader(input, 1024);
+		XMLStreamReader xml = new XMLStreamReader(input, 1024, 8);
 		xml.start();
 		return xml;
 	}

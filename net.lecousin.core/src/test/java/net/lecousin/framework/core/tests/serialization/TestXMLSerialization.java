@@ -77,7 +77,7 @@ public class TestXMLSerialization extends TestSerialization {
 		return new XMLDeserializer(null, "test") {
 			@Override
 			protected ISynchronizationPoint<Exception> createAndStartReader(Readable input) {
-				XMLStreamReaderAsync reader = new XMLStreamReaderAsync(input, forceEncoding, 2);
+				XMLStreamReaderAsync reader = new XMLStreamReaderAsync(input, forceEncoding, 2, 32);
 				this.input = reader;
 				reader.setMaximumTextSize(16384);
 				reader.setMaximumCDataSize(16384);

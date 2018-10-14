@@ -31,11 +31,11 @@ public abstract class TaskManager {
 	protected TaskManager transferredTo = null;
 	protected boolean stopped = false;
 	
-	public String getName() { return name; }
+	public final String getName() { return name; }
 	
-	public void setName(String name) { this.name = name; }
+	public final void setName(String name) { this.name = name; }
 	
-	public Object getResource() { return resource; }
+	public final Object getResource() { return resource; }
 	
 	/** Start the threads of this task manager. */
 	abstract void start();
@@ -43,7 +43,7 @@ public abstract class TaskManager {
 	/** Called when all task managers are started, to initialize any remaining things such as monitoring. */
 	abstract void started();
 	
-	public TaskManager getTransferTarget() {
+	public final TaskManager getTransferTarget() {
 		return transferredTo;
 	}
 	
@@ -104,7 +104,7 @@ public abstract class TaskManager {
 		stopped = true;
 	}
 	
-	void cancelAndStop() {
+	final void cancelAndStop() {
 		stopped = true;
 		// stop the workers and spares
 		synchronized (taskPriorityManager) {

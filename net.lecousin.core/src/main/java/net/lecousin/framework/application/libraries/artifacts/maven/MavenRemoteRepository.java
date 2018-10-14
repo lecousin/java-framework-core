@@ -81,7 +81,7 @@ public class MavenRemoteRepository implements MavenRepository {
 			bio = (IO.Readable.Buffered)io;
 		else
 			bio = new SimpleBufferedReadable(io, 8192);
-		AsyncWork<XMLStreamReader, Exception> start = XMLStreamReader.start(bio, 5000);
+		AsyncWork<XMLStreamReader, Exception> start = XMLStreamReader.start(bio, 5000, 4);
 		AsyncWork<List<String>, NoException> result = new AsyncWork<>();
 		start.listenAsync(new Task.Cpu.FromRunnable("Read maven-metadata.xml", priority, () -> {
 			if (!start.isSuccessful()) {

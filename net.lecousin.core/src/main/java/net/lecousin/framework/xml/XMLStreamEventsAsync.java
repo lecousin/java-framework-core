@@ -93,13 +93,11 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		next.listenInline(
 			() -> {
 				if (n.hasError()) result.error(n.getError());
-				else if (Type.END_ELEMENT.equals(event.type)) {
-					if (event.context.getFirst() == parent)
-						result.unblockSuccess(Boolean.FALSE);
-				} else if (Type.START_ELEMENT.equals(event.type)) {
-					if (event.context.size() > 1 && event.context.get(1) == parent)
-						result.unblockSuccess(Boolean.TRUE);
-				} else new ParsingTask(() -> {
+				else if (Type.END_ELEMENT.equals(event.type) && event.context.getFirst() == parent)
+					result.unblockSuccess(Boolean.FALSE);
+				else if (Type.START_ELEMENT.equals(event.type) && event.context.size() > 1 && event.context.get(1) == parent)
+					result.unblockSuccess(Boolean.TRUE);
+				else new ParsingTask(() -> {
 					nextInnerElement(parent).listenInline(result);
 				}).start();
 			}, result
@@ -332,7 +330,11 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 			}, result);
 			return;
 		} while (true);
-		next.listenInline(() -> {
+		next.listenInline((res) -> {
+			if (!res.booleanValue()) {
+				result.unblockSuccess(texts);
+				return;
+			}
 			String name = event.text.asString();
 			new ParsingTask(() -> {
 				AsyncWork<UnprotectedStringBuffer, Exception> read = readInnerText();

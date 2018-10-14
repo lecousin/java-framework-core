@@ -173,7 +173,7 @@ public class TestDOMParsing extends TestDOM {
 		Document doc = factory.newDocumentBuilder().parse(new InputSource(in));
 		InputStream in2 = getClass().getClassLoader().getResourceAsStream(filepath);
 		IO.Readable io = new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL);
-		XMLStreamReader xml = new XMLStreamReader(io, 1024);
+		XMLStreamReader xml = new XMLStreamReader(io, 1024, 4);
 		xml.start();
 		XMLDocument doc2 = XMLDocument.create(xml);
 		checkDocument(doc, doc2);
@@ -192,7 +192,7 @@ public class TestDOMParsing extends TestDOM {
 		Document doc = factory.newDocumentBuilder().parse(new InputSource(in));
 		InputStream in2 = getClass().getClassLoader().getResourceAsStream(filepath);
 		IO.Readable io = new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL);
-		XMLStreamReaderAsync xml = new XMLStreamReaderAsync(io, 1024);
+		XMLStreamReaderAsync xml = new XMLStreamReaderAsync(io, 1024, 4);
 		xml.start().blockException(0);
 		XMLDocument doc2 = XMLDocument.create(xml).blockResult(0);
 		checkDocument(doc, doc2);

@@ -23,7 +23,7 @@ public class TestXMLStreamReaderAsyncWithXMLStreamReader extends TestXMLStreamEv
 	
 	@Override
 	protected XMLStreamReaderAsync start(IO.Readable input) throws Exception {
-		XMLStreamReaderAsync xml = new XMLStreamReaderAsync(input, 1024);
+		XMLStreamReaderAsync xml = new XMLStreamReaderAsync(input, 1024, 8);
 		xml.start().blockException(0);
 		return xml;
 	}

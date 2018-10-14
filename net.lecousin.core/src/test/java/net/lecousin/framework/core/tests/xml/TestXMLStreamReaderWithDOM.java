@@ -24,7 +24,7 @@ public class TestXMLStreamReaderWithDOM extends TestXMLStreamEventsWithDOM<XMLSt
 
 	@Override
 	protected XMLStreamEventsSync start(IO.Readable input) throws Exception {
-		XMLStreamReader xml = new XMLStreamReader(input, 1024);
+		XMLStreamReader xml = new XMLStreamReader(input, 1024, 8);
 		xml.start();
 		return xml;
 	}

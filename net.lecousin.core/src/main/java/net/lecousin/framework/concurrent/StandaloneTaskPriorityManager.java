@@ -22,30 +22,36 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	private TaskManager taskManager;
 	
 	@Override
-	public void setTaskManager(TaskManager taskManager) {
+	public final void setTaskManager(TaskManager taskManager) {
 		this.taskManager = taskManager;
 	}
 
 	@Override
-	public void add(Task<?, ?> task) {
-		synchronized (this) {
-			ready[task.priority].addLast(task);
-			if (nextPriority > task.priority) nextPriority = task.priority;
-			this.notify();
-		}
+	public final synchronized void add(Task<?, ?> task) {
+		ready[task.priority].addLast(task);
+		if (nextPriority > task.priority) nextPriority = task.priority;
+		this.notify();
 	}
 	
 	@Override
-	public boolean remove(Task<?, ?> task) {
-		synchronized (this) {
-			return ready[task.priority].removeInstance(task);
-		}
+	public final synchronized boolean remove(Task<?, ?> task) {
+		return ready[task.priority].removeInstance(task);
 	}
 	
 	@Override
-	public Task<?, ?> peekNextOrWait() {
+	public final Task<?, ?> peekNextOrWait() {
 		Task<?,?> t;
 		do {
+			if (nextPriority < Task.PRIORITY_BACKGROUND) {
+				t = ready[nextPriority].pollFirst();
+				if (t == null) {
+					nextPriority++;
+					continue;
+				}
+				if (nextPriority < Task.PRIORITY_BACKGROUND && t.executeEvery <= 0)
+					lastIdle = -1;
+				break;
+			}
 			if (nextPriority == Task.NB_PRIORITES) {
 				if (lastIdle < 0)
 					lastIdle = System.currentTimeMillis();
@@ -66,21 +72,19 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 					}
 					return null;
 				}
+				t = ready[Task.PRIORITY_BACKGROUND].pollFirst();
+				if (t == null) {
+					nextPriority++;
+					continue;
+				}
+				break;
 			}
-			t = ready[nextPriority].pollFirst();
-			if (t == null) {
-				nextPriority++;
-				continue;
-			}
-			if (nextPriority < Task.PRIORITY_BACKGROUND && t.executeEvery <= 0)
-				lastIdle = -1;
-			break;
 		} while (true);
 		return t;
 	}
 	
 	@Override
-	public Task<?, ?> peekNext() {
+	public final Task<?, ?> peekNext() {
 		Task<?,?> t;
 		do {
 			if (nextPriority == Task.NB_PRIORITES) {
@@ -101,7 +105,7 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	}
 	
 	@Override
-	public List<Task<?, ?>> removeAllPendingTasks() {
+	public final List<Task<?, ?>> removeAllPendingTasks() {
 		LinkedList<Task<?,?>> list = new LinkedList<>();
 		for (byte p = 0; p < Task.NB_PRIORITES; ++p) {
 			while (!ready[p].isEmpty())
@@ -111,7 +115,7 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	}
 	
 	@Override
-	public void forceStop() {
+	public final void forceStop() {
 		nextPriority = Task.NB_PRIORITES;
 		synchronized (ready) {
 			ready.notifyAll();
@@ -126,7 +130,7 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	}
 	
 	@Override
-	public int getRemainingTasks(boolean includingBackground) {
+	public final int getRemainingTasks(boolean includingBackground) {
 		int nb = 0;
 		synchronized (this) {
 			for (byte p = 0; p < Task.NB_PRIORITES; ++p) if (includingBackground || p != Task.PRIORITY_BACKGROUND) nb += ready[p].size();
@@ -135,7 +139,7 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	}
 	
 	@Override
-	public boolean hasRemainingTasks(boolean includingBackground) {
+	public final boolean hasRemainingTasks(boolean includingBackground) {
 		synchronized (this) {
 			for (byte p = 0; p < Task.NB_PRIORITES; ++p)
 				if (includingBackground || p != Task.PRIORITY_BACKGROUND)

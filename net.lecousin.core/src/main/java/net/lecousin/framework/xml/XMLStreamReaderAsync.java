@@ -32,22 +32,25 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	 * If it is not buffered, a {@link PreBufferedReadable} is created.
 	 * If the charset is null, it will be automatically detected.
 	 */
-	public XMLStreamReaderAsync(IO.Readable io, Charset defaultEncoding, int charactersBuffersSize) {
+	public XMLStreamReaderAsync(IO.Readable io, Charset defaultEncoding, int charactersBuffersSize, int maxBuffers) {
 		if (io instanceof IO.Readable.Buffered)
 			this.io = (IO.Readable.Buffered)io;
 		else
-			this.io = new PreBufferedReadable(io, 1024, io.getPriority(), charactersBuffersSize, (byte)(io.getPriority() - 1), 4);
+			this.io = new PreBufferedReadable(io, 1024, io.getPriority(), charactersBuffersSize,
+				(byte)(io.getPriority() - 1), maxBuffers);
 		this.defaultEncoding = defaultEncoding;
 		this.charactersBuffersSize = charactersBuffersSize;
+		this.maxBuffers = maxBuffers;
 	}
 	
 	/** Constructor, without charset (automatic detection). */
-	public XMLStreamReaderAsync(IO.Readable io, int charactersBuffersSize) {
-		this(io, null, charactersBuffersSize);
+	public XMLStreamReaderAsync(IO.Readable io, int charactersBuffersSize, int maxBuffers) {
+		this(io, null, charactersBuffersSize, maxBuffers);
 	}
 	
 	private Charset defaultEncoding;
 	private int charactersBuffersSize;
+	private int maxBuffers;
 	private IO.Readable.Buffered io;
 	private BufferedReadableCharacterStreamLocation stream;
 	
@@ -58,7 +61,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		io.canStartReading().listenAsync(new Task.Cpu.FromRunnable(() -> {
 			try {
-				Starter start = new Starter(io, defaultEncoding, charactersBuffersSize);
+				Starter start = new Starter(io, defaultEncoding, charactersBuffersSize, maxBuffers);
 				stream = start.start();
 				next().listenInline(sp);
 			} catch (Exception e) {

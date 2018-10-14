@@ -88,18 +88,18 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 		protected RunnableWithParameter<Pair<T, TError>> onError;
 		
 		@Override
-		public void ready(T result) {
+		public final void ready(T result) {
 			listener.ready(result, this);
 		}
 		
 		@Override
-		public void error(TError error) {
+		public final void error(TError error) {
 			if (onError != null) onError.run(new Pair<>(null, error));
 			onErrorOrCancel.error(error);
 		}
 		
 		@Override
-		public void cancelled(CancelException event) {
+		public final void cancelled(CancelException event) {
 			onErrorOrCancel.cancel(event);
 		}
 	}
@@ -110,19 +110,19 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	private CancelException cancel = null;
 	private ArrayList<AsyncWorkListener<T,TError>> listenersInline = null;
 	
-	public T getResult() { return result; }
+	public final T getResult() { return result; }
 	
 	@Override
-	public TError getError() { return error; }
+	public final TError getError() { return error; }
 	
 	@Override
-	public CancelException getCancelEvent() { return cancel; }
+	public final CancelException getCancelEvent() { return cancel; }
 	
 	@Override
-	public boolean isCancelled() { return cancel != null; }
+	public final boolean isCancelled() { return cancel != null; }
 	
 	@Override
-	public boolean hasError() {
+	public final boolean hasError() {
 		return error != null;
 	}
 	
@@ -133,7 +133,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	/** Add a listener to be called when this AsyncWork is unblocked. */
-	public void listenInline(AsyncWorkListener<T,TError> listener) {
+	public final void listenInline(AsyncWorkListener<T,TError> listener) {
 		synchronized (this) {
 			if (!unblocked || listenersInline != null) {
 				if (listenersInline == null) listenersInline = new ArrayList<>(5);
@@ -147,7 +147,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	/** Forward the result, error, or cancellation to the given AsyncWork. */
-	public void listenInline(AsyncWork<T,TError> sp) {
+	public final void listenInline(AsyncWork<T,TError> sp) {
 		listenInline(new AsyncWorkListener<T,TError>() {
 			@Override
 			public void ready(T result) {
@@ -167,7 +167,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	@Override
-	public void listenInline(SynchronizationPoint<TError> sp) {
+	public final void listenInline(SynchronizationPoint<TError> sp) {
 		listenInline(new AsyncWorkListener<T,TError>() {
 			@Override
 			public void ready(T result) {
@@ -187,7 +187,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 
 	/** Call one of the given listener depending on result. */ 
-	public void listenInline(Listener<T> onready, Listener<TError> onerror, Listener<CancelException> oncancel) {
+	public final void listenInline(Listener<T> onready, Listener<TError> onerror, Listener<CancelException> oncancel) {
 		listenInline(new AsyncWorkListener<T,TError>() {
 			@Override
 			public void ready(T result) {
@@ -212,7 +212,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	/** Call onready on success, or forward error/cancellation to onErrorAndCancel. */
-	public void listenInline(Listener<T> onready, ISynchronizationPoint<TError> onErrorAndCancel) {
+	public final void listenInline(Listener<T> onready, ISynchronizationPoint<TError> onErrorAndCancel) {
 		listenInline(new AsyncWorkListener<T,TError>() {
 			@Override
 			public void ready(T result) {
@@ -237,7 +237,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 
 	@Override
-	public void listenInline(Runnable onready, ISynchronizationPoint<TError> onErrorAndCancel) {
+	public final void listenInline(Runnable onready, ISynchronizationPoint<TError> onErrorAndCancel) {
 		listenInline(new AsyncWorkListener<T,TError>() {
 			@Override
 			public void ready(T result) {
@@ -262,7 +262,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	@Override
-	public void listenInline(Runnable r) {
+	public final void listenInline(Runnable r) {
 		listenInline(new AsyncWorkListener<T,TError>() {
 			@Override
 			public void ready(T result) {
@@ -287,7 +287,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	/** Register a listener to be called only on success, with the result. */
-	public void listenInline(Listener<T> onSuccess) {
+	public final void listenInline(Listener<T> onSuccess) {
 		listenInline(new AsyncWorkListener<T,TError>() {
 			@Override
 			public void ready(T result) {
@@ -310,7 +310,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	/** Forward the result, error, or cancellation to the given AsyncWork. */
-	public void listenInlineGenericError(AsyncWork<T, Exception> sp) {
+	public final void listenInlineGenericError(AsyncWork<T, Exception> sp) {
 		listenInline(new AsyncWorkListener<T,TError>() {
 			@Override
 			public void ready(T result) {
@@ -330,7 +330,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	/** Unblock this AsyncWork with the given result. */
-	public void unblockSuccess(T result) {
+	public final void unblockSuccess(T result) {
 		ArrayList<AsyncWorkListener<T,TError>> listeners;
 		synchronized (this) {
 			if (unblocked) return;
@@ -376,7 +376,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	/** Unblock this AsyncWork with an error. Equivalent to the method error. */
-	public void unblockError(TError error) {
+	public final void unblockError(TError error) {
 		ArrayList<AsyncWorkListener<T,TError>> listeners;
 		synchronized (this) {
 			if (unblocked) return;
@@ -433,7 +433,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	@Override
-	public void error(TError error) {
+	public final void error(TError error) {
 		unblockError(error);
 	}
 
@@ -484,12 +484,12 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	@Override
-	public void cancel(CancelException reason) {
+	public final void cancel(CancelException reason) {
 		unblockCancel(reason);
 	}
 	
 	@Override
-	public void block(long timeout) {
+	public final void block(long timeout) {
 		Thread t;
 		BlockedThreadHandler blockedHandler;
 		synchronized (this) {
@@ -514,7 +514,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	 * and return the result in case of success, or throw the error or cancellation.
 	 * @param timeout in milliseconds. 0 or negative value means infinite.
 	 */
-	public T blockResult(long timeout) throws TError, CancelException {
+	public final T blockResult(long timeout) throws TError, CancelException {
 		Thread t;
 		BlockedThreadHandler blockedHandler;
 		synchronized (this) {
@@ -538,7 +538,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	@Override
-	public void blockPause(long logAfter) {
+	public final void blockPause(long logAfter) {
 		synchronized (this) {
 			while (!unblocked || listenersInline != null) {
 				long start = System.currentTimeMillis();
@@ -553,7 +553,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 
 	@Override
-	public synchronized boolean isUnblocked() {
+	public final synchronized boolean isUnblocked() {
 		return unblocked;
 	}
 	
@@ -561,7 +561,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	 * This method remove any previous result, error or cancellation, and mark this AsyncWork as blocked.
 	 * Any previous listener is also removed.
 	 */
-	public void reset() {
+	public final void reset() {
 		unblocked = false;
 		result = null;
 		error = null;
@@ -572,7 +572,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	/* --- Future implementation --- */
 	
 	@Override
-	public T get() throws InterruptedException, ExecutionException {
+	public final T get() throws InterruptedException, ExecutionException {
 		block(0);
 		if (!isUnblocked()) throw new InterruptedException();
 		if (hasError()) throw new ExecutionException(error);
@@ -581,7 +581,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	@Override
-	public T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+	public final T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
 		block(unit.toMillis(timeout));
 		if (!isUnblocked()) throw new TimeoutException();
 		if (hasError()) throw new ExecutionException(error);
@@ -591,14 +591,14 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	
 	// skip checkstyle: OverloadMethodsDeclarationOrder
 	@Override
-	public boolean cancel(boolean mayInterruptIfRunning) {
+	public final boolean cancel(boolean mayInterruptIfRunning) {
 		if (isUnblocked()) return false;
 		cancel(new CancelException("Cancelled"));
 		return true;
 	}
 	
 	@Override
-	public boolean isDone() {
+	public final boolean isDone() {
 		return isUnblocked();
 	}
 	

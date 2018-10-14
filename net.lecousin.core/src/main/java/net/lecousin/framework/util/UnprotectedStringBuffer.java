@@ -120,24 +120,19 @@ public class UnprotectedStringBuffer implements IString {
 	public UnprotectedStringBuffer append(char c) {
 		if (strings == null) {
 			strings = new UnprotectedString[8];
-			strings[0] = new UnprotectedString(64);
-			strings[0].append(c);
+			strings[0] = new UnprotectedString(64).append(c);
 			lastUsed = 0;
 			return this;
 		}
-		if (strings[lastUsed].canAppendWithoutEnlarging() > 0) {
-			strings[lastUsed].append(c);
+		if (strings[lastUsed].appendNoEnlarge(c))
 			return this;
-		}
 		if (lastUsed < strings.length - 1) {
-			strings[++lastUsed] = new UnprotectedString(64);
-			strings[lastUsed].append(c);
+			strings[++lastUsed] = new UnprotectedString(64).append(c);
 			return this;
 		}
-		UnprotectedString[] a = new UnprotectedString[lastUsed + 1 + 8];
-		System.arraycopy(strings, 0, a, 0, lastUsed + 1);
-		a[++lastUsed] = new UnprotectedString(64);
-		a[lastUsed].append(c);
+		UnprotectedString[] a = new UnprotectedString[++lastUsed + 8];
+		System.arraycopy(strings, 0, a, 0, lastUsed);
+		a[lastUsed] = new UnprotectedString(256).append(c);
 		strings = a;
 		return this;
 	}
@@ -161,13 +156,13 @@ public class UnprotectedStringBuffer implements IString {
 			offset += l;
 		}
 		if (lastUsed < strings.length - 1) {
-			strings[++lastUsed] = new UnprotectedString(len > 50 ? len + 64 : 64);
+			strings[++lastUsed] = new UnprotectedString(len > 50 ? len + 128 : 64);
 			strings[lastUsed].append(chars, offset, len);
 			return this;
 		}
 		UnprotectedString[] a = new UnprotectedString[lastUsed + 1 + 8];
 		System.arraycopy(strings, 0, a, 0, lastUsed + 1);
-		a[++lastUsed] = new UnprotectedString(len > 50 ? len + 64 : 64);
+		a[++lastUsed] = new UnprotectedString(len > 50 ? len + 128 : 64);
 		a[lastUsed].append(chars, offset, len);
 		strings = a;
 		return this;
@@ -363,6 +358,32 @@ public class UnprotectedStringBuffer implements IString {
 			pos += l;
 		}
 		return new UnprotectedStringBuffer(list);
+	}
+	
+	/** Compare this UnprotectedStringBuffer with another. */
+	public boolean equals(UnprotectedStringBuffer s) {
+		if (length() != s.length()) return false;
+		if (strings == null) return true;
+		int s1 = 0;
+		int s2 = 0;
+		int i1 = 0;
+		int i2 = 0;
+		int l1 = strings[0].length();
+		int l2 = s.strings[0].length();
+		do {
+			while (i1 == l1) {
+				s1++;
+				if (s1 > lastUsed) return true;
+				i1 = 0;
+				l1 = strings[s1].length();
+			}
+			while (i2 == l2) {
+				s2++;
+				i2 = 0;
+				l2 = s.strings[s2].length();
+			}
+			if (strings[s1].charAt(i1++) != s.strings[s2].charAt(i2++)) return false;
+		} while (true);
 	}
 	
 	@Override

@@ -31,22 +31,25 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	 * If it is not buffered, a {@link PreBufferedReadable} is created.
 	 * If the charset is null, it will be automatically detected.
 	 */
-	public XMLStreamReader(IO.Readable io, Charset defaultEncoding, int charactersBuffersSize) {
+	public XMLStreamReader(IO.Readable io, Charset defaultEncoding, int charactersBuffersSize, int maxBuffers) {
 		if (io instanceof IO.Readable.Buffered)
 			this.io = (IO.Readable.Buffered)io;
 		else
-			this.io = new PreBufferedReadable(io, 1024, io.getPriority(), charactersBuffersSize, (byte)(io.getPriority() - 1), 4);
+			this.io = new PreBufferedReadable(io, 1024, io.getPriority(), charactersBuffersSize,
+				(byte)(io.getPriority() - 1), maxBuffers);
 		this.defaultEncoding = defaultEncoding;
 		this.charactersBuffersSize = charactersBuffersSize;
+		this.maxBuffers = maxBuffers;
 	}
 	
 	/** Constructor, without charset. */
-	public XMLStreamReader(IO.Readable io, int charactersBuffersSize) {
-		this(io, null, charactersBuffersSize);
+	public XMLStreamReader(IO.Readable io, int charactersBuffersSize, int maxBuffers) {
+		this(io, null, charactersBuffersSize, maxBuffers);
 	}
 	
 	private Charset defaultEncoding;
 	private int charactersBuffersSize;
+	private int maxBuffers;
 	private IO.Readable.Buffered io;
 	private BufferedReadableCharacterStreamLocation stream;
 	
@@ -55,12 +58,12 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	/** Utility method that initialize a XMLStreamReader, initialize it, and
 	 * return an AsyncWork which is unblocked when characters are available to be read.
 	 */
-	public static AsyncWork<XMLStreamReader, Exception> start(IO.Readable.Buffered io, int charactersBufferSize) {
+	public static AsyncWork<XMLStreamReader, Exception> start(IO.Readable.Buffered io, int charactersBufferSize, int maxBuffers) {
 		AsyncWork<XMLStreamReader, Exception> result = new AsyncWork<>();
 		new Task.Cpu.FromRunnable("Start reading XML " + io.getSourceDescription(), io.getPriority(), () -> {
-			XMLStreamReader reader = new XMLStreamReader(io, charactersBufferSize);
+			XMLStreamReader reader = new XMLStreamReader(io, charactersBufferSize, maxBuffers);
 			try {
-				Starter start = new Starter(io, reader.defaultEncoding, reader.charactersBuffersSize);
+				Starter start = new Starter(io, reader.defaultEncoding, reader.charactersBuffersSize, reader.maxBuffers);
 				reader.stream = start.start();
 				reader.stream.canStartReading().listenAsync(
 				new Task.Cpu.FromRunnable("Start reading XML " + io.getSourceDescription(), io.getPriority(), () -> {
@@ -80,7 +83,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 
 	@Override
 	public void start() throws XMLException, IOException {
-		Starter start = new Starter(io, defaultEncoding, charactersBuffersSize);
+		Starter start = new Starter(io, defaultEncoding, charactersBuffersSize, maxBuffers);
 		stream = start.start();
 		next();
 	}
@@ -89,8 +92,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	@Override
 	public void next() throws XMLException, IOException {
 		reset();
-		char c = stream.read();
-		if (c == '<')
+		char c;
+		if ((c = stream.read()) == '<')
 			readTag();
 		else
 			readChars(c);
@@ -112,8 +115,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readTag() throws XMLException, IOException {
 		try {
-			char c = stream.read();
-			if (c == '!') {
+			char c;
+			if ((c = stream.read()) == '!') {
 				readTagExclamation();
 			} else if (c == '?') {
 				readProcessingInstruction();
@@ -135,11 +138,10 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readTagExclamation() throws XMLException, IOException {
 		// can be a comment, a CDATA, or a DOCTYPE
-		char c = stream.read();
-		if (c == '-') {
+		char c;
+		if ((c = stream.read()) == '-') {
 			// comment ?
-			c = stream.read();
-			if (c == '-')
+			if ((c = stream.read()) == '-')
 				readComment();
 			else
 				throw new XMLException(getPosition(), "Invalid XML");
@@ -195,54 +197,140 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readComment() throws XMLException, IOException {
 		event.type = Type.COMMENT;
-		event.text = new UnprotectedStringBuffer();
-		do {
-			char c;
-			try { c = stream.read(); }
-			catch (EOFException e) {
-				throw new XMLException(getPosition(),
-					new LocalizableString("lc.xml.error", "Unexpected end"),
-					new LocalizableString("lc.xml.error", "inside comment"));
-			}
-			if (c == '-') {
-				try { c = stream.read(); }
-				catch (EOFException e) {
-					throw new XMLException(getPosition(),
-						new LocalizableString("lc.xml.error", "Unexpected end"),
-						new LocalizableString("lc.xml.error", "inside comment"));
+		UnprotectedStringBuffer t = event.text = new UnprotectedStringBuffer();
+		char[] chars = new char[64];
+		int pos = 0;
+		char c;
+		try {
+			if (maxTextSize <= 0)
+				do {
+					if ((c = stream.read()) != '-') {
+						chars[pos] = c;
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						continue;
+					}
+					if ((c = stream.read()) != '-') {
+						chars[pos] = '-';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						chars[pos] = c;
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						continue;
+					}
+					do {
+						if ((c = stream.read()) == '>') {
+							if (pos > 0)
+								t.append(new UnprotectedString(chars, 0, pos, chars.length));
+							return;
+						}
+						if (c == '-') {
+							chars[pos] = '-';
+							if (++pos == chars.length) {
+								t.append(new UnprotectedString(chars));
+								chars = new char[chars.length * 2];
+								pos = 0;
+							}
+							continue;
+						}
+						chars[pos] = '-';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						chars[pos] = '-';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						break;
+					} while (true);
+				} while (true);
+			int len = 0;
+			do {
+				if ((c = stream.read()) != '-') {
+					if (len < maxTextSize) {
+						chars[pos] = c;
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						len++;
+					}
+					continue;
 				}
-				if (c != '-') {
-					if (maxTextSize <= 0 || event.text.length() < maxTextSize) {
-						event.text.append('-');
-						event.text.append(c);
+				if ((c = stream.read()) != '-') {
+					if (len < maxTextSize) {
+						chars[pos] = '-';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						chars[pos] = c;
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						len += 2;
 					}
 					continue;
 				}
 				do {
-					try { c = stream.read(); }
-					catch (EOFException e) {
-						throw new XMLException(getPosition(),
-							new LocalizableString("lc.xml.error", "Unexpected end"),
-							new LocalizableString("lc.xml.error", "inside comment"));
-					}
-					if (c == '>')
+					if ((c = stream.read()) == '>') {
+						if (pos > 0)
+							t.append(new UnprotectedString(chars, 0, pos, chars.length));
 						return;
+					}
 					if (c == '-') {
-						if (maxTextSize <= 0 || event.text.length() < maxTextSize)
-							event.text.append('-');
+						if (len < maxTextSize) {
+							chars[pos] = '-';
+							if (++pos == chars.length) {
+								t.append(new UnprotectedString(chars));
+								chars = new char[chars.length * 2];
+								pos = 0;
+							}
+							len++;
+						}
 						continue;
 					}
-					if (maxTextSize <= 0 || event.text.length() < maxTextSize) {
-						event.text.append('-');
-						event.text.append('-');
+					if (len < maxTextSize) {
+						chars[pos] = '-';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						chars[pos] = '-';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						len += 2;
 					}
 					break;
 				} while (true);
-				continue;
-			}
-			if (maxTextSize <= 0 || event.text.length() < maxTextSize)
-				event.text.append(c);
-		} while (true);
+			} while (true);
+		} catch (EOFException e) {
+			throw new XMLException(getPosition(),
+				new LocalizableString("lc.xml.error", "Unexpected end"),
+				new LocalizableString("lc.xml.error", "inside comment"));
+		}
 	}
 	
 	private boolean readExpectedChars(char[] expected) throws IOException {
@@ -254,63 +342,159 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readCData() throws XMLException, IOException {
 		event.type = Type.CDATA;
-		event.text = new UnprotectedStringBuffer();
-		do {
-			char c;
-			try { c = stream.read(); }
-			catch (EOFException e) {
-				throw new XMLException(getPosition(),
-					new LocalizableString("lc.xml.error", "Unexpected end"),
-					new LocalizableString("lc.xml.error", "inside CDATA"));
+		UnprotectedStringBuffer t = event.text = new UnprotectedStringBuffer();
+		char[] chars = new char[64];
+		int pos = 0;
+		char c;
+		try {
+			if (maxCDataSize <= 0) {
+				do {
+					if ((c = stream.read()) != ']') {
+						chars[pos] = c;
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						continue;
+					}
+					if ((c = stream.read()) != ']') {
+						chars[pos] = ']';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						chars[pos] = c;
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						continue;
+					}
+					do {
+						if ((c = stream.read()) == '>') {
+							if (pos > 0)
+								t.append(new UnprotectedString(chars, 0, pos, chars.length));
+							return;
+						}
+						if (c == ']') {
+							chars[pos] = ']';
+							if (++pos == chars.length) {
+								t.append(new UnprotectedString(chars));
+								chars = new char[chars.length * 2];
+								pos = 0;
+							}
+							continue;
+						}
+						chars[pos] = ']';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						chars[pos] = ']';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						chars[pos] = c;
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						break;
+					} while (true);
+				} while (true);
 			}
-			if (c == ']') {
-				try { c = stream.read(); }
-				catch (EOFException e) {
-					throw new XMLException(getPosition(),
-						new LocalizableString("lc.xml.error", "Unexpected end"),
-						new LocalizableString("lc.xml.error", "inside CDATA"));
+			int len = 0;
+			do {
+				if ((c = stream.read()) != ']') {
+					if (len < maxCDataSize) {
+						chars[pos] = c;
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						len++;
+					}
+					continue;
 				}
-				if (c != ']') {
-					if (maxCDataSize <= 0 || event.text.length() < maxCDataSize) {
-						event.text.append(']');
-						event.text.append(c);
+				if ((c = stream.read()) != ']') {
+					if (len < maxCDataSize) {
+						chars[pos] = ']';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						chars[pos] = c;
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						len += 2;
 					}
 					continue;
 				}
 				do {
-					try { c = stream.read(); }
-					catch (EOFException e) {
-						throw new XMLException(getPosition(),
-							new LocalizableString("lc.xml.error", "Unexpected end"),
-							new LocalizableString("lc.xml.error", "inside CDATA"));
-					}
-					if (c == '>')
+					if ((c = stream.read()) == '>') {
+						if (pos > 0)
+							t.append(new UnprotectedString(chars, 0, pos, chars.length));
 						return;
+					}
 					if (c == ']') {
-						if (maxCDataSize <= 0 || event.text.length() < maxCDataSize)
-							event.text.append(']');
+						if (len < maxCDataSize) {
+							chars[pos] = ']';
+							if (++pos == chars.length) {
+								t.append(new UnprotectedString(chars));
+								chars = new char[chars.length * 2];
+								pos = 0;
+							}
+							len++;
+						}
 						continue;
 					}
-					if (maxCDataSize <= 0 || event.text.length() < maxCDataSize) {
-						event.text.append(']');
-						event.text.append(']');
-						event.text.append(c);
+					if (len < maxCDataSize) {
+						chars[pos] = ']';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						chars[pos] = ']';
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						chars[pos] = c;
+						if (++pos == chars.length) {
+							t.append(new UnprotectedString(chars));
+							chars = new char[chars.length * 2];
+							pos = 0;
+						}
+						len += 3;
 					}
 					break;
 				} while (true);
-				continue;
-			}
-			if (maxCDataSize <= 0 || event.text.length() < maxCDataSize)
-				event.text.append(c);
-		} while (true);
+			} while (true);
+		} catch (EOFException e) {
+			throw new XMLException(getPosition(),
+				new LocalizableString("lc.xml.error", "Unexpected end"),
+				new LocalizableString("lc.xml.error", "inside CDATA"));
+		}
 	}
 	
 	private void readStartTag(char c) throws XMLException, IOException {
 		event.type = Type.START_ELEMENT;
 		event.attributes = new LinkedList<>();
-		event.text = new UnprotectedStringBuffer();
-		event.text.append(c);
-		continueReadName(event.text);
+		continueReadName(event.text = new UnprotectedStringBuffer(), c);
 		do {
 			while (isSpaceChar(c = stream.read()));
 			if (c == '>') break;
@@ -325,9 +509,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			Attribute a = new Attribute();
 			
 			// attribute name
-			a.text = new UnprotectedStringBuffer();
-			a.text.append(c);
-			continueReadName(a.text);
+			continueReadName(a.text = new UnprotectedStringBuffer(), c);
 			int i = a.text.indexOf(':');
 			if (i < 0) {
 				a.namespacePrefix = new UnprotectedStringBuffer();
@@ -344,7 +526,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			
 			// attribute value
 			while (isSpaceChar(c = stream.read()));
-			a.value = new UnprotectedStringBuffer();
+			a.value = new UnprotectedStringBuffer(new UnprotectedString(32));
 			if (c == '"' || c == '\'') readAttrValue(a.value, c);
 			else throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
 			event.attributes.add(a);
@@ -373,9 +555,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				continue;
 			Attribute a = new Attribute();
 			// attribute name
-			a.text = new UnprotectedStringBuffer();
-			a.text.append(c);
-			continueReadName(a.text);
+			continueReadName(a.text = new UnprotectedStringBuffer(), c);
 			int i = a.text.indexOf(':');
 			if (i < 0) {
 				a.namespacePrefix = new UnprotectedStringBuffer();
@@ -418,49 +598,73 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readChars(char c) throws XMLException, IOException {
 		event.type = Type.TEXT;
-		event.text = new UnprotectedStringBuffer();
-		do {
-			if (c == '&') {
-				CharSequence ref = readReference();
-				if (maxTextSize <= 0 || event.text.length() < maxTextSize)
-					event.text.append(ref);
-			} else if (c == '<') {
-				stream.back(c);
-				break;
-			} else {
-				if (c == '\r') {
-					try {
-						c = stream.read();
-					} catch (EOFException e) {
-						if (maxTextSize <= 0 || event.text.length() < maxTextSize)
-							event.text.append(c);
+		UnprotectedStringBuffer t = event.text = new UnprotectedStringBuffer(new UnprotectedString(64));
+		try {
+			if (maxTextSize <= 0) {
+				do {
+					if (c == '&') {
+						CharSequence ref = readReference();
+						t.append(ref);
+					} else if (c == '<') {
+						stream.back(c);
 						break;
-					}
-					if (c == '\n') {
-						if (maxTextSize <= 0 || event.text.length() < maxTextSize)
-							event.text.append(c);
-					} else {
-						if (maxTextSize <= 0 || event.text.length() < maxTextSize)
-							event.text.append('\r');
-						continue;
-					}
-				} else if (maxTextSize <= 0 || event.text.length() < maxTextSize)
-					event.text.append(c);
+					} else if (c == '\r') {
+						try {
+							c = stream.read();
+						} catch (EOFException e) {
+							t.append(c);
+							break;
+						}
+						if (c == '\n') {
+							t.append(c);
+						} else {
+							t.append('\r');
+							continue;
+						}
+					} else
+						t.append(c);
+					c = stream.read();
+				} while (true);
+			} else {
+				do {
+					if (c == '&') {
+						CharSequence ref = readReference();
+						if (t.length() < maxTextSize)
+							t.append(ref);
+					} else if (c == '<') {
+						stream.back(c);
+						break;
+					} else if (c == '\r') {
+						try {
+							c = stream.read();
+						} catch (EOFException e) {
+							if (t.length() < maxTextSize)
+								t.append(c);
+							break;
+						}
+						if (c == '\n') {
+							if (t.length() < maxTextSize)
+								t.append(c);
+						} else {
+							if (t.length() < maxTextSize)
+								t.append('\r');
+							continue;
+						}
+					} else if (t.length() < maxTextSize)
+						t.append(c);
+					c = stream.read();
+				} while (true);
 			}
-			try {
-				c = stream.read();
-			} catch (EOFException e) {
-				break;
-			}
-		} while (true);
+		} catch (EOFException e) {
+			// the end
+		}
 	}
 	
 	private CharSequence readReference() throws XMLException, IOException {
 		char c = stream.read();
 		if (c == '#') return new UnprotectedString(readCharRef());
-		UnprotectedStringBuffer name = new UnprotectedStringBuffer();
-		name.append(c);
-		continueReadName(name);
+		UnprotectedStringBuffer name;
+		continueReadName(name = new UnprotectedStringBuffer(), c);
 		c = stream.read();
 		if (c != ';')
 			throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
@@ -550,7 +754,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readEndTag() throws XMLException, IOException {
 		event.type = Type.END_ELEMENT;
-		event.text = new UnprotectedStringBuffer();
+		event.text = new UnprotectedStringBuffer(new UnprotectedString(20));
 		readName(event.text);
 		do {
 			char c = stream.read();
@@ -743,28 +947,52 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	private void readName(UnprotectedStringBuffer name) throws XMLException, IOException {
 		char c = stream.read();
 		if (!isNameStartChar(c)) throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
-		name.append(c);
-		continueReadName(name);
+		continueReadName(name, c);
 	}
 	
-	private void continueReadName(UnprotectedStringBuffer name) throws IOException {
+	private void continueReadName(UnprotectedStringBuffer name, char c) throws IOException {
+		char[] chars = new char[16];
+		chars[0] = c;
+		int pos = 1;
+		if (maxTextSize <= 0)
+			do {
+				if (!isNameChar(c = stream.read())) {
+					stream.back(c);
+					if (pos > 0)
+						name.append(new UnprotectedString(chars, 0, pos, chars.length));
+					return;
+				}
+				chars[pos] = c;
+				if (++pos == chars.length) {
+					name.append(new UnprotectedString(chars));
+					chars = new char[chars.length * 2];
+					pos = 0;
+				}
+			} while (true);
+		int len = 1;
 		do {
-			char c = stream.read();
-			if (!isNameChar(c)) {
+			if (!isNameChar(c = stream.read())) {
 				stream.back(c);
+				if (pos > 0)
+					name.append(new UnprotectedString(chars, 0, pos, chars.length));
 				return;
 			}
-			if (maxTextSize <= 0 || name.length() < maxTextSize)
-				name.append(c);
+			if (len < maxTextSize) {
+				chars[pos] = c;
+				if (++pos == chars.length) {
+					name.append(new UnprotectedString(chars));
+					chars = new char[chars.length * 2];
+					pos = 0;
+				}
+			}
 		} while (true);
 	}
 	
 	private void readSpace() throws XMLException, IOException {
-		char c = stream.read();
-		if (!isSpaceChar(c)) throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+		char c;
+		if (!isSpaceChar(c = stream.read())) throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
 		do {
-			c = stream.read();
-			if (!isSpaceChar(c)) {
+			if (!isSpaceChar(c = stream.read())) {
 				stream.back(c);
 				return;
 			}

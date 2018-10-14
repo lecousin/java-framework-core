@@ -38,11 +38,11 @@ public class TestXMLStreamReaderAsyncWithDOM extends TestXMLStreamEventsWithDOM<
 	protected XMLStreamEventsAsync start(IO.Readable input) throws Exception {
 		XMLStreamReaderAsync xml;
 		if (efficient)
-			xml = new XMLStreamReaderAsync(input, 1024);
+			xml = new XMLStreamReaderAsync(input, 1024, 8);
 		else {
 			@SuppressWarnings("resource")
 			SingleBufferReadable bio = new SingleBufferReadable(input, 2, false);
-			xml = new XMLStreamReaderAsync(bio, 1);
+			xml = new XMLStreamReaderAsync(bio, 1, 64);
 		}
 		xml.start().blockException(0);
 		return xml;

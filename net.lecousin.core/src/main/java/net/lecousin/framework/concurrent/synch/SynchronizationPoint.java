@@ -52,7 +52,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	}
 	
 	@Override
-	public void listenInline(Runnable r) {
+	public final void listenInline(Runnable r) {
 		synchronized (this) {
 			if (!unblocked || listenersInline != null) {
 				if (listenersInline == null) listenersInline = new ArrayList<>(5);
@@ -64,7 +64,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	}
 	
 	/** Unblock this synchronization point without error. */
-	public void unblock() {
+	public final void unblock() {
 		if (Threading.debugSynchronization) ThreadingDebugHelper.unblocked(this);
 		ArrayList<Runnable> listeners;
 		synchronized (this) {
@@ -110,19 +110,19 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	}
 	
 	@Override
-	public void error(TError error) {
+	public final void error(TError error) {
 		this.error = error;
 		unblock();
 	}
 	
 	@Override
-	public void cancel(CancelException reason) {
+	public final void cancel(CancelException reason) {
 		this.cancelled = reason;
 		unblock();
 	}
 	
 	@Override
-	public void block(long timeout) {
+	public final void block(long timeout) {
 		Thread t;
 		BlockedThreadHandler blockedHandler;
 		synchronized (this) {
@@ -144,7 +144,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	}
 	
 	@Override
-	public void blockPause(long logAfter) {
+	public final void blockPause(long logAfter) {
 		synchronized (this) {
 			while (!unblocked || listenersInline != null) {
 				long start = System.currentTimeMillis();
@@ -159,27 +159,27 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	}
 	
 	@Override
-	public synchronized boolean isUnblocked() {
+	public final synchronized boolean isUnblocked() {
 		return unblocked;
 	}
 	
 	@Override
-	public boolean isCancelled() {
+	public final boolean isCancelled() {
 		return cancelled != null;
 	}
 	
 	@Override
-	public boolean hasError() {
+	public final boolean hasError() {
 		return error != null;
 	}
 	
 	@Override
-	public CancelException getCancelEvent() {
+	public final CancelException getCancelEvent() {
 		return cancelled;
 	}
 	
 	@Override
-	public TError getError() {
+	public final TError getError() {
 		return error;
 	}
 	
@@ -187,7 +187,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	 * This method remove any previous error or cancellation and mark this synchronization point as blocked.
 	 * Any previous listener is also removed, and won't be called.
 	 */
-	public synchronized void reset() {
+	public final synchronized void reset() {
 		unblocked = false;
 		cancelled = null;
 		error = null;
@@ -195,7 +195,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	}
 	
 	/** Same as the method reset except that listeners are kept. */
-	public synchronized void restart() {
+	public final synchronized void restart() {
 		unblocked = false;
 		cancelled = null;
 		error = null;
@@ -204,7 +204,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	/* --- Future implementation --- */
 	
 	@Override
-	public Void get() throws InterruptedException, ExecutionException {
+	public final Void get() throws InterruptedException, ExecutionException {
 		block(0);
 		if (!isUnblocked()) throw new InterruptedException();
 		if (hasError()) throw new ExecutionException(error);
@@ -213,7 +213,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	}
 	
 	@Override
-	public Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+	public final Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
 		block(unit.toMillis(timeout));
 		if (!isUnblocked()) throw new TimeoutException();
 		if (hasError()) throw new ExecutionException(error);
@@ -223,14 +223,14 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	
 	// skip checkstyle: OverloadMethodsDeclarationOrder
 	@Override
-	public boolean cancel(boolean mayInterruptIfRunning) {
+	public final boolean cancel(boolean mayInterruptIfRunning) {
 		if (isUnblocked()) return false;
 		cancel(new CancelException("Cancelled"));
 		return true;
 	}
 	
 	@Override
-	public boolean isDone() {
+	public final boolean isDone() {
 		return isUnblocked();
 	}
 	

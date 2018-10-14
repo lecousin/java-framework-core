@@ -67,8 +67,8 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 	
 	@Override
 	public char read() throws EOFException, IOException {
-		char c = stream.read();
-		if (c == '\n') {
+		char c;
+		if ((c = stream.read()) == '\n') {
 			line++;
 			lastLinePos = pos;
 			pos = 0;

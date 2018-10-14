@@ -134,6 +134,13 @@ public class UnprotectedString implements IString {
 		usableEnd = 0;
 	}
 	
+	/** Append the given character without enlarging the char array, return false if it cannot be done. */
+	public boolean appendNoEnlarge(char c) {
+		if (end == usableEnd) return false;
+		chars[++end] = c;
+		return true;
+	}
+	
 	@Override
 	public UnprotectedString append(char c) {
 		if (end == usableEnd)

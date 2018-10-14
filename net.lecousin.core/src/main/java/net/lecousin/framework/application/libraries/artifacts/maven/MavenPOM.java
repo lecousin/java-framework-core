@@ -84,7 +84,7 @@ public class MavenPOM implements LibraryDescriptor {
 						return;
 					}
 					IO.Readable.Buffered bio = readFile.getResult();
-					AsyncWork<XMLStreamReader, Exception> startXMLReader = XMLStreamReader.start(bio, bufSize);
+					AsyncWork<XMLStreamReader, Exception> startXMLReader = XMLStreamReader.start(bio, bufSize, 3);
 					Reader read = pom.new Reader(startXMLReader, priority, fromRepository, pomFile, pomLoader);
 					read.startOn(startXMLReader, true);
 					read.getOutput().listenInline(() -> {

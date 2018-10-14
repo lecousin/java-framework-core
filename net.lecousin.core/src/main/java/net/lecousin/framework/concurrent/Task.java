@@ -198,7 +198,7 @@ public abstract class Task<T,TError extends Exception> {
 	 * @param <T> type of result
 	 * @param <TError> type of error
 	 */
-	public static class Done<T,TError extends Exception> extends Task<T,TError> {
+	public static final class Done<T,TError extends Exception> extends Task<T,TError> {
 		/** Constructor. */
 		public Done(T result, TError error) {
 			super(Threading.getCPUTaskManager(), "", PRIORITY_NORMAL, null);
@@ -206,13 +206,8 @@ public abstract class Task<T,TError extends Exception> {
 		}
 		
 		@Override
-		public T run() {
+		public final T run() {
 			return null;
-		}
-		
-		@Override
-		public Task<T,TError> start() {
-			return this;
 		}
 	}
 	
@@ -285,15 +280,15 @@ public abstract class Task<T,TError extends Exception> {
 	// hold synchronization points
 	private List<ISynchronizationPoint<?>> holdSP = null;
 	
-	public byte getStatus() { return status; }
+	public final byte getStatus() { return status; }
 	
-	public String getDescription() { return description; }
+	public final String getDescription() { return description; }
 	
-	protected void setDescription(String descr) { description = descr; }
+	protected final void setDescription(String descr) { description = descr; }
 	
-	public Application getApplication() { return app; }
+	public final Application getApplication() { return app; }
 	
-	public TaskManager getTaskManager() { return manager; }
+	public final TaskManager getTaskManager() { return manager; }
 	
 	/** Method to implement to execute the task. */
 	public abstract T run() throws TError, CancelException;
@@ -301,7 +296,7 @@ public abstract class Task<T,TError extends Exception> {
 	protected JoinPoint<TError> taskJoin = null;
 	
 	@SuppressWarnings("unchecked")
-	void execute() {
+	final void execute() {
 		if (cancelling != null) {
 			status = STATUS_DONE;
 			result.cancelled(cancelling);
@@ -386,7 +381,7 @@ public abstract class Task<T,TError extends Exception> {
 	}
 
 	/** Called by a task executor, just after execute method finished. */
-	void rescheduleIfNeeded() {
+	final void rescheduleIfNeeded() {
 		if (executeEvery > 0 && !TaskScheduler.stopping) {
 			synchronized (this) {
 				status = Task.STATUS_NOT_STARTED;
@@ -410,7 +405,8 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Ask to start the task. This does not start it immediately, but adds it to the queue of tasks to execute. */
-	public Task<T,TError> start() {
+	public final Task<T,TError> start() {
+		if (this instanceof Done) return this;
 		if (cancelling != null) result.cancelled(cancelling);
 		synchronized (this) {
 			if (result.isCancelled()) return this;
@@ -434,11 +430,12 @@ public abstract class Task<T,TError extends Exception> {
 		}
 	}
 	
-	void sendToTaskManager() {
+	final void sendToTaskManager() {
 		while (manager.getTransferTarget() != null)
 			manager = manager.getTransferTarget();
 		status = Task.STATUS_STARTED_READY;
 		manager.addReady(this);
+		
 	}
 	
 	// public functions
@@ -450,7 +447,7 @@ public abstract class Task<T,TError extends Exception> {
 		return null;
 	}*/
 	/** Cancel this task. */
-	public void cancel(CancelException reason) {
+	public final void cancel(CancelException reason) {
 		if (cancelling != null)
 			return;
 		if (reason == null) reason = new CancelException("No reason given");
@@ -473,7 +470,7 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Cancel this task only if not yet started. */
-	public boolean cancelIfExecutionNotStarted(CancelException reason) {
+	public final boolean cancelIfExecutionNotStarted(CancelException reason) {
 		synchronized (this) {
 			if (status < STATUS_RUNNING) {
 				cancel(reason);
@@ -483,42 +480,42 @@ public abstract class Task<T,TError extends Exception> {
 		return false;
 	}
 	
-	public boolean isDone() {
+	public final boolean isDone() {
 		return status == STATUS_DONE && result.isUnblocked();
 	}
 	
-	public boolean isSuccessful() {
+	public final boolean isSuccessful() {
 		return status == STATUS_DONE && result.isSuccessful();
 	}
 	
-	public boolean isCancelling() {
+	public final boolean isCancelling() {
 		return cancelling != null || result.isCancelled();
 	}
 	
-	public boolean isCancelled() {
+	public final boolean isCancelled() {
 		return result.isCancelled();
 	}
 	
-	public boolean isStarted() {
+	public final boolean isStarted() {
 		return status > STATUS_NOT_STARTED;
 	}
 	
-	public boolean isRunning() {
+	public final boolean isRunning() {
 		return status >= STATUS_RUNNING && status < STATUS_DONE;
 	}
 	
-	public T getResult() { return result.getResult(); }
+	public final T getResult() { return result.getResult(); }
 	
-	public TError getError() { return result.getError(); }
+	public final TError getError() { return result.getError(); }
 	
-	public CancelException getCancelEvent() { return cancelling != null ? cancelling : result.getCancelEvent(); }
+	public final CancelException getCancelEvent() { return cancelling != null ? cancelling : result.getCancelEvent(); }
 	
-	public boolean hasError() { return result.hasError(); }
+	public final boolean hasError() { return result.hasError(); }
 	
-	public byte getPriority() { return priority; }
+	public final byte getPriority() { return priority; }
 	
 	/** Change the priority of this task. */
-	public synchronized void setPriority(byte priority) {
+	public final synchronized void setPriority(byte priority) {
 		if (this.priority == priority) return;
 		if (status == STATUS_STARTED_READY) {
 			if (manager.remove(this)) {
@@ -532,12 +529,12 @@ public abstract class Task<T,TError extends Exception> {
 		this.priority = priority;
 	}
 	
-	public Output getOutput() { return result; }
+	public final Output getOutput() { return result; }
 	
 	/** Ensure that when this task will be done, successfully or not, the given synchronization point
 	 * are unblocked. If some are not, they are cancelled upon task completion.
 	 */
-	public Task<T,TError> ensureUnblocked(ISynchronizationPoint<?>... sp) {
+	public final Task<T,TError> ensureUnblocked(ISynchronizationPoint<?>... sp) {
 		if (status == STATUS_DONE) {
 			for (int i = 0; i < sp.length; ++i)
 				if (!sp[i].isUnblocked())
@@ -551,40 +548,40 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Execute this task at the given time. */
-	public Task<T, TError>  executeAt(long time) {
+	public final Task<T, TError>  executeAt(long time) {
 		nextExecution = time;
 		return this;
 	}
 	
 	/** Execute this task in the given delay in milliseconds. */
-	public Task<T, TError> executeIn(long delay) {
+	public final Task<T, TError> executeIn(long delay) {
 		return executeAt(System.currentTimeMillis() + delay);
 	}
 	
 	/** Execute this task repeatedly. */
-	public Task<T, TError>  executeEvery(long delay, long initialDelay) {
+	public final Task<T, TError>  executeEvery(long delay, long initialDelay) {
 		executeEvery = delay;
 		return executeIn(initialDelay);
 	}
 	
 	/** Do not execute this task again. */
-	public void  stopRepeat() {
+	public final void  stopRepeat() {
 		executeEvery = 0;
 	}
 	
 	/** Execute again this task in the given delay. */
-	public Task<T, TError>  executeAgainIn(long delay) {
+	public final Task<T, TError>  executeAgainIn(long delay) {
 		return executeAgainAt(System.currentTimeMillis() + delay);
 	}
 
 	/** Execute again this task at the given time. */
-	public Task<T, TError>  executeAgainAt(long time) {
+	public final Task<T, TError>  executeAgainAt(long time) {
 		nextExecution = time;
 		return this;
 	}
 	
 	/** Change the next execution time of scheduled or repetitive task. */
-	public synchronized void changeNextExecutionTime(long time) {
+	public final synchronized void changeNextExecutionTime(long time) {
 		if (status == STATUS_STARTED_WAITING)
 			TaskScheduler.changeNextExecutionTime(this, time);
 		else
@@ -592,20 +589,20 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Change the next execution time to now. */
-	public synchronized void executeNextOccurenceNow() {
+	public final synchronized void executeNextOccurenceNow() {
 		long now = System.currentTimeMillis();
 		if (nextExecution > now)
 			changeNextExecutionTime(System.currentTimeMillis());
 	}
 	
 	/** Change the next execution time to now with the given priority. */
-	public synchronized void executeNextOccurenceNow(byte priority) {
+	public final synchronized void executeNextOccurenceNow(byte priority) {
 		setPriority(priority);
 		executeNextOccurenceNow();
 	}
 	
 	/** Start this task once the given synchronization point is unblocked. */
-	public void startOn(ISynchronizationPoint<? extends Exception> sp, boolean evenOnErrorOrCancel) {
+	public final void startOn(ISynchronizationPoint<? extends Exception> sp, boolean evenOnErrorOrCancel) {
 		if (app.isDebugMode() && Threading.traceTasksNotDone)
 			ThreadingDebugHelper.waitingFor(this, sp);
 		sp.listenInline(new Runnable() {
@@ -632,7 +629,7 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Start this task once all the given synchronization points are unblocked. */
-	public void startOn(boolean evenOnErrorOrCancel, ISynchronizationPoint<?>... list) {
+	public final void startOn(boolean evenOnErrorOrCancel, ISynchronizationPoint<?>... list) {
 		if (app.isDebugMode() && Threading.traceTasksNotDone)
 			ThreadingDebugHelper.waitingFor(this, list);
 		JoinPoint<Exception> jp = new JoinPoint<>();
@@ -664,7 +661,7 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Start this task once the given task is done. If the given task is null or already done, the method start() is called. */
-	public void startOnDone(Task<?,?> task) {
+	public final void startOnDone(Task<?,?> task) {
 		if (task == null || task.isDone()) {
 			start();
 			return;
@@ -673,7 +670,7 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Set this task as done with the given result or error. */
-	public void setDone(T result, TError error) {
+	public final void setDone(T result, TError error) {
 		this.status = STATUS_DONE;
 		if (error == null)
 			this.result.unblockSuccess(result);
@@ -682,7 +679,7 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Start the given task once this task is done. */
-	public void ondone(Task<?,?> todo, boolean evenIfErrorOrCancel) {
+	public final void ondone(Task<?,?> todo, boolean evenIfErrorOrCancel) {
 		if (app.isDebugMode() && Threading.traceTasksNotDone)
 			ThreadingDebugHelper.waitingFor(todo, this);
 		if (result.isCancelled())
@@ -696,29 +693,29 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	@Override
-	public String toString() {
+	public final String toString() {
 		return super.toString() + "[" + description + "]";
 	}
 	
 	/** Synchronization point holding the result or error of this task. */
-	public class Output extends AsyncWork<T, TError> {
+	public final class Output extends AsyncWork<T, TError> {
 		private Output() {}
 		
-		public Task<T,TError> getTask() {
+		public final Task<T,TError> getTask() {
 			return Task.this;
 		}
 		
 		@Override
-		public void cancel(CancelException reason) {
+		public final void unblockCancel(CancelException reason) {
 			Task.this.cancel(reason);
 		}
 		
-		void cancelled(CancelException reason) {
-			super.cancel(reason);
+		final void cancelled(CancelException reason) {
+			super.unblockCancel(reason);
 		}
 		
 		@Override
-		public String toString() {
+		public final String toString() {
 			return "Task synchronization point [" + description + "]";
 		}
 	}

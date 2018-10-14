@@ -14,7 +14,7 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 
 	@Override
 	protected XMLStreamReader parse(String resource) {
-		return new XMLStreamReader(LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL), 512);
+		return new XMLStreamReader(LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL), 512, 4);
 	}
 	
 	@Test(timeout=60000)
@@ -48,7 +48,7 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 	public void testStart() throws Exception {
 		IO.Readable io = LCCore.getApplication().getResource("xml-test-suite/mine/001.xml", Task.PRIORITY_NORMAL);
 		SimpleBufferedReadable bio = new SimpleBufferedReadable(io, 1024);
-		XMLStreamReader.start(bio, 1024).blockResult(0);
+		XMLStreamReader.start(bio, 1024, 4).blockResult(0);
 		bio.close();
 		
 		XMLStreamReader xml;

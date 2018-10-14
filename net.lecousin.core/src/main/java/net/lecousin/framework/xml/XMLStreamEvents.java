@@ -1,19 +1,19 @@
 package net.lecousin.framework.xml;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStreamLocation;
+import net.lecousin.framework.io.text.Decoder;
+import net.lecousin.framework.io.text.ProgressiveBufferedReadableCharStream;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
@@ -322,212 +322,215 @@ public abstract class XMLStreamEvents {
 
 	/** Helper class to start parsing the XML file and detect the encoding, either with a BOM or with the XML declaration tag. */
 	protected static class Starter {
-		public Starter(IO.Readable.Buffered io, Charset givenEncoding, int bufferSize) {
+		public Starter(IO.Readable.Buffered io, Charset givenEncoding, int bufferSize, int maxBuffers) {
 			this.io = io;
 			this.givenEncoding = givenEncoding;
 			this.bufferSize = bufferSize;
+			this.maxBuffers = maxBuffers;
 		}
 		
 		protected IO.Readable.Buffered io;
 		protected int bufferSize;
+		protected int maxBuffers;
 		protected Charset givenEncoding;
 		protected Charset bomEncoding;
-		protected byte[] bytes = new byte[20];
-		protected int bytesStart = 0;
-		protected int bytesEnd = 0;
-		protected CharsetDecoder tmpDecoder;
-		protected CharBuffer oneChar = CharBuffer.allocate(1);
+		protected Decoder tmpDecoder;
 		protected int line = 1;
 		protected int posInLine = 1;
 		protected UnprotectedStringBuffer xmlVersion = null;
 		protected UnprotectedStringBuffer xmlEncoding = null;
 		protected UnprotectedStringBuffer xmlStandalone = null;
 		
+		private byte[] firstBytes = new byte[1024];
+		private int firstBytesPos = 0;
+		private int firstBytesLength = 0;
+		
 		@SuppressWarnings("resource")
 		public BufferedReadableCharacterStreamLocation start() throws IOException, XMLException {
+			firstBytesLength = io.readFully(firstBytes);
 			readBOM();
-			if (givenEncoding != null)
-				tmpDecoder = givenEncoding.newDecoder();
-			else if (bomEncoding != null)
-				tmpDecoder = bomEncoding.newDecoder();
-			else
-				tmpDecoder = StandardCharsets.UTF_8.newDecoder();
-			tmpDecoder.onMalformedInput(CodingErrorAction.REPLACE);
-			tmpDecoder.onUnmappableCharacter(CodingErrorAction.REPLACE);
-			BufferedReadableCharacterStream stream = readXMLDeclaration();
-			if (stream == null) {
-				if (xmlEncoding != null) {
-					Charset encoding = Charset.forName(xmlEncoding.asString());
-					if (!encoding.equals(tmpDecoder.charset())) {
-						// TODO if some byte have been already consumed ?
-						tmpDecoder = encoding.newDecoder();
-						tmpDecoder.onMalformedInput(CodingErrorAction.REPLACE);
-						tmpDecoder.onUnmappableCharacter(CodingErrorAction.REPLACE);
+			int posAfterBOM = firstBytesPos;
+			try {
+				if (givenEncoding != null)
+					tmpDecoder = Decoder.get(givenEncoding);
+				else if (bomEncoding != null)
+					tmpDecoder = Decoder.get(bomEncoding);
+				else
+					tmpDecoder = Decoder.get(StandardCharsets.UTF_8);
+			} catch (Exception e) {
+				throw new IOException("Error initializing character decoder", e);
+			}
+			// TODO line and posInLine...
+			boolean hasDecl = readXMLDeclaration();
+			if (!hasDecl) {
+				// simple
+				try { tmpDecoder = Decoder.get(tmpDecoder.getEncoding()); }
+				catch (Exception e) {
+					throw new IOException("Error initializing character decoder", e);
+				}
+				tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, posAfterBOM, firstBytesLength - posAfterBOM));
+				tmpDecoder.setInput(io);
+				return new BufferedReadableCharacterStreamLocation(
+					new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers), line, posInLine);
+			}
+			if (xmlEncoding != null) {
+				Charset encoding = Charset.forName(xmlEncoding.asString());
+				if (!encoding.equals(tmpDecoder.getEncoding())) {
+					try { tmpDecoder = Decoder.get(encoding); }
+					catch (Exception e) {
+						throw new IOException("Error initializing character decoder", e);
 					}
+					tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, posAfterBOM, firstBytesLength - posAfterBOM));
+					tmpDecoder.setInput(io);
+					BufferedReadableCharacterStreamLocation stream = new BufferedReadableCharacterStreamLocation(
+						new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers), line, posInLine);
+					// we reset the decoder, so we need to skip the <?xml ... ?>
+					char c;
+					boolean end = false;
+					do {
+						c = stream.read();
+						// TODO string
+						while (c == '?') {
+							c = stream.read();
+							if (c == '>') {
+								end = true;
+								break;
+							}
+						}
+					} while (!end);
+					return stream;
 				}
-				stream = new BufferedReadableCharacterStream(
-					io, tmpDecoder, bufferSize, 8,
-					bytesEnd == bytesStart ? null : ByteBuffer.wrap(bytes, bytesStart, bytesEnd - bytesStart), null);
 			}
-			return new BufferedReadableCharacterStreamLocation(stream, line, posInLine);
+			tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, firstBytesPos, firstBytesLength - firstBytesPos));
+			tmpDecoder.setInput(io);
+			return new BufferedReadableCharacterStreamLocation(
+				new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers,
+						CharBuffer.wrap(chars, charsPos, charsLength - charsPos)), line, posInLine);
 		}
 		
-		private char nextChar() throws IOException {
-			if (bytesEnd == bytesStart)
-				addByte();
-			oneChar.clear();
-			do {
-				ByteBuffer b = ByteBuffer.wrap(bytes, bytesStart, bytesEnd - bytesStart);
-				tmpDecoder.decode(b, oneChar, false);
-				bytesStart = b.position();
-				if (oneChar.position() == 0) {
-					addByte();
-					continue;
-				}
-				char c = oneChar.array()[0];
-				if (c == '\n') {
-					line++;
-					posInLine = 0;
-				} else
-					posInLine++;
-				return c;
-			} while (true);
-		}
-		
-		private void addByte() throws IOException {
-			if (bytesEnd == bytes.length) {
-				// compact
-				System.arraycopy(bytes, bytesStart, bytes, 0, bytesEnd - bytesStart);
-				bytesEnd -= bytesStart;
-				bytesStart = 0;
-			}
-			bytes[bytesEnd++] = io.readByte();
-		}
-		
-		public void readBOM() throws IOException, XMLException {
-			int b1 = io.read();
-			if (b1 < 0) throw new XMLException(null, "File is empty");
-			switch (b1) {
+		public void readBOM() throws XMLException {
+			if (firstBytesLength == 0) throw new XMLException(null, "File is empty");
+			switch (firstBytes[0] & 0xFF) {
 			case 0xEF: {
 				// it may be a UTF-8 BOM
-				int b2 = io.read();
-				if (b2 < 0) throw new XMLException(null, "Not an XML file");
-				if (b2 == 0xBB) {
-					int b3 = io.read();
-					if (b3 < 0) throw new XMLException(null, "Not an XML file");
-					if (b3 == 0xBF) {
+				if (firstBytesLength == 1) throw new XMLException(null, "Not an XML file");
+				if (firstBytes[1] == (byte)0xBB) {
+					if (firstBytesLength == 2) throw new XMLException(null, "Not an XML file");
+					if (firstBytes[2] == (byte)0xBF) {
 						// UTF-8 BOM
 						bomEncoding = StandardCharsets.UTF_8;
-						break;
+						firstBytesPos = 3;
 					}
-					bytes[bytesEnd++] = (byte)b1;
-					bytes[bytesEnd++] = (byte)b2;
-					bytes[bytesEnd++] = (byte)b3;
-					break;
 				}
-				bytes[bytesEnd++] = (byte)b1;
-				bytes[bytesEnd++] = (byte)b2;
 				break;
 			}
 			case 0xFE: {
 				// it may be a UTF-16 big-endian BOM
-				int b2 = io.read();
-				if (b2 < 0) throw new XMLException(null, "Not an XML file");
-				if (b2 == 0xFF) {
+				if (firstBytesLength == 1) throw new XMLException(null, "Not an XML file");
+				if (firstBytes[1] == (byte)0xFF) {
 					// UTF-16 big-endian
 					bomEncoding = StandardCharsets.UTF_16BE;
-					break;
+					firstBytesPos = 2;
 				}
-				bytes[bytesEnd++] = (byte)b1;
-				bytes[bytesEnd++] = (byte)b2;
 				break;
 			}
 			case 0xFF: {
 				// it may be a BOM for UTF-16 little-endian or UTF-32 little-endian
-				int b2 = io.read();
-				if (b2 < 0) throw new XMLException(null, "Not an XML file");
-				if (b2 == 0xFE) {
-					int b3 = io.read();
-					if (b3 < 0) throw new XMLException(null, "Not an XML file");
-					if (b3 == 0x00) {
-						int b4 = io.read();
-						if (b4 < 0) throw new XMLException(null, "Not an XML file");
-						if (b4 == 0x00) {
+				if (firstBytesLength == 1) throw new XMLException(null, "Not an XML file");
+				if (firstBytes[1] == (byte)0xFE) {
+					if (firstBytesLength == 2) throw new XMLException(null, "Not an XML file");
+					if (firstBytes[2] == (byte)0x00) {
+						if (firstBytesLength == 3) throw new XMLException(null, "Not an XML file");
+						if (firstBytes[3] == (byte)0x00) {
 							// UTF-32 little-endian
 							bomEncoding = Charset.forName("UTF-32LE");
-							break;
+							firstBytesPos = 4;
 						}
-						bytes[bytesEnd++] = (byte)b1;
-						bytes[bytesEnd++] = (byte)b2;
-						bytes[bytesEnd++] = (byte)b3;
-						bytes[bytesEnd++] = (byte)b4;
 						break;
 					}
 					// UTF-16 little-endian
 					bomEncoding = StandardCharsets.UTF_16LE;
-					bytes[bytesEnd++] = (byte)b3;
-					break;
+					firstBytesPos = 2;
 				}
-				bytes[bytesEnd++] = (byte)b1;
-				bytes[bytesEnd++] = (byte)b2;
 				break;
 			}
 			case 0x00: {
 				// it may be a UTF-32 big-endian BOM, but it may also be UTF-16 without BOM
-				int b2 = io.read();
-				if (b2 < 0) throw new XMLException(null, "Not an XML file");
-				if (b2 == 0x00) {
-					int b3 = io.read();
-					if (b3 < 0) throw new XMLException(null, "Not an XML file");
-					if (b3 == 0xFE) {
-						int b4 = io.read();
-						if (b4 < 0) throw new XMLException(null, "Not an XML file");
-						if (b4 == 0xFF) {
+				if (firstBytesLength == 1) throw new XMLException(null, "Not an XML file");
+				if (firstBytes[1] == (byte)0x00) {
+					if (firstBytesLength == 2) throw new XMLException(null, "Not an XML file");
+					if (firstBytes[2] == (byte)0xFE) {
+						if (firstBytesLength == 3) throw new XMLException(null, "Not an XML file");
+						if (firstBytes[3] == (byte)0xFF) {
 							// UTF-32 big-endian
 							bomEncoding = Charset.forName("UTF-32BE");
-							break;
+							firstBytesPos = 4;
 						}
-						bytes[bytesEnd++] = (byte)b1;
-						bytes[bytesEnd++] = (byte)b2;
-						bytes[bytesEnd++] = (byte)b3;
-						bytes[bytesEnd++] = (byte)b4;
 						break;
 					}
 					// UTF-16 without BOM
 					bomEncoding = StandardCharsets.UTF_16BE;
-					bytes[bytesEnd++] = (byte)b3;
-					break;
+					firstBytesPos = 2;
 				}
-				bytes[bytesEnd++] = (byte)b1;
-				bytes[bytesEnd++] = (byte)b2;
 				break;
 			}
 			default:
-				bytes[bytesEnd++] = (byte)b1;
 				break;
 			}
 		}
 		
-		protected BufferedReadableCharacterStream readXMLDeclaration() throws IOException {
+		private char[] chars = new char[64];
+		private int charsPos = 0;
+		private int charsLength = 0;
+
+		private char nextChar() throws IOException {
+			if (charsPos < charsLength)
+				return chars[charsPos++];
+			if (firstBytesPos > 0 && firstBytesLength - firstBytesPos < 10) {
+				// TODO in fact we must enlarge firstBytes...
+				if (firstBytesPos < firstBytesLength) {
+					int len = firstBytesLength - firstBytesPos;
+					System.arraycopy(firstBytes, firstBytesPos, firstBytes, 0, len);
+					int nb = io.readFullySync(ByteBuffer.wrap(firstBytes, len, firstBytes.length - len));
+					if (nb == -1) nb = 0;
+					firstBytesPos = 0;
+					firstBytesLength = len + nb;
+					// TODO if end reached
+				} else {
+					firstBytesPos = 0;
+					firstBytesLength = io.readFullySync(ByteBuffer.wrap(firstBytes));
+					// TODO if end reached
+				}
+			}
+			charsPos = 0;
+			ByteBuffer bb = ByteBuffer.wrap(firstBytes, firstBytesPos, firstBytesLength - firstBytesPos);
+			charsLength = tmpDecoder.decode(bb, chars, 0, chars.length);
+			if (charsLength <= 0)
+				throw new EOFException();
+			firstBytesPos = bb.position();
+			return chars[charsPos++];
+		}
+		
+		protected boolean readXMLDeclaration() throws IOException {
 			char c;
 			while (isSpaceChar(c = nextChar()));
 			if (c != '<')
-				return end(new char[] { c });
+				return false;
 			c = nextChar();
 			if (c != '?')
-				return end(new char[] { '<', c });
+				return false;
 			c = nextChar();
 			if (c != 'x' && c != 'X')
-				return end(new char[] { '<', '?', c });
+				return false;
 			char c2 = nextChar();
 			if (c2 != 'm' && c2 != 'M')
-				return end(new char[] { '<', '?', c, c2 });
+				return false;
 			char c3 = nextChar();
 			if (c3 != 'l' && c3 != 'L')
-				return end(new char[] { '<', '?', c, c2, c3 });
+				return false;
 			char c4 = nextChar();
 			if (!isSpaceChar(c4))
-				return end(new char[] { '<', '?', c, c2, c3, c4 });
+				return false;
 			while (isSpaceChar(c = nextChar()));
 			if (c != 'v' && c != 'V') throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
 			c = nextChar();
@@ -627,15 +630,9 @@ public abstract class XMLStreamEvents {
 			}
 			if (c != '?') throw new IOException("Unexpected character '" + c + "' in XML declaration tag");
 			if (nextChar() != '>') throw new IOException("Unexpected character '" + c + "' in XML declaration tag");
-			return null;
+			return true;
 		}
 		
-		protected BufferedReadableCharacterStream end(char[] chars) {
-			return new BufferedReadableCharacterStream(
-				io, tmpDecoder, bufferSize, 8,
-				bytesEnd == bytesStart ? null : ByteBuffer.wrap(bytes, bytesStart, bytesEnd - bytesStart),
-				CharBuffer.wrap(chars));
-		}
 	}
 
 }

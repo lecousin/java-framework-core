@@ -37,10 +37,10 @@ public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 	@Override
 	protected XMLStreamReaderAsync parse(String resource) {
 		if (efficient)
-			return new XMLStreamReaderAsync(LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL), 512);
+			return new XMLStreamReaderAsync(LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL), 512, 8);
 		IO.Readable io = LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL);
 		SingleBufferReadable bio = new SingleBufferReadable(io, 2, false);
-		return new XMLStreamReaderAsync(bio, 1);
+		return new XMLStreamReaderAsync(bio, 1, 64);
 	}
 	
 	@Test
