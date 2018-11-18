@@ -1,44 +1,18 @@
 package net.lecousin.framework.util;
 
-import net.lecousin.framework.math.FragmentedRangeLong;
-import net.lecousin.framework.math.RangeLong;
-
 /**
- * ID Manager allocating long integer identifiers.
+ * An ID manager can allocate new identifiers, and free identifiers which are not used anymore.
+ * An identifier which has been freed may be returned again when allocating a new identifier.
  */
-public class IDManagerLong implements IDManager {
+public interface IDManagerLong {
 
-	/** Constructor.
-	 * @param encoder to encode a long value into a string
-	 */
-	public IDManagerLong(StringEncoding<Long> encoder) {
-		this.encoder = encoder;
-	}
-
-	/** Constructor using a default StringEncoding$SimpleLong encoder. */
-	public IDManagerLong() {
-		this(new StringEncoding.SimpleLong());
-	}
-
-	private StringEncoding<Long> encoder;
-	private FragmentedRangeLong free = new FragmentedRangeLong(new RangeLong(1,Long.MAX_VALUE));
+	/** Allocate a new unique identifier. */
+	public long allocate();
 	
-	@Override
-	public String allocate() {
-		Long id = free.removeFirstValue();
-		return encoder.encode(id);
-	}
+	/** Free the given identifier. */
+	public void free(long id);
 	
-	@Override
-	public void free(String id) {
-		long l = encoder.decode(id).longValue();
-		free.addValue(l);
-	}
-	
-	@Override
-	public void used(String id) {
-		long l = encoder.decode(id).longValue();
-		free.removeValue(l);
-	}
+	/** Declare an identifier as used so it cannot be allocated. */
+	public void used(long id);
 	
 }

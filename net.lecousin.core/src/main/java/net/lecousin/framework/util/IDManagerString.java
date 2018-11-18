@@ -4,7 +4,7 @@ package net.lecousin.framework.util;
  * An ID manager can allocate new identifiers, and free identifiers which are not used anymore.
  * An identifier which has been freed may be returned again when allocating a new identifier.
  */
-public interface IDManager {
+public interface IDManagerString {
 
 	/** Allocate a new unique identifier. */
 	public String allocate();

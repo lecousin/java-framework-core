@@ -163,7 +163,8 @@ public class AppLauncher {
 					cfg.properties,
 					false,
 					Executors.defaultThreadFactory(),
-					librariesManager
+					librariesManager,
+					null
 				);
 				start.block(0);
 				if (start.hasError()) {

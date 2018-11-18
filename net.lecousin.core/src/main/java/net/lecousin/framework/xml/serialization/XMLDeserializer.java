@@ -74,28 +74,28 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	/** Deserialize from a file accessible from the classpath. */
 	@SuppressWarnings("resource")
-	public static <T> AsyncWork<T, Exception> deserializeResource(String resourcePath, Class<T> type, byte priority) {
+	public static <T> AsyncWork<T, Exception> deserializeResource(String resourcePath, Class<T> type, List<SerializationRule> rules, byte priority) {
 		IO.Readable io = LCCore.getApplication().getResource(resourcePath, priority);
 		if (io == null) return new AsyncWork<>(null, new FileNotFoundException("Resource not found: " + resourcePath));
-		AsyncWork<T, Exception> result = deserialize(io, type);
+		AsyncWork<T, Exception> result = deserialize(io, type, rules);
 		result.listenInline(() -> { io.closeAsync(); });
 		return result;
 	}
 	
 	/** Deserialize from a file. */
 	@SuppressWarnings("resource")
-	public static <T> AsyncWork<T, Exception> deserializeFile(File file, Class<T> type, byte priority) {
+	public static <T> AsyncWork<T, Exception> deserializeFile(File file, Class<T> type, List<SerializationRule> rules, byte priority) {
 		IO.Readable io = new FileIO.ReadOnly(file, priority);
-		AsyncWork<T, Exception> result = deserialize(io, type);
+		AsyncWork<T, Exception> result = deserialize(io, type, rules);
 		result.listenInline(() -> { io.closeAsync(); });
 		return result;
 	}
 	
 	/** Deserialize from a IO.Readable. */
 	@SuppressWarnings("unchecked")
-	public static <T> AsyncWork<T, Exception> deserialize(IO.Readable input, Class<T> type) {
+	public static <T> AsyncWork<T, Exception> deserialize(IO.Readable input, Class<T> type, List<SerializationRule> rules) {
 		XMLDeserializer deserializer = new XMLDeserializer(null, type.getSimpleName());
-		AsyncWork<Object, Exception> res = deserializer.deserialize(new TypeDefinition(type), input, new ArrayList<>(0));
+		AsyncWork<Object, Exception> res = deserializer.deserialize(new TypeDefinition(type), input, rules == null ? new ArrayList<>(0) : rules);
 		AsyncWork<T, Exception> result = new AsyncWork<>();
 		res.listenInline((obj) -> {
 			result.unblockSuccess((T)obj);

@@ -13,6 +13,7 @@ import java.util.Map;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.util.AsyncCloseable;
@@ -70,6 +71,12 @@ public abstract class Decoder implements Closeable, AsyncCloseable<Exception> {
 	protected AsyncWork<ByteBuffer, IOException> nextBuffer;
 	protected ByteBuffer currentBuffer = null;
 	
+	/** When the decode method returns -2, this method can be used to know when new data is available to be decoded. */
+	public ISynchronizationPoint<IOException> canDecode() {
+		if (currentBuffer != null) return new SynchronizationPoint<>(true);
+		return nextBuffer;
+	}
+	
 	/**
 	 * Decode characters from the IO.
 	 * @param chars array to fill
@@ -77,7 +84,7 @@ public abstract class Decoder implements Closeable, AsyncCloseable<Exception> {
 	 * @param len maximum number of characters to fill
 	 * @param interrupt when true, the decoding will stop as soon as possible
 	 * @param min minimum number of characters to fill, regardless of the interrupt value
-	 * @return number of decoded characters, -1 if no more characters can be decoded
+	 * @return number of decoded characters, -1 if no more characters can be decoded, -2 if we need to wait for next buffer from the IO
 	 * @throws IOException error reading from IO
 	 * @throws CancelException IO has been cancelled
 	 */
@@ -86,7 +93,10 @@ public abstract class Decoder implements Closeable, AsyncCloseable<Exception> {
 		int nb = 0;
 		do {
 			if (currentBuffer == null) {
-				currentBuffer = nextBuffer.blockResult(0);
+				if (nextBuffer.isUnblocked())
+					currentBuffer = nextBuffer.blockResult(0);
+				else
+					return nb > 0 ? nb : -2;
 				if (currentBuffer != null)
 					nextBuffer = io.readNextBufferAsync();
 			}

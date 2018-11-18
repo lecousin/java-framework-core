@@ -34,6 +34,7 @@ import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.locale.LocalizedProperties;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.LoggerFactory;
+import net.lecousin.framework.log.appenders.Appender;
 import net.lecousin.framework.util.AsyncCloseable;
 import net.lecousin.framework.util.ObjectUtil;
 import net.lecousin.framework.util.Pair;
@@ -274,7 +275,8 @@ public final class Application {
 		Map<String,String> properties,
 		boolean debugMode,
 		ThreadFactory threadFactory,
-		LibrariesManager librariesManager
+		LibrariesManager librariesManager,
+		Appender defaultLogAppender
 	) {
 		Application app = new Application(artifact, commandLineArguments, properties, debugMode, threadFactory, librariesManager);
 		
@@ -307,8 +309,10 @@ public final class Application {
 			c.out("-----------------------------------------");
 		}
 		
+		LCCore.initEnvironment();
+		
 		// init logging
-		app.loggerFactory = new LoggerFactory(app);
+		app.loggerFactory = new LoggerFactory(app, defaultLogAppender);
 		
 		// init LCCore with this application
 		LCCore.start(app);
@@ -355,7 +359,7 @@ public final class Application {
 	
 	/** Method to call at the beginning of the application, typically in the main method. */
 	public static ISynchronizationPoint<Exception> start(Artifact artifact, String[] args, boolean debugMode) {
-		return start(artifact, args, null, debugMode, Executors.defaultThreadFactory(), new DefaultLibrariesManager());
+		return start(artifact, args, null, debugMode, Executors.defaultThreadFactory(), new DefaultLibrariesManager(), null);
 	}
 
 	/** Stop this application and release resources. */

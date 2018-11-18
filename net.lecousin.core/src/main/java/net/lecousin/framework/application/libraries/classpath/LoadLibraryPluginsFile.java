@@ -48,7 +48,7 @@ public class LoadLibraryPluginsFile extends FullReadLines<Void> {
 				throw new Exception("Invalid plugin class: " + line.asString() + " must extend Plugin");
 			Plugin pi = (Plugin)cl.newInstance();
 			ExtensionPoints.add(epName, pi);
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			throw new IOException("Error loading plugins of library: " + getSourceDescription(), e);
 		}
 	}

@@ -190,7 +190,8 @@ public class DevLauncher {
 					cfg.properties,
 					true,
 					Executors.defaultThreadFactory(),
-					librariesManager
+					librariesManager,
+					null
 				);
 				start.block(0);
 				if (start.hasError()) {

@@ -516,6 +516,22 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 					}
 					return null;
 				}
+				if (nb == -2) {
+					synchronized (buffers) {
+						if (buffer.length > 0) {
+							lastBufferReady = myBuffer;
+							if (firstBufferReady == -1) firstBufferReady = myBuffer;
+							myBuffer = -1;
+							buffer = null;
+							interruptFillBuffer.set(false);
+							if (iNeedABuffer != null)
+								iNeedABuffer.unblock();
+						}
+					}
+					taskFillBuffer = new TaskFillBuffer();
+					decoder.canDecode().listenAsync(taskFillBuffer, true);
+					return null;
+				}
 				if (nb == -1) {
 					synchronized (buffers) {
 						if (buffer.length > 0) {

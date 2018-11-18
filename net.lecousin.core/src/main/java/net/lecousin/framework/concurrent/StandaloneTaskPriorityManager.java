@@ -66,7 +66,7 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 				long wait = lastIdle + 1000 - System.currentTimeMillis();
 				if (wait > 50) {
 					if (!taskManager.isStopping() && taskManager.getTransferTarget() == null) {
-						try { this.wait(); }
+						try { this.wait(wait); }
 						catch (InterruptedException e) { /* ignore */ }
 						return null;
 					}

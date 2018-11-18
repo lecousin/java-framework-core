@@ -33,11 +33,13 @@ public class LoggerFactory {
 	private Map<String,Appender> appenders = new HashMap<String,Appender>();
 	
 	/** Constructor. */
-	public LoggerFactory(Application app) {
+	public LoggerFactory(Application app, Appender defaultAppender) {
 		application = app;
 		thread = new LoggerThread(app);
-		defaultAppender = new ConsoleAppender(this, app.isReleaseMode() ? Level.INFO : Level.DEBUG,
-			new LogPattern("%d{HH:mm:ss.SSS} [%level] <%logger{20}> %m"));
+		if (defaultAppender == null)
+			defaultAppender = new ConsoleAppender(app.getConsole(), app.isReleaseMode() ? Level.INFO : Level.DEBUG,
+				new LogPattern("%d{HH:mm:ss.SSS} [%level] <%logger{20}> %m"));
+		this.defaultAppender = defaultAppender;
 		defaultLogger = new Logger(this, "default", defaultAppender, null);
 		loggers.put("default", defaultLogger);
 		

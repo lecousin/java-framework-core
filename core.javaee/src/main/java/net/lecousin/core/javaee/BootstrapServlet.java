@@ -90,7 +90,8 @@ public class BootstrapServlet extends GenericServlet {
 			properties,
 			debugMode,
 			threadFactory,
-			new DefaultLibrariesManager()
+			new DefaultLibrariesManager(),
+			null
 		);
 	}
 	

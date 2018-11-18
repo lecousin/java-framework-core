@@ -77,16 +77,7 @@ public final class LCCore {
 		instance = env;
 	}
 	
-	/** Return true if the environment is already started. */
-	public static boolean isStarted() {
-		return started;
-	}
-	
-	/** Initialization. */
-	public static synchronized void start() {
-		if (started) throw new IllegalStateException("LCCore environment already started");
-		started = true;
-		
+	public static void initEnvironment() {
 		// init logging system if not specified
 		if (System.getProperty("org.apache.commons.logging.Log") == null)
 			System.setProperty("org.apache.commons.logging.Log", "net.lecousin.framework.log.bridges.ApacheCommonsLogging");
@@ -99,6 +90,19 @@ public final class LCCore {
 			protocols += "net.lecousin.framework.protocols";
 			System.setProperty("java.protocol.handler.pkgs", protocols);
 		}
+	}
+	
+	/** Return true if the environment is already started. */
+	public static boolean isStarted() {
+		return started;
+	}
+	
+	/** Initialization. */
+	public static synchronized void start() {
+		if (started) throw new IllegalStateException("LCCore environment already started");
+		started = true;
+		
+		initEnvironment();
 		
 		instance.start();
 		new Task.Cpu<Void,Exception>("Initializing framework tools", Task.PRIORITY_NORMAL) {

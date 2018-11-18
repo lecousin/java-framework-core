@@ -6,6 +6,7 @@ import java.util.Map;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 
+import net.lecousin.framework.concurrent.Console;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.log.LogPattern;
@@ -17,8 +18,8 @@ import net.lecousin.framework.log.LoggerFactory;
 public class ConsoleAppender implements Appender {
 
 	/** Constructor. */
-	public ConsoleAppender(LoggerFactory factory, Level level, LogPattern pattern) {
-		this.factory = factory;
+	public ConsoleAppender(Console console, Level level, LogPattern pattern) {
+		this.console = console;
 		this.level = level;
 		this.pattern = pattern;
 	}
@@ -27,7 +28,7 @@ public class ConsoleAppender implements Appender {
 	public ConsoleAppender(
 		LoggerFactory factory, XMLStreamReader reader, @SuppressWarnings("unused") Map<String,Appender> appenders
 	) throws Exception, IOException {
-		this.factory = factory;
+		this.console = factory.getApplication().getConsole();
 		String level = null;
 		String pattern = null;
 		for (int i = 0; i < reader.getAttributeCount(); ++i) {
@@ -59,7 +60,7 @@ public class ConsoleAppender implements Appender {
 		} while (reader.hasNext());
 	}
 	
-	private LoggerFactory factory;
+	private Console console;
 	private Level level;
 	private LogPattern pattern;
 	
@@ -67,9 +68,9 @@ public class ConsoleAppender implements Appender {
 	public void append(Log log) {
 		String s = pattern.generate(log).toString();
 		if (log.level.ordinal() >= Level.ERROR.ordinal())
-			factory.getApplication().getConsole().err(s);
+			console.err(s);
 		else
-			factory.getApplication().getConsole().out(s);
+			console.out(s);
 	}
 
 	@Override
