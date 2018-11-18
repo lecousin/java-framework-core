@@ -527,8 +527,8 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 							if (iNeedABuffer != null)
 								iNeedABuffer.unblock();
 						}
+						taskFillBuffer = new TaskFillBuffer();
 					}
-					taskFillBuffer = new TaskFillBuffer();
 					decoder.canDecode().listenAsync(taskFillBuffer, true);
 					return null;
 				}
