@@ -297,10 +297,8 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	private void increase(int newSize) {
-		if (decreaseTask != null) {
-			decreaseTask.cancel(new CancelException("TurnArray increase again"));
+		if (decreaseTask != null)
 			decreaseTask = null;
-		}
 		Object[] a = new Object[newSize];
 		if (end == -1) {
 			System.arraycopy(array, start, a, 0, array.length - start);
@@ -360,7 +358,7 @@ public class TurnArray<T> implements Deque<T> {
 		@Override
 		public Void run() {
 			synchronized (TurnArray.this) {
-				if (isCancelling()) return null;
+				if (decreaseTask != this) return null;
 				decreaseTask = null;
 				decrease();
 			}
