@@ -69,11 +69,12 @@ public class IntArrayCache implements IMemoryManageable {
 				ArraysBySize arrays = node.getElement();
 				arrays.lastUsageTime = System.currentTimeMillis();
 				buf = arrays.arrays.poll();
+				if (arrays.arrays.isEmpty()) arraysBySize.remove(node);
 			}
 		}
 		if (buf == null)
 			return new int[size];
-		totalSize -= buf.length;
+		totalSize -= buf.length * 4;
 		return buf;
 	}
 	
@@ -81,22 +82,22 @@ public class IntArrayCache implements IMemoryManageable {
 	public void free(int[] array) {
 		int len = array.length;
 		synchronized (arraysBySize) {
-			if (totalSize + len > maxTotalSize) return;
+			if (totalSize + len * 4 > maxTotalSize) return;
 			Node<ArraysBySize> node = arraysBySize.get(len);
 			if (node == null) {
 				ArraysBySize arrays = new ArraysBySize();
 				arrays.arrays = new TurnArray<>(
-					len >= 128 * 1024 ? maxBuffersBySizeAbove128KB : maxBuffersBySizeUnder128KB);
+					len * 4 >= 128 * 1024 ? maxBuffersBySizeAbove128KB : maxBuffersBySizeUnder128KB);
 				arrays.arrays.add(array);
 				arrays.lastCachedTime = System.currentTimeMillis();
 				arraysBySize.add(len, arrays);
-				totalSize += len;
+				totalSize += len * 4;
 				return;
 			}
 			ArraysBySize arrays = node.getElement();
 			arrays.lastCachedTime = System.currentTimeMillis();
 			if (arrays.arrays.isFull()) return;
-			totalSize += len;
+			totalSize += len * 4;
 			arrays.arrays.add(array);
 		}
 	}
@@ -108,7 +109,7 @@ public class IntArrayCache implements IMemoryManageable {
 
 	@Override
 	public List<String> getItemsDescription() {
-		return Arrays.asList("Total cached size: " + (totalSize * 4));
+		return Arrays.asList("Total cached size: " + totalSize);
 	}
 
 	@Override
@@ -145,7 +146,7 @@ public class IntArrayCache implements IMemoryManageable {
 						continue;
 					for (int i = 0; i < nbToRemove && !arrays.arrays.isEmpty(); ++i) {
 						arrays.arrays.poll();
-						totalSize -= node.getValue();
+						totalSize -= node.getValue() * 4;
 					}
 					if (arrays.arrays.isEmpty())
 						toRemove.add(node);

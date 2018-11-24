@@ -77,6 +77,7 @@ public final class LCCore {
 		instance = env;
 	}
 	
+	/** Initialize properties. */
 	public static void initEnvironment() {
 		// init logging system if not specified
 		if (System.getProperty("org.apache.commons.logging.Log") == null)

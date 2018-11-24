@@ -1,7 +1,6 @@
-package net.lecousin.framework.core.tests.io;
+package net.lecousin.framework.core.tests.io.buffered;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collection;
 
@@ -10,34 +9,33 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.core.test.io.TestIO;
-import net.lecousin.framework.core.test.io.TestWritable;
+import net.lecousin.framework.core.test.io.TestWritableBuffered;
+import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.io.IOFromOutputStream;
+import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
 
 @RunWith(Parameterized.class)
-public class TestIOFromOutputStream extends TestWritable {
+public class TestSimpleBufferedWritableBuffered extends TestWritableBuffered {
 
 	@Parameters(name = "nbBuf = {1}")
 	public static Collection<Object[]> parameters() {
 		return TestIO.UsingTestData.generateTestCases(true);
 	}
 	
-	public TestIOFromOutputStream(byte[] testBuf, int nbBuf) {
+	public TestSimpleBufferedWritableBuffered(byte[] testBuf, int nbBuf) {
 		super(testBuf, nbBuf);
 	}
 	
 	private File file;
 	
-	@SuppressWarnings("resource")
 	@Override
-	protected IO.Writable createWritable() throws IOException {
+	protected IO.Writable.Buffered createWritableBuffered() throws IOException {
 		file = createFile();
-		FileOutputStream out = new FileOutputStream(file);
-		return new IOFromOutputStream(out, file.getAbsolutePath(), Threading.getDrivesTaskManager().getTaskManager(file), Task.PRIORITY_NORMAL);
+		FileIO.WriteOnly fileIO = new FileIO.WriteOnly(file, Task.PRIORITY_NORMAL);
+		return new SimpleBufferedWritable(fileIO, 4096);
 	}
-	
+
 	@Override
 	protected void check() throws Exception {
 		checkFile(file, testBuf, nbBuf, 0);

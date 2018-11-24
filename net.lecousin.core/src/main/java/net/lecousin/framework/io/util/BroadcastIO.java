@@ -89,14 +89,17 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 	public int writeSync(ByteBuffer buffer) throws IOException {
 		JoinPoint<IOException> jp = new JoinPoint<>();
 		jp.addToJoin(ios.length);
+		int nb = buffer.remaining();
 		for (int i = 0; i < ios.length; ++i) {
-			ios[i].writeAsync(buffer.duplicate()).listenInline(new AsyncWorkListener<Integer, IOException>() {
+			ios[i].writeAsync(
+				i == ios.length - 1 ? buffer : buffer.duplicate()
+			).listenInline(new AsyncWorkListener<Integer, IOException>() {
 				
 				@Override
 				public void ready(Integer result) {
-					if (result.intValue() != buffer.remaining())
+					if (result.intValue() != nb)
 						jp.error(new IOException("Only " + result.intValue()
-							+ " byte(s) written instead of " + buffer.remaining()));
+							+ " byte(s) written instead of " + nb));
 					else
 						jp.joined();
 				}
@@ -114,7 +117,7 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 		}
 		jp.start();
 		jp.blockException(0);
-		return buffer.remaining();
+		return nb;
 	}
 	
 	@Override
@@ -123,14 +126,17 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 		new Task.Cpu.FromRunnable("BroadcastIO.writeAsync", priority, () -> {
 			JoinPoint<IOException> jp = new JoinPoint<>();
 			jp.addToJoin(ios.length);
+			int nb = buffer.remaining();
 			for (int i = 0; i < ios.length; ++i) {
-				ios[i].writeAsync(buffer.duplicate()).listenInline(new AsyncWorkListener<Integer, IOException>() {
+				ios[i].writeAsync(
+					i == ios.length - 1 ? buffer : buffer.duplicate()
+				).listenInline(new AsyncWorkListener<Integer, IOException>() {
 					
 					@Override
 					public void ready(Integer result) {
-						if (result.intValue() != buffer.remaining())
+						if (result.intValue() != nb)
 							jp.error(new IOException("Only " + result.intValue()
-								+ " byte(s) written instead of " + buffer.remaining()));
+								+ " byte(s) written instead of " + nb));
 						else
 							jp.joined();
 					}
@@ -148,7 +154,7 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 			}
 			jp.start();
 			jp.listenInline(() -> {
-				result.unblockSuccess(Integer.valueOf(buffer.remaining()));
+				result.unblockSuccess(Integer.valueOf(nb));
 			}, result);
 		}).start();
 		return result;

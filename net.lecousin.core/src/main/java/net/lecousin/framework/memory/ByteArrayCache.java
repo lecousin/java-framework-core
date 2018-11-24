@@ -69,6 +69,7 @@ public class ByteArrayCache implements IMemoryManageable {
 				ArraysBySize arrays = node.getElement();
 				arrays.lastUsageTime = System.currentTimeMillis();
 				buf = arrays.arrays.poll();
+				if (arrays.arrays.isEmpty()) arraysBySize.remove(node);
 			}
 		}
 		if (buf == null)

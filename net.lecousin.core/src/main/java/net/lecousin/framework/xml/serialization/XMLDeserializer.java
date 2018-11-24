@@ -74,7 +74,9 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	/** Deserialize from a file accessible from the classpath. */
 	@SuppressWarnings("resource")
-	public static <T> AsyncWork<T, Exception> deserializeResource(String resourcePath, Class<T> type, List<SerializationRule> rules, byte priority) {
+	public static <T> AsyncWork<T, Exception> deserializeResource(
+		String resourcePath, Class<T> type, List<SerializationRule> rules, byte priority
+	) {
 		IO.Readable io = LCCore.getApplication().getResource(resourcePath, priority);
 		if (io == null) return new AsyncWork<>(null, new FileNotFoundException("Resource not found: " + resourcePath));
 		AsyncWork<T, Exception> result = deserialize(io, type, rules);
@@ -95,7 +97,9 @@ public class XMLDeserializer extends AbstractDeserializer {
 	@SuppressWarnings("unchecked")
 	public static <T> AsyncWork<T, Exception> deserialize(IO.Readable input, Class<T> type, List<SerializationRule> rules) {
 		XMLDeserializer deserializer = new XMLDeserializer(null, type.getSimpleName());
-		AsyncWork<Object, Exception> res = deserializer.deserialize(new TypeDefinition(type), input, rules == null ? new ArrayList<>(0) : rules);
+		AsyncWork<Object, Exception> res = deserializer.deserialize(
+			new TypeDefinition(type), input, rules == null ? new ArrayList<>(0) : rules
+		);
 		AsyncWork<T, Exception> result = new AsyncWork<>();
 		res.listenInline((obj) -> {
 			result.unblockSuccess((T)obj);

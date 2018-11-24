@@ -1,12 +1,17 @@
 package net.lecousin.framework.util;
 
+/**
+ * IDManagerString using an IDManagerLong and a StringEncoding.
+ */
 public class IDManagerStringFromLong implements IDManagerString {
 
+	/** Constructor. */
 	public IDManagerStringFromLong(IDManagerLong manager, StringEncoding<Long> encoder) {
 		this.manager = manager;
 		this.encoder = encoder;
 	}
 
+	/** Constructor. */
 	public IDManagerStringFromLong(IDManagerLong manager) {
 		this(manager, new StringEncoding.SimpleLong());
 	}

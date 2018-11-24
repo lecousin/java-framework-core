@@ -10,13 +10,12 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.core.test.io.TestWritableToFile;
+import net.lecousin.framework.core.test.io.TestWritableSeekable;
 import net.lecousin.framework.io.FileIO;
-import net.lecousin.framework.io.IO.Writable;
 import net.lecousin.framework.io.SubIO;
 
 @RunWith(Parameterized.class)
-public class TestSubIOWritableToFile extends TestWritableToFile {
+public class TestSubIOWritableSeekable extends TestWritableSeekable {
 
 	@Parameters(name = "nbBuf = {1}, nbBufSkippedStart = {2}, nbBufSkippedEnd = {3}")
 	public static Collection<Object[]> parameters() {
@@ -42,7 +41,7 @@ public class TestSubIOWritableToFile extends TestWritableToFile {
 		return new Object[] { original[0], original[1], Integer.valueOf(skipStart), Integer.valueOf(skipEnd) };
 	}
 	
-	public TestSubIOWritableToFile(byte[] testBuf, int nbBuf, int nbBufSkippedStart, int nbBufSkippedEnd) {
+	public TestSubIOWritableSeekable(byte[] testBuf, int nbBuf, int nbBufSkippedStart, int nbBufSkippedEnd) {
 		super(testBuf, nbBuf - nbBufSkippedStart - nbBufSkippedEnd);
 		this.nbBufSkippedStart = nbBufSkippedStart;
 		this.nbBufSkippedEnd = nbBufSkippedEnd;
@@ -50,13 +49,20 @@ public class TestSubIOWritableToFile extends TestWritableToFile {
 	
 	protected int nbBufSkippedStart;
 	protected int nbBufSkippedEnd;
+	private File file;
 
 	@Override
-	protected Writable createWritableFromFile(File file) throws IOException {
+	protected SubIO.Writable.Seekable createWritableSeekable() throws IOException {
+		file = createFile();
 		FileIO.ReadWrite fio = new FileIO.ReadWrite(file, Task.PRIORITY_NORMAL);
 		long size = nbBuf * testBuf.length;
 		fio.setSizeSync(size + (nbBufSkippedStart + nbBufSkippedEnd) * testBuf.length);
-		return new SubIO.Writable(fio, nbBufSkippedStart * testBuf.length, size, "test subio", true);
+		return new SubIO.Writable.Seekable(fio, nbBufSkippedStart * testBuf.length, size, "test subio", true);
+	}
+	
+	@Override
+	protected void check() throws Exception {
+		checkFile(file, testBuf, nbBuf, nbBufSkippedStart * testBuf.length);
 	}
 	
 }
