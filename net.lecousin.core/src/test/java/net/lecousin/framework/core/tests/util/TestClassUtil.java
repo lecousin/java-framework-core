@@ -1,11 +1,11 @@
 package net.lecousin.framework.core.tests.util;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.properties.Property;
 import net.lecousin.framework.util.ClassUtil;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 public class TestClassUtil extends LCCoreAbstractTest {
 
@@ -37,6 +37,13 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		public boolean getMyBoolean() {
 			return myBoolean;
 		}
+
+		protected boolean getMyBoolean2(int notused) {
+			return false;
+		}
+		protected boolean isMyBoolean2(int notused) {
+			return false;
+		}
 		
 		protected boolean getMyBoolean2() {
 			return false;
@@ -50,6 +57,19 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		public boolean isOk() {
 			return ok;
 		}
+	}
+	
+	public static class Class4 {
+		boolean bool;
+		Boolean bool2;
+		boolean bool3;
+		Boolean bool4;
+		int i;
+		public boolean getBool(int toto) { return true; }
+		public boolean isBool(int toto) { return true; }
+		public static boolean isBool2() { return true; }
+		public int isBool3() { return 0; }
+		public Boolean isBool4() { return bool4; }
 	}
 	
 	@Test(timeout=30000)
@@ -74,6 +94,12 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		Assert.assertNotNull(ClassUtil.getSetter(Class2.class, "myBoolean").getAnnotation(Property.class));
 		Assert.assertNull(ClassUtil.getSetter(Class2.class, "myBoolean2"));
 		Assert.assertNull(ClassUtil.getSetter(Class2.class, "myBoolean3"));
+		
+		Assert.assertNull(ClassUtil.getGetter(Class4.class, "bool"));
+		Assert.assertNull(ClassUtil.getGetter(Class4.class, "bool2"));
+		Assert.assertNull(ClassUtil.getGetter(Class4.class, "bool3"));
+		Assert.assertNotNull(ClassUtil.getGetter(Class4.class, "bool4"));
+		Assert.assertNull(ClassUtil.getGetter(Class4.class, "i"));
 	}
 	
 	@SuppressWarnings("unused")
@@ -126,6 +152,11 @@ public class TestClassUtil extends LCCoreAbstractTest {
 	@Test(timeout=30000)
 	public void testGetMethods() {
 		Assert.assertEquals(1, ClassUtil.getMethods(Class2.class, "setMyBoolean", 1).size());
+	}
+
+	@Test(timeout=30000)
+	public void test() throws ClassNotFoundException {
+		Assert.assertEquals("", ClassUtil.getPackageName(getClass().getClassLoader().loadClass("NoPackageClass")));
 	}
 
 }

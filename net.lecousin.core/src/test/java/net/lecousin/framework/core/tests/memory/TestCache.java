@@ -36,6 +36,10 @@ public class TestCache extends LCCoreAbstractTest {
 		Assert.assertEquals(1, cache.getCachedData().iterator().next().cachedDataCurrentUsage());
 		// use it with a user
 		CloseableListenable user = new CloseableListenable.Impl();
+		user.isClosed();
+		Runnable listener = () -> {};
+		user.addCloseListener(listener);
+		user.removeCloseListener(listener);
 		Assert.assertEquals(1, cache.get("test", user).intValue());
 		Assert.assertEquals(1, cache.getCachedData().size());
 		Assert.assertEquals(2, cache.getCachedData().iterator().next().cachedDataCurrentUsage());

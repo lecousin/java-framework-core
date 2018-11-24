@@ -1,18 +1,20 @@
 package net.lecousin.framework.core.tests.util;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
-
-import net.lecousin.framework.core.test.util.TestIString;
-import net.lecousin.framework.util.IString;
-import net.lecousin.framework.util.UnprotectedString;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import net.lecousin.framework.core.test.util.TestIString;
+import net.lecousin.framework.util.IString;
+import net.lecousin.framework.util.UnprotectedString;
+import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 @RunWith(Parameterized.class)
 public class TestUnprotectedString extends TestIString {
@@ -86,6 +88,13 @@ public class TestUnprotectedString extends TestIString {
 		s.append(s1);
 		s.append(s2);
 		Assert.assertEquals("Hello World!", s.asString());
+	}
+	
+	@Test(timeout=30000)
+	public void test() {
+		UnprotectedString s = new UnprotectedString("Hello");
+		ByteBuffer bb = s.encode(StandardCharsets.UTF_8);
+		// TODO check
 	}
 	
 }

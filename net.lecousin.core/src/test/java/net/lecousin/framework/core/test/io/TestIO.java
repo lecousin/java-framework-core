@@ -13,9 +13,11 @@ import org.junit.Test;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.mutable.MutableBoolean;
+import net.lecousin.framework.util.CloseableListenable;
 
 public abstract class TestIO extends LCCoreAbstractTest {
 	
@@ -116,17 +118,29 @@ public abstract class TestIO extends LCCoreAbstractTest {
 		basicTests(io);
 		// closeable
 		MutableBoolean closed = new MutableBoolean(false);
+		MutableBoolean closed2 = new MutableBoolean(false);
+		Runnable listener1 = () -> {};
+		Listener<CloseableListenable> listener2 = (toto) -> {};
 		io.addCloseListener(() -> {
 			closed.set(true);
 		});
+		io.addCloseListener((toto) -> {
+			closed2.set(true);
+		});
+		io.addCloseListener(listener1);
+		io.addCloseListener(listener2);
 		io.lockClose();
 		ISynchronizationPoint<Exception> close = io.closeAsync();
 		Assert.assertFalse(io.isClosed());
 		Assert.assertFalse(close.isUnblocked());
 		Assert.assertFalse(closed.get());
+		Assert.assertFalse(closed2.get());
+		io.removeCloseListener(listener1);
+		io.removeCloseListener(listener2);
 		io.unlockClose();
 		close.blockThrow(0);
 		Assert.assertTrue(closed.get());
+		Assert.assertTrue(closed2.get());
 		Assert.assertTrue(io.isClosed());
 	}
 

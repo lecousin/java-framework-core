@@ -146,6 +146,7 @@
 						<exclude>**/ThreadingDebugHelper*.*</exclude>
 						<exclude>**/TaskMonitoring*.*</exclude>
 						<exclude>**/DebugUtil*.*</exclude>
+						<exclude>**/SystemEnvironment.*</exclude>
 					</excludes>
 				</configuration>
 			</plugin>

@@ -50,6 +50,8 @@ public class TestDrivesTaskManager extends LCCoreAbstractTest {
 				Listener<Pair<Object, File>> onPartitionRemoved
 			) {
 				onNewDrive.fire(new Pair<>(fakeDrive1, Collections.singletonList(tmpDir)));
+				onNewPartition.fire(new Pair<>(fakeDrive1, dir));
+				onPartitionRemoved.fire(new Pair<>(fakeDrive1, dir));
 				spDrive2Appear.listenInline(() -> {
 					onNewDrive.fire(new Pair<>(fakeDrive2, Collections.singletonList(tmpDir)));
 					spDrive2AppearDone.unblock();
