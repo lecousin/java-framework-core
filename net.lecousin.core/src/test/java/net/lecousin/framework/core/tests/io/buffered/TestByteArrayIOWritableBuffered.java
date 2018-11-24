@@ -39,7 +39,7 @@ public class TestByteArrayIOWritableBuffered extends TestWritableBuffered {
 	}
 
 	@Override
-	protected void flush(IO.Writable.Buffered io) throws IOException {
+	protected void flush(IO.Writable io) throws IOException {
 		ByteArrayIO bio = (ByteArrayIO)io;
 		FileOutputStream out = new FileOutputStream(file);
 		out.write(bio.getArray(), 0, (int)bio.getSizeSync());

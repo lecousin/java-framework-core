@@ -93,10 +93,10 @@ public abstract class Decoder implements Closeable, AsyncCloseable<Exception> {
 		int nb = 0;
 		do {
 			if (currentBuffer == null) {
-					// TODO if (nextBuffer.isUnblocked())
+				if (nextBuffer.isUnblocked())
 					currentBuffer = nextBuffer.blockResult(0);
-				// else
-				//	return nb > 0 ? nb : -2;
+				else
+					return nb > 0 ? nb : -2;
 				if (currentBuffer != null)
 					nextBuffer = io.readNextBufferAsync();
 			}

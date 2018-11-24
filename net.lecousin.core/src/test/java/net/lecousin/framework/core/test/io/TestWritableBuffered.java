@@ -19,10 +19,6 @@ public abstract class TestWritableBuffered extends TestWritable {
 		return createWritableBuffered();
 	}
 
-	@SuppressWarnings("unused")
-	protected void flush(IO.Writable.Buffered io) throws Exception {
-	}
-	
 	@Test(timeout=120000)
 	public void testWriteBufferByBufferInBuffered() throws Exception {
 		IO.Writable.Buffered io = createWritableBuffered();

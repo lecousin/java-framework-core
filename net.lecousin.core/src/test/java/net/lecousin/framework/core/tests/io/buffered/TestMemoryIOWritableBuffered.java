@@ -36,7 +36,7 @@ public class TestMemoryIOWritableBuffered extends TestWritableBuffered {
 	}
 	
 	@Override
-	protected void flush(IO.Writable.Buffered io) throws Exception {
+	protected void flush(IO.Writable io) throws Exception {
 		MemoryIO mio = (MemoryIO)io;
 		FileIO.WriteOnly fio = new FileIO.WriteOnly(file, Task.PRIORITY_NORMAL);
 		mio.writeAsyncTo(fio).blockException(0);

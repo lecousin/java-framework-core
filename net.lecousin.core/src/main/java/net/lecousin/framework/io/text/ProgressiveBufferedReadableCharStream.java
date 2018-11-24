@@ -507,7 +507,7 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 				}
 				int min = lastNb < bufferSize / 10 ? bufferSize / 10 : 1;
 				int nb;
-				try { nb = decoder.decode(buffer.chars, buffer.pos, bufferSize - buffer.pos, interruptFillBuffer, min); }
+				try { nb = decoder.decode(buffer.chars, buffer.length, bufferSize - buffer.length, interruptFillBuffer, min); }
 				catch (IOException e) {
 					synchronized (buffers) {
 						error = e;
