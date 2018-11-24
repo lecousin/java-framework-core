@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE longText>
+<theRoot>
+	<testText>
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce a odio feugiat, ullamcorper lectus eget, facilisis nulla. Nam ullamcorper pulvinar rhoncus. Pellentesque a tristique velit. Vivamus ut erat non elit blandit ornare. Pellentesque tincidunt lectus lectus, vel vestibulum neque efficitur nec. Ut volutpat ante varius purus eleifend, sit amet ornare urna efficitur. Maecenas eget quam ac enim cursus condimentum. In egestas nulla ac massa gravida commodo. Vestibulum ullamcorper, augue placerat ornare elementum, augue lacus cursus erat, ac mollis ex lacus et turpis. In eget faucibus justo, a eleifend quam. Aenean at diam quam. In quam enim, efficitur sit amet blandit quis, euismod sed neque. Nam laoreet euismod elit, bibendum varius odio aliquam ac. Nam eu tortor fringilla, pharetra velit quis, sagittis ligula. Sed bibendum, nunc non ultricies posuere, orci urna porta urna, commodo dignissim nunc sem sodales nunc.
+
+Phasellus neque felis, sollicitudin ut suscipit sit amet, consectetur vel leo. Donec interdum malesuada sapien, non pulvinar nisl sagittis eget. Morbi hendrerit volutpat turpis sit amet tempor. Pellentesque sollicitudin vestibulum ipsum, nec dictum mi. Vestibulum egestas malesuada nunc, at tempor nisl tincidunt et. Aliquam aliquet nunc ut tincidunt iaculis. Aenean mollis est id tellus interdum tristique. Suspendisse vitae fringilla lorem. Nam cursus, ex eget maximus placerat, purus mi luctus metus, quis convallis ligula quam sit amet arcu. Fusce efficitur tellus sapien, ornare tristique quam eleifend eget. Nullam ac tortor ut sapien pellentesque vestibulum vitae sit amet urna.
+
+Donec purus enim, consectetur eget ultricies euismod, semper sit amet mauris. Fusce urna nisl, gravida vel maximus in, finibus in justo. Fusce efficitur arcu id ultrices iaculis. Etiam eros neque, dignissim id lacus at, iaculis scelerisque sem. Praesent efficitur placerat lacinia. Fusce odio tellus, interdum in nunc eu, vulputate molestie leo. Praesent lorem justo, dapibus non amet.	
+	</testText>
+	
+	<testCData>
+<![CDATA[
+] xx ]] xxx
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce a odio feugiat, ullamcorper lectus eget, facilisis nulla. Nam ullamcorper pulvinar rhoncus. Pellentesque a tristique velit. Vivamus ut erat non elit blandit ornare. Pellentesque tincidunt lectus lectus, vel vestibulum neque efficitur nec. Ut volutpat ante varius purus eleifend, sit amet ornare urna efficitur. Maecenas eget quam ac enim cursus condimentum. In egestas nulla ac massa gravida commodo. Vestibulum ullamcorper, augue placerat ornare elementum, augue lacus cursus erat, ac mollis ex lacus et turpis. In eget faucibus justo, a eleifend quam. Aenean at diam quam. In quam enim, efficitur sit amet blandit quis, euismod sed neque. Nam laoreet euismod elit, bibendum varius odio aliquam ac. Nam eu tortor fringilla, pharetra velit quis, sagittis ligula. Sed bibendum, nunc non ultricies posuere, orci urna porta urna, commodo dignissim nunc sem sodales nunc.
+]
+Phasellus neque felis, sollicitudin ut suscipit sit amet, consectetur vel leo. Donec interdum malesuada sapien, non pulvinar nisl sagittis eget. Morbi hendrerit volutpat turpis sit amet tempor. Pellentesque sollicitudin vestibulum ipsum, nec dictum mi. Vestibulum egestas malesuada nunc, at tempor nisl tincidunt et. Aliquam aliquet nunc ut tincidunt iaculis. Aenean mollis est id tellus interdum tristique. Suspendisse vitae fringilla lorem. Nam cursus, ex eget maximus placerat, purus mi luctus metus, quis convallis ligula quam sit amet arcu. Fusce efficitur tellus sapien, ornare tristique quam eleifend eget. Nullam ac tortor ut sapien pellentesque vestibulum vitae sit amet urna.
+]]
+Donec purus enim, consectetur eget ultricies euismod, semper sit amet mauris. Fusce urna nisl, gravida vel maximus in, finibus in justo. Fusce efficitur arcu id ultrices iaculis. Etiam eros neque, dignissim id lacus at, iaculis scelerisque sem. Praesent efficitur placerat lacinia. Fusce odio tellus, interdum in nunc eu, vulputate molestie leo. Praesent lorem justo, dapibus non amet.
+]]>	
+	</testCData>
+	<testComment>
+	<!-- 
+- x -- xx --- xxx
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce a odio feugiat, ullamcorper lectus eget, facilisis nulla. Nam ullamcorper pulvinar rhoncus. Pellentesque a tristique velit. Vivamus ut erat non elit blandit ornare. Pellentesque tincidunt lectus lectus, vel vestibulum neque efficitur nec. Ut volutpat ante varius purus eleifend, sit amet ornare urna efficitur. Maecenas eget quam ac enim cursus condimentum. In egestas nulla ac massa gravida commodo. Vestibulum ullamcorper, augue placerat ornare elementum, augue lacus cursus erat, ac mollis ex lacus et turpis. In eget faucibus justo, a eleifend quam. Aenean at diam quam. In quam enim, efficitur sit amet blandit quis, euismod sed neque. Nam laoreet euismod elit, bibendum varius odio aliquam ac. Nam eu tortor fringilla, pharetra velit quis, sagittis ligula. Sed bibendum, nunc non ultricies posuere, orci urna porta urna, commodo dignissim nunc sem sodales nunc.
+-
+Phasellus neque felis, sollicitudin ut suscipit sit amet, consectetur vel leo. Donec interdum malesuada sapien, non pulvinar nisl sagittis eget. Morbi hendrerit volutpat turpis sit amet tempor. Pellentesque sollicitudin vestibulum ipsum, nec dictum mi. Vestibulum egestas malesuada nunc, at tempor nisl tincidunt et. Aliquam aliquet nunc ut tincidunt iaculis. Aenean mollis est id tellus interdum tristique. Suspendisse vitae fringilla lorem. Nam cursus, ex eget maximus placerat, purus mi luctus metus, quis convallis ligula quam sit amet arcu. Fusce efficitur tellus sapien, ornare tristique quam eleifend eget. Nullam ac tortor ut sapien pellentesque vestibulum vitae sit amet urna.
+--
+Donec purus enim, consectetur eget ultricies euismod, semper sit amet mauris. Fusce urna nisl, gravida vel maximus in, finibus in justo. Fusce efficitur arcu id ultrices iaculis. Etiam eros neque, dignissim id lacus at, iaculis scelerisque sem. Praesent efficitur placerat lacinia. Fusce odio tellus, interdum in nunc eu, vulputate molestie leo. Praesent lorem justo, dapibus non amet.
+	 -->
+	</testComment>
+</theRoot>

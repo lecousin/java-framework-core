@@ -6,6 +6,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import java.io.EOFException;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -117,6 +118,15 @@ public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 			xml.next().blockThrow(0);
 		} while (!Event.Type.COMMENT.equals(xml.event.type));
 		Assert.assertEquals(2015, xml.event.text.length());
+
+		xml = parse("xml-test-suite/mine/longText2.xml");
+		xml.start().blockThrow(0);
+		xml.setMaximumTextSize(25);
+		xml.setMaximumCDataSize(25);
+		do {
+			try { xml.next().blockThrow(0); }
+			catch (EOFException e) { break; }
+		} while (true);
 	}
 	
 }

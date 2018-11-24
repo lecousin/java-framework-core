@@ -4,8 +4,12 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
+import net.lecousin.framework.xml.XMLException;
 import net.lecousin.framework.xml.XMLStreamEvents.Event;
 import net.lecousin.framework.xml.XMLStreamReader;
+
+import java.io.EOFException;
+import java.io.IOException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -55,6 +59,24 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 		xml = parse("xml-test-suite/mine/003.xml");
 		xml.startRootElement();
 		Assert.assertEquals("myRoot", xml.event.localName.asString());
+	}
+	
+	@Test(timeout=60000)
+	public void testMaxTextSize() throws XMLException, IOException {
+		XMLStreamReader xml = parse("xml-test-suite/mine/longText.xml");
+		xml.setMaximumCDataSize(15);
+		xml.setMaximumTextSize(15);
+		xml.startRootElement();
+		while (true)
+			try { xml.next(); }
+			catch (EOFException e) { break; }
+		xml = parse("xml-test-suite/mine/longText2.xml");
+		xml.setMaximumCDataSize(15);
+		xml.setMaximumTextSize(15);
+		xml.startRootElement();
+		while (true)
+			try { xml.next(); }
+			catch (EOFException e) { break; }
 	}
 	
 }
