@@ -103,7 +103,7 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 	}
 	
 	/** Registry of converters between annotations and serialization rules. */
-	public static class Registry {
+	public static final class Registry {
 
 		private static List<Pair<Class<? extends Annotation>, TypeAnnotationToRule<?>>> registry = new ArrayList<>();
 

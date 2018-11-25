@@ -5,7 +5,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.rules.AbstractAttributeInstantiation;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
@@ -30,15 +29,9 @@ public @interface Instantiation {
 		
 		@Override
 		public SerializationRule createRule(Instantiation annotation, Attribute attribute) {
-			try {
-				return new AbstractAttributeInstantiation(
-					attribute.getDeclaringClass(), attribute.getOriginalName(), annotation.discriminator(), annotation.factory()
-				);
-			} catch (Throwable t) {
-				LCCore.get().getApplication().getDefaultLogger()
-					.error("Error creating AbstractAttributeInstantiation from annotation Instantiation", t);
-				return null;
-			}
+			return new AbstractAttributeInstantiation(
+				attribute.getDeclaringClass(), attribute.getOriginalName(), annotation.discriminator(), annotation.factory()
+			);
 		}
 	}
 	

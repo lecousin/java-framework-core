@@ -9,6 +9,7 @@ import java.util.Locale;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.Artifact;
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.application.StandaloneLCCore;
 import net.lecousin.framework.application.Version;
 import net.lecousin.framework.application.libraries.artifacts.LoadedLibrary;
 import net.lecousin.framework.concurrent.Task;
@@ -117,7 +118,20 @@ public class TestApplication extends LCCoreAbstractTest {
 		};
 		LCCore.get().closed(ac);
 		LCCore.get().isStopping();
+		LCCore.isStopping();
 		LCCore.get().getSystemLibraries();
+		try {
+			LCCore.set(new StandaloneLCCore());
+			throw new AssertionError();
+		} catch (IllegalStateException e) {
+			// ok
+		}
+		try {
+			LCCore.start();
+			throw new AssertionError();
+		} catch (IllegalStateException e) {
+			// ok
+		}
 	}
 	
 }

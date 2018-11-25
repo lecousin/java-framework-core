@@ -139,6 +139,7 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 
 	@Override
 	public int readSync(char[] buf, int offset, int length) throws IOException {
+		if (length <= 0) return 0;
 		int done;
 		if (back != -1) {
 			buf[offset++] = (char)back;
@@ -444,7 +445,12 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 								taskFillBuffer.start();
 							}
 						} else if (eofReached) {
-							result.unblockSuccess(null);
+							if (back != -1) {
+								char c = (char)back;
+								back = -1;
+								result.unblockSuccess(new UnprotectedString(c));
+							} else
+								result.unblockSuccess(null);
 							return null;
 						} else {
 							iNeedABuffer = new SynchronizationPoint<>();
@@ -516,6 +522,8 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 					}
 					return null;
 				}
+				if (isCancelling())
+					return null;
 				if (nb == -2) {
 					synchronized (buffers) {
 						if (buffer.length > 0) {

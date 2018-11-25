@@ -32,6 +32,12 @@ public abstract class TestCharacterStreamWritable extends LCCoreAbstractTest {
 	private void testWrite(String s, Charset charset) throws Exception {
 		File tmp = TemporaryFiles.get().createFileSync("test", "writablecs");
 		ICharacterStream.Writable cs = open(new FileIO.WriteOnly(tmp, Task.PRIORITY_NORMAL), charset);
+		// basic tests
+		cs.setPriority(Task.PRIORITY_IMPORTANT);
+		Assert.assertEquals(Task.PRIORITY_IMPORTANT, cs.getPriority());
+		cs.getDescription();
+		Assert.assertEquals(charset, cs.getEncoding());
+		// write
 		cs.writeSync(s);
 		flush(cs);
 		cs.close();

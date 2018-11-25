@@ -1102,4 +1102,28 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	@SuppressWarnings("unused")
 	protected void checkSpec(IO.Readable.Seekable spec, Class<?> type, IO.Readable.Seekable serialization) throws Exception {
 	}
+	
+	// --- Error cases ---
+	
+	@TypeInstantiation(factory=InvalidTypeInstantiationFactory.class)
+	public static abstract class InvalidTypeInstantiation {
+	}
+	
+	public static abstract class InvalidTypeInstantiationFactory implements Provider<InvalidTypeInstantiation> {
+	}
+	
+	public static class InvalidTypeInstantiationContainer {
+		public InvalidTypeInstantiation invalid;
+	}
+	
+	@Test(timeout=30000)
+	public void testInvalidTypeInstantiation() throws Exception {
+		InvalidTypeInstantiationContainer container = new InvalidTypeInstantiationContainer();
+		container.invalid = new InvalidTypeInstantiation() {};
+		try {
+			testInMemory(container, InvalidTypeInstantiationContainer.class);
+		} catch (InstantiationException e) {
+			// OK
+		}
+	}
 }

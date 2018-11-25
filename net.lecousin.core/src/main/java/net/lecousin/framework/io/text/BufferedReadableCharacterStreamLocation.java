@@ -146,7 +146,7 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 	@Override
 	public AsyncWork<UnprotectedString, IOException> readNextBufferAsync() {
 		AsyncWork<UnprotectedString, IOException> result = new AsyncWork<>();
-		AsyncWork<UnprotectedString, IOException> read = readNextBufferAsync();
+		AsyncWork<UnprotectedString, IOException> read = stream.readNextBufferAsync();
 		read.listenAsync(
 		new Task.Cpu.FromRunnable("Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority(), () -> {
 			UnprotectedString str = read.getResult();

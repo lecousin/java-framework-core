@@ -37,6 +37,13 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		stream.close();
 	}
 	
+	@Test(timeout=30000)
+	public void basicStreamTests() throws Exception {
+		ICharacterStream.Readable s = openStream(openFile());
+		s.setPriority(Task.PRIORITY_IMPORTANT);
+		s.close();
+	}
+	
 	@SuppressWarnings({ "resource" })
 	@Test(timeout=120000)
 	public void testBufferByBufferFully() throws Exception {
@@ -75,6 +82,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 				Assert.assertFalse(s.endReached());
 		}
 		Assert.assertTrue(s.readFullySync(buf, 0, buf.length) <= 0);
+		Assert.assertTrue(s.readSync(buf, 0, buf.length) <= 0);
 		Assert.assertTrue(s.endReached());
 		s.close();
 	}
@@ -98,6 +106,34 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 				Assert.assertFalse(s.endReached());
 		}
 		Assert.assertTrue(s.readFullySync(buf, 0, buf.length) <= 0);
+		Assert.assertTrue(s.readAsync(buf, 0, buf.length).blockResult(0).intValue() <= 0);
+		Assert.assertTrue(s.endReached());
+		s.close();
+	}
+	
+	@SuppressWarnings("resource")
+	@Test(timeout=120000)
+	public void testBufferByBufferFullyAsync() throws Exception {
+		ICharacterStream.Readable s = openStream(openFile());
+		char[] buf = new char[testBuf.length * 3 - testBuf.length / 10];
+		int pos = 0;
+		while (pos < nbBuf * testBuf.length) {
+			AsyncWork<Integer, IOException> read = s.readFullyAsync(buf, 0, buf.length);
+			int nb = read.blockResult(0).intValue();
+			if (nb <= 0)
+				throw new AssertionError("End of stream reached after " + pos + " characters, expected was "
+					+ (nbBuf * testBuf.length));
+			for (int i = 0; i < nb; ++i)
+				Assert.assertEquals("Invalid character at " + (pos + i), (char)testBuf[(pos + i) % testBuf.length], buf[i]);
+			pos += nb;
+			if (pos < nbBuf * testBuf.length) {
+				Assert.assertFalse(s.endReached());
+				if (nb != buf.length)
+					throw new Exception("readFullyAsync returned " + nb + " on " + buf.length);
+			}
+		}
+		Assert.assertTrue(s.readFullySync(buf, 0, buf.length) <= 0);
+		Assert.assertTrue(s.readAsync(buf, 0, buf.length).blockResult(0).intValue() <= 0);
 		Assert.assertTrue(s.endReached());
 		s.close();
 	}
