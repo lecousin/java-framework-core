@@ -1,4 +1,8 @@
-autoEnabled=false
+autoEnabled=true
 eclipse.preferences.version=1
 extraProperties=
 fileExclusions=
+idePrefixKey=
+projectKey=lecousin_java-framework-core
+serverId=lecousin
+sqPrefixKey=
