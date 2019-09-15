@@ -3,11 +3,11 @@ package net.lecousin.framework.concurrent.tasks.drives;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Task to read some bytes from a file.
@@ -17,7 +17,7 @@ class ReadFileTask extends Task.OnFile<Integer,IOException> {
 	/** Constructor. */
 	public ReadFileTask(
 		FileAccess file, long pos, ByteBuffer buffer, boolean fully,
-		byte priority, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		byte priority, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		super(file.manager, "Read from file " + file.path + (pos >= 0 ? " at " + pos : ""), priority, ondone);
 		this.file = file;

@@ -3,13 +3,13 @@ package net.lecousin.framework.io;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.util.IConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Base interface for all IO, see the package documentation {@link net.lecousin.framework.io}.
@@ -17,12 +17,12 @@ import net.lecousin.framework.util.RunnableWithParameter;
 public interface IO extends IConcurrentCloseable {
 	
 	/** Describe the IO, which can be used for logging or debugging purposes. */
-	public String getSourceDescription();
+	String getSourceDescription();
 
 	/** If this IO is wrapping another one (such as adding Buffered capabilities), this method returns it,
 	 * or null if it does not wrap another IO.
 	 */
-	public IO getWrappedIO();
+	IO getWrappedIO();
 	
 	/** Synchronous ou asynchronous operation. */
 	public enum OperationType {
@@ -30,18 +30,18 @@ public interface IO extends IConcurrentCloseable {
 	}
 	
 	/** Return the priority of asynchronous operations. */
-	public byte getPriority();
+	byte getPriority();
 
 	/** Set the priority of asynchronous operations. */
-	public void setPriority(byte priority);
+	void setPriority(byte priority);
 	
 	/** Return the TaskManager used for asynchronous operations. */
-	public TaskManager getTaskManager();
+	TaskManager getTaskManager();
 	
 	/** Capability to get the current position on an IO. */
 	public interface PositionKnown extends IO {
 		/** Return the current position. */
-		public long getPosition() throws IOException;
+		long getPosition() throws IOException;
 	}
 	
 	/** Capability to set the position on an IO. */
@@ -61,21 +61,21 @@ public interface IO extends IConcurrentCloseable {
 		 * It must accept seeking beyond the end, but position at the end,
 		 * and accept seeking before the beginning, but position at the beginning.
 		 */
-		public long seekSync(SeekType type, long move) throws IOException;
+		long seekSync(SeekType type, long move) throws IOException;
 		
 		/** Returns the new position.
 		 * The implementation must not allow to seek after the end of the file, the method setSize should be used instead.
 		 * It must accept seeking beyond the end, but position at the end,
 		 * and accept seeking before the beginning, but position at the beginning.
 		 */
-		public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone);
+		AsyncWork<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone);
 
 		/** Returns the new position.
 		 * The implementation must not allow to seek after the end of the file, the method setSize should be used instead.
 		 * It must accept seeking beyond the end, but position at the end,
 		 * and accept seeking before the beginning, but position at the beginning.
 		 */
-		public default AsyncWork<Long,IOException> seekAsync(SeekType type, long move) { return seekAsync(type, move, null); }
+		default AsyncWork<Long,IOException> seekAsync(SeekType type, long move) { return seekAsync(type, move, null); }
 	}
 
 	/** Add the capability to read forward on an IO. */
@@ -83,7 +83,7 @@ public interface IO extends IConcurrentCloseable {
 		/** Return a synchronization point that is unblocked when data is ready to be read.
 		 * This allows to start reading operations only when we know it won't block.
 		 */
-		public ISynchronizationPoint<IOException> canStartReading();
+		ISynchronizationPoint<IOException> canStartReading();
 		
 		/** Read synchronously into the given buffer.
 		 * The buffer may not be filled, but at least one byte is read.
@@ -91,7 +91,7 @@ public interface IO extends IConcurrentCloseable {
 		 * @param buffer buffer to fill
 		 * @return the number of bytes read, or 0 or -1 if the end of the IO is reached.
 		 */
-		public int readSync(ByteBuffer buffer) throws IOException;
+		int readSync(ByteBuffer buffer) throws IOException;
 		
 		/** Asynchronous read operation.
 		 * The buffer may not be filled, but at least one byte is read.
@@ -102,17 +102,17 @@ public interface IO extends IConcurrentCloseable {
 		 * @return the Integer contains the number of bytes read, or 0 or -1 if the end of the IO is reached.
 		 */
 		
-		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone);
+		AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone);
 		
 		/** Equivalent to readAsync(buffer, null). */
-		public default AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer) { return readAsync(buffer, null); }
+		default AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer) { return readAsync(buffer, null); }
 		
 		/** Synchronous read operation to fully fill the given buffer.
 		 * This method does not return until the buffer has been fully filled, or the end of the IO has been reached.
 		 * @param buffer the buffer to fill
 		 * @return the number of bytes read, possibly 0 if the end of the IO has been reached.
 		 */
-		public int readFullySync(ByteBuffer buffer) throws IOException;
+		int readFullySync(ByteBuffer buffer) throws IOException;
 		
 		/** Asynchronous read operation to fully fill the given buffer.
 		 * The returned AsyncWork is not unblocked until the buffer has been fully filled, or the end of the IO has been reached.
@@ -120,19 +120,19 @@ public interface IO extends IConcurrentCloseable {
 		 * @param ondone called before the returned AsyncWork is unblocked and its listeners are called.
 		 * @return the Integer contains the number of bytes read, possibly 0 if the end of the IO has been reached.
 		 */
-		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone);
+		AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone);
 		
 		/** Equivalent to readFullyAsync(buffer, null). */
-		public default AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer) { return readFullyAsync(buffer, null); }
+		default AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer) { return readFullyAsync(buffer, null); }
 		
 		/** Returns the number of bytes skipped. */
-		public long skipSync(long n) throws IOException;
+		long skipSync(long n) throws IOException;
 		
 		/** Returns the number of bytes skipped. */
-		public AsyncWork<Long,IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone);
+		AsyncWork<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone);
 		
 		/** Returns the number of bytes skipped. */
-		public default AsyncWork<Long,IOException> skipAsync(long n) { return skipAsync(n, null); }
+		default AsyncWork<Long,IOException> skipAsync(long n) { return skipAsync(n, null); }
 		
 		/** Add read operations to read at a specific position.
 		 * Important note: operations with a given position must not change the cursor position.
@@ -140,27 +140,27 @@ public interface IO extends IConcurrentCloseable {
 		public interface Seekable extends IO.Readable, IO.Seekable {
 			/** Same as {@link IO.Readable#readSync(ByteBuffer)} but read at the given position.
 			 * The current position is changed to the given position plus the number of bytes read. */
-			public int readSync(long pos, ByteBuffer buffer) throws IOException;
+			int readSync(long pos, ByteBuffer buffer) throws IOException;
 
-			/** Same as {@link IO.Readable#readAsync(ByteBuffer, RunnableWithParameter)} but read at the given position.
+			/** Same as {@link IO.Readable#readAsync(ByteBuffer, Consumer)} but read at the given position.
 			 * The current position is changed to the given position plus the number of bytes read upon completion. */
-			public AsyncWork<Integer,IOException>
-				readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone);
+			AsyncWork<Integer,IOException>
+				readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone);
 			
 			/** Equivalent to readAsync(pos, buffer, null). */
-			public default AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buffer) { return readAsync(pos, buffer, null); }
+			default AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buffer) { return readAsync(pos, buffer, null); }
 			
 			/** Same as {@link IO.Readable#readFullySync(ByteBuffer)} but read at the given position.
 			 * The current position is changed to the given position plus the number of bytes read. */
-			public int readFullySync(long pos, ByteBuffer buffer) throws IOException;
+			int readFullySync(long pos, ByteBuffer buffer) throws IOException;
 			
-			/** Same as {@link IO.Readable#readFullyAsync(ByteBuffer, RunnableWithParameter)} but read at the given position.
+			/** Same as {@link IO.Readable#readFullyAsync(ByteBuffer, Consumer)} but read at the given position.
 			 * The current position is changed to the given position plus the number of bytes read upon completion. */
-			public AsyncWork<Integer,IOException>
-				readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone);
+			AsyncWork<Integer,IOException>
+				readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone);
 			
 			/** Equivalent to readFullyAsync(pos, buffer, null). */
-			public default AsyncWork<Integer,IOException> readFullyAsync(long pos, ByteBuffer buffer)
+			default AsyncWork<Integer,IOException> readFullyAsync(long pos, ByteBuffer buffer)
 			{ return readFullyAsync(pos, buffer, null); }
 		}
 
@@ -178,15 +178,15 @@ public interface IO extends IConcurrentCloseable {
 			 * The returned buffer is ready to be read (no need to flip), and the number of bytes read can be obtain
 			 * using the method remaining of the buffer.
 			 */
-			public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone);
+			AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone);
 			
 			/** Equivalent to readNextBufferAsync(null). */
-			public default AsyncWork<ByteBuffer, IOException> readNextBufferAsync() { return readNextBufferAsync(null); }
+			default AsyncWork<ByteBuffer, IOException> readNextBufferAsync() { return readNextBufferAsync(null); }
 			
 			/** Read a single byte if possible.
 			 * @return the next byte, or -1 if the end of the IO has been reached, or -2 if no more byte is available.
 			 */
-			public int readAsync() throws IOException;
+			int readAsync() throws IOException;
 			
 			/** While readAsync methods are supposed to do the job in a separate thread, this method
 			 * fills the given buffer synchronously if enough data is already buffered, else it finishes asynchronously.
@@ -195,8 +195,8 @@ public interface IO extends IConcurrentCloseable {
 			 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
 			 * but support also to work asynchronously without blocking a thread.
 			 */
-			public AsyncWork<Integer, IOException> readFullySyncIfPossible(
-				ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone);
+			AsyncWork<Integer, IOException> readFullySyncIfPossible(
+				ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone);
 
 			/** While readAsync methods are supposed to do the job in a separate thread, this method
 			 * fills the given buffer synchronously if enough data is already buffered, else it finishes asynchronously.
@@ -205,7 +205,7 @@ public interface IO extends IConcurrentCloseable {
 			 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
 			 * but support also to work asynchronously without blocking a thread.
 			 */
-			public default AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer) {
+			default AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer) {
 				return readFullySyncIfPossible(buffer, null);
 			}
 		}
@@ -218,7 +218,7 @@ public interface IO extends IConcurrentCloseable {
 		 * If not all bytes can be written, an error must be returned.
 		 * Return the number of bytes written.
 		 */
-		public AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer);
+		AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer);
 	}
 	
 	/** Add the capability to write forward on an IO. */
@@ -226,23 +226,23 @@ public interface IO extends IConcurrentCloseable {
 		/** Return a synchronization point that is unblocked when data is ready to be written.
 		 * This allows to start writing operations only when we know it won't block.
 		 */
-		public ISynchronizationPoint<IOException> canStartWriting();
+		ISynchronizationPoint<IOException> canStartWriting();
 
 		/** Write synchronously all bytes available in the given buffer at the current position.
 		 * If not all bytes can be written, an error must be thrown.
 		 * Return the number of bytes written.
 		 */
-		public int writeSync(ByteBuffer buffer) throws IOException;
+		int writeSync(ByteBuffer buffer) throws IOException;
 		
 		/** Write asynchronously all bytes available in the given buffer at the current position.
 		 * If not all bytes can be written, an error must be returned.
 		 * Return the number of bytes written.
 		 */
-		public AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone);
+		AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone);
 		
 		/** Equivalent to writeAsync(buffer, null). */
 		@Override
-		public default AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer) { return writeAsync(buffer, null); }
+		default AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer) { return writeAsync(buffer, null); }
 		
 		/** Add operations to write at a specific position.
 		 * Important note: operations with a given position must not change the cursor position.
@@ -254,22 +254,22 @@ public interface IO extends IConcurrentCloseable {
 			 * the end or beyond the end of the IO: if not resizable, it must throw an exception,
 			 * while a resizable IO should accept it except if the resize operation fails.
 			 */
-			public int writeSync(long pos, ByteBuffer buffer) throws IOException;
+			int writeSync(long pos, ByteBuffer buffer) throws IOException;
 			
-			/** Same as {@link IO.Writable#writeAsync(ByteBuffer, RunnableWithParameter)} but at the given position.
+			/** Same as {@link IO.Writable#writeAsync(ByteBuffer, Consumer)} but at the given position.
 			 * Note that if the IO implements Resizable, the behaviour is different when writing at
 			 * the end or beyond the end of the IO: if not resizable, it must throw an exception,
 			 * while a resizable IO should accept it except if the resize operation fails.
 			 */
-			public AsyncWork<Integer,IOException>
-				writeAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone);
+			AsyncWork<Integer,IOException>
+				writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone);
 			
 			/** Equivalent to writeAsync(pos, buffer, null).
 			 * Note that if the IO implements Resizable, the behaviour is different when writing at
 			 * the end or beyond the end of the IO: if not resizable, it must throw an exception,
 			 * while a resizable IO should accept it except if the resize operation fails.
 			 */
-			public default AsyncWork<Integer,IOException> writeAsync(long pos, ByteBuffer buffer)
+			default AsyncWork<Integer,IOException> writeAsync(long pos, ByteBuffer buffer)
 			{ return writeAsync(pos, buffer, null); }
 		}
 		
@@ -278,7 +278,7 @@ public interface IO extends IConcurrentCloseable {
 			/** Force to write buffered data to the underlying IO.
 			 * The operation is asynchronous, and return a synchronization point.
 			 */
-			public ISynchronizationPoint<IOException> flush();
+			ISynchronizationPoint<IOException> flush();
 		}		
 	}
 	
@@ -286,24 +286,24 @@ public interface IO extends IConcurrentCloseable {
 	/** Add capability to resize the IO. */
 	public interface Resizable extends IO.KnownSize {
 		/** Synchronous resize. */
-		public void setSizeSync(long newSize) throws IOException;
+		void setSizeSync(long newSize) throws IOException;
 		
 		/** Asynchronous resize. */
-		public ISynchronizationPoint<IOException> setSizeAsync(long newSize);
+		ISynchronizationPoint<IOException> setSizeAsync(long newSize);
 	}
 	
 	
 	/** Add capability to know the size of an IO. */
 	public interface KnownSize extends IO {
 		/** Synchronous operation to get the size of the IO. */
-		public long getSizeSync() throws IOException;
+		long getSizeSync() throws IOException;
 
 		/** Asynchronous operation to get the size of the IO. */
-		public AsyncWork<Long, IOException> getSizeAsync();
+		AsyncWork<Long, IOException> getSizeAsync();
 	}
 	
 	/** Convert an Exception into an IOException. If thie given exception is already an IOException, it is directly returned. */
-	public static IOException error(Throwable e) {
+	static IOException error(Throwable e) {
 		if (e instanceof IOException) return (IOException)e;
 		return new IOException(e);
 	}
@@ -314,51 +314,51 @@ public interface IO extends IConcurrentCloseable {
 		/** Return a synchronization point that is unblocked when data is ready to be read.
 		 * This allows to start reading operations only when we know it won't block.
 		 */
-		public ISynchronizationPoint<IOException> canStartReading();
+		ISynchronizationPoint<IOException> canStartReading();
 
 		/** Read next byte.
 		 * Return -1 if the end of the IO is reached, or the value between 0 and 255.
 		 */
-		public int read() throws IOException;
+		int read() throws IOException;
 		
 		/** Read bytes into the given buffer, starting to store them at the given offset, and with the given maximum number of bytes.
 		 * Returns the number of bytes read, or 0 or -1 if the end of the IO is reached.
 		 */
-		public int read(byte[] buffer, int offset, int len) throws IOException;
+		int read(byte[] buffer, int offset, int len) throws IOException;
 		
 		/** Read bytes to fill the given buffer, and return the number of bytes read which is less than the
 		 * size of the buffer only if the end of the IO is reached, and so may return 0.
 		 */
-		public int readFully(byte[] buffer) throws IOException;
+		int readFully(byte[] buffer) throws IOException;
 		
 		/** Similar to read, but returns a byte and throw an EOFException in case the end is reached. */
-		public default byte readByte() throws IOException, EOFException {
+		default byte readByte() throws IOException {
 			int b = read();
 			if (b < 0) throw new EOFException();
 			return (byte)b;
 		}
 		
 		/** Same as {@link IO.Readable#skipSync(long)} but limited to an integer. */
-		public int skip(int skip) throws IOException;
+		int skip(int skip) throws IOException;
 	}
 	
 	/** Add capability to write byte by byte. */
 	public interface WritableByteStream extends IO {
 		/** Write a byte. */
-		public void write(byte b) throws IOException;
+		void write(byte b) throws IOException;
 		
 		/** Write bytes from the given buffer. */
-		public void write(byte[] buffer, int offset, int length) throws IOException;
+		void write(byte[] buffer, int offset, int length) throws IOException;
 		
 		/** Write bytes from the given buffer. */
-		public default void write(byte[] buffer) throws IOException {
+		default void write(byte[] buffer) throws IOException {
 			write(buffer, 0, buffer.length);
 		}
 
 		/** Return a synchronization point that is unblocked when data is ready to be written.
 		 * This allows to start writing operations only when we know it won't block.
 		 */
-		public ISynchronizationPoint<IOException> canStartWriting();
+		ISynchronizationPoint<IOException> canStartWriting();
 	}
 	
 	/** An OutputToInput is an IO on which a producer is writing, and a consumer is reading.<br/>
@@ -370,16 +370,16 @@ public interface IO extends IConcurrentCloseable {
 	 */
 	public interface OutputToInput extends IO.Readable, IO.Writable {
 		/** Signal that no more data will be written by the producer. */
-		public void endOfData();
+		void endOfData();
 		
 		/** Signal that no more data will be written by the producer because of an error. */
-		public void signalErrorBeforeEndOfData(IOException error);
+		void signalErrorBeforeEndOfData(IOException error);
 		
 		/** Return true if endOfData has been already called. */ 
-		public boolean isFullDataAvailable();
+		boolean isFullDataAvailable();
 		
 		/** If available, return the size. A negative value means no size available. */
-		public long getAvailableDataSize();
+		long getAvailableDataSize();
 	}
 	
 }

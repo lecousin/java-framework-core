@@ -1,8 +1,7 @@
 package net.lecousin.framework.xml.dom;
 
-import javax.xml.soap.Node;
-
 import org.w3c.dom.Comment;
+import org.w3c.dom.Node;
 
 /** DOM Comment. */
 public class XMLComment extends XMLCharacterData implements Comment {

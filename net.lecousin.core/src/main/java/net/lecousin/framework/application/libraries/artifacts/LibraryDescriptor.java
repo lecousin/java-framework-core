@@ -1,7 +1,8 @@
 package net.lecousin.framework.application.libraries.artifacts;
 
 import java.io.File;
-import java.net.URL;
+import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 
 import net.lecousin.framework.application.Version;
@@ -31,7 +32,7 @@ public interface LibraryDescriptor {
 	default String getVersionString() { return getVersion().toString(); }
 	
 	/** Return the directory from which the library descriptor as been loaded. */
-	URL getDirectory();
+	URI getDirectory();
 	
 	/** Return true if the artifact contains classes to be loaded. */
 	boolean hasClasses();
@@ -58,10 +59,44 @@ public interface LibraryDescriptor {
 		boolean isOptional();
 		
 		/** Return the dependency location if explicitly specified. */
-		URL getKnownLocation();
+		URI getKnownLocation();
 		
 		/** Return a list of dependencies that should be ignored from this dependency, with pairs of groupId/artifactId. */ 
 		List<Pair<String, String>> getExcludedDependencies();
+		
+		/** Dependency on another LibraryDescriptor. */
+		public static class From implements Dependency {
+			
+			/** Constructor. */
+			public From(LibraryDescriptor lib) {
+				this.lib = lib;
+			}
+			
+			private LibraryDescriptor lib;
+			
+			@Override
+			public String getGroupId() { return lib.getGroupId(); }
+			
+			@Override
+			public String getArtifactId() { return lib.getArtifactId(); }
+			
+			@Override
+			public VersionSpecification getVersionSpecification() {
+				return new VersionSpecification.SingleVersion(lib.getVersion());
+			}
+			
+			@Override
+			public String getClassifier() { return null; }
+			
+			@Override
+			public boolean isOptional() { return false; }
+			
+			@Override
+			public URI getKnownLocation() { return lib.getDirectory(); }
+			
+			@Override
+			public List<Pair<String, String>> getExcludedDependencies() { return new ArrayList<>(0); }
+		}
 	}
 	
 	/** Return the list of dependencies of this library. */

@@ -1,6 +1,7 @@
 package net.lecousin.framework.concurrent.synch;
 
 import java.util.Collection;
+import java.util.function.Function;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
@@ -60,6 +61,31 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 					cancel(sp.getCancelEvent());
 				else if (sp.hasError())
 					error(sp.getError());
+				else
+					joined();
+			}
+		});
+		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
+	}
+	
+	/**
+	 * Register the given synchronization point as a waited event for this JoinPoint.<br/>
+	 * The number of waited events is incremented, and a listener is added to the synchronization point and
+	 * do the following when the synchronization point is unblocked:<ul>
+	 * <li>Cancel this JoinPoint if the synchronization point is cancelled</li>
+	 * <li>Unblock this JoinPoint with an error if the synchronization point has been unblocked with an error</li>
+	 * <li>Call the joined method if the synchronization point has been unblocked with success</li>
+	 * </ul>
+	 */
+	public synchronized void addToJoin(ISynchronizationPoint<?> sp, Function<Exception, TError> errorConverter) {
+		nbToJoin++;
+		sp.listenInline(new Runnable() {
+			@Override
+			public void run() {
+				if (sp.isCancelled())
+					cancel(sp.getCancelEvent());
+				else if (sp.hasError())
+					error(errorConverter.apply(sp.getError()));
 				else
 					joined();
 			}

@@ -53,9 +53,7 @@ public class ArrayIterator<T> implements java.util.Iterator<T> {
 		
 		@Override
 		public boolean hasNext() {
-			if (array == null) return false;
-			if (pos >= Array.getLength(array)) return false;
-			return true;
+			return array != null && pos < Array.getLength(array);
 		}
 		
 		@Override

@@ -60,7 +60,7 @@ public class VersionRange {
 	/** Parse a string into a list of version numbers (separated by a dot in the string).
 	 * It stops at the first non numeric character which is not a dot. */
 	public static int[] parse(String s) {
-		ArrayList<Integer> n = new ArrayList<Integer>();
+		ArrayList<Integer> n = new ArrayList<>();
 		int val = 0;
 		boolean hasChar = false;
 		int i;
@@ -69,17 +69,15 @@ public class VersionRange {
 			if (c >= '0' && c <= '9') {
 				val = val * 10 + (c - '0');
 				hasChar = true;
-				continue;
-			}
-			if (c == '.') {
+			} else if (c == '.') {
 				n.add(Integer.valueOf(val));
 				val = 0;
 				hasChar = false;
-				continue;
+			} else {
+				if (hasChar)
+					n.add(Integer.valueOf(val));
+				break;
 			}
-			if (hasChar)
-				n.add(Integer.valueOf(val));
-			break;
 		}
 		if (i == s.length()) n.add(Integer.valueOf(val));
 		int[] numbers = new int[n.size()];

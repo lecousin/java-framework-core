@@ -2,6 +2,7 @@ package net.lecousin.framework.io.util;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -15,7 +16,6 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Aggregation of several IOs, every write is performed on all IOs.
@@ -121,7 +121,7 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		AsyncWork<Integer, IOException> result = new AsyncWork<>();
 		new Task.Cpu.FromRunnable("BroadcastIO.writeAsync", priority, () -> {
 			JoinPoint<IOException> jp = new JoinPoint<>();

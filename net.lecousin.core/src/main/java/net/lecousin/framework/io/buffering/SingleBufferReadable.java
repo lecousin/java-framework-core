@@ -2,6 +2,7 @@ package net.lecousin.framework.io.buffering;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -13,7 +14,6 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * This is the less efficient buffered readable implementation: it uses a single buffer, which is filled only when first byte
@@ -111,7 +111,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		AtomicState s = state;
 		if (s.pos == s.len) {
 			if (s.eof) return IOUtil.success(Integer.valueOf(-1), ondone);
@@ -128,7 +128,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone)).getOutput();
 	}
 	
@@ -150,7 +150,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readFullyAsync(this, buffer, ondone));
 	}
 
@@ -177,7 +177,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		return operation(IOUtil.skipAsyncByReading(this, n, ondone));
 	}
 
@@ -246,7 +246,7 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 	}
 
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
+	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		AtomicState s = state;
 		if (s.pos == s.len && s.eof) return IOUtil.success(null, ondone);
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {

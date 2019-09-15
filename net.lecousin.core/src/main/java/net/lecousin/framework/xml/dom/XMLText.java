@@ -1,8 +1,7 @@
 package net.lecousin.framework.xml.dom;
 
-import javax.xml.soap.Node;
-
 import org.w3c.dom.DOMException;
+import org.w3c.dom.Node;
 import org.w3c.dom.Text;
 
 /** DOM Text. */

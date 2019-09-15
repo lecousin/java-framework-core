@@ -201,6 +201,7 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S4144") // it is identical to add because it is the same behavior
 	public boolean offerLast(T e) {
 		addLast(e);
 		return true;
@@ -325,33 +326,10 @@ public class TurnArray<T> implements Deque<T> {
 			decreaseTask = new DecreaseTask();
 	}
 	
-	private void decrease() {
-		int newSize = array.length - (array.length >> 1);
-		if (newSize < minSize) newSize = minSize;
-		if (newSize >= array.length) return;
-		if (size() >= newSize) return;
-		if (end == -1) return;
-		Object[] a = new Object[newSize];
-		if (end > start) {
-			System.arraycopy(array, start, a, 0, end - start);
-			end = end - start;
-			start = 0;
-		} else if (end < start) {
-			System.arraycopy(array, start, a, 0, array.length - start);
-			if (end > 0)
-				System.arraycopy(array, 0, a, array.length - start, end);
-			end = array.length - start + end;
-			start = 0;
-		} else {
-			start = end = 0;
-		}
-		array = a;
-	}
-	
 	private class DecreaseTask extends Task.Cpu<Void,NoException> {
 		public DecreaseTask() {
 			super("Decrease Queue_ArrayRound size", Task.PRIORITY_LOW);
-			start();
+			super.start();
 		}
 		
 		@Override
@@ -362,6 +340,29 @@ public class TurnArray<T> implements Deque<T> {
 				decrease();
 			}
 			return null;
+		}
+
+		private void decrease() {
+			int newSize = array.length - (array.length >> 1);
+			if (newSize < minSize) newSize = minSize;
+			if (newSize >= array.length) return;
+			if (size() >= newSize) return;
+			if (end == -1) return;
+			Object[] a = new Object[newSize];
+			if (end > start) {
+				System.arraycopy(array, start, a, 0, end - start);
+				end = end - start;
+				start = 0;
+			} else if (end < start) {
+				System.arraycopy(array, start, a, 0, array.length - start);
+				if (end > 0)
+					System.arraycopy(array, 0, a, array.length - start, end);
+				end = array.length - start + end;
+				start = 0;
+			} else {
+				start = end = 0;
+			}
+			array = a;
 		}
 	}
 	
@@ -626,7 +627,6 @@ public class TurnArray<T> implements Deque<T> {
 			}
 			System.arraycopy(array, index + 1, array, index, end - index);
 			array[--end] = null;
-			return;
 		} finally {
 			checkDecrease();
 		}
@@ -652,8 +652,7 @@ public class TurnArray<T> implements Deque<T> {
 		
 		@Override
 		public boolean hasNext() {
-			if (pos >= size()) return false;
-			return true;
+			return pos < size();
 		}
 		
 		@Override
@@ -712,7 +711,7 @@ public class TurnArray<T> implements Deque<T> {
 			start = end = 0;
 			return (List<T>)a;
 		}
-		if (start == end) return Collections.EMPTY_LIST;
+		if (start == end) return Collections.emptyList();
 		if (end > start) {
 			Object[] a = new Object[end - start];
 			System.arraycopy(array, start, a, 0, end - start);

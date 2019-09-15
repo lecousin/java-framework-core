@@ -9,6 +9,7 @@ import java.util.LinkedList;
 public class LinkedAdapter implements Adapter {
 
 	/** Create a linked adapter. */
+	@SuppressWarnings("squid:S1319") // we want to force LinkedList, not just a List
 	public LinkedAdapter(LinkedList<Adapter> list) {
 		this.list = list;
 	}
@@ -33,7 +34,7 @@ public class LinkedAdapter implements Adapter {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public Object adapt(Object input) throws Exception {
+	public Object adapt(Object input) throws AdapterException {
 		Object o = input;
 		for (Adapter a : list) {
 			o = a.adapt(o);

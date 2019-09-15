@@ -22,7 +22,7 @@ public final class ExtensionPoints {
 	private static ArrayList<CustomExtensionPoint> customs = new ArrayList<>();
 	
 	static {
-		points.add(new AdapterRegistry());
+		points.add(AdapterRegistry.get());
 		points.add(new IntegerUnit.ConverterRegistry());
 		customs.add(new LocaleExtensionPoint());
 	}

@@ -17,6 +17,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -53,7 +54,6 @@ import net.lecousin.framework.math.TimeUnit;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Factory;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.Provider;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
@@ -839,9 +839,9 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public String hello = "b";
 	}
 	
-	public static class MyInterfaceToInstantiateProvider implements Provider<MyInterfaceToInstantiate> {
+	public static class MyInterfaceToInstantiateProvider implements Supplier<MyInterfaceToInstantiate> {
 		@Override
-		public MyInterfaceToInstantiate provide() {
+		public MyInterfaceToInstantiate get() {
 			return new MyImplementationDeserialized();
 		}
 	}
@@ -1109,7 +1109,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	public static abstract class InvalidTypeInstantiation {
 	}
 	
-	public static abstract class InvalidTypeInstantiationFactory implements Provider<InvalidTypeInstantiation> {
+	public static abstract class InvalidTypeInstantiationFactory implements Supplier<InvalidTypeInstantiation> {
 	}
 	
 	public static class InvalidTypeInstantiationContainer {

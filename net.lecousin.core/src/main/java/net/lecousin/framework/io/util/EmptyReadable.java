@@ -2,6 +2,7 @@ package net.lecousin.framework.io.util;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
@@ -11,7 +12,6 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Implement an empty Readable IO, with Buffered, Seekable and KnownSize capabilities.
@@ -78,9 +78,9 @@ public class EmptyReadable extends ConcurrentCloseable implements IO.Readable, I
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long, IOException>> ondone) {
 		if (ondone != null)
-			ondone.run(new Pair<>(Long.valueOf(0), null));
+			ondone.accept(new Pair<>(Long.valueOf(0), null));
 		return new AsyncWork<>(Long.valueOf(0), null);
 	}
 
@@ -95,8 +95,8 @@ public class EmptyReadable extends ConcurrentCloseable implements IO.Readable, I
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
-		if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(-1), null));
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+		if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(-1), null));
 		return new AsyncWork<>(Integer.valueOf(-1), null);
 	}
 	
@@ -106,16 +106,16 @@ public class EmptyReadable extends ConcurrentCloseable implements IO.Readable, I
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		if (ondone != null)
-			ondone.run(new Pair<>(Integer.valueOf(0), null));
+			ondone.accept(new Pair<>(Integer.valueOf(0), null));
 		return new AsyncWork<>(Integer.valueOf(0), null);
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		if (ondone != null)
-			ondone.run(new Pair<>(Integer.valueOf(0), null));
+			ondone.accept(new Pair<>(Integer.valueOf(0), null));
 		return new AsyncWork<>(Integer.valueOf(0), null);
 	}
 
@@ -130,16 +130,16 @@ public class EmptyReadable extends ConcurrentCloseable implements IO.Readable, I
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		if (ondone != null)
-			ondone.run(new Pair<>(Integer.valueOf(0), null));
+			ondone.accept(new Pair<>(Integer.valueOf(0), null));
 		return new AsyncWork<>(Integer.valueOf(0), null);
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		if (ondone != null)
-			ondone.run(new Pair<>(Integer.valueOf(0), null));
+			ondone.accept(new Pair<>(Integer.valueOf(0), null));
 		return new AsyncWork<>(Integer.valueOf(0), null);
 	}
 
@@ -154,9 +154,9 @@ public class EmptyReadable extends ConcurrentCloseable implements IO.Readable, I
 	}
 
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
+	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		if (ondone != null)
-			ondone.run(new Pair<>(null, null));
+			ondone.accept(new Pair<>(null, null));
 		return new AsyncWork<>(null, null);
 	}
 
@@ -176,9 +176,9 @@ public class EmptyReadable extends ConcurrentCloseable implements IO.Readable, I
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+	public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 		if (ondone != null)
-			ondone.run(new Pair<>(Long.valueOf(0), null));
+			ondone.accept(new Pair<>(Long.valueOf(0), null));
 		return new AsyncWork<>(Long.valueOf(0), null);
 	}
 

@@ -1,11 +1,12 @@
 package net.lecousin.framework.core.tests.util;
 
+import java.util.function.Function;
+
 import org.junit.Assert;
 import org.junit.Test;
 
 import net.lecousin.framework.core.test.util.TestIString;
 import net.lecousin.framework.util.IString;
-import net.lecousin.framework.util.Provider.FromValue;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
@@ -25,12 +26,7 @@ public class TestUnprotectedStringBuffer extends TestIString {
 		Assert.assertEquals("World Hello", s.asString());
 		Assert.assertEquals("Worxxd Hexxxxo", s.replace('l', "xx").asString());
 		Assert.assertEquals("Worxxyzyexxxxo", s.replace(5, 7, new UnprotectedStringBuffer("yzy")).asString());
-		FromValue<UnprotectedStringBuffer, UnprotectedStringBuffer> provider = new FromValue<UnprotectedStringBuffer, UnprotectedStringBuffer>() {
-			@Override
-			public UnprotectedStringBuffer provide(UnprotectedStringBuffer value) {
-				return new UnprotectedStringBuffer(Integer.toString(Integer.parseInt(value.asString()) * 2));
-			}
-		}; 
+		Function<UnprotectedStringBuffer, UnprotectedStringBuffer> provider = value -> new UnprotectedStringBuffer(Integer.toString(Integer.parseInt(value.asString()) * 2));
 		s = new UnprotectedStringBuffer(new UnprotectedStringBuffer("abcd${123}efgh${200}ijk"));
 		s.searchAndReplace("${", "}", provider);
 		Assert.assertEquals("abcd246efgh400ijk", s.asString());

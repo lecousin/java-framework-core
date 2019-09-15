@@ -2,6 +2,7 @@ package net.lecousin.framework.concurrent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
@@ -11,7 +12,6 @@ import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /** Task to be executed asynchronously.
  * @param <T> type of result
@@ -52,7 +52,7 @@ public abstract class Task<T,TError extends Exception> {
 	 */
 	public abstract static class Cpu<T,TError extends Exception> extends Task<T,TError> {
 		/** Constructor. */
-		public Cpu(String description, byte priority, RunnableWithParameter<Pair<T,TError>> ondone) {
+		public Cpu(String description, byte priority, Consumer<Pair<T,TError>> ondone) {
 			super(Threading.getCPUTaskManager(), description, priority, ondone);
 		}
 		
@@ -69,7 +69,7 @@ public abstract class Task<T,TError extends Exception> {
 		public abstract static class Parameter<TParam,TResult,TError extends Exception>
 		extends Task.Parameter<TParam,TResult,TError> {
 			/** Constructor. */
-			public Parameter(String description, byte priority, RunnableWithParameter<Pair<TResult,TError>> ondone) {
+			public Parameter(String description, byte priority, Consumer<Pair<TResult,TError>> ondone) {
 				super(Threading.getCPUTaskManager(), description, priority, ondone);
 			}
 
@@ -83,7 +83,7 @@ public abstract class Task<T,TError extends Exception> {
 		public static class FromRunnable extends Task.Cpu<Void,NoException> {
 			/** Constructor. */
 			public FromRunnable(
-				Runnable runnable, String description, byte priority, RunnableWithParameter<Pair<Void,NoException>> ondone
+				Runnable runnable, String description, byte priority, Consumer<Pair<Void,NoException>> ondone
 			) {
 				super(description, priority, ondone);
 				this.runnable = runnable;
@@ -117,7 +117,7 @@ public abstract class Task<T,TError extends Exception> {
 	 */
 	public abstract static class OnFile<T,TError extends Exception> extends Task<T,TError> {
 		/** Constructor. */
-		public OnFile(java.io.File file, String description, byte priority, RunnableWithParameter<Pair<T,TError>> ondone) {
+		public OnFile(java.io.File file, String description, byte priority, Consumer<Pair<T,TError>> ondone) {
 			super(Threading.getDrivesTaskManager().getTaskManager(file), description, priority, ondone);
 		}
 		
@@ -127,7 +127,7 @@ public abstract class Task<T,TError extends Exception> {
 		}
 		
 		/** Constructor. */
-		public OnFile(TaskManager manager, String description, byte priority, RunnableWithParameter<Pair<T,TError>> ondone) {
+		public OnFile(TaskManager manager, String description, byte priority, Consumer<Pair<T,TError>> ondone) {
 			super(manager, description, priority, ondone);
 		}
 		
@@ -143,7 +143,7 @@ public abstract class Task<T,TError extends Exception> {
 		 */
 		public abstract static class Parameter<TParam,TResult,TError extends Exception> extends Task.Parameter<TParam,TResult,TError> {
 			/** Constructor. */
-			public Parameter(java.io.File file, String description, byte priority, RunnableWithParameter<Pair<TResult,TError>> ondone) {
+			public Parameter(java.io.File file, String description, byte priority, Consumer<Pair<TResult,TError>> ondone) {
 				super(Threading.getDrivesTaskManager().getTaskManager(file), description, priority, ondone);
 			}
 
@@ -172,7 +172,7 @@ public abstract class Task<T,TError extends Exception> {
 	 */
 	public abstract static class Parameter<TParam,TResult,TError extends Exception> extends Task<TResult,TError> {
 		/** Constructor. */
-		public Parameter(TaskManager tm, String description, byte priority, RunnableWithParameter<Pair<TResult,TError>> ondone) {
+		public Parameter(TaskManager tm, String description, byte priority, Consumer<Pair<TResult,TError>> ondone) {
 			super(tm, description, priority, ondone);
 		}
 
@@ -219,7 +219,7 @@ public abstract class Task<T,TError extends Exception> {
 	}
 
 	/** Constructor. */
-	public Task(TaskManager manager, String description, byte priority, RunnableWithParameter<Pair<T,TError>> ondone) {
+	public Task(TaskManager manager, String description, byte priority, Consumer<Pair<T,TError>> ondone) {
 		assert manager != null;
 		this.app = LCCore.getApplication();
 		this.manager = manager;
@@ -248,7 +248,7 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Constructor. */
-	public Task(Object resource, String description, byte priority, RunnableWithParameter<Pair<T,TError>> ondone) {
+	public Task(Object resource, String description, byte priority, Consumer<Pair<T,TError>> ondone) {
 		this(Threading.get(resource), description, priority, ondone);
 	}
 
@@ -269,7 +269,7 @@ public abstract class Task<T,TError extends Exception> {
 	// result of execution
 	Output result = new Output();
 	CancelException cancelling = null;
-	RunnableWithParameter<Pair<T,TError>> ondone = null;
+	Consumer<Pair<T,TError>> ondone = null;
 	
 	// timing and info
 	String description;
@@ -323,7 +323,7 @@ public abstract class Task<T,TError extends Exception> {
 				if (app.isDebugMode()) app.getDefaultLogger().error("Task " + description + " error: " + t.getMessage(), t);
 				try {
 					TError error = (TError)t;
-					if (ondone != null) ondone.run(new Pair<>(null, error));
+					if (ondone != null) ondone.accept(new Pair<>(null, error));
 					result.unblockError(error);
 				} catch (ClassCastException e) {
 					cancelling = new CancelException("Unexpected exception thrown", t);
@@ -342,7 +342,7 @@ public abstract class Task<T,TError extends Exception> {
 		}
 		if (taskJoin == null) {
 			status = STATUS_DONE;
-			try { if (ondone != null) ondone.run(new Pair<>(res, null)); }
+			try { if (ondone != null) ondone.accept(new Pair<>(res, null)); }
 			catch (Throwable t) {
 				app.getDefaultLogger().error("Error while calling ondone on task " + description, t);
 			}
@@ -359,10 +359,10 @@ public abstract class Task<T,TError extends Exception> {
 					cancelling = taskJoin.getCancelEvent();
 					result.cancelled(cancelling);
 				} else if (taskJoin.hasError()) {
-					if (ondone != null) ondone.run(new Pair<>(null, taskJoin.getError()));
+					if (ondone != null) ondone.accept(new Pair<>(null, taskJoin.getError()));
 					result.unblockError(taskJoin.getError());
 				} else {
-					if (ondone != null) ondone.run(new Pair<>(res, null));
+					if (ondone != null) ondone.accept(new Pair<>(res, null));
 					result.unblockSuccess(res);
 				}
 				taskJoin = null;

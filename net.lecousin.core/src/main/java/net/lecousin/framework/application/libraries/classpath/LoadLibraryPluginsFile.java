@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.FullReadLines;
 import net.lecousin.framework.plugins.ExtensionPoints;
@@ -18,7 +17,7 @@ public class LoadLibraryPluginsFile extends FullReadLines<Void> {
 	
 	/** Constructor. */
 	public <T extends ClassLoader & ApplicationClassLoader> LoadLibraryPluginsFile(BufferedReadableCharacterStream stream, T classLoader) {
-		super("Initializing plugins: " + stream.getDescription(), stream, Task.PRIORITY_IMPORTANT, IO.OperationType.ASYNCHRONOUS);
+		super("Initializing plugins: " + stream.getDescription(), stream, Task.PRIORITY_IMPORTANT, null);
 		this.classLoader = classLoader;
 	}
 	
@@ -45,10 +44,10 @@ public class LoadLibraryPluginsFile extends FullReadLines<Void> {
 		try {
 			Class<?> cl = Class.forName(piName, true, classLoader);
 			if (!Plugin.class.isAssignableFrom(cl))
-				throw new Exception("Invalid plugin class: " + line.asString() + " must extend Plugin");
+				throw new IOException("Invalid plugin class: " + line.asString() + " must extend Plugin");
 			Plugin pi = (Plugin)cl.newInstance();
 			ExtensionPoints.add(epName, pi);
-		} catch (Throwable e) {
+		} catch (Exception e) {
 			throw new IOException("Error loading plugins of library: " + getSourceDescription(), e);
 		}
 	}

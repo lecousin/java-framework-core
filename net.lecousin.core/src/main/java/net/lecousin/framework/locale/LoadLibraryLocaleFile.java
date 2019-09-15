@@ -2,7 +2,6 @@ package net.lecousin.framework.locale;
 
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.FullReadLines;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
@@ -15,7 +14,7 @@ public class LoadLibraryLocaleFile extends FullReadLines<Void> {
 	/** Constructor. */
 	public <T extends ClassLoader & ApplicationClassLoader> LoadLibraryLocaleFile(BufferedReadableCharacterStream stream, T classLoader) {
 		super("Initializing localized properties: " + stream.getDescription(),
-			stream, Task.PRIORITY_IMPORTANT, IO.OperationType.ASYNCHRONOUS);
+			stream, Task.PRIORITY_IMPORTANT, null);
 		this.classLoader = classLoader;
 	}
 	

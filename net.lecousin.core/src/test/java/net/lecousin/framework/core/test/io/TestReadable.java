@@ -3,6 +3,11 @@ package net.lecousin.framework.core.test.io;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
+
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -15,11 +20,6 @@ import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.mutable.MutableLong;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
-
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
 
 public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 	
@@ -124,12 +124,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		MutableInteger i = new MutableInteger(0);
 		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
-		RunnableWithParameter<Pair<Integer,IOException>> ondone = new RunnableWithParameter<Pair<Integer,IOException>>() {
-			@Override
-			public void run(Pair<Integer, IOException> param) {
-				onDoneBefore.set(true);
-			}
-		};
+		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		if (io instanceof IO.PositionKnown)
 			Assert.assertEquals(0, ((IO.PositionKnown)io).getPosition());
 		read.set(io.readFullyAsync(buffer, ondone));
@@ -210,12 +205,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		MutableInteger i = new MutableInteger(0);
 		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
-		RunnableWithParameter<Pair<Integer,IOException>> ondone = new RunnableWithParameter<Pair<Integer,IOException>>() {
-			@Override
-			public void run(Pair<Integer, IOException> param) {
-				onDoneBefore.set(true);
-			}
-		};
+		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		read.set(io.readFullyAsync(buffer, ondone));
 		read.get().listenInline(new Runnable() {
 			@Override
@@ -270,12 +260,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		MutableInteger pos = new MutableInteger(0);
 		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
-		RunnableWithParameter<Pair<Integer,IOException>> ondone = new RunnableWithParameter<Pair<Integer,IOException>>() {
-			@Override
-			public void run(Pair<Integer, IOException> param) {
-				onDoneBefore.set(true);
-			}
-		};
+		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		read.set(io.readAsync(buffer, ondone));
 		read.get().listenInline(new Runnable() {
 			@Override
@@ -368,12 +353,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
 		Mutable<AsyncWork<Long,IOException>> skip = new Mutable<>(null);
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
-		RunnableWithParameter<Pair<Long,IOException>> ondone = new RunnableWithParameter<Pair<Long,IOException>>() {
-			@Override
-			public void run(Pair<Long, IOException> param) {
-				onDoneBefore.set(true);
-			}
-		};
+		Consumer<Pair<Long,IOException>> ondone = param -> onDoneBefore.set(true);
 		Mutable<Runnable> skipListener = new Mutable<>(null);
 		Runnable readListener = new Runnable() {
 			@Override

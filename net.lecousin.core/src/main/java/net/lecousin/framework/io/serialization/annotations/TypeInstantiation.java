@@ -4,11 +4,11 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.Supplier;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.io.serialization.rules.TypeFactory;
-import net.lecousin.framework.util.Provider;
 
 /** Specify a factory to instantiate the type. */
 @Retention(RetentionPolicy.RUNTIME)
@@ -17,7 +17,7 @@ public @interface TypeInstantiation {
 
 	/** Factory to create an instance based on the container instance. */
 	@SuppressWarnings("rawtypes")
-	public Class<? extends Provider> factory();
+	public Class<? extends Supplier> factory();
 	
 	/** Convert an annotation into a rule. */
 	public static class ToRule implements TypeAnnotationToRule<TypeInstantiation> {

@@ -1,7 +1,5 @@
 package net.lecousin.framework.application;
 
-import net.lecousin.framework.application.Version;
-
 /**
  * An artifact is defined by a group id, an artifact id, and a version number.
  * This class inherits from ArtifactReference, and so inherits the two fields groupId and artifactId.
@@ -17,26 +15,30 @@ public class Artifact extends ArtifactReference {
 	
 	/** Makes a copy of the given artifact. */
 	public Artifact(Artifact a) {
-		this(a.groupId, a.artifactId, a.version);
+		this(a.getGroupId(), a.getArtifactId(), a.version);
 	}
 	
-	public Version version;
+	private Version version;
+	
+	public Version getVersion() {
+		return version;
+	}
 	
 	@Override
 	public boolean equals(Object obj) {
 		if (!(obj instanceof Artifact)) return false;
 		Artifact a = (Artifact)obj;
-		return groupId.equals(a.groupId) && artifactId.equals(a.artifactId) && version.equals(a.version);
+		return getGroupId().equals(a.getGroupId()) && getArtifactId().equals(a.getArtifactId()) && version.equals(a.version);
 	}
 	
 	@Override
 	public int hashCode() {
-		return groupId.hashCode() + artifactId.hashCode();
+		return getGroupId().hashCode() + getArtifactId().hashCode();
 	}
 	
 	@Override
 	public String toString() {
-		return toString(groupId, artifactId, version.toString());
+		return toString(getGroupId(), getArtifactId(), version.toString());
 	}
 	
 	/** Create a string with group id, artifact id and version, separated by colon character. */

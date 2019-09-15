@@ -6,15 +6,18 @@ import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.application.libraries.LibrariesManager;
+import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
@@ -28,7 +31,6 @@ import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.plugins.CustomExtensionPoint;
 import net.lecousin.framework.plugins.ExtensionPoints;
-import net.lecousin.framework.util.Filter;
 
 /**
  * Default implementation of LibrariesManager.
@@ -57,7 +59,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	
 	private Application app;
 	private DefaultApplicationClassLoader acl;
-	private SynchronizationPoint<Exception> started = new SynchronizationPoint<>();
+	private SynchronizationPoint<LibraryManagementException> started = new SynchronizationPoint<>();
 	private File[] additionalClassPath;
 	private ArrayList<File> classPath;
 	
@@ -84,8 +86,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				classPath.add(f);
 			}
 			if (additionalClassPath != null)
-				for (File f : additionalClassPath)
-					classPath.add(f);
+				Collections.addAll(classPath, additionalClassPath);
 			classPath.trimToSize();
 			additionalClassPath = null;
 			
@@ -95,6 +96,38 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			tasks.add(sp);
 			sp.listenAsync(new Start2(tasks), true);
 			return null;
+		}
+
+		private SynchronizationPoint<Exception> loadExtensionPoints() {
+			SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+			Enumeration<URL> urls;
+			try { urls = acl.getResources("META-INF/net.lecousin/extensionpoints"); }
+			catch (IOException e) {
+				sp.error(e);
+				return sp;
+			}
+			loadExtensionPoints(urls, sp);
+			return sp;
+		}
+		
+		private void loadExtensionPoints(Enumeration<URL> urls, SynchronizationPoint<Exception> sp) {
+			if (!urls.hasMoreElements()) {
+				sp.unblock();
+				return;
+			}
+			URL url = urls.nextElement();
+			InputStream input;
+			try { input = url.openStream(); }
+			catch (IOException e) {
+				sp.error(e);
+				return;
+			}
+			IOFromInputStream io = new IOFromInputStream(
+				input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
+			BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
+			LoadLibraryExtensionPointsFile load = new LoadLibraryExtensionPointsFile(stream, acl);
+			load.start().listenInline(() -> loadExtensionPoints(urls, sp), sp);
+			stream.closeAfter(sp);
 		}
 	}
 	
@@ -117,9 +150,8 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			}
 			
 			SynchronizationPoint<Exception> plugins = new SynchronizationPoint<>();
-			tasks.getLast().listenAsync(new Task.Cpu.FromRunnable("Load plugins from libraries", Task.PRIORITY_NORMAL, () -> {
-				loadPlugins(plugins);
-			}), false);
+			tasks.getLast().listenAsync(
+				new Task.Cpu.FromRunnable("Load plugins from libraries", Task.PRIORITY_NORMAL, () -> loadPlugins(plugins)), false);
 			tasks.add(plugins);
 			tasks.getLast().listenAsync(new Task.Cpu<Void, NoException>("Finalize libraries loading", Task.PRIORITY_NORMAL) {
 				@Override
@@ -132,20 +164,49 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			
 			JoinPoint.fromSynchronizationPoints(tasks).listenInline(
 				() -> { /* ok */ },
-				(error) -> { started.error(error); },
-				(cancel) -> { started.cancel(cancel); }
+				error -> started.error(new LibraryManagementException("Error loading librairies", error)),
+				cancel -> started.cancel(cancel)
 			);
 			
 			return null;
 		}
+		
+		private void loadPlugins(SynchronizationPoint<Exception> sp) {
+			Enumeration<URL> urls;
+			try { urls = acl.getResources("META-INF/net.lecousin/plugins"); }
+			catch (IOException e) {
+				sp.error(e);
+				return;
+			}
+			loadPlugins(urls, sp);
+		}
+		
+		private void loadPlugins(Enumeration<URL> urls, SynchronizationPoint<Exception> sp) {
+			if (!urls.hasMoreElements()) {
+				sp.unblock();
+				return;
+			}
+			URL url = urls.nextElement();
+			InputStream input;
+			try { input = url.openStream(); }
+			catch (IOException e) {
+				sp.error(e);
+				return;
+			}
+			IOFromInputStream io = new IOFromInputStream(
+				input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
+			BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
+			LoadLibraryPluginsFile load = new LoadLibraryPluginsFile(stream, acl);
+			load.start().listenInline(() -> loadPlugins(urls, sp), sp);
+			stream.closeAfter(sp);
+		}
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> onLibrariesLoaded() {
+	public ISynchronizationPoint<LibraryManagementException> onLibrariesLoaded() {
 		return started;
 	}
 	
-	@SuppressWarnings("resource")
 	@Override
 	public IO.Readable getResource(String path, byte priority) {
 		URL url = acl.getResource(path);
@@ -189,9 +250,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			while (urls.hasMoreElements()) {
 				URL url = urls.nextElement();
 				app.getDefaultLogger().info(" - Plugin file found: " + url.toString());
-				@SuppressWarnings("resource")
 				InputStream input = url.openStream();
-				@SuppressWarnings("resource")
 				IOFromInputStream io = new IOFromInputStream(
 					input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
 				ep.loadPluginConfiguration(io, acl).blockThrow(0);
@@ -199,77 +258,11 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			return null;
 		}
 	}
-	
-	private SynchronizationPoint<Exception> loadExtensionPoints() {
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		Enumeration<URL> urls;
-		try { urls = acl.getResources("META-INF/net.lecousin/extensionpoints"); }
-		catch (IOException e) {
-			sp.error(e);
-			return sp;
-		}
-		loadExtensionPoints(urls, sp);
-		return sp;
-	}
-	
-	@SuppressWarnings("resource")
-	private void loadExtensionPoints(Enumeration<URL> urls, SynchronizationPoint<Exception> sp) {
-		if (!urls.hasMoreElements()) {
-			sp.unblock();
-			return;
-		}
-		URL url = urls.nextElement();
-		InputStream input;
-		try { input = url.openStream(); }
-		catch (IOException e) {
-			sp.error(e);
-			return;
-		}
-		IOFromInputStream io = new IOFromInputStream(
-			input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
-		BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
-		LoadLibraryExtensionPointsFile load = new LoadLibraryExtensionPointsFile(stream, acl);
-		load.start().listenInline(() -> {
-			loadExtensionPoints(urls, sp);
-		}, sp);
-	}
 
-	private void loadPlugins(SynchronizationPoint<Exception> sp) {
-		Enumeration<URL> urls;
-		try { urls = acl.getResources("META-INF/net.lecousin/plugins"); }
-		catch (IOException e) {
-			sp.error(e);
-			return;
-		}
-		loadPlugins(urls, sp);
-	}
-	
-	@SuppressWarnings("resource")
-	private void loadPlugins(Enumeration<URL> urls, SynchronizationPoint<Exception> sp) {
-		if (!urls.hasMoreElements()) {
-			sp.unblock();
-			return;
-		}
-		URL url = urls.nextElement();
-		InputStream input;
-		try { input = url.openStream(); }
-		catch (IOException e) {
-			sp.error(e);
-			return;
-		}
-		IOFromInputStream io = new IOFromInputStream(
-			input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
-		BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
-		LoadLibraryPluginsFile load = new LoadLibraryPluginsFile(stream, acl);
-		load.start().listenInline(() -> {
-			loadPlugins(urls, sp);
-		}, sp);
-	}
-	
 	@Override
 	public void scanLibraries(
 		String rootPackage, boolean includeSubPackages,
-		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
 	) {
 		List<File> files = getLibrariesLocations();
 		for (File f : files) {
@@ -284,7 +277,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	/** Scan a directory looking for class files. */
 	public static void scanDirectoryLibrary(
 		ApplicationClassLoader classLoader, File dir, String rootPackage, boolean includeSubPackages,
-		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
 	) {
 		String pkgPath = rootPackage.replace('.', '/');
 		File rootDir = new File(dir, pkgPath);
@@ -294,25 +287,23 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	
 	private static void scanClasses(
 		ApplicationClassLoader classLoader, File dir, String pkgName, boolean includeSubPackages,
-		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
 	) {
 		File[] files = dir.listFiles();
 		if (files == null) return;
-		boolean filtered = packageFilter != null && !packageFilter.accept(pkgName);
+		boolean filtered = packageFilter != null && !packageFilter.test(pkgName);
 		for (File f : files) {
 			if (f.isDirectory()) {
 				if (!includeSubPackages) continue;
 				scanClasses(classLoader, f, pkgName + '.' + f.getName(), true, packageFilter, classFilter, classScanner);
-			} else if (!filtered) {
-				if (f.getName().endsWith(".class")) {
-					String name = pkgName + '.' + f.getName().substring(0, f.getName().length() - 6);
-					if (classFilter == null || classFilter.accept(name)) {
-						try {
-							Class<?> cl = classLoader.loadClass(name);
-							classScanner.fire(cl);
-						} catch (Throwable t) {
-							// ignore
-						}
+			} else if (!filtered && f.getName().endsWith(".class")) {
+				String name = pkgName + '.' + f.getName().substring(0, f.getName().length() - 6);
+				if (classFilter == null || classFilter.test(name)) {
+					try {
+						Class<?> cl = classLoader.loadClass(name);
+						classScanner.fire(cl);
+					} catch (Exception t) {
+						// ignore
 					}
 				}
 			}
@@ -322,11 +313,11 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	/** Scan a JAR looking for class files. */
 	public static void scanJarLibrary(
 		ApplicationClassLoader classLoader, File file, String rootPackage, boolean includeSubPackages,
-		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
 	) {
 		try (ZipFile jar = new ZipFile(file)) {
 			scanJarLibrary(classLoader, jar, rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);
-		} catch (Throwable t) {
+		} catch (Exception t) {
 			// ignore
 		}
 	}
@@ -334,27 +325,29 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	/** Scan a JAR looking for class files. */
 	public static void scanJarLibrary(
 		ApplicationClassLoader classLoader, ZipFile jar, String rootPackage, boolean includeSubPackages,
-		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
 	) {
 		String pkgPath = rootPackage.length() > 0 ? rootPackage.replace('.', '/') + '/' : "";
 		Enumeration<? extends ZipEntry> entries = jar.entries();
 		while (entries.hasMoreElements()) {
 			ZipEntry f = entries.nextElement();
 			if (f.isDirectory()) continue;
+			
 			String name = f.getName();
-			if (!name.startsWith(pkgPath)) continue;
-			if (!name.endsWith(".class")) continue;
+			if (!name.startsWith(pkgPath) ||
+				!name.endsWith(".class"))
+				continue;
 			name = name.substring(0, name.length() - 6);
 			name = name.replace('/', '.');
 			int i = name.lastIndexOf('.');
 			String pkg = i > 0 ? name.substring(0, i) : "";
 			if (includeSubPackages || pkg.equals(rootPackage)) {
-				if (packageFilter != null && !packageFilter.accept(pkg)) continue;
-				if (classFilter != null && !classFilter.accept(name)) continue;
+				if (packageFilter != null && !packageFilter.test(pkg)) continue;
+				if (classFilter != null && !classFilter.test(name)) continue;
 				try {
 					Class<?> cl = classLoader.loadClass(name);
 					classScanner.fire(cl);
-				} catch (Throwable t) {
+				} catch (Exception t) {
 					// ignore
 				}
 			}

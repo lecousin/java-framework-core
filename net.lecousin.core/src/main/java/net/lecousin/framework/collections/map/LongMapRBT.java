@@ -32,7 +32,7 @@ public class LongMapRBT<T> implements LongMap<T> {
 		int h = hash(key);
 		RedBlackTreeLong<T> bucket = buckets[h];
 		if (bucket == null) {
-			buckets[h] = bucket = new RedBlackTreeLong<T>();
+			buckets[h] = bucket = new RedBlackTreeLong<>();
 			bucket.add(key, entry);
 			size++;
 			return null;

@@ -2,6 +2,7 @@ package net.lecousin.framework.io.buffering;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.CancelException;
@@ -17,7 +18,6 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Often the best implementation when reading sequentially (streaming, without seek): it fills a first buffer
@@ -414,7 +414,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 
 	@Override
-	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		SynchronizationPoint<NoException> sp = null;
 		synchronized (this) {
 			if (error != null) return IOUtil.error(error, ondone);
@@ -471,7 +471,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 	
 	@Override
-	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readFullyAsync(this, buffer, ondone));
 	}
 	
@@ -544,7 +544,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 	
 	@Override
-	public AsyncWork<Long,IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public AsyncWork<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		synchronized (this) {
 			if (error != null) return IOUtil.error(error, ondone);
 			if (n <= 0) return IOUtil.success(Long.valueOf(0), ondone);
@@ -734,12 +734,12 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return readFullySyncIfPossible(buffer, 0, ondone);
 	}
 	
 	private AsyncWork<Integer, IOException> readFullySyncIfPossible(
-		ByteBuffer buffer, int alreadyDone, RunnableWithParameter<Pair<Integer, IOException>> ondone
+		ByteBuffer buffer, int alreadyDone, Consumer<Pair<Integer, IOException>> ondone
 	) {
 		boolean ok = true;
 		synchronized (this) {
@@ -761,9 +761,9 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			AsyncWork<Integer, IOException> res = new AsyncWork<>();
 			readFullyAsync(buffer, (r) -> {
 				if (ondone != null) {
-					if (r.getValue1() != null) ondone.run(
+					if (r.getValue1() != null) ondone.accept(
 						new Pair<>(Integer.valueOf(r.getValue1().intValue() + alreadyDone), null));
-					else ondone.run(r);
+					else ondone.accept(r);
 				}
 			}).listenInline((nb) -> {
 				res.unblockSuccess(Integer.valueOf(alreadyDone + nb.intValue()));
@@ -777,7 +777,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			buffer.put(current);
 			current.limit(l);
 			Integer r = Integer.valueOf(alreadyDone + len);
-			if (ondone != null) ondone.run(new Pair<>(r, null));
+			if (ondone != null) ondone.accept(new Pair<>(r, null));
 			return new AsyncWork<>(r, null);
 		}
 		len = current.remaining();
@@ -787,7 +787,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
+	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		SynchronizationPoint<NoException> sp;
 		synchronized (this) {
 			if (error != null) return IOUtil.error(error, ondone);

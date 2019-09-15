@@ -27,7 +27,6 @@ import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.concurrent.tasks.LoadPropertiesFileTask;
 import net.lecousin.framework.concurrent.tasks.SavePropertiesFileTask;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.provider.IOProvider;
@@ -38,6 +37,7 @@ import net.lecousin.framework.log.appenders.Appender;
 import net.lecousin.framework.util.AsyncCloseable;
 import net.lecousin.framework.util.ObjectUtil;
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.SystemEnvironment;
 
 /**
  * Class holding application information such as properties, logging...
@@ -67,9 +67,9 @@ public final class Application {
 			this.properties = new Hashtable<>(properties);
 		else
 			this.properties = new Hashtable<>();
-		this.properties.put("groupId", artifact.groupId);
-		this.properties.put("artifactId", artifact.artifactId);
-		this.properties.put("version", artifact.version.toString());
+		this.properties.put("groupId", artifact.getGroupId());
+		this.properties.put("artifactId", artifact.getArtifactId());
+		this.properties.put("version", artifact.getVersion().toString());
 		this.debugMode = debugMode;
 		this.threadFactory = threadFactory;
 		this.librariesManager = librariesManager;
@@ -103,15 +103,15 @@ public final class Application {
 	}
 	
 	public String getGroupId() {
-		return artifact.groupId;
+		return artifact.getGroupId();
 	}
 	
 	public String getArtifactId() {
-		return artifact.artifactId;
+		return artifact.getArtifactId();
 	}
 	
 	public Version getVersion() {
-		return artifact.version;
+		return artifact.getVersion();
 	}
 	
 	public List<String> getCommandLineArguments() {
@@ -157,7 +157,7 @@ public final class Application {
 	}
 	
 	/** Set the new application language / locale. */
-	public synchronized void setLocale(Locale l) {
+	public void setLocale(Locale l) {
 		locale = l;
 		String lt = l.toLanguageTag();
 		languageTag = lt.split("-");
@@ -269,7 +269,10 @@ public final class Application {
 	}
 	
 	/** Method to call at the beginning of the application, typically in the main method. */
-	public static ISynchronizationPoint<Exception> start(
+	@SuppressWarnings({
+		"squid:S3776", // complexity: we do not want to split into sub-methods
+	})
+	public static ISynchronizationPoint<ApplicationBootstrapException> start(
 		Artifact artifact,
 		String[] commandLineArguments,
 		Map<String,String> properties,
@@ -284,14 +287,15 @@ public final class Application {
 		String dir = app.getProperty(PROPERTY_CONFIG_DIRECTORY);
 		if (dir == null)
 			app.setProperty(PROPERTY_CONFIG_DIRECTORY,
-				app.getProperty("user.home") + "/.lc.apps/" + app.getGroupId() + "/" + app.getArtifactId() + "/cfg");
+				app.getProperty(SystemEnvironment.SYSTEM_PROPERTY_USER_HOME)
+				+ "/.lc.apps/" + app.getGroupId() + "/" + app.getArtifactId() + "/cfg");
 		dir = app.getProperty(PROPERTY_LOG_DIRECTORY);
 		if (dir == null)
 			app.setProperty(PROPERTY_LOG_DIRECTORY,
-				app.getProperty("user.home") + "/.lc.apps/" + app.getGroupId() + "/" + app.getArtifactId() + "/log");
+				app.getProperty(SystemEnvironment.SYSTEM_PROPERTY_USER_HOME)
+				+ "/.lc.apps/" + app.getGroupId() + "/" + app.getArtifactId() + "/log");
 
 		if (app.isDebugMode()) {
-			@SuppressWarnings("resource")
 			Console c = app.getConsole();
 			c.out("---- Application " + artifact.toString() + " ----");
 			c.out("Application arguments:");
@@ -343,26 +347,32 @@ public final class Application {
 		loading.addToJoin(loadLocale.getOutput());
 		
 		loading.start();
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		SynchronizationPoint<ApplicationBootstrapException> sp = new SynchronizationPoint<>();
 		loading.listenInline(() -> {
 			app.appClassLoader = librariesManager.start(app);
-			librariesManager.onLibrariesLoaded().listenInline(sp);
+			librariesManager.onLibrariesLoaded().listenInline(sp,
+				error -> new ApplicationBootstrapException("Error loading libraries", error));
 		});
 		
 		return sp;
 	}
 	
 	/** Method to call at the beginning of the application, typically in the main method. */
-	public static ISynchronizationPoint<Exception> start(Artifact artifact, boolean debugMode) {
+	public static ISynchronizationPoint<ApplicationBootstrapException> start(Artifact artifact, boolean debugMode) {
 		return start(artifact, new String[0], debugMode);
 	}
 	
 	/** Method to call at the beginning of the application, typically in the main method. */
-	public static ISynchronizationPoint<Exception> start(Artifact artifact, String[] args, boolean debugMode) {
+	public static ISynchronizationPoint<ApplicationBootstrapException> start(Artifact artifact, String[] args, boolean debugMode) {
 		return start(artifact, args, null, debugMode, Executors.defaultThreadFactory(), new DefaultLibrariesManager(), null);
 	}
 
 	/** Stop this application and release resources. */
+	@SuppressWarnings({
+		"squid:S106", // we use System.out because the application is shutting down and logging system won't be available
+		"squid:S2142", // ignore InterruptedException because we are shutting down
+		"squid:S3776", // complexity: we do not want to split into sub-methods
+	})
 	public void stop() {
 		System.out.println("Stopping application");
 		stopping = true;
@@ -370,7 +380,7 @@ public final class Application {
 		System.out.println(" * Closing resources");
 		for (Closeable c : new ArrayList<>(toCloseSync)) {
 			System.out.println("     - " + c);
-			try { c.close(); } catch (Throwable t) {
+			try { c.close(); } catch (Exception t) {
 				System.err.println("Error closing resource " + c);
 				t.printStackTrace(System.err);
 			}
@@ -390,6 +400,7 @@ public final class Application {
 		}
 		toCloseAsync.clear();
 		long start = System.currentTimeMillis();
+		boolean allClosed = false;
 		do {
 			for (Iterator<Pair<AsyncCloseable<?>,ISynchronizationPoint<?>>> it = closing.iterator(); it.hasNext(); ) {
 				Pair<AsyncCloseable<?>,ISynchronizationPoint<?>> s = it.next();
@@ -398,14 +409,19 @@ public final class Application {
 					it.remove();
 				}
 			}
-			if (closing.isEmpty()) break;
-			try { Thread.sleep(100); }
-			catch (InterruptedException e) { break; }
-			if (System.currentTimeMillis() - start > 15000) {
-				System.out.println("Ressources are still closing, but we don't wait more than 15 seconds.");
-				break;
+			if (closing.isEmpty())
+				allClosed = true;
+			else {
+				try {
+					Thread.sleep(100);
+					if (System.currentTimeMillis() - start > 15000) {
+						System.out.println("Ressources are still closing, but we don't wait more than 15 seconds.");
+						allClosed = true;
+					}
+				}
+				catch (InterruptedException e) { allClosed = true; }
 			}
-		} while (true);
+		} while (!allClosed);
 		
 		console.close();
 
@@ -440,18 +456,14 @@ public final class Application {
 		if (!f.exists()) {
 			getDefaultLogger().info("No preferences file");
 			preferences = new Properties();
-			return loadingPreferences = new SynchronizationPoint<>(true);
+			loadingPreferences = new SynchronizationPoint<>(true);
+			return loadingPreferences;
 		}
 		getDefaultLogger().info("Loading preferences from " + f.getAbsolutePath());
 		loadingPreferences = LoadPropertiesFileTask.loadPropertiesFile(
 			f, StandardCharsets.UTF_8, Task.PRIORITY_IMPORTANT,
 			false,
-			new Listener<Properties>() {
-				@Override
-				public void fire(Properties props) {
-					preferences = props;
-				}
-			}
+			props -> preferences = props
 		);
 		return loadingPreferences;
 	}
@@ -461,13 +473,12 @@ public final class Application {
 	private synchronized void savePreferences() {
 		if (savingPreferences != null && !savingPreferences.isUnblocked()) {
 			// we need to save again once done
-			savingPreferences.listenInline(() -> { savePreferences(); });
+			savingPreferences.listenInline(this::savePreferences);
 			return;
 		}
 		File f = new File(getProperty(PROPERTY_CONFIG_DIRECTORY));
-		if (!f.exists() || !f.isDirectory())
-			if (!f.mkdirs())
-				loggerFactory.getDefault().warn("Unable to create directory to save preferences: " + f.getAbsolutePath());
+		if ((!f.exists() || !f.isDirectory()) && !f.mkdirs())
+			loggerFactory.getDefault().warn("Unable to create directory to save preferences: " + f.getAbsolutePath());
 		f = new File(f, "preferences");
 		getDefaultLogger().info("Saving preferences to " + f.getAbsolutePath());
 		savingPreferences = SavePropertiesFileTask.savePropertiesFile(preferences, f, StandardCharsets.UTF_8, Task.PRIORITY_RATHER_LOW);

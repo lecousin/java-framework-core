@@ -19,11 +19,11 @@ public class LoadedLibrary {
 	@SuppressWarnings("unchecked")
 	public <T extends ClassLoader & ApplicationClassLoader> T getClassLoader() { return (T)classLoader; }
 	
-	public String getGroupId() { return artifact.groupId; }
+	public String getGroupId() { return artifact.getGroupId(); }
 	
-	public String getArtifactId() { return artifact.artifactId; }
+	public String getArtifactId() { return artifact.getArtifactId(); }
 	
-	public Version getVersion() { return artifact.version; }
+	public Version getVersion() { return artifact.getVersion(); }
 	
 	@Override
 	public String toString() {

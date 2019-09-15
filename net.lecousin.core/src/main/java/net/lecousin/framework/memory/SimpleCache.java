@@ -5,9 +5,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.Provider;
 
 /**
  * A simple cache implementation.
@@ -17,14 +17,14 @@ import net.lecousin.framework.util.Provider;
 public class SimpleCache<Key,Data> implements IMemoryManageable, Closeable {
 
 	/** Constructor. */
-	public SimpleCache(String description, Provider.FromValue<Key,Data> provider) {
+	public SimpleCache(String description, Function<Key,Data> provider) {
 		this.description = description;
 		this.provider = provider;
 		MemoryManager.register(this);
 	}
 	
 	private String description;
-	private Provider.FromValue<Key,Data> provider;
+	private Function<Key,Data> provider;
 	private HashMap<Key,Pair<Data,Long>> cache = new HashMap<>();
 	
 	@Override
@@ -42,7 +42,7 @@ public class SimpleCache<Key,Data> implements IMemoryManageable, Closeable {
 				p.setValue2(Long.valueOf(System.currentTimeMillis()));
 				return p.getValue1();
 			}
-			p = new Pair<>(provider.provide(key), Long.valueOf(System.currentTimeMillis()));
+			p = new Pair<>(provider.apply(key), Long.valueOf(System.currentTimeMillis()));
 			cache.put(key, p);
 			return p.getValue1();
 		}

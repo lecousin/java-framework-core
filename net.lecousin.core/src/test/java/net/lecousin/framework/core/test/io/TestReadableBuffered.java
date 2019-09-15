@@ -3,6 +3,11 @@ package net.lecousin.framework.core.test.io;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
+
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -15,11 +20,6 @@ import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
-
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
 
 public abstract class TestReadableBuffered extends TestReadableByteStream {
 	
@@ -108,12 +108,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		MutableInteger pos = new MutableInteger(0);
 		Mutable<AsyncWork<ByteBuffer,IOException>> read = new Mutable<>(null);
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
-		RunnableWithParameter<Pair<ByteBuffer,IOException>> ondone = new RunnableWithParameter<Pair<ByteBuffer,IOException>>() {
-			@Override
-			public void run(Pair<ByteBuffer, IOException> param) {
-				onDoneBefore.set(true);
-			}
-		};
+		Consumer<Pair<ByteBuffer,IOException>> ondone = param -> onDoneBefore.set(true);
 		read.set(io.readNextBufferAsync(ondone));
 		read.get().listenInline(new Runnable() {
 			@Override
@@ -184,7 +179,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 	
 	private void nextSyncIfPossible(IO.Readable.Buffered io, int index, byte[] buf, SynchronizationPoint<Exception> sp) {
 		MutableBoolean ondoneCalled = new MutableBoolean(false);
-		RunnableWithParameter<Pair<Integer, IOException>> ondone = (res) -> {
+		Consumer<Pair<Integer, IOException>> ondone = (res) -> {
 			ondoneCalled.set(true);
 		};
 		do {

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -12,7 +13,6 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.math.RangeLong;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * A fragmented sub-IO allows to specify a list of fragments inside a seekable IO, and does like those fragments are a contiguous IO.
@@ -64,17 +64,17 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		}
 		
 		@Override
-		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 			return super.readAsync(pos, buffer, (res) -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					pos += res.getValue1().intValue();
-				if (ondone != null) ondone.run(res);
+				if (ondone != null) ondone.accept(res);
 			});
 		}
 
 		@Override
 		public AsyncWork<Integer, IOException> readAsync(
-			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+			long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 		) {
 			return super.readAsync(pos, buffer, ondone);
 		}
@@ -104,17 +104,17 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		}
 		
 		@Override
-		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 			return readFullyAsync(pos, buffer, (res) -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					pos += res.getValue1().intValue();
-				if (ondone != null) ondone.run(res);
+				if (ondone != null) ondone.accept(res);
 			});
 		}
 		
 		@Override
 		public AsyncWork<Integer,IOException> readFullyAsync(
-			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+			long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 		) {
 			return operation(IOUtil.readFullyAsync(this, pos, buffer, ondone));
 		}
@@ -125,7 +125,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		}
 		
 		@Override
-		public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+		public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 			return super.skipAsync(n, ondone);
 		}
 	}
@@ -159,17 +159,17 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 
 		@Override
 		public AsyncWork<Integer, IOException> writeAsync(
-			long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+			long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 		) {
 			return super.writeAsync(pos, buffer, ondone);
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 			return super.writeAsync(pos, buffer, (res) -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					pos += res.getValue1().intValue();
-				if (ondone != null) ondone.run(res);
+				if (ondone != null) ondone.accept(res);
 			});
 		}
 	}
@@ -218,7 +218,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 	
 	// Readable
 	
-	protected AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	protected AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		Iterator<RangeLong> it = fragments.iterator();
 		long p = 0;
 		while (it.hasNext()) {
@@ -233,19 +233,15 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 			if (start + len > s) {
 				int prevLimit = buffer.limit();
 				buffer.limit((int)(prevLimit - ((start + len) - s)));
-				return ((IO.Readable.Seekable)io).readAsync(r.min + start, buffer,
-				new RunnableWithParameter<Pair<Integer,IOException>>() {
-					@Override
-					public void run(Pair<Integer, IOException> param) {
-						buffer.limit(prevLimit);
-						if (ondone != null) ondone.run(param);
-					}
+				return ((IO.Readable.Seekable)io).readAsync(r.min + start, buffer, param -> {
+					buffer.limit(prevLimit);
+					if (ondone != null) ondone.accept(param);
 				});
 			}
 			return operation(((IO.Readable.Seekable)io).readAsync(r.min + start, buffer, ondone));
 		}
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
-		if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(0), null));
+		if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(0), null));
 		sp.unblockSuccess(Integer.valueOf(0));
 		return sp;
 	}
@@ -334,18 +330,18 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 	}
 	
 	@Override
-	public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 		AsyncWork<Long,IOException> sp = new AsyncWork<>();
 		seekSync(type, move);
-		if (ondone != null) ondone.run(new Pair<>(Long.valueOf(pos), null));
+		if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(pos), null));
 		sp.unblockSuccess(Long.valueOf(pos));
 		return sp;
 	}
 	
-	protected AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+	protected AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 		AsyncWork<Long,IOException> sp = new AsyncWork<>();
 		long skipped = skipSync(n);
-		if (ondone != null) ondone.run(new Pair<>(Long.valueOf(skipped), null));
+		if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(skipped), null));
 		sp.unblockSuccess(Long.valueOf(skipped));
 		return sp;
 	}
@@ -386,7 +382,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		return total;
 	}
 
-	protected AsyncWork<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	protected AsyncWork<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		Iterator<RangeLong> it = fragments.iterator();
 		long p = 0;
 		while (it.hasNext()) {
@@ -401,14 +397,14 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 			return operation(sp);
 		}
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
-		if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(0), null));
+		if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(0), null));
 		sp.unblockSuccess(Integer.valueOf(0));
 		return sp;
 	}
 	
 	protected void writeAsync(
 		Iterator<RangeLong> it, RangeLong r, long p, int done, long pos,
-		ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone, AsyncWork<Integer,IOException> sp
+		ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone, AsyncWork<Integer,IOException> sp
 	) {
 		long start = pos - p;
 		int len = buffer.remaining();

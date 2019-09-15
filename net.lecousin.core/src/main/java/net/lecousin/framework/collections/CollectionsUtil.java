@@ -1,10 +1,13 @@
 package net.lecousin.framework.collections;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import net.lecousin.framework.util.ObjectUtil;
 
@@ -21,6 +24,7 @@ public final class CollectionsUtil {
 	/** Convert an iterator to an enumeration.
 	 * @param <T> type of elements
 	 */
+	@SuppressWarnings("squid:S1150") // we want an Enumeration in this case
 	public static class IteratorToEnumeration<T> implements Enumeration<T> {
 		/** Constructor. */
 		public IteratorToEnumeration(Iterator<T> it) {
@@ -52,6 +56,7 @@ public final class CollectionsUtil {
 			}
 			
 			@Override
+			@SuppressWarnings("squid:S2272") // false positive: nextElement already throws NoSuchElementException
 			public T next() {
 				return enumeration.nextElement();
 			}
@@ -60,12 +65,7 @@ public final class CollectionsUtil {
 	
 	/** Create an Iterable from an Enumeration, but avoiding to create a list, so the Iterable can be iterated only once. */
 	public static <T> Iterable<T> singleTimeIterable(Enumeration<T> enumeration) {
-		return new Iterable<T>() {
-			@Override
-			public Iterator<T> iterator() {
-				return CollectionsUtil.iterator(enumeration);
-			}
-		};
+		return () -> CollectionsUtil.iterator(enumeration);
 	}
 	
 	/** Return true of the 2 lists are identical. To be identical, the 2 lists must have the same size,
@@ -88,4 +88,30 @@ public final class CollectionsUtil {
 			col.add(e.nextElement());
 	}
 	
+	/** Convert a list of Input into a list of Output using the given mapper. */
+	public static <Input, Output> List<Output> map(List<Input> inputs, Function<Input, Output> mapper) {
+		ArrayList<Output> outputs = new ArrayList<>(inputs.size());
+		for (Input input : inputs)
+			outputs.add(mapper.apply(input));
+		return outputs;
+	}
+	
+	/** Search an element and return it, ot null if not found. */
+	public static <T> T findElement(Collection<T> collection, Predicate<T> predicate) {
+		for (T element : collection)
+			if (predicate.test(element))
+				return element;
+		return null;
+	}
+	
+	/** Return a function that search an element and return it, ot null if not found. */
+	public static <T> Function<Collection<T>, T> filterSingle(Predicate<T> predicate) {
+		return collection -> {
+			for (T element : collection)
+				if (predicate.test(element))
+					return element;
+			return null;
+		};
+	}
+
 }

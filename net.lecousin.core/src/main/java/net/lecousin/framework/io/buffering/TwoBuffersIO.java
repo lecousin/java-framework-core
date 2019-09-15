@@ -3,6 +3,7 @@ package net.lecousin.framework.io.buffering;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -14,7 +15,6 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Read an IO.Readable into 2 buffers, then those buffers can be read when ready.
@@ -82,7 +82,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		}
 
 		@Override
-		public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+		public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 			// seek does not need any task, we can do it sync
 			try { return IOUtil.success(Long.valueOf(seekSync(type, move)), ondone); }
 			catch (IOException e) { return IOUtil.error(e, ondone); }
@@ -264,7 +264,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		if (nb1 < 0) return readFullyAsync(buffer, ondone);
 		int len = buffer.remaining();
 		int done = 0;
@@ -284,8 +284,8 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			int d = done;
 			readFullyAsync(buffer, (res) -> {
 				if (ondone != null) {
-					if (res.getValue1() != null) ondone.run(new Pair<>(Integer.valueOf(d + res.getValue1().intValue()), null));
-					else ondone.run(res);
+					if (res.getValue1() != null) ondone.accept(new Pair<>(Integer.valueOf(d + res.getValue1().intValue()), null));
+					else ondone.accept(res);
 				}
 			}).listenInline((nb) -> {
 				r.unblockSuccess(Integer.valueOf(nb.intValue() + d));
@@ -300,7 +300,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		return IOUtil.success(Integer.valueOf(l + done), ondone);
 	}
 
-	private <T> AsyncWork<T, IOException> needRead1Async(Callable<T> onReady, RunnableWithParameter<Pair<T,IOException>> ondone) {
+	private <T> AsyncWork<T, IOException> needRead1Async(Callable<T> onReady, Consumer<Pair<T,IOException>> ondone) {
 		if (!read1.isUnblocked()) {
 			AsyncWork<T, IOException> sp = new AsyncWork<>();
 			IOUtil.listenOnDone(read1, new Task.Cpu.FromRunnable("TwoBuffersIO", io.getPriority(), () -> {
@@ -321,7 +321,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		return null;
 	}
 	
-	private <T> AsyncWork<T, IOException> needRead2Async(Callable<T> onReady, RunnableWithParameter<Pair<T,IOException>> ondone) {
+	private <T> AsyncWork<T, IOException> needRead2Async(Callable<T> onReady, Consumer<Pair<T,IOException>> ondone) {
 		if (!read1.isUnblocked() || read2 == null) {
 			AsyncWork<T, IOException> sp = new AsyncWork<>();
 			IOUtil.listenOnDone(read1, new Task.Cpu.FromRunnable("TwoBuffersIO", io.getPriority(), () -> {
@@ -372,16 +372,16 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return readAsync(pos, buffer, (res) -> {
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				pos += res.getValue1().intValue();
-			if (ondone != null) ondone.run(res);
+			if (ondone != null) ondone.accept(res);
 		});
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		if (nb1 < 0) {
 			AsyncWork<Integer, IOException> res = needRead1Async(() -> {
 				if (nb1 == 0) return Integer.valueOf(-1);
@@ -427,7 +427,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	}
 
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
+	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
 			@Override
 			public ByteBuffer run() throws IOException {
@@ -541,12 +541,12 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readFullyAsync(this, buffer, 0, ondone));
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readFullyAsync(this, pos, buffer, ondone));
 	}
 
@@ -587,7 +587,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> skipAsync(long skip, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public AsyncWork<Long, IOException> skipAsync(long skip, Consumer<Pair<Long,IOException>> ondone) {
 		if (skip < 0) {
 			if (-skip > pos) skip = -pos;
 			pos += skip;
@@ -676,7 +676,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 		return operation(IOUtil.seekAsyncUsingSync(this, type, move, ondone)).getOutput();
 	}
 	

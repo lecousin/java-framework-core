@@ -72,7 +72,7 @@ public final class LCCore {
 	}
 	
 	/** Set the environment. */
-	public static void set(Environment env) throws IllegalStateException {
+	public static void set(Environment env) {
 		if (instance != null) throw new IllegalStateException("LCCore environment already exists");
 		instance = env;
 	}
@@ -134,6 +134,7 @@ public final class LCCore {
 	}
 	
 	/** Stop the environement. */
+	@SuppressWarnings("squid:S106") // print to System.out/err because we are stopping and logging system is not available
 	public static MutableBoolean stop(boolean forceJvmToStop) {
 		if (stop != null) {
 			new Exception("LCCore already stopped", stop).printStackTrace(System.err);
@@ -181,6 +182,7 @@ public final class LCCore {
 	private static Exception stop = null;
 	private static TurnArray<Runnable> toDoInMainThread = new TurnArray<>(5);
 	
+	@SuppressWarnings("squid:S2142") // we should continue to shutdown properly
 	private static void mainThreadLoop() {
 		while (stop == null) {
 			Runnable todo = null;
@@ -215,10 +217,10 @@ public final class LCCore {
 	/** Interface to implement to override the main thread executor. */
 	public static interface MainThreadExecutor {
 		/** Execute a task. */
-		public void execute(Runnable toExecute);
+		void execute(Runnable toExecute);
 		
 		/** Remove and return the next task to execute. */
-		public Runnable pop();
+		Runnable pop();
 	}
 	
 	/** Ask to execute the given Runnable in the main thread as soon as the thread is available. */

@@ -7,15 +7,15 @@ package net.lecousin.framework.collections.map;
 public interface ShortMap<ValueType> extends PrimitiveMap<ValueType> {
 
 	/** Put a value and return the previous value associated with this key, or null. */
-	public ValueType put(short key, ValueType entry);
+	ValueType put(short key, ValueType entry);
 
 	/** Get a value. */
-	public ValueType get(short key);
+	ValueType get(short key);
 	
 	/** Remove a value. */
-	public ValueType remove(short key);
+	ValueType remove(short key);
 	
 	/** Return true if the map contains the given key. */
-	public boolean containsKey(short key);
+	boolean containsKey(short key);
 	
 }

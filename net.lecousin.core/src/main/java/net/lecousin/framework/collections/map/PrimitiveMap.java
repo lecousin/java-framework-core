@@ -9,10 +9,10 @@ import java.util.Iterator;
 public interface PrimitiveMap<ValueType> {
 
 	/** Return the number of elements. */
-	public int size();
+	int size();
 	
 	/** Return true if this map is empty. */
-	public boolean isEmpty();
+	boolean isEmpty();
 	
 	/** Clear all elements of this map. */
 	void clear();

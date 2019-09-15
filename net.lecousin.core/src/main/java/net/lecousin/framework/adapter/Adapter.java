@@ -9,18 +9,18 @@ import net.lecousin.framework.plugins.Plugin;
  * @param <Input> input type
  * @param <Output> output type
  */
-public interface Adapter<Input,Output> extends Plugin {
+public interface Adapter<Input, Output> extends Plugin {
 
 	/** Return true if the given input can be transformed. */
-	public boolean canAdapt(Input input);
+	boolean canAdapt(Input input);
 
 	/** Convert the given input into the output type. */
-	public Output adapt(Input input) throws Exception;
+	Output adapt(Input input) throws AdapterException;
 	
 	/** Return the class of the input type. */
-	public Class<Input> getInputType();
+	Class<Input> getInputType();
 	
 	/** Return the class of the output type. */
-	public Class<Output> getOutputType();
+	Class<Output> getOutputType();
 	
 }

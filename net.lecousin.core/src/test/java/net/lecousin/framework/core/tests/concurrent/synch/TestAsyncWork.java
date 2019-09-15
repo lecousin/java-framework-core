@@ -2,6 +2,7 @@ package net.lecousin.framework.core.tests.concurrent.synch;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -20,7 +21,6 @@ import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 public class TestAsyncWork extends LCCoreAbstractTest {
 
@@ -452,7 +452,7 @@ public class TestAsyncWork extends LCCoreAbstractTest {
 		};
 		SynchronizationPoint<Exception> sp;
 		MutableInteger nbDone = new MutableInteger(0);
-		RunnableWithParameter<Pair<Integer, Exception>> ondone = (p) -> {
+		Consumer<Pair<Integer, Exception>> ondone = (p) -> {
 			nbDone.inc();
 		};
 		AsyncWork<Integer, Exception> aw;

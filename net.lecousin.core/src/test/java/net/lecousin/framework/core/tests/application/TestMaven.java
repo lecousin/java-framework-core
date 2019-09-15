@@ -16,18 +16,19 @@ import net.lecousin.framework.application.libraries.artifacts.maven.MavenRemoteR
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenSettings;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.util.SystemEnvironment;
 
 public class TestMaven extends LCCoreAbstractTest {
 
 	@Test(timeout=120000)
 	public void testLocalRepository() throws Exception {
-		File settings = new File(System.getProperty("user.home") + "/.m2/settings.xml");
-		String localRepo = System.getProperty("user.home") + "/.m2/repository";
+		File settings = new File(System.getProperty(SystemEnvironment.SYSTEM_PROPERTY_USER_HOME) + "/.m2/settings.xml");
+		String localRepo = System.getProperty(SystemEnvironment.SYSTEM_PROPERTY_USER_HOME) + "/.m2/repository";
 		if (settings.exists()) {
 			try {
 				MavenSettings ms = MavenSettings.load(settings);
-				if (ms.localRepository != null)
-					localRepo = ms.localRepository;
+				if (ms.getLocalRepository() != null)
+					localRepo = ms.getLocalRepository();
 			} catch (Exception e) {
 				System.err.println("Error reading Maven settings.xml");
 				e.printStackTrace(System.err);
@@ -194,7 +195,7 @@ public class TestMaven extends LCCoreAbstractTest {
 		InputStream in = getClass().getClassLoader().getResourceAsStream("app/maven/settings.xml");
 		MavenSettings settings = MavenSettings.load(in);
 		in.close();
-		Assert.assertEquals("/test/maven/local/repo", settings.localRepository);
+		Assert.assertEquals("/test/maven/local/repo", settings.getLocalRepository());
 	}
 	
 }

@@ -12,19 +12,19 @@ import java.util.Iterator;
 public interface Sorted<T> extends Iterable<T> {
 
 	/** Number of elements in this collection. */
-	public int size();
+	int size();
 	
 	/** Return true if this collection is empty. */
-	public boolean isEmpty();
+	boolean isEmpty();
 	
 	/** Clear this collection. */
-	public void clear();
+	void clear();
 	
 	/** Return an iterator that iterates on the correct order. */
-	public Iterator<T> orderedIterator();
+	Iterator<T> orderedIterator();
 	
 	/** Return an iterator that iterates on the correct order. */
-	public Iterator<T> reverseOrderIterator();
+	Iterator<T> reverseOrderIterator();
 	
 	/** Interface for sorted list where elements are associated with long values to sort them.
 	 * @param <T> type of elements
@@ -32,19 +32,19 @@ public interface Sorted<T> extends Iterable<T> {
 	public interface AssociatedWithLong<T> extends Sorted<T> {
 		
 		/** Add an element. */
-		public void add(long value, T element);
+		void add(long value, T element);
 
 		/** Return true if the list contains the element. */
-		public boolean contains(long value, T element);
+		boolean contains(long value, T element);
 		
 		/** Return true if the list contains the given instance. */
-		public boolean containsInstance(long value, T element);
+		boolean containsInstance(long value, T element);
 		
 		/** Remove the first occurrence of the element. */
-		public void remove(long value, T element);
+		void remove(long value, T element);
 
 		/** Remove the first occurrence of the given instance. */
-		public void removeInstance(long value, T element);
+		void removeInstance(long value, T element);
 		
 	}
 	
@@ -54,19 +54,19 @@ public interface Sorted<T> extends Iterable<T> {
 	public interface AssociatedWithInteger<T> extends Sorted<T> {
 		
 		/** Add an element. */
-		public void add(int value, T element);
+		void add(int value, T element);
 		
 		/** Return true if the list contains the element. */
-		public boolean contains(int value, T element);
+		boolean contains(int value, T element);
 
 		/** Return true if the list contains the given instance. */
-		public boolean containsInstance(int value, T element);
+		boolean containsInstance(int value, T element);
 		
 		/** Remove the first occurrence of the element. */
-		public void remove(int value, T element);
+		void remove(int value, T element);
 
 		/** Remove the first occurrence of the given instance. */
-		public void removeInstance(int value, T element);
+		void removeInstance(int value, T element);
 		
 	}
 	

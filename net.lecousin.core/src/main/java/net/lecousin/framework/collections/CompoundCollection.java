@@ -31,28 +31,28 @@ public class CompoundCollection<T> implements Iterable<T> {
 	
 	private class It implements Iterator<T> {
 		private It() {
-			it = list.iterator();
-			while (it.hasNext()) {
-				it2 = it.next().iterator();
-				if (it2.hasNext()) break;
+			itCol = list.iterator();
+			while (itCol.hasNext()) {
+				itInner = itCol.next().iterator();
+				if (itInner.hasNext()) break;
 			}
 		}
 		
-		private Iterator<Iterable<T>> it;
-		private Iterator<T> it2;
+		private Iterator<Iterable<T>> itCol;
+		private Iterator<T> itInner;
 		
 		@Override
 		public boolean hasNext() {
-			return it2 != null && it2.hasNext();
+			return itInner != null && itInner.hasNext();
 		}
 		
 		@Override
 		public T next() {
-			T e = it2.next();
-			if (!it2.hasNext()) {
-				while (it.hasNext()) {
-					it2 = it.next().iterator();
-					if (it2.hasNext()) break;
+			T e = itInner.next();
+			if (!itInner.hasNext()) {
+				while (itCol.hasNext()) {
+					itInner = itCol.next().iterator();
+					if (itInner.hasNext()) break;
 				}
 			}
 			return e;

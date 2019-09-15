@@ -7,15 +7,15 @@ package net.lecousin.framework.collections.map;
 public interface IntegerMap<ValueType> extends PrimitiveMap<ValueType> {
 
 	/** Put a value and return the previous value associated with this key, or null. */
-	public ValueType put(int key, ValueType entry);
+	ValueType put(int key, ValueType entry);
 
 	/** Get a value. */
-	public ValueType get(int key);
+	ValueType get(int key);
 	
 	/** Remove a value. */
-	public ValueType remove(int key);
+	ValueType remove(int key);
 	
 	/** Return true if the map contains the given key. */
-	public boolean containsKey(int key);
+	boolean containsKey(int key);
 	
 }

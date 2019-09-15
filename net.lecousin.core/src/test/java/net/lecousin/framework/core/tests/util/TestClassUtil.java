@@ -38,10 +38,10 @@ public class TestClassUtil extends LCCoreAbstractTest {
 			return myBoolean;
 		}
 
-		protected boolean getMyBoolean2(int notused) {
+		protected boolean getMyBoolean2(@SuppressWarnings("unused") int notused) {
 			return false;
 		}
-		protected boolean isMyBoolean2(int notused) {
+		protected boolean isMyBoolean2(@SuppressWarnings("unused") int notused) {
 			return false;
 		}
 		
@@ -65,8 +65,8 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		boolean bool3;
 		Boolean bool4;
 		int i;
-		public boolean getBool(int toto) { return true; }
-		public boolean isBool(int toto) { return true; }
+		public boolean getBool(@SuppressWarnings("unused") int toto) { return true; }
+		public boolean isBool(@SuppressWarnings("unused") int toto) { return true; }
 		public static boolean isBool2() { return true; }
 		public int isBool3() { return 0; }
 		public Boolean isBool4() { return bool4; }

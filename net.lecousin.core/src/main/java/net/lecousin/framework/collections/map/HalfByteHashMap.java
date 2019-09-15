@@ -60,7 +60,7 @@ public class HalfByteHashMap<T> implements ByteMap<T> {
 	public T put(byte key, T element) {
 		HalfByteArray<T> array = hashmap[key & 0xF];
 		if (array == null) {
-			array = new HalfByteArray<T>();
+			array = new HalfByteArray<>();
 			array.bytes = new byte[] { key };
 			array.elements = (T[])new Object[] { element };
 			hashmap[key & 0xF] = array;
@@ -146,8 +146,7 @@ public class HalfByteHashMap<T> implements ByteMap<T> {
 		// dichotomy to find the key
 		int b = array.bytes.length;
 		if (b == 1) {
-			if (array.bytes[0] != key) return false;
-			return true;
+			return array.bytes[0] == key;
 		}
 		int a = 0;
 		do {

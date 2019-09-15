@@ -2,12 +2,12 @@ package net.lecousin.framework.concurrent.tasks.drives;
 
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 class SeekFileTask extends Task.OnFile<Long,IOException> {
 
@@ -23,7 +23,7 @@ class SeekFileTask extends Task.OnFile<Long,IOException> {
 	 */
 	public SeekFileTask(
 		FileAccess file, SeekType type, long move, boolean allowAfterEnd, boolean returnNewPosition,
-		byte priority, RunnableWithParameter<Pair<Long,IOException>> ondone
+		byte priority, Consumer<Pair<Long,IOException>> ondone
 	) {
 		super(file.manager, "Seek in file", priority, ondone);
 		this.file = file;

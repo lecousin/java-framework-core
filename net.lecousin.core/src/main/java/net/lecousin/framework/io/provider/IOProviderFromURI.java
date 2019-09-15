@@ -3,7 +3,7 @@ package net.lecousin.framework.io.provider;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,23 +14,23 @@ import net.lecousin.framework.io.IOFromInputStream;
 /**
  * Provide IOs from URLs.
  */
-public class IOProviderFromURL implements IOProviderFrom<URL> {
+public class IOProviderFromURI implements IOProviderFrom<URI> {
 
-	public static IOProviderFromURL getInstance() { return instance; }
+	public static IOProviderFromURI getInstance() { return instance; }
 	
-	private static IOProviderFromURL instance = new IOProviderFromURL();
+	private static IOProviderFromURI instance = new IOProviderFromURI();
 	
 	/** Register a new IOProvider from URL for a specific protocol. */
-	public void registerProtocol(String protocol, IOProviderFrom<URL> provider) {
+	public void registerProtocol(String protocol, IOProviderFrom<URI> provider) {
 		protocols.put(protocol.toLowerCase(), provider);
 	}
 	
-	private IOProviderFromURL() {
-		protocols.put("file", new IOProviderFrom<URL>() {
+	private IOProviderFromURI() {
+		protocols.put("file", new IOProviderFrom<URI>() {
 			@Override
-			public IOProvider get(URL from) {
+			public IOProvider get(URI from) {
 				File file;
-				try { file = new File(from.toURI()); }
+				try { file = new File(from); }
 				catch (Exception e) {
 					return null;
 				}
@@ -41,12 +41,12 @@ public class IOProviderFromURL implements IOProviderFrom<URL> {
 		});
 	}
 	
-	private Map<String, IOProviderFrom<URL>> protocols = new HashMap<>();
+	private Map<String, IOProviderFrom<URI>> protocols = new HashMap<>();
 	
 	@Override
-	public IOProvider get(URL from) {
-		String protocol = from.getProtocol().toLowerCase();
-		IOProviderFrom<URL> p = protocols.get(protocol);
+	public IOProvider get(URI from) {
+		String protocol = from.getScheme().toLowerCase();
+		IOProviderFrom<URI> p = protocols.get(protocol);
 		if (p != null)
 			return p.get(from);
 		return new IOProvider.Readable() {
@@ -58,7 +58,7 @@ public class IOProviderFromURL implements IOProviderFrom<URL> {
 			@SuppressWarnings("resource")
 			@Override
 			public IO.Readable provideIOReadable(byte priority) throws IOException {
-				InputStream in = from.openStream();
+				InputStream in = from.toURL().openStream();
 				return new IOFromInputStream(in, from.toString(), Threading.getUnmanagedTaskManager(), priority);
 			}
 		};

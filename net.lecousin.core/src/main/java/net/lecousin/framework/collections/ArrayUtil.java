@@ -3,6 +3,7 @@ package net.lecousin.framework.collections;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -310,7 +311,7 @@ public final class ArrayUtil {
 	
 	/** Creates a List containing instances of elements present in both arrays. */
 	public static <T> List<T> intersectionIdentity(T[] a1, T[] a2) {
-		List<T> result = new LinkedList<T>();
+		List<T> result = new LinkedList<>();
 		for (T e1 : a1)
 			for (T e2 : a2)
 				if (e1 == e2) {
@@ -326,16 +327,14 @@ public final class ArrayUtil {
 		if (a.length == 0) return b;
 		if (b.length == 0) return a;
 		T[] array = createGenericArray((Class<T[]>)a.getClass(), a.length + b.length);
-		for (int i = 0; i < a.length; ++i)
-			array[i] = a[i];
-		for (int i = 0; i < b.length; ++i)
-			array[i + a.length] = b[i];
+		System.arraycopy(a, 0, array, 0, a.length);
+		System.arraycopy(b, 0, array, a.length, b.length);
 		return array;
 	}
 	
 	/** Create a single byte array from the given arrays. */
 	public static byte[] merge(List<byte[]> arrays) {
-		if (arrays.size() == 0) return new byte[0];
+		if (arrays.isEmpty()) return new byte[0];
 		if (arrays.size() == 1) return arrays.get(0);
 		int size = 0;
 		for (byte[] b : arrays) size += b.length;
@@ -443,7 +442,7 @@ public final class ArrayUtil {
 
 	/** Instantiate an ArrayIterator on the given array. */
 	public static <T> Iterator<T> iterator(T[] a) {
-		return new ArrayIterator<T>(a, a.length);
+		return new ArrayIterator<>(a, a.length);
 	}
 	
 	/** Create a copy of the array. */
@@ -462,10 +461,10 @@ public final class ArrayUtil {
 	}
 
 	/** Create an ArrayList from the array. */
+	@SuppressWarnings("squid:S1319") // we want an ArrayList, explicitly
 	public static <T> ArrayList<T> newArrayList(T[] items) {
 		ArrayList<T> list = new ArrayList<>(items.length);
-		for (int i = 0; i < items.length; ++i)
-			list.add(items[i]);
+		Collections.addAll(list, items);
 		return list;
 	}
 

@@ -21,7 +21,7 @@ public abstract class LCCoreAbstractTest {
 		if (LCCore.get() != null) return;
 		Application.start(new Artifact("net.lecousin.framework.test", "test", new Version(LCCoreVersion.VERSION)), true).blockThrow(0);
 		LCCore.getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class).setLevel(Logger.Level.INFO);
-		StandaloneLCCore.logThreadingInterval = 120000;
+		StandaloneLCCore.setLogThreadingInterval(120000);
 		MemoryManager.logMemory(120000, Level.DEBUG);
 	}
 	

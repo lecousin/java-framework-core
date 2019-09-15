@@ -32,7 +32,7 @@ public class IntegerMapRBT<T> implements IntegerMap<T> {
 		int h = hash(key);
 		RedBlackTreeInteger<T> bucket = buckets[h];
 		if (bucket == null) {
-			buckets[h] = bucket = new RedBlackTreeInteger<T>();
+			buckets[h] = bucket = new RedBlackTreeInteger<>();
 			bucket.add(key, entry);
 			size++;
 			return null;

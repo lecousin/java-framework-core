@@ -2,6 +2,8 @@ package net.lecousin.framework.collections;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * Allows to add arrays, then iterate on them like this is a single list.
@@ -10,13 +12,15 @@ import java.util.Iterator;
 public class ListOfArrays<T> implements Iterable<T> {
 
 	/** Constructor. */
-	public ListOfArrays() {}
+	public ListOfArrays() {
+		// nothing to do
+	}
 	
 	private ArrayList<T[]> arrays = new ArrayList<>();
 	
 	public void add(T[] array) { arrays.add(array); }
 	
-	public ArrayList<T[]> getArrays() { return arrays; }
+	public List<T[]> getArrays() { return arrays; }
 	
 	@Override
 	public Iterator<T> iterator() {
@@ -48,7 +52,11 @@ public class ListOfArrays<T> implements Iterable<T> {
 		
 		@Override
 		public T next() {
-			T e = array[pos2++];
+			T e;
+			try { e = array[pos2++]; }
+			catch (ArrayIndexOutOfBoundsException err) {
+				throw new NoSuchElementException();
+			}
 			if (pos2 == array.length) {
 				pos2 = 0;
 				pos1++;

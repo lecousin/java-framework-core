@@ -2,6 +2,7 @@ package net.lecousin.framework.io.buffering;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -14,7 +15,6 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Simple implementation of a buffered writable using 2 buffers.<br/>
@@ -169,14 +169,14 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buf, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buf, Consumer<Pair<Integer,IOException>> ondone) {
 		AsyncWork<Integer,IOException> result = new AsyncWork<Integer, IOException>();
 		writeAsync(buf, 0, result, ondone);
 		return result;
 	}
 	
 	private void writeAsync(
-		ByteBuffer buf, int done, AsyncWork<Integer,IOException> result, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		ByteBuffer buf, int done, AsyncWork<Integer,IOException> result, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Void,NoException> task = new Task.Cpu<Void,NoException>("Write async to SimpleBufferedWritable", out.getPriority()) {
 			@Override
@@ -211,7 +211,7 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 						}
 					}
 					if (buf.remaining() == 0) {
-						if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(d), null));
+						if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(d), null));
 						result.unblockSuccess(Integer.valueOf(d));
 						return null;
 					}

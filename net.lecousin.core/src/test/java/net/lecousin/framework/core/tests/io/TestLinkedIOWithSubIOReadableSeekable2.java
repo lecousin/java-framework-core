@@ -3,6 +3,7 @@ package net.lecousin.framework.core.tests.io;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collection;
+import java.util.function.Consumer;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -23,7 +24,6 @@ import net.lecousin.framework.io.buffering.BufferedIO;
 import net.lecousin.framework.math.RangeLong;
 import net.lecousin.framework.util.CloseableListenable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 @RunWith(Parameterized.class)
 public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable {
@@ -156,7 +156,7 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 
 		@Override
 		public AsyncWork<Long, IOException> seekAsync(SeekType type, long move,
-				RunnableWithParameter<Pair<Long, IOException>> ondone) {
+				Consumer<Pair<Long, IOException>> ondone) {
 			return io.seekAsync(type, move, ondone);
 		}
 
@@ -172,7 +172,7 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 
 		@Override
 		public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer,
-				RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+				Consumer<Pair<Integer, IOException>> ondone) {
 			return io.readAsync(buffer, ondone);
 		}
 
@@ -188,7 +188,7 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 
 		@Override
 		public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer,
-				RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+				Consumer<Pair<Integer, IOException>> ondone) {
 			return io.readFullyAsync(buffer, ondone);
 		}
 
@@ -203,7 +203,7 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+		public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 			return io.skipAsync(n, ondone);
 		}
 
@@ -219,7 +219,7 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 
 		@Override
 		public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer,
-				RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+				Consumer<Pair<Integer, IOException>> ondone) {
 			return io.readAsync(pos, buffer, ondone);
 		}
 
@@ -235,7 +235,7 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 
 		@Override
 		public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer,
-				RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+				Consumer<Pair<Integer, IOException>> ondone) {
 			return io.readFullyAsync(pos, buffer, ondone);
 		}
 

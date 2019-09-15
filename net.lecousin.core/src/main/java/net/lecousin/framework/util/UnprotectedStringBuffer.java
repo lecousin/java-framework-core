@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.function.Function;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -695,7 +696,7 @@ public class UnprotectedStringBuffer implements IString {
 	 * This may be typically used to replace variables such as ${xxx} with their values.
 	 */
 	public void searchAndReplace(
-		CharSequence start, CharSequence end, Provider.FromValue<UnprotectedStringBuffer, UnprotectedStringBuffer> valueProvider
+		CharSequence start, CharSequence end, Function<UnprotectedStringBuffer, UnprotectedStringBuffer> valueProvider
 	) {
 		if (strings == null) return;
 		int buffer = 0;
@@ -767,7 +768,7 @@ public class UnprotectedStringBuffer implements IString {
 							i += strings[b].length();
 						}
 						UnprotectedStringBuffer variable = subBuffer(endOfStartBuffer, endOfStartBufferIndex, b, i);
-						UnprotectedStringBuffer value = valueProvider.provide(variable);
+						UnprotectedStringBuffer value = valueProvider.apply(variable);
 						replace(startOfStartBuffer, startOfStartBufferIndex, buffer, bufferIndex, value);
 						bufferIndex++;
 						bufferIndex -= start.length() + end.length() + variable.length();

@@ -2,6 +2,7 @@ package net.lecousin.framework.io.util;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -11,7 +12,6 @@ import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.CloseableListenable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Add the KnownSize capability: to determine the size, we can seek to the end and get the position.
@@ -111,12 +111,12 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readAsync(buffer, ondone);
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readAsync(pos, buffer, ondone);
 	}
 
@@ -131,12 +131,12 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readFullyAsync(buffer, ondone);
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readFullyAsync(pos, buffer, ondone);
 	}
 
@@ -151,7 +151,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 		return io.seekAsync(type, move, ondone);
 	}
 
@@ -161,7 +161,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		return io.skipAsync(n, ondone);
 	}
 

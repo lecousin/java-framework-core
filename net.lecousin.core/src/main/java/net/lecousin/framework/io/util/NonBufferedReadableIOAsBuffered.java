@@ -2,6 +2,7 @@ package net.lecousin.framework.io.util;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -12,7 +13,6 @@ import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Utility class to implement the Buffered interface even in case buffers cannot be used.
@@ -77,7 +77,7 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readAsync(buffer, ondone);
 	}
 
@@ -87,12 +87,12 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readFullyAsync(buffer, ondone);
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return io.readAsync(buffer, ondone);
 	}
 
@@ -102,7 +102,7 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		return io.skipAsync(n, ondone);
 	}
 
@@ -138,7 +138,7 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	}
 
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
+	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		AsyncWork<ByteBuffer, IOException> result = new AsyncWork<>();
 		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Read next buffer", getPriority()) {
 			@Override
@@ -149,18 +149,18 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 					@Override
 					public void run() {
 						if (read.hasError()) {
-							if (ondone != null) ondone.run(new Pair<>(null, read.getError()));
+							if (ondone != null) ondone.accept(new Pair<>(null, read.getError()));
 							result.unblockError(read.getError());
 							return;
 						}
 						int nb = read.getResult().intValue();
 						if (nb <= 0) {
-							if (ondone != null) ondone.run(new Pair<>(null, null));
+							if (ondone != null) ondone.accept(new Pair<>(null, null));
 							result.unblockSuccess(null);
 							return;
 						}
 						buf.flip();
-						if (ondone != null) ondone.run(new Pair<>(buf, null));
+						if (ondone != null) ondone.accept(new Pair<>(buf, null));
 						result.unblockSuccess(buf);
 					}
 				});

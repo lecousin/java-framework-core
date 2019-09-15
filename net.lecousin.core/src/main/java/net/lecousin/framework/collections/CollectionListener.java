@@ -69,9 +69,8 @@ public interface CollectionListener<T> {
 				synchronized (l) {
 					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
 						"Call CollectionListener.elementsReady", priority,
-					() -> {
-						l.getValue1().elementsReady(elements);
-					});
+						() -> l.getValue1().elementsReady(elements)
+					);
 					task.startOnDone(l.getValue2());
 					l.setValue2(task);
 				}
@@ -89,9 +88,8 @@ public interface CollectionListener<T> {
 				synchronized (l) {
 					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
 						"Call CollectionListener.elementsAdded", priority,
-					() -> {
-						l.getValue1().elementsAdded(elements);
-					});
+						() -> l.getValue1().elementsAdded(elements)
+					);
 					task.startOnDone(l.getValue2());
 					l.setValue2(task);
 				}
@@ -109,9 +107,8 @@ public interface CollectionListener<T> {
 				synchronized (l) {
 					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
 						"Call CollectionListener.elementsRemoved", priority,
-					() -> {
-						l.getValue1().elementsRemoved(elements);
-					});
+						() -> l.getValue1().elementsRemoved(elements)
+					);
 					task.startOnDone(l.getValue2());
 					l.setValue2(task);
 				}
@@ -128,9 +125,8 @@ public interface CollectionListener<T> {
 				synchronized (l) {
 					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
 						"Call CollectionListener.elementsChanged", priority,
-					() -> {
-						l.getValue1().elementsChanged(elements);
-					});
+						() -> l.getValue1().elementsChanged(elements)
+					);
 					task.startOnDone(l.getValue2());
 					l.setValue2(task);
 				}
@@ -146,9 +142,9 @@ public interface CollectionListener<T> {
 			}
 			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
 				synchronized (l) {
-					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.error", priority, () -> {
-						l.getValue1().error(error);
-					});
+					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.error", priority,
+						() -> l.getValue1().error(error)
+					);
 					task.startOnDone(l.getValue2());
 					l.setValue2(task);
 				}

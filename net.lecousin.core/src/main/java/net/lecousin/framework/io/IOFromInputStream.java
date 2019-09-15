@@ -3,6 +3,7 @@ package net.lecousin.framework.io;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -12,7 +13,6 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /** Implements Readable from an InputStream. */
 public class IOFromInputStream extends ConcurrentCloseable implements IO.Readable {
@@ -122,7 +122,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	}
 	
 	@Override
-	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		Task<Integer,IOException> t = new Task<Integer,IOException>(manager, "Read from InputStream", priority, ondone) {
 			@Override
 			public Integer run() throws IOException, CancelException {
@@ -142,7 +142,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	}
 	
 	@Override
-	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		Task<Integer,IOException> t = new Task<Integer,IOException>(manager, "Read from InputStream", priority, ondone) {
 			@Override
 			public Integer run() throws IOException, CancelException {
@@ -170,9 +170,9 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	
 	
 	@Override
-	public AsyncWork<Long,IOException> skipAsync(long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public AsyncWork<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		if (n <= 0) {
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
+			if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(0), null));
 			return new AsyncWork<>(Long.valueOf(0), null);
 		}
 		// InputStream does not comply to our restrictions, and may end up after the end of the stream, so we cannot use the skip method

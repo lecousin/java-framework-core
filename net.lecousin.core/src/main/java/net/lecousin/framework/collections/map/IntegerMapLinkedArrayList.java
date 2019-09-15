@@ -23,13 +23,13 @@ public class IntegerMapLinkedArrayList<T> implements IntegerMap<T> {
 	}
 	
 	private static class Entry<T> {
-		public Entry(int key, T value) {
+		private Entry(int key, T value) {
 			this.key = key;
 			this.value = value;
 		}
 		
-		public int key;
-		public T value;
+		private int key;
+		private T value;
 	}
 	
 	private LinkedArrayList<Entry<T>>[] buckets;

@@ -12,7 +12,6 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.util.UnprotectedString;
-import net.lecousin.framework.xml.XMLStreamEventsRecorder.Sync;
 
 public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGeneratedTestFiles {
 
@@ -27,7 +26,6 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		return openFile();
 	}
 
-	@SuppressWarnings({ "resource" })
 	@Test(timeout=120000)
 	public void testCharByChar() throws Exception {
 		ICharacterStream.Readable.Buffered s = openStream(openFile());

@@ -11,7 +11,7 @@ public class Version implements Comparable<Version> {
 
 	/** Parse the given String to build a Version. */
 	public Version(String s) {
-		ArrayList<Integer> n = new ArrayList<Integer>();
+		ArrayList<Integer> n = new ArrayList<>();
 		int val = 0;
 		boolean hasChar = false;
 		int i;
@@ -20,18 +20,16 @@ public class Version implements Comparable<Version> {
 			if (c >= '0' && c <= '9') {
 				val = val * 10 + (c - '0');
 				hasChar = true;
-				continue;
-			}
-			if (c == '.') {
+			} else if (c == '.') {
 				n.add(Integer.valueOf(val));
 				val = 0;
 				hasChar = false;
-				continue;
+			} else {
+				if (hasChar)
+					n.add(Integer.valueOf(val));
+				end = s.substring(i);
+				break;
 			}
-			if (hasChar)
-				n.add(Integer.valueOf(val));
-			end = s.substring(i);
-			break;
 		}
 		if (i == s.length()) n.add(Integer.valueOf(val));
 		numbers = new int[n.size()];

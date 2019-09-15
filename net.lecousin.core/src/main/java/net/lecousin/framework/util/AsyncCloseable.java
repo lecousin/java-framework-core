@@ -9,6 +9,11 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 public interface AsyncCloseable<TError extends Exception> {
 	
 	/** Close asynchronously. */
-	public ISynchronizationPoint<TError> closeAsync();
+	ISynchronizationPoint<TError> closeAsync();
 	
+	/** Close asynchronously this closeable once the given synchronization point is done. */
+	default void closeAfter(ISynchronizationPoint<?> sp) {
+		sp.listenInline(this::closeAsync);
+	}
+
 }

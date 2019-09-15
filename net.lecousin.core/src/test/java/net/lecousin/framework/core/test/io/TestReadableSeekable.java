@@ -4,6 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.function.Consumer;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.collections.LinkedArrayList;
@@ -20,10 +24,6 @@ import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFiles {
 
@@ -94,12 +94,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
-		RunnableWithParameter<Pair<Integer,IOException>> ondone = new RunnableWithParameter<Pair<Integer,IOException>>() {
-			@Override
-			public void run(Pair<Integer, IOException> param) {
-				onDoneBefore.set(true);
-			}
-		};
+		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		
 		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
 		Runnable listener = new Runnable() {
@@ -220,12 +215,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
-		RunnableWithParameter<Pair<Integer,IOException>> ondone = new RunnableWithParameter<Pair<Integer,IOException>>() {
-			@Override
-			public void run(Pair<Integer, IOException> param) {
-				onDoneBefore.set(true);
-			}
-		};
+		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		
 		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
 		Runnable listener = new Runnable() {
@@ -412,17 +402,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
-		RunnableWithParameter<Pair<Long,IOException>> ondone;
+		Consumer<Pair<Long,IOException>> ondone;
 		if ((expectedPosition % 3) == 0) {
 			onDoneBefore.set(true);
 			ondone = null;
 		} else {
-			ondone = new RunnableWithParameter<Pair<Long,IOException>>() {
-				@Override
-				public void run(Pair<Long, IOException> param) {
-					onDoneBefore.set(true);
-				}
-			};
+			ondone = param -> onDoneBefore.set(true);
 		}
 
 		startOn.listenInline(new Runnable() {

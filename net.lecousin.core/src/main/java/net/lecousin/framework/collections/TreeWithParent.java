@@ -22,7 +22,7 @@ public class TreeWithParent<T> {
 	 */
 	public static class Node<T> {
 		private Node(TreeWithParent<T> parent, T element) {
-			this.subNodes = new TreeWithParent<T>(parent);
+			this.subNodes = new TreeWithParent<>(parent);
 			this.element = element;
 		}
 		

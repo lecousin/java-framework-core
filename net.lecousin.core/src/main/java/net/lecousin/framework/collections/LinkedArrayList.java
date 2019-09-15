@@ -37,7 +37,7 @@ public class LinkedArrayList<T> implements List<T> {
 	private static class Array<T> {
 		@SuppressWarnings("unchecked")
 		public Array(int size, Array<T> previous, Array<T> next) {
-			array = (T[])new Object[size];
+			elements = (T[])new Object[size];
 			this.previous = previous;
 			this.next = next;
 			if (previous != null)
@@ -46,24 +46,24 @@ public class LinkedArrayList<T> implements List<T> {
 				next.previous = this;
 		}
 		
-		private T[] array;
+		private T[] elements;
 		private int size = 0;
 		private Array<T> previous;
 		private Array<T> next;
 		
 		private void add(T o) {
-			array[size++] = o;
+			elements[size++] = o;
 		}
 		
 		private int indexOf(Object o) {
 			if (o == null) {
 				for (int i = 0; i < size; ++i)
-					if (array[i] == null)
+					if (elements[i] == null)
 						return i;
 				return -1;				
 			}
 			for (int i = 0; i < size; ++i)
-				if (o.equals(array[i]))
+				if (o.equals(elements[i]))
 					return i;
 			return -1;
 		}
@@ -71,26 +71,26 @@ public class LinkedArrayList<T> implements List<T> {
 		private int lastIndexOf(Object o) {
 			if (o == null) {
 				for (int i = size - 1; i >= 0; --i)
-					if (array[i] == null)
+					if (elements[i] == null)
 						return i;
 				return -1;
 			}
 			for (int i = size - 1; i >= 0; --i)
-				if (o.equals(array[i]))
+				if (o.equals(elements[i]))
 					return i;
 			return -1;
 		}
 	}
 	
-	private void double_size() {
+	private void doubleSize() {
 		Array<T> a = head;
 		do {
 			@SuppressWarnings("unchecked")
 			T[] na = (T[])new Object[arraySize * 2];
-			System.arraycopy(a.array, 0, na, 0, a.size);
-			a.array = na;
+			System.arraycopy(a.elements, 0, na, 0, a.size);
+			a.elements = na;
 			if (a.next != null) {
-				System.arraycopy(a.next.array, 0, a.array, a.size, a.next.size);
+				System.arraycopy(a.next.elements, 0, a.elements, a.size, a.next.size);
 				a.size += a.next.size;
 				a.next = a.next.next;
 				if (a.next != null)
@@ -98,8 +98,9 @@ public class LinkedArrayList<T> implements List<T> {
 				else
 					tail = a;
 				a = a.next;
-			} else
+			} else {
 				break;
+			}
 		} while (a != null);
 		arraySize *= 2;
 	}
@@ -107,13 +108,13 @@ public class LinkedArrayList<T> implements List<T> {
 	@Override
 	public boolean add(T o) {
 		if (tail == null) {
-			head = tail = new Array<T>(arraySize, null, null);
+			head = tail = new Array<>(arraySize, null, null);
 		} else if (tail.size == arraySize) {
-			tail = new Array<T>(arraySize, tail, null);
+			tail = new Array<>(arraySize, tail, null);
 		}
 		tail.add(o);
 		size++;
-		if (size > arraySize * 100) double_size();
+		if (size > arraySize * 100) doubleSize();
 		return true;
 	}
 	
@@ -123,7 +124,7 @@ public class LinkedArrayList<T> implements List<T> {
 			add(element);
 			return;
 		}
-		if (size + 1 > arraySize * 100) double_size();
+		if (size + 1 > arraySize * 100) doubleSize();
 		if (index >= size) {
 			add(element, tail, tail.size, false);
 			return;
@@ -142,18 +143,18 @@ public class LinkedArrayList<T> implements List<T> {
 		if (index == array.size) {
 			if (index == arraySize) {
 				if (array.next == null) {
-					tail = new Array<T>(arraySize, array, null);
+					tail = new Array<>(arraySize, array, null);
 					tail.add(element);
 					if (!shifting)
 						size++;
 					return;
 				}
-				throw new RuntimeException("Unexpected situation");
+				throw new IllegalStateException("Unexpected situation");
 				/*
 				add(element, array.next, 0);
 				return;*/
 			}
-			array.array[index] = element;
+			array.elements[index] = element;
 			array.size++;
 			if (!shifting)
 				size++;
@@ -162,16 +163,16 @@ public class LinkedArrayList<T> implements List<T> {
 		// shift right
 		if (array.size == arraySize) {
 			if (array.next == null) {
-				tail = new Array<T>(arraySize, array, null);
-				tail.add(array.array[arraySize - 1]);
+				tail = new Array<>(arraySize, array, null);
+				tail.add(array.elements[arraySize - 1]);
 			} else {
-				add(array.array[arraySize - 1], array.next, 0, true);
+				add(array.elements[arraySize - 1], array.next, 0, true);
 			}
 			array.size--;
 		}
-		System.arraycopy(array.array, index, array.array, index + 1, array.size - index);
+		System.arraycopy(array.elements, index, array.elements, index + 1, array.size - index);
 		// insert
-		array.array[index] = element;
+		array.elements[index] = element;
 		array.size++;
 		if (!shifting)
 			size++;
@@ -183,7 +184,7 @@ public class LinkedArrayList<T> implements List<T> {
 			add(element);
 			return;
 		}
-		if (size + 1 > arraySize * 100) double_size();
+		if (size + 1 > arraySize * 100) doubleSize();
 		if (index >= size) {
 			add(element, tail, tail.size, false);
 			return;
@@ -242,7 +243,7 @@ public class LinkedArrayList<T> implements List<T> {
 		i = index - i;
 		if (i >= a.size)
 			throw new IndexOutOfBoundsException(Integer.toString(index));
-		return a.array[i];
+		return a.elements[i];
 	}
 	
 	/** Get an element using a long index. */
@@ -257,7 +258,7 @@ public class LinkedArrayList<T> implements List<T> {
 		}
 		i = index - i;
 		if (i >= a.size) throw new IndexOutOfBoundsException(Long.toString(index));
-		return a.array[(int)i];
+		return a.elements[(int)i];
 	}
 	
 	@Override
@@ -292,8 +293,8 @@ public class LinkedArrayList<T> implements List<T> {
 			return;
 		}
 		if (i < a.size - 1)
-			System.arraycopy(a.array, i + 1, a.array, i, a.size - i - 1);
-		a.array[a.size - 1] = null;
+			System.arraycopy(a.elements, i + 1, a.elements, i, a.size - i - 1);
+		a.elements[a.size - 1] = null;
 		a.size--;
 	}
 	
@@ -309,7 +310,7 @@ public class LinkedArrayList<T> implements List<T> {
 		}
 		i = index - i;
 		if (i >= a.size) throw new IndexOutOfBoundsException(Integer.toString(index));
-		T element = a.array[i];
+		T element = a.elements[i];
 		shiftLeft(a, i);
 		size--;
 		return element;
@@ -335,7 +336,7 @@ public class LinkedArrayList<T> implements List<T> {
 		}
 		i = index - i;
 		if (i >= a.size) throw new IndexOutOfBoundsException(Long.toString(index));
-		T element = a.array[(int)i];
+		T element = a.elements[(int)i];
 		shiftLeft(a, (int)i);
 		size--;
 		return element;
@@ -352,7 +353,7 @@ public class LinkedArrayList<T> implements List<T> {
 	/** Remove the last element and return it, or return null if empty. */
 	public T removeLast() {
 		if (tail == null) return null;
-		T element = tail.array[--tail.size];
+		T element = tail.elements[--tail.size];
 		if (--size == 0) {
 			head = tail = null;
 			return element;
@@ -368,11 +369,11 @@ public class LinkedArrayList<T> implements List<T> {
 	public T[] removeFirstArray(Class<T> cl) {
 		if (size == 0) return ArrayUtil.createGenericArrayOf(0, cl);
 		T[] a;
-		if (head.size == head.array.length) {
-			a = head.array;
+		if (head.size == head.elements.length) {
+			a = head.elements;
 		} else {
 			a = ArrayUtil.createGenericArrayOf(head.size, cl);
-			System.arraycopy(head.array, 0, a, 0, head.size);
+			System.arraycopy(head.elements, 0, a, 0, head.size);
 		}
 		if (head == tail) {
 			head = tail = null;
@@ -394,7 +395,7 @@ public class LinkedArrayList<T> implements List<T> {
 			return;
 		}
 		Array<T> a = new Array<>(arraySize, null, head);
-		System.arraycopy(array, offset, a.array, 0, length);
+		System.arraycopy(array, offset, a.elements, 0, length);
 		a.size = length;
 		head = a;
 		size += length;
@@ -403,7 +404,7 @@ public class LinkedArrayList<T> implements List<T> {
 	/** Insert elements at the end of this collection. */
 	public void appendArray(T[] array, int offset, int length) {
 		if (length == 0) return;
-		if (size + length > arraySize * 100) double_size();
+		if (size + length > arraySize * 100) doubleSize();
 		if (tail != null) {
 			// first we fill the tail
 			while (tail.size < arraySize && length > 0) {
@@ -417,7 +418,7 @@ public class LinkedArrayList<T> implements List<T> {
 			Array<T> a = new Array<>(arraySize, tail, null);
 			tail = a;
 			int len = length > arraySize ? arraySize : length;
-			System.arraycopy(a, offset, a.array, 0, len);
+			System.arraycopy(a, offset, a.elements, 0, len);
 			a.size = len;
 			size += len;
 			offset += len;
@@ -494,7 +495,7 @@ public class LinkedArrayList<T> implements List<T> {
 		@Override
 		public T next() {
 			if (ptrNext == null || posNext == ptrNext.size) throw new NoSuchElementException();
-			T e = ptrNext.array[posNext++];
+			T e = ptrNext.elements[posNext++];
 			while (posNext >= ptrNext.size) {
 				ptrNext = ptrNext.next;
 				if (ptrNext == null) break;
@@ -515,11 +516,11 @@ public class LinkedArrayList<T> implements List<T> {
 			}
 			T e;
 			if (posNext > 0) {
-				e = ptrNext.array[--posNext];
+				e = ptrNext.elements[--posNext];
 			} else {
 				ptrNext = ptrNext.previous;
 				posNext = ptrNext.size - 1;
-				e = ptrNext.array[posNext];
+				e = ptrNext.elements[posNext];
 			}
 			nextIndex--;
 			return e;
@@ -550,9 +551,9 @@ public class LinkedArrayList<T> implements List<T> {
 		@Override
 		public void set(T o) {
 			if (posNext > 0) {
-				ptrNext.array[posNext - 1] = o;
+				ptrNext.elements[posNext - 1] = o;
 			} else {
-				ptrNext.previous.array[arraySize - 1] = o;
+				ptrNext.previous.elements[arraySize - 1] = o;
 			}
 		}
 	}
@@ -564,7 +565,7 @@ public class LinkedArrayList<T> implements List<T> {
             a = (T2[])java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), size());
         int i = 0;
         for (Array<T> array = head; array != null; array = array.next) {
-        	System.arraycopy(array.array, 0, a, i, array.size);
+        	System.arraycopy(array.elements, 0, a, i, array.size);
         	i += array.size;
         }
         return a;
@@ -575,7 +576,7 @@ public class LinkedArrayList<T> implements List<T> {
 		Object[] a = new Object[size()];
         int i = 0;
         for (Array<T> array = head; array != null; array = array.next) {
-        	System.arraycopy(array.array, 0, a, i, array.size);
+        	System.arraycopy(array.elements, 0, a, i, array.size);
         	i += array.size;
         }
 		return a;
@@ -604,8 +605,8 @@ public class LinkedArrayList<T> implements List<T> {
 		}
 		i = index - i;
 		if (i >= a.size) throw new IndexOutOfBoundsException(Integer.toString(index));
-		T old = a.array[i];
-		a.array[i] = element;
+		T old = a.elements[i];
+		a.elements[i] = element;
 		return old;
 	}
 	

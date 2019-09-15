@@ -8,6 +8,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
+import java.util.function.Predicate;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
@@ -21,7 +22,6 @@ import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.provider.FileIOProvider;
 import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.io.provider.IOProviderFromPathUsingClassloader;
-import net.lecousin.framework.util.Filter;
 
 /**
  * Used to aggregate class loaders for an application.
@@ -144,8 +144,10 @@ public class AppClassLoader implements ApplicationClassLoader {
 	
 	/** Search a resource. */
 	public URL getResourceURL(String name) {
-		if (name.length() == 0) return null;
-		if (name.charAt(0) == '/') name = name.substring(1);
+		if (name.length() == 0)
+			return null;
+		if (name.charAt(0) == '/')
+			name = name.substring(1);
     	for (int i = 0; i < libs.size(); i++) {
     		AbstractClassLoader cl = libs.get(i);
     		URL url = cl.loadResourceURL(name);
@@ -156,7 +158,6 @@ public class AppClassLoader implements ApplicationClassLoader {
 	}
 	
 	/** Load a resource, looking first into the given library. */
-	@SuppressWarnings("resource")
 	public InputStream getResourceAsStreamFrom(String name, AbstractClassLoader first) {
 		if (name.length() == 0) return null;
 		if (name.charAt(0) == '/') name = name.substring(1);
@@ -258,7 +259,7 @@ public class AppClassLoader implements ApplicationClassLoader {
 	/** Scan libraries to find classes. */
 	public void scanLibraries(
 		String rootPackage, boolean includeSubPackages,
-		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
 	) {
 		for (AbstractClassLoader cl : libs)
 			cl.scan(rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);

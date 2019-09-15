@@ -2,13 +2,13 @@ package net.lecousin.framework.io.serialization.rules;
 
 import java.util.List;
 import java.util.ListIterator;
+import java.util.function.Supplier;
 
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.TypeDefinition;
-import net.lecousin.framework.util.Provider;
 
 /** A factory to instantiate a specific type during deserialization.
  * @param <T> type
@@ -16,19 +16,19 @@ import net.lecousin.framework.util.Provider;
 public class TypeFactory<T> implements SerializationRule {
 
 	/** Constructor. */
-	public TypeFactory(Class<T> type, Provider<T> factory) {
+	public TypeFactory(Class<T> type, Supplier<T> factory) {
 		this.type = type;
 		this.factory = factory;
 	}
 	
 	private Class<T> type;
-	private Provider<T> factory;
+	private Supplier<T> factory;
 	
 	public Class<T> getType() {
 		return type;
 	}
 	
-	public Provider<T> getFactory() {
+	public Supplier<T> getFactory() {
 		return factory;
 	}
 	
@@ -40,7 +40,7 @@ public class TypeFactory<T> implements SerializationRule {
 			it.set(new Attribute(a) {
 				@Override
 				public Object instantiate(AttributeContext context) {
-					return factory.provide();
+					return factory.get();
 				}
 				
 				@Override
@@ -59,7 +59,7 @@ public class TypeFactory<T> implements SerializationRule {
 	
 	@Override
 	public Object instantiate(TypeDefinition type, SerializationContext context) {
-		return factory.provide();
+		return factory.get();
 	}
 	
 	@Override

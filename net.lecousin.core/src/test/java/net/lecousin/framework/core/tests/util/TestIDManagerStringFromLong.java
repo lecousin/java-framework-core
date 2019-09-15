@@ -7,7 +7,6 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.util.IDManagerLong;
 import net.lecousin.framework.util.IDManagerStringFromLong;
 import net.lecousin.framework.util.SimpleIDManagerLong;
-import net.lecousin.framework.util.StringEncoding;
 
 public class TestIDManagerStringFromLong extends LCCoreAbstractTest {
 

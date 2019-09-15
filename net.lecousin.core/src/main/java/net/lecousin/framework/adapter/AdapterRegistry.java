@@ -3,6 +3,7 @@ package net.lecousin.framework.adapter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.ListIterator;
 
 import net.lecousin.framework.plugins.ExtensionPoint;
 
@@ -15,16 +16,20 @@ public class AdapterRegistry implements ExtensionPoint<Adapter> {
 
 	private static AdapterRegistry instance;
 	
-	public static AdapterRegistry get() { return instance; }
+	/** Returns the instance of the adapter registry. */
+	public static AdapterRegistry get() {
+		if (instance == null) {
+			instance = new AdapterRegistry();
+			instance.adapters.add(new FileToIO.Writable());
+			instance.adapters.add(new FileToIO.Readable());
+			instance.adapters.add(new FileInfoToFile());
+			instance.adapters.add(new FileInfoToPath());
+		}
+		return instance;
+	}
 	
-	/** Constructor called by the extension points system. */
-	public AdapterRegistry() {
-		if (instance != null) return;
-		instance = this;
-		adapters.add(new FileToIO.Writable());
-		adapters.add(new FileToIO.Readable());
-		adapters.add(new FileInfoToFile());
-		adapters.add(new FileInfoToPath());
+	private AdapterRegistry() {
+		// singleton
 	}
 	
 	private ArrayList<Adapter> adapters = new ArrayList<>();
@@ -38,6 +43,7 @@ public class AdapterRegistry implements ExtensionPoint<Adapter> {
 	
 	@Override
 	public void allPluginsLoaded() {
+		// nothing to do
 	}
 	
 	@Override
@@ -54,7 +60,7 @@ public class AdapterRegistry implements ExtensionPoint<Adapter> {
 	 * or return null if no available adapter can be found. 
 	 */
 	@SuppressWarnings("unchecked")
-	public <Input,Output> Output adapt(Input input, Class<Output> outputType) throws Exception {
+	public <Input, Output> Output adapt(Input input, Class<Output> outputType) throws AdapterException {
 		Class<?> inputType = input.getClass();
 		Adapter a = findAdapter(input, inputType, outputType);
 		if (a == null) return null;
@@ -70,12 +76,13 @@ public class AdapterRegistry implements ExtensionPoint<Adapter> {
 	
 	/** Search for an adapter. */
 	@SuppressWarnings("unchecked")
-	public <Input,Output> Adapter<Input,Output> findAdapter(Object in, Class<Input> input, Class<Output> output) {
+	public <Input, Output> Adapter<Input,Output> findAdapter(Object in, Class<Input> input, Class<Output> output) {
 		ArrayList<Adapter> acceptInput = new ArrayList<>();
 		ArrayList<Adapter> matching = new ArrayList<>();
 		for (Adapter a : adapters) {
-			if (!a.getInputType().isAssignableFrom(input)) continue;
-			if (!a.canAdapt(in)) continue;
+			if (!a.getInputType().isAssignableFrom(input) ||
+				!a.canAdapt(in))
+				continue;
 			acceptInput.add(a);
 			if (output.equals(a.getOutputType()))
 				return a;
@@ -89,33 +96,38 @@ public class AdapterRegistry implements ExtensionPoint<Adapter> {
 		if (!matching.isEmpty())
 			return getBest(matching);
 		LinkedList<LinkedList<Adapter>> paths = findPathsTo(input, acceptInput, output);
+		LinkedList<Adapter> best = getBestPath(in, paths);
+		if (best == null) return null;
+		return new LinkedAdapter(best);
+	}
+	
+	private static LinkedList<Adapter> getBestPath(Object in, LinkedList<LinkedList<Adapter>> paths) {
 		LinkedList<Adapter> best = null;
 		while (!paths.isEmpty()) {
 			LinkedList<Adapter> path = paths.removeFirst();
 			if (best != null && best.size() <= path.size()) continue;
-			Object o = in;
-			boolean valid = true;
-			int i = 0;
-			for (Adapter a : path) {
-				if (!a.canAdapt(o)) {
-					valid = false;
-					break;
-				}
-				if (i == path.size() - 1)
-					break; // we are on the last, so no need to do it
-				i++;
-				try {
-					o = a.adapt(o);
-				} catch (Exception e) {
-					valid = false;
-					break;
-				}
-			}
-			if (valid)
+			if (isPathValid(in, path))
 				best = path;
 		}
-		if (best == null) return null;
-		return new LinkedAdapter(best);
+		return best;
+	}
+	
+	@SuppressWarnings("unchecked")
+	private static boolean isPathValid(Object in, LinkedList<Adapter> path) {
+		Object o = in;
+		// loop on each adapter and try to adapt, except for the last one
+		ListIterator<Adapter> it = path.listIterator();
+		while (it.nextIndex() < path.size() - 1) {
+			Adapter a = it.next();
+			if (!a.canAdapt(o))
+				return false;
+			try {
+				o = a.adapt(o);
+			} catch (Exception e) {
+				return false;
+			}
+		}
+		return it.next().canAdapt(o);
 	}
 	
 	private static Adapter getBest(ArrayList<Adapter> list) {
@@ -147,29 +159,9 @@ public class AdapterRegistry implements ExtensionPoint<Adapter> {
 		return paths;
 	}
 	
-	@SuppressWarnings("unchecked")
 	private LinkedList<LinkedList<Adapter>> findPaths(Class<?> from, Class<?> to, ArrayList<Class<?>> used) {
 		LinkedList<LinkedList<Adapter>> paths = new LinkedList<>();
-		ArrayList<Adapter> possible = new ArrayList<>();
-		for (Adapter a : adapters) {
-			if (!a.getInputType().isAssignableFrom(from)) continue;
-			Class<?> out = a.getOutputType();
-			if (to.isAssignableFrom(out)) {
-				// we found it
-				LinkedList<Adapter> list = new LinkedList<>();
-				list.add(a);
-				paths.add(list);
-				continue;
-			}
-			boolean already = false;
-			for (Class<?> c : used)
-				if (c.isAssignableFrom(out) || out.isAssignableFrom(c)) {
-					already = true;
-					break;
-				}
-			if (already) continue;
-			possible.add(a);
-		}
+		ArrayList<Adapter> possible = getPossibleStarts(from, to, used, paths);
 		if (possible.isEmpty()) return paths;
 		ArrayList<Class<?>> newUsed = new ArrayList<>(used.size() + 1);
 		newUsed.addAll(used);
@@ -182,6 +174,32 @@ public class AdapterRegistry implements ExtensionPoint<Adapter> {
 			}
 		}
 		return paths;
+	}
+	
+	@SuppressWarnings("unchecked")
+	private ArrayList<Adapter> getPossibleStarts(Class<?> from, Class<?> to, ArrayList<Class<?>> used, LinkedList<LinkedList<Adapter>> paths) {
+		ArrayList<Adapter> possible = new ArrayList<>();
+		for (Adapter a : adapters) {
+			if (!a.getInputType().isAssignableFrom(from)) continue;
+			Class<?> out = a.getOutputType();
+			if (to.isAssignableFrom(out)) {
+				// we found it
+				LinkedList<Adapter> list = new LinkedList<>();
+				list.add(a);
+				paths.add(list);
+			} else {
+				if (!containsOutputType(used, out))
+					possible.add(a);
+			}
+		}
+		return possible;
+	}
+	
+	private static boolean containsOutputType(ArrayList<Class<?>> used, Class<?> out) {
+		for (Class<?> c : used)
+			if (c.isAssignableFrom(out) || out.isAssignableFrom(c))
+				return true;
+		return false;
 	}
 	
 }

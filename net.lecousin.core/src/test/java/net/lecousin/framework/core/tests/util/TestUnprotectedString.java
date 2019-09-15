@@ -1,6 +1,5 @@
 package net.lecousin.framework.core.tests.util;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
@@ -93,7 +92,7 @@ public class TestUnprotectedString extends TestIString {
 	@Test(timeout=30000)
 	public void test() {
 		UnprotectedString s = new UnprotectedString("Hello");
-		ByteBuffer bb = s.encode(StandardCharsets.UTF_8);
+		/*ByteBuffer bb = */s.encode(StandardCharsets.UTF_8);
 		// TODO check
 	}
 	

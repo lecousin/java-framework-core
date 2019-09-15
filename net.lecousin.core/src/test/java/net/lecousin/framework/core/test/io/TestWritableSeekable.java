@@ -3,6 +3,7 @@ package net.lecousin.framework.core.test.io;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.function.Consumer;
 
 import org.junit.Assert;
 import org.junit.Assume;
@@ -17,7 +18,6 @@ import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 public abstract class TestWritableSeekable extends TestWritable {
 
@@ -111,12 +111,7 @@ public abstract class TestWritableSeekable extends TestWritable {
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
-		RunnableWithParameter<Pair<Integer,IOException>> ondone = new RunnableWithParameter<Pair<Integer,IOException>>() {
-			@Override
-			public void run(Pair<Integer, IOException> param) {
-				onDoneBefore.set(true);
-			}
-		};
+		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		
 		Mutable<AsyncWork<Integer,IOException>> write = new Mutable<>(null);
 		Runnable listener = new Runnable() {
@@ -184,12 +179,7 @@ public abstract class TestWritableSeekable extends TestWritable {
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		
 		MutableBoolean onDoneBeforeSeek = new MutableBoolean(false);
-		RunnableWithParameter<Pair<Long,IOException>> ondoneseek = new RunnableWithParameter<Pair<Long,IOException>>() {
-			@Override
-			public void run(Pair<Long, IOException> param) {
-				onDoneBeforeSeek.set(true);
-			}
-		};
+		Consumer<Pair<Long,IOException>> ondoneseek = param -> onDoneBeforeSeek.set(true);
 		
 		Mutable<AsyncWork<Long,IOException>> seek = new Mutable<>(null);
 		Mutable<AsyncWork<Integer,IOException>> write = new Mutable<>(null);

@@ -22,7 +22,7 @@ public class LoadLibraryExtensionPointsFile extends FullReadLines<Void> {
 		BufferedReadableCharacterStream stream, T classLoader
 	) {
 		super("Initializing extension points: " + stream.getDescription(), stream,
-				Task.PRIORITY_IMPORTANT, IO.OperationType.ASYNCHRONOUS);
+				Task.PRIORITY_IMPORTANT, null);
 		this.classLoader = classLoader;
 	}
 	
@@ -39,10 +39,12 @@ public class LoadLibraryExtensionPointsFile extends FullReadLines<Void> {
 			} else if (CustomExtensionPoint.class.isAssignableFrom(cl)) {
 				CustomExtensionPoint ext = (CustomExtensionPoint)cl.newInstance();
 				ExtensionPoints.add(ext);
-			} else
-				throw new Exception("Invalid extension point class: " + line + " must extend ExtensionPoint or CustomExtensionPoint");
+			} else {
+				throw new IOException("Invalid extension point class: "
+					+ line + " must extend ExtensionPoint or CustomExtensionPoint");
+			}
 		} catch (Exception e) {
-			throw new IOException(e);
+			throw IO.error(e);
 		}
 	}
 	

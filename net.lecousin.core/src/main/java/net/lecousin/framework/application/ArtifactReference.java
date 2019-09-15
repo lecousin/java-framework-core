@@ -15,8 +15,16 @@ public class ArtifactReference {
 		this.artifactId = artifactId;
 	}
 	
-	public String groupId;
-	public String artifactId;
+	private String groupId;
+	private String artifactId;
+	
+	public String getGroupId() {
+		return groupId;
+	}
+	
+	public String getArtifactId() {
+		return artifactId;
+	}
 
 	/**
 	 * Check the artifact referenced by this instance matches the given group and artifact id.
@@ -25,11 +33,9 @@ public class ArtifactReference {
 	 * @return true if it matches
 	 */
 	public boolean matches(String groupId, String artifactId) {
-		if (!"*".equals(this.groupId) && !this.groupId.equals(groupId))
-			return false;
-		if (!"*".equals(this.artifactId) && !this.artifactId.equals(artifactId))
-			return false;
-		return true;
+		return
+			("*".equals(this.groupId) || this.groupId.equals(groupId)) &&
+			("*".equals(this.artifactId) || this.artifactId.equals(artifactId));
 	}
 	
 }

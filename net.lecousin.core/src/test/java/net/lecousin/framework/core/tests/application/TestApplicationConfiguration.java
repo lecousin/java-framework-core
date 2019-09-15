@@ -15,11 +15,11 @@ public class TestApplicationConfiguration extends LCCoreAbstractTest {
 		InputStream input = getClass().getClassLoader().getResourceAsStream("app/lc-project.xml");
 		ApplicationConfiguration cfg = ApplicationConfiguration.load(input);
 		input.close();
-		Assert.assertEquals("This is a test", cfg.name);
-		Assert.assertEquals("mypackage.App", cfg.clazz);
-		Assert.assertEquals("mylogo.jpg", cfg.splash);
-		Assert.assertEquals("World", cfg.properties.get("hello"));
-		Assert.assertEquals("Le Monde", cfg.properties.get("bonjour"));
+		Assert.assertEquals("This is a test", cfg.getName());
+		Assert.assertEquals("mypackage.App", cfg.getClazz());
+		Assert.assertEquals("mylogo.jpg", cfg.getSplash());
+		Assert.assertEquals("World", cfg.getProperties().get("hello"));
+		Assert.assertEquals("Le Monde", cfg.getProperties().get("bonjour"));
 	}
 	
 }

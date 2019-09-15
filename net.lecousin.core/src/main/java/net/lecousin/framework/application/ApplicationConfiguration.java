@@ -2,12 +2,14 @@ package net.lecousin.framework.application;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 /**
@@ -15,80 +17,94 @@ import javax.xml.stream.XMLStreamReader;
  */
 public class ApplicationConfiguration {
 
-	public String splash;
-	public String name;
-	public String clazz;
-	public Map<String, String> properties = new HashMap<>();
+	private String splash;
+	private String name;
+	private String clazz;
+	private Map<String, String> properties = new HashMap<>();
 	
+	public String getSplash() {
+		return splash;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public String getClazz() {
+		return clazz;
+	}
+
+	public Map<String, String> getProperties() {
+		return properties;
+	}
+
 	/** Load the given file. */
-	public static ApplicationConfiguration load(File file) throws Exception {
-		try (FileInputStream in = new FileInputStream(file)) {
-			return load(in);
+	public static ApplicationConfiguration load(File file) throws ApplicationBootstrapException {
+		try {
+			try (FileInputStream in = new FileInputStream(file)) {
+				return load(in);
+			}
+		} catch (IOException e) {
+			throw new ApplicationBootstrapException("Error reading lc-project.xml file", e);
 		}
 	}
 	
 	/** Load from the given stream. */
-	public static ApplicationConfiguration load(InputStream input) throws Exception {
-		XMLStreamReader xml = XMLInputFactory.newFactory().createXMLStreamReader(input);
-		while (xml.hasNext()) {
-			xml.next();
-			if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
+	public static ApplicationConfiguration load(InputStream input) throws ApplicationBootstrapException {
+		try {
+			XMLInputFactory factory = XMLInputFactory.newFactory();
+			factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES , Boolean.FALSE);
+			XMLStreamReader xml = factory.createXMLStreamReader(input);
+			while (nextStartElement(xml)) {
 				if (!"project".equals(xml.getLocalName()))
-					throw new Exception("Root element of an lc-project.xml file must be <project>");
+					throw new ApplicationBootstrapException("Root element of an lc-project.xml file must be <project>");
 				ApplicationConfiguration cfg = new ApplicationConfiguration();
-				boolean found = false;
-				while (xml.hasNext()) {
-					xml.next();
-					if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
-						if ("application".equals(xml.getLocalName())) {
-							found = true;
-							cfg.load(xml);
-							break;
-						}
+				while (nextStartElement(xml)) {
+					if ("application".equals(xml.getLocalName())) {
+						cfg.loadApplication(xml);
+						return cfg;
 					}
 				}
-				if (!found)
-					throw new Exception("No application element found in lc-project.xml file");
-				return cfg;
+				throw new ApplicationBootstrapException("No application element found in lc-project.xml file");
 			}
+		} catch (XMLStreamException e) {
+			throw new ApplicationBootstrapException("Error reading lc-project.xml file", e);
 		}
-		throw new Exception("Nothing found in lc-project.xml file");
+		throw new ApplicationBootstrapException("Nothing found in lc-project.xml file");
 	}
 	
-	private void load(XMLStreamReader xml) throws Exception {
+	private static boolean nextStartElement(XMLStreamReader xml) throws XMLStreamException {
+		while (xml.hasNext()) {
+			xml.next();
+			if (xml.getEventType() == XMLStreamConstants.START_ELEMENT)
+				return true;
+		}
+		return false;
+	}
+	
+	private void loadApplication(XMLStreamReader xml) throws XMLStreamException {
 		while (xml.hasNext()) {
 			xml.next();
 			if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
-				if ("name".equals(xml.getLocalName())) {
+				if ("name".equals(xml.getLocalName()))
 					name = xml.getElementText();
-					continue;
-				}
-				if ("class".equals(xml.getLocalName())) {
+				else if ("class".equals(xml.getLocalName()))
 					clazz = xml.getElementText();
-					continue;
-				}
-				if ("splash".equals(xml.getLocalName())) {
+				else if ("splash".equals(xml.getLocalName()))
 					splash = xml.getElementText();
-					continue;
-				}
-				if ("properties".equals(xml.getLocalName())) {
+				else if ("properties".equals(xml.getLocalName()))
 					loadProperties(xml);
-					continue;
-				}
-				throw new Exception("Unknown element <" + xml.getLocalName() + "> in application");
+				else
+					throw new XMLStreamException("Unknown element <" + xml.getLocalName() + "> in application");
 			}
 		}
 	}
 	
-	private void loadProperties(XMLStreamReader xml) throws Exception {
-		while (xml.hasNext()) {
-			xml.next();
-			if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
-				String name = xml.getLocalName();
-				String value = xml.getElementText();
-				properties.put(name, value);
-				continue;
-			}
+	private void loadProperties(XMLStreamReader xml) throws XMLStreamException {
+		while (nextStartElement(xml)) {
+			String propName = xml.getLocalName();
+			String propValue = xml.getElementText();
+			properties.put(propName, propValue);
 		}
 	}
 	

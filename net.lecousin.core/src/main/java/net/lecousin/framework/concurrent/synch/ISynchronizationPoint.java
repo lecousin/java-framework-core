@@ -1,6 +1,7 @@
 package net.lecousin.framework.concurrent.synch;
 
 import java.util.Collection;
+import java.util.function.Function;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -122,6 +123,28 @@ public interface ISynchronizationPoint<TError extends Exception> {
 					sp.cancel(getCancelEvent());
 				else if (hasError())
 					sp.error(getError());
+				else
+					sp.unblock();
+			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.listenInline: " + sp;
+			}
+		});
+	}
+	
+	/** Transfer the result of this blocking point to the given synchronization point:
+	 * unblock it on success, call error method on error, or call cancel method on cancellation.
+	 */
+	default <SPError extends Exception> void listenInline(SynchronizationPoint<SPError> sp, Function<TError, SPError> errorConverter) {
+		listenInline(new Runnable() {
+			@Override
+			public void run() {
+				if (isCancelled())
+					sp.cancel(getCancelEvent());
+				else if (hasError())
+					sp.error(errorConverter.apply(getError()));
 				else
 					sp.unblock();
 			}
@@ -260,6 +283,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		task.startOn(this, evenIfErrorOrCancel);
 	}
 	
+	/** Start the given task when this synchronization point is unblocked. */
+	default void listenAsync(String description, byte priority, Runnable task, boolean evenIfErrorOrCancel) {
+		new Task.Cpu.FromRunnable(task, description, priority).startOn(this, evenIfErrorOrCancel);
+	}
+	
 	/** Start the given task when this synchronization point is successfully unblocked, else the error or cancel
 	 * event are forwarded to the given synchronization point.
 	 */
@@ -274,6 +302,25 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			@Override
 			public String toString() {
 				return "SynchronzationPoint.listenAsync: " + task.getDescription();
+			}
+		}, onErrorOrCancel);
+	}
+	
+	/** Start the given task when this synchronization point is successfully unblocked, else the error or cancel
+	 * event are forwarded to the given synchronization point.
+	 */
+	default void listenAsync(String description, byte priority, Runnable task, ISynchronizationPoint<TError> onErrorOrCancel) {
+		Task.Cpu.FromRunnable t = new Task.Cpu.FromRunnable(task, description, priority);
+		listenInline(new Runnable() {
+			@Override
+			public void run() {
+				t.start();
+				t.getOutput().onCancel((cancel) -> { if (!onErrorOrCancel.isUnblocked()) onErrorOrCancel.cancel(cancel); });
+			}
+			
+			@Override
+			public String toString() {
+				return "SynchronzationPoint.listenAsync: " + description;
 			}
 		}, onErrorOrCancel);
 	}

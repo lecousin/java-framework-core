@@ -5,6 +5,10 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -17,12 +21,6 @@ import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.math.FragmentedRangeLong;
 import net.lecousin.framework.math.RangeLong;
 import net.lecousin.framework.mutable.MutableBoolean;
-import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
-
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
 
 public abstract class TestReadWrite extends TestIO.UsingTestData {
 
@@ -129,13 +127,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 				MutableBoolean ondoneCalled = new MutableBoolean(false);
 				int bufIndex = index;
 				ByteBuffer buf = ByteBuffer.wrap(testBuf);
-				AsyncWork<Integer, IOException> write = io.writeAsync(index * testBuf.length, buf,
-				new RunnableWithParameter<Pair<Integer,IOException>>() {
-					@Override
-					public void run(Pair<Integer, IOException> param) {
-						ondoneCalled.set(true);
-					}
-				});
+				AsyncWork<Integer, IOException> write = io.writeAsync(index * testBuf.length, buf, param -> ondoneCalled.set(true));
 				write.listenInline(() -> {
 					if (!ondoneCalled.get()) {
 						done.error(new IOException("ondone not called by writeAsync"));
@@ -199,13 +191,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 				byte[] b = new byte[testBuf.length];
 				long pos = index * testBuf.length;
 				MutableBoolean ondoneCalled = new MutableBoolean(false);
-				AsyncWork<Integer, IOException> read = io.readFullyAsync(pos, ByteBuffer.wrap(b),
-				new RunnableWithParameter<Pair<Integer,IOException>>() {
-					@Override
-					public void run(Pair<Integer, IOException> param) {
-						ondoneCalled.set(true);
-					}
-				});
+				AsyncWork<Integer, IOException> read = io.readFullyAsync(pos, ByteBuffer.wrap(b), param -> ondoneCalled.set(true));
 				read.listenInline(new Runnable() {
 					@Override
 					public void run() {

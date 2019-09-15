@@ -3,15 +3,15 @@ package net.lecousin.framework.concurrent.tasks.drives;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 class WriteFileTask extends Task.OnFile<Integer,IOException> {
 
-	public WriteFileTask(FileAccess file, long pos, ByteBuffer buffer, byte priority, RunnableWithParameter<Pair<Integer,IOException>> ondone) {
+	public WriteFileTask(FileAccess file, long pos, ByteBuffer buffer, byte priority, Consumer<Pair<Integer,IOException>> ondone) {
 		super(file.manager, "Write to file " + file.path, priority, ondone);
 		this.file = file;
 		this.pos = pos;

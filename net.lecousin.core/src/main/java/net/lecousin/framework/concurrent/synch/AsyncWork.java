@@ -6,6 +6,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
@@ -14,7 +16,6 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Same as a SynchronizationPoint, except that it contains a result.
@@ -77,7 +78,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 
 		/** Constructor. */
 		public AsyncWorkListenerReady(OnReady<T, TError> listener, ISynchronizationPoint<TError> onErrorOrCancel,
-			RunnableWithParameter<Pair<T, TError>> onDoneError) {
+			Consumer<Pair<T, TError>> onDoneError) {
 			this.listener = listener;
 			this.onErrorOrCancel = onErrorOrCancel;
 			this.onError = onDoneError;
@@ -85,7 +86,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 		
 		protected OnReady<T, TError> listener;
 		protected ISynchronizationPoint<TError> onErrorOrCancel;
-		protected RunnableWithParameter<Pair<T, TError>> onError;
+		protected Consumer<Pair<T, TError>> onError;
 		
 		@Override
 		public final void ready(T result) {
@@ -94,7 +95,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 		
 		@Override
 		public final void error(TError error) {
-			if (onError != null) onError.run(new Pair<>(null, error));
+			if (onError != null) onError.accept(new Pair<>(null, error));
 			onErrorOrCancel.error(error);
 		}
 		
@@ -486,6 +487,19 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	@Override
 	public final void cancel(CancelException reason) {
 		unblockCancel(reason);
+	}
+
+	/** Unblock this AsyncWork once the given synchronization point is done,
+	 * with error, cancel event, or success according to the result of sp. */
+	public final void unblockOn(ISynchronizationPoint<TError> sp, Supplier<T> resultOnSuccess) {
+		sp.listenInline(() -> {
+			if (sp.hasError())
+				unblockError(sp.getError());
+			else if (sp.isCancelled())
+				unblockCancel(sp.getCancelEvent());
+			else
+				unblockSuccess(resultOnSuccess.get());
+		});
 	}
 	
 	@Override

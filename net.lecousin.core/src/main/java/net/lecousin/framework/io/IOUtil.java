@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -28,7 +29,6 @@ import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.mutable.MutableLong;
 import net.lecousin.framework.progress.WorkProgress;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
@@ -155,7 +155,7 @@ public final class IOUtil {
 	 * @return the number of bytes read, which is less than the remaining bytes of the buffer only if the end of the IO is reached.
 	 */
 	public static AsyncWork<Integer,IOException> readFullyAsync(
-		IO.Readable io, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		IO.Readable io, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		return readFullyAsync(io,buffer,0,ondone);
 	}
@@ -169,17 +169,17 @@ public final class IOUtil {
 	 * @return the number of bytes read, which is less than the remaining bytes of the buffer only if the end of the IO is reached.
 	 */
 	public static AsyncWork<Integer,IOException> readFullyAsync(
-		IO.Readable io, ByteBuffer buffer, int done, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		IO.Readable io, ByteBuffer buffer, int done, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		AsyncWork<Integer,IOException> read = io.readAsync(buffer);
 		if (read.isUnblocked()) {
 			if (!read.isSuccessful()) {
-				if (ondone != null && read.getError() != null) ondone.run(new Pair<>(null, read.getError()));
+				if (ondone != null && read.getError() != null) ondone.accept(new Pair<>(null, read.getError()));
 				return read;
 			}
 			if (!buffer.hasRemaining()) {
 				if (done == 0) {
-					if (ondone != null) ondone.run(new Pair<>(read.getResult(), null));
+					if (ondone != null) ondone.accept(new Pair<>(read.getResult(), null));
 					return read;
 				}
 				if (read.getResult().intValue() <= 0) return success(Integer.valueOf(done), ondone);
@@ -187,7 +187,7 @@ public final class IOUtil {
 			}
 			if (read.getResult().intValue() <= 0) {
 				if (done == 0) {
-					if (ondone != null) ondone.run(new Pair<>(read.getResult(), null));
+					if (ondone != null) ondone.accept(new Pair<>(read.getResult(), null));
 					return read;
 				}
 				return success(Integer.valueOf(done), ondone);
@@ -201,14 +201,14 @@ public final class IOUtil {
 			do {
 				if (!buffer.hasRemaining() || result.intValue() <= 0) {
 					if (total.get() == 0) {
-						if (ondone != null) ondone.run(new Pair<>(result, null));
+						if (ondone != null) ondone.accept(new Pair<>(result, null));
 						sp.unblockSuccess(result);
 					} else if (result.intValue() >= 0) {
 						Integer i = Integer.valueOf(result.intValue() + total.get());
-						if (ondone != null) ondone.run(new Pair<>(i, null));
+						if (ondone != null) ondone.accept(new Pair<>(i, null));
 						sp.unblockSuccess(i);
 					} else {
-						if (ondone != null) ondone.run(new Pair<>(Integer.valueOf(total.get()), null));
+						if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(total.get()), null));
 						sp.unblockSuccess(Integer.valueOf(total.get()));
 					}
 					return;
@@ -239,20 +239,20 @@ public final class IOUtil {
 	 * @return the number of bytes read, which is less than the remaining bytes of the buffer only if the end of the IO is reached.
 	 */
 	public static AsyncWork<Integer,IOException> readFullyAsync(
-		IO.Readable.Seekable io, long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		IO.Readable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		AsyncWork<Integer,IOException> read = io.readAsync(pos, buffer);
 		if (read.isUnblocked()) {
 			if (!read.isSuccessful()) {
-				if (ondone != null && read.getError() != null) ondone.run(new Pair<>(null, read.getError()));
+				if (ondone != null && read.getError() != null) ondone.accept(new Pair<>(null, read.getError()));
 				return read;
 			}
 			if (!buffer.hasRemaining()) {
-				if (ondone != null && read.getResult() != null) ondone.run(new Pair<>(read.getResult(), null));
+				if (ondone != null && read.getResult() != null) ondone.accept(new Pair<>(read.getResult(), null));
 				return read;
 			}
 			if (read.getResult().intValue() <= 0) {
-				if (ondone != null) ondone.run(new Pair<>(read.getResult(), null));
+				if (ondone != null) ondone.accept(new Pair<>(read.getResult(), null));
 				return read;
 			}
 		}
@@ -263,15 +263,15 @@ public final class IOUtil {
 			do {
 				if (!buffer.hasRemaining() || result.intValue() <= 0) {
 					if (total.get() == 0) {
-						if (ondone != null) ondone.run(new Pair<>(result, null));
+						if (ondone != null) ondone.accept(new Pair<>(result, null));
 						sp.unblockSuccess(result);
 					} else if (result.intValue() >= 0) {
 						Integer i = Integer.valueOf(result.intValue() + total.get());
-						if (ondone != null) ondone.run(new Pair<>(i, null));
+						if (ondone != null) ondone.accept(new Pair<>(i, null));
 						sp.unblockSuccess(i);
 					} else {
 						Integer i = Integer.valueOf(total.get());
-						if (ondone != null) ondone.run(new Pair<>(i, null));
+						if (ondone != null) ondone.accept(new Pair<>(i, null));
 						sp.unblockSuccess(i);
 					}
 					return;
@@ -327,7 +327,7 @@ public final class IOUtil {
 	 * @return the number of bytes read
 	 */
 	public static Task<Integer,IOException> readAsyncUsingSync(
-		IO.Readable io, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		IO.Readable io, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>(
 			"Reading from " + io.getSourceDescription(), io.getPriority(), ondone
@@ -351,7 +351,7 @@ public final class IOUtil {
 	 * @return the number of bytes read
 	 */
 	public static Task<Integer,IOException> readAsyncUsingSync(
-		IO.Readable.Seekable io, long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		IO.Readable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>(
 			"Reading from " + io.getSourceDescription(), io.getPriority(), ondone
@@ -374,7 +374,7 @@ public final class IOUtil {
 	 * @return the number of bytes read
 	 */
 	public static Task<Integer,IOException> readFullyAsyncUsingSync(
-		IO.Readable io, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		IO.Readable io, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>(
 			"Reading from " + io.getSourceDescription(), io.getPriority(), ondone
@@ -398,7 +398,7 @@ public final class IOUtil {
 	 * @return the number of bytes read
 	 */
 	public static Task<Integer,IOException> readFullyAsyncUsingSync(
-		IO.Readable.Seekable io, long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		IO.Readable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>(
 			"Reading from " + io.getSourceDescription(), io.getPriority(), ondone
@@ -435,7 +435,7 @@ public final class IOUtil {
 	 * Implement an asynchronous skip using a task calling a synchronous skip.
 	 * This must be used only if the synchronous skip is using only CPU.
 	 */
-	public static AsyncWork<Long,IOException> skipAsyncUsingSync(IO.Readable io, long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public static AsyncWork<Long,IOException> skipAsyncUsingSync(IO.Readable io, long n, Consumer<Pair<Long,IOException>> ondone) {
 		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Skipping bytes", io.getPriority(), ondone) {
 			@Override
 			public Long run() throws IOException {
@@ -450,9 +450,9 @@ public final class IOUtil {
 	/**
 	 * Implement an asynchronous skip using readAsync.
 	 */
-	public static AsyncWork<Long, IOException> skipAsyncByReading(IO.Readable io, long n, RunnableWithParameter<Pair<Long,IOException>> ondone) {
+	public static AsyncWork<Long, IOException> skipAsyncByReading(IO.Readable io, long n, Consumer<Pair<Long,IOException>> ondone) {
 		if (n <= 0) {
-			if (ondone != null) ondone.run(new Pair<>(Long.valueOf(0), null));
+			if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(0), null));
 			return new AsyncWork<>(Long.valueOf(0), null);
 		}
 		ByteBuffer b = ByteBuffer.allocate(n > 65536 ? 65536 : (int)n);
@@ -463,13 +463,13 @@ public final class IOUtil {
 			do {
 				int read = nb.intValue();
 				if (read <= 0) {
-					if (ondone != null) ondone.run(new Pair<>(Long.valueOf(done.get()), null));
+					if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(done.get()), null));
 					result.unblockSuccess(Long.valueOf(done.get()));
 					return;
 				}
 				done.add(nb.intValue());
 				if (done.get() == n) {
-					if (ondone != null) ondone.run(new Pair<>(Long.valueOf(n), null));
+					if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(n), null));
 					result.unblockSuccess(Long.valueOf(n));
 					return;
 				}
@@ -595,7 +595,7 @@ public final class IOUtil {
 	 * This must be used only if the synchronous write is only using CPU.
 	 */
 	public static Task<Integer,IOException> writeAsyncUsingSync(
-		IO.Writable io, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		IO.Writable io, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Integer,IOException> task = new Task.Cpu<Integer, IOException>(
 			"Writing to " + io.getSourceDescription(), io.getPriority(), ondone
@@ -614,7 +614,7 @@ public final class IOUtil {
 	 * This must be used only if the synchronous write is only using CPU.
 	 */
 	public static Task<Integer,IOException> writeAsyncUsingSync(
-		IO.Writable.Seekable io, long pos, ByteBuffer buffer, RunnableWithParameter<Pair<Integer,IOException>> ondone
+		IO.Writable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Integer,IOException> task = new Task.Cpu<Integer, IOException>(
 			"Writing to " + io.getSourceDescription(), io.getPriority(), ondone
@@ -756,7 +756,7 @@ public final class IOUtil {
 	 * This must be used only if the synchronous seek is only using CPU.
 	 */
 	public static Task<Long,IOException> seekAsyncUsingSync(
-		IO.Seekable io, SeekType type, long move, RunnableWithParameter<Pair<Long,IOException>> ondone
+		IO.Seekable io, SeekType type, long move, Consumer<Pair<Long,IOException>> ondone
 	) {
 		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Seeking", io.getPriority(), ondone) {
 			@Override
@@ -1220,15 +1220,15 @@ public final class IOUtil {
 	 * but calls ondone before if not null and the result is not cancelled.
 	 */
 	public static <T> void listenOnDone(
-		AsyncWork<T, IOException> toListen, AsyncWork<T, IOException> toUnblock, RunnableWithParameter<Pair<T,IOException>> ondone
+		AsyncWork<T, IOException> toListen, AsyncWork<T, IOException> toUnblock, Consumer<Pair<T,IOException>> ondone
 	) {
 		toListen.listenInline(
 			(result) -> {
-				if (ondone != null) ondone.run(new Pair<>(result, null));
+				if (ondone != null) ondone.accept(new Pair<>(result, null));
 				toUnblock.unblockSuccess(result);
 			},
 			(error) -> {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
+				if (ondone != null) ondone.accept(new Pair<>(null, error));
 				toUnblock.error(error);
 			},
 			(cancel) -> {
@@ -1243,12 +1243,12 @@ public final class IOUtil {
 	 */
 	public static <T, T2> void listenOnDone(
 		AsyncWork<T, IOException> toListen, Listener<T> onReady, ISynchronizationPoint<IOException> onErrorOrCancel,
-		RunnableWithParameter<Pair<T2,IOException>> ondone
+		Consumer<Pair<T2,IOException>> ondone
 	) {
 		toListen.listenInline(
 			onReady,
 			(error) -> {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
+				if (ondone != null) ondone.accept(new Pair<>(null, error));
 				onErrorOrCancel.error(error);
 			},
 			(cancel) -> {
@@ -1263,13 +1263,13 @@ public final class IOUtil {
 	 */
 	public static <T, T2> void listenOnDone(
 		AsyncWork<T, IOException> toListen, Task<?,?> onReady, ISynchronizationPoint<IOException> onErrorOrCancel,
-		RunnableWithParameter<Pair<T2,IOException>> ondone
+		Consumer<Pair<T2,IOException>> ondone
 	) {
 		toListen.listenInline(() -> {
 			if (toListen.isCancelled()) {
 				if (onErrorOrCancel != null) onErrorOrCancel.cancel(toListen.getCancelEvent());
 			} else if (toListen.hasError()) {
-				if (ondone != null) ondone.run(new Pair<>(null, toListen.getError()));
+				if (ondone != null) ondone.accept(new Pair<>(null, toListen.getError()));
 				if (onErrorOrCancel != null) onErrorOrCancel.error(toListen.getError());
 			} else
 				onReady.start();
@@ -1282,12 +1282,12 @@ public final class IOUtil {
 	 */
 	public static <T> void listenOnDone(
 		ISynchronizationPoint<IOException> toListen, Runnable onReady, ISynchronizationPoint<IOException> onErrorOrCancel,
-		RunnableWithParameter<Pair<T,IOException>> ondone
+		Consumer<Pair<T,IOException>> ondone
 	) {
 		toListen.listenInline(
 			onReady,
 			(error) -> {
-				if (ondone != null) ondone.run(new Pair<>(null, error));
+				if (ondone != null) ondone.accept(new Pair<>(null, error));
 				onErrorOrCancel.error(error);
 			},
 			(cancel) -> {
@@ -1298,35 +1298,35 @@ public final class IOUtil {
 	
 	/** Shortcut to transfer an error to ondone if it is not null, and to the AsyncWork. */
 	public static <TResult, TError extends Exception>
-	void error(TError error, AsyncWork<TResult, TError> result, RunnableWithParameter<Pair<TResult, TError>> ondone) {
-		if (ondone != null) ondone.run(new Pair<>(null, error));
+	void error(TError error, AsyncWork<TResult, TError> result, Consumer<Pair<TResult, TError>> ondone) {
+		if (ondone != null) ondone.accept(new Pair<>(null, error));
 		result.error(error);
 	}
 	
 	/** Shortcut to transfer an error to ondone if it is not null, and create an AsyncWork with this error. */
 	public static <TResult, TError extends Exception>
-	AsyncWork<TResult, TError> error(TError error, RunnableWithParameter<Pair<TResult, TError>> ondone) {
-		if (ondone != null) ondone.run(new Pair<>(null, error));
+	AsyncWork<TResult, TError> error(TError error, Consumer<Pair<TResult, TError>> ondone) {
+		if (ondone != null) ondone.accept(new Pair<>(null, error));
 		return new AsyncWork<>(null, error);
 	}
 	
 	/** Shortcut to transfer a result to ondone if it is not null, and to the AsyncWork. */
 	public static <TResult, TError extends Exception>
-	void success(TResult res, AsyncWork<TResult, TError> result, RunnableWithParameter<Pair<TResult, TError>> ondone) {
-		if (ondone != null) ondone.run(new Pair<>(res, null));
+	void success(TResult res, AsyncWork<TResult, TError> result, Consumer<Pair<TResult, TError>> ondone) {
+		if (ondone != null) ondone.accept(new Pair<>(res, null));
 		result.unblockSuccess(res);
 	}
 	
 	/** Shortcut to transfer a result to ondone if it is not null, and create an AsyncWork with this result. */
 	public static <TResult, TError extends Exception>
-	AsyncWork<TResult, TError> success(TResult result, RunnableWithParameter<Pair<TResult, TError>> ondone) {
-		if (ondone != null) ondone.run(new Pair<>(result, null));
+	AsyncWork<TResult, TError> success(TResult result, Consumer<Pair<TResult, TError>> ondone) {
+		if (ondone != null) ondone.accept(new Pair<>(result, null));
 		return new AsyncWork<>(result, null);
 	}
 	
 	/** Shortcut to transfer error or cancellation. */
 	public static <TResult, TError extends Exception>
-	void notSuccess(ISynchronizationPoint<TError> sp, AsyncWork<TResult, TError> result, RunnableWithParameter<Pair<TResult, TError>> ondone) {
+	void notSuccess(ISynchronizationPoint<TError> sp, AsyncWork<TResult, TError> result, Consumer<Pair<TResult, TError>> ondone) {
 		if (sp.hasError())
 			error(sp.getError(), result, ondone);
 		else

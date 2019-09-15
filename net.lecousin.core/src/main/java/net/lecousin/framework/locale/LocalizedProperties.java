@@ -332,7 +332,7 @@ public class LocalizedProperties implements IMemoryManageable {
 			for (String ns : namespaces.keySet()) {
 				int loaded = 0;
 				Namespace n = namespaces.get(ns);
-				for (Namespace.Language lang : n.languages)
+				for (Namespace.Language lang : n.languages) // TODO here we may have a NPE
 					if (lang.loading != null) loaded++;
 				items.add("Localized properties for namespace " + ns + " (" + loaded + " language(s) loaded)");
 			}

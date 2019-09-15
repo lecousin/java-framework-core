@@ -15,13 +15,13 @@ public interface ApplicationBootstrap {
 	 * is asked to shutdown. The method {@link WorkProgress#done()} must be called on the given progress
 	 * to signal the end of the startup.
 	 */
-	public ISynchronizationPoint<Exception> start(Application app, WorkProgress progress) throws Exception;
+	ISynchronizationPoint<Exception> start(Application app, WorkProgress progress) throws ApplicationBootstrapException;
 	
 	/**
 	 * Utility method to start an application in a main.
 	 */
-	public static void main(Artifact artifact, String[] args, boolean debugMode, ApplicationBootstrap startup) {
-		ISynchronizationPoint<Exception> start = Application.start(artifact, args, debugMode);
+	static void main(Artifact artifact, String[] args, boolean debugMode, ApplicationBootstrap startup) {
+		ISynchronizationPoint<ApplicationBootstrapException> start = Application.start(artifact, args, debugMode);
 		RunInMain t = new RunInMain(startup);
 		t.startOn(start, false);
 		start.block(0);

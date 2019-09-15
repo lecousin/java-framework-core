@@ -149,7 +149,6 @@ public class TestAdapter extends LCCoreAbstractTest {
 	
 	@Test
 	public void basicTests() throws Exception {
-		Assert.assertEquals(0, new AdapterRegistry().getPlugins().size());
 		Assert.assertNull(AdapterRegistry.get().adapt(new Object(), TestAdapter.class));
 		FileInfo fi = new FileInfo();
 		Assert.assertNull(AdapterRegistry.get().findAdapter(fi, FileInfo.class, File.class));

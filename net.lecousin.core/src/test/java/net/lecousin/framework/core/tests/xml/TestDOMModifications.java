@@ -1,15 +1,6 @@
 package net.lecousin.framework.core.tests.xml;
 
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.soap.Node;
-
-import net.lecousin.framework.xml.dom.XMLAttribute;
-import net.lecousin.framework.xml.dom.XMLCData;
-import net.lecousin.framework.xml.dom.XMLComment;
-import net.lecousin.framework.xml.dom.XMLDocument;
-import net.lecousin.framework.xml.dom.XMLDocumentType;
-import net.lecousin.framework.xml.dom.XMLElement;
-import net.lecousin.framework.xml.dom.XMLText;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -19,8 +10,17 @@ import org.w3c.dom.Comment;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
+
+import net.lecousin.framework.xml.dom.XMLAttribute;
+import net.lecousin.framework.xml.dom.XMLCData;
+import net.lecousin.framework.xml.dom.XMLComment;
+import net.lecousin.framework.xml.dom.XMLDocument;
+import net.lecousin.framework.xml.dom.XMLDocumentType;
+import net.lecousin.framework.xml.dom.XMLElement;
+import net.lecousin.framework.xml.dom.XMLText;
 
 public class TestDOMModifications extends TestDOM {
 

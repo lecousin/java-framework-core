@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,6 +16,7 @@ import java.util.Map;
 import net.lecousin.framework.application.Version;
 import net.lecousin.framework.application.VersionRange;
 import net.lecousin.framework.application.VersionSpecification;
+import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.application.libraries.artifacts.LibrariesRepository;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor;
 import net.lecousin.framework.concurrent.Task;
@@ -27,10 +26,11 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
 import net.lecousin.framework.io.provider.IOProvider;
-import net.lecousin.framework.io.provider.IOProviderFromURL;
+import net.lecousin.framework.io.provider.IOProviderFromURI;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.SystemEnvironment;
 import net.lecousin.framework.util.SystemEnvironment.OSFamily;
+import net.lecousin.framework.xml.XMLException;
 import net.lecousin.framework.xml.XMLStreamEvents.ElementContext;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 import net.lecousin.framework.xml.XMLStreamReader;
@@ -40,19 +40,26 @@ import net.lecousin.framework.xml.XMLStreamReader;
  */
 public class MavenPOM implements LibraryDescriptor {
 	
+	public static final String ELEMENT_ARTIFACT_ID = "artifactId";
+	public static final String ELEMENT_GROUP_ID = "groupId";
+	public static final String ELEMENT_VERSION = "version";
+	public static final String ELEMENT_DEPENDENCIES = "dependencies";
+	
 	/** Load a POM file. */
-	@SuppressWarnings("resource")
-	public static AsyncWork<MavenPOM, Exception> load(URL pomFile, byte priority, MavenPOMLoader pomLoader, boolean fromRepository) {
-		AsyncWork<MavenPOM, Exception> result = new AsyncWork<>();
-		IOProvider p = IOProviderFromURL.getInstance().get(pomFile);
+	public static AsyncWork<MavenPOM, LibraryManagementException> load(
+		URI pomFile, byte priority, MavenPOMLoader pomLoader, boolean fromRepository
+	) {
+		AsyncWork<MavenPOM, LibraryManagementException> result = new AsyncWork<>();
+		IOProvider p = IOProviderFromURI.getInstance().get(pomFile);
 		if (p == null)
-			return new AsyncWork<>(null, new FileNotFoundException(pomFile.toString()));
+			return new AsyncWork<>(null,
+				new MavenPOMException(pomFile, new FileNotFoundException(pomFile.toString())));
 		if (!(p instanceof IOProvider.Readable))
-			return new AsyncWork<>(null, new IOException("File not readable: " + pomFile.toString()));
+			return new AsyncWork<>(null, new MavenPOMException(pomFile, "not readable"));
 		IO.Readable fileIO;
 		try { fileIO = ((IOProvider.Readable)p).provideIOReadable(priority); }
 		catch (IOException e) {
-			return new AsyncWork<>(null, e);
+			return new AsyncWork<>(null, new MavenPOMException(pomFile, e));
 		}
 		Task<Void, NoException> task = new Task.Cpu<Void, NoException>("Loading POM", priority) {
 			@SuppressWarnings("unchecked")
@@ -63,15 +70,15 @@ public class MavenPOM implements LibraryDescriptor {
 				if (fileIO instanceof IO.KnownSize) {
 					try { bufSize = (int)((IO.KnownSize)fileIO).getSizeSync(); }
 					catch (IOException e) {
-						result.error(e);
+						result.error(new MavenPOMException(pomFile, e));
 						return null;
 					}
 					byte[] buf = new byte[bufSize];
-					readFile = new AsyncWork<ByteArrayIO, IOException>();
-					fileIO.readFullyAsync(ByteBuffer.wrap(buf)).listenInline(() -> {
-						((AsyncWork<ByteArrayIO, IOException>)readFile).unblockSuccess(
-							new ByteArrayIO(buf, pomFile.toString()));
-					}, readFile);
+					readFile = new AsyncWork<>();
+					fileIO.readFullyAsync(ByteBuffer.wrap(buf)).listenInline(
+						() -> ((AsyncWork<ByteArrayIO, IOException>)readFile).unblockSuccess(
+							new ByteArrayIO(buf, pomFile.toString())),
+						readFile);
 				} else {
 					bufSize = 4096;
 					readFile = IOUtil.readFullyAsync(fileIO, 4096);
@@ -80,7 +87,7 @@ public class MavenPOM implements LibraryDescriptor {
 				readFile.listenAsync(new Task.Cpu.FromRunnable("Loading POM", priority, () -> {
 					fileIO.closeAsync();
 					if (readFile.hasError()) {
-						result.error(readFile.getError());
+						result.error(new MavenPOMException(pomFile, readFile.getError()));
 						return;
 					}
 					IO.Readable.Buffered bio = readFile.getResult();
@@ -92,7 +99,7 @@ public class MavenPOM implements LibraryDescriptor {
 							pom.new Finalize(result, priority).start();
 							return;
 						}
-						pom.parentLoading.listenInline(() -> { pom.new Finalize(result, priority).start(); }, result);
+						pom.parentLoading.listenInline(() -> pom.new Finalize(result, priority).start(), result);
 					}, result);
 				}), true);
 				return null;
@@ -102,13 +109,13 @@ public class MavenPOM implements LibraryDescriptor {
 		return result;
 	}
 	
-	private MavenPOM(MavenPOMLoader loader, URL pomFile) {
+	private MavenPOM(MavenPOMLoader loader, URI pomFile) {
 		this.loader = loader;
 		this.pomFile = pomFile;
 	}
 	
 	private MavenPOMLoader loader;
-	private URL pomFile;
+	private URI pomFile;
 	
 	private String artifactId;
 	private String groupId;
@@ -119,7 +126,7 @@ public class MavenPOM implements LibraryDescriptor {
 	private String parentGroupId;
 	private String parentVersion;
 	private String parentRelativePath = "../pom.xml";
-	private AsyncWork<MavenPOM, Exception> parentLoading;
+	private AsyncWork<MavenPOM, LibraryManagementException> parentLoading;
 	
 	private static class Build {
 		private String outputDirectory;
@@ -134,6 +141,7 @@ public class MavenPOM implements LibraryDescriptor {
 	
 	/** Dependency specified in the POM file. */
 	public class Dependency implements LibraryDescriptor.Dependency {
+		
 		private String groupId;
 		private String artifactId;
 		private String version;
@@ -162,15 +170,14 @@ public class MavenPOM implements LibraryDescriptor {
 		public boolean isOptional() { return optional; }
 		
 		@Override
-		public URL getKnownLocation() {
+		public URI getKnownLocation() {
 			if (systemPath == null) return null;
 			try {
 				URI uri = new URI(systemPath);
 				if (uri.isAbsolute())
-					return uri.toURL();
-				URI pomURI = pomFile.toURI();
-				URI parent = pomURI.resolve(".");
-				return parent.resolve(systemPath).toURL(); 
+					return uri;
+				URI parent = pomFile.resolve(".");
+				return parent.resolve(systemPath); 
 			} catch (Exception e) {
 				return null;
 			}
@@ -252,9 +259,9 @@ public class MavenPOM implements LibraryDescriptor {
 	}
 	
 	@Override
-	public URL getDirectory() {
+	public URI getDirectory() {
 		try {
-			return pomFile.toURI().resolve(".").toURL();
+			return pomFile.resolve(".");
 		} catch (Exception e) {
 			return null;
 		}
@@ -267,17 +274,12 @@ public class MavenPOM implements LibraryDescriptor {
 	
 	private File classesFile = null;
 	
-	@SuppressWarnings("resource")
 	@Override
 	public AsyncWork<File, NoException> getClasses() {
 		if (!hasClasses()) return new AsyncWork<>(null, null);
 		if (classesFile != null) return new AsyncWork<>(classesFile, null);
-		if ("file".equals(pomFile.getProtocol())) {
-			File pf;
-			try { pf = new File(pomFile.toURI()); }
-			catch (URISyntaxException e) {
-				return new AsyncWork<>(null, null);
-			}
+		if ("file".equals(pomFile.getScheme())) {
+			File pf = new File(pomFile);
 			pf = pf.getParentFile();
 			if (build.outputDirectory != null) {
 				File dir = new File(build.outputDirectory);
@@ -296,9 +298,9 @@ public class MavenPOM implements LibraryDescriptor {
 			return new AsyncWork<>(classesFile, null);
 		}
 		try {
-			URI uri = pomFile.toURI().resolve(".").resolve(artifactId + '-' + version + ".jar");
-			IOProvider p = IOProviderFromURL.getInstance().get(uri.toURL());
-			if (p == null || !(p instanceof IOProvider.Readable))
+			URI uri = pomFile.resolve(".").resolve(artifactId + '-' + version + ".jar");
+			IOProvider p = IOProviderFromURI.getInstance().get(uri);
+			if (!(p instanceof IOProvider.Readable))
 				return new AsyncWork<>(null, null);
 			IO.Readable io = ((IOProvider.Readable)p).provideIOReadable(Task.PRIORITY_IMPORTANT);
 			if (io == null)
@@ -335,9 +337,9 @@ public class MavenPOM implements LibraryDescriptor {
 		return list;
 	}
 
-	private class Reader extends Task.Cpu<Void, Exception> {
+	private class Reader extends Task.Cpu<Void, LibraryManagementException> {
 		private Reader(AsyncWork<XMLStreamReader, Exception> startXMLReader, byte priority,
-			boolean fromRepository, URL pomFile, MavenPOMLoader pomLoader) {
+			boolean fromRepository, URI pomFile, MavenPOMLoader pomLoader) {
 			super("Read POM " + pomFile.toString(), priority);
 			this.startXMLReader = startXMLReader;
 			this.fromRepository = fromRepository;
@@ -347,79 +349,87 @@ public class MavenPOM implements LibraryDescriptor {
 		
 		private AsyncWork<XMLStreamReader, Exception> startXMLReader;
 		private boolean fromRepository;
-		private URL pomFile;
+		private URI pomFile;
 		private MavenPOMLoader pomLoader;
 		
 		@Override
-		public Void run() throws Exception {
-			if (startXMLReader.hasError()) throw startXMLReader.getError();
-			if (startXMLReader.isCancelled()) throw startXMLReader.getCancelEvent();
+		public Void run() throws LibraryManagementException {
+			if (startXMLReader.hasError()) throw new MavenPOMException(pomFile, startXMLReader.getError());
+			if (startXMLReader.isCancelled()) throw new MavenPOMException(pomFile, startXMLReader.getCancelEvent());
 			XMLStreamReader xml = startXMLReader.getResult();
-			while (!Type.START_ELEMENT.equals(xml.event.type)) xml.next();
-			if (!xml.event.text.equals("project"))
-				throw new Exception("Invalid POM: root element must be a project");
-			while (xml.nextStartElement()) {
-				if (xml.event.text.equals("artifactId"))
-					artifactId = xml.readInnerText().trim().asString();
-				else if (xml.event.text.equals("groupId"))
-					groupId = xml.readInnerText().trim().asString();
-				else if (xml.event.text.equals("version"))
-					version = xml.readInnerText().trim().asString();
-				else if (xml.event.text.equals("packaging"))
-					packaging = xml.readInnerText().trim().asString();
-				else if (xml.event.text.equals("parent"))
-					readParent(xml);
-				else if (xml.event.text.equals("build"))
-					readBuild(xml, build);
-				else if (xml.event.text.equals("properties"))
-					readProperties(xml, properties);
-				else if (xml.event.text.equals("dependencyManagement"))
-					readDependencyManagement(xml, dependencyManagement);
-				else if (xml.event.text.equals("dependencies"))
-					readDependencies(xml, dependencies);
-				else if (xml.event.text.equals("profiles"))
-					readProfiles(xml);
-				else if (xml.event.text.equals("repositories"))
-					readRepositories(xml, repositories);
-				else
-					xml.closeElement();
-			}
-			if (parentGroupId != null) {
-				if (!fromRepository) {
-					File parentFile = new File(new File(pomFile.toURI()).getParentFile(), parentRelativePath);
-					if (parentFile.exists()) {
-						if (parentFile.isDirectory()) {
-							parentFile = new File(parentFile, "pom.xml");
-							if (parentFile.exists())
-								parentLoading = pomLoader.loadPOM(parentFile.toURI().toURL(), false, getPriority());
-						} else
-							parentLoading = pomLoader.loadPOM(parentFile.toURI().toURL(), false, getPriority());
+			try {
+				while (!Type.START_ELEMENT.equals(xml.event.type)) xml.next();
+				if (!xml.event.text.equals("project"))
+					throw new MavenPOMException(pomFile, "Invalid POM: root element must be a project");
+				while (xml.nextStartElement()) {
+					if (xml.event.text.equals(ELEMENT_ARTIFACT_ID))
+						artifactId = xml.readInnerText().trim().asString();
+					else if (xml.event.text.equals(ELEMENT_GROUP_ID))
+						groupId = xml.readInnerText().trim().asString();
+					else if (xml.event.text.equals(ELEMENT_VERSION))
+						version = xml.readInnerText().trim().asString();
+					else if (xml.event.text.equals("packaging"))
+						packaging = xml.readInnerText().trim().asString();
+					else if (xml.event.text.equals("parent"))
+						readParent(xml);
+					else if (xml.event.text.equals("build"))
+						readBuild(xml, build);
+					else if (xml.event.text.equals("properties"))
+						readProperties(xml, properties);
+					else if (xml.event.text.equals("dependencyManagement"))
+						readDependencyManagement(xml, dependencyManagement);
+					else if (xml.event.text.equals(ELEMENT_DEPENDENCIES))
+						readDependencies(xml, dependencies);
+					else if (xml.event.text.equals("profiles"))
+						readProfiles(xml);
+					else if (xml.event.text.equals("repositories"))
+						readRepositories(xml, repositories);
+					else
+						xml.closeElement();
+				}
+				if (parentGroupId != null) {
+					if (!fromRepository) {
+						File parentFile = new File(new File(pomFile).getParentFile(), parentRelativePath);
+						if (parentFile.exists()) {
+							if (parentFile.isDirectory()) {
+								parentFile = new File(parentFile, "pom.xml");
+								if (parentFile.exists())
+									parentLoading = pomLoader.loadPOM(parentFile.toURI(), false, getPriority());
+							} else {
+								parentLoading = pomLoader.loadPOM(parentFile.toURI(), false, getPriority());
+							}
+						}
+					}
+					if (parentLoading == null) {
+						// TODO try to resolve properties ?
+						parentLoading = pomLoader.loadLibrary(
+							parentGroupId, parentArtifactId,
+							new VersionSpecification.SingleVersion(new Version(parentVersion)),
+							getPriority(), getRepositories(repositories));
 					}
 				}
-				if (parentLoading == null) {
-					// TODO try to resolve properties ?
-					parentLoading = pomLoader.loadLibrary(
-						parentGroupId, parentArtifactId, new VersionSpecification.SingleVersion(new Version(parentVersion)),
-						getPriority(), getRepositories(repositories));
-				}
+				return null;
+			} catch (LibraryManagementException e) {
+				throw e;
+			} catch (Exception e) {
+				throw new MavenPOMException(pomFile, e);
 			}
-			return null;
 		}
 		
-		private void readParent(XMLStreamReader xml) throws Exception {
+		private void readParent(XMLStreamReader xml) throws MavenPOMException, XMLException, IOException {
 			if (xml.event.isClosed) return;
 			ElementContext ctx = xml.event.context.getFirst();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new Exception("Invalid POM: missing closing parent tag");
+						throw new MavenPOMException(pomFile, "Invalid POM: missing closing parent tag");
 					break;
 				}
-				if (xml.event.text.equals("artifactId"))
+				if (xml.event.text.equals(ELEMENT_ARTIFACT_ID))
 					parentArtifactId = xml.readInnerText().trim().asString();
-				else if (xml.event.text.equals("groupId"))
+				else if (xml.event.text.equals(ELEMENT_GROUP_ID))
 					parentGroupId = xml.readInnerText().trim().asString();
-				else if (xml.event.text.equals("version"))
+				else if (xml.event.text.equals(ELEMENT_VERSION))
 					parentVersion = xml.readInnerText().trim().asString();
 				else if (xml.event.text.equals("relativePath"))
 					parentRelativePath = xml.readInnerText().trim().asString();
@@ -428,13 +438,13 @@ public class MavenPOM implements LibraryDescriptor {
 			} while (true);
 		}
 
-		private void readBuild(XMLStreamReader xml, Build build) throws Exception {
+		private void readBuild(XMLStreamReader xml, Build build) throws MavenPOMException, XMLException, IOException {
 			if (xml.event.isClosed) return;
 			ElementContext ctx = xml.event.context.getFirst();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new Exception("Invalid POM: missing closing build tag");
+						throw new MavenPOMException(pomFile, "Invalid POM: missing closing build tag");
 					break;
 				}
 				if (xml.event.text.equals("outputDirectory"))
@@ -444,29 +454,30 @@ public class MavenPOM implements LibraryDescriptor {
 			} while (true);
 		}
 
-		private void readProperties(XMLStreamReader xml, Map<String, String> properties) throws Exception {
+		private void readProperties(XMLStreamReader xml, Map<String, String> properties) throws MavenPOMException, XMLException, IOException {
 			if (xml.event.isClosed) return;
 			ElementContext ctx = xml.event.context.getFirst();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new Exception("Invalid POM: missing closing properties tag");
+						throw new MavenPOMException(pomFile, "Invalid POM: missing closing properties tag");
 					break;
 				}
 				properties.put(xml.event.text.asString(), xml.readInnerText().asString());
 			} while (true);
 		}
 
-		private void readDependencyManagement(XMLStreamReader xml, List<Dependency> dependencyManagement) throws Exception {
+		private void readDependencyManagement(XMLStreamReader xml, List<Dependency> dependencyManagement)
+		throws MavenPOMException, XMLException, IOException {
 			if (xml.event.isClosed) return;
 			ElementContext ctx = xml.event.context.getFirst();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new Exception("Invalid POM: missing closing dependencyManagement tag");
+						throw new MavenPOMException(pomFile, "Invalid POM: missing closing dependencyManagement tag");
 					break;
 				}
-				if (!xml.event.text.equals("dependencies")) {
+				if (!xml.event.text.equals(ELEMENT_DEPENDENCIES)) {
 					xml.closeElement();
 					continue;
 				}
@@ -474,13 +485,14 @@ public class MavenPOM implements LibraryDescriptor {
 			} while (true);
 		}
 
-		private void readDependencies(XMLStreamReader xml, List<Dependency> dependencies) throws Exception {
+		private void readDependencies(XMLStreamReader xml, List<Dependency> dependencies)
+		throws MavenPOMException, XMLException, IOException {
 			if (xml.event.isClosed) return;
 			ElementContext ctx = xml.event.context.getFirst();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new Exception("Invalid POM: missing closing dependencies tag");
+						throw new MavenPOMException(pomFile, "Invalid POM: missing closing dependencies tag");
 					break;
 				}
 				if (!xml.event.text.equals("dependency")) {
@@ -490,11 +502,11 @@ public class MavenPOM implements LibraryDescriptor {
 				Dependency dep = new Dependency();
 				ElementContext depCtx = xml.event.context.getFirst();
 				while (xml.nextInnerElement(depCtx)) {
-					if (xml.event.text.equals("groupId"))
+					if (xml.event.text.equals(ELEMENT_GROUP_ID))
 						dep.groupId = xml.readInnerText().trim().asString();
-					else if (xml.event.text.equals("artifactId"))
+					else if (xml.event.text.equals(ELEMENT_ARTIFACT_ID))
 						dep.artifactId = xml.readInnerText().trim().asString();
-					else if (xml.event.text.equals("version"))
+					else if (xml.event.text.equals(ELEMENT_VERSION))
 						dep.version = xml.readInnerText().trim().asString();
 					else if (xml.event.text.equals("type"))
 						dep.type = xml.readInnerText().trim().asString();
@@ -515,13 +527,14 @@ public class MavenPOM implements LibraryDescriptor {
 			} while (true);
 		}
 
-		private void readExclusions(XMLStreamReader xml, List<Pair<String, String>> exclusions) throws Exception {
+		private void readExclusions(XMLStreamReader xml, List<Pair<String, String>> exclusions)
+		throws MavenPOMException, XMLException, IOException {
 			if (xml.event.isClosed) return;
 			ElementContext ctx = xml.event.context.getFirst();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new Exception("Invalid POM: missing closing exclusions tag");
+						throw new MavenPOMException(pomFile, "Invalid POM: missing closing exclusions tag");
 					break;
 				}
 				if (!xml.event.text.equals("exclusion")) {
@@ -531,9 +544,9 @@ public class MavenPOM implements LibraryDescriptor {
 				Pair<String, String> e = new Pair<>(null, null);
 				ElementContext excluCtx = xml.event.context.getFirst();
 				while (xml.nextInnerElement(excluCtx)) {
-					if (xml.event.text.equals("groupId"))
+					if (xml.event.text.equals(ELEMENT_GROUP_ID))
 						e.setValue1(xml.readInnerText().trim().asString());
-					else if (xml.event.text.equals("artifactId"))
+					else if (xml.event.text.equals(ELEMENT_ARTIFACT_ID))
 						e.setValue2(xml.readInnerText().trim().asString());
 					else
 						xml.closeElement();
@@ -544,13 +557,13 @@ public class MavenPOM implements LibraryDescriptor {
 			} while (true);
 		}
 		
-		private void readProfiles(XMLStreamReader xml) throws Exception {
+		private void readProfiles(XMLStreamReader xml) throws MavenPOMException, XMLException, IOException {
 			if (xml.event.isClosed) return;
 			ElementContext ctx = xml.event.context.getFirst();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new Exception("Invalid POM: missing closing profiles tag");
+						throw new MavenPOMException(pomFile, "Invalid POM: missing closing profiles tag");
 					break;
 				}
 				if (!xml.event.text.equals("profile")) {
@@ -563,14 +576,14 @@ public class MavenPOM implements LibraryDescriptor {
 			} while (true);
 		}
 
-		private Profile readProfile(XMLStreamReader xml) throws Exception {
+		private Profile readProfile(XMLStreamReader xml) throws MavenPOMException, XMLException, IOException {
 			if (xml.event.isClosed) return null;
 			Profile profile = new Profile();
 			ElementContext ctx = xml.event.context.getFirst();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new Exception("Invalid POM: missing closing profile tag");
+						throw new MavenPOMException(pomFile, "Invalid POM: missing closing profile tag");
 					break;
 				}
 				if (xml.event.text.equals("activation")) {
@@ -591,7 +604,7 @@ public class MavenPOM implements LibraryDescriptor {
 									profile.activationOS.family = xml.readInnerText().trim().asString();
 								else if (xml.event.text.equals("arch"))
 									profile.activationOS.arch = xml.readInnerText().trim().asString();
-								else if (xml.event.text.equals("version"))
+								else if (xml.event.text.equals(ELEMENT_VERSION))
 									profile.activationOS.version = xml.readInnerText().trim().asString();
 								else
 									xml.closeElement();
@@ -625,7 +638,7 @@ public class MavenPOM implements LibraryDescriptor {
 					readProperties(xml, profile.properties);
 				else if (xml.event.text.equals("dependencyManagement"))
 					readDependencyManagement(xml, profile.dependencyManagement);
-				else if (xml.event.text.equals("dependencies"))
+				else if (xml.event.text.equals(ELEMENT_DEPENDENCIES))
 					readDependencies(xml, profile.dependencies);
 				else if (xml.event.text.equals("repositories"))
 					readRepositories(xml, profile.repositories);
@@ -635,13 +648,14 @@ public class MavenPOM implements LibraryDescriptor {
 			return profile;
 		}
 
-		private void readRepositories(XMLStreamReader xml, List<Repository> repositories) throws Exception {
+		private void readRepositories(XMLStreamReader xml, List<Repository> repositories)
+		throws MavenPOMException, XMLException, IOException {
 			if (xml.event.isClosed) return;
 			ElementContext ctx = xml.event.context.getFirst();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new Exception("Invalid POM: missing closing repositories tag");
+						throw new MavenPOMException(pomFile, "Invalid POM: missing closing repositories tag");
 					break;
 				}
 				if (!xml.event.text.equals("repository")) {
@@ -654,14 +668,14 @@ public class MavenPOM implements LibraryDescriptor {
 			} while (true);
 		}
 		
-		private Repository readRepository(XMLStreamReader xml) throws Exception {
+		private Repository readRepository(XMLStreamReader xml) throws MavenPOMException, XMLException, IOException {
 			if (xml.event.isClosed) return null;
 			ElementContext ctx = xml.event.context.getFirst();
 			Repository repo = new Repository();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new Exception("Invalid POM: missing closing repository tag");
+						throw new MavenPOMException(pomFile, "Invalid POM: missing closing repository tag");
 					break;
 				}
 				if (xml.event.text.equals("id")) {
@@ -673,7 +687,8 @@ public class MavenPOM implements LibraryDescriptor {
 						do {
 							if (!xml.nextInnerElement(ctx)) {
 								if (!Type.END_ELEMENT.equals(xml.event.type))
-									throw new Exception("Invalid POM: missing closing releases tag");
+									throw new MavenPOMException(pomFile,
+										"Invalid POM: missing closing releases tag");
 								break;
 							}
 							if (xml.event.text.equals("enabled")) {
@@ -687,7 +702,8 @@ public class MavenPOM implements LibraryDescriptor {
 						do {
 							if (!xml.nextInnerElement(ctx)) {
 								if (!Type.END_ELEMENT.equals(xml.event.type))
-									throw new Exception("Invalid POM: missing closing snapshots tag");
+									throw new MavenPOMException(pomFile,
+										"Invalid POM: missing closing snapshots tag");
 								break;
 							}
 							if (xml.event.text.equals("enabled")) {
@@ -704,19 +720,19 @@ public class MavenPOM implements LibraryDescriptor {
 	}
 	
 	private class Finalize extends Task.Cpu<Void, NoException> {
-		public Finalize(AsyncWork<MavenPOM, Exception> result, byte priority) {
+		public Finalize(AsyncWork<MavenPOM, LibraryManagementException> result, byte priority) {
 			super("Finalize POM loading", priority);
 			this.result = result;
 		}
 		
-		private AsyncWork<MavenPOM, Exception> result;
+		private AsyncWork<MavenPOM, LibraryManagementException> result;
 		
 		@Override
 		public Void run() {
 			Map<String, String> finalProperties = new HashMap<>();
 			if (parentLoading != null) {
 				if (parentLoading.hasError()) {
-					result.error(new Exception("Error loading parent POM", parentLoading.getError()));
+					result.error(new MavenPOMException("Error loading parent POM", parentLoading.getError()));
 					return null;
 				}
 				if (parentLoading.isCancelled()) {

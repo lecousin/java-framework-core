@@ -344,7 +344,7 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
 	@Override
 	public void add(long value, T element) {
 		if (root == null) {
-			root = new Node<T>(value, element, false);
+			root = new Node<>(value, element, false);
 			first = last = root;
 			return;
 		}
@@ -357,19 +357,24 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
 			if (h.left == null) {
 				h.left = new Node<T>(value, element, true);
 				if (value < first.value) first = h.left;
-			} else
+			} else {
 				h.left = add(value, element, h.left);
+			}
 		} else if (value >= h.value) {
 			if (h.right == null) {
 				h.right = new Node<T>(value, element, true);
 				if (value > last.value) last = h.right;
-			} else
+			} else {
 				h.right = add(value, element, h.right);
+			}
 		}
 
-		if (h.right != null && h.right.red && (h.left == null || !h.left.red)) h = rotateLeft(h);
-		if (h.left != null && h.left.red && h.left.left != null && h.left.left.red) h = rotateRight(h);
-        if (h.left != null && h.left.red && h.right != null && h.right.red) flipColors(h);
+		if (h.right != null && h.right.red && (h.left == null || !h.left.red))
+			h = rotateLeft(h);
+		if (h.left != null && h.left.red && h.left.left != null && h.left.left.red)
+			h = rotateRight(h);
+        if (h.left != null && h.left.red && h.right != null && h.right.red)
+        	flipColors(h);
         h.n = (h.left == null ? 0 : h.left.n) + (h.right == null ? 0 : h.right.n) + 1;
         return h;
 	}
@@ -380,7 +385,8 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
 	
 	/** Remove the first element. */
 	public void removeMin() {
-    	if (root == null) return;
+    	if (root == null)
+    		return;
 
         // if both children of root are black, set root to red
         if ((root.left == null || !root.left.red) && (root.right == null || !root.right.red))
@@ -407,7 +413,8 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
 
     /** Remove the last element. */
     public void removeMax() {
-    	if (root == null) return;
+    	if (root == null)
+    		return;
 
         // if both children of root are black, set root to red
         if ((root.left == null || !root.left.red) && (root.right == null || !root.right.red))
@@ -470,8 +477,9 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
                 h.value = x.value;
                 h.element = x.element;
                 h.right = removeMin(h.right, false);
-            } else
+            } else {
             	h.right = remove(h.right, node);
+            }
         }
         return balance(h);
     }
@@ -516,8 +524,9 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
                 h.value = x.value;
                 h.element = x.element;
                 h.right = removeMin(h.right, false);
-            } else
+            } else {
             	h.right = remove(h.right, key, element);
+            }
         }
         return balance(h);
     }
@@ -560,8 +569,9 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
                 h.value = x.value;
                 h.element = x.element;
                 h.right = removeMin(h.right, false);
-            } else
+            } else {
             	h.right = removeKey(h.right, key);
+            }
         }
         return balance(h);
     }
@@ -605,8 +615,9 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
                 h.value = x.value;
                 h.element = x.element;
                 h.right = removeMin(h.right, false);
-            } else
+            } else {
             	h.right = removeInstance(h.right, key, instance);
+            }
         }
         return balance(h);
     }
@@ -706,15 +717,15 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     
     public Iterator<Node<T>> nodeIterator() { return new RBTreeNodeIterator(root); }
     
-    public Iterator<Node<T>> nodeIteratorOrdered() { return new NodeIteratorOrdered<T>(root); }
+    public Iterator<Node<T>> nodeIteratorOrdered() { return new NodeIteratorOrdered<>(root); }
 
-    public Iterator<Node<T>> nodeIteratorReverse() { return new NodeIteratorReverseOrder<T>(root); }
+    public Iterator<Node<T>> nodeIteratorReverse() { return new NodeIteratorReverseOrder<>(root); }
     
     @Override
-    public Iterator<T> orderedIterator() { return new IteratorOrdered<T>(root); }
+    public Iterator<T> orderedIterator() { return new IteratorOrdered<>(root); }
     
     @Override
-    public Iterator<T> reverseOrderIterator() { return new IteratorReverseOrder<T>(root); }
+    public Iterator<T> reverseOrderIterator() { return new IteratorReverseOrder<>(root); }
     
     private class RBTreeIterator implements Iterator<T> {
     	private RBTreeIterator(Node<T> node) {
@@ -790,7 +801,7 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     	private NodeIteratorOrdered(Node<T> root) {
     		next = root;
     		if (root == null) return;
-    		parents = new ArrayList<Node<T>>(root.n / 2);
+    		parents = new ArrayList<>(root.n / 2);
     		// go to the left
     		while (next.left != null) {
     			parents.add(next);
@@ -842,7 +853,7 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
     	private NodeIteratorReverseOrder(Node<T> root) {
     		next = root;
     		if (root == null) return;
-    		parents = new ArrayList<Node<T>>(root.n / 2);
+    		parents = new ArrayList<>(root.n / 2);
     		// go to the right
     		while (next.right != null) {
     			parents.add(next);

@@ -64,7 +64,6 @@ public class OldestList<T> implements Iterable<T> {
 		dates[newestIndex] = date;
 		oldestIndex = newestIndex;
 		newestIndex = -1;
-		return;
 	}
 	
 	private void refreshNewestIndex() {
@@ -75,7 +74,7 @@ public class OldestList<T> implements Iterable<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Iterator<T> iterator() {
-		return new ArrayIterator<T>((T[])elements, size);
+		return new ArrayIterator<>((T[])elements, size);
 	}
 	
 }

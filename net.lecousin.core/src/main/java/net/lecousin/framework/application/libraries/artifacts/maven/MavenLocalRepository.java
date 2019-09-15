@@ -1,11 +1,12 @@
 package net.lecousin.framework.application.libraries.artifacts.maven;
 
 import java.io.File;
-import java.net.MalformedURLException;
+import java.io.IOException;
 import java.net.URI;
 import java.util.LinkedList;
 import java.util.List;
 
+import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.exception.NoException;
@@ -54,7 +55,9 @@ public class MavenLocalRepository implements MavenRepository {
 	}
 	
 	@Override
-	public AsyncWork<MavenPOM, Exception> load(String groupId, String artifactId, String version, MavenPOMLoader pomLoader, byte priority) {
+	public AsyncWork<MavenPOM, LibraryManagementException> load(
+		String groupId, String artifactId, String version, MavenPOMLoader pomLoader, byte priority
+	) {
 		if (version.toLowerCase().endsWith("-SNAPSHOT")) {
 			if (!snapshotsEnabled)
 				return new AsyncWork<>(null, null);
@@ -62,7 +65,7 @@ public class MavenLocalRepository implements MavenRepository {
 			if (!releasesEnabled)
 				return new AsyncWork<>(null, null);
 		}
-		AsyncWork<MavenPOM, Exception> result = new AsyncWork<>();
+		AsyncWork<MavenPOM, LibraryManagementException> result = new AsyncWork<>();
 		Task<Void, NoException> task = new Task.OnFile<Void, NoException>(dir, "Search Maven POM in local repository", priority) {
 			@Override
 			public Void run() {
@@ -86,11 +89,7 @@ public class MavenLocalRepository implements MavenRepository {
 					result.unblockSuccess(null);
 					return null;
 				}
-				try {
-					pomLoader.loadPOM(pom.toURI().toURL(), true, priority).listenInline(result);
-				} catch (MalformedURLException e) {
-					result.unblockSuccess(null);
-				}
+				pomLoader.loadPOM(pom.toURI(), true, priority).listenInline(result);
 				return null;
 			}
 		};
@@ -120,8 +119,10 @@ public class MavenLocalRepository implements MavenRepository {
 	}
 	
 	@Override
-	public AsyncWork<File, Exception> loadFile(String groupId, String artifactId, String version, String classifier, String type, byte priority) {
-		return new Task.OnFile<File, Exception>(dir, "Search file in Maven repository", priority) {
+	public AsyncWork<File, IOException> loadFile(
+		String groupId, String artifactId, String version, String classifier, String type, byte priority
+	) {
+		return new Task.OnFile<File, IOException>(dir, "Search file in Maven repository", priority) {
 			@Override
 			public File run() {
 				return loadFileSync(groupId, artifactId, version, classifier, type);

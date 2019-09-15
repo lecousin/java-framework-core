@@ -43,16 +43,16 @@ public interface VersionSpecification extends Comparator<Version> {
 		
 		/** Constructor. */
 		public Range(VersionRange range) {
-			this.range = range;
+			this.vrange = range;
 		}
 		
-		private VersionRange range;
+		private VersionRange vrange;
 		
-		public VersionRange getRange() { return range; }
+		public VersionRange getRange() { return vrange; }
 		
 		@Override
 		public boolean isMatching(Version version) {
-			return range.includes(version);
+			return vrange.includes(version);
 		}
 		
 		@Override
@@ -62,7 +62,7 @@ public interface VersionSpecification extends Comparator<Version> {
 	
 		@Override
 		public String toString() {
-			return range.toString();
+			return vrange.toString();
 		}
 	}
 	

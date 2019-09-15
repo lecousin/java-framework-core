@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Predicate;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
@@ -20,7 +21,6 @@ import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.io.provider.IOProviderFrom;
-import net.lecousin.framework.util.Filter;
 import net.lecousin.framework.util.Pair;
 
 /**
@@ -61,7 +61,7 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	protected abstract IO.Readable openResourcePointer(Object pointer, byte priority) throws IOException;
 	
 	protected abstract void scan(String rootPackage, boolean includeSubPackages,
-		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner);
+		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner);
 	
 	private List<AbstractClassLoader> subLoaders = null;
 	
@@ -78,7 +78,7 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 		synchronized (classLoadingSP) {
 			Pair<Thread,JoinPoint<NoException>> p = classLoadingSP.get(name);
 			if (p == null) {
-				JoinPoint<NoException> jp = new JoinPoint<NoException>();
+				JoinPoint<NoException> jp = new JoinPoint<>();
 				jp.addToJoin(1);
 				jp.start();
 				classLoadingSP.put(name, new Pair<Thread,JoinPoint<NoException>>(Thread.currentThread(), jp));

@@ -6,12 +6,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.function.Predicate;
 
 import net.lecousin.framework.application.libraries.classpath.DefaultLibrariesManager;
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.util.Filter;
 
 /**
  * Class loader from a directory containing class files.
@@ -84,7 +84,7 @@ public class DirectoryClassLoader extends AbstractClassLoader {
 	@Override
 	protected void scan(
 		String rootPackage, boolean includeSubPackages,
-		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
 	) {
 		DefaultLibrariesManager.scanDirectoryLibrary(this, dir, rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);
 	}

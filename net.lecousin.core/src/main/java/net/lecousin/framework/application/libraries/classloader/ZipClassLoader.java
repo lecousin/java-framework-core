@@ -4,11 +4,11 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -25,7 +25,6 @@ import net.lecousin.framework.io.provider.FileIOProvider;
 import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.memory.IMemoryManageable;
 import net.lecousin.framework.memory.MemoryManager;
-import net.lecousin.framework.util.Filter;
 
 /**
  * JAR class loader.
@@ -47,7 +46,7 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 	private ZipFile zip = null;
 	private long lastAccess = 0;
 
-	@SuppressWarnings("resource")
+	@SuppressWarnings("squid:S2093") // io is closed but asynchronously
 	private synchronized ZipFile getZip() throws IOException {
 		lastAccess = System.currentTimeMillis();
 		if (zip != null) return zip;
@@ -100,9 +99,9 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 		// skip checkstyle: OneStatementPerLine
 		switch (level) {
 		default:
-		case EXPIRED_ONLY:	max = 30 * 60 * 1000; break;
-		case LOW:			max = 15 * 60 * 1000; break;
-		case MEDIUM:		max =  5 * 60 * 1000; break;
+		case EXPIRED_ONLY:	max = 30L * 60 * 1000; break;
+		case LOW:			max = 15L * 60 * 1000; break;
+		case MEDIUM:		max =  5L * 60 * 1000; break;
 		case URGENT:		max = 0; break;
 		}
 		long now = System.currentTimeMillis();
@@ -112,13 +111,12 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 		zip = null;
 	}
 
-	@SuppressWarnings("resource")
 	@Override
 	protected byte[] loadFile(String name) throws IOException {
-		ZipFile zip = getZip();
-		ZipEntry entry = zip.getEntry(name);
+		ZipFile zipFile = getZip();
+		ZipEntry entry = zipFile.getEntry(name);
 		if (entry == null) throw new FileNotFoundException(name + " in zip file " + zipProvider.getDescription());
-		try (InputStream in = zip.getInputStream(entry)) {
+		try (InputStream in = zipFile.getInputStream(entry)) {
 			int size = (int)entry.getSize();
 			byte[] buffer = new byte[size];
 			int pos = 0;
@@ -132,23 +130,22 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 		}
 	}
 
-	@SuppressWarnings("resource")
 	@Override
 	public IO.Readable loadResourceAsIO(String name, byte priority) throws IOException {
-		ZipFile zip = getZip();
-		ZipEntry entry = zip.getEntry(name);
+		ZipFile zipFile = getZip();
+		ZipEntry entry = zipFile.getEntry(name);
 		if (entry == null) throw new FileNotFoundException(name + " in zip file " + zipProvider.getDescription());
 		return new IOFromInputStream.KnownSize(
-			zip.getInputStream(entry), entry.getSize(),
+			zipFile.getInputStream(entry), entry.getSize(),
 			zipProvider.getDescription() + "/" + name,
 			Threading.getUnmanagedTaskManager(), priority);
 	}
 	
 	@Override
 	protected Object getResourcePointer(String path) {
-		ZipFile zip;
-		try  { zip = getZip(); } catch (IOException e) { return null; }
-		ZipEntry entry = zip.getEntry(path);
+		ZipFile zipFile;
+		try  { zipFile = getZip(); } catch (IOException e) { return null; }
+		ZipEntry entry = zipFile.getEntry(path);
 		if (entry == null) return null;
 		if (entry.isDirectory()) return null;
 		return entry;
@@ -156,23 +153,21 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 	
 	@Override
 	protected IO.Readable openResourcePointer(Object pointer, byte priority) throws IOException {
-		ZipFile zip = getZip();
+		ZipFile zipFile = getZip();
 		ZipEntry entry = (ZipEntry)pointer;
 		return new IOFromInputStream.KnownSize(
-			zip.getInputStream(entry), entry.getSize(),
+			zipFile.getInputStream(entry), entry.getSize(),
 			zipProvider.getDescription() + "/" + entry.getName(),
 			Threading.getUnmanagedTaskManager(), priority);
 	}
 	
-	@SuppressWarnings("resource")
 	@Override
 	protected URL loadResourceURL(String name) {
 		try {
-			ZipFile zip = getZip();
-			ZipEntry entry = zip.getEntry(name);
+			ZipFile zipFile = getZip();
+			ZipEntry entry = zipFile.getEntry(name);
 			if (entry == null) return null;
-			try { return new URL((URL)null, "classpath://lc/" + name, new ZipURLStreamHandler()); }
-			catch (MalformedURLException e) { return null; }
+			return new URL((URL)null, "classpath://lc/" + name, new ZipURLStreamHandler());
 		} catch (IOException e) {
 			return null;
 		}
@@ -192,38 +187,37 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 		
 		@Override
 		public void connect() {
+			// nothing to do
 		}
 		
-		@SuppressWarnings("resource")
 		@Override
 		public int getContentLength() {
 			try {
-				ZipFile zip = getZip();
-				ZipEntry entry = zip.getEntry(url.getPath().substring(1));
+				ZipFile zipFile = getZip();
+				ZipEntry entry = zipFile.getEntry(url.getPath().substring(1));
 				return (int)entry.getSize();
 			} catch (IOException e) {
 				return 0;
 			}
 		}
 		
-		@SuppressWarnings("resource")
 		@Override
 		public InputStream getInputStream() throws IOException {
-			ZipFile zip = getZip();
-			ZipEntry entry = zip.getEntry(url.getPath().substring(1));
-			return zip.getInputStream(entry);
+			ZipFile zipFile = getZip();
+			ZipEntry entry = zipFile.getEntry(url.getPath().substring(1));
+			return zipFile.getInputStream(entry);
 		}
 	}
 	
 	@Override
 	protected void scan(
 		String rootPackage, boolean includeSubPackages,
-		Filter<String> packageFilter, Filter<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
 	) {
 		try {
 			DefaultLibrariesManager.scanJarLibrary(this, getZip(),
 				rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);
-		} catch (Throwable t) {
+		} catch (Exception t) {
 			// ignore
 		}
 	}

@@ -2,6 +2,7 @@ package net.lecousin.framework.io;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
@@ -11,7 +12,6 @@ import net.lecousin.framework.event.ListenableLongProperty;
 import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.RunnableWithParameter;
 
 /**
  * Add the capability to known on which position we are on an IO.
@@ -74,7 +74,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 			return super.readAsync(buffer, ondone);
 		}
 		
@@ -84,7 +84,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+		public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 			return super.readFullyAsync(buffer, ondone);
 		}
 		
@@ -94,7 +94,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		}
 
 		@Override
-		public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+		public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 			return super.skipAsync(n, ondone);
 		}
 		
@@ -130,7 +130,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 
 			@Override
 			public AsyncWork<Integer, IOException> readAsync(
-				ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+				ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 			) {
 				return super.readAsync(buffer, ondone);
 			}
@@ -142,7 +142,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 			
 			@Override
 			public AsyncWork<Integer, IOException> readFullyAsync(
-				ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+				ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 			) {
 				return super.readFullyAsync(buffer, ondone);
 			}
@@ -153,7 +153,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 			}
 
 			@Override
-			public AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+			public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 				return super.skipAsync(n, ondone);
 			}
 			
@@ -178,13 +178,13 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 			}
 
 			@Override
-			public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
+			public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 				return super.readNextBufferAsync(ondone);
 			}
 
 			@Override
 			public AsyncWork<Integer, IOException> readFullySyncIfPossible(
-				ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+				ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 			) {
 				return super.readFullySyncIfPossible(buffer, ondone);
 			}
@@ -242,13 +242,13 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		return c;
 	}
 	
-	protected AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	protected AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return ((IO.Readable)io).readAsync(buffer, (result) -> {
 			Integer nb = result.getValue1();
 			if (nb != null && nb.intValue() > 0)
 				position.add(nb.longValue());
 			if (ondone != null)
-				ondone.run(result);
+				ondone.accept(result);
 		});
 	}
 	
@@ -259,13 +259,13 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		return nb;
 	}
 	
-	protected AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone) {
+	protected AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return ((IO.Readable)io).readFullyAsync(buffer, (result) -> {
 			Integer nb = result.getValue1();
 			if (nb != null && nb.intValue() > 0)
 				position.add(nb.intValue());
 			if (ondone != null)
-				ondone.run(result);
+				ondone.accept(result);
 		});
 	}
 	
@@ -276,14 +276,14 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		return skipped;
 	}
 
-	protected AsyncWork<Long, IOException> skipAsync(long n, RunnableWithParameter<Pair<Long, IOException>> ondone) {
+	protected AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 		if (n <= 0) return IOUtil.success(Long.valueOf(0), ondone);
 		return ((IO.Readable)io).skipAsync(n, (result) -> {
 			Long nb = result.getValue1();
 			if (nb != null)
 				position.add(nb.longValue());
 			if (ondone != null)
-				ondone.run(result);
+				ondone.accept(result);
 		});
 	}
 
@@ -315,25 +315,25 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		return skipped;
 	}
 
-	protected AsyncWork<ByteBuffer, IOException> readNextBufferAsync(RunnableWithParameter<Pair<ByteBuffer, IOException>> ondone) {
+	protected AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		return ((IO.Readable.Buffered)io).readNextBufferAsync((result) -> {
 			ByteBuffer buf = result.getValue1();
 			if (buf != null)
 				position.add(buf.remaining());
 			if (ondone != null)
-				ondone.run(result);
+				ondone.accept(result);
 		});
 	}
 	
 	protected AsyncWork<Integer, IOException> readFullySyncIfPossible(
-		ByteBuffer buffer, RunnableWithParameter<Pair<Integer, IOException>> ondone
+		ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 	) {
 		AsyncWork<Integer, IOException> res = new AsyncWork<>();
 		((IO.Readable.Buffered)io).readFullySyncIfPossible(buffer, (r) -> {
 			if (r.getValue1() != null)
 				position.add(r.getValue1().intValue());
 			if (ondone == null) return;
-			ondone.run(r);
+			ondone.accept(r);
 		}).listenInline((nb) -> {
 			res.unblockSuccess(nb);
 		}, res);

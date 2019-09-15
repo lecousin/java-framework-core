@@ -15,19 +15,19 @@ import net.lecousin.framework.event.Listener;
 public interface AsyncCollection<T> {
 	
 	/** Called when new elements are ready. */
-	public void newElements(Collection<T> elements);
+	void newElements(Collection<T> elements);
 	
 	/** Called when no more elements will come, and no error was encountered. */
-	public void done();
+	void done();
 	
 	/** Return true if the method done has been called already. */
-	public boolean isDone();
+	boolean isDone();
 	
 	/** Called if an error occured before all elements have been retrieved. */
-	public void error(Exception error);
+	void error(Exception error);
 	
 	/** Return true if the method error has been called. */
-	public boolean hasError();
+	boolean hasError();
 	
 	/**
 	 * Simple implementation with a listener on both operations: newElements and done.
@@ -126,20 +126,20 @@ public interface AsyncCollection<T> {
 	 */
 	public static interface OneByOne<T> {
 		/** Called when a new element is ready. */
-		public void newElement(T element);
+		void newElement(T element);
 
 		/** Called when no more element will come. */
-		public void done();
+		void done();
 		
 		/** Called when an error occured while retrieving elements. */
-		public void error(Exception error);
+		void error(Exception error);
 		
 		/** A refreshable collection is a collection that can be restarted, with new elements coming and replacing the previous ones.
 		 * @param <T> type of elements
 		 */
 		public static interface Refreshable<T> extends OneByOne<T> {
 			/** Called when new elements will come to replace the previous ones. */
-			public void start();
+			void start();
 		}
 	}
 	
@@ -147,7 +147,7 @@ public interface AsyncCollection<T> {
 	 * @param <T> type of elements
 	 */
 	public static class Keep<T> implements AsyncCollection<T> {
-		private LinkedArrayList<T> list = new LinkedArrayList<T>(10);
+		private LinkedArrayList<T> list = new LinkedArrayList<>(10);
 		private boolean done = false;
 		private Exception error = null;
 		private ArrayList<AsyncCollection<T>> listeners = new ArrayList<>(5);

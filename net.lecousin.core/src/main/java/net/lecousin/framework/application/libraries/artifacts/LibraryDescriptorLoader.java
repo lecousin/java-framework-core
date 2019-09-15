@@ -6,6 +6,7 @@ import java.util.Map;
 
 import net.lecousin.framework.application.Version;
 import net.lecousin.framework.application.VersionSpecification;
+import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.collections.TreeWithParent;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 
@@ -18,21 +19,40 @@ public interface LibraryDescriptorLoader {
 	boolean detect(File dir);
 	
 	/** Load a library descriptor from the given directory. */
-	AsyncWork<? extends LibraryDescriptor, Exception> loadProject(File dir, byte priority);
+	AsyncWork<? extends LibraryDescriptor, LibraryManagementException> loadProject(File dir, byte priority);
 	
 	/** Search and load the library descriptor for the given group id, artifact id and version specification. */
-	AsyncWork<? extends LibraryDescriptor, Exception> loadLibrary(
+	AsyncWork<? extends LibraryDescriptor, LibraryManagementException> loadLibrary(
 		String groupId, String artifactId, VersionSpecification version,
 		byte priority, List<LibrariesRepository> additionalRepositories
 	);
 	
 	/** Tree node to build a dependency tree. */
 	public static class DependencyNode {
+		
+		/** Constructor. */
+		public DependencyNode(LibraryDescriptor.Dependency dep) {
+			this.dep = dep;
+		}
+		
 		/** Dependency. */
-		public LibraryDescriptor.Dependency dep;
+		private LibraryDescriptor.Dependency dep;
 		
 		/** Library descriptor. */
-		public AsyncWork<? extends LibraryDescriptor, Exception> descr; 
+		private AsyncWork<? extends LibraryDescriptor, LibraryManagementException> descriptor;
+		
+		public LibraryDescriptor.Dependency getDependency() {
+			return dep;
+		}
+
+		public AsyncWork<? extends LibraryDescriptor, LibraryManagementException> getDescriptor() {
+			return descriptor;
+		}
+
+		public void setDescriptor(AsyncWork<? extends LibraryDescriptor, LibraryManagementException> descr) {
+			this.descriptor = descr;
+		}
+		
 	}
 	
 	/** When several versions of the same library are specified, this method resolve the conflict and return the version to be loaded. */
