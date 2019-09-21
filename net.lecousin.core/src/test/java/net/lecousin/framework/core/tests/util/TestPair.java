@@ -35,7 +35,7 @@ public class TestPair extends LCCoreAbstractTest {
 		
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		ObjectOutputStream oout = new ObjectOutputStream(out);
-		oout.writeObject(new Pair<>(Integer.valueOf(10), "test"));
+		oout.writeObject(new Pair.Serializable<>(Integer.valueOf(10), "test"));
 		oout.close();
 		ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
 		ObjectInputStream oin = new ObjectInputStream(in);
