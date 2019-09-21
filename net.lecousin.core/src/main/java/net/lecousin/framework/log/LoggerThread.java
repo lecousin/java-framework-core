@@ -32,7 +32,7 @@ class LoggerThread {
 						}
 					}
 					try { log.getValue1().append(log.getValue2()); }
-					catch (Throwable t) {
+					catch (Exception t) {
 						app.getConsole().err("Error in log appender " + log.getValue1() + ": " + t.getMessage());
 						app.getConsole().err(t);
 					}

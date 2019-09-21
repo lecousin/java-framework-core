@@ -78,15 +78,16 @@ public abstract class DirectoryWalker<T> {
 					return null;
 				}
 				DirectoryReader.Result result = reader.getResult();
-				ArrayList<Triple<File, T, String>> dirs = new ArrayList<>(result.nbDirectories);
-				for (FileInfo f : result.files) {
+				ArrayList<Triple<File, T, String>> dirs = new ArrayList<>(result.getNbDirectories());
+				for (FileInfo f : result.getFiles()) {
 					String p = path.length() == 0 ? f.file.getName() : path + '/' + f.file.getName();
 					if (f.isDirectory) {
 						T o = directoryFound(object, f, p);
 						if (o != null)
 							dirs.add(new Triple<>(f.file, o, p));
-					} else
+					} else {
 						fileFound(object, f, p);
+					}
 				}
 				jp.addToJoin(dirs.size());
 				int steps = dirs.size() + 1;

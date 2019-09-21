@@ -11,6 +11,6 @@ import java.lang.annotation.Target;
 public @interface TypeSerializers {
 
 	/** Serializers. */
-	public TypeSerializer[] value();
+	TypeSerializer[] value();
 	
 }

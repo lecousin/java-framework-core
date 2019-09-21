@@ -112,7 +112,7 @@ public final class ProcessUtil {
 			} while (true);
 			if (line.length() > 0)
 				listener.fire(line.toString());
-			try { input.close(); } catch (Throwable t) { /* ignore */ }
+			try { input.close(); } catch (Exception t) { /* ignore */ }
 			app.interrupted(t);
 		}
 	}

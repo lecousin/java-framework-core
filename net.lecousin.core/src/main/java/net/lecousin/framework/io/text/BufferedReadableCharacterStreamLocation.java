@@ -1,6 +1,5 @@
 package net.lecousin.framework.io.text;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
@@ -66,14 +65,15 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 	}
 	
 	@Override
-	public char read() throws EOFException, IOException {
+	public char read() throws IOException {
 		char c;
 		if ((c = stream.read()) == '\n') {
 			line++;
 			lastLinePos = pos;
 			pos = 0;
-		} else if (c != '\r')
+		} else if (c != '\r') {
 			pos++;
+		}
 		return c;
 	}
 
@@ -85,8 +85,9 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 				line++;
 				lastLinePos = pos;
 				pos = 0;
-			} else if (buf[offset + i] != '\r')
+			} else if (buf[offset + i] != '\r') {
 				pos++;
+			}
 		return nb;
 	}
 	
@@ -95,8 +96,9 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 		if (c == '\n') {
 			line--;
 			pos = lastLinePos;
-		} else
+		} else {
 			pos--;
+		}
 		stream.back(c);
 	}
 	
@@ -108,8 +110,9 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 			line++;
 			lastLinePos = pos;
 			pos = 0;
-		} else if (c != '\r')
+		} else if (c != '\r') {
 			pos++;
+		}
 		return c;
 	}
 	
@@ -133,8 +136,9 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 							line++;
 							lastLinePos = pos;
 							pos = 0;
-						} else if (buf[offset + i] != '\r')
+						} else if (buf[offset + i] != '\r') {
 							pos++;
+						}
 					result.unblockSuccess(read.getResult());
 				}
 				return null;
@@ -162,8 +166,9 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 					line++;
 					lastLinePos = pos;
 					pos = 0;
-				} else if (buf[offset + i] != '\r')
+				} else if (buf[offset + i] != '\r') {
 					pos++;
+				}
 			result.unblockSuccess(str);
 		}), result);
 		return result;

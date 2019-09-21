@@ -22,7 +22,7 @@ import net.lecousin.framework.util.AsyncCloseable;
 public abstract class Decoder implements Closeable, AsyncCloseable<Exception> {
 	
 	/** Get a decoder for the given charset. */
-	public static Decoder get(Charset charset) throws Exception {
+	public static Decoder get(Charset charset) throws InstantiationException, IllegalAccessException {
 		Class<? extends Decoder> cl = decoders.get(charset.name());
 		if (cl == null) {
 			CharsetDecoder decoder = charset.newDecoder();
@@ -93,10 +93,9 @@ public abstract class Decoder implements Closeable, AsyncCloseable<Exception> {
 		int nb = 0;
 		do {
 			if (currentBuffer == null) {
-				if (nextBuffer.isUnblocked())
-					currentBuffer = nextBuffer.blockResult(0);
-				else
+				if (!nextBuffer.isUnblocked())
 					return nb > 0 ? nb : -2;
+				currentBuffer = nextBuffer.blockResult(0);
 				if (currentBuffer != null)
 					nextBuffer = io.readNextBufferAsync();
 			}
@@ -106,9 +105,7 @@ public abstract class Decoder implements Closeable, AsyncCloseable<Exception> {
 			nb += decoded;
 			if (currentBuffer != null && !currentBuffer.hasRemaining())
 				currentBuffer = null;
-			if (nb == len)
-				return nb;
-			if (nb >= min && interrupt.get())
+			if (nb == len || (nb >= min && interrupt.get()))
 				return nb;
 		} while (true);
 	}

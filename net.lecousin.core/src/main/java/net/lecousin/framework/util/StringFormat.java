@@ -13,9 +13,9 @@ import java.lang.annotation.Target;
 public @interface StringFormat {
 
 	/** Parser. */
-	public Class<? extends StringParser<?>> parser();
+	Class<? extends StringParser<?>> parser();
 
 	/** Optional pattern: the format class must have a constructor with only one parameter which is a String. */
-	public String pattern() default "";
+	String pattern() default "";
 	
 }

@@ -8,6 +8,8 @@ import net.lecousin.framework.exception.NoException;
  */
 public class FixedLocalizedString implements ILocalizableString {
 
+	private static final long serialVersionUID = 1L;
+
 	/** Constructor. */
 	public FixedLocalizedString(String fixedString) {
 		str = fixedString;

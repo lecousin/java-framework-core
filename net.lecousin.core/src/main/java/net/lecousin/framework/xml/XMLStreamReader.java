@@ -133,8 +133,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		}
 	}
 	
-	private static char[] CDATA = new char[] { 'C','D','A','T','A','[' };
-	private static char[] OCTYPE = new char[] { 'O','C','T','Y','P','E' };
+	private static final char[] CDATA = new char[] { 'C','D','A','T','A','[' };
+	private static final char[] OCTYPE = new char[] { 'O','C','T','Y','P','E' };
 	
 	private void readTagExclamation() throws XMLException, IOException {
 		// can be a comment, a CDATA, or a DOCTYPE
@@ -159,8 +159,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			throw new XMLException(getPosition(), "Invalid XML");
 	}
 	
-	private static char[] YSTEM = new char[] { 'Y', 'S', 'T', 'E', 'M' };
-	private static char[] UBLIC = new char[] { 'U', 'B', 'L', 'I', 'C' };
+	private static final char[] YSTEM = new char[] { 'Y', 'S', 'T', 'E', 'M' };
+	private static final char[] UBLIC = new char[] { 'U', 'B', 'L', 'I', 'C' };
 	
 	private void readDocType() throws XMLException, IOException {
 		event.type = Type.DOCTYPE;

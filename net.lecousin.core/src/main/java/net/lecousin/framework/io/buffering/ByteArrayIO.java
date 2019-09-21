@@ -87,12 +87,12 @@ public class ByteArrayIO extends ConcurrentCloseable
 	
 	@Override
 	public ISynchronizationPoint<IOException> canStartReading() {
-		return new SynchronizationPoint<IOException>(true);
+		return new SynchronizationPoint<>(true);
 	}
 	
 	@Override
 	public ISynchronizationPoint<IOException> canStartWriting() {
-		return new SynchronizationPoint<IOException>(true);
+		return new SynchronizationPoint<>(true);
 	}
 	
 	@Override

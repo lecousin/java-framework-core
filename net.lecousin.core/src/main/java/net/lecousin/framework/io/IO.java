@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -306,6 +307,11 @@ public interface IO extends IConcurrentCloseable {
 	static IOException error(Throwable e) {
 		if (e instanceof IOException) return (IOException)e;
 		return new IOException(e);
+	}
+	
+	/** Return a CancelException with message IO closed. */
+	static CancelException cancelClosed() {
+		return new CancelException("IO closed");
 	}
 	
 	/** Add capability to read byte by byte, typically a buffered IO. */

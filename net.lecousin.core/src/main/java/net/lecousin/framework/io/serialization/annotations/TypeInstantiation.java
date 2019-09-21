@@ -17,7 +17,7 @@ public @interface TypeInstantiation {
 
 	/** Factory to create an instance based on the container instance. */
 	@SuppressWarnings("rawtypes")
-	public Class<? extends Supplier> factory();
+	Class<? extends Supplier> factory();
 	
 	/** Convert an annotation into a rule. */
 	public static class ToRule implements TypeAnnotationToRule<TypeInstantiation> {
@@ -27,7 +27,7 @@ public @interface TypeInstantiation {
 		public SerializationRule createRule(TypeInstantiation annotation, Class<?> type) {
 			try {
 				return new TypeFactory(type, annotation.factory().newInstance());
-			} catch (Throwable t) {
+			} catch (Exception t) {
 				LCCore.getApplication().getDefaultLogger().error(
 					"Unable to instantiate factory " + annotation.factory().getName(), t
 				);

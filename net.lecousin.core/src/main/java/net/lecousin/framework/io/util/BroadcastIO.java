@@ -153,9 +153,7 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 				});
 			}
 			jp.start();
-			jp.listenInline(() -> {
-				result.unblockSuccess(Integer.valueOf(nb));
-			}, result);
+			jp.listenInline(() -> result.unblockSuccess(Integer.valueOf(nb)), result);
 		}).start();
 		return result;
 	}

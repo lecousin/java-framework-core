@@ -18,9 +18,8 @@ public class RemoveFileTask extends Task.OnFile<Void,IOException> {
 	
 	@Override
 	public Void run() throws IOException {
-		if (!file.delete())
-			if (file.exists())
-				throw new IOException("Unable to remove file");
+		if (!file.delete() && file.exists())
+			throw new IOException("Unable to remove file");
 		return null;
 	}
 

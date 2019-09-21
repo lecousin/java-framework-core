@@ -12,6 +12,7 @@ import net.lecousin.framework.exception.NoException;
 /**
  * Utilities to help debugging multi-threading applications.
  */
+@SuppressWarnings("squid:S3776") // complexity
 public final class ThreadingDebugHelper {
 	
 	private ThreadingDebugHelper() { /* no instance */ }
@@ -30,13 +31,10 @@ public final class ThreadingDebugHelper {
 			if (j.jp == jp) {
 				j.toJoinTraces.add(Thread.currentThread().getStackTrace());
 				j.toJoinSP.add(sp);
-				sp.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						int i = j.toJoinSP.indexOf(sp);
-						j.toJoinSP.remove(i);
-						j.toJoinTraces.remove(i);
-					}
+				sp.listenInline(() -> {
+					int i = j.toJoinSP.indexOf(sp);
+					j.toJoinSP.remove(i);
+					j.toJoinTraces.remove(i);
 				});
 				break;
 			}
@@ -118,16 +116,13 @@ public final class ThreadingDebugHelper {
 	
 	static void newTask(Task<?,?> task) {
 		synchronized (tasks) { tasks.add(new MonitoredTask(task)); }
-		task.getOutput().listenInline(new Runnable() {
-			@Override
-			public void run() {
-				synchronized (tasks) {
-					for (Iterator<MonitoredTask> it = tasks.iterator(); it.hasNext(); )
-						if (it.next().task == task) {
-							it.remove();
-							break;
-						}
-				}
+		task.getOutput().listenInline(() -> {
+			synchronized (tasks) {
+				for (Iterator<MonitoredTask> it = tasks.iterator(); it.hasNext(); )
+					if (it.next().task == task) {
+						it.remove();
+						break;
+					}
 			}
 		});
 	}
@@ -163,6 +158,7 @@ public final class ThreadingDebugHelper {
 	static void traceTasksNotDone() {
 		Thread t = new Thread("Track tasks not done") {
 			@Override
+			@SuppressWarnings("squid:S2142") // InterruptedException
 			public void run() {
 				do {
 					try { Thread.sleep(30000); }

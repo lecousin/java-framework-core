@@ -128,7 +128,7 @@ public final class DataUtil {
 	/** big-endian or motorola format. */
 	public static int readUnsignedShortBigEndian(ByteBuffer buf) {
 		int value;
-		value = ((buf.get() & 0xFF)) << 8;
+		value = (buf.get() & 0xFF) << 8;
 		value |= (buf.get() & 0xFF);
 		return value;
 	}

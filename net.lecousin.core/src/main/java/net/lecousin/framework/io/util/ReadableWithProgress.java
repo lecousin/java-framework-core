@@ -26,15 +26,12 @@ public class ReadableWithProgress extends PositionKnownWrapper.Readable implemen
 	
 	protected long prevWork;
 	
-	protected Runnable positionChanged = new Runnable() {
-		@Override
-		public void run() {
-			long pos = position.get();
-			long w = pos * work / size;
-			if (w != prevWork) {
-				progress.progress(w - prevWork);
-				prevWork = w;
-			}
+	protected Runnable positionChanged = () -> {
+		long pos = position.get();
+		long w = pos * work / size;
+		if (w != prevWork) {
+			progress.progress(w - prevWork);
+			prevWork = w;
 		}
 	};
 

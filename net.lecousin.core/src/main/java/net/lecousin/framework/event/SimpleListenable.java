@@ -6,16 +6,16 @@ package net.lecousin.framework.event;
 public interface SimpleListenable {
 
 	/** Add a listener. */
-	public void addListener(Runnable listener);
+	void addListener(Runnable listener);
 	
 	/** Remove a listener. */
-	public void removeListener(Runnable listener);
+	void removeListener(Runnable listener);
 	
 	/** Return true if at least one listener is present. */
-	public boolean hasListeners();
+	boolean hasListeners();
 	
-	public default void listen(Runnable listener) { addListener(listener); }
+	default void listen(Runnable listener) { addListener(listener); }
 	
-	public default void unlisten(Runnable listener) { removeListener(listener); }
+	default void unlisten(Runnable listener) { removeListener(listener); }
 	
 }

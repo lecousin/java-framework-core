@@ -15,7 +15,6 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.concurrent.tasks.drives.RemoveFileTask;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -52,7 +51,6 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 			this.io = (IO.Readable.Buffered)io;
 		file = File.createTempFile("net.lecousin.framework", "ReedableToSeekable");
 		file.deleteOnExit();
-		@SuppressWarnings("resource")
 		FileIO.ReadWrite fio = new FileIO.ReadWrite(file, io.getPriority());
 		buffered = new BufferedIO.ReadWrite(fio, 0L, 512, bufferSize, false);
 		readNextBuffer();
@@ -144,25 +142,20 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 			return sp;
 		}
 		AsyncWork<Long,IOException> seek = seekAsync(SeekType.FROM_END, 0);
-		seek.listenInline((result) -> { sp.unblockSuccess(Long.valueOf(knownSize)); }, sp);
-		sp.onCancel(new Listener<CancelException>() {
-			@Override
-			public void fire(CancelException event) {
-				seek.unblockCancel(event);
-			}
-		});
+		seek.listenInline(result -> sp.unblockSuccess(Long.valueOf(knownSize)), sp);
+		sp.onCancel(seek::unblockCancel);
 		return operation(seek);
 	}
 
 	private void readNextBuffer() {
 		if (knownSize == ioPos) {
-			buffering = new AsyncWork<Boolean,IOException>(Boolean.TRUE, null);
+			buffering = new AsyncWork<>(Boolean.TRUE, null);
 			return;
 		}
-		buffering = new AsyncWork<Boolean,IOException>();
+		buffering = new AsyncWork<>();
 		ByteBuffer buffer = ByteBuffer.allocate(8192);
 		AsyncWork<Integer,IOException> read = io.readFullyAsync(buffer);
-		operation(read).listenInline((result) -> {
+		operation(read).listenInline(result -> {
 			if (result.intValue() <= 0) {
 				knownSize = ioPos;
 				buffering.unblockSuccess(Boolean.TRUE);
@@ -170,7 +163,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 			}
 			buffer.flip();
 			AsyncWork<Integer,IOException> write = buffered.writeAsync(ioPos, buffer);
-			operation(write).listenInline((result2) -> {
+			operation(write).listenInline(result2 -> {
 				int nb = result2.intValue();
 				if (nb != result.intValue()) {
 					buffering.unblockError(
@@ -195,6 +188,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	}
 
 	/** Wait to be able to read at least one byte at the given position, return false if this is beyond the end. */
+	@SuppressWarnings("squid:S2583") // false positive because situation may change during block
 	private boolean waitPosition(long pos) throws IOException {
 		while (pos >= ioPos) {
 			if (knownSize == ioPos) return false;
@@ -232,7 +226,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 		}
 		// we need to read more
 		AsyncWork<Boolean,IOException> sp = new AsyncWork<>();
-		buffering.listenInline((result) -> {
+		buffering.listenInline(result -> {
 			if (result.booleanValue()) {
 				// end reached
 				sp.unblockSuccess(null);
@@ -249,7 +243,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 					if (next == null)
 						sp.unblockSuccess(null);
 					else
-						next.listenInline((result) -> { sp.unblockSuccess(null); }, sp);
+						next.listenInline(result -> sp.unblockSuccess(null), sp);
 					return null;
 				}
 			}.start());
@@ -295,7 +289,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	
 	@Override
 	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return readAsync(pos, buffer, (res) -> {
+		return readAsync(pos, buffer, res -> {
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				pos += res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
@@ -323,30 +317,27 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	public AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		AsyncWork<Integer,IOException> result = new AsyncWork<>();
 		AsyncWork<Boolean,IOException> bufferize = bufferizeTo(pos);
-		Runnable onBuffered = new Runnable() {
-			@Override
-			public void run() {
-				if (bufferize != null) {
-					if (bufferize.isCancelled()) {
-						result.unblockCancel(bufferize.getCancelEvent());
-						return;
-					}
-					if (bufferize.hasError()) {
-						IOUtil.error(bufferize.getError(), result, ondone);
-						return;
-					}
+		Runnable onBuffered = () -> {
+			if (bufferize != null) {
+				if (bufferize.isCancelled()) {
+					result.unblockCancel(bufferize.getCancelEvent());
+					return;
 				}
-				AsyncWork<Integer,IOException> read = buffered.readAsync(pos, buffer);
-				IOUtil.listenOnDone(read, (res) -> {
-					int nb = res.intValue();
-					if (nb <= 0 && knownSize >= 0 && pos < knownSize)
-						LCCore.getApplication().getDefaultLogger().error(
-							"Unexpected end on ReadableToSeekable: no byte read at "
-							+ pos + " but knownSize is " + knownSize);
-					if (ondone != null) ondone.accept(new Pair<>(res, null));
-					result.unblockSuccess(res);
-				}, result, ondone);
+				if (bufferize.hasError()) {
+					IOUtil.error(bufferize.getError(), result, ondone);
+					return;
+				}
 			}
+			AsyncWork<Integer,IOException> read = buffered.readAsync(pos, buffer);
+			IOUtil.listenOnDone(read, res -> {
+				int nb = res.intValue();
+				if (nb <= 0 && knownSize >= 0 && pos < knownSize)
+					LCCore.getApplication().getDefaultLogger().error(
+						"Unexpected end on ReadableToSeekable: no byte read at "
+						+ pos + " but knownSize is " + knownSize);
+				if (ondone != null) ondone.accept(new Pair<>(res, null));
+				result.unblockSuccess(res);
+			}, result, ondone);
 		};
 		if (bufferize == null)
 			onBuffered.run();
@@ -374,7 +365,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 				}
 				ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 				AsyncWork<Integer,IOException> read = buffered.readAsync(pos, buffer);
-				IOUtil.listenOnDone(read, (res) -> {
+				IOUtil.listenOnDone(read, res -> {
 					int nb = res.intValue();
 					if (nb > 0) {
 						ReadableToSeekable.this.pos = pos + nb;
@@ -421,8 +412,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 			len = (int)(knownSize - pos);
 		waitPosition(pos + len - 1);
 		if (pos >= ioPos) return -1;
-		int nb = buffered.readFullySync(pos, buffer);
-		return nb;
+		return buffered.readFullySync(pos, buffer);
 	}
 	
 	@Override
@@ -435,8 +425,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	@Override
 	public int readSync(long pos, ByteBuffer buffer) throws IOException {
 		if (!waitPosition(pos)) return -1;
-		int nb = buffered.readSync(pos, buffer);
-		return nb;
+		return buffered.readSync(pos, buffer);
 	}
 	
 	@Override

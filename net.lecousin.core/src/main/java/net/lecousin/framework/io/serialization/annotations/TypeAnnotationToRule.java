@@ -23,7 +23,7 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 	/** Search for annotations on the given type, and try to convert them into
 	 * serialization rules.
 	 */
-	public static List<SerializationRule> addRules(SerializationClass type, List<SerializationRule> rules) {
+	static List<SerializationRule> addRules(SerializationClass type, List<SerializationRule> rules) {
 		rules = addRules(type.getType().getBase(), rules);
 		for (Attribute a : type.getAttributes())
 			rules = addRules(a.getType().getBase(), rules);
@@ -33,7 +33,7 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 	/** Search for annotations on the given type, and try to convert them into
 	 * serialization rules.
 	 */
-	public static List<SerializationRule> addRules(Class<?> clazz, List<SerializationRule> rules) {
+	static List<SerializationRule> addRules(Class<?> clazz, List<SerializationRule> rules) {
 		List<SerializationRule> newRules = new LinkedList<>();
 		processAnnotations(clazz, newRules, rules);
 		if (newRules.isEmpty())
@@ -51,7 +51,7 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 			for (TypeAnnotationToRule toRule : getAnnotationToRules(a)) {
 				SerializationRule rule;
 				try { rule = toRule.createRule(a, clazz); }
-				catch (Throwable t) {
+				catch (Exception t) {
 					LCCore.getApplication().getDefaultLogger().error(
 						"Error creating rule from annotation " + a.annotationType().getName()
 						+ " using " + toRule.getClass().getName(), t);
@@ -85,15 +85,14 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 	 * It looks first on the annotation class if there is an inner class implementing AttributeAnnotationToRuleOnAttribute.
 	 * If none is found, it looks into the registry.
 	 */
-	public static List<TypeAnnotationToRule<?>> getAnnotationToRules(Annotation a) {
+	static List<TypeAnnotationToRule<?>> getAnnotationToRules(Annotation a) {
 		LinkedList<TypeAnnotationToRule<?>> list = new LinkedList<>();
 		for (Class<?> c : a.annotationType().getDeclaredClasses()) {
 			if (!TypeAnnotationToRule.class.isAssignableFrom(c)) continue;
 			try { list.add((TypeAnnotationToRule<?>)c.newInstance()); }
-			catch (Throwable t) {
+			catch (Exception t) {
 				LCCore.getApplication().getDefaultLogger().error(
 					"Error creating TypeAnnotationToRule " + a.annotationType().getName(), t);
-				continue;
 			}
 		}
 		for (Pair<Class<? extends Annotation>, TypeAnnotationToRule<?>> p : Registry.registry)
@@ -104,6 +103,10 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 	
 	/** Registry of converters between annotations and serialization rules. */
 	public static final class Registry {
+		
+		private Registry() {
+			// no instance
+		}
 
 		private static List<Pair<Class<? extends Annotation>, TypeAnnotationToRule<?>>> registry = new ArrayList<>();
 

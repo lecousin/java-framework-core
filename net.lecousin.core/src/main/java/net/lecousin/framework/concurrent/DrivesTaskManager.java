@@ -39,8 +39,9 @@ public class DrivesTaskManager {
 				managers.put(resource, tm);
 				Threading.registerResource(resource, tm);
 			}
-		} else
+		} else {
 			setDrivesProvider(drivesProvider);
+		}
 	}
 	
 	private ThreadFactory threadFactory;
@@ -59,10 +60,9 @@ public class DrivesTaskManager {
 		Map.Entry<String, Object> bestMatch = null;
 		synchronized (rootManagers) {
 			for (Map.Entry<String, Object> e : rootResources.entrySet())
-				if (path.startsWith(e.getKey())) {
-					if (bestMatch == null || bestMatch.getKey().length() < e.getKey().length())
+				if (path.startsWith(e.getKey()) &&
+					(bestMatch == null || bestMatch.getKey().length() < e.getKey().length()))
 						bestMatch = e;
-				}
 			if (bestMatch != null)
 				return bestMatch.getValue();
 		}
@@ -86,10 +86,9 @@ public class DrivesTaskManager {
 		Map.Entry<String, MonoThreadTaskManager> bestMatch = null;
 		synchronized (rootManagers) {
 			for (Map.Entry<String, MonoThreadTaskManager> e : rootManagers.entrySet())
-				if (path.startsWith(e.getKey())) {
-					if (bestMatch == null || bestMatch.getKey().length() < e.getKey().length())
+				if (path.startsWith(e.getKey()) &&
+					(bestMatch == null || bestMatch.getKey().length() < e.getKey().length()))
 						bestMatch = e;
-				}
 			if (bestMatch != null)
 				return bestMatch.getValue();
 		}
@@ -99,7 +98,7 @@ public class DrivesTaskManager {
 	/** Interface to provide drives and partitions. */
 	public static interface DrivesProvider {
 		/** Register listeners. */
-		public void provide(
+		void provide(
 			Listener<Pair<Object,List<File>>> onNewDrive,
 			Listener<Pair<Object,List<File>>> onDriveRemoved,
 			Listener<Pair<Object,File>> onNewPartition,
@@ -112,16 +111,16 @@ public class DrivesTaskManager {
 	/** Set the drives provider.
 	 * @throws IllegalStateException in case a provider is already set
 	 */
-	public void setDrivesProvider(DrivesProvider provider) throws IllegalStateException {
+	public void setDrivesProvider(DrivesProvider provider) {
 		synchronized (this) {
 			if (drivesProvider != null) throw new IllegalStateException();
 			drivesProvider = provider;
 		}
 		drivesProvider.provide(
-			(d) -> { newDrive(d); },
-			(d) -> { driveRemoved(d); },
-			(p) -> { newPartition(p); },
-			(p) -> { partitionRemoved(p); }
+			this::newDrive,
+			this::driveRemoved,
+			this::newPartition,
+			this::partitionRemoved
 		);
 	}
 	

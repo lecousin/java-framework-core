@@ -6,6 +6,7 @@ import java.util.function.Function;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.log.Logger;
 
 /**
  * Base interface for synchronization points.<br/>
@@ -268,14 +269,22 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		});
 	}
 	
+	/** Call the given runnable on error or cancellation. */
+	default void onErrorOrCancel(Runnable runnable) {
+		listenInline(() -> {
+			if (!isSuccessful())
+				runnable.run();
+		});
+	}
+	
 	/** If this synchronization point is cancelled, the given synchronization point will be cancelled as well with the same reason. */
 	default void forwardCancel(ISynchronizationPoint<?> sp) {
-		onCancel((reason) -> { sp.cancel(reason); });
+		onCancel(sp::cancel);
 	}
 	
 	/** If this synchronization point is errored, the given synchronization point will be unblocked as well with the same error. */
 	default void forwardError(ISynchronizationPoint<TError> sp) {
-		onError((error) -> { sp.error(error); });
+		onError(sp::error);
 	}
 	
 	/** Start the given task when this synchronization point is unblocked. */
@@ -288,6 +297,12 @@ public interface ISynchronizationPoint<TError extends Exception> {
 		new Task.Cpu.FromRunnable(task, description, priority).startOn(this, evenIfErrorOrCancel);
 	}
 	
+	/** Start the given task when this synchronization point is unblocked. */
+	default void listenAsync(Task<?,? extends Exception> task, Runnable onErrorOrCancel) {
+		task.startOn(this, false);
+		onErrorOrCancel(onErrorOrCancel);
+	}
+	
 	/** Start the given task when this synchronization point is successfully unblocked, else the error or cancel
 	 * event are forwarded to the given synchronization point.
 	 */
@@ -296,7 +311,7 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			@Override
 			public void run() {
 				task.start();
-				task.getOutput().onCancel((cancel) -> { if (!onErrorOrCancel.isUnblocked()) onErrorOrCancel.cancel(cancel); });
+				task.getOutput().onCancel(cancel -> { if (!onErrorOrCancel.isUnblocked()) onErrorOrCancel.cancel(cancel); });
 			}
 			
 			@Override
@@ -315,7 +330,7 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			@Override
 			public void run() {
 				t.start();
-				t.getOutput().onCancel((cancel) -> { if (!onErrorOrCancel.isUnblocked()) onErrorOrCancel.cancel(cancel); });
+				t.getOutput().onCancel(cancel -> { if (!onErrorOrCancel.isUnblocked()) onErrorOrCancel.cancel(cancel); });
 			}
 			
 			@Override
@@ -333,7 +348,7 @@ public interface ISynchronizationPoint<TError extends Exception> {
 			@Override
 			public void run() {
 				task.start();
-				task.getOutput().onCancel((cancel) -> { if (!onErrorOrCancel.isUnblocked()) onErrorOrCancel.cancel(cancel); });
+				task.getOutput().onCancel(cancel -> { if (!onErrorOrCancel.isUnblocked()) onErrorOrCancel.cancel(cancel); });
 			}
 			
 			@Override
@@ -355,6 +370,11 @@ public interface ISynchronizationPoint<TError extends Exception> {
 	}
 	
 	/** Return a collection with all listeners, only for debugging purposes. */
-	public Collection<?> getAllListeners();
+	Collection<?> getAllListeners();
+	
+	/** Log an error thrown by a listener. */
+	default void logListenerError(Logger log, Object listener, Throwable error) {
+		log.error("Exception thrown by an inline listener of " + getClass().getSimpleName() + ": " + listener, error);
+	}
 	
 }

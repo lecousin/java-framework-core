@@ -50,69 +50,61 @@ public class Production<T> {
 	private void produce() {
 		if (endReached) return;
 		producing = producer.produce(this);
-		producing.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (!producing.isSuccessful()) {
-					if (producing.isCancelled()) {
-						consumer.cancel(producing.getCancelEvent());
-						spEnd.unblockCancel(producing.getCancelEvent());
-					} else {
-						spEnd.unblockError(producing.getError());
-						consumer.error(producing.getError());
-					}
-					return;
+		producing.listenInline(() -> {
+			if (!producing.isSuccessful()) {
+				if (producing.isCancelled()) {
+					consumer.cancel(producing.getCancelEvent());
+					spEnd.unblockCancel(producing.getCancelEvent());
+				} else {
+					spEnd.unblockError(producing.getError());
+					consumer.error(producing.getError());
 				}
-				T result = producing.getResult();
-				boolean canProduceAgain = false;
-				synchronized (production) {
-					producing = null;
-					if (result == null) {
-						endReached = true;
-						if (production.isEmpty()) {
-							if (consuming == null)
-								end();
-						}
-					} else {
-						if (consuming == null)
-							consume(result);
-						else
-							production.addLast(result);
-						canProduceAgain = !production.isFull() && producing == null && !endReached;
-					}
-					if (canProduceAgain) produce();
+				return;
+			}
+			T result = producing.getResult();
+			boolean canProduceAgain = false;
+			synchronized (production) {
+				producing = null;
+				if (result == null) {
+					endReached = true;
+					if (production.isEmpty() && consuming == null)
+						end();
+				} else {
+					if (consuming == null)
+						consume(result);
+					else
+						production.addLast(result);
+					canProduceAgain = !production.isFull() && producing == null && !endReached;
 				}
+				if (canProduceAgain) produce();
 			}
 		});
 	}
 	
 	private void consume(T product) {
 		consuming = consumer.consume(product);
-		consuming.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (!consuming.isSuccessful()) {
-					if (consuming.isCancelled()) {
-						producer.cancel(consuming.getCancelEvent());
-						spEnd.unblockCancel(consuming.getCancelEvent());
-					} else {
-						producer.cancel(new CancelException("Error", consuming.getError()));
-						spEnd.unblockError(consuming.getError());
-					}
-					return;
+		consuming.listenInline(() -> {
+			if (!consuming.isSuccessful()) {
+				if (consuming.isCancelled()) {
+					producer.cancel(consuming.getCancelEvent());
+					spEnd.unblockCancel(consuming.getCancelEvent());
+				} else {
+					producer.cancel(new CancelException("Error", consuming.getError()));
+					spEnd.unblockError(consuming.getError());
 				}
-				synchronized (production) {
-					consuming = null;
-					if (!production.isEmpty()) {
-						consume(production.removeFirst());
-						if (producing == null && !endReached)
-							produce();
-					} else if (producing == null) {
-						if (endReached)
-							end();
-						else
-							produce();
-					}
+				return;
+			}
+			synchronized (production) {
+				consuming = null;
+				if (!production.isEmpty()) {
+					consume(production.removeFirst());
+					if (producing == null && !endReached)
+						produce();
+				} else if (producing == null) {
+					if (endReached)
+						end();
+					else
+						produce();
 				}
 			}
 		});
@@ -123,12 +115,7 @@ public class Production<T> {
 	private void end() {
 		if (ended) return;
 		ended = true;
-		consumer.endOfProduction().listenInline(new Runnable() {
-			@Override
-			public void run() {
-				spEnd.unblockSuccess(null);
-			}
-		});
+		consumer.endOfProduction().listenInline(() -> spEnd.unblockSuccess(null));
 	}
 	
 }

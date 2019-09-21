@@ -26,18 +26,15 @@ public class IOProviderFromURI implements IOProviderFrom<URI> {
 	}
 	
 	private IOProviderFromURI() {
-		protocols.put("file", new IOProviderFrom<URI>() {
-			@Override
-			public IOProvider get(URI from) {
-				File file;
-				try { file = new File(from); }
-				catch (Exception e) {
-					return null;
-				}
-				if (!file.exists())
-					return null;
-				return new FileIOProvider(file);
+		protocols.put("file", from -> {
+			File file;
+			try { file = new File(from); }
+			catch (Exception e) {
+				return null;
 			}
+			if (!file.exists())
+				return null;
+			return new FileIOProvider(file);
 		});
 	}
 	
@@ -55,7 +52,6 @@ public class IOProviderFromURI implements IOProviderFrom<URI> {
 				return from.toString();
 			}
 			
-			@SuppressWarnings("resource")
 			@Override
 			public IO.Readable provideIOReadable(byte priority) throws IOException {
 				InputStream in = from.toURL().openStream();

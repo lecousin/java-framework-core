@@ -32,6 +32,8 @@ import net.lecousin.framework.exception.NoException;
  * @param <T> type of elements
  */
 public class TurnArray<T> implements Deque<T> {
+	
+	private static final String ERROR_MESSAGE_EMPTY_COLLECTION = "Collection is empty";
 
 	/** Initialize with a size of 5. */
 	public TurnArray() {
@@ -86,10 +88,13 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S3358") // making one ternary by line make it as clear as if else if else...
 	public synchronized boolean addAll(Collection<? extends T> elements) {
 		int nb = elements.size();
 		if (nb == 0) return false;
-		int a = end == -1 ? 0 : end < start ? start - end : start + (array.length - end);
+		int a = end == -1 ? 0 :
+				end < start ? start - end :
+				start + (array.length - end);
 		if (a < nb) increase(array.length + (nb - a) + 5);
 		for (T e : elements) {
 			array[end++] = e;
@@ -102,7 +107,7 @@ public class TurnArray<T> implements Deque<T> {
 	
 	@Override
 	public synchronized T removeFirst() {
-		if (end == start) throw new NoSuchElementException("Collection is empty");
+		if (end == start) throw new NoSuchElementException(ERROR_MESSAGE_EMPTY_COLLECTION);
 		if (end == -1) end = start;
 		@SuppressWarnings("unchecked")
 		final T e = (T)array[start];
@@ -115,7 +120,7 @@ public class TurnArray<T> implements Deque<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public synchronized T removeLast() {
-		if (end == start) throw new NoSuchElementException("Collection is empty");
+		if (end == start) throw new NoSuchElementException(ERROR_MESSAGE_EMPTY_COLLECTION);
 		if (end == -1) end = start;
 		T e;
 		if (end == 0) {
@@ -137,7 +142,7 @@ public class TurnArray<T> implements Deque<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public synchronized T getFirst() {
-		if (end == start) throw new NoSuchElementException("Collection is empty");
+		if (end == start) throw new NoSuchElementException(ERROR_MESSAGE_EMPTY_COLLECTION);
 		return (T)array[start];
 	}
 	
@@ -145,7 +150,7 @@ public class TurnArray<T> implements Deque<T> {
 	@Override
 	public synchronized T getLast() {
 		// empty
-		if (end == start) throw new NoSuchElementException("Collection is empty");
+		if (end == start) throw new NoSuchElementException(ERROR_MESSAGE_EMPTY_COLLECTION);
 		// full
 		if (end == -1) {
 			if (start == 0)
@@ -433,6 +438,7 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S3776") // complexity: to keep performance we do not split into methods
 	public synchronized boolean removeFirstOccurrence(Object element) {
 		if (end == start) return false;
 		if (end == -1) {
@@ -470,6 +476,7 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S3776") // complexity: to keep performance we do not split into methods
 	public synchronized boolean removeLastOccurrence(Object element) {
 		if (end == start) return false;
 		if (end == -1) {
@@ -552,6 +559,7 @@ public class TurnArray<T> implements Deque<T> {
 		return changed;
 	}
 	
+	@SuppressWarnings("squid:S3776") // complexity: to keep performance we do not split into methods
 	private void removeAt(int index) {
 		try {
 			if (index >= start) {

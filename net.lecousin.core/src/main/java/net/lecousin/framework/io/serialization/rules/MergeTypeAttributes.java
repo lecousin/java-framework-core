@@ -263,7 +263,7 @@ public class MergeTypeAttributes implements SerializationRule {
 		return r.type.equals(type) && r.targetAttributeName.equals(targetAttributeName);
 	}
 	
-	private class MergeTargetAttribute extends Attribute {
+	private static class MergeTargetAttribute extends Attribute {
 		public MergeTargetAttribute(Attribute originalAttribute, TypeDefinition targetType) {
 			super(originalAttribute);
 			this.targetType = targetType;

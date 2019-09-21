@@ -1,5 +1,6 @@
 package net.lecousin.framework.locale;
 
+import java.io.Serializable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -13,16 +14,18 @@ import net.lecousin.framework.exception.NoException;
  */
 public class LocalizableStringBuffer implements ILocalizableString {
 
+	private static final long serialVersionUID = 1L;
+
 	/** Constructor. */
-	public LocalizableStringBuffer(Object... list) {
+	public LocalizableStringBuffer(Serializable... list) {
 		for (int i = 0; i < list.length; ++i)
 			this.list.add(list[i]);
 	}
 	
-	private LinkedList<Object> list = new LinkedList<>();
+	private LinkedList<Serializable> list = new LinkedList<>();
 	
 	/** Append the given object. */
-	public void add(Object string) {
+	public void add(Serializable string) {
 		list.add(string);
 	}
 	
@@ -43,7 +46,7 @@ public class LocalizableStringBuffer implements ILocalizableString {
 			public void run() {
 				Iterator<AsyncWork<String, NoException>> it = list.iterator();
 				StringBuffer s = new StringBuffer();
-				for (Object o : LocalizableStringBuffer.this.list) {
+				for (Serializable o : LocalizableStringBuffer.this.list) {
 					if (o instanceof String)
 						s.append((String)o);
 					else if (o instanceof ILocalizableString)
@@ -60,7 +63,7 @@ public class LocalizableStringBuffer implements ILocalizableString {
 	@Override
 	public String localizeSync(String[] languageTag) {
 		StringBuffer s = new StringBuffer();
-		for (Object o : list) {
+		for (Serializable o : list) {
 			if (o instanceof String)
 				s.append((String)o);
 			else if (o instanceof ILocalizableString)

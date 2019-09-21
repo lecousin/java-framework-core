@@ -10,7 +10,11 @@ import net.lecousin.framework.util.StringParser.Parse;
 /**
  * Range of integer values, with a minimum and maximum.
  */
+@SuppressWarnings("squid:ClassVariableVisibilityCheck")
 public class RangeBigInteger {
+	
+	public BigInteger min;
+	public BigInteger max;
 
 	/** Constructor. */
 	public RangeBigInteger(BigInteger min, BigInteger max) {
@@ -26,7 +30,7 @@ public class RangeBigInteger {
 	
 	/** Parse from a String. */
 	@Parse
-	public RangeBigInteger(String string) throws ParseException, NumberFormatException {
+	public RangeBigInteger(String string) throws ParseException {
 		if (string == null || string.isEmpty())
 			throw new ParseException("Empty string", 0);
 		char c = string.charAt(0);
@@ -34,31 +38,41 @@ public class RangeBigInteger {
 			int sep = string.indexOf('-');
 			if (sep < 0)
 				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]", 1);
-			min = new BigInteger(string.substring(1, sep));
+			try {
+				min = new BigInteger(string.substring(1, sep));
+			} catch (NumberFormatException e) {
+				throw new ParseException("Invalid number: " + e.getMessage(), 1);
+			}
 			if (c == ']') min = min.add(BigInteger.ONE);
 			c = string.charAt(string.length() - 1);
 			if (c != ']' && c != '[')
 				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]",
 					string.length() - 1);
-			max = new BigInteger(string.substring(sep + 1, string.length() - 1));
+			try {
+				max = new BigInteger(string.substring(sep + 1, string.length() - 1));
+			} catch (NumberFormatException e) {
+				throw new ParseException("Invalid number! " + e.getMessage(), sep + 1);
+			}
 			if (c == '[') max = max.subtract(BigInteger.ONE);
 			if (max.compareTo(min) < 0) {
 				BigInteger i = min;
 				min = max;
 				max = i;
 			}
-		} else
-			min = max = new BigInteger(string);
+		} else {
+			try {
+				min = max = new BigInteger(string);
+			} catch (NumberFormatException e) {
+				throw new ParseException("Invalid number: " + e.getMessage(), 0);
+			}
+		}
 	}
-	
-	public BigInteger min;
-	public BigInteger max;
 	
 	public RangeBigInteger copy() { return new RangeBigInteger(min,max); }
 	
 	@Override
 	public boolean equals(Object obj) {
-		if (obj == null || !(obj instanceof RangeBigInteger)) return false;
+		if (!(obj instanceof RangeBigInteger)) return false;
 		RangeBigInteger r = (RangeBigInteger)obj;
 		return r.min.equals(min) && r.max.equals(max);
 	}

@@ -28,13 +28,13 @@ public class SimpleEvent implements SimpleListenable {
 	
 	/** Fire this event, or in other words call the listeners. */
 	public void fire() {
-		ArrayList<Runnable> listeners;
+		ArrayList<Runnable> toCall;
 		synchronized (this) {
 			if (this.listeners == null) return;
-			listeners = new ArrayList<>(this.listeners);
+			toCall = new ArrayList<>(this.listeners);
 		}
-		for (int i = 0; i < listeners.size(); ++i)
-			listeners.get(i).run();
+		for (int i = 0; i < toCall.size(); ++i)
+			toCall.get(i).run();
 	}
 	
 }

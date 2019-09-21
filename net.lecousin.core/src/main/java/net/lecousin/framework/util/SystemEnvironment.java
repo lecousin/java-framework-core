@@ -12,7 +12,7 @@ public final class SystemEnvironment {
 	private SystemEnvironment() { /* no instance */ }
 
 	/** Type of operating system. */
-	public static enum OSFamily {
+	public enum OSFamily {
 		dos("dos"),
 		mac("mac"),
 		netware("netware"),
@@ -24,7 +24,8 @@ public final class SystemEnvironment {
 		zos("z/os"),
 		os400("os/400"),
 		openvms("openvms");
-		private OSFamily(String name) {
+		
+		OSFamily(String name) {
 			this.name = name;
 		}
 		

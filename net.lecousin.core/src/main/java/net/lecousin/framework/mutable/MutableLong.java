@@ -21,9 +21,11 @@ public class MutableLong {
 	public long dec() { return --value; }
 
 	/** Add the given value and return the value after the addition. */
+	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	public long add(long add) { return value += add; }
 	
 	/** Subtract the given value and return the value after the subtraction. */
+	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	public long sub(long sub) { return value -= sub; }
 	
 }

@@ -37,9 +37,7 @@ public abstract class FullReadLines<T> {
 	private UnprotectedStringBuffer line = null;
 	
 	private void resume(AsyncWork<T, Exception> result) {
-		stream.canStartReading().listenAsync(new Task.Cpu.FromRunnable(description, priority, () -> {
-			scan(result);
-		}), true);
+		stream.canStartReading().listenAsync(new Task.Cpu.FromRunnable(description, priority, () -> scan(result)), true);
 	}
 	
 	private void scan(AsyncWork<T, Exception> result) {
@@ -91,9 +89,7 @@ public abstract class FullReadLines<T> {
 		if (closeStreamAtEnd == null)
 			result.unblockSuccess(r);
 		else if (IO.OperationType.SYNCHRONOUS.equals(closeStreamAtEnd)) {
-			stream.closeAsync().listenInline(() -> {
-				result.unblockSuccess(r);
-			});
+			stream.closeAsync().listenInline(() -> result.unblockSuccess(r));
 		} else {
 			result.unblockSuccess(r);
 			stream.closeAsync();
@@ -104,9 +100,7 @@ public abstract class FullReadLines<T> {
 		if (closeStreamAtEnd == null)
 			result.error(error);
 		else if (IO.OperationType.SYNCHRONOUS.equals(closeStreamAtEnd)) {
-			stream.closeAsync().listenInline(() -> {
-				result.error(error);
-			});
+			stream.closeAsync().listenInline(() -> result.error(error));
 		} else {
 			result.error(error);
 			stream.closeAsync();

@@ -29,7 +29,7 @@ public class FragmentedRangeLong extends LinkedList<RangeLong> {
 	
 	/** Parse from string. */
 	@Parse
-	public FragmentedRangeLong(String string) throws ParseException, NumberFormatException {
+	public FragmentedRangeLong(String string) throws ParseException {
 		if (string == null || string.isEmpty())
 			return;
 		char c = string.charAt(0);
@@ -267,6 +267,7 @@ public class FragmentedRangeLong extends LinkedList<RangeLong> {
 	}
 	
 	/** Remove the given range. */
+	@SuppressWarnings("squid:ForLoopCounterChangedCheck") // when removing an element, we need to change it
 	public void removeRange(long start, long end) {
 		for (int i = 0; i < size(); ++i) {
 			RangeLong r = get(i);
@@ -280,7 +281,6 @@ public class FragmentedRangeLong extends LinkedList<RangeLong> {
 					long j = r.max;
 					r.max = start - 1;
 					start = j + 1;
-					continue;
 				} else {
 					RangeLong nr = new RangeLong(end + 1, r.max);
 					r.max = start - 1;
@@ -295,7 +295,6 @@ public class FragmentedRangeLong extends LinkedList<RangeLong> {
 					remove(i);
 					start = r.max + 1;
 					i--;
-					continue;
 				} else {
 					r.min = end + 1;
 					return;
@@ -308,7 +307,6 @@ public class FragmentedRangeLong extends LinkedList<RangeLong> {
 					remove(i);
 					start = r.max + 1;
 					i--;
-					continue;
 				} else {
 					r.min = end + 1;
 					return;

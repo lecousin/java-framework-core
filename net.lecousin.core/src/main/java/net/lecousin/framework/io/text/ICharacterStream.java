@@ -1,6 +1,5 @@
 package net.lecousin.framework.io.text;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
@@ -30,18 +29,18 @@ public interface ICharacterStream extends IConcurrentCloseable {
 		/** Read characters.
 		 * @return the number of character read which may be 0 or -1 in case the end of stream has been reached
 		 */
-		public int readSync(char[] buf, int offset, int length) throws IOException;
+		int readSync(char[] buf, int offset, int length) throws IOException;
 		
 		/** Read characters.
 		 * @return the number of character read which may be 0 or -1 in case the end of stream has been reached
 		 */
-		public AsyncWork<Integer, IOException> readAsync(char[] buf, int offset, int length);
+		AsyncWork<Integer, IOException> readAsync(char[] buf, int offset, int length);
 		
 		/** Return true if the end of the stream has been reached, and no more character can be read. */
-		public boolean endReached();
+		boolean endReached();
 		
 		/** Read all requested characters. */
-		public default int readFullySync(char[] buf, int offset, int length) throws IOException {
+		default int readFullySync(char[] buf, int offset, int length) throws IOException {
 			int done = 0;
 			do {
 				int nb = readSync(buf, offset, length);
@@ -54,7 +53,7 @@ public interface ICharacterStream extends IConcurrentCloseable {
 		}
 
 		/** Read all requested characters. */
-		public default AsyncWork<Integer, IOException> readFullyAsync(char[] buf, int offset, int length) {
+		default AsyncWork<Integer, IOException> readFullyAsync(char[] buf, int offset, int length) {
 			MutableInteger done = new MutableInteger(0);
 			AsyncWork<Integer, IOException> result = new AsyncWork<>();
 			Runnable next = new Runnable() {
@@ -86,37 +85,37 @@ public interface ICharacterStream extends IConcurrentCloseable {
 		/** Buffered readable character stream. */
 		public interface Buffered extends Readable {
 			/** Read one character. */
-			public char read() throws EOFException, IOException;
+			char read() throws IOException;
 			
 			/** Read one character if possible.
 			 * If the end of stream is reached, -1 is returned.
 			 * If no more character is available, but the end of stream is not yet reached, -2 is returned.
 			 */
-			public int readAsync() throws IOException;
+			int readAsync() throws IOException;
 			
 			/** Put back one character. */
-			public void back(char c);
+			void back(char c);
 			
 			/** Return a synchronization point which is unblocked once some characters have been buffered. */
-			public ISynchronizationPoint<IOException> canStartReading();
+			ISynchronizationPoint<IOException> canStartReading();
 			
 			/** Return the next buffer as soon as available, or null if then end of stream has been reached. */
-			public AsyncWork<UnprotectedString, IOException> readNextBufferAsync();
+			AsyncWork<UnprotectedString, IOException> readNextBufferAsync();
 		}
 	}
 	
 	/** Asynchronous writable character stream. */
 	public interface WriterAsync {
 		/** Write characters. */
-		public ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length);
+		ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length);
 		
 		/** Write characters. */
-		public default ISynchronizationPoint<IOException> writeAsync(char[] c) {
+		default ISynchronizationPoint<IOException> writeAsync(char[] c) {
 			return writeAsync(c, 0, c.length);
 		}
 		
 		/** Write characters of the given string. */
-		public default ISynchronizationPoint<IOException> writeAsync(String s) {
+		default ISynchronizationPoint<IOException> writeAsync(String s) {
 			return writeAsync(s.toCharArray());
 		}
 	}
@@ -124,28 +123,28 @@ public interface ICharacterStream extends IConcurrentCloseable {
 	/** Writable character stream. */
 	public interface Writable extends ICharacterStream, WriterAsync {
 		/** Write characters. */
-		public void writeSync(char[] c, int offset, int length) throws IOException;
+		void writeSync(char[] c, int offset, int length) throws IOException;
 		
 		/** Write characters. */
-		public default void writeSync(char[] c) throws IOException {
+		default void writeSync(char[] c) throws IOException {
 			writeSync(c, 0, c.length);
 		}
 		
 		/** Write characters of the given string. */
-		public default void writeSync(String s) throws IOException {
+		default void writeSync(String s) throws IOException {
 			writeSync(s.toCharArray());
 		}
 		
 		/** Buffered writable character stream. */
 		public interface Buffered extends Writable {
 			/** Write one character. */
-			public void writeSync(char c) throws IOException;
+			void writeSync(char c) throws IOException;
 
 			/** Write one character. */
-			public ISynchronizationPoint<IOException> writeAsync(char c);
+			ISynchronizationPoint<IOException> writeAsync(char c);
 			
 			/** Flush any buffered character. */
-			public ISynchronizationPoint<IOException> flush();
+			ISynchronizationPoint<IOException> flush();
 		}
 	}
 	

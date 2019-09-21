@@ -49,7 +49,7 @@ public class XMLDocument extends XMLNode implements Document {
 	}
 	
 	@Override
-	public Node appendChild(Node newChild) throws DOMException {
+	public Node appendChild(Node newChild) {
 		if (newChild instanceof XMLElement) {
 			if (root == null) {
 				root = (XMLElement)newChild;
@@ -237,7 +237,7 @@ public class XMLDocument extends XMLNode implements Document {
 	}
 
 	@Override
-	public XMLElement createElementNS(String namespaceURI, String qualifiedName) throws DOMException {
+	public XMLElement createElementNS(String namespaceURI, String qualifiedName) {
 		String prefix;
 		String localName;
 		int i = qualifiedName.indexOf(':');
@@ -275,7 +275,7 @@ public class XMLDocument extends XMLNode implements Document {
 	}
 
 	@Override
-	public ProcessingInstruction createProcessingInstruction(String target, String data) throws DOMException {
+	public ProcessingInstruction createProcessingInstruction(String target, String data) {
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
 	}
 	
@@ -286,6 +286,7 @@ public class XMLDocument extends XMLNode implements Document {
 	
 	@Override
 	public void setTextContent(String textContent) {
+		// nothing
 	}
 	
 	@Override
@@ -300,12 +301,12 @@ public class XMLDocument extends XMLNode implements Document {
 	}
 
 	@Override
-	public Attr createAttributeNS(String namespaceURI, String qualifiedName) throws DOMException {
+	public Attr createAttributeNS(String namespaceURI, String qualifiedName) {
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
 	}
 
 	@Override
-	public EntityReference createEntityReference(String name) throws DOMException {
+	public EntityReference createEntityReference(String name) {
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
 	}
 
@@ -357,7 +358,7 @@ public class XMLDocument extends XMLNode implements Document {
 	}
 
 	@Override
-	public void setXmlStandalone(boolean xmlStandalone) throws DOMException {
+	public void setXmlStandalone(boolean xmlStandalone) {
 		// TODO Auto-generated method stub
 		
 	}
@@ -368,7 +369,7 @@ public class XMLDocument extends XMLNode implements Document {
 	}
 
 	@Override
-	public void setXmlVersion(String xmlVersion) throws DOMException {
+	public void setXmlVersion(String xmlVersion) {
 		// TODO Auto-generated method stub
 		
 	}
@@ -396,13 +397,13 @@ public class XMLDocument extends XMLNode implements Document {
 	}
 
 	@Override
-	public Node importNode(Node importedNode, boolean deep) throws DOMException {
+	public Node importNode(Node importedNode, boolean deep) {
 		// TODO UserDataHandler
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
 	}
 
 	@Override
-	public Node adoptNode(Node source) throws DOMException {
+	public Node adoptNode(Node source) {
 		// TODO UserDataHandler
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
 	}
@@ -419,7 +420,7 @@ public class XMLDocument extends XMLNode implements Document {
 	}
 
 	@Override
-	public Node renameNode(Node n, String namespaceURI, String qualifiedName) throws DOMException {
+	public Node renameNode(Node n, String namespaceURI, String qualifiedName) {
 		// TODO UserDataHandler
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
 	}

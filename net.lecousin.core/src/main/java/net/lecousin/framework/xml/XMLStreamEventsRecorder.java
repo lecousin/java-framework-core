@@ -21,20 +21,20 @@ public interface XMLStreamEventsRecorder {
 	/** Start to record events.
 	 * @param recordCurrentEvent true to save the current event, false to start saving events for the next one.
 	 */
-	public void startRecording(boolean recordCurrentEvent);
+	void startRecording(boolean recordCurrentEvent);
 	
 	/** Stop recording events. */
-	public void stopRecording();
+	void stopRecording();
 	
 	/** Start to replay.
 	 * Once this method is called, when reaching the last recorded event an EOFException will be raised.
 	 * This method may be called multiple times to replay several times the recorded events. It will restart
 	 * from the first recorded event at each call.
 	 */
-	public void replay();
+	void replay();
 	
 	/** Shortcut to know what is the first recorded event. */
-	public Event getFirstRecordedEvent();
+	Event getFirstRecordedEvent();
 	
 	/** Synchronous implementation of the recorder. */
 	public static class Sync extends XMLStreamEventsSync implements XMLStreamEventsRecorder {

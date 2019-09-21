@@ -1,7 +1,6 @@
 package net.lecousin.framework.xml.dom;
 
 import org.w3c.dom.CharacterData;
-import org.w3c.dom.DOMException;
 
 /** DOM CharacterData. */
 public abstract class XMLCharacterData extends XMLNode implements CharacterData {
@@ -50,7 +49,7 @@ public abstract class XMLCharacterData extends XMLNode implements CharacterData 
 	}
 
 	@Override
-	public void insertData(int offset, String arg) throws DOMException {
+	public void insertData(int offset, String arg) {
 		StringBuilder s = new StringBuilder(text.length() + arg.length());
 		s.append(text.substring(0, offset));
 		s.append(arg);
@@ -59,7 +58,7 @@ public abstract class XMLCharacterData extends XMLNode implements CharacterData 
 	}
 
 	@Override
-	public void deleteData(int offset, int count) throws DOMException {
+	public void deleteData(int offset, int count) {
 		StringBuilder s = new StringBuilder(text.length() - count);
 		if (offset > 0) s.append(text.substring(0, offset));
 		if (text.length() > offset + count)

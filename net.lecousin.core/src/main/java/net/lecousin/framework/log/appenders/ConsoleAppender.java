@@ -1,9 +1,9 @@
 package net.lecousin.framework.log.appenders;
 
-import java.io.IOException;
 import java.util.Map;
 
 import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.concurrent.Console;
@@ -12,6 +12,7 @@ import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.log.LogPattern;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.Logger.Level;
+import net.lecousin.framework.log.LoggerConfigurationException;
 import net.lecousin.framework.log.LoggerFactory;
 
 /** Log appender to the console. */
@@ -26,35 +27,35 @@ public class ConsoleAppender implements Appender {
 	
 	/** Constructor. */
 	public ConsoleAppender(
-		LoggerFactory factory, XMLStreamReader reader, @SuppressWarnings("unused") Map<String,Appender> appenders
-	) throws Exception, IOException {
+		LoggerFactory factory, XMLStreamReader reader, @SuppressWarnings({"unused","squid:S1172"}) Map<String,Appender> appenders
+	) throws LoggerConfigurationException, XMLStreamException {
 		this.console = factory.getApplication().getConsole();
-		String level = null;
-		String pattern = null;
+		String levelStr = null;
+		String patternStr = null;
 		for (int i = 0; i < reader.getAttributeCount(); ++i) {
 			String attrName = reader.getAttributeLocalName(i);
 			String attrValue = reader.getAttributeValue(i);
 			if ("level".equals(attrName))
-				level = attrValue;
+				levelStr = attrValue;
 			else if ("pattern".equals(attrName))
-				pattern = attrValue;
+				patternStr = attrValue;
 			else if (!"name".equals(attrName) && !"class".equals(attrName))
-				throw new Exception("Unknown attribute " + attrName);
+				throw new LoggerConfigurationException("Unknown attribute " + attrName);
 		}
 		
-		if (level == null) throw new Exception("Missing attribute level on console Appender");
-		try { this.level = Level.valueOf(level); }
-		catch (Throwable t) { throw new Exception("Invalid level " + level); }
+		if (levelStr == null) throw new LoggerConfigurationException("Missing attribute level on console Appender");
+		try { this.level = Level.valueOf(levelStr); }
+		catch (Exception t) { throw new LoggerConfigurationException("Invalid level " + levelStr); }
 		
-		if (pattern == null) throw new Exception("Missing attribute pattern on console Appender");
-		this.pattern = new LogPattern(pattern);
+		if (patternStr == null) throw new LoggerConfigurationException("Missing attribute pattern on console Appender");
+		this.pattern = new LogPattern(patternStr);
 		
 		reader.next();
 		do {
 			if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)
 				break;
 			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
-				throw new Exception("Unexpected inner element " + reader.getLocalName());
+				throw new LoggerConfigurationException("Unexpected inner element " + reader.getLocalName());
 			}
 			reader.next();
 		} while (reader.hasNext());

@@ -18,7 +18,6 @@ import net.lecousin.framework.io.util.ReadableAsURLConnection;
  */
 public class Handler extends URLStreamHandler {
 
-	@SuppressWarnings("resource")
 	@Override
 	protected URLConnection openConnection(URL u) throws IOException {
 		IO.Readable io = LCCore.isStarted() ? LCCore.getApplication().getResource(u.getPath(), Task.PRIORITY_NORMAL) : null;

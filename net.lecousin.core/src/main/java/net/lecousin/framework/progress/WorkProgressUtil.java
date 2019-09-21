@@ -1,7 +1,11 @@
 package net.lecousin.framework.progress;
 
 /** Utility methods. */
-public class WorkProgressUtil {
+public final class WorkProgressUtil {
+	
+	private WorkProgressUtil() {
+		// no instance
+	}
 
 	/** Propagate the progression of a sub-task to a prent. */
 	public static void propagateToParent(WorkProgress subTask, WorkProgress parentTask, long amount) {

@@ -9,15 +9,15 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 public interface Consumer<T> {
 
 	/** Consume the given object. */
-	public AsyncWork<?,? extends Exception> consume(T product);
+	AsyncWork<?,? extends Exception> consume(T product);
 	
 	/** Signal the end of production, meaning no new object will be given to consume. */
-	public AsyncWork<?,? extends Exception> endOfProduction();
+	AsyncWork<?,? extends Exception> endOfProduction();
 	
 	/** Signal an error and stop consumption. */
-	public void error(Exception error);
+	void error(Exception error);
 	
 	/** Cancel and stop consumption. */
-	public void cancel(CancelException event);
+	void cancel(CancelException event);
 	
 }

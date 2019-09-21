@@ -9,7 +9,6 @@ import java.lang.management.MemoryType;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.management.Notification;
 import javax.management.NotificationEmitter;
 
 import net.lecousin.framework.application.LCCore;
@@ -37,68 +36,56 @@ public class MemoryManager {
 			logMemory(Level.DEBUG);
 
 		// after 15 minutes the application is running, every 5 minutes, ask to clean expired cached data
-		Task<Void,NoException> cleanExpiredData = new Task.Cpu<Void,NoException>(
-			"Free memory for expired cached data", Task.PRIORITY_BACKGROUND
-		) {
-			@Override
-			public Void run() {
-				if (logger.debug()) logger.debug("Free expired cached data");
-				freeMemory(FreeMemoryLevel.EXPIRED_ONLY);
-				if (logger.debug())
-					logManageableContent();
-				return null;
-			}
-		};
-		cleanExpiredData.executeEvery(5 * 60 * 1000, 15 * 60 * 1000);
+		Task<Void,NoException> cleanExpiredData = new Task.Cpu.FromRunnable(
+			"Free memory for expired cached data", Task.PRIORITY_BACKGROUND, () -> {
+			if (logger.debug()) logger.debug("Free expired cached data");
+			freeMemory(FreeMemoryLevel.EXPIRED_ONLY);
+			if (logger.debug())
+				logManageableContent();
+		});
+		cleanExpiredData.executeEvery(5L * 60 * 1000, 15L * 60 * 1000);
 		cleanExpiredData.start();
 		
 		// listen to garbage collection
 		for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
 			logger.debug("Garbage collector: " + gc.getName());
-			((NotificationEmitter)gc).addNotificationListener(new javax.management.NotificationListener() {
-				@Override
-				public void handleNotification(Notification notification, Object handback) {
-					long now = System.currentTimeMillis();
-					if (now - gcForced < 100)
-						return;
-					//lastGcForcedFailed = false;
-					if (now - lastGC[4] < 60000) {
-						logger.debug("5 garbage collections in less than 1 minute");
-					}
-					System.arraycopy(lastGC, 0, lastGC, 1, 9);
-					System.arraycopy(lastGCAllocatedMemory, 0, lastGCAllocatedMemory, 1, 9);
-					System.arraycopy(lastGCUsedMemory, 0, lastGCUsedMemory, 1, 9);
-					System.arraycopy(lastGCCollector, 0, lastGCCollector, 1, 9);
-					lastGC[0] = now;
-					lastGCAllocatedMemory[0] = Runtime.getRuntime().totalMemory();
-					lastGCUsedMemory[0] = lastGCAllocatedMemory[0] - Runtime.getRuntime().freeMemory();
-					GarbageCollectorMXBean gc = (GarbageCollectorMXBean)handback;
-					lastGCCollector[0] = gc;
+			((NotificationEmitter)gc).addNotificationListener((notification, handback) -> {
+				long now = System.currentTimeMillis();
+				if (now - gcForced < 100)
+					return;
+				//lastGcForcedFailed = false;
+				if (now - lastGC[4] < 60000) {
+					logger.debug("5 garbage collections in less than 1 minute");
 				}
+				System.arraycopy(lastGC, 0, lastGC, 1, 9);
+				System.arraycopy(lastGCAllocatedMemory, 0, lastGCAllocatedMemory, 1, 9);
+				System.arraycopy(lastGCUsedMemory, 0, lastGCUsedMemory, 1, 9);
+				System.arraycopy(lastGCCollector, 0, lastGCCollector, 1, 9);
+				lastGC[0] = now;
+				lastGCAllocatedMemory[0] = Runtime.getRuntime().totalMemory();
+				lastGCUsedMemory[0] = lastGCAllocatedMemory[0] - Runtime.getRuntime().freeMemory();
+				GarbageCollectorMXBean gcBean = (GarbageCollectorMXBean)handback;
+				lastGCCollector[0] = gcBean;
 			}, null, gc);
 		}
 		
 		// check memory
-		Task<Void,NoException> checkMemory = new Task.Cpu<Void,NoException>("Check memory", Task.PRIORITY_BACKGROUND) {
-			@Override
-			public Void run() {
-				checkMemory();
-				return null;
-			}
-		};
-		checkMemory.executeEvery(1 * 60 * 1000, 2 * 60 * 1000);
+		Task<Void,NoException> checkMemory = new Task.Cpu.FromRunnable("Check memory", Task.PRIORITY_BACKGROUND, MemoryManager::checkMemory);
+		checkMemory.executeEvery(1L * 60 * 1000, 2L * 60 * 1000);
 		checkMemory.start();
-		
+
+		monitorThresholds();
+	}
+	
+	@SuppressWarnings("squid:S3776") // complexity
+	private static void monitorThresholds() {
 		// listen to collection usage threshold
 		MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
-		((NotificationEmitter)memoryBean).addNotificationListener(new javax.management.NotificationListener() {
-			@Override
-			public void handleNotification(Notification notification, Object handback) {
-				if (!notification.getType().equals(MemoryNotificationInfo.MEMORY_COLLECTION_THRESHOLD_EXCEEDED)) return;
-				if (logger.info())
-					logger.info("Memory threshold reached, try to free all possible cached data to free memory");
-				freeMemory(FreeMemoryLevel.URGENT);
-			}
+		((NotificationEmitter)memoryBean).addNotificationListener((notification, handback) -> {
+			if (!notification.getType().equals(MemoryNotificationInfo.MEMORY_COLLECTION_THRESHOLD_EXCEEDED)) return;
+			if (logger.info())
+				logger.info("Memory threshold reached, try to free all possible cached data to free memory");
+			freeMemory(FreeMemoryLevel.URGENT);
 		}, null, null);
 		boolean oldGenFound = false;
 		int nbHeap = 0;
@@ -163,32 +150,17 @@ public class MemoryManager {
 			logManageableContent();
 		if (System.currentTimeMillis() - lastGC[0] > 120000) {
 			// last garbage collection was more than 2 minutes ago
-			
-			if ((((System.currentTimeMillis() - lastGC[0]) / 60000) % 5) == 0) {
-				// last garbage collection was more than 5 or 10 or 15... minutes ago 
-				if (System.currentTimeMillis() - lastGC[4] > (20 * 60 * 1000)) {
-					if (logger.debug())
-logger.debug("Less than 5 garbage collections since more than 20 minutes => free a maximum of memory to try to shrink the memory used by the JVM");
-					freeMemory(FreeMemoryLevel.URGENT);
-				} else {
-					if (logger.debug())
-logger.debug("No garbage collection since 5 minutes => free most of cached data memory to try to shrink the memory used by the JVM");
-					freeMemory(FreeMemoryLevel.MEDIUM);
-				}
-			} else {
-				if (logger.debug())
-logger.debug("No garbage collection since 2 minutes => free some cached data to try to shrink the memory used by the JVM");
-				freeMemory(FreeMemoryLevel.LOW);
-			}
+			freeMemoryBasedOnLastGarbageTime();
 
 			if (System.currentTimeMillis() - lastGC[0] > 25 * 60 * 1000) {
 				long total = Runtime.getRuntime().totalMemory();
 				long allocate = total / 50; // 2%
 				long free = Runtime.getRuntime().freeMemory();
 				if (allocate > free / 10) allocate = free / 10;
-				if (allocate > 1024 * 1024) allocate = 1024 * 1024;
+				if (allocate > 1024 * 1024) allocate = 1024L * 1024;
 				if (logger.debug() && allocate > 0)
-logger.debug("No garbage collection since 25 minutes => make some garbage to induce a collection sooner = " + StringUtil.size(allocate));
+					logger.debug("No garbage collection since 25 minutes => "
+						+ "make some garbage to induce a collection sooner = " + StringUtil.size(allocate));
 				while (allocate > 0) {
 					int len = allocate > 4096 ? 4096 : (int)allocate;
 					byte[] tmp = new byte[len];
@@ -207,6 +179,28 @@ logger.debug("No garbage collection since 25 minutes => make some garbage to ind
 				if (logger.debug())
 					logMemory(Level.DEBUG);
 			}*/
+		}
+	}
+	
+	private static void freeMemoryBasedOnLastGarbageTime() {
+		if ((((System.currentTimeMillis() - lastGC[0]) / 60000) % 5) == 0) {
+			// last garbage collection was more than 5 or 10 or 15... minutes ago 
+			if (System.currentTimeMillis() - lastGC[4] > (20 * 60 * 1000)) {
+				if (logger.debug())
+					logger.debug("Less than 5 garbage collections since more than 20 minutes => "
+						+ "free a maximum of memory to try to shrink the memory used by the JVM");
+				freeMemory(FreeMemoryLevel.URGENT);
+			} else {
+				if (logger.debug())
+					logger.debug("No garbage collection since 5 minutes => "
+						+ "free most of cached data memory to try to shrink the memory used by the JVM");
+				freeMemory(FreeMemoryLevel.MEDIUM);
+			}
+		} else {
+			if (logger.debug())
+				logger.debug("No garbage collection since 2 minutes => "
+					+ "free some cached data to try to shrink the memory used by the JVM");
+			freeMemory(FreeMemoryLevel.LOW);
 		}
 	}
 	
@@ -291,7 +285,7 @@ logger.debug("No garbage collection since 25 minutes => make some garbage to ind
 		for (IMemoryManageable m : list) {
 			if (logger.debug()) logger.debug("Free memory level " + level.name() + " on " + m.getDescription());
 			try { m.freeMemory(level); }
-			catch (Throwable t) {
+			catch (Exception t) {
 				logger.error("Error freeing memory from " + m.getDescription(), t);
 			}
 		}

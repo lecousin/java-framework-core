@@ -18,7 +18,7 @@ public interface IOProviderFrom<T> {
 
 		interface KnownSize<T> extends Readable<T> {
 			@Override
-			public IOProvider.Readable.KnownSize get(T from);
+			IOProvider.Readable.KnownSize get(T from);
 		}
 		
 		interface Seekable<T> extends Readable<T> {
@@ -27,7 +27,7 @@ public interface IOProviderFrom<T> {
 			
 			interface KnownSize<T> extends Seekable<T>, IOProviderFrom.Readable.KnownSize<T> {
 				@Override
-				public IOProvider.Readable.Seekable.KnownSize get(T from);
+				IOProvider.Readable.Seekable.KnownSize get(T from);
 			}
 		}
 	}

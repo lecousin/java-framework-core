@@ -26,9 +26,9 @@ public class Cache<Key,Value> implements CacheManager {
 	private Listener<Value> freer;
 	
 	private static class Data<Value> implements CachedData {
-		public ArrayList<CloseableListenable> users = new ArrayList<>();
-		public Value value;
-		public long lastUsage = 0;
+		private ArrayList<CloseableListenable> users = new ArrayList<>();
+		private Value value;
+		private long lastUsage = 0;
 		
 		@Override
 		public int cachedDataCurrentUsage() {
@@ -77,7 +77,7 @@ public class Cache<Key,Value> implements CacheManager {
 			throw new IllegalStateException("Cannot put a value in Cache with an existing key: " + key);
 		if (values.containsKey(value))
 			throw new IllegalStateException("Cannot put 2 times the same value in Cache: " + value);
-		Data<Value> data = new Data<Value>();
+		Data<Value> data = new Data<>();
 		data.value = value;
 		data.lastUsage = System.currentTimeMillis();
 		data.users.add(firstUser);

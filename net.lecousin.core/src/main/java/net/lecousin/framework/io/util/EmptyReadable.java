@@ -131,16 +131,12 @@ public class EmptyReadable extends ConcurrentCloseable implements IO.Readable, I
 
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
-		if (ondone != null)
-			ondone.accept(new Pair<>(Integer.valueOf(0), null));
-		return new AsyncWork<>(Integer.valueOf(0), null);
+		return readAsync(buffer, ondone);
 	}
 
 	@Override
 	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
-		if (ondone != null)
-			ondone.accept(new Pair<>(Integer.valueOf(0), null));
-		return new AsyncWork<>(Integer.valueOf(0), null);
+		return readAsync(buffer, ondone);
 	}
 
 	@Override

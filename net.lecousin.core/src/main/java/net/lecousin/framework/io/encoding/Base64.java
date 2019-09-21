@@ -63,9 +63,8 @@ public final class Base64 {
 		int v3 = decodeBase64Char((byte)inputBuffer.get());
 		outputBuffer[outputOffset] = (byte)((v1 << 2) | (v2 >>> 4));
 		if (v3 == 64) {
-			if (inputBuffer.hasRemaining())
-				if (inputBuffer.get() != '=')
-					throw new IOException("Unexpected character at the end of the base 64 input buffer");
+			if (inputBuffer.hasRemaining() && inputBuffer.get() != '=')
+				throw new IOException("Unexpected character at the end of the base 64 input buffer");
 			return 1;
 		}
 		int v4 = decodeBase64Char((byte)inputBuffer.get());
@@ -313,7 +312,6 @@ public final class Base64 {
 	}
 	
 	/** Encode the Readable IO into the Writer. */
-	@SuppressWarnings("resource")
 	public static ISynchronizationPoint<IOException> encodeAsync(IO.Readable io, IO.WriterAsync writer) {
 		return encodeAsync(io instanceof IO.Readable.Buffered ? (IO.Readable.Buffered)io : new SimpleBufferedReadable(io, 8192), writer);
 	}
@@ -326,7 +324,6 @@ public final class Base64 {
 	}
 	
 	/** Encode the Readable IO into the Writer. */
-	@SuppressWarnings("resource")
 	public static ISynchronizationPoint<IOException> encodeAsync(IO.Readable io, ICharacterStream.WriterAsync writer) {
 		return encodeAsync(io instanceof IO.Readable.Buffered ? (IO.Readable.Buffered)io : new SimpleBufferedReadable(io, 8192), writer);
 	}
@@ -342,7 +339,7 @@ public final class Base64 {
 		IO.Readable.Buffered io, IO.WriterAsync writer, SynchronizationPoint<IOException> result,
 		byte[] buf, int nbBuf, ISynchronizationPoint<IOException> lastWrite
 	) {
-		io.readNextBufferAsync().listenInline((buffer) -> {
+		io.readNextBufferAsync().listenInline(buffer -> {
 			if (buffer == null)
 				writeFinalBuffer(io, writer, result, buf, nbBuf, lastWrite);
 			else
@@ -354,7 +351,7 @@ public final class Base64 {
 		IO.Readable.Buffered io, ICharacterStream.WriterAsync writer, SynchronizationPoint<IOException> result,
 		byte[] buf, int nbBuf, ISynchronizationPoint<IOException> lastWrite
 	) {
-		io.readNextBufferAsync().listenInline((buffer) -> {
+		io.readNextBufferAsync().listenInline(buffer -> {
 			if (buffer == null)
 				writeFinalBuffer(io, writer, result, buf, nbBuf, lastWrite);
 			else
@@ -400,8 +397,9 @@ public final class Base64 {
 					byte[] out = encodeBase64(buffer.array(), buffer.arrayOffset() + buffer.position(), l * 3);
 					write = writer.writeAsync(ByteBuffer.wrap(out));
 					buffer.position(buffer.position() + l * 3);
-				} else
+				} else {
 					write = null;
+				}
 				nb = buffer.remaining();
 				buffer.get(buf, 0, nb);
 				encodeAsyncNextBuffer(io, writer, result, buf, nb, write);
@@ -450,8 +448,9 @@ public final class Base64 {
 					char[] out = encodeBase64ToChars(buffer.array(), buffer.arrayOffset() + buffer.position(), l * 3);
 					write = writer.writeAsync(out);
 					buffer.position(buffer.position() + l * 3);
-				} else
+				} else {
 					write = null;
+				}
 				nb = buffer.remaining();
 				buffer.get(buf, 0, nb);
 				encodeAsyncNextBuffer(io, writer, result, buf, nb, write);

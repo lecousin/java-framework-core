@@ -82,12 +82,6 @@ public class MavenRemoteRepository implements MavenRepository {
 		AsyncWork<XMLStreamReader, Exception> start = XMLStreamReader.start(bio, 5000, 4);
 		AsyncWork<List<String>, NoException> result = new AsyncWork<>();
 		start.listenAsync(new Task.Cpu.FromRunnable("Read maven-metadata.xml", priority, () -> {
-			if (!start.isSuccessful()) {
-				if (logger.error())
-					logger.error("Error loading " + url + path, start.getError());
-				result.unblockSuccess(null);
-				return;
-			}
 			try {
 				XMLStreamReader xml = start.getResult();
 				while (!Type.START_ELEMENT.equals(xml.event.type)) xml.next();
@@ -108,7 +102,11 @@ public class MavenRemoteRepository implements MavenRepository {
 					logger.error("Error parsing " + url + path, e);
 				result.unblockSuccess(null);
 			}
-		}), true);
+		}), () -> {
+			if (logger.error())
+				logger.error("Error loading " + url + path, start.getError());
+			result.unblockSuccess(null);
+		});
 		io.closeAfter(result);
 		return result;
 	}

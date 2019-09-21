@@ -105,9 +105,9 @@ public final class QuotedPrintable {
 					out[pos++] = '\r';
 					out[pos++] = '\n';
 					lineCount = 0;
-				} else
-					if (pos >= out.length - 1)
-						out = increaseBuffer(out, pos);
+				} else if (pos >= out.length - 1) {
+					out = increaseBuffer(out, pos);
+				}
 				out[pos++] = b;
 				lineCount++;
 				continue;

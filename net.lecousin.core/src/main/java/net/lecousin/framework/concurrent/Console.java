@@ -39,46 +39,39 @@ public class Console implements Closeable {
 	}
 
 	/** Instantiate for the given application. */
+	@SuppressWarnings({
+		"squid:S106", // writing to the console is the purpose of this class
+		"squid:S2142" // we stop the thread on interruption
+	})
 	public Console(Application app) {
 		out = System.out;
 		err = System.err;
-		thread = app.getThreadFactory().newThread(new Runnable() {
-			@Override
-			public void run() {
-				while (!stop) {
-					Object out = null;
-					Object err;
-					synchronized (Console.this) {
-						err = stderr.pollFirst();
-						if (err == null) {
-							out = stdout.pollFirst();
-							if (out == null) {
-								try { Console.this.wait(); }
-								catch (InterruptedException e) { break; }
-								continue;
-							}
+		thread = app.getThreadFactory().newThread(() -> {
+			while (!stop) {
+				Object outObj = null;
+				Object errObj;
+				synchronized (Console.this) {
+					errObj = stderr.pollFirst();
+					if (errObj == null) {
+						outObj = stdout.pollFirst();
+						if (outObj == null) {
+							try { Console.this.wait(); }
+							catch (InterruptedException e) { break; }
+							continue;
 						}
-					}
-					if (err != null) {
-						if (err instanceof CharSequence)
-							Console.this.err.println(err);
-						else if (err instanceof Throwable) {
-							((Throwable)err).printStackTrace(Console.this.err);
-						}
-					} else {
-						if (out instanceof CharSequence)
-							Console.this.out.println(out);
-						else if (out instanceof Throwable)
-							((Throwable)out).printStackTrace(Console.this.out);
 					}
 				}
-				while (!stderr.isEmpty())
-					Console.this.err.println(stderr.removeFirst());
-				while (!stdout.isEmpty())
-					Console.this.out.println(stdout.removeFirst());
-				System.out.println("Console stopped for " + app.getGroupId() + '/' + app.getArtifactId());
-				stopped.unblock();
+				if (errObj != null)
+					printTo(errObj, err);
+				else
+					printTo(outObj, out);
 			}
+			while (!stderr.isEmpty())
+				Console.this.err.println(stderr.removeFirst());
+			while (!stdout.isEmpty())
+				Console.this.out.println(stdout.removeFirst());
+			System.out.println("Console stopped for " + app.getGroupId() + '/' + app.getArtifactId());
+			stopped.unblock();
 		});
 		thread.setName("Console for " + app.getGroupId() + "." + app.getArtifactId() + " " + app.getVersion().toString());
 		thread.start();
@@ -91,6 +84,14 @@ public class Console implements Closeable {
 	private SynchronizationPoint<Exception> stopped = new SynchronizationPoint<>();
 	private PrintStream out;
 	private PrintStream err;
+	
+	private static void printTo(Object toPrint, PrintStream stream) {
+		if (toPrint instanceof CharSequence)
+			stream.println(toPrint);
+		else if (toPrint instanceof Throwable) {
+			((Throwable)toPrint).printStackTrace(stream);
+		}
+	}
 	
 	@Override
 	public void close() {

@@ -17,7 +17,7 @@ public @interface Instantiate {
 
 	/** Factory to create an instance based on the container instance. */
 	@SuppressWarnings("rawtypes")
-	public Class<? extends Factory> factory();
+	Class<? extends Factory> factory();
 	
 	/** Convert the annotation into a rule. */
 	public static class ToRule implements AttributeAnnotationToRuleOnType<Instantiate> {

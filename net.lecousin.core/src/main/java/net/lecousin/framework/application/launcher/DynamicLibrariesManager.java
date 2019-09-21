@@ -477,29 +477,13 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			for (Map.Entry<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> group : artifacts.entrySet()) {
 				for (Map.Entry<String, List<TreeWithParent.Node<DependencyNode>>> artifact : group.getValue().entrySet()) {
 					// create a mapping of versions, and remove errors
-					Map<Version, List<TreeWithParent.Node<DependencyNode>>> artifactVersions = new HashMap<>();
-					for (TreeWithParent.Node<DependencyNode> node : artifact.getValue()) {
-						if (node.getElement().getDescriptor().hasError()) {
-							app.getDefaultLogger().error(
-								"Dependency ignored: " + node.getElement().getDependency().getGroupId() + ':'
-								+ node.getElement().getDependency().getArtifactId() + " because of loading error",
-								node.getElement().getDescriptor().getError());
-							continue;
-						}
-						Version version = node.getElement().getDescriptor().getResult().getVersion();
-						List<TreeWithParent.Node<DependencyNode>> nodes = artifactVersions.get(version);
-						if (nodes == null) {
-							nodes = new LinkedList<>();
-							artifactVersions.put(version, nodes);
-						}
-						nodes.add(node);
-					}
-					// if only one remaining, no resolution needed
+					Map<Version, List<TreeWithParent.Node<DependencyNode>>> artifactVersions = getArtifactVersions(artifact);
 					if (artifactVersions.isEmpty()) {
 						// error
 						throw new LibraryManagementException("Unable to load library "
 							+ group.getKey() + ':' + artifact.getKey());
 					}
+					// if only one remaining, no resolution needed
 					if (artifactVersions.size() == 1) {
 						Version version = artifactVersions.keySet().iterator().next();
 						versions.put(group.getKey() + ':' + artifact.getKey(),
@@ -522,6 +506,28 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			// TODO progress by step
 			if (progress != null) progress.progress(work);
 			return versions;
+		}
+		
+		private Map<Version, List<TreeWithParent.Node<DependencyNode>>> getArtifactVersions(
+			Map.Entry<String, List<TreeWithParent.Node<DependencyNode>>> artifact) {
+			Map<Version, List<TreeWithParent.Node<DependencyNode>>> artifactVersions = new HashMap<>();
+			for (TreeWithParent.Node<DependencyNode> node : artifact.getValue()) {
+				if (node.getElement().getDescriptor().hasError()) {
+					app.getDefaultLogger().error(
+						"Dependency ignored: " + node.getElement().getDependency().getGroupId() + ':'
+						+ node.getElement().getDependency().getArtifactId() + " because of loading error",
+						node.getElement().getDescriptor().getError());
+					continue;
+				}
+				Version version = node.getElement().getDescriptor().getResult().getVersion();
+				List<TreeWithParent.Node<DependencyNode>> nodes = artifactVersions.get(version);
+				if (nodes == null) {
+					nodes = new LinkedList<>();
+					artifactVersions.put(version, nodes);
+				}
+				nodes.add(node);
+			}
+			return artifactVersions;
 		}
 	}
 	

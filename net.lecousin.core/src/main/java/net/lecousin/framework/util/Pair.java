@@ -9,22 +9,21 @@ import java.io.ObjectOutput;
  * @param <T1> type of first object
  * @param <T2> type of second object
  */
-public class Pair<T1,T2> implements Externalizable {
+public class Pair<T1,T2> {
 
-	/** Constructor for serialization purpose only.
-     * @deprecated Do not use directly. This is public for serialization purpose only.
-     */
-	@Deprecated
-	public Pair() { }
-    
 	/** Constructor. */
 	public Pair(T1 value1, T2 value2) {
     	this.value1 = value1;
     	this.value2 = value2;
     }
+	
+	/** Constructor with null values. */
+	public Pair() {
+		this(null, null);
+	}
     
-    private T1 value1;
-    private T2 value2;
+    protected T1 value1;
+    protected T2 value2;
 
     public T1 getValue1() { return value1; }
     
@@ -36,35 +35,51 @@ public class Pair<T1,T2> implements Externalizable {
     
 	@Override
     public boolean equals(Object obj) {
-    	if (obj == null || !(obj instanceof Pair)) return false;
-    	if (!ObjectUtil.equalsOrNull(value1, ((Pair<?,?>)obj).value1))
-    		return false;
-    	if (!ObjectUtil.equalsOrNull(value2, ((Pair<?,?>)obj).value2))
-    		return false;
-    	return true;
+    	return (obj instanceof Pair) &&
+    		ObjectUtil.equalsOrNull(value1, ((Pair<?,?>)obj).value1) &&
+    		ObjectUtil.equalsOrNull(value2, ((Pair<?,?>)obj).value2)
+    	;
     }
     
     @Override
     public int hashCode() {
     	return (value1 == null ? 0 : value1.hashCode()) + (value2 == null ? 0 : value2.hashCode());
     }
-    
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-    	out.writeObject(value1);
-    	out.writeObject(value2);
-    }
-    
-    @Override
-    @SuppressWarnings("unchecked")
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-    	value1 = (T1)in.readObject();
-    	value2 = (T2)in.readObject();
-    }
-    
+        
     @Override
     public java.lang.String toString() {
-    	return new StringBuilder("{").append(value1 == null ? "null" : value1.toString())
-    		.append(",").append(value2 == null ? "null" : value2.toString()).append("}").toString();
+    	return new StringBuilder("{").append(value1).append(",").append(value2).append("}").toString();
+    }
+    
+    /** Serializable Pair.
+	 * @param <T1> type of first object
+	 * @param <T2> type of second object
+     */
+    public static class Serializable<T1 extends java.io.Serializable, T2 extends java.io.Serializable>
+    	extends Pair<T1, T2> implements Externalizable {
+    	/** Constructor for serialization purpose only.
+         */
+    	public Serializable() {
+    		super();
+    	}
+    	
+    	/** Constructor. */
+    	public Serializable(T1 value1, T2 value2) {
+    		super(value1, value2);
+    	}
+
+        @Override
+        public void writeExternal(ObjectOutput out) throws IOException {
+        	out.writeObject(value1);
+        	out.writeObject(value2);
+        }
+        
+        @Override
+        @SuppressWarnings("unchecked")
+    	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        	value1 = (T1)in.readObject();
+        	value2 = (T2)in.readObject();
+        }
+
     }
 }

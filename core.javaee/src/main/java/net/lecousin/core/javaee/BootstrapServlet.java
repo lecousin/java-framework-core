@@ -27,6 +27,11 @@ public class BootstrapServlet extends GenericServlet {
 	private static final long serialVersionUID = -6358069042161072659L;
 
 	@Override
+	@SuppressWarnings({
+		"squid:S2095", // input is closed
+		"squid:S106", // use System.err
+		"squid:S3776", // complexity
+	})
 	public void init() throws ServletException {
 		Map<String, String> properties = null;
 		String propertiesURL = getServletConfig().getInitParameter("properties");
@@ -44,13 +49,16 @@ public class BootstrapServlet extends GenericServlet {
 						input = url.openStream();
 					}
 					Properties props = new Properties();
-					props.load(input);
-					input.close();
+					try {
+						props.load(input);
+					} finally {
+						input.close();
+					}
 					properties = new HashMap<>();
 					for (Map.Entry<Object, Object> p : props.entrySet())
 						properties.put(p.getKey().toString(), p.getValue().toString());
 					PropertiesUtil.resolve(properties);
-				} catch (Throwable t) {
+				} catch (Exception t) {
 					throw new ServletException("Error loading properties from " + u, t);
 				}
 			}
@@ -105,6 +113,7 @@ public class BootstrapServlet extends GenericServlet {
 	
 	@Override
 	public void service(ServletRequest req, ServletResponse res) {
+		// nothing
 	}
 
 }

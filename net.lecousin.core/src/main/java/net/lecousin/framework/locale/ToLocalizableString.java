@@ -6,6 +6,6 @@ package net.lecousin.framework.locale;
 public interface ToLocalizableString {
 
 	/** Get the localizable string from this object. */
-	public ILocalizableString toLocalizable();
+	ILocalizableString toLocalizable();
 	
 }

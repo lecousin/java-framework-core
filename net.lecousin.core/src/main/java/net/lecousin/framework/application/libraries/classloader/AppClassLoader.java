@@ -125,7 +125,6 @@ public class AppClassLoader implements ApplicationClassLoader {
 	}
 
 	/** Load a resource. */
-	@SuppressWarnings("resource")
 	public IO.Readable getResourceIO(String name, byte priority) {
 		if (name.length() == 0) return null;
 		if (name.charAt(0) == '/') name = name.substring(1);

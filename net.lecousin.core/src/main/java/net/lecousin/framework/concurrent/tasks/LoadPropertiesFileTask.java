@@ -19,7 +19,6 @@ import net.lecousin.framework.util.UnprotectedStringBuffer;
 public class LoadPropertiesFileTask extends PropertiesReader<Properties> {
 
 	/** Load properties from a file. */
-	@SuppressWarnings("resource")
 	public static AsyncWork<Properties, Exception> loadPropertiesFile(
 		File file, Charset charset, byte priority, boolean closeSynchronous, Listener<Properties> onDone
 	) {
@@ -40,7 +39,6 @@ public class LoadPropertiesFileTask extends PropertiesReader<Properties> {
 	}
 
 	/** Load properties from a Buffered IO. */
-	@SuppressWarnings("resource")
 	public static AsyncWork<Properties, Exception> loadPropertiesFile(
 		IO.Readable.Buffered input, Charset charset, byte priority, IO.OperationType closeInputAtEnd, Listener<Properties> onDone
 	) {

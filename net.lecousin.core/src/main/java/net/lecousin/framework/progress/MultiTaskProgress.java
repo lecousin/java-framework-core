@@ -63,12 +63,9 @@ public class MultiTaskProgress extends WorkProgressImpl implements WorkProgress.
 			jp = new JoinPoint<>();
 			for (SubTask task : tasks) jp.addToJoinDoNotCancel(task.getProgress().getSynch());
 		}
-		jp.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (jp.hasError()) error(jp.getError());
-				else done();
-			}
+		jp.listenInline(() -> {
+			if (jp.hasError()) error(jp.getError());
+			else done();
 		});
 		jp.start();
 	}

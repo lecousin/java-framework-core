@@ -22,13 +22,14 @@ public class ReadableAsURLConnection extends URLConnection {
 	
 	@Override
 	public void connect() {
+		// nothing to do
 	}
 	
 	@Override
 	public long getContentLengthLong() {
 		if (!(io instanceof IO.KnownSize)) return -1;
 		try { return ((IO.KnownSize)io).getSizeSync(); }
-		catch (Throwable t) { return -1; }
+		catch (Exception t) { return -1; }
 	}
 	
 	@Override

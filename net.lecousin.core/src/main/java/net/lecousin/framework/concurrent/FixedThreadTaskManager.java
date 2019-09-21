@@ -1,6 +1,7 @@
 package net.lecousin.framework.concurrent;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,8 +24,8 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 	) {
 		super(name, resource, threadFactory, taskPriorityManager);
 		this.nbThreads = nbThreads;
-		spare = new TurnArray<TaskWorker>(nbThreads * 2);
-		blocked = new TurnArray<TaskWorker>(nbThreads);
+		spare = new TurnArray<>(nbThreads * 2);
+		blocked = new TurnArray<>(nbThreads);
 	}
 	
 	private int nbThreads;
@@ -95,12 +96,10 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		
 		@Override
 		public void uncaughtException(Thread t, Throwable e) {
-			if (worker.currentTask != null) {
-				if (!worker.currentTask.isDone()) {
-					CancelException reason = new CancelException("Unexpected error in thread " + t.getName(), e);
-					worker.currentTask.cancelling = reason;
-					worker.currentTask.result.cancelled(reason);
-				}
+			if (worker.currentTask != null && !worker.currentTask.isDone()) {
+				CancelException reason = new CancelException("Unexpected error in thread " + t.getName(), e);
+				worker.currentTask.cancelling = reason;
+				worker.currentTask.result.cancelled(reason);
 			}
 			TaskWorker w;
 			synchronized (spare) {
@@ -221,8 +220,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 	List<TaskWorker> getAllActiveWorkers() {
 		TaskWorker[] workers = getWorkers();
 		ArrayList<TaskWorker> list = new ArrayList<>(workers.length + blocked.size() + aside.size());
-		for (TaskWorker w : workers)
-			list.add(w);
+		Collections.addAll(list, workers);
 		synchronized (blocked) {
 			list.addAll(blocked);
 		}
@@ -249,7 +247,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		newWorker.thread.start();
 	}
 	
-	@SuppressWarnings("deprecation")
+	@SuppressWarnings({"deprecation", "squid:CallToDeprecatedMethod"})
 	void killWorker(TaskWorker worker) {
 		synchronized (aside) {
 			if (!aside.remove(worker)) return;
@@ -271,6 +269,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 	}
 
 	@Override
+	@SuppressWarnings("squid:S1141") // nested try
 	public void debug(StringBuilder s) {
 		try {
 			s.append("Task Manager: ").append(getName()).append(" (").append(nbThreads).append(" threads):\r\n");
@@ -278,11 +277,11 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 				w.debug(s, "Worker");
 			for (TaskWorker w : spare)
 				try { w.debug(s, "Spare"); }
-				catch (Throwable t) { /* ignore, because we don't want to do it in a synchronized block, so NPE can happen */ }
+				catch (Exception t) { /* ignore, because we don't want to do it in a synchronized block, so NPE can happen */ }
 			for (TaskWorker w : blocked)
 				try { w.debug(s, "Blocked"); }
-				catch (Throwable t) { /* ignore, because we don't want to do it in a synchronized block, so NPE can happen */ }
-		} catch (Throwable t) {
+				catch (Exception t) { /* ignore, because we don't want to do it in a synchronized block, so NPE can happen */ }
+		} catch (Exception t) {
 			/* ignore, because we don't want to do it in a synchronized block, so NPE can happen */
 		}
 	}
@@ -303,7 +302,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 				s.append(" - Blocked ");
 				w.printStats(s);
 			}
-		} catch (Throwable t) {
+		} catch (Exception t) {
 			/* ignore, because we don't want to do it in a synchronized block, so NPE can happen */
 		}
 	}
@@ -311,7 +310,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 	private class CloseOldSpare extends Task.Cpu<Void,NoException> {
 		private CloseOldSpare() {
 			super("Close old spare threads for " + getName(), Task.PRIORITY_BACKGROUND);
-			executeEvery(60000, 6 * 60000);
+			executeEvery(60000, 6L * 60000);
 		}
 		
 		@Override

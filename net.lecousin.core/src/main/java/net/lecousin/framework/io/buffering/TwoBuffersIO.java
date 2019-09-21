@@ -28,19 +28,17 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		operation(read1 = io.readFullyAsync(ByteBuffer.wrap(buf1)));
 		if (secondBuffer > 0) {
 			buf2 = new byte[secondBuffer];
-			read1.onSuccess(new Runnable() {
-				@Override
-				public void run() {
-					int nb = read1.getResult().intValue();
-					nb1 = nb > 0 ? nb : 0;
-					if (nb < buf1.length) {
-						buf2 = null;
-						nb2 = 0;
-						read2 = new AsyncWork<>(Integer.valueOf(0), null);
-					} else
-						operation(read2 = io.readFullyAsync(ByteBuffer.wrap(buf2)));
-					synchronized (buf1) { buf1.notifyAll(); }
+			read1.onSuccess(() -> {
+				int nb = read1.getResult().intValue();
+				nb1 = nb > 0 ? nb : 0;
+				if (nb < buf1.length) {
+					buf2 = null;
+					nb2 = 0;
+					read2 = new AsyncWork<>(Integer.valueOf(0), null);
+				} else {
+					operation(read2 = io.readFullyAsync(ByteBuffer.wrap(buf2)));
 				}
+				synchronized (buf1) { buf1.notifyAll(); }
 			});
 		}
 	}
@@ -73,12 +71,12 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 
 		@Override
 		public long getSizeSync() {
-			return buf1.length + (buf2 == null ? 0 : buf2.length);
+			return (long)buf1.length + (buf2 == null ? 0 : buf2.length);
 		}
 
 		@Override
 		public AsyncWork<Long, IOException> getSizeAsync() {
-			return new AsyncWork<>(Long.valueOf(buf1.length + (buf2 == null ? 0 : buf2.length)),null);
+			return new AsyncWork<>(Long.valueOf((long)buf1.length + (buf2 == null ? 0 : buf2.length)),null);
 		}
 
 		@Override
@@ -282,14 +280,12 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 			if (done == 0) return readFullyAsync(buffer, ondone);
 			AsyncWork<Integer, IOException> r = new AsyncWork<>();
 			int d = done;
-			readFullyAsync(buffer, (res) -> {
+			readFullyAsync(buffer, res -> {
 				if (ondone != null) {
 					if (res.getValue1() != null) ondone.accept(new Pair<>(Integer.valueOf(d + res.getValue1().intValue()), null));
 					else ondone.accept(res);
 				}
-			}).listenInline((nb) -> {
-				r.unblockSuccess(Integer.valueOf(nb.intValue() + d));
-			}, r);
+			}).listenInline(nb -> r.unblockSuccess(Integer.valueOf(nb.intValue() + d)), r);
 			return r;
 		}
 		if (pos >= nb1 + nb2) return IOUtil.success(Integer.valueOf(done > 0 ? done : -1), ondone);
@@ -373,7 +369,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return readAsync(pos, buffer, (res) -> {
+		return readAsync(pos, buffer, res -> {
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				pos += res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
@@ -407,9 +403,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		}
 		if (buf2 == null) return IOUtil.success(Integer.valueOf(-1), ondone);
 		if (nb2 < 0) {
-			AsyncWork<Integer, IOException> res = needRead2Async(() -> {
-				return Integer.valueOf(readSync(pos, buffer));
-			}, ondone);
+			AsyncWork<Integer, IOException> res = needRead2Async(() -> Integer.valueOf(readSync(pos, buffer)), ondone);
 			if (res != null) return res;
 		}
 		if (pos >= nb1 + nb2) return IOUtil.success(Integer.valueOf(-1), ondone);
@@ -616,9 +610,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (nb2 < 0) {
 			long s = skip;
 			long d = done;
-			AsyncWork<Long, IOException> res = needRead2Async(() -> {
-				return Long.valueOf(skipSync(s) + d);
-			}, ondone);
+			AsyncWork<Long, IOException> res = needRead2Async(() -> Long.valueOf(skipSync(s) + d), ondone);
 			if (res != null) return res;
 		}
 		if (pos >= nb1 + nb2) return IOUtil.success(Long.valueOf(done), ondone);
@@ -636,25 +628,21 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (nb1 < 0) needRead1();
 		if (buf2 == null) return nb1;
 		if (nb2 < 0) needRead2();
-		return nb1 + nb2;
+		return (long)nb1 + nb2;
 	}
 
 	@Override
 	public AsyncWork<Long, IOException> getSizeAsync() {
 		if (nb1 < 0) {
-			AsyncWork<Long, IOException> res = needRead1Async(() -> {
-				return Long.valueOf(getSizeSync());
-			}, null);
+			AsyncWork<Long, IOException> res = needRead1Async(() -> Long.valueOf(getSizeSync()), null);
 			if (res != null) return res;
 		}
 		if (buf2 == null) return new AsyncWork<>(Long.valueOf(nb1),null);
 		if (nb2 < 0) {
-			AsyncWork<Long, IOException> res = needRead2Async(() -> {
-				return Long.valueOf(getSizeSync());
-			}, null);
+			AsyncWork<Long, IOException> res = needRead2Async(() -> Long.valueOf(getSizeSync()), null);
 			if (res != null) return res;
 		}
-		return new AsyncWork<>(Long.valueOf(nb1 + nb2),null);
+		return new AsyncWork<>(Long.valueOf((long)nb1 + nb2),null);
 	}
 
 	@Override

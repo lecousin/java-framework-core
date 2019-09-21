@@ -27,17 +27,15 @@ public final class TemporaryFiles {
 			String path = app.getProperty(Application.PROPERTY_TMP_DIRECTORY);
 			if (path != null) {
 				dir = new File(path);
-				if (!dir.exists())
-					if (!dir.mkdirs())
-						dir = null;
+				if (!dir.exists() && !dir.mkdirs())
+					dir = null;
 			}
 			if (dir == null) {
 				path = app.getProperty("java.io.tmpdir");
 				if (path != null) {
 					dir = new File(path);
-					if (!dir.exists())
-						if (!dir.mkdirs())
-							dir = null;
+					if (!dir.exists() && !dir.mkdirs())
+						dir = null;
 				}
 			}
 			instance = new TemporaryFiles(/*app, */dir);
@@ -50,7 +48,7 @@ public final class TemporaryFiles {
 		this.tempDir = dir;
 		try {
 			prefix = InetAddress.getLocalHost().getHostName();
-		} catch (Throwable t) {
+		} catch (Exception t) {
 			prefix = System.getenv("COMPUTERNAME");
 			if (prefix == null || prefix.length() == 0)
 				prefix = System.getenv("HOSTNAME");
@@ -66,11 +64,8 @@ public final class TemporaryFiles {
 	
 	/** Set the directory into which create temporary files. */
 	public void setTemporaryDirectory(File dir) throws IOException {
-		if (dir != null) {
-			if (!dir.exists() || !dir.isDirectory())
-				if (!dir.mkdirs())
-					throw new IOException("Unable to create temporary directory: " + dir.getAbsolutePath());
-		}
+		if (dir != null && (!dir.exists() || !dir.isDirectory()) && !dir.mkdirs())
+			throw new IOException("Unable to create temporary directory: " + dir.getAbsolutePath());
 		tempDir = dir;
 	}
 	

@@ -34,13 +34,16 @@ public class ThreadPoolTaskManager extends TaskManager {
 	
 	@Override
 	void start() {
+		// nothing to do
 	}
 	
 	@Override
 	void started() {
+		// nothing to do
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S106") // print to console
 	protected void finishAndStopThreads() {
 		StringBuilder s = new StringBuilder();
 		printStats(s);
@@ -58,6 +61,7 @@ public class ThreadPoolTaskManager extends TaskManager {
 	
 	@Override
 	protected void finishTransfer() {
+		// nothing to do
 	}
 	
 	@Override
@@ -88,12 +92,10 @@ public class ThreadPoolTaskManager extends TaskManager {
 		
 		@Override
 		public void uncaughtException(Thread t, Throwable e) {
-			if (worker.task != null) {
-				if (!worker.task.isDone()) {
-					CancelException reason = new CancelException("Unexpected error in thread " + t.getName(), e);
-					worker.task.cancelling = reason;
-					worker.task.result.cancelled(reason);
-				}
+			if (worker.task != null && !worker.task.isDone()) {
+				CancelException reason = new CancelException("Unexpected error in thread " + t.getName(), e);
+				worker.task.cancelling = reason;
+				worker.task.result.cancelled(reason);
 			}
 			synchronized (taskPriorityManager) {
 				activeThreads.remove(worker);
@@ -145,7 +147,7 @@ public class ThreadPoolTaskManager extends TaskManager {
 			 .append(activeThreads.size()).append('/').append(maxThreads).append(" active threads\r\n");
 			for (Worker w : activeThreads)
 				s.append(" - ").append(w.task != null ? w.task.getDescription() : "waiting").append("\r\n");
-		} catch (Throwable t) {
+		} catch (Exception t) {
 			s.append("\r\n...");
 		}
 	}

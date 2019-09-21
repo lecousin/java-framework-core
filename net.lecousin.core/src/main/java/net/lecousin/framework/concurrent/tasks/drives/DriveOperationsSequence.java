@@ -23,7 +23,7 @@ public class DriveOperationsSequence extends Task<Void,IOException> {
 	public DriveOperationsSequence(TaskManager manager, String description, byte priority, boolean autoStart) {
 		super(manager, description, priority);
 		this.autoStart = autoStart;
-		if (autoStart) sp = new SynchronizationPoint<NoException>();
+		if (autoStart) sp = new SynchronizationPoint<>();
 	}
 	
 	private boolean autoStart;
@@ -55,9 +55,10 @@ public class DriveOperationsSequence extends Task<Void,IOException> {
 			Operation op;
 			synchronized (operations) {
 				op = operations.pollFirst();
-				if (op == null) 
+				if (op == null) {
 					if (autoStart && !end) waiting = true;
 					else break;
+				}
 			}
 			if (op != null) op.execute();
 			else {
@@ -74,10 +75,10 @@ public class DriveOperationsSequence extends Task<Void,IOException> {
 	/** Interface for an operation. */
 	public static interface Operation {
 		/** Return the file on which it works. */
-		public FileAccess getFile();
+		FileAccess getFile();
 		
 		/** Execute the operation. */
-		public void execute() throws IOException;
+		void execute() throws IOException;
 	}
 	
 	/** Write data to a file. */
@@ -90,7 +91,6 @@ public class DriveOperationsSequence extends Task<Void,IOException> {
 		
 		@Override
 		public void execute() throws IOException {
-			@SuppressWarnings("resource")
 			FileAccess file = getFile();
 			long pos = getPosition();
 			if (pos < 0)
@@ -111,7 +111,6 @@ public class DriveOperationsSequence extends Task<Void,IOException> {
 		
 		@Override
 		public void execute() throws IOException {
-			@SuppressWarnings("resource")
 			FileAccess file = getFile();
 			long pos = getPosition();
 			ByteBuffer buf = getBuffer();

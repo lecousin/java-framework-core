@@ -20,7 +20,6 @@ import net.lecousin.framework.io.serialization.SerializationContext.AttributeCon
 import net.lecousin.framework.io.serialization.SerializationContext.CollectionContext;
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
-import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.xml.XMLUtil;
 import net.lecousin.framework.xml.XMLWriter;
@@ -105,9 +104,7 @@ public class XMLSerializer extends AbstractSerializer {
 	@Override
 	protected ISynchronizationPoint<? extends Exception> finalizeSerialization() {
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		output.end().listenInlineSP(() -> {
-			bout.flush().listenInlineSP(sp);
-		}, sp);
+		output.end().listenInlineSP(() -> bout.flush().listenInlineSP(sp), sp);
 		return sp;
 	}
 	
@@ -160,25 +157,22 @@ public class XMLSerializer extends AbstractSerializer {
 		return new SynchronizationPoint<>(true);
 	}
 	
-	protected static final Comparator<Attribute> attributesComparator = new Comparator<Attribute>() {
-		@Override
-		public int compare(Attribute o1, Attribute o2) {
-			Class<?> c = o1.getType().getBase();
-			if (c.isPrimitive()) return -1;
-			if (Boolean.class.equals(c)) return -1;
-			if (Number.class.isAssignableFrom(c)) return -1;
-			if (CharSequence.class.isAssignableFrom(c)) return -1;
-			if (Character.class.equals(c)) return -1;
-			if (c.isEnum()) return -1;
-			c = o2.getType().getBase();
-			if (c.isPrimitive()) return 1;
-			if (Boolean.class.equals(c)) return 1;
-			if (Number.class.isAssignableFrom(c)) return 1;
-			if (CharSequence.class.isAssignableFrom(c)) return 1;
-			if (Character.class.equals(c)) return 1;
-			if (c.isEnum()) return 1;
-			return 0;
-		}
+	protected static final Comparator<Attribute> attributesComparator = (o1, o2) -> {
+		Class<?> c = o1.getType().getBase();
+		if (c.isPrimitive()) return -1;
+		if (Boolean.class.equals(c)) return -1;
+		if (Number.class.isAssignableFrom(c)) return -1;
+		if (CharSequence.class.isAssignableFrom(c)) return -1;
+		if (Character.class.equals(c)) return -1;
+		if (c.isEnum()) return -1;
+		c = o2.getType().getBase();
+		if (c.isPrimitive()) return 1;
+		if (Boolean.class.equals(c)) return 1;
+		if (Number.class.isAssignableFrom(c)) return 1;
+		if (CharSequence.class.isAssignableFrom(c)) return 1;
+		if (Character.class.equals(c)) return 1;
+		if (c.isEnum()) return 1;
+		return 0;
 	};
 	
 	@Override
@@ -188,6 +182,7 @@ public class XMLSerializer extends AbstractSerializer {
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S1643")
 	protected ISynchronizationPoint<IOException> startObjectValue(ObjectContext context, String path, List<SerializationRule> rules) {
 		Object instance = context.getInstance();
 		if (instance != null) {
@@ -197,15 +192,15 @@ public class XMLSerializer extends AbstractSerializer {
 					customInstantiator = true;
 					break;
 				}
-			if (!customInstantiator) {
-				if (!(context.getParent() instanceof AttributeContext) ||
-					!((AttributeContext)context.getParent()).getAttribute().hasCustomInstantiation()) {
-					Class<?> type = context.getOriginalType().getBase();
-					if (!type.equals(instance.getClass())) {
-						String attrName = "class";
-						while (XMLDeserializer.hasAttribute(type, attrName)) attrName = "_" + attrName;
-						return output.addAttribute(attrName, instance.getClass().getName());
-					}
+			if (!customInstantiator && 
+				(!(context.getParent() instanceof AttributeContext) ||
+				 !((AttributeContext)context.getParent()).getAttribute().hasCustomInstantiation())
+			) {
+				Class<?> type = context.getOriginalType().getBase();
+				if (!type.equals(instance.getClass())) {
+					String attrName = "class";
+					while (XMLDeserializer.hasAttribute(type, attrName)) attrName = "_" + attrName;
+					return output.addAttribute(attrName, instance.getClass().getName());
 				}
 			}
 		}
@@ -264,9 +259,7 @@ public class XMLSerializer extends AbstractSerializer {
 			return output.closeElement();
 		}
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		s.listenAsyncSP(new SerializationTask(() -> {
-			output.closeElement().listenInlineSP(sp);
-		}), sp);
+		s.listenAsyncSP(new SerializationTask(() -> output.closeElement().listenInlineSP(sp)), sp);
 		return sp;
 	}
 	
@@ -311,20 +304,15 @@ public class XMLSerializer extends AbstractSerializer {
 	protected ISynchronizationPoint<IOException> serializeIOReadableValue(
 		SerializationContext context, IO.Readable io, String path, List<SerializationRule> rules
 	) {
-		ISynchronizationPoint<IOException> encode = Base64.encodeAsync(io, new ICharacterStream.WriterAsync() {
-			@Override
-			public ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length) {
-				return output.addText(new UnprotectedString(c, offset, length, c.length));
-			}
-		});
+		ISynchronizationPoint<IOException> encode = Base64.encodeAsync(io, (char[] c, int offset, int length) ->
+			output.addText(new UnprotectedString(c, offset, length, c.length))
+		);
 		if (encode.isUnblocked()) {
 			if (encode.hasError()) return encode;
 			return output.closeElement();
 		}
 		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		encode.listenAsync(new SerializationTask(() -> {
-			output.closeElement().listenInline(sp);
-		}), sp);
+		encode.listenAsync(new SerializationTask(() -> output.closeElement().listenInline(sp)), sp);
 		return sp;
 	}
 

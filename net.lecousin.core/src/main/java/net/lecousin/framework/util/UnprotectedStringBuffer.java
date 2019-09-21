@@ -104,7 +104,7 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	@Override
-	public void setCharAt(int index, char c) throws IllegalArgumentException {
+	public void setCharAt(int index, char c) {
 		if (strings == null) throw new IllegalArgumentException("String is empty");
 		for (int i = 0; i <= lastUsed; ++i) {
 			int l = strings[i].length();
@@ -502,7 +502,7 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	private void replace(int startBuffer, int startBufferIndex, int endBuffer, int endBufferIndex, UnprotectedStringBuffer replace) {
-		ArrayList<UnprotectedString> list = new ArrayList<UnprotectedString>(
+		ArrayList<UnprotectedString> list = new ArrayList<>(
 			startBuffer + 1 + replace.lastUsed + 1 + lastUsed - endBuffer + 1
 		);
 		// add all strings before start
@@ -660,8 +660,9 @@ public class UnprotectedStringBuffer implements IString {
 			if (endIndex < lastUsed) {
 				System.arraycopy(strings, endIndex + 1, strings, nb - (lastUsed - endIndex), lastUsed - endIndex);
 				pos = nb - (lastUsed - endIndex) - 1;
-			} else
+			} else {
 				pos = nb - 1;
+			}
 			// put the last string
 			if (last != null)
 				strings[pos--] = last;
@@ -1011,7 +1012,6 @@ public class UnprotectedStringBuffer implements IString {
 				return;
 			}
 			strings[buffer].setCharAt(--bufferIndex, c);
-			return;
 		}
 		
 		@Override

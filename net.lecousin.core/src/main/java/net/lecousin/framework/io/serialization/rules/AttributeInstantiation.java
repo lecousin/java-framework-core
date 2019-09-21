@@ -38,7 +38,7 @@ public class AttributeInstantiation implements SerializationRule {
 		try {
 			type.replaceAttribute(a, new InstantiationAttribute(a, factory.newInstance()));
 			return false;
-		} catch (Throwable t) {
+		} catch (Exception t) {
 			throw new Exception("Unable to replace attribute by an InstantiationAttribute", t);
 		}
 	}

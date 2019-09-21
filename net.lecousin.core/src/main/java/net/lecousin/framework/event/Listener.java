@@ -8,7 +8,7 @@ package net.lecousin.framework.event;
 public interface Listener<T> {
 
 	/** Called when the event occurs. */
-	public void fire(T event);
+	void fire(T event);
 	
 	/** Abstract class implementing Listener and holding an object given at instantiation time.
 	 * @param <TEvent> type of data fired

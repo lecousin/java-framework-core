@@ -6,6 +6,7 @@ import java.nio.file.Path;
 /**
  * Contain information about a file, previously retrieved by a task.
  */
+@SuppressWarnings("squid:ClassVariableVisibilityCheck")
 public class FileInfo {
 
 	public File file;

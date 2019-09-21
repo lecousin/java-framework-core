@@ -1,5 +1,6 @@
 package net.lecousin.framework.locale;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 import net.lecousin.framework.application.LCCore;
@@ -11,8 +12,10 @@ import net.lecousin.framework.exception.NoException;
  */
 public class LocalizableString implements ILocalizableString {
 
+	private static final long serialVersionUID = 1L;
+
 	/** Constructor. */
-	public LocalizableString(String namespace, String string, Object... values) {
+	public LocalizableString(String namespace, String string, Serializable... values) {
 		this.namespace = namespace;
 		this.string = string;
 		this.values = values;
@@ -20,7 +23,7 @@ public class LocalizableString implements ILocalizableString {
 	
 	private String namespace;
 	private String string;
-	private Object[] values;
+	private Serializable[] values;
 	
 	public String getNamespace() {
 		return namespace;
@@ -30,7 +33,7 @@ public class LocalizableString implements ILocalizableString {
 		return string;
 	}
 	
-	public Object[] getValues() {
+	public Serializable[] getValues() {
 		return values;
 	}
 	

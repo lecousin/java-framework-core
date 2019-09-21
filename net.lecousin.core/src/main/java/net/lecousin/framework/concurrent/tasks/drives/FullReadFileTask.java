@@ -27,7 +27,6 @@ public class FullReadFileTask extends Task.OnFile<byte[],IOException> {
 				if (nb <= 0) break;
 				pos += nb;
 			} while (pos < content.length);
-			f.close();
 			return content;
 		}
 	}

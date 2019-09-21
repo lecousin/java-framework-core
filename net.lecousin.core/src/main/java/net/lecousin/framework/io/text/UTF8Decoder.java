@@ -11,7 +11,7 @@ public class UTF8Decoder extends Decoder {
 	
 	private int val = 0;
 	private int state = 0;
-	private static final char invalidChar = '�';
+	private static final char INVALID_CHAR = '�';
 
 	// skip checkstyle: MissingSwitchDefault
 	@Override
@@ -45,7 +45,7 @@ public class UTF8Decoder extends Decoder {
 					val = (a & 0x07) << 12;
 					state = 4;
 				} else {
-					chars[pos + (nb++)] = invalidChar;
+					chars[pos + (nb++)] = INVALID_CHAR;
 				}
 				break;
 			case 1:
@@ -53,7 +53,7 @@ public class UTF8Decoder extends Decoder {
 				if ((a & 0xC0) == 0x80) {
 					chars[pos + (nb++)] = (char)(val | (a & 0x3F));
 				} else {
-					chars[pos + (nb++)] = invalidChar;
+					chars[pos + (nb++)] = INVALID_CHAR;
 				}
 				state = 0;
 				break;
@@ -63,7 +63,7 @@ public class UTF8Decoder extends Decoder {
 					val |= (a & 0x3F) << 6;
 					state = 3;
 				} else {
-					chars[pos + (nb++)] = invalidChar;
+					chars[pos + (nb++)] = INVALID_CHAR;
 					state = 0;
 				}
 				break;
@@ -72,7 +72,7 @@ public class UTF8Decoder extends Decoder {
 				if ((a & 0xC0) == 0x80) {
 					chars[pos + (nb++)] = (char)(val | (a & 0x3F));
 				} else {
-					chars[pos + (nb++)] = invalidChar;
+					chars[pos + (nb++)] = INVALID_CHAR;
 				}
 				state = 0;
 				break;
@@ -82,7 +82,7 @@ public class UTF8Decoder extends Decoder {
 					val |= (a & 0x3F) << 6;
 					state = 5;
 				} else {
-					chars[pos + (nb++)] = invalidChar;
+					chars[pos + (nb++)] = INVALID_CHAR;
 					state = 0;
 				}
 				break;
@@ -92,7 +92,7 @@ public class UTF8Decoder extends Decoder {
 					val |= (a & 0x3F);
 					state = 6;
 				} else {
-					chars[pos + (nb++)] = invalidChar;
+					chars[pos + (nb++)] = INVALID_CHAR;
 					state = 0;
 				}
 				break;
@@ -110,7 +110,7 @@ public class UTF8Decoder extends Decoder {
 					val = (0xDC00 | ((val & 0xF) << 6) | (a & 0x3F));
 					state = 7;
 				} else {
-					chars[pos + (nb++)] = invalidChar;
+					chars[pos + (nb++)] = INVALID_CHAR;
 					state = 0;
 				}
 				break;

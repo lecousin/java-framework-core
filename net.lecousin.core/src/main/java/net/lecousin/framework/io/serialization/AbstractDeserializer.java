@@ -62,9 +62,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		AsyncWork<T, Exception> result = new AsyncWork<>();
 		init.listenAsync(new DeserializationTask(() -> {
 			AsyncWork<T, Exception> sp = deserializeValue(null, type, "", rules);
-			sp.listenInline((obj) -> {
-				finalizeDeserialization().listenInline(() -> { result.unblockSuccess(obj); }, result);
-			}, result);
+			sp.listenInline(obj -> finalizeDeserialization().listenInline(() -> result.unblockSuccess(obj), result), result);
 		}), result);
 		return result;
 	}
@@ -91,7 +89,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		@Override
 		public Void run() throws CancelException {
 			try { run.run(); }
-			catch (Throwable t) {
+			catch (Exception t) {
 				throw new CancelException("Error thrown in deserialization", t);
 			}
 			return null;
@@ -181,7 +179,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			AsyncWork<? extends CharSequence, Exception> str = deserializeStringValue();
 			AsyncWork<T, Exception> result = new AsyncWork<>();
 			str.listenInline(
-				(string) -> {
+				string -> {
 					if (string == null) {
 						result.unblockSuccess(null);
 						return;
@@ -195,14 +193,14 @@ public abstract class AbstractDeserializer implements Deserializer {
 						if (params.length != 1) continue;
 						if (params[0].isAssignableFrom(string.getClass())) {
 							try { result.unblockSuccess((T)ctor.newInstance(string)); }
-							catch (Throwable t) {
+							catch (Exception t) {
 								result.error(new Exception("Error instantiating type " + c.getName(), t));
 							}
 							return;
 						}
 						if (params[0].isAssignableFrom(String.class)) {
 							try { result.unblockSuccess((T)ctor.newInstance(string.toString())); }
-							catch (Throwable t) {
+							catch (Exception t) {
 								result.error(new Exception("Error instantiating type " + c.getName(), t));
 							}
 							return;
@@ -221,7 +219,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			AsyncWork<? extends CharSequence, Exception> str = deserializeStringValue();
 			AsyncWork<T, Exception> result = new AsyncWork<>();
 			str.listenInline(
-				(string) -> {
+				string -> {
 					if (string == null) {
 						result.unblockSuccess(null);
 						return;
@@ -249,7 +247,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		if (IO.Readable.class.isAssignableFrom(c))
 			return (AsyncWork<T, Exception>)deserializeIOReadableValue(context, rules);
 
-		return (AsyncWork<T, Exception>)deserializeObjectValue(context, type, path, rules);
+		return deserializeObjectValue(context, type, path, rules);
 	}
 	
 	// *** boolean ***
@@ -343,7 +341,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	protected AsyncWork<Character, Exception> deserializeCharacterValue(boolean nullable) {
 		AsyncWork<? extends CharSequence, Exception> read = deserializeStringValue();
 		AsyncWork<Character, Exception> result = new AsyncWork<>();
-		read.listenInline((string) -> {
+		read.listenInline(string -> {
 			if (string == null || string.length() == 0) {
 				if (nullable)
 					result.unblockSuccess(null);
@@ -367,7 +365,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		AttributeContext fakeContext = new AttributeContext(context.getParent(), fakeAttr);
 		AsyncWork<? extends CharSequence, Exception> read = deserializeStringAttributeValue(fakeContext);
 		AsyncWork<Character, Exception> result = new AsyncWork<>();
-		read.listenInline((string) -> {
+		read.listenInline(string -> {
 			if (string == null || string.length() == 0) {
 				if (nullable)
 					result.unblockSuccess(null);
@@ -759,7 +757,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		}
 		AsyncWork<InputStream, Exception> result = new AsyncWork<>();
 		io.listenInline(
-			(inputStream) -> {
+			inputStream -> {
 				if (inputStream == null)
 					result.unblockSuccess(null);
 				else
@@ -779,7 +777,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		}
 		AsyncWork<InputStream, Exception> result = new AsyncWork<>();
 		io.listenInline(
-			(inputStream) -> {
+			inputStream -> {
 				if (inputStream == null)
 					result.unblockSuccess(null);
 				else
@@ -818,7 +816,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			return result;
 		}
 		io.listenInline(
-			(r) -> {
+			r -> {
 				if (r == null)
 					result.unblockSuccess(null);
 				else
@@ -841,7 +839,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			return result;
 		}
 		io.listenInline(
-			(r) -> {
+			r -> {
 				if (r == null)
 					result.unblockSuccess(null);
 				else
@@ -869,11 +867,11 @@ public abstract class AbstractDeserializer implements Deserializer {
 		}
 		AsyncWork<Object, Exception> result = new AsyncWork<>();
 		start.listenInline(
-			(instance) -> {
+			instance -> {
 				if (instance == null) result.unblockSuccess(null);
-				else new DeserializationTask(() -> {
-					deserializeObjectAttributes(context, instance, type, path, rules, result);
-				}).start();
+				else new DeserializationTask(() ->
+					deserializeObjectAttributes(context, instance, type, path, rules, result)
+				).start();
 			}, result
 		);
 		return (AsyncWork<T, Exception>)result;
@@ -941,13 +939,11 @@ public abstract class AbstractDeserializer implements Deserializer {
 					}
 					continue;
 				}
-				val.listenAsync(new DeserializationTask(() -> {
-					deserializeNextObjectAttribute(context, path, rules, result);
-				}), result);
+				val.listenAsync(new DeserializationTask(() -> deserializeNextObjectAttribute(context, path, rules, result)), result);
 				return;
 			}
 			name.listenInline(
-				(n) -> {
+				n -> {
 					if (n == null) {
 						result.unblockSuccess(context.getInstance());
 						return;
@@ -974,9 +970,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 							deserializeNextObjectAttribute(context, path, rules, result);
 							return;
 						}
-						val.listenAsync(new DeserializationTask(() -> {
-							deserializeNextObjectAttribute(context, path, rules, result);
-						}), result);
+						val.listenAsync(new DeserializationTask(() ->
+							deserializeNextObjectAttribute(context, path, rules, result)
+						), result);
 					}).start();
 				}, result
 			);
@@ -1005,17 +1001,15 @@ public abstract class AbstractDeserializer implements Deserializer {
 		}
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		value.listenInline(
-			(val) -> {
-				new DeserializationTask(() -> {
-					if (!a.ignore())
-						try { a.setValue(context.getInstance(), val); }
-						catch (Exception e) {
-							sp.error(e);
-							return;
-						}
-					sp.unblock();
-				}).start();
-			}, sp
+			val -> new DeserializationTask(() -> {
+				if (!a.ignore())
+					try { a.setValue(context.getInstance(), val); }
+					catch (Exception e) {
+						sp.error(e);
+						return;
+					}
+				sp.unblock();
+			}).start(), sp
 		);
 		return sp;
 	}
@@ -1057,7 +1051,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			AsyncWork<? extends CharSequence, Exception> str = deserializeStringAttributeValue(context);
 			AsyncWork<Object, Exception> result = new AsyncWork<>();
 			str.listenInline(
-				(string) -> {
+				string -> {
 					if (string == null) {
 						result.unblockSuccess(null);
 						return;
@@ -1071,14 +1065,14 @@ public abstract class AbstractDeserializer implements Deserializer {
 						if (params.length != 1) continue;
 						if (params[0].isAssignableFrom(string.getClass())) {
 							try { result.unblockSuccess(ctor.newInstance(string)); }
-							catch (Throwable t) {
+							catch (Exception t) {
 								result.error(new Exception("Error instantiating type " + c.getName(), t));
 							}
 							return;
 						}
 						if (params[0].isAssignableFrom(String.class)) {
 							try { result.unblockSuccess(ctor.newInstance(string.toString())); }
-							catch (Throwable t) {
+							catch (Exception t) {
 								result.error(new Exception("Error instantiating type " + c.getName(), t));
 							}
 							return;
@@ -1097,7 +1091,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			AsyncWork<? extends CharSequence, Exception> str = deserializeStringAttributeValue(context);
 			AsyncWork<Object, Exception> result = new AsyncWork<>();
 			str.listenInline(
-				(string) -> {
+				string -> {
 					if (string == null) {
 						result.unblockSuccess(null);
 						return;

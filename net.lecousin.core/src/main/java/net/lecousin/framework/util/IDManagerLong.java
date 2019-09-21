@@ -7,12 +7,12 @@ package net.lecousin.framework.util;
 public interface IDManagerLong {
 
 	/** Allocate a new unique identifier. */
-	public long allocate();
+	long allocate();
 	
 	/** Free the given identifier. */
-	public void free(long id);
+	void free(long id);
 	
 	/** Declare an identifier as used so it cannot be allocated. */
-	public void used(long id);
+	void used(long id);
 	
 }

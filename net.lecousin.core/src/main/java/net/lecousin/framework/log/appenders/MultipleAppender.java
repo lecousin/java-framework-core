@@ -5,19 +5,21 @@ import java.util.List;
 import java.util.Map;
 
 import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.JoinPoint;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.Logger.Level;
+import net.lecousin.framework.log.LoggerConfigurationException;
 import net.lecousin.framework.log.LoggerFactory;
 
 /** Log appender that forwards logs to multiple appenders. */
 public class MultipleAppender implements Appender {
 
 	/** Constructor. */
-	public MultipleAppender(@SuppressWarnings("unused") LoggerFactory factory, Appender...appenders) {
+	public MultipleAppender(@SuppressWarnings({"unused","squid:S1172"}) LoggerFactory factory, Appender...appenders) {
 		this.appenders = appenders;
 		level = Level.OFF.ordinal();
 		for (Appender a : appenders) {
@@ -30,8 +32,8 @@ public class MultipleAppender implements Appender {
 	
 	/** Constructor. */
 	public MultipleAppender(
-		@SuppressWarnings("unused") LoggerFactory factory, XMLStreamReader reader, Map<String,Appender> appenders
-	) throws Exception {
+		@SuppressWarnings({"unused","squid:S1172"}) LoggerFactory factory, XMLStreamReader reader, Map<String,Appender> appenders
+	) throws LoggerConfigurationException, XMLStreamException {
 		level = Level.OFF.ordinal();
 		List<Appender> list = new ArrayList<>();
 		
@@ -46,12 +48,12 @@ public class MultipleAppender implements Appender {
 						if ("name".equals(attrName))
 							name = attrValue;
 						else
-							throw new Exception("Unknown attribute " + attrName + " in AppenderRef");
+							throw new LoggerConfigurationException("Unknown attribute " + attrName + " in AppenderRef");
 					}
 					
-					if (name == null) throw new Exception("Missing attribute name on AppenderRef");
+					if (name == null) throw new LoggerConfigurationException("Missing attribute name on AppenderRef");
 					Appender appender = appenders.get(name);
-					if (appender == null) throw new Exception("Unknown appender " + name + " in AppenderRef");
+					if (appender == null) throw new LoggerConfigurationException("Unknown appender " + name + " in AppenderRef");
 					list.add(appender);
 					if (appender.level() < level)
 						level = appender.level();
@@ -63,15 +65,18 @@ public class MultipleAppender implements Appender {
 						if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)
 							break;
 						if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
-							throw new Exception("Unexpected element " + reader.getLocalName() + " in AppenderRef");
+							throw new LoggerConfigurationException(
+								"Unexpected element " + reader.getLocalName() + " in AppenderRef");
 						}
 						reader.next();
 					} while (reader.hasNext());
-				} else
-					throw new Exception("Unknown element " + reader.getLocalName()
+				} else {
+					throw new LoggerConfigurationException("Unknown element " + reader.getLocalName()
 						+ " in MultipleAppender, only AppenderRef elements are expected");
-			} else if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)
+				}
+			} else if (reader.getEventType() == XMLStreamConstants.END_ELEMENT) {
 				break;
+			}
 			reader.next();
 		}
 

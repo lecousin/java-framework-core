@@ -64,6 +64,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	}
 	
 	/** Unblock this synchronization point without error. */
+	@SuppressWarnings("squid:S3776") // complexity
 	public final void unblock() {
 		if (Threading.debugSynchronization) ThreadingDebugHelper.unblocked(this);
 		ArrayList<Runnable> listeners;
@@ -78,18 +79,16 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 			listenersInline = new ArrayList<>(2);
 		}
 		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class);
-		while (true) {
+		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
 					try { listeners.get(i).run(); }
-					catch (Throwable t) { log.error(
-						"Exception thrown by an inline listener of SynchronizationPoint", t); }
+					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
 			else
 				for (int i = 0; i < listeners.size(); ++i) {
 					long start = System.nanoTime();
 					try { listeners.get(i).run(); }
-					catch (Throwable t) { log.error(
-						"Exception thrown by an inline listener of SynchronizationPoint", t); }
+					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
 					long time = System.nanoTime() - start;
 					if (time > 1000000) // more than 1ms
 						log.debug("Listener took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
@@ -99,14 +98,14 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 					listenersInline = null;
 					listeners = null;
 					this.notifyAll();
-					break;
+				} else {
+					listeners.clear();
+					ArrayList<Runnable> tmp = listeners;
+					listeners = listenersInline;
+					listenersInline = tmp;
 				}
-				listeners.clear();
-				ArrayList<Runnable> tmp = listeners;
-				listeners = listenersInline;
-				listenersInline = tmp;
 			}
-		}
+		} while (listeners != null);
 	}
 	
 	@Override
@@ -122,6 +121,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S2274")
 	public final void block(long timeout) {
 		Thread t;
 		BlockedThreadHandler blockedHandler;
@@ -133,10 +133,17 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 				if (timeout <= 0) {
 					while (!unblocked || listenersInline != null)
 						try { this.wait(0); }
-						catch (InterruptedException e) { return; }
-				} else
+						catch (InterruptedException e) {
+							Thread.currentThread().interrupt();
+							return;
+						}
+				} else {
 					try { this.wait(timeout); }
-					catch (InterruptedException e) { return; }
+					catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return;
+					}
+				}
 			}
 		}
 		if (blockedHandler != null)
@@ -149,11 +156,14 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 			while (!unblocked || listenersInline != null) {
 				long start = System.currentTimeMillis();
 				try { this.wait(logAfter + 1000); }
-				catch (InterruptedException e) { return; }
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
+				}
 				if (System.currentTimeMillis() - start <= logAfter)
 					continue;
-				System.err.println("Still blocked after " + (logAfter / 1000) + "s.");
-				new Exception("").printStackTrace(System.err);
+				Logger logger = LCCore.get().getThreadingLogger();
+				logger.warn("Still blocked after " + (logAfter / 1000) + "s.", new Exception(""));
 			}
 		}
 	}

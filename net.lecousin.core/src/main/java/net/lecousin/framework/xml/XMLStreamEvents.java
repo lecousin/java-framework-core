@@ -22,6 +22,7 @@ import net.lecousin.framework.util.UnprotectedStringBuffer;
  * It is used by synchronous ({@link XMLStreamEventsSync}) and asynchronous (XMLStreamEventsAsync) implementations.<br/>
  * This class defines the different types of event, and the available information for each event.
  */
+@SuppressWarnings("squid:ClassVariableVisibilityCheck")
 public abstract class XMLStreamEvents {
 
 	public Event event = new Event();
@@ -33,7 +34,7 @@ public abstract class XMLStreamEvents {
 	public static class Event {
 		
 		/** Type of event. */
-		public static enum Type {
+		public enum Type {
 			PROCESSING_INSTRUCTION,
 			DOCTYPE,
 			COMMENT,
@@ -254,9 +255,8 @@ public abstract class XMLStreamEvents {
 	}
 	
 	protected void reset() {
-		if (Event.Type.START_ELEMENT.equals(event.type) && event.isClosed)
-			event.context.removeFirst();
-		else if (Event.Type.END_ELEMENT.equals(event.type))
+		if ((Event.Type.START_ELEMENT.equals(event.type) && event.isClosed) ||
+			(Event.Type.END_ELEMENT.equals(event.type)))
 			event.context.removeFirst();
 		event.type = null;
 		event.text = null;
@@ -295,12 +295,10 @@ public abstract class XMLStreamEvents {
 				if (a.localName.equals("xmlns")) {
 					list.add(new Pair<>(a.namespacePrefix, a.value));
 					it.remove();
-					continue;
 				}
 			} else if (a.namespacePrefix.equals("xmlns")) {
 				list.add(new Pair<>(a.localName, a.value));
 				it.remove();
-				continue;
 			}
 		}
 		return list;
@@ -345,7 +343,6 @@ public abstract class XMLStreamEvents {
 		private int firstBytesPos = 0;
 		private int firstBytesLength = 0;
 		
-		@SuppressWarnings("resource")
 		public BufferedReadableCharacterStreamLocation start() throws IOException, XMLException {
 			firstBytesLength = io.readFully(firstBytes);
 			readBOM();
@@ -413,9 +410,9 @@ public abstract class XMLStreamEvents {
 			switch (firstBytes[0] & 0xFF) {
 			case 0xEF: {
 				// it may be a UTF-8 BOM
-				if (firstBytesLength == 1) throw new XMLException(null, "Not an XML file");
+				if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
 				if (firstBytes[1] == (byte)0xBB) {
-					if (firstBytesLength == 2) throw new XMLException(null, "Not an XML file");
+					if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
 					if (firstBytes[2] == (byte)0xBF) {
 						// UTF-8 BOM
 						bomEncoding = StandardCharsets.UTF_8;
@@ -426,7 +423,7 @@ public abstract class XMLStreamEvents {
 			}
 			case 0xFE: {
 				// it may be a UTF-16 big-endian BOM
-				if (firstBytesLength == 1) throw new XMLException(null, "Not an XML file");
+				if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
 				if (firstBytes[1] == (byte)0xFF) {
 					// UTF-16 big-endian
 					bomEncoding = StandardCharsets.UTF_16BE;
@@ -436,11 +433,11 @@ public abstract class XMLStreamEvents {
 			}
 			case 0xFF: {
 				// it may be a BOM for UTF-16 little-endian or UTF-32 little-endian
-				if (firstBytesLength == 1) throw new XMLException(null, "Not an XML file");
+				if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
 				if (firstBytes[1] == (byte)0xFE) {
-					if (firstBytesLength == 2) throw new XMLException(null, "Not an XML file");
+					if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
 					if (firstBytes[2] == (byte)0x00) {
-						if (firstBytesLength == 3) throw new XMLException(null, "Not an XML file");
+						if (firstBytesLength == 3) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
 						if (firstBytes[3] == (byte)0x00) {
 							// UTF-32 little-endian
 							bomEncoding = Charset.forName("UTF-32LE");
@@ -456,11 +453,11 @@ public abstract class XMLStreamEvents {
 			}
 			case 0x00: {
 				// it may be a UTF-32 big-endian BOM, but it may also be UTF-16 without BOM
-				if (firstBytesLength == 1) throw new XMLException(null, "Not an XML file");
+				if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
 				if (firstBytes[1] == (byte)0x00) {
-					if (firstBytesLength == 2) throw new XMLException(null, "Not an XML file");
+					if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
 					if (firstBytes[2] == (byte)0xFE) {
-						if (firstBytesLength == 3) throw new XMLException(null, "Not an XML file");
+						if (firstBytesLength == 3) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
 						if (firstBytes[3] == (byte)0xFF) {
 							// UTF-32 big-endian
 							bomEncoding = Charset.forName("UTF-32BE");

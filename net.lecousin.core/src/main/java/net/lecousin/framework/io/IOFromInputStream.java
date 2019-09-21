@@ -132,7 +132,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 						buffer.position(buffer.position() + nb);
 					return Integer.valueOf(nb);
 				} catch (IOException e) {
-					if (isClosing() || isClosed()) throw new CancelException("InputStream closed");
+					if (isClosing() || isClosed()) throw IO.cancelClosed();
 					throw e;
 				}
 			}
@@ -156,7 +156,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 						if (nb <= 0) break;
 						total += nb;
 					} catch (IOException e) {
-						if (isClosing() || isClosed()) throw new CancelException("InputStream closed");
+						if (isClosing() || isClosed()) throw IO.cancelClosed();
 						throw e;
 					}
 				} while (total < buffer.remaining());
@@ -183,7 +183,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 				byte[] b = new byte[n > 65536 ? 65536 : (int)n];
 				do {
 					int l = n - total > 65536 ? 65536 : (int)(n - total);
-					if (isClosing() || isClosed()) throw new CancelException("InputStream closed");
+					if (isClosing() || isClosed()) throw IO.cancelClosed();
 					int nb = stream.read(b, 0, l);
 					if (nb <= 0) break;
 					total += nb;

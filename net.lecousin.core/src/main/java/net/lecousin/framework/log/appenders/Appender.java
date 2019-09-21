@@ -7,18 +7,18 @@ import net.lecousin.framework.log.LogPattern.Log;
 public interface Appender {
 
 	/** Append the given log. */
-	public void append(Log log);
+	void append(Log log);
 	
 	/** Return the level of this appender. */
-	public int level();
+	int level();
 	
 	/** Return true if this appender needs the thread name. */
-	public boolean needsThreadName();
+	boolean needsThreadName();
 	
 	/** Return true if this appender needs the location. */
-	public boolean needsLocation();
+	boolean needsLocation();
 	
 	/** Ask to flush any pending log that this appender is still holding. */
-	public ISynchronizationPoint<Exception> flush();
+	ISynchronizationPoint<Exception> flush();
 	
 }

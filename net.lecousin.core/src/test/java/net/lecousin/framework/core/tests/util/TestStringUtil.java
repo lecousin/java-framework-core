@@ -1,6 +1,7 @@
 package net.lecousin.framework.core.tests.util;
 
 import java.math.BigInteger;
+import java.text.ParseException;
 import java.util.Locale;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -121,7 +122,7 @@ public class TestStringUtil extends LCCoreAbstractTest {
 	}
 	
 	@Test
-	public void testSize() {
+	public void testSize() throws ParseException {
 		testSize(0, "0");
 		testSize(20, "20");
 		testSize(1024, "1.00 KB");
@@ -132,7 +133,7 @@ public class TestStringUtil extends LCCoreAbstractTest {
 		testSize(4L * 1024 * 1024 * 1024 * 1024, "4.00 TB");
 	}
 	
-	private static void testSize(long size, String str) {
+	private static void testSize(long size, String str) throws ParseException {
 		Locale def = Locale.getDefault();
 		Locale.setDefault(Locale.US);
 		String s = StringUtil.size(size);

@@ -3,9 +3,11 @@ package net.lecousin.framework.concurrent.synch;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.log.Logger;
 
 /**
  * A LockPoint is similar to a mutual exclusion, but can be locked and unlocked by any thread.<br/>
@@ -30,6 +32,7 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 	private ArrayList<Runnable> listeners = null;
 	
 	/** Request the lock. If it is already locked this method will block until it become unblocked and the lock has been obtained. */
+	@SuppressWarnings("squid:S2142") // InterruptedException
 	public void lock() {
 		if (cancel != null)
 			return;
@@ -47,7 +50,7 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 				blockedHandler = Threading.getBlockedThreadHandler(t);
 				if (blockedHandler != null) break;
 				try { this.wait(0); }
-				catch (InterruptedException e) { continue; }
+				catch (InterruptedException e) { /* continue anyway */ }
 			}
 		} while (true);
 		blockedHandler.blocked(this, 0);
@@ -82,11 +85,14 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 			do {
 				long start = System.currentTimeMillis();
 				try { this.wait(logAfter + 1000); }
-				catch (InterruptedException e) { return; }
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
+				}
 				if (System.currentTimeMillis() - start <= logAfter)
 					break;
-				System.err.println("Still blocked after " + (logAfter / 1000) + "s.");
-				new Exception("").printStackTrace(System.err);
+				Logger logger = LCCore.get().getThreadingLogger();
+				logger.warn("Still blocked after " + (logAfter / 1000) + "s.", new Exception(""));
 			} while (true);
 		}
 	}
@@ -112,12 +118,7 @@ public class LockPoint<TError extends Exception> implements ISynchronizationPoin
 	public void block(long timeout) {
 		if (!locked) return;
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		listenInline(new Runnable() {
-			@Override
-			public void run() {
-				sp.unblock();
-			}
-		});
+		listenInline(sp::unblock);
 		sp.block(timeout);
 	}
 

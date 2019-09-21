@@ -32,7 +32,7 @@ public class ReadWriteLockPoint {
 			}
 			// if someone is writing, we need to wait
 			if (readerWaiting == null)
-				readerWaiting = new SynchronizationPoint<NoException>();
+				readerWaiting = new SynchronizationPoint<>();
 			sp = readerWaiting;
 			readers++;
 		}
@@ -60,7 +60,7 @@ public class ReadWriteLockPoint {
 			}
 			// if someone is writing, we need to wait
 			if (readerWaiting == null)
-				readerWaiting = new SynchronizationPoint<NoException>();
+				readerWaiting = new SynchronizationPoint<>();
 			sp = readerWaiting;
 			readers++;
 		}
@@ -94,7 +94,7 @@ public class ReadWriteLockPoint {
 				return;
 			}
 			// someone is doing something, we need to block
-			sp = new SynchronizationPoint<NoException>();
+			sp = new SynchronizationPoint<>();
 			if (writersWaiting == null) writersWaiting = new LinkedList<>();
 			writersWaiting.add(sp);
 		}
@@ -122,7 +122,7 @@ public class ReadWriteLockPoint {
 				return returnNullIfReady ? null : new SynchronizationPoint<>(true);
 			}
 			// someone is doing something, we need to block
-			sp = new SynchronizationPoint<NoException>();
+			sp = new SynchronizationPoint<>();
 			if (writersWaiting == null) writersWaiting = new LinkedList<>();
 			writersWaiting.add(sp);
 		}

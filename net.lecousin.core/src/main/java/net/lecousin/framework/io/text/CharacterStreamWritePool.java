@@ -33,7 +33,7 @@ public class CharacterStreamWritePool {
 		}
 		SynchronizationPoint<IOException> ours = new SynchronizationPoint<>();
 		lastWrite = ours;
-		last.listenInline(() -> { ((ICharacterStream.Writable.Buffered)stream).writeAsync(c).listenInline(ours); }, ours);
+		last.listenInline(() -> ((ICharacterStream.Writable.Buffered)stream).writeAsync(c).listenInline(ours), ours);
 		return ours;
 	}
 	
@@ -52,7 +52,7 @@ public class CharacterStreamWritePool {
 		}
 		SynchronizationPoint<IOException> ours = new SynchronizationPoint<>();
 		lastWrite = ours;
-		last.listenInline(() -> { stream.writeAsync(chars, offset, length).listenInline(ours); }, ours);
+		last.listenInline(() -> stream.writeAsync(chars, offset, length).listenInline(ours), ours);
 		return ours;
 	}
 	

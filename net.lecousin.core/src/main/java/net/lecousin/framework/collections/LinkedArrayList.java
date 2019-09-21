@@ -612,7 +612,7 @@ public class LinkedArrayList<T> implements List<T> {
 	
 	@Override
 	public List<T> subList(int fromIndex, int toIndex) {
-		List<T> result = new ArrayList<T>(toIndex - fromIndex);
+		List<T> result = new ArrayList<>(toIndex - fromIndex);
 		for (int i = fromIndex; i < toIndex; ++i)
 			result.add(get(i));
 		return result;

@@ -74,37 +74,30 @@ public abstract class ProductTransformation<Input,Output> implements Consumer<In
 	private void consumeTransformed(Output data, AsyncWork<Void,Exception> sp) {
 		consuming = consumer.consume(data);
 		sp.unblockSuccess(null);
-		consuming.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				synchronized (consumer) {
-					if (error != null) {
-						sp.unblockError(error);
-						return;
-					}
-					if (cancelled != null) {
-						sp.unblockCancel(cancelled);
-						return;
-					}
-					if (!consuming.isSuccessful()) {
-						if (consuming.isCancelled())
-							cancel(consuming.getCancelEvent());
-						else
-							error(consuming.getError());
-						consuming = null;
-						return;
-					}
+		consuming.listenInline(() -> {
+			synchronized (consumer) {
+				if (error != null) {
+					sp.unblockError(error);
+					return;
+				}
+				if (cancelled != null) {
+					sp.unblockCancel(cancelled);
+					return;
+				}
+				if (!consuming.isSuccessful()) {
+					if (consuming.isCancelled())
+						cancel(consuming.getCancelEvent());
+					else
+						error(consuming.getError());
 					consuming = null;
-					if (waitingData != null) {
-						consumeTransformed(waitingData, sp);
-						waitingData = null;
-					} else if (endReached != null)
-						consumer.endOfProduction().listenInline(new Runnable() {
-							@Override
-							public void run() {
-								endReached.unblockSuccess(null);
-							}
-						});
+					return;
+				}
+				consuming = null;
+				if (waitingData != null) {
+					consumeTransformed(waitingData, sp);
+					waitingData = null;
+				} else if (endReached != null) {
+					consumer.endOfProduction().listenInline(() -> endReached.unblockSuccess(null));
 				}
 			}
 		});
@@ -125,7 +118,8 @@ public abstract class ProductTransformation<Input,Output> implements Consumer<In
 		synchronized (consumer) {
 			if (consuming == null)
 				return consumer.endOfProduction();
-			return endReached = new AsyncWork<Void, Exception>();
+			endReached = new AsyncWork<>();
+			return endReached;
 		}
 	}
 }

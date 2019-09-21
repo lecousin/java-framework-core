@@ -12,16 +12,16 @@ public class Buffers {
 	/** Constructor. */
 	public Buffers(int bufferSize, int maxBuffersToKeep) {
 		this.bufferSize = bufferSize;
-		buffers = new TurnArray<>(maxBuffersToKeep);
+		list = new TurnArray<>(maxBuffersToKeep);
 	}
 	
 	private int bufferSize;
 	
-	private TurnArray<ByteBuffer> buffers;
+	private TurnArray<ByteBuffer> list;
 	
 	/** Get a buffer. */
 	public ByteBuffer getBuffer() {
-		ByteBuffer buf = buffers.pollFirst();
+		ByteBuffer buf = list.pollFirst();
 		if (buf != null) {
 			buf.clear();
 			return buf;
@@ -31,9 +31,9 @@ public class Buffers {
 	
 	/** Release a buffer. */
 	public void freeBuffer(ByteBuffer buf) {
-		synchronized (buffers) {
-			if (buffers.isFull()) return;
-			buffers.addLast(buf);
+		synchronized (list) {
+			if (list.isFull()) return;
+			list.addLast(buf);
 		}
 	}
 	

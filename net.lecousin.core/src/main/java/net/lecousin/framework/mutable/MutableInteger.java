@@ -21,9 +21,11 @@ public class MutableInteger {
 	public int dec() { return --value; }
 
 	/** Add the given value and return the value after the addition. */
+	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	public int add(int add) { return value += add; }
 	
 	/** Subtract the given value and return the value after the subtraction. */
+	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	public int sub(int add) { return value -= add; }
 	
 }

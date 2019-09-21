@@ -70,12 +70,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 		chars = initChars;
 		// start decoding
 		if (input instanceof IO.Readable.Buffered)
-			((IO.Readable.Buffered)input).canStartReading().listenInline(new Runnable() {
-				@Override
-				public void run() {
-					bufferize();
-				}
-			});
+			((IO.Readable.Buffered)input).canStartReading().listenInline(this::bufferize);
 		else
 			bufferize();
 	}
@@ -173,15 +168,14 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 							return null;
 						}
 						end = true;
-					} else
+					} else {
 						end = false;
+					}
 					if (nextReady.isCancelled()) return null; // closed
 					CharBuffer buf = CharBuffer.allocate(bufferSize);
 					CoderResult cr = decoder.decode(bytes, buf, endReached);
-					if (cr.isOverflow()) {
-						if (buf.position() == 0)
-							cr.throwException();
-					}
+					if (cr.isOverflow() && buf.position() == 0)
+						cr.throwException();
 					if (nextReady.isCancelled()) return null; // closed
 					if (buf.position() == 0) {
 						if (end) {
@@ -219,7 +213,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 				} catch (NullPointerException e) {
 					// closed
 					return null;
-				} catch (Throwable t) {
+				} catch (Exception t) {
 					if (!nextReady.isUnblocked())
 						synchronized (ready) {
 							nextReady.error(IO.error(t));
@@ -249,7 +243,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 	}
 	
 	@Override
-	public char read() throws EOFException, IOException {
+	public char read() throws IOException {
 		if (back != -1) {
 			char c = (char)back;
 			back = -1;
@@ -396,9 +390,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 					if (chars == null) {
 						int don = done;
 						readAsync(buf, offset + done, length - done).listenInline(
-							(nb) -> {
-								result.unblockSuccess(Integer.valueOf(don + nb.intValue()));
-							},
+							nb -> result.unblockSuccess(Integer.valueOf(don + nb.intValue())),
 							result
 						);
 						return null;
@@ -460,9 +452,8 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 			if (full && !endReached) bufferize();
 			if (chars == null) {
 				canStartReading().listenAsync(
-				new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readNextBufferAsync", getPriority(), () -> {
-					readNextBufferAsync(result);
-				}), result);
+				new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readNextBufferAsync", getPriority(),
+					() -> readNextBufferAsync(result)), result);
 				return;
 			}
 		}

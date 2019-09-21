@@ -89,35 +89,7 @@ public final class IOUtil {
 	/** Read fully into a byte[], and unblock the given result upon completion. */
 	public static void readFully(IO.Readable io, AsyncWork<byte[], IOException> result) {
 		if (io instanceof IO.KnownSize) {
-			AsyncWork<Long, IOException> getSize = ((IO.KnownSize) io).getSizeAsync();
-			Runnable launchRead = () -> {
-				if (getSize.hasError()) result.error(getSize.getError());
-				else if (getSize.isCancelled()) result.cancel(getSize.getCancelEvent());
-				else {
-					long size = getSize.getResult().longValue();
-					if (size > Integer.MAX_VALUE) {
-						result.error(new IOException("IO too large to be read into memory"));
-						return;
-					}
-					byte[] bytes;
-					try { bytes = new byte[(int)size]; }
-					catch (Throwable t) {
-						result.error(IO.error(t));
-						return;
-					}
-					readFullyAsync(io, ByteBuffer.wrap(bytes), (r) -> {
-						if (r.getValue2() != null)
-							result.error(r.getValue2());
-						else
-							result.unblockSuccess(bytes);
-					});
-				}
-			};
-			if (getSize.isUnblocked()) {
-				launchRead.run();
-				return;
-			}
-			getSize.listenAsync(new Task.Cpu.FromRunnable("readFully", io.getPriority(), launchRead), true);
+			readFullyKnownSize((IO.Readable & IO.KnownSize)io, result);
 			return;
 		}
 		AsyncWork<ByteBuffersIO, IOException> read = readFullyAsync(io, 65536);
@@ -126,6 +98,44 @@ public final class IOUtil {
 			else if (read.isCancelled()) result.cancel(read.getCancelEvent());
 			else result.unblockSuccess(read.getResult().createSingleByteArray());
 		}), result);
+	}
+	
+	/** Read fully into a byte[], and unblock the given result upon completion. */
+	public static <T extends IO.Readable & IO.KnownSize> void readFullyKnownSize(T io, AsyncWork<byte[], IOException> result) {
+		AsyncWork<Long, IOException> getSize = io.getSizeAsync();
+		Runnable launchRead = () -> {
+			if (getSize.hasError()) result.error(getSize.getError());
+			else if (getSize.isCancelled()) result.cancel(getSize.getCancelEvent());
+			else {
+				long size = getSize.getResult().longValue();
+				if (size > Integer.MAX_VALUE) {
+					result.error(new IOException("IO too large to be read into memory"));
+					return;
+				}
+				readFullyKnownSize(io, (int)size, result);
+			}
+		};
+		if (getSize.isUnblocked()) {
+			launchRead.run();
+			return;
+		}
+		getSize.listenAsync(new Task.Cpu.FromRunnable("readFully", io.getPriority(), launchRead), true);
+	}
+
+	/** Read fully into a byte[], and unblock the given result upon completion. */
+	public static void readFullyKnownSize(IO.Readable io, int size, AsyncWork<byte[], IOException> result) {
+		byte[] bytes;
+		try { bytes = new byte[size]; }
+		catch (Exception t) {
+			result.error(IO.error(t));
+			return;
+		}
+		readFullyAsync(io, ByteBuffer.wrap(bytes), r -> {
+			if (r.getValue2() != null)
+				result.error(r.getValue2());
+			else
+				result.unblockSuccess(bytes);
+		});
 	}
 	
 	/**
@@ -221,12 +231,7 @@ public final class IOUtil {
 			} while (true);
 			r.get().listenInline(that);
 		}, sp, ondone));
-		sp.onCancel(new Listener<CancelException>() {
-			@Override
-			public void fire(CancelException event) {
-				r.get().unblockCancel(event);
-			}
-		});
+		sp.onCancel(cancel -> r.get().unblockCancel(cancel));
 		return sp;
 	}
 	
@@ -284,19 +289,13 @@ public final class IOUtil {
 			} while (true);
 			r.get().listenInline(that);
 		}, sp, ondone));
-		sp.onCancel(new Listener<CancelException>() {
-			@Override
-			public void fire(CancelException event) {
-				r.get().unblockCancel(event);
-			}
-		});
+		sp.onCancel(cancel -> r.get().unblockCancel(cancel));
 		return sp;
 	}
 	
 	/**
 	 * Read the content of IO.Readable in memory and put it into a ByteBuffersIO.
 	 */
-	@SuppressWarnings("resource")
 	public static AsyncWork<ByteBuffersIO, IOException> readFullyAsync(IO.Readable io, int bufferSize) {
 		ByteBuffersIO bb = new ByteBuffersIO(false, io.getSourceDescription(), io.getPriority());
 		AsyncWork<ByteBuffersIO, IOException> result = new AsyncWork<>();
@@ -489,7 +488,6 @@ public final class IOUtil {
 	 * Write the given Readable to a temporary file, and return the temporary file.
 	 * The given IO is closed when done.
 	 */
-	@SuppressWarnings("resource")
 	public static AsyncWork<File, IOException> toTempFile(IO.Readable io) {
 		IO.Readable.Buffered bio;
 		if (io instanceof IO.Readable.Buffered)
@@ -501,9 +499,7 @@ public final class IOUtil {
 		AsyncWork<File, IOException> result = new AsyncWork<>();
 		createFile.listenInline(() -> {
 			File file = createFile.getResult().getFile();
-			copy(bio, createFile.getResult(), -1, true, null, 0).listenInline(() -> {
-				result.unblockSuccess(file);
-			}, result);
+			copy(bio, createFile.getResult(), -1, true, null, 0).listenInline(() -> result.unblockSuccess(file), result);
 		}, result);
 		return result;
 	}
@@ -631,11 +627,10 @@ public final class IOUtil {
 	/**
 	 * Read all bytes from the given Readable and convert it as a String using the given charset encoding.
 	 */
-	@SuppressWarnings("resource")
 	public static AsyncWork<UnprotectedStringBuffer,IOException> readFullyAsString(IO.Readable io, Charset charset, byte priority) {
 		AsyncWork<UnprotectedStringBuffer,IOException> result = new AsyncWork<>();
 		if (io instanceof IO.KnownSize) {
-			((IO.KnownSize)io).getSizeAsync().listenInline((size) -> {
+			((IO.KnownSize)io).getSizeAsync().listenInline(size ->
 				new Task.Cpu.FromRunnable("Prepare readFullyAsString", priority, () -> {
 					byte[] buf = new byte[size.intValue()];
 					io.readFullyAsync(ByteBuffer.wrap(buf)).listenAsync(
@@ -648,8 +643,8 @@ public final class IOUtil {
 							result.error(e);
 						}
 					}), result);
-				}).start();
-			}, result);
+				}).start(),
+			result);
 			return result;
 		}
 		new Task.Cpu.FromRunnable("Read file as string: " + io.getSourceDescription(), priority,
@@ -814,7 +809,6 @@ public final class IOUtil {
 		return sp;
 	}
 	
-	@SuppressWarnings("resource")
 	private static void copy(
 		IO.Readable input, IO.Writable output, long size, boolean closeIOs, AsyncWork<Long, IOException> sp, WorkProgress progress, long work
 	) {
@@ -826,16 +820,13 @@ public final class IOUtil {
 		if (size < 0) {
 			if (input instanceof IO.KnownSize) {
 				AsyncWork<Long, IOException> getSize = ((IO.KnownSize)input).getSizeAsync();
-				getSize.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (getSize.hasError())
-							copyEnd(input, output, sp, getSize.getError(), null, closeIOs, 0);
-						else if (getSize.isCancelled())
-							copyEnd(input, output, sp, null, getSize.getCancelEvent(), closeIOs, 0);
-						else
-							copy(input, output, getSize.getResult().longValue(), closeIOs, sp, progress, work);
-					}
+				getSize.listenInline(() -> {
+					if (getSize.hasError())
+						copyEnd(input, output, sp, getSize.getError(), null, closeIOs, 0);
+					else if (getSize.isCancelled())
+						copyEnd(input, output, sp, null, getSize.getCancelEvent(), closeIOs, 0);
+					else
+						copy(input, output, getSize.getResult().longValue(), closeIOs, sp, progress, work);
 				});
 				return;
 			}
@@ -914,23 +905,20 @@ public final class IOUtil {
 		}
 		ISynchronizationPoint<Exception> sp1 = input.closeAsync();
 		ISynchronizationPoint<Exception> sp2 = output.closeAsync();
-		JoinPoint.fromSynchronizationPoints(sp1, sp2).listenInline(new Runnable() {
-			@Override
-			public void run() {
-				Exception e = error;
-				if (e == null) {
-					if (sp1.hasError()) e = sp1.getError();
-					else if (sp2.hasError()) e = sp2.getError();
-				}
-				if (e != null) {
-					sp.error(IO.error(e));
-					return;
-				}
-				if (cancel != null)
-					sp.cancel(cancel);
-				else
-					sp.unblockSuccess(Long.valueOf(written));
+		JoinPoint.fromSynchronizationPoints(sp1, sp2).listenInline(() -> {
+			Exception e = error;
+			if (e == null) {
+				if (sp1.hasError()) e = sp1.getError();
+				else if (sp2.hasError()) e = sp2.getError();
 			}
+			if (e != null) {
+				sp.error(IO.error(e));
+				return;
+			}
+			if (cancel != null)
+				sp.cancel(cancel);
+			else
+				sp.unblockSuccess(Long.valueOf(written));
 		});
 	}
 
@@ -1011,41 +999,35 @@ public final class IOUtil {
 		boolean closeIOs, WorkProgress progress, long work
 	) {
 		AsyncWork<ByteBuffer, IOException> read = input.readNextBufferAsync();
-		read.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (read.hasError()) {
-					copyEnd(input, output, sp, read.getError(), null, closeIOs, written);
-					return;
-				}
-				if (read.isCancelled()) {
-					copyEnd(input, output, sp, null, read.getCancelEvent(), closeIOs, written);
-					return;
-				}
-				ByteBuffer buf = read.getResult();
-				if (buf == null) {
-					if (progress != null) progress.progress(work);
-					copyEnd(input, output, sp, null, null, closeIOs, written);
-					return;
-				}
-				if (progress != null && work >= 2) progress.progress(1);
-				AsyncWork<Integer, IOException> write = output.writeAsync(buf);
-				write.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (write.hasError()) {
-							copyEnd(input, output, sp, write.getError(), null, closeIOs, written);
-							return;
-						}
-						if (write.isCancelled()) {
-							copyEnd(input, output, sp, null, write.getCancelEvent(), closeIOs, written);
-							return;
-						}
-						if (progress != null && work >= 1) progress.progress(1);
-						copyStep(input, output, sp, written + write.getResult().intValue(), closeIOs, progress, work - 2);
-					}
-				});
+		read.listenInline(() -> {
+			if (read.hasError()) {
+				copyEnd(input, output, sp, read.getError(), null, closeIOs, written);
+				return;
 			}
+			if (read.isCancelled()) {
+				copyEnd(input, output, sp, null, read.getCancelEvent(), closeIOs, written);
+				return;
+			}
+			ByteBuffer buf = read.getResult();
+			if (buf == null) {
+				if (progress != null) progress.progress(work);
+				copyEnd(input, output, sp, null, null, closeIOs, written);
+				return;
+			}
+			if (progress != null && work >= 2) progress.progress(1);
+			AsyncWork<Integer, IOException> write = output.writeAsync(buf);
+			write.listenInline(() -> {
+				if (write.hasError()) {
+					copyEnd(input, output, sp, write.getError(), null, closeIOs, written);
+					return;
+				}
+				if (write.isCancelled()) {
+					copyEnd(input, output, sp, null, write.getCancelEvent(), closeIOs, written);
+					return;
+				}
+				if (progress != null && work >= 1) progress.progress(1);
+				copyStep(input, output, sp, written + write.getResult().intValue(), closeIOs, progress, work - 2);
+			});
 		});
 	}
 	
@@ -1075,23 +1057,17 @@ public final class IOUtil {
 	
 	private static <T extends IO.Writable.Seekable & IO.Readable.Seekable>
 	void copy(T io, long src, long dst, ByteBuffer buffer, long len, SynchronizationPoint<IOException> sp) {
-		io.readFullyAsync(src, buffer).listenInline(new Runnable() {
-			@Override
-			public void run() {
-				buffer.flip();
-				AsyncWork<Integer, IOException> write = io.writeAsync(dst, buffer);
-				if (len <= 4 * 1024 * 1024)
-					write.listenInline(sp);
-				else write.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						long nl = len - 4 * 1024 * 1024;
-						buffer.clear();
-						if (nl < 4 * 1024 * 1024) buffer.limit((int)nl);
-						copy(io, src + 4 * 1024 * 1024, dst + 4 * 1024 * 1024, buffer, nl, sp);
-					}
-				});
-			}
+		io.readFullyAsync(src, buffer).listenInline(() -> {
+			buffer.flip();
+			AsyncWork<Integer, IOException> write = io.writeAsync(dst, buffer);
+			if (len <= 4 * 1024 * 1024)
+				write.listenInline(sp);
+			else write.listenInline(() -> {
+				long nl = len - 4 * 1024 * 1024;
+				buffer.clear();
+				if (nl < 4 * 1024 * 1024) buffer.limit((int)nl);
+				copy(io, src + 4 * 1024 * 1024, dst + 4 * 1024 * 1024, buffer, nl, sp);
+			});
 		});
 	}
 
@@ -1099,7 +1075,6 @@ public final class IOUtil {
 	// ---- copy files ----
 	
 	/** Copy a file. */
-	@SuppressWarnings("resource")
 	public static AsyncWork<Long, IOException> copy(
 		File src, File dst, byte priority, long knownSize, WorkProgress progress, long work, ISynchronizationPoint<?> startOn
 	) {
@@ -1109,18 +1084,15 @@ public final class IOUtil {
 			public Void run() {
 				FileIO.ReadOnly input = new FileIO.ReadOnly(src, priority);
 				FileIO.WriteOnly output = new FileIO.WriteOnly(dst, priority);
-				input.canStart().listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (input.canStart().hasError()) {
-							copyEnd(input, output, sp,
-								new IOException("Unable to open file " + src.getAbsolutePath(),
-									input.canStart().getError()),
-								null, true, 0);
-							return;
-						}
-						copy(input, output, knownSize, true, sp, progress, work);
+				input.canStart().listenInline(() -> {
+					if (input.canStart().hasError()) {
+						copyEnd(input, output, sp,
+							new IOException("Unable to open file " + src.getAbsolutePath(),
+								input.canStart().getError()),
+							null, true, 0);
+						return;
 					}
+					copy(input, output, knownSize, true, sp, progress, work);
 				});
 				return null;
 			}
@@ -1155,13 +1127,13 @@ public final class IOUtil {
 		f.getSizeAsync().listenInline(new AsyncWorkListener<Long, IOException>() {
 			@Override
 			public void error(IOException error) {
-				try { f.close(); } catch (Throwable e) { /* ignore */ }
+				try { f.close(); } catch (Exception e) { /* ignore */ }
 				result.error(error);
 			}
 			
 			@Override
 			public void cancelled(CancelException event) {
-				try { f.close(); } catch (Throwable e) { /* ignore */ }
+				try { f.close(); } catch (Exception e) { /* ignore */ }
 				result.cancel(event);
 			}
 			
@@ -1171,13 +1143,13 @@ public final class IOUtil {
 				f.readFullyAsync(ByteBuffer.wrap(buf)).listenInline(new AsyncWorkListener<Integer, IOException>() {
 					@Override
 					public void error(IOException error) {
-						try { f.close(); } catch (Throwable e) { /* ignore */ }
+						try { f.close(); } catch (Exception e) { /* ignore */ }
 						result.error(error);
 					}
 					
 					@Override
 					public void cancelled(CancelException event) {
-						try { f.close(); } catch (Throwable e) { /* ignore */ }
+						try { f.close(); } catch (Exception e) { /* ignore */ }
 						result.cancel(event);
 					}
 					
@@ -1187,7 +1159,7 @@ public final class IOUtil {
 							result.error(new IOException(
 								"Only " + read.intValue() + " bytes read on file size " + buf.length));
 						else {
-							try { f.close(); } catch (Throwable e) { /* ignore */ }
+							try { f.close(); } catch (Exception e) { /* ignore */ }
 							result.unblockSuccess(buf);
 						}
 					}
@@ -1199,7 +1171,6 @@ public final class IOUtil {
 	
 	
 	/** Get the underlying task manager by going through the wrapped IO. */
-	@SuppressWarnings("resource")
 	public static TaskManager getUnderlyingTaskManager(IO io) {
 		io = getUnderlyingIO(io);
 		return io.getTaskManager();
@@ -1208,7 +1179,6 @@ public final class IOUtil {
 	/** Get the underlying IO by going through the wrapped IO until the last one. */
 	public static IO getUnderlyingIO(IO io) {
 		do {
-			@SuppressWarnings("resource")
 			IO parent = io.getWrappedIO();
 			if (parent == null)
 				return io;
@@ -1223,17 +1193,15 @@ public final class IOUtil {
 		AsyncWork<T, IOException> toListen, AsyncWork<T, IOException> toUnblock, Consumer<Pair<T,IOException>> ondone
 	) {
 		toListen.listenInline(
-			(result) -> {
+			result -> {
 				if (ondone != null) ondone.accept(new Pair<>(result, null));
 				toUnblock.unblockSuccess(result);
 			},
-			(error) -> {
+			error -> {
 				if (ondone != null) ondone.accept(new Pair<>(null, error));
 				toUnblock.error(error);
 			},
-			(cancel) -> {
-				toUnblock.cancel(cancel);
-			}
+			toUnblock::cancel
 		);
 	}
 
@@ -1247,13 +1215,11 @@ public final class IOUtil {
 	) {
 		toListen.listenInline(
 			onReady,
-			(error) -> {
+			error -> {
 				if (ondone != null) ondone.accept(new Pair<>(null, error));
 				onErrorOrCancel.error(error);
 			},
-			(cancel) -> {
-				onErrorOrCancel.cancel(cancel);
-			}
+			onErrorOrCancel::cancel
 		);
 	}
 	
@@ -1271,8 +1237,9 @@ public final class IOUtil {
 			} else if (toListen.hasError()) {
 				if (ondone != null) ondone.accept(new Pair<>(null, toListen.getError()));
 				if (onErrorOrCancel != null) onErrorOrCancel.error(toListen.getError());
-			} else
+			} else {
 				onReady.start();
+			}
 		});
 	}
 	
@@ -1286,13 +1253,11 @@ public final class IOUtil {
 	) {
 		toListen.listenInline(
 			onReady,
-			(error) -> {
+			error -> {
 				if (ondone != null) ondone.accept(new Pair<>(null, error));
 				onErrorOrCancel.error(error);
 			},
-			(cancel) -> {
-				onErrorOrCancel.cancel(cancel);
-			}
+			onErrorOrCancel::cancel
 		);
 	}
 	

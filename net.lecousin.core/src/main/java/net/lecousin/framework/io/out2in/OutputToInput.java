@@ -89,7 +89,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	@Override
 	public long getAvailableDataSize() {
 		try { if (io instanceof IO.KnownSize) return ((IO.KnownSize)io).getSizeSync(); }
-		catch (Throwable t) { /* ignore */ }
+		catch (Exception t) { /* ignore */ }
 		return -1;
 	}
 	
@@ -179,7 +179,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	
 	@Override
 	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return readAsync(readPos, buffer, (res) -> {
+		return readAsync(readPos, buffer, res -> {
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				readPos += res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
@@ -191,13 +191,13 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 		if (lock.hasError() && !eof) {
 			IOException e = new IOException("An error occured during the transfer of data", lock.getError());
 			if (ondone != null) ondone.accept(new Pair<>(null, e));
-			return new AsyncWork<Integer, IOException>(null, e);
+			return new AsyncWork<>(null, e);
 		}
 		if (pos >= writePos) {
 			if (eof) {
 				if (pos >= writePos) {
 					if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(-1), null));
-					return new AsyncWork<Integer, IOException>(Integer.valueOf(-1), null);
+					return new AsyncWork<>(Integer.valueOf(-1), null);
 				}
 			}
 			AsyncWork<Integer, IOException> result = new AsyncWork<>();
@@ -274,7 +274,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 			try {
 				Long r = Long.valueOf(skipSync(n));
 				if (ondone != null) ondone.accept(new Pair<>(r, null));
-				return new AsyncWork<Long, IOException>(r, null);
+				return new AsyncWork<>(r, null);
 			} catch (IOException e) {
 				if (ondone != null) ondone.accept(new Pair<>(null, e));
 				return new AsyncWork<>(null, e);
@@ -285,7 +285,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 			if (m > n) m = n;
 			readPos += m;
 			if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(m), null));
-			return new AsyncWork<Long, IOException>(Long.valueOf(m), null);
+			return new AsyncWork<>(Long.valueOf(m), null);
 		}
 		AsyncWork<Long, IOException> result = new AsyncWork<>();
 		lock.listenAsync(operation(new Task.Cpu<Long, IOException>("OutputToInput.skipAsync", io.getPriority()) {
@@ -357,7 +357,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 			if (lock.hasError() && !eof) {
 				IOException e = new IOException("An error occured during the transfer of data", lock.getError());
 				if (ondone != null) ondone.accept(new Pair<>(null, e));
-				return new AsyncWork<Long, IOException>(null, e);
+				return new AsyncWork<>(null, e);
 			}
 			if (eof) {
 				if (move <= 0)
@@ -367,9 +367,9 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 				if (readPos < 0) readPos = 0;
 				Long r = Long.valueOf(readPos);
 				if (ondone != null) ondone.accept(new Pair<>(r, null));
-				return new AsyncWork<Long, IOException>(r, null);
+				return new AsyncWork<>(r, null);
 			}
-			AsyncWork<Long, IOException> result = new AsyncWork<Long, IOException>();
+			AsyncWork<Long, IOException> result = new AsyncWork<>();
 			lock.listenAsync(operation(new Task.Cpu<Void, NoException>("OutputToInput.seekAsync", io.getPriority()) {
 				@Override
 				public Void run() {

@@ -56,48 +56,60 @@ public class DirectoryReader extends Task.OnFile<DirectoryReader.Result,AccessDe
 	
 	/** Request specifying which information to retrieve on each element contained in the directory. */
 	public static class Request {
-		public boolean getLastModified = false;
-		public boolean getLastAccess = false;
-		public boolean getCreation = false;
-		public boolean getIsSymbolicLink = false;
-		public boolean getSize = false;
+		private boolean readLastModified = false;
+		private boolean readLastAccess = false;
+		private boolean readCreation = false;
+		private boolean readIsSymbolicLink = false;
+		private boolean readSize = false;
 		
 		/** Request to get the last modified date. */
-		public Request getLastModified() {
-			this.getLastModified = true;
+		public Request readLastModified() {
+			this.readLastModified = true;
 			return this;
 		}
 		
 		/** Request to get the last access date. */
-		public Request getLastAccess() {
-			this.getLastAccess = true;
+		public Request readLastAccess() {
+			this.readLastAccess = true;
 			return this;
 		}
 		
 		/** Request to get the creation date. */
-		public Request getCreation() {
-			this.getCreation = true;
+		public Request readCreation() {
+			this.readCreation = true;
 			return this;
 		}
 		
 		/** Request to know if a file is a symbolic link. */
-		public Request getIsSymbolicLink() {
-			this.getIsSymbolicLink = true;
+		public Request readIsSymbolicLink() {
+			this.readIsSymbolicLink = true;
 			return this;
 		}
 		
 		/** Request to get the file size. */
-		public Request getSize() {
-			this.getSize = true;
+		public Request readSize() {
+			this.readSize = true;
 			return this;
 		}
 	}
 	
 	/** Result. */
 	public static class Result {
-		public int nbDirectories = 0;
-		public int nbFiles = 0;
-		public FileInfo[] files;
+		private int nbDirectories = 0;
+		private int nbFiles = 0;
+		private FileInfo[] files;
+		
+		public int getNbDirectories() {
+			return nbDirectories;
+		}
+		
+		public int getNbFiles() {
+			return nbFiles;
+		}
+		
+		public FileInfo[] getFiles() {
+			return files;
+		}
 	}
 
 	@Override
@@ -121,38 +133,41 @@ public class DirectoryReader extends Task.OnFile<DirectoryReader.Result,AccessDe
 			FileInfo f = new FileInfo();
 			result.files[i] = f;
 			f.file = list[i];
-			f.path = f.file.toPath();
-			BasicFileAttributes attr;
-			try { attr = Files.readAttributes(f.path, BasicFileAttributes.class); }
-			catch (IOException e) {
-				if (progress != null) progress.progress(step);
-				getApplication().getDefaultLogger().error("Cannot get basic file attributes on " + f.file.getAbsolutePath(), e);
-				continue;
-			}
-			if (attr.isDirectory()) {
-				f.isDirectory = true;
-				result.nbDirectories++;
-			} else {
-				f.isDirectory = false;
-				result.nbFiles++;
-				
-				if (request != null && request.getSize)
-					f.size = attr.size();
-			}
-			
-			if (request != null) {
-				if (request.getLastModified)
-					f.lastModified = attr.lastModifiedTime().toMillis();
-				if (request.getLastAccess)
-					f.lastAccess = attr.lastAccessTime().toMillis();
-				if (request.getCreation)
-					f.creation = attr.creationTime().toMillis();
-				if (request.getIsSymbolicLink)
-					f.isSymbolicLink = attr.isSymbolicLink();
-			}
+			readFile(f, result);
 			if (progress != null) progress.progress(step);
 		}
 		return result;
+	}
+	
+	private void readFile(FileInfo f, Result result) {
+		f.path = f.file.toPath();
+		BasicFileAttributes attr;
+		try { attr = Files.readAttributes(f.path, BasicFileAttributes.class); }
+		catch (IOException e) {
+			getApplication().getDefaultLogger().error("Cannot get basic file attributes on " + f.file.getAbsolutePath(), e);
+			return;
+		}
+		if (attr.isDirectory()) {
+			f.isDirectory = true;
+			result.nbDirectories++;
+		} else {
+			f.isDirectory = false;
+			result.nbFiles++;
+			
+			if (request != null && request.readSize)
+				f.size = attr.size();
+		}
+		
+		if (request != null) {
+			if (request.readLastModified)
+				f.lastModified = attr.lastModifiedTime().toMillis();
+			if (request.readLastAccess)
+				f.lastAccess = attr.lastAccessTime().toMillis();
+			if (request.readCreation)
+				f.creation = attr.creationTime().toMillis();
+			if (request.readIsSymbolicLink)
+				f.isSymbolicLink = attr.isSymbolicLink();
+		}
 	}
 	
 	/** Task to list only sub-directories. */

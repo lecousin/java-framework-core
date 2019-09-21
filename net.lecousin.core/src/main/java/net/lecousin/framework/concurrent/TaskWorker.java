@@ -7,6 +7,7 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.DebugUtil;
 
+@SuppressWarnings("squid:S106") // print to console
 class TaskWorker implements Runnable, BlockedThreadHandler {
 
 	TaskWorker(String name, FixedThreadTaskManager manager) {
@@ -52,6 +53,7 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S2142") // InterruptedException
 	public void run() {
 		// TODO ClassLoader initCL = thread.getContextClassLoader();
 		while (!stop) {
@@ -105,6 +107,7 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S2274") // wait without loop
 	public void blocked(ISynchronizationPoint<?> blockPoint, long blockTimeout) {
 		long start = System.nanoTime();
 		manager.imBlocked(this);
@@ -113,11 +116,14 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 			if (blockTimeout <= 0) {
 				while (!blockPoint.isUnblocked())
 					try { blockPoint.wait(0); }
-					catch (InterruptedException e) { break; }
-			} else
-				if (!blockPoint.isUnblocked())
-					try { blockPoint.wait(blockTimeout); }
-					catch (InterruptedException e) { /* ignore */ }
+					catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						break;
+					}
+			} else if (!blockPoint.isUnblocked()) {
+				try { blockPoint.wait(blockTimeout); }
+				catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+			}
 		}
 		blockedTime += System.nanoTime() - start2;
 		manager.imUnblocked(this, start2);
@@ -126,7 +132,7 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 		waitingTime += end - start;
 		if (end - start > 100000000 && Threading.logger.debug()) {
 			StackTraceElement[] stack = thread.getStackTrace();
-			ArrayList<String> blocking = new ArrayList<String>(stack.length - 2);
+			ArrayList<String> blocking = new ArrayList<>(stack.length - 2);
 			for (int i = 2; i < stack.length; ++i) {
 				StackTraceElement e = stack[i];
 				String c = e.getClassName();

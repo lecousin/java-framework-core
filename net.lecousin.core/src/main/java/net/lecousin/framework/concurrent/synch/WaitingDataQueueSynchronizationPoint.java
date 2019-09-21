@@ -3,10 +3,12 @@ package net.lecousin.framework.concurrent.synch;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.log.Logger;
 
 /**
  * Like a SynchronizationPoint, but with a queue of waiting data.
@@ -48,7 +50,10 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 				blockedHandler = Threading.getBlockedThreadHandler(t);
 				if (blockedHandler == null) {
 					try { this.wait(timeout); }
-					catch (InterruptedException e) { return null; }
+					catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return null;
+					}
 				}
 			}
 			if (blockedHandler != null)
@@ -120,7 +125,10 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 				blockedHandler = Threading.getBlockedThreadHandler(t);
 				if (blockedHandler == null)
 					try { this.wait(timeout); }
-					catch (InterruptedException e) { return; }
+					catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return;
+					}
 			}
 			if (blockedHandler != null)
 				blockedHandler.blocked(this, timeout);
@@ -137,11 +145,14 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 			do {
 				long start = System.currentTimeMillis();
 				try { this.wait(logAfter + 1000); }
-				catch (InterruptedException e) { return; }
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
+				}
 				if (System.currentTimeMillis() - start <= logAfter)
 					break;
-				System.err.println("Still blocked after " + (logAfter / 1000) + "s.");
-				new Exception("").printStackTrace(System.err);
+				Logger logger = LCCore.get().getThreadingLogger();
+				logger.warn("Still blocked after " + (logAfter / 1000) + "s.", new Exception(""));
 			} while (true);
 		}
 	}

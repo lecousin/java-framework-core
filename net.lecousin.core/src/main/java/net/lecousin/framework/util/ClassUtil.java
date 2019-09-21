@@ -213,7 +213,7 @@ public final class ClassUtil {
 						return false;
 					setter.invoke(object, value);
 				}
-			} catch (Throwable t) {
+			} catch (Exception t) {
 				return false;
 			}
 		}
@@ -291,7 +291,7 @@ public final class ClassUtil {
 						}
 					}
 				}
-			} catch (Throwable t) { /* ignore */ }
+			} catch (Exception t) { /* ignore */ }
 			result.add(a);
 		}
 		return result;

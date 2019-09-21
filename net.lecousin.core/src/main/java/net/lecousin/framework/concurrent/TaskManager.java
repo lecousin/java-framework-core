@@ -16,7 +16,7 @@ public abstract class TaskManager {
 		this.resource = resource;
 		this.threadFactory = threadFactory;
 		try { this.taskPriorityManager = taskPriorityManager.newInstance(); }
-		catch (Throwable t) {
+		catch (Exception t) {
 			throw new RuntimeException("Unable to instantiate TaskPriorityManager", t);
 		}
 		this.taskPriorityManager.setTaskManager(this);
@@ -47,6 +47,7 @@ public abstract class TaskManager {
 		return transferredTo;
 	}
 	
+	@SuppressWarnings({"squid:S106","squid:S2142"}) // print to console + InterruptedException
 	final void shutdownWhenNoMoreTasks() {
 		stopping = new Object();
 		Thread t = new Thread("Stopping Task Manager: " + name) {

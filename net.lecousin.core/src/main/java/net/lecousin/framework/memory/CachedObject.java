@@ -36,11 +36,9 @@ public abstract class CachedObject<T> implements CacheManager.CachedData {
 	/** Remove the given object as user of this cached data. */
 	public synchronized void release(Object user) {
 		usage--;
-		if (users != null) {
-			if (!users.remove(user))
-				LCCore.getApplication().getDefaultLogger()
+		if (users != null && !users.remove(user))
+			LCCore.getApplication().getDefaultLogger()
 				.error("CachedObject released by " + user + " but not in users list", new Exception());
-		}
 	}
 	
 	public int getUsage() { return usage; }

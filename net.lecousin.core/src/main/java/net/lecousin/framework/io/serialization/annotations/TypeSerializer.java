@@ -27,14 +27,14 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 public @interface TypeSerializer {
 
 	/** The serializer to use. */
-	public Class<? extends CustomSerializer> value();
+	Class<? extends CustomSerializer> value();
 	
 	/** Specify if the serializer has to be used more generally:
 	 * I isGeneral is true the annotation will apply for any attribute in any class having the source type 
 	 * of the serializer, else it only apply to attributes of the class if the annotation is on a class,
 	 * or only to an attribute if the annotation is on an attribute.
 	 */
-	public boolean isGeneral() default false;
+	boolean isGeneral() default false;
 	
 	/** Convert an annotation into a rule. */
 	public static class ToRule implements TypeAnnotationToRule<TypeSerializer>, AttributeAnnotationToRuleOnAttribute<TypeSerializer> {
@@ -53,7 +53,7 @@ public @interface TypeSerializer {
 		private static SerializationRule createRule(Class<? extends CustomSerializer> custom, SerializationContextPattern context) {
 			try {
 				return new CustomTypeSerializer(custom.newInstance(), context);
-			} catch (Throwable t) {
+			} catch (Exception t) {
 				LCCore.getApplication().getDefaultLogger().error(
 					"Error instantiating custom serializer " + custom.getName(), t
 				);

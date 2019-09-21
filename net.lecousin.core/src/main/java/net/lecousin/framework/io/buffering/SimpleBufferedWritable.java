@@ -126,9 +126,7 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 			w = writing;
 		}
 		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		w.listenInline(() -> {
-			flush().listenInline(sp);
-		}, sp);
+		w.listenInline(() -> flush().listenInline(sp), sp);
 		return operation(sp);
 	}
 	
@@ -170,7 +168,7 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 	
 	@Override
 	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buf, Consumer<Pair<Integer,IOException>> ondone) {
-		AsyncWork<Integer,IOException> result = new AsyncWork<Integer, IOException>();
+		AsyncWork<Integer,IOException> result = new AsyncWork<>();
 		writeAsync(buf, 0, result, ondone);
 		return result;
 	}
@@ -197,15 +195,12 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 						}
 						if (flush != null) {
 							int dd = d;
-							flush.listenInline(new Runnable() {
-								@Override
-								public void run() {
-									if (!flush.isSuccessful()) {
-										IOUtil.error(flush.getError(), result , ondone);
-										return;
-									}
-									writeAsync(buf, dd, result, ondone);
+							flush.listenInline(() -> {
+								if (!flush.isSuccessful()) {
+									IOUtil.error(flush.getError(), result , ondone);
+									return;
 								}
+								writeAsync(buf, dd, result, ondone);
 							});
 							return null;
 						}
@@ -240,15 +235,12 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 	protected ISynchronizationPoint<?> closeUnderlyingResources() {
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		ISynchronizationPoint<IOException> flush = flush();
-		flush.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				ISynchronizationPoint<Exception> close = out.closeAsync();
-				if (flush.hasError())
-					sp.error(flush.getError());
-				else
-					close.listenInline(sp);
-			}
+		flush.listenInline(() -> {
+			ISynchronizationPoint<Exception> close = out.closeAsync();
+			if (flush.hasError())
+				sp.error(flush.getError());
+			else
+				close.listenInline(sp);
 		});
 		return sp;
 	}

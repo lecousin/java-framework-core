@@ -58,30 +58,32 @@ public class SingleBufferReadable extends ConcurrentCloseable implements IO.Read
 
 	private void fillNextBuffer() {
 		if (useReadFully)
-			reading = io.readFullyAsync(ByteBuffer.wrap(buffer), (result) -> {
+			reading = io.readFullyAsync(ByteBuffer.wrap(buffer), result -> {
 				if (result.getValue1() == null) return;
 				AtomicState ns = new AtomicState();
 				ns.len = result.getValue1().intValue();
 				if (ns.len <= 0) {
 					ns.len = 0;
 					ns.eof = true;
-				} else if (ns.len < buffer.length)
+				} else if (ns.len < buffer.length) {
 					ns.eof = true;
-				else
+				} else {
 					ns.eof = false;
+				}
 				ns.pos = 0;
 				state = ns;
 			});
 		else
-			reading = io.readAsync(ByteBuffer.wrap(buffer), (result) -> {
+			reading = io.readAsync(ByteBuffer.wrap(buffer), result -> {
 				if (result.getValue1() == null) return;
 				AtomicState ns = new AtomicState();
 				ns.len = result.getValue1().intValue();
 				if (ns.len <= 0) {
 					ns.len = 0;
 					ns.eof = true;
-				} else
+				} else {
 					ns.eof = false;
+				}
 				ns.pos = 0;
 				state = ns;
 			});

@@ -5,7 +5,12 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.LinkedList;
 
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import net.lecousin.framework.adapter.Adapter;
+import net.lecousin.framework.adapter.AdapterException;
 import net.lecousin.framework.adapter.AdapterRegistry;
 import net.lecousin.framework.adapter.FileInfoToFile;
 import net.lecousin.framework.adapter.FileToIO;
@@ -14,15 +19,13 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.util.FileInfo;
 
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
 public class TestAdapter extends LCCoreAbstractTest {
 
 	@BeforeClass
 	public static void register() {
 		AdapterRegistry.get().addPlugin(new Adapter1());
+		AdapterRegistry.get().addPlugin(new Adapter2_1_Error());
+		AdapterRegistry.get().addPlugin(new Adapter2_2_Error());
 		AdapterRegistry.get().addPlugin(new Adapter2_1());
 		AdapterRegistry.get().addPlugin(new Adapter2_2());
 		AdapterRegistry.get().addPlugin(new Adapter2_3());
@@ -120,6 +123,30 @@ public class TestAdapter extends LCCoreAbstractTest {
 			Target2 t = new Target2();
 			t.value = input.value;
 			return t;
+		}
+	}
+	public static class Adapter2_1_Error implements Adapter<Source2, Intermediate2_1> {
+		@Override
+		public Class<Source2> getInputType() { return Source2.class; }
+		@Override
+		public Class<Intermediate2_1> getOutputType() { return Intermediate2_1.class; }
+		@Override
+		public boolean canAdapt(Source2 input) { return true; }
+		@Override
+		public Intermediate2_1 adapt(Source2 input) throws AdapterException {
+			throw new AdapterException("Do not use this adapter", new Exception());
+		}
+	}
+	public static class Adapter2_2_Error implements Adapter<Intermediate2_1, Intermediate2_2> {
+		@Override
+		public Class<Intermediate2_1> getInputType() { return Intermediate2_1.class; }
+		@Override
+		public Class<Intermediate2_2> getOutputType() { return Intermediate2_2.class; }
+		@Override
+		public boolean canAdapt(Intermediate2_1 input) { return true; }
+		@Override
+		public Intermediate2_2 adapt(Intermediate2_1 input) throws AdapterException {
+			throw new AdapterException("Do not use this adapter");
 		}
 	}
 	

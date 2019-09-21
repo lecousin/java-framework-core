@@ -16,21 +16,21 @@ public interface HierarchyProvider {
 	 */
 	public static interface Synchronous<ElementType> {
 		/** Return the parent of the given element, or null if this is a root element. */
-		public ElementType getParent(ElementType element);
+		ElementType getParent(ElementType element);
 		
 		/** Return true if the given element MAY have children, false if it is not possible. */
-		public boolean mayHaveChildren(ElementType element);
+		boolean mayHaveChildren(ElementType element);
 		
 		/** Return true if the given element has children. */
-		public boolean hasChildren(ElementType element, boolean refresh);
+		boolean hasChildren(ElementType element, boolean refresh);
 		
 		/** Return the children of the given element. */
-		public List<? extends ElementType> getChildren(ElementType element, boolean refresh);
+		List<? extends ElementType> getChildren(ElementType element, boolean refresh);
 		
 		/**
 		 * Go through the descendants of the given element, and call the listener for each element.
 		 */
-		public default void goThrough(ElementType element, Listener<ElementType> listener) {
+		default void goThrough(ElementType element, Listener<ElementType> listener) {
 			listener.fire(element);
 			for (ElementType child : getChildren(element, true))
 				goThrough(child, listener);
@@ -43,16 +43,16 @@ public interface HierarchyProvider {
 	 */
 	public static interface Asynchronous<ElementType> {
 		/** Return the parent of the given element, or null if this is a root element. */
-		public ElementType getParent(ElementType element);
+		ElementType getParent(ElementType element);
 
 		/** Return true if the given element MAY have children, false if it is not possible. */
-		public boolean mayHaveChildren(ElementType element);
+		boolean mayHaveChildren(ElementType element);
 		
 		/** Return true if the given element has children. */
-		public AsyncWork<Boolean,Exception> hasChildren(ElementType element, boolean refresh, byte priority);
+		AsyncWork<Boolean,Exception> hasChildren(ElementType element, boolean refresh, byte priority);
 		
 		/** Return the children of the given element. */
-		public AsyncWork<List<? extends ElementType>,Exception> getChildren(ElementType element, boolean refresh, byte priority);
+		AsyncWork<List<? extends ElementType>,Exception> getChildren(ElementType element, boolean refresh, byte priority);
 	}
 	
 }

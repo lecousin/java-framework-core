@@ -441,25 +441,19 @@ public class MemoryIO extends ConcurrentCloseable
 	/** Create a MemoryIO and fill it with the content of the given Readable.
 	 * This can be used to convert a Readable into a Seekable.
 	 */
-	@SuppressWarnings("resource")
 	public static AsyncWork<IO.Readable.Seekable,IOException> from(IO.Readable io) {
-		AsyncWork<IO.Readable.Seekable,IOException> sp = new AsyncWork<IO.Readable.Seekable,IOException>();
+		AsyncWork<IO.Readable.Seekable,IOException> sp = new AsyncWork<>();
 		if (io instanceof IO.KnownSize) {
 			// if we know the size, better to use FullyBufferedIO
-			((IO.KnownSize)io).getSizeAsync().listenInline((result) -> {
+			((IO.KnownSize)io).getSizeAsync().listenInline(result -> {
 				long size = result.longValue();
 				TwoBuffersIO.DeterminedSize buf = new TwoBuffersIO.DeterminedSize(io, (int)size, 0);
-				buf.canStartReading().listenInline(new Runnable() {
-					@Override
-					public void run() {
-						sp.unblockSuccess(buf);
-					}
-				});
+				buf.canStartReading().listenInline(() -> sp.unblockSuccess(buf));
 			}, sp);
 			return sp;
 		}
 		MemoryIO mem = new MemoryIO(32768, "MemoryIO: " + io.getSourceDescription());
-		IOUtil.copy(io, mem, -1, false, null, 0).listenInline((result) -> {
+		IOUtil.copy(io, mem, -1, false, null, 0).listenInline(result -> {
 			mem.seekSync(SeekType.FROM_BEGINNING, 0);
 			sp.unblockSuccess(mem);
 		}, sp);
@@ -473,7 +467,7 @@ public class MemoryIO extends ConcurrentCloseable
 	
 	/** Asynchronously write the content of this MemoryIO into the given Writable. */
 	public SynchronizationPoint<IOException> writeAsyncTo(IO.Writable io) {
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<IOException>();
+		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
 		writeAsyncTo(io, sp, 0);
 		operation(sp);
 		return sp;
@@ -485,13 +479,10 @@ public class MemoryIO extends ConcurrentCloseable
 			AsyncWork<Integer, IOException> write = io.writeAsync(ByteBuffer.wrap(buffers[bufferIndex]));
 			if (!write.isUnblocked()) {
 				int i = bufferIndex;
-				write.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (write.hasError()) sp.error(write.getError());
-						else if (write.isCancelled()) sp.cancel(write.getCancelEvent());
-						else writeAsyncTo(io, sp, i + 1);
-					}
+				write.listenInline(() -> {
+					if (write.hasError()) sp.error(write.getError());
+					else if (write.isCancelled()) sp.cancel(write.getCancelEvent());
+					else writeAsyncTo(io, sp, i + 1);
 				});
 				return;
 			}

@@ -33,7 +33,7 @@ public class RemoveDirectoryTask extends Task.OnFile<Long,IOException> {
 	@Override
 	public Long run() throws IOException {
 		String prev = progress != null ? progress.getSubText() : null;
-		if (progressSubText != null) progress.setSubText(progressSubText);
+		if (progress != null && progressSubText != null) progress.setSubText(progressSubText);
 		long removedSize = RemoveDirectoryContentTask.deleteDirectory(dir, progress, work, calculateSize);
 		if (progress != null) progress.setSubText(prev);
 		return Long.valueOf(removedSize);

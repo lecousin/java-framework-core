@@ -11,6 +11,6 @@ import java.lang.annotation.Target;
 public @interface XMLCustomSerialization {
 
 	/** Custom serializer. */
-	public Class<? extends XMLCustomSerializer> value();
+	Class<? extends XMLCustomSerializer> value();
 	
 }

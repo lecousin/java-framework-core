@@ -54,16 +54,13 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 */
 	public synchronized void addToJoin(ISynchronizationPoint<? extends TError> sp) {
 		nbToJoin++;
-		sp.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (sp.isCancelled())
-					cancel(sp.getCancelEvent());
-				else if (sp.hasError())
-					error(sp.getError());
-				else
-					joined();
-			}
+		sp.listenInline(() -> {
+			if (sp.isCancelled())
+				cancel(sp.getCancelEvent());
+			else if (sp.hasError())
+				error(sp.getError());
+			else
+				joined();
 		});
 		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
 	}
@@ -79,16 +76,13 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 */
 	public synchronized void addToJoin(ISynchronizationPoint<?> sp, Function<Exception, TError> errorConverter) {
 		nbToJoin++;
-		sp.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (sp.isCancelled())
-					cancel(sp.getCancelEvent());
-				else if (sp.hasError())
-					error(errorConverter.apply(sp.getError()));
-				else
-					joined();
-			}
+		sp.listenInline(() -> {
+			if (sp.isCancelled())
+				cancel(sp.getCancelEvent());
+			else if (sp.hasError())
+				error(errorConverter.apply(sp.getError()));
+			else
+				joined();
 		});
 		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
 	}
@@ -109,12 +103,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 */
 	public synchronized void addToJoinNoException(ISynchronizationPoint<?> sp) {
 		nbToJoin++;
-		sp.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				joined();
-			}
-		});
+		sp.listenInline(this::joined);
 		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
 	}
 	
@@ -122,14 +111,11 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * it is simply consider as done, and do not cancel this JoinPoint. */
 	public synchronized void addToJoinDoNotCancel(ISynchronizationPoint<? extends TError> sp) {
 		nbToJoin++;
-		sp.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (sp.hasError())
-					error(sp.getError());
-				else
-					joined();
-			}
+		sp.listenInline(() -> {
+			if (sp.hasError())
+				error(sp.getError());
+			else
+				joined();
 		});
 		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
 	}
@@ -175,7 +161,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 					if (isUnblocked()) return null;
 					if (callback != null)
 						try { callback.run(); }
-						catch (Throwable t) {
+						catch (Exception t) {
 							LCCore.getApplication().getDefaultLogger().error("Error in callback of JoinPoint timeout", t);
 						}
 					unblock();
@@ -201,7 +187,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 					if (isUnblocked()) return null;
 					if (callback != null)
 						try { callback.run(); }
-						catch (Throwable t) {
+						catch (Exception t) {
 							LCCore.getApplication().getDefaultLogger()
 								.error("Error in callback of JoinPoint time listener", t);
 						}
@@ -280,12 +266,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	public static JoinPoint<NoException> onAllDone(Collection<? extends Task<?,?>> tasks) {
 		JoinPoint<NoException> jp = new JoinPoint<>();
 		jp.addToJoin(tasks.size());
-		Runnable jpr = new Runnable() {
-			@Override
-			public void run() {
-				jp.joined();
-			}
-		};
+		Runnable jpr = jp::joined;
 		jp.start();
 		for (Task<?,?> t : tasks)
 			t.getOutput().listenInline(jpr);
@@ -317,12 +298,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	public static void listenInlineOnAllDone(Runnable listener, ISynchronizationPoint<?>... synchPoints) {
 		JoinPoint<NoException> jp = new JoinPoint<>();
 		jp.addToJoin(synchPoints.length);
-		Runnable jpr = new Runnable() {
-			@Override
-			public void run() {
-				jp.joined();
-			}
-		};
+		Runnable jpr = jp::joined;
 		for (int i = 0; i < synchPoints.length; ++i)
 			synchPoints[i].listenInline(jpr);
 		jp.start();

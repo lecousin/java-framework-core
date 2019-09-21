@@ -55,25 +55,20 @@ public class Event<T> implements Listenable<T> {
 		if (list1 != null)
 			for (int i = 0; i < list1.size(); ++i)
 				try { list1.get(i).fire(event); }
-				catch (Throwable t) {
+				catch (Exception t) {
 					LCCore.getApplication().getDefaultLogger().error("Event listener error: " + list1.get(i), t);
 				}
 		if (list2 != null)
 			for (int i = 0; i < list2.size(); ++i)
 				try { list2.get(i).run(); }
-				catch (Throwable t) {
+				catch (Exception t) {
 					LCCore.getApplication().getDefaultLogger().error("Event listener error: " + list2.get(i), t);
 				}
 	}
 	
 	/** Bridge between 2 events: create a listener that will fire the given event when called. */
 	public static <T> Listener<T> createListenerToFire(Event<T> event) {
-		return new Listener<T>() {
-			@Override
-			public void fire(T obj) {
-				event.fire(obj);
-			}
-		};
+		return event::fire;
 	}
 	
 }

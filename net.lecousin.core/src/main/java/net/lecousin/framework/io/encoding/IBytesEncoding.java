@@ -4,9 +4,9 @@ package net.lecousin.framework.io.encoding;
 public interface IBytesEncoding {
 
 	/** Encode the given bytes. */
-	public byte[] encode(byte[] bytes);
+	byte[] encode(byte[] bytes);
 
 	/** Decode the given bytes. */
-	public byte[] decode(byte[] encoded);
+	byte[] decode(byte[] encoded);
 	
 }

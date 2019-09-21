@@ -41,7 +41,7 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 			throw new Exception("Unable to get discriminator attribute " + discriminator);
 		try {
 			type.replaceAttribute(a, new InstantiationAttribute(a, discr, factory.newInstance()));
-		} catch (Throwable t) {
+		} catch (Exception t) {
 			throw new Exception("Unable to replace attribute by an InstantiationAttribute", t);
 		}
 		return false;

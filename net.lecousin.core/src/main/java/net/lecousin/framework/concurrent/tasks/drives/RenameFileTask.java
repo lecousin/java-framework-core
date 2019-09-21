@@ -28,9 +28,7 @@ public class RenameFileTask extends Task.OnFile<Void,IOException> {
 			return new RenameFileTask(t1, source, destination, priority).start().getOutput();
 		AsyncWork<Long, IOException> copy = IOUtil.copy(source, destination, priority, source.length(), null, 0, null);
 		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
-		copy.listenInline(() -> {
-			new RemoveFileTask(source, priority).start().getOutput().listenInline(result);
-		}, result);
+		copy.listenInline(() -> new RemoveFileTask(source, priority).start().getOutput().listenInline(result), result);
 		return result;
 	}
 

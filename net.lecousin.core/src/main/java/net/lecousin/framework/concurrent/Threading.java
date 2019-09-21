@@ -19,6 +19,10 @@ import net.lecousin.framework.util.AsyncCloseable;
 /**
  * Utility class to initialize and stop multi-threading, and utiliy methods for multi-threading.
  */
+@SuppressWarnings({
+	"squid:ClassVariableVisibilityCheck",
+	"squid:S1444" // not final
+})
 public final class Threading {
 	
 	private Threading() { /* no instance */ }
@@ -50,16 +54,17 @@ public final class Threading {
 		int nbCPUThreads,
 		DrivesProvider drivesProvider,
 		int nbUnmanagedThreads
-	) throws IllegalStateException {
+	) {
 		if (isInitialized()) throw new IllegalStateException("Threading has been already initialized.");
 		logger = LCCore.get().getThreadingLogger();
 		TaskScheduler.init();
-		cpu = new CPUTaskManager(threadFactory, taskPriorityManager, nbCPUThreads);
-		cpu.start();
-		resources.put(CPU, cpu);
-		drives = new DrivesTaskManager(threadFactory, taskPriorityManager, drivesProvider);
-		unmanaged = new ThreadPoolTaskManager("Unmanaged tasks manager", UNMANAGED, nbUnmanagedThreads, threadFactory, taskPriorityManager);
-		resources.put(UNMANAGED, unmanaged);
+		cpuManager = new CPUTaskManager(threadFactory, taskPriorityManager, nbCPUThreads);
+		cpuManager.start();
+		resources.put(CPU, cpuManager);
+		drivesManager = new DrivesTaskManager(threadFactory, taskPriorityManager, drivesProvider);
+		unmanagedManager = new ThreadPoolTaskManager(
+			"Unmanaged tasks manager", UNMANAGED, nbUnmanagedThreads, threadFactory, taskPriorityManager);
+		resources.put(UNMANAGED, unmanagedManager);
 		LCCore.get().toClose(new StopMultiThreading());
 		if (traceTasksNotDone)
 			ThreadingDebugHelper.traceTasksNotDone();
@@ -71,11 +76,13 @@ public final class Threading {
 	}
 	
 	public static boolean isInitialized() {
-		return cpu != null;
+		return cpuManager != null;
 	}
 	
+	@SuppressWarnings("squid:S106") // print to console
 	private static class StopMultiThreading implements AsyncCloseable<Exception> {
 		@Override
+		@SuppressWarnings({"squid:S2142", "squid:S3776"})
 		public ISynchronizationPoint<Exception> closeAsync() {
 			SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 			Thread t = new Thread("Stopping tasks managers") {
@@ -143,15 +150,15 @@ public final class Threading {
 	public static final Object CPU = new Object();
 	public static final Object UNMANAGED = new Object();
 	
-	private static CPUTaskManager cpu;
-	private static DrivesTaskManager drives;
-	private static ThreadPoolTaskManager unmanaged;
+	private static CPUTaskManager cpuManager;
+	private static DrivesTaskManager drivesManager;
+	private static ThreadPoolTaskManager unmanagedManager;
 	
-	public static TaskManager getCPUTaskManager() { return cpu; }
+	public static TaskManager getCPUTaskManager() { return cpuManager; }
 	
-	public static DrivesTaskManager getDrivesTaskManager() { return drives; }
+	public static DrivesTaskManager getDrivesTaskManager() { return drivesManager; }
 
-	public static ThreadPoolTaskManager getUnmanagedTaskManager() { return unmanaged; }
+	public static ThreadPoolTaskManager getUnmanagedTaskManager() { return unmanagedManager; }
 	
 	private static Map<Object,TaskManager> resources = new HashMap<>();
 	
@@ -205,8 +212,8 @@ public final class Threading {
 	}
 	
 	/** Wait for the given tasks to be done. */
-	public static void waitFinished(Collection<? extends Task<?,?>> tasks) throws Exception {
-		for (Task<?,?> t : tasks) {
+	public static <TError extends Exception> void waitFinished(Collection<? extends Task<?,TError>> tasks) throws TError, CancelException {
+		for (Task<?,TError> t : tasks) {
 			t.getOutput().blockThrow(0);
 		}
 	}
@@ -222,7 +229,7 @@ public final class Threading {
 		if (tasks.isEmpty()) return;
 		if (tasks.size() == 1)
 			try { tasks.get(0).getOutput().block(0); }
-			catch (Throwable e) { /* ignore */ }
+			catch (Exception e) { /* ignore */ }
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
 		for (Task<?,?> t : tasks) {
 			if (t.isDone()) return;

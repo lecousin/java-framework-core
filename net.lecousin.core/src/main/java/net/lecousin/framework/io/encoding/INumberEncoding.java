@@ -6,12 +6,12 @@ package net.lecousin.framework.io.encoding;
 public interface INumberEncoding {
 
 	/** A new character to decode. */
-	public boolean addChar(char c);
+	boolean addChar(char c);
 	
 	/** Get the current decoded value. */
-	public long getNumber();
+	long getNumber();
 	
 	/** Reset. */
-	public void reset();
+	void reset();
 	
 }

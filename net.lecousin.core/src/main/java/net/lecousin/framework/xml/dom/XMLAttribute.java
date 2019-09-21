@@ -1,7 +1,6 @@
 package net.lecousin.framework.xml.dom;
 
 import org.w3c.dom.Attr;
-import org.w3c.dom.DOMException;
 import org.w3c.dom.Node;
 import org.w3c.dom.TypeInfo;
 
@@ -40,7 +39,7 @@ public class XMLAttribute extends XMLNode implements Attr {
 	}
 	
 	@Override
-	public void setPrefix(String prefix) throws DOMException {
+	public void setPrefix(String prefix) {
 		XMLElement p = (XMLElement)parent;
 		if (p != null) {
 			String uri = p.lookupNamespaceURI(prefix);
@@ -122,6 +121,7 @@ public class XMLAttribute extends XMLNode implements Attr {
 	
 	@Override
 	public void setTextContent(String textContent) {
+		// nothing
 	}
 	
 }

@@ -10,16 +10,16 @@ import java.util.Collection;
 public interface ExtensionPoint<PluginClass extends Plugin> {
 
 	/** Class of plugin. */
-	public Class<PluginClass> getPluginClass();
+	Class<PluginClass> getPluginClass();
 	
 	/** Register a plugin (called at application startup). */
-	public void addPlugin(PluginClass plugin);
+	void addPlugin(PluginClass plugin);
 	
 	/** Signal that application has been fully loaded and no more plug-ins will be added. */
-	public void allPluginsLoaded();
+	void allPluginsLoaded();
 
 	/** Return the list of registered plugins. */
-	public Collection<PluginClass> getPlugins();
+	Collection<PluginClass> getPlugins();
 	
 	/** Print information about this extension point to the given StringBuilder. */
 	default void printInfo(StringBuilder s) {

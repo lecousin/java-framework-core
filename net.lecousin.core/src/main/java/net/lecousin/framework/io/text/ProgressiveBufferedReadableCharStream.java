@@ -91,17 +91,16 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 	}
 
 	@Override
-	public char read() throws EOFException, IOException {
+	@SuppressWarnings("squid:S2259") // iNeedABuffer cannot be null because currentBufferIndex != -1
+	public char read() throws IOException {
 		if (back != -1) {
 			char c = (char)back;
 			back = -1;
 			return c;
 		}
 		do {
-			if (currentBufferIndex != -1) {
-				if (currentBuffer.pos < currentBuffer.length)
-					return currentBuffer.chars[currentBuffer.pos++];
-			}
+			if (currentBufferIndex != -1 && currentBuffer.pos < currentBuffer.length)
+				return currentBuffer.chars[currentBuffer.pos++];
 			synchronized (buffers) {
 				if (error != null) throw error;
 				if (iNeedABuffer == null || iNeedABuffer.isUnblocked()) {
@@ -123,9 +122,9 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 							taskFillBuffer = new TaskFillBuffer();
 							taskFillBuffer.start();
 						}
-					} else if (eofReached)
+					} else if (eofReached) {
 						throw new EOFException();
-					else {
+					} else {
 						iNeedABuffer = new SynchronizationPoint<>();
 						interruptFillBuffer.set(true);
 					}
@@ -138,6 +137,7 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 	}
 
 	@Override
+	@SuppressWarnings("squid:S2259") // iNeedABuffer cannot be null because currentBufferIndex != -1
 	public int readSync(char[] buf, int offset, int length) throws IOException {
 		if (length <= 0) return 0;
 		int done;
@@ -147,8 +147,9 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 			if (--length == 0)
 				return 1;
 			done = 1;
-		} else
+		} else {
 			done = 0;
+		}
 		do {
 			if (currentBufferIndex != -1) {
 				int len = currentBuffer.length - currentBuffer.pos;
@@ -180,9 +181,9 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 							taskFillBuffer = new TaskFillBuffer();
 							taskFillBuffer.start();
 						}
-					} else if (eofReached)
+					} else if (eofReached) {
 						return done > 0 ? done : -1;
-					else {
+					} else {
 						iNeedABuffer = new SynchronizationPoint<>();
 						interruptFillBuffer.set(true);
 					}
@@ -201,15 +202,14 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 	
 
 	@Override
+	@SuppressWarnings("squid:S2259") // iNeedABuffer cannot be null because currentBufferIndex != -1
 	public ISynchronizationPoint<IOException> canStartReading() {
 		if (back != -1)
 			return new SynchronizationPoint<>(true);
 		if (error != null)
 			return new SynchronizationPoint<>(error);
-		if (currentBufferIndex != -1) {
-			if (currentBuffer.pos < currentBuffer.length)
-				return new SynchronizationPoint<>(true);
-		}
+		if (currentBufferIndex != -1 && currentBuffer.pos < currentBuffer.length)
+			return new SynchronizationPoint<>(true);
 		synchronized (buffers) {
 			if (error != null)
 				return new SynchronizationPoint<>(error);
@@ -239,9 +239,9 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 					taskFillBuffer = new TaskFillBuffer();
 					taskFillBuffer.start();
 				}
-			} else if (eofReached)
+			} else if (eofReached) {
 				return new SynchronizationPoint<>(true);
-			else {
+			} else {
 				iNeedABuffer = new SynchronizationPoint<>();
 				interruptFillBuffer.set(true);
 			}
@@ -257,6 +257,7 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 	}
 
 	@Override
+	@SuppressWarnings("squid:S2259") // iNeedABuffer cannot be null because currentBufferIndex != -1
 	public int readAsync() throws IOException {
 		if (back != -1) {
 			char c = (char)back;
@@ -264,10 +265,8 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 			return c;
 		}
 		do {
-			if (currentBufferIndex != -1) {
-				if (currentBuffer.pos < currentBuffer.length)
-					return currentBuffer.chars[currentBuffer.pos++];
-			}
+			if (currentBufferIndex != -1 && currentBuffer.pos < currentBuffer.length)
+				return currentBuffer.chars[currentBuffer.pos++];
 			synchronized (buffers) {
 				if (error != null) throw error;
 				if (iNeedABuffer == null || iNeedABuffer.isUnblocked()) {
@@ -289,9 +288,9 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 							taskFillBuffer = new TaskFillBuffer();
 							taskFillBuffer.start();
 						}
-					} else if (eofReached)
+					} else if (eofReached) {
 						return -1;
-					else {
+					} else {
 						iNeedABuffer = new SynchronizationPoint<>();
 						interruptFillBuffer.set(true);
 					}
@@ -314,6 +313,7 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 	private void readAsync(char[] buf, int off, int l, AsyncWork<Integer, IOException> result) {
 		new Task.Cpu<Void, NoException>("readAsync", priority) {
 			@Override
+			@SuppressWarnings("squid:S2259") // iNeedABuffer cannot be null because currentBufferIndex != -1
 			public Void run() {
 				int offset = off;
 				int length = l;
@@ -326,8 +326,9 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 						return null;
 					}
 					done = 1;
-				} else
+				} else {
 					done = 0;
+				}
 				if (currentBufferIndex != -1) {
 					int len = currentBuffer.length - currentBuffer.pos;
 					if (len > 0) {
@@ -383,9 +384,7 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 					result.unblockSuccess(Integer.valueOf(len));
 					return null;
 				}
-				iNeedABuffer.listenInline(() -> {
-					readAsync(buf, off, l, result);
-				});
+				iNeedABuffer.listenInline(() -> readAsync(buf, off, l, result));
 				return null;
 			}
 		}.start();
@@ -401,6 +400,7 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 	private void readNextBufferAsync(AsyncWork<UnprotectedString, IOException> result) {
 		new Task.Cpu<Void, NoException>("readNextBufferAsync", priority) {
 			@Override
+			@SuppressWarnings("squid:S2259") // iNeedABuffer cannot be null because currentBufferIndex != -1
 			public Void run() {
 				if (currentBufferIndex != -1) {
 					int len = currentBuffer.length - currentBuffer.pos;
@@ -449,8 +449,9 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 								char c = (char)back;
 								back = -1;
 								result.unblockSuccess(new UnprotectedString(c));
-							} else
+							} else {
 								result.unblockSuccess(null);
+							}
 							return null;
 						} else {
 							iNeedABuffer = new SynchronizationPoint<>();
@@ -466,9 +467,7 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 					result.unblockSuccess(s);
 					return null;
 				}
-				iNeedABuffer.listenInline(() -> {
-					readNextBufferAsync(result);
-				});
+				iNeedABuffer.listenInline(() -> readNextBufferAsync(result));
 				return null;
 			}
 		}.start();
@@ -612,7 +611,7 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable i
 		if (task != null) {
 			task.cancel(new CancelException("Closing"));
 			SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-			task.getOutput().listenInline(() -> { decoder.closeAsync().listenInline(sp); });
+			task.getOutput().listenInline(() -> decoder.closeAsync().listenInline(sp));
 			return sp;
 		}
 		return decoder.closeAsync();

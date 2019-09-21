@@ -50,15 +50,13 @@ class SeekFileTask extends Task.OnFile<Long,IOException> {
 			switch (type) {
 			case FROM_BEGINNING:
 				if (move < 0) move = 0;
-				if (!allowAfterEnd)
-					if (move > size) move = size;
+				if (!allowAfterEnd && move > size) move = size;
 				file.channel.position(move);
 				break;
 			case FROM_CURRENT:
 				long pos = file.channel.position();
 				if (pos + move < 0) move = -pos;
-				if (!allowAfterEnd)
-					if (pos + move > size) move = size - pos;
+				if (!allowAfterEnd && pos + move > size) move = size - pos;
 				file.channel.position(pos + move);
 				break;
 			case FROM_END:

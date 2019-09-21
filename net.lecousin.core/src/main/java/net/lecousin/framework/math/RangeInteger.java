@@ -9,7 +9,11 @@ import net.lecousin.framework.util.StringParser.Parse;
 /**
  * Range of integer values, with a minimum and maximum.
  */
+@SuppressWarnings("squid:ClassVariableVisibilityCheck")
 public class RangeInteger {
+	
+	public int min;
+	public int max;
 
 	/** Constructor. */
 	public RangeInteger(int min, int max) {
@@ -25,7 +29,7 @@ public class RangeInteger {
 	
 	/** Parse from a String. */
 	@Parse
-	public RangeInteger(String string) throws ParseException, NumberFormatException {
+	public RangeInteger(String string) throws ParseException {
 		if (string == null || string.isEmpty())
 			throw new ParseException("Empty string", 0);
 		char c = string.charAt(0);
@@ -33,31 +37,41 @@ public class RangeInteger {
 			int sep = string.indexOf('-');
 			if (sep < 0)
 				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]", 1);
-			min = Integer.parseInt(string.substring(1, sep));
+			try {
+				min = Integer.parseInt(string.substring(1, sep));
+			} catch (NumberFormatException e) {
+				throw new ParseException("Invalid number: " + e.getMessage(), 1);
+			}
 			if (c == ']') min++;
 			c = string.charAt(string.length() - 1);
 			if (c != ']' && c != '[')
 				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]",
 					string.length() - 1);
-			max = Integer.parseInt(string.substring(sep + 1, string.length() - 1));
+			try {
+				max = Integer.parseInt(string.substring(sep + 1, string.length() - 1));
+			} catch (NumberFormatException e) {
+				throw new ParseException("Invalid number: " + e.getMessage(), sep + 1);
+			}
 			if (c == '[') max--;
 			if (max < min) {
 				int i = min;
 				min = max;
 				max = i;
 			}
-		} else
-			min = max = Integer.parseInt(string);
+		} else {
+			try {
+				min = max = Integer.parseInt(string);
+			} catch (NumberFormatException e) {
+				throw new ParseException("Invalid number: " + e.getMessage(), 0);
+			}
+		}
 	}
-	
-	public int min;
-	public int max;
 	
 	public RangeInteger copy() { return new RangeInteger(min,max); }
 	
 	@Override
 	public boolean equals(Object obj) {
-		if (obj == null || !(obj instanceof RangeInteger)) return false;
+		if (!(obj instanceof RangeInteger)) return false;
 		RangeInteger r = (RangeInteger)obj;
 		return r.min == min && r.max == max;
 	}

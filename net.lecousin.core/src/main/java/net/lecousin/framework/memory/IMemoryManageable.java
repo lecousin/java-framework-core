@@ -10,7 +10,7 @@ import java.util.List;
 public interface IMemoryManageable {
 
 	/** Describe the criticity level of a free memory request. */
-	public static enum FreeMemoryLevel {
+	public enum FreeMemoryLevel {
 		/** Only data that expired, this is the lowest level. */
 		EXPIRED_ONLY,
 		/** Low criticity, the implementation can just free some objects. */
@@ -22,12 +22,12 @@ public interface IMemoryManageable {
 	}
 	
 	/** Desciption. */
-	public String getDescription();
+	String getDescription();
 	
 	/** Describe each item that can be freed. */
-	public List<String> getItemsDescription();
+	List<String> getItemsDescription();
 	
 	/** Request to free some memory. */
-	public void freeMemory(FreeMemoryLevel level);
+	void freeMemory(FreeMemoryLevel level);
 	
 }

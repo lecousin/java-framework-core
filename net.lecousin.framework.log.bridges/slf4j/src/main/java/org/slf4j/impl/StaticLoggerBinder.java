@@ -25,9 +25,10 @@ public class StaticLoggerBinder implements LoggerFactoryBinder {
      * The value of this field is modified with each major release. 
      */
     // to avoid constant folding by the compiler, this field must *not* be final
+    @SuppressWarnings({"squid:S1444", "squid:S3008"}) // !final && naming convention
     public static String REQUESTED_API_VERSION = "1.7.25"; // !final
 
-    private static final String loggerFactoryClassStr = LCLoggerFactory.class.getName();
+    private static final String LOGGER_FACTORY_CLASS_STR = LCLoggerFactory.class.getName();
 
     /**
      * The ILoggerFactory instance returned by the {@link #getLoggerFactory}
@@ -46,7 +47,7 @@ public class StaticLoggerBinder implements LoggerFactoryBinder {
 
 	@Override
     public String getLoggerFactoryClassStr() {
-        return loggerFactoryClassStr;
+        return LOGGER_FACTORY_CLASS_STR;
     }
 
 }

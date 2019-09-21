@@ -9,31 +9,33 @@ class TaskScheduler extends Thread {
 		super("Task Scheduler");
 	}
 	
-	static TaskScheduler instance;
+	private static TaskScheduler instance;
+	private static Object lock;
 	
 	static void init() {
+		lock = new Object();
 		instance = new TaskScheduler();
 		instance.start();
 	}
 	
 	private boolean stop = false;
 	static boolean stopping = false;
-	private RedBlackTreeLongByRange<Task<?,?>> waitingTime = new RedBlackTreeLongByRange<>(2 * 60 * 1000);
+	private RedBlackTreeLongByRange<Task<?,?>> waitingTime = new RedBlackTreeLongByRange<>(2L * 60 * 1000);
 	long waitingNano = 0;
 	long busyNano = 0;
 	long nbRounds = 0;
 	
 	static void schedule(Task<?,?> task) {
-		synchronized (instance) {
+		synchronized (lock) {
 			boolean first = instance.waitingTime.isEmpty() || task.nextExecution < instance.waitingTime.getMin().getValue();
 			instance.waitingTime.add(task.nextExecution, task);
 			task.status = Task.STATUS_STARTED_WAITING;
-			if (first) instance.notify();
+			if (first) lock.notify();
 		}
 	}
 	
 	static boolean cancel(Task<?,?> task) {
-		synchronized (instance) {
+		synchronized (lock) {
 			if (instance.waitingTime.containsInstance(task.nextExecution, task)) {
 				instance.waitingTime.removeInstance(task.nextExecution, task);
 				return true;
@@ -44,7 +46,7 @@ class TaskScheduler extends Thread {
 	
 	static void changeNextExecutionTime(Task<?,?> t, long time) {
 		// we are called in a synchronized method of the task
-		synchronized (instance) {
+		synchronized (lock) {
 			if (t.status == Task.STATUS_STARTED_WAITING) {
 				// still waiting
 				boolean needWakeUp = instance.waitingTime.getMin().getElement() == t;
@@ -54,7 +56,7 @@ class TaskScheduler extends Thread {
 					needWakeUp = true;
 				instance.waitingTime.add(time, t);
 				if (needWakeUp)
-					instance.notify();
+					lock.notify();
 				return;
 			}
 			if (t.status == Task.STATUS_STARTED_READY) {
@@ -67,7 +69,7 @@ class TaskScheduler extends Thread {
 					boolean needWakeUp = instance.waitingTime.isEmpty() || instance.waitingTime.getMin().getValue() > time;
 					instance.waitingTime.add(time, t);
 					if (needWakeUp)
-						instance.notify();
+						lock.notify();
 				}
 			}
 		}
@@ -75,16 +77,21 @@ class TaskScheduler extends Thread {
 	
 	static void end() {
 		instance.stop = true;
-		synchronized (instance) { instance.notify(); }
+		synchronized (lock) { lock.notify(); }
 	}
 	
 	@Override
+	@SuppressWarnings({
+		"squid:S106", // print to console
+		"squid:S1141", // nested try
+		"squid:S2142" // InterruptedException
+	})
 	public void run() {
 		long start = System.nanoTime();
 		while (!stop) {
 			nbRounds++;
 			try {
-				synchronized (this) {
+				synchronized (lock) {
 					long timeout = 0;
 					if (!waitingTime.isEmpty()) {
 						long now = System.currentTimeMillis();
@@ -108,13 +115,12 @@ class TaskScheduler extends Thread {
 					long now = System.nanoTime();
 					busyNano += now - start;
 					try {
-						this.wait(timeout);
+						lock.wait(timeout);
 						start = System.nanoTime();
 						waitingNano += start - now;
-						continue;
 					} catch (InterruptedException e) { break; }
 				}
-			} catch (Throwable t) {
+			} catch (Exception t) {
 				Threading.logger.error("Error in Task Scheduler", t);
 			}
 		}

@@ -29,12 +29,12 @@ public class XMLNamedNodeMap implements NamedNodeMap {
 	}
 
 	@Override
-	public XMLNode setNamedItem(Node arg) throws DOMException {
+	public XMLNode setNamedItem(Node arg) {
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
 	}
 
 	@Override
-	public Node removeNamedItem(String name) throws DOMException {
+	public Node removeNamedItem(String name) {
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
 	}
 
@@ -51,7 +51,7 @@ public class XMLNamedNodeMap implements NamedNodeMap {
 	}
 
 	@Override
-	public Node getNamedItemNS(String namespaceURI, String localName) throws DOMException {
+	public Node getNamedItemNS(String namespaceURI, String localName) {
 		if (nodes == null || localName == null)
 			return null;
 		for (XMLNode node : nodes)
@@ -61,7 +61,7 @@ public class XMLNamedNodeMap implements NamedNodeMap {
 	}
 
 	@Override
-	public Node setNamedItemNS(Node arg) throws DOMException {
+	public Node setNamedItemNS(Node arg) {
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
 	}
 

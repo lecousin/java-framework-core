@@ -24,6 +24,7 @@ import net.lecousin.framework.util.DebugUtil;
 public class LogPattern {
 
 	/** Internally used to keep in memory a log to write. */
+	@SuppressWarnings("squid:ClassVariableVisibilityCheck")
 	public static class Log {
 		public Level level;
 		public String message;
@@ -107,7 +108,7 @@ public class LogPattern {
 								} else {
 									int size = -1;
 									try { size = Integer.parseInt(pattern.substring(pos + 8, i)); }
-									catch (Throwable t) { /* ignore */ }
+									catch (Exception t) { /* ignore */ }
 									sections.add(new LoggerSection(size));
 									pos = i + 1;
 								}
@@ -176,7 +177,7 @@ public class LogPattern {
 	}
 	
 	private static interface Section {
-		public void append(StringBuilder s, Log log);
+		void append(StringBuilder s, Log log);
 	}
 	
 	private static class StringSection implements Section {

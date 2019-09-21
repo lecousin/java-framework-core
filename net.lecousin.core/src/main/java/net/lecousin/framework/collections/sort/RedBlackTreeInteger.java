@@ -2,6 +2,7 @@ package net.lecousin.framework.collections.sort;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import net.lecousin.framework.util.ObjectUtil;
 
@@ -353,14 +354,14 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
 	private Node<T> add(int value, T element, Node<T> h) {
 		if (value < h.value) {
 			if (h.left == null) {
-				h.left = new Node<T>(value, element, true);
+				h.left = new Node<>(value, element, true);
 				if (value < first.value) first = h.left;
 			} else {
 				h.left = add(value, element, h.left);
 			}
 		} else if (value >= h.value) {
 			if (h.right == null) {
-				h.right = new Node<T>(value, element, true);
+				h.right = new Node<>(value, element, true);
 				if (value > last.value) last = h.right;
 			} else {
 				h.right = add(value, element, h.right);
@@ -814,6 +815,7 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     	
     	@Override
     	public Node<T> next() {
+    		if (next == null) throw new NoSuchElementException();
     		Node<T> res = next;
     		if (next.right != null) {
     			next = next.right;
@@ -866,6 +868,7 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     	
     	@Override
     	public Node<T> next() {
+    		if (next == null) throw new NoSuchElementException();
     		Node<T> res = next;
     		if (next.left != null) {
     			next = next.left;

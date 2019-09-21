@@ -63,7 +63,7 @@ public class AsyncEvent implements SimpleListenable {
 			}
 			for (Runnable listener : list)
 				try { listener.run(); }
-				catch (Throwable t) {
+				catch (Exception t) {
 					LCCore.getApplication().getDefaultLogger().error("Listener of AsyncEvent thrown an exception", t);
 				}
 			return null;

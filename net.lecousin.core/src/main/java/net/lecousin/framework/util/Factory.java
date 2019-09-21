@@ -6,9 +6,9 @@ package net.lecousin.framework.util;
  * @param <InstantiationType> type of instances returned by this factory
  * @param <DiscriminatorType> type of discriminator to be given
  */
-public interface Factory<InstantiationType,DiscriminatorType> {
+public interface Factory<InstantiationType, DiscriminatorType> {
 
 	/** Create an instance for the given discriminator. */
-	public InstantiationType create(DiscriminatorType discriminator);
+	InstantiationType create(DiscriminatorType discriminator);
 	
 }

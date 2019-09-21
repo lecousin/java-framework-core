@@ -110,12 +110,9 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 			lock.unlock();
 			return;
 		}
-		lw.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				eof = true;
-				lock.unlock();
-			}
+		lw.listenInline(() -> {
+			eof = true;
+			lock.unlock();
 		});
 	}
 	
@@ -185,7 +182,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 		synchronized (this) {
 			lastWrite = task.getOutput();
 			if (maxPendingBuffers > 0) {
-				if (isClosing() || isClosed()) return new AsyncWork<>(null, null, new CancelException("IO closed"));
+				if (isClosing() || isClosed()) return new AsyncWork<>(null, null, IO.cancelClosed());
 				if (buffers.size() >= maxPendingBuffers) {
 					sp = new SynchronizationPoint<>();
 					lockMaxBuffers.addLast(sp);
@@ -276,17 +273,18 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 						return readFullyAsync(buffer, ondone);
 					AsyncWork<Integer, IOException> r = new AsyncWork<>();
 					int d = done;
-					readFullyAsync(buffer, (res) -> {
+					readFullyAsync(buffer, res -> {
 						if (ondone != null) {
 							if (res.getValue1() != null) {
 								int n = res.getValue1().intValue();
 								if (n < 0) n = 0;
 								n += d;
 								ondone.accept(new Pair<>(Integer.valueOf(n), null));
-							} else
+							} else {
 								ondone.accept(res);
+							}
 						}
-					}).listenInline((nb) -> {
+					}).listenInline(nb -> {
 						int n = nb.intValue();
 						if (n < 0) n = 0;
 						n += d;
@@ -463,8 +461,9 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 		if (nb <= len) {
 			b.get(buffer, offset, nb);
 			len = nb;
-		} else
+		} else {
 			b.get(buffer, offset, len);
+		}
 		if (b.remaining() == 0) {
 			SynchronizationPoint<NoException> sp = null;
 			synchronized (this) {
@@ -526,7 +525,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				ByteBuffer b = null;
 				do {
 					synchronized (this) {
-						if (isClosing() || isClosed()) throw new CancelException("IO closed");
+						if (isClosing() || isClosed()) throw IO.cancelClosed();
 						if (!buffers.isEmpty()) {
 							b = buffers.removeFirst();
 							if (maxPendingBuffers > 0)

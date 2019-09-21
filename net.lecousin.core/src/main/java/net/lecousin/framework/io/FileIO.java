@@ -323,12 +323,13 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 		return position;
 	}
 	
+	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	protected long seekSync(SeekType type, long move) throws IOException {
 		return position = file.seek(type, move, false);
 	}
 	
 	protected AsyncWork<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
-		return operation(file.seekAsync(type, move, false, (res) -> {
+		return operation(file.seekAsync(type, move, false, res -> {
 			if (res.getValue1() != null)
 				position = res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
@@ -342,7 +343,7 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	protected AsyncWork<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
-		return operation(file.skipAsync(n, (res) -> {
+		return operation(file.skipAsync(n, res -> {
 			if (res.getValue1() != null)
 				position += res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
@@ -392,7 +393,7 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	protected AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(file.readAsync(position, buffer, (res) -> {
+		return operation(file.readAsync(position, buffer, res -> {
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				position += res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
@@ -414,7 +415,7 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	protected AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(file.readFullyAsync(position, buffer, (res) -> {
+		return operation(file.readFullyAsync(position, buffer, res -> {
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				position += res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
@@ -438,7 +439,7 @@ public abstract class FileIO extends ConcurrentCloseable implements IO.KnownSize
 	}
 	
 	protected AsyncWork<Integer,IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(file.writeAsync(position, buffer, (res) -> {
+		return operation(file.writeAsync(position, buffer, res -> {
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				position += res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);

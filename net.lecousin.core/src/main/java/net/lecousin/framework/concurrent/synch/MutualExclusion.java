@@ -3,9 +3,11 @@ package net.lecousin.framework.concurrent.synch;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.log.Logger;
 
 /**
  * A MutualExclusion must be unlocked by the same thread that locked it.
@@ -31,6 +33,7 @@ public class MutualExclusion<TError extends Exception> implements ISynchronizati
 	private ArrayList<Runnable> listeners = null;
 	
 	/** Request the lock. If it is already locked this method will block until it become unblocked and the lock has been obtained. */
+	@SuppressWarnings("squid:S2142") // InterruptedException
 	public void lock() {
 		if (cancel != null)
 			return;
@@ -93,11 +96,14 @@ public class MutualExclusion<TError extends Exception> implements ISynchronizati
 			do {
 				long start = System.currentTimeMillis();
 				try { this.wait(logAfter + 1000); }
-				catch (InterruptedException e) { return; }
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
+				}
 				if (System.currentTimeMillis() - start <= logAfter)
 					break;
-				System.err.println("Still blocked after " + (logAfter / 1000) + "s.");
-				new Exception("").printStackTrace(System.err);
+				Logger logger = LCCore.get().getThreadingLogger();
+				logger.warn("Still blocked after " + (logAfter / 1000) + "s.", new Exception(""));
 			} while (true);
 		}
 	}
@@ -123,12 +129,7 @@ public class MutualExclusion<TError extends Exception> implements ISynchronizati
 	public void block(long timeout) {
 		if (lockingThread == null) return;
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		listenInline(new Runnable() {
-			@Override
-			public void run() {
-				sp.unblock();
-			}
-		});
+		listenInline(sp::unblock);
 		sp.block(timeout);
 	}
 

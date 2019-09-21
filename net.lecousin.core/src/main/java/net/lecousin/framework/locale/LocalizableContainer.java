@@ -6,6 +6,6 @@ package net.lecousin.framework.locale;
 public interface LocalizableContainer {
 
 	/** Update with current application language. */
-	public void updateLocalizedElements();
+	void updateLocalizedElements();
 	
 }

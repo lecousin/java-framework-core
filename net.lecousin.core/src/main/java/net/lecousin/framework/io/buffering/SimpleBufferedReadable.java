@@ -83,12 +83,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 		if (currentRead != null && !currentRead.isUnblocked()) {
 			currentRead.cancel(new CancelException("IO closed"));
 			SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-			currentRead.listenInline(new Runnable() {
-				@Override
-				public void run() {
-					io.closeAsync().listenInline(sp);
-				}
-			});
+			currentRead.listenInline(() -> io.closeAsync().listenInline(sp));
 			return sp;
 		}
 		return io.closeAsync();
@@ -112,6 +107,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 		}
 	}
 	
+	@SuppressWarnings("squid:S2583") // false positive because concurrent operations
 	private void fill() throws IOException, CancelException {
 		AsyncWork<Integer,IOException> currentRead = readTask;
 		if (currentRead == null)
@@ -184,7 +180,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 			AsyncWork<Integer,IOException> currentRead = readTask;
 			if (currentRead != null && currentRead.isUnblocked())
 				try { fill(); }
-				catch (Throwable t) { return -1; }
+				catch (Exception t) { return -1; }
 			return -2;
 		}
 		return s.buffer[s.pos++] & 0xFF;
@@ -211,6 +207,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 		if (s.pos == s.len && s.buffer == null) return IOUtil.success(null, ondone);
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
 			@Override
+			@SuppressWarnings("squid:S1696") // catch null because concurrent operations
 			public ByteBuffer run() throws IOException, CancelException {
 				AtomicState s = state;
 				if (s.pos == s.len) {
@@ -277,7 +274,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 		if (n <= state.len - state.pos) {
 			state.pos += (int)n;
 			if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(n), null));
-			return new AsyncWork<Long,IOException>(Long.valueOf(n),null);
+			return new AsyncWork<>(Long.valueOf(n),null);
 		}
 		AsyncWork<Integer,IOException> currentRead = readTask;
 		if (currentRead == null) return IOUtil.success(Long.valueOf(0), ondone);

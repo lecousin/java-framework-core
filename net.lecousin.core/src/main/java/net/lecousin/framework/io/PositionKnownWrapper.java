@@ -243,7 +243,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	}
 	
 	protected AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
-		return ((IO.Readable)io).readAsync(buffer, (result) -> {
+		return ((IO.Readable)io).readAsync(buffer, result -> {
 			Integer nb = result.getValue1();
 			if (nb != null && nb.intValue() > 0)
 				position.add(nb.longValue());
@@ -260,7 +260,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	}
 	
 	protected AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
-		return ((IO.Readable)io).readFullyAsync(buffer, (result) -> {
+		return ((IO.Readable)io).readFullyAsync(buffer, result -> {
 			Integer nb = result.getValue1();
 			if (nb != null && nb.intValue() > 0)
 				position.add(nb.intValue());
@@ -278,7 +278,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 
 	protected AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 		if (n <= 0) return IOUtil.success(Long.valueOf(0), ondone);
-		return ((IO.Readable)io).skipAsync(n, (result) -> {
+		return ((IO.Readable)io).skipAsync(n, result -> {
 			Long nb = result.getValue1();
 			if (nb != null)
 				position.add(nb.longValue());
@@ -316,7 +316,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	}
 
 	protected AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
-		return ((IO.Readable.Buffered)io).readNextBufferAsync((result) -> {
+		return ((IO.Readable.Buffered)io).readNextBufferAsync(result -> {
 			ByteBuffer buf = result.getValue1();
 			if (buf != null)
 				position.add(buf.remaining());
@@ -329,14 +329,12 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 		ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 	) {
 		AsyncWork<Integer, IOException> res = new AsyncWork<>();
-		((IO.Readable.Buffered)io).readFullySyncIfPossible(buffer, (r) -> {
+		((IO.Readable.Buffered)io).readFullySyncIfPossible(buffer, r -> {
 			if (r.getValue1() != null)
 				position.add(r.getValue1().intValue());
 			if (ondone == null) return;
 			ondone.accept(r);
-		}).listenInline((nb) -> {
-			res.unblockSuccess(nb);
-		}, res);
+		}).listenInline(res::unblockSuccess, res);
 		return res;
 	}
 	

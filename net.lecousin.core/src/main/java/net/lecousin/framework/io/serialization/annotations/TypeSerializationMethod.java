@@ -25,7 +25,7 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 public @interface TypeSerializationMethod {
 
 	/** Method to use for serialization. */
-	public String value();
+	String value();
 	
 	/** Convert an annotation into a CustomAttributeSerialization rule. */
 	public static class ToRule implements AttributeAnnotationToRuleOnType<TypeSerializationMethod> {
@@ -56,7 +56,7 @@ public @interface TypeSerializationMethod {
 								return null;
 							try {
 								return method.invoke(src);
-							} catch (Throwable t) {
+							} catch (Exception t) {
 								LCCore.getApplication().getDefaultLogger()
 								.error("Error calling method " + method.getName()
 									+ " on class " + method.getDeclaringClass().getName(), t);
@@ -70,7 +70,7 @@ public @interface TypeSerializationMethod {
 								return null;
 							try {
 								return ctor.newInstance(src);
-							} catch (Throwable t) {
+							} catch (Exception t) {
 								LCCore.getApplication().getDefaultLogger()
 									.error("Error instantiating type " + sourceType.getBase().getName(), t);
 								return null;
@@ -78,7 +78,7 @@ public @interface TypeSerializationMethod {
 						}
 					}
 				);
-			} catch (Throwable t) {
+			} catch (Exception t) {
 				LCCore.getApplication().getDefaultLogger().error(
 					"Error creating CustomAttributeSerializer from annotation TypeSerializationMethod", t);
 				return null;

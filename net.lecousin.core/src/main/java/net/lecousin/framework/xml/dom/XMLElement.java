@@ -98,7 +98,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	@Override
-	public void setPrefix(String prefix) throws DOMException {
+	public void setPrefix(String prefix) {
 		this.prefix = prefix;
 	}
 	
@@ -109,7 +109,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	@Override
-	public XMLNode appendChild(Node newChild) throws DOMException {
+	public XMLNode appendChild(Node newChild) {
 		if (!(newChild instanceof XMLNode))
 			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "newChild must implement XMLNode");
 		if (newChild == this)
@@ -123,7 +123,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	@Override
-	public XMLNode insertBefore(Node newChild, Node refChild) throws DOMException {
+	public XMLNode insertBefore(Node newChild, Node refChild) {
 		if (!(newChild instanceof XMLNode))
 			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "newChild must implement XMLNode");
 		if (newChild == this)
@@ -145,7 +145,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	@Override
-	public XMLNode removeChild(Node oldChild) throws DOMException {
+	public XMLNode removeChild(Node oldChild) {
 		if (!(oldChild instanceof XMLNode))
 			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "oldChild must implement XMLNode");
 		XMLNode child = (XMLNode)oldChild;
@@ -157,7 +157,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	@Override
-	public XMLNode replaceChild(Node newChild, Node oldChild) throws DOMException {
+	public XMLNode replaceChild(Node newChild, Node oldChild) {
 		if (!(newChild instanceof XMLNode))
 			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "newChild must implement XMLNode");
 		if (newChild == this)
@@ -225,7 +225,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
-	public void setAttribute(String name, String value) throws DOMException {
+	public void setAttribute(String name, String value) {
 		for (XMLAttribute a : attributes)
 			if (a.getNodeName().equals(name)) {
 				a.setNodeValue(value);
@@ -235,7 +235,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
-	public void removeAttribute(String name) throws DOMException {
+	public void removeAttribute(String name) {
 		for (Iterator<XMLAttribute> it = attributes.iterator(); it.hasNext(); ) {
 			XMLAttribute a = it.next();
 			if (a.getNodeName().equals(name)) {
@@ -255,7 +255,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
-	public XMLAttribute setAttributeNode(Attr newAttr) throws DOMException {
+	public XMLAttribute setAttributeNode(Attr newAttr) {
 		if (!(newAttr instanceof XMLAttribute))
 			throw new DOMException(DOMException.WRONG_DOCUMENT_ERR, "newAttr must be a XMLAttribute");
 		XMLAttribute na = (XMLAttribute)newAttr;
@@ -273,7 +273,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
-	public XMLAttribute removeAttributeNode(Attr oldAttr) throws DOMException {
+	public XMLAttribute removeAttributeNode(Attr oldAttr) {
 		if (!(oldAttr instanceof XMLAttribute))
 			throw new DOMException(DOMException.WRONG_DOCUMENT_ERR, "oldAttr must be a XMLAttribute");
 		XMLAttribute na = (XMLAttribute)oldAttr;
@@ -289,7 +289,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	@Override
-	public boolean hasAttributeNS(String namespaceURI, String localName) throws DOMException {
+	public boolean hasAttributeNS(String namespaceURI, String localName) {
 		String prefix = getPrefixForNamespaceURI(namespaceURI);
 		if (prefix == null)
 			return false;
@@ -300,7 +300,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	@Override
-	public String getAttributeNS(String namespaceURI, String localName) throws DOMException {
+	public String getAttributeNS(String namespaceURI, String localName) {
 		String prefix = getPrefixForNamespaceURI(namespaceURI);
 		if (prefix == null)
 			return "";
@@ -311,7 +311,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
-	public void setAttributeNS(String namespaceURI, String qualifiedName, String value) throws DOMException {
+	public void setAttributeNS(String namespaceURI, String qualifiedName, String value) {
 		int i = qualifiedName.indexOf(':');
 		String prefix;
 		String localName;
@@ -336,7 +336,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
-	public void removeAttributeNS(String namespaceURI, String localName) throws DOMException {
+	public void removeAttributeNS(String namespaceURI, String localName) {
 		for (Iterator<XMLAttribute> it = attributes.iterator(); it.hasNext(); ) {
 			XMLAttribute a = it.next();
 			if (a.localName.equals(localName) && namespaceURI.equals(a.getNamespaceURI())) {
@@ -348,7 +348,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
-	public XMLAttribute getAttributeNodeNS(String namespaceURI, String localName) throws DOMException {
+	public XMLAttribute getAttributeNodeNS(String namespaceURI, String localName) {
 		for (Iterator<XMLAttribute> it = attributes.iterator(); it.hasNext(); ) {
 			XMLAttribute a = it.next();
 			if (a.localName.equals(localName) && namespaceURI.equals(a.getNamespaceURI()))
@@ -358,7 +358,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
-	public XMLAttribute setAttributeNodeNS(Attr newAttr) throws DOMException {
+	public XMLAttribute setAttributeNodeNS(Attr newAttr) {
 		if (!(newAttr instanceof XMLAttribute))
 			throw new DOMException(DOMException.WRONG_DOCUMENT_ERR, "newAttr must be a XMLAttribute");
 		XMLAttribute na = (XMLAttribute)newAttr;
@@ -376,7 +376,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	@Override
-	public void setIdAttribute(String name, boolean isId) throws DOMException {
+	public void setIdAttribute(String name, boolean isId) {
 		XMLAttribute a = getAttributeNode(name);
 		if (a == null)
 			throw new DOMException(DOMException.NOT_FOUND_ERR, "Attribute " + name + " does not exist on this element");
@@ -384,7 +384,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
-	public void setIdAttributeNS(String namespaceURI, String localName, boolean isId) throws DOMException {
+	public void setIdAttributeNS(String namespaceURI, String localName, boolean isId) {
 		XMLAttribute a = getAttributeNodeNS(namespaceURI, localName);
 		if (a == null)
 			throw new DOMException(DOMException.NOT_FOUND_ERR, "Attribute " + localName + " does not exist on this element");
@@ -392,7 +392,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
-	public void setIdAttributeNode(Attr idAttr, boolean isId) throws DOMException {
+	public void setIdAttributeNode(Attr idAttr, boolean isId) {
 		if (!attributes.contains(idAttr))
 			throw new DOMException(DOMException.NOT_FOUND_ERR, "Attribute " + localName + " does not exist on this element");
 		XMLAttribute a = (XMLAttribute)idAttr;
@@ -494,7 +494,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
-	public NodeList getElementsByTagNameNS(String namespaceURI, String localName) throws DOMException {
+	public NodeList getElementsByTagNameNS(String namespaceURI, String localName) {
 		LinkedList<XMLNode> elements = new LinkedList<>();
 		getElementsByTagName(namespaceURI, localName, elements);
 		return new XMLNodeList(elements);

@@ -11,6 +11,6 @@ import net.lecousin.framework.util.Pair;
 public interface PropertiesContainer {
 
 	/** Return the properties of this object. */
-	public Collection<Pair<ILocalizableString,Object>> getProperties();
+	Collection<Pair<ILocalizableString,Object>> getProperties();
 	
 }

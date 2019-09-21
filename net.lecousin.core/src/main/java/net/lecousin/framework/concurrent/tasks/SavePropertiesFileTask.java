@@ -22,27 +22,23 @@ import net.lecousin.framework.io.text.ICharacterStream;
 public class SavePropertiesFileTask extends Task.Cpu<Void,IOException> {
 	
 	/** Save properties to a file. */
-	@SuppressWarnings("resource")
+	@SuppressWarnings("squid:S2095") // io is closed
 	public static ISynchronizationPoint<IOException> savePropertiesFile(Properties properties, File file, Charset charset, byte priority) {
 		FileIO.ReadWrite io = new FileIO.ReadWrite(file, priority);
 		AsyncWork<Void,IOException> resize = io.setSizeAsync(0);
 		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
-		resize.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (resize.hasError()) {
-					result.error(resize.getError());
-					io.closeAsync();
-					return;
-				}
-				savePropertiesFile(properties, io, charset, priority, true).listenInline(result);
+		resize.listenInline(() -> {
+			if (resize.hasError()) {
+				result.error(resize.getError());
+				io.closeAsync();
+				return;
 			}
+			savePropertiesFile(properties, io, charset, priority, true).listenInline(result);
 		});
 		return result;
 	}
 	
 	/** Save properties to a Writable IO. */
-	@SuppressWarnings("resource")
 	public static ISynchronizationPoint<IOException> savePropertiesFile(
 		Properties properties, IO.Writable output, Charset charset, byte priority, boolean closeIOAtEnd
 	) {
@@ -83,7 +79,7 @@ public class SavePropertiesFileTask extends Task.Cpu<Void,IOException> {
 			output.flush().blockThrow(0);
 			return null;
 		} finally {
-			if (closeStreamAtEnd) try { output.close(); } catch (Throwable t) { /* ignore */ }
+			if (closeStreamAtEnd) try { output.close(); } catch (Exception t) { /* ignore */ }
 		}
 	}
 	

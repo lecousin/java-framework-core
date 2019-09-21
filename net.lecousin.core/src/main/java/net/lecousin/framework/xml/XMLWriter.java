@@ -28,7 +28,6 @@ import org.w3c.dom.Text;
 public class XMLWriter {
 
 	/** Constructor. */
-	@SuppressWarnings("resource")
 	public XMLWriter(IO.Writable.Buffered output, Charset encoding, boolean includeXMLDeclaration, boolean pretty) {
 		this(new BufferedWritableCharacterStream(output, encoding != null ? encoding : StandardCharsets.UTF_8, 4096),
 			includeXMLDeclaration, pretty);
@@ -150,7 +149,7 @@ public class XMLWriter {
 		ISynchronizationPoint<IOException> write = writer.flush();
 		if (!write.isUnblocked()) {
 			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-			write.listenInline(() -> { output.flush().listenInline(sp); }, sp);
+			write.listenInline(() -> output.flush().listenInline(sp), sp);
 			return sp;
 		}
 		if (write.hasError())
@@ -348,9 +347,9 @@ public class XMLWriter {
 			return writeChild(children, 0);
 		}
 		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		open.listenAsync(new Task.Cpu.FromRunnable("Write DOM", output.getPriority(), () -> {
-			writeChild(children, 0).listenInline(sp);
-		}), sp);
+		open.listenAsync(new Task.Cpu.FromRunnable("Write DOM", output.getPriority(), () ->
+			writeChild(children, 0).listenInline(sp)
+		), sp);
 		return sp;
 	}
 	

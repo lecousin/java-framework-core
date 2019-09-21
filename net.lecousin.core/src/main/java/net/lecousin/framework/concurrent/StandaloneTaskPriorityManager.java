@@ -39,6 +39,10 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	}
 	
 	@Override
+	@SuppressWarnings({
+		"squid:S2273", // wait in a loop
+		"squid:S3776" // complexity
+	})
 	public final Task<?, ?> peekNextOrWait() {
 		Task<?,?> t;
 		do {
@@ -56,7 +60,7 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 				if (lastIdle < 0)
 					lastIdle = System.currentTimeMillis();
 				try { this.wait(); }
-				catch (InterruptedException e) { /* ignore */ }
+				catch (InterruptedException e) { Thread.currentThread().interrupt(); }
 				return null;
 			}
 			if (nextPriority == Task.PRIORITY_BACKGROUND) {
@@ -67,7 +71,7 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 				if (wait > 50) {
 					if (!taskManager.isStopping() && taskManager.getTransferTarget() == null) {
 						try { this.wait(wait); }
-						catch (InterruptedException e) { /* ignore */ }
+						catch (InterruptedException e) { Thread.currentThread().interrupt(); }
 						return null;
 					}
 					return null;
@@ -115,6 +119,7 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S106") // print to console
 	public final void forceStop() {
 		nextPriority = Task.NB_PRIORITES;
 		synchronized (ready) {
@@ -142,8 +147,8 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 	public final boolean hasRemainingTasks(boolean includingBackground) {
 		synchronized (this) {
 			for (byte p = 0; p < Task.NB_PRIORITES; ++p)
-				if (includingBackground || p != Task.PRIORITY_BACKGROUND)
-					if (!ready[p].isEmpty())
+				if ((includingBackground || p != Task.PRIORITY_BACKGROUND) &&
+					!ready[p].isEmpty())
 						return true;
 			return false;
 		}

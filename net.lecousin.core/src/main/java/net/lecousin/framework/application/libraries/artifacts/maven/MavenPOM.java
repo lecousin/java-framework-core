@@ -308,10 +308,12 @@ public class MavenPOM implements LibraryDescriptor {
 			AsyncWork<File, IOException> download = IOUtil.toTempFile(io);
 			AsyncWork<File, NoException> result = new AsyncWork<>();
 			download.listenInline(() -> {
-				if (download.isSuccessful())
-					result.unblockSuccess(classesFile = download.getResult());
-				else
+				if (download.isSuccessful()) {
+					classesFile = download.getResult();
+					result.unblockSuccess(classesFile);
+				} else {
 					result.unblockSuccess(null);
+				}
 				
 			});
 			return result;
@@ -353,6 +355,7 @@ public class MavenPOM implements LibraryDescriptor {
 		private MavenPOMLoader pomLoader;
 		
 		@Override
+		@SuppressWarnings("squid:S3776") // complexity
 		public Void run() throws LibraryManagementException {
 			if (startXMLReader.hasError()) throw new MavenPOMException(pomFile, startXMLReader.getError());
 			if (startXMLReader.isCancelled()) throw new MavenPOMException(pomFile, startXMLReader.getCancelEvent());
@@ -586,53 +589,9 @@ public class MavenPOM implements LibraryDescriptor {
 						throw new MavenPOMException(pomFile, "Invalid POM: missing closing profile tag");
 					break;
 				}
-				if (xml.event.text.equals("activation")) {
-					ElementContext ctxActivation = xml.event.context.getFirst();
-					while (xml.nextInnerElement(ctxActivation)) {
-						if (xml.event.text.equals("activeByDefault")) {
-							if (xml.readInnerText().trim().equals("true"))
-								profile.activeByDefault = true;
-						} else if (xml.event.text.equals("jdk")) {
-							profile.jdk = xml.readInnerText().trim().asString();
-						} else if (xml.event.text.equals("os")) {
-							profile.activationOS = new ActivationOS();
-							ElementContext ctxOS = xml.event.context.getFirst();
-							while (xml.nextInnerElement(ctxOS)) {
-								if (xml.event.text.equals("name"))
-									profile.activationOS.name = xml.readInnerText().trim().asString();
-								else if (xml.event.text.equals("family"))
-									profile.activationOS.family = xml.readInnerText().trim().asString();
-								else if (xml.event.text.equals("arch"))
-									profile.activationOS.arch = xml.readInnerText().trim().asString();
-								else if (xml.event.text.equals(ELEMENT_VERSION))
-									profile.activationOS.version = xml.readInnerText().trim().asString();
-								else
-									xml.closeElement();
-							}
-						} else if (xml.event.text.equals("property")) {
-							ElementContext ctxProperty = xml.event.context.getFirst();
-							while (xml.nextInnerElement(ctxProperty)) {
-								if (xml.event.text.equals("name"))
-									profile.activationPropertyName = xml.readInnerText().trim().asString();
-								else if (xml.event.text.equals("value"))
-									profile.activationPropertyValue = xml.readInnerText().trim().asString();
-								else
-									xml.closeElement();
-							}
-						} else if (xml.event.text.equals("file")) {
-							ElementContext ctxFile = xml.event.context.getFirst();
-							while (xml.nextInnerElement(ctxFile)) {
-								if (xml.event.text.equals("missing"))
-									profile.activationMissingFile = xml.readInnerText().trim().asString();
-								else if (xml.event.text.equals("exists"))
-									profile.activationFileExists = xml.readInnerText().trim().asString();
-								else
-									xml.closeElement();
-							}
-						} else
-							xml.closeElement();
-					}
-				} else if (xml.event.text.equals("build"))
+				if (xml.event.text.equals("activation"))
+					readProfileActivation(xml, profile);
+				else if (xml.event.text.equals("build"))
 					readBuild(xml, profile.build);
 				else if (xml.event.text.equals("properties"))
 					readProperties(xml, profile.properties);
@@ -646,6 +605,70 @@ public class MavenPOM implements LibraryDescriptor {
 					xml.closeElement();
 			} while (true);
 			return profile;
+		}
+		
+		private void readProfileActivation(XMLStreamReader xml, Profile profile) throws XMLException, IOException {
+			ElementContext ctxActivation = xml.event.context.getFirst();
+			while (xml.nextInnerElement(ctxActivation)) {
+				if (xml.event.text.equals("activeByDefault"))
+					readProfileActivationActiveByDefault(xml, profile);
+				else if (xml.event.text.equals("jdk"))
+					profile.jdk = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals("os"))
+					readProfileActivationOS(xml, profile);
+				else if (xml.event.text.equals("property"))
+					readProfileActivationProperty(xml, profile);
+				else if (xml.event.text.equals("file"))
+					readProfileActivationFile(xml, profile);
+				else
+					xml.closeElement();
+			}
+		}
+		
+		private void readProfileActivationActiveByDefault(XMLStreamReader xml, Profile profile) throws XMLException, IOException {
+			if (xml.readInnerText().trim().equals("true"))
+				profile.activeByDefault = true;
+		}
+		
+		private void readProfileActivationOS(XMLStreamReader xml, Profile profile) throws XMLException, IOException {
+			profile.activationOS = new ActivationOS();
+			ElementContext ctxOS = xml.event.context.getFirst();
+			while (xml.nextInnerElement(ctxOS)) {
+				if (xml.event.text.equals("name"))
+					profile.activationOS.name = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals("family"))
+					profile.activationOS.family = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals("arch"))
+					profile.activationOS.arch = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals(ELEMENT_VERSION))
+					profile.activationOS.version = xml.readInnerText().trim().asString();
+				else
+					xml.closeElement();
+			}
+		}
+		
+		private void readProfileActivationProperty(XMLStreamReader xml, Profile profile) throws XMLException, IOException {
+			ElementContext ctxProperty = xml.event.context.getFirst();
+			while (xml.nextInnerElement(ctxProperty)) {
+				if (xml.event.text.equals("name"))
+					profile.activationPropertyName = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals("value"))
+					profile.activationPropertyValue = xml.readInnerText().trim().asString();
+				else
+					xml.closeElement();
+			}
+		}
+		
+		private void readProfileActivationFile(XMLStreamReader xml, Profile profile) throws XMLException, IOException {
+			ElementContext ctxFile = xml.event.context.getFirst();
+			while (xml.nextInnerElement(ctxFile)) {
+				if (xml.event.text.equals("missing"))
+					profile.activationMissingFile = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals("exists"))
+					profile.activationFileExists = xml.readInnerText().trim().asString();
+				else
+					xml.closeElement();
+			}
 		}
 
 		private void readRepositories(XMLStreamReader xml, List<Repository> repositories)
@@ -680,99 +703,82 @@ public class MavenPOM implements LibraryDescriptor {
 				}
 				if (xml.event.text.equals("id")) {
 					// not used so far: repo.id = xml.readInnerText().trim().asString();
-				} else if (xml.event.text.equals("url"))
+				} else if (xml.event.text.equals("url")) {
 					repo.url = xml.readInnerText().trim().asString();
-				else if (xml.event.text.equals("releases")) {
-					if (!xml.event.isClosed)
-						do {
-							if (!xml.nextInnerElement(ctx)) {
-								if (!Type.END_ELEMENT.equals(xml.event.type))
-									throw new MavenPOMException(pomFile,
-										"Invalid POM: missing closing releases tag");
-								break;
-							}
-							if (xml.event.text.equals("enabled")) {
-								String s = xml.readInnerText().trim().asString();
-								if (s.equalsIgnoreCase("false"))
-									repo.releasesEnabled = false;
-							}
-						} while (true);
+				} else if (xml.event.text.equals("releases")) {
+					readRepositoryReleases(xml, ctx, repo);
 				} else if (xml.event.text.equals("snapshots")) {
-					if (!xml.event.isClosed)
-						do {
-							if (!xml.nextInnerElement(ctx)) {
-								if (!Type.END_ELEMENT.equals(xml.event.type))
-									throw new MavenPOMException(pomFile,
-										"Invalid POM: missing closing snapshots tag");
-								break;
-							}
-							if (xml.event.text.equals("enabled")) {
-								String s = xml.readInnerText().trim().asString();
-								if (s.equalsIgnoreCase("false"))
-									repo.snapshotsEnabled = false;
-							}
-						} while (true);
-				} else
+					readRepositorySnapshots(xml, ctx, repo);
+				} else {
 					xml.closeElement();
+				}
 			} while (true);
 			return repo;
+		}
+		
+		private void readRepositoryReleases(XMLStreamReader xml, ElementContext ctx, Repository repo)
+		throws XMLException, MavenPOMException, IOException {
+			if (xml.event.isClosed)
+				return;
+			do {
+				if (!xml.nextInnerElement(ctx)) {
+					if (!Type.END_ELEMENT.equals(xml.event.type))
+						throw new MavenPOMException(pomFile,
+							"Invalid POM: missing closing releases tag");
+					break;
+				}
+				if (xml.event.text.equals("enabled")) {
+					String s = xml.readInnerText().trim().asString();
+					if (s.equalsIgnoreCase("false"))
+						repo.releasesEnabled = false;
+				}
+			} while (true);
+		}
+
+		private void readRepositorySnapshots(XMLStreamReader xml, ElementContext ctx, Repository repo)
+		throws XMLException, MavenPOMException, IOException {
+			if (xml.event.isClosed) return;
+			do {
+				if (!xml.nextInnerElement(ctx)) {
+					if (!Type.END_ELEMENT.equals(xml.event.type))
+						throw new MavenPOMException(pomFile,
+							"Invalid POM: missing closing snapshots tag");
+					break;
+				}
+				if (xml.event.text.equals("enabled")) {
+					String s = xml.readInnerText().trim().asString();
+					if (s.equalsIgnoreCase("false"))
+						repo.snapshotsEnabled = false;
+				}
+			} while (true);
 		}
 	}
 	
 	private class Finalize extends Task.Cpu<Void, NoException> {
 		public Finalize(AsyncWork<MavenPOM, LibraryManagementException> result, byte priority) {
 			super("Finalize POM loading", priority);
-			this.result = result;
+			this.finalResult = result;
 		}
 		
-		private AsyncWork<MavenPOM, LibraryManagementException> result;
+		private AsyncWork<MavenPOM, LibraryManagementException> finalResult;
 		
 		@Override
 		public Void run() {
 			Map<String, String> finalProperties = new HashMap<>();
 			if (parentLoading != null) {
 				if (parentLoading.hasError()) {
-					result.error(new MavenPOMException("Error loading parent POM", parentLoading.getError()));
+					finalResult.error(new MavenPOMException("Error loading parent POM", parentLoading.getError()));
 					return null;
 				}
 				if (parentLoading.isCancelled()) {
-					result.cancel(parentLoading.getCancelEvent());
+					finalResult.cancel(parentLoading.getCancelEvent());
 					return null;
 				}
-				MavenPOM parent = parentLoading.getResult();
-				if (groupId == null) groupId = parent.groupId;
-				if (version == null) version = parent.version;
-				for (Map.Entry<String, String> p : parent.properties.entrySet()) {
-					if (!properties.containsKey(p.getKey()))
-						finalProperties.put(p.getKey(), p.getValue());
-				}
-				for (Dependency pdm : parent.dependencyManagement) {
-					if (pdm.groupId == null) continue;
-					if (pdm.artifactId == null) continue;
-					boolean found = false;
-					for (Dependency dm : dependencyManagement) {
-						if (dm.groupId == null) continue;
-						if (dm.artifactId == null) continue;
-						if (!dm.groupId.equals(pdm.groupId)) continue;
-						if (!dm.artifactId.equals(pdm.artifactId)) continue;
-						found = true;
-						break;
-					}
-					if (found) continue;
-					dependencyManagement.add(pdm);
-				}
+				inheritFromParent(parentLoading.getResult(), finalProperties);
 			}
 			resolveProperties(properties, finalProperties);
 			
-			Profile defaultProfile = null;
-			List<Profile> activeProfiles = new LinkedList<>();
-			for (Profile profile : profiles) {
-				if (checkProfile(profile, finalProperties))
-					activeProfiles.add(profile);
-				else if (profile.activeByDefault && defaultProfile == null)
-					defaultProfile = profile;
-			}
-			if (activeProfiles.isEmpty() && defaultProfile != null) activeProfiles.add(defaultProfile);
+			List<Profile> activeProfiles = getActiveProfiles(finalProperties);
 			for (Profile p : activeProfiles)
 				addProfile(p);
 
@@ -804,9 +810,56 @@ public class MavenPOM implements LibraryDescriptor {
 				}
 			}
 			
-			result.unblockSuccess(MavenPOM.this);
+			finalResult.unblockSuccess(MavenPOM.this);
 
 			return null;
+		}
+		
+		private void inheritFromParent(MavenPOM parent, Map<String, String> finalProperties) {
+			if (groupId == null) groupId = parent.groupId;
+			if (version == null) version = parent.version;
+			for (Map.Entry<String, String> p : parent.properties.entrySet()) {
+				if (!properties.containsKey(p.getKey()))
+					finalProperties.put(p.getKey(), p.getValue());
+			}
+			for (Dependency pdm : parent.dependencyManagement) {
+				if (pdm.groupId == null || pdm.artifactId == null) continue;
+				boolean found = false;
+				for (Dependency dm : dependencyManagement)
+					if (dm.groupId != null &&
+						dm.artifactId != null &&
+						dm.groupId.equals(pdm.groupId) &&
+						dm.artifactId.equals(pdm.artifactId)) {
+						found = true;
+						break;
+					}
+				if (!found)
+					dependencyManagement.add(pdm);
+			}
+		}
+		
+		private List<Profile> getActiveProfiles(Map<String, String> finalProperties) {
+			List<Profile> defaultProfiles = new LinkedList<>();
+			List<Profile> activeProfiles = new LinkedList<>();
+			for (Profile profile : profiles) {
+				if (checkProfile(profile, finalProperties))
+					activeProfiles.add(profile);
+				else if (profile.activeByDefault)
+					defaultProfiles.add(profile);
+			}
+			if (!activeProfiles.isEmpty())
+				return activeProfiles;
+			return defaultProfiles;
+
+		}
+		
+		private void addProfile(Profile profile) {
+			if (profile.build.outputDirectory != null)
+				build.outputDirectory = profile.build.outputDirectory;
+			properties.putAll(profile.properties);
+			dependencies.addAll(profile.dependencies);
+			dependencyManagement.addAll(profile.dependencyManagement);
+			repositories.addAll(profile.repositories);
 		}
 		
 		private void resolveDependencies(List<Dependency> deps, Map<String, String> props) {
@@ -854,24 +907,18 @@ public class MavenPOM implements LibraryDescriptor {
 			if (j < 0) return value;
 			String name = value.substring(i + 2, j).trim();
 			if (properties.containsKey(name)) {
-				StringBuffer s = new StringBuffer();
+				StringBuilder s = new StringBuilder();
 				if (i > 0) s.append(value.substring(0, i));
 				s.append(properties.get(name));
 				if (j < value.length() - 1) s.append(value.substring(j + 1));
 				return resolve(s.toString(), properties);
 			}
-			if (name.equals("project.groupId")) {
-				if (groupId != null) return groupId;
-				return null;
-			}
-			if (name.equals("project.artifactId")) {
-				if (artifactId != null) return artifactId;
-				return null;
-			}
-			if (name.equals("project.version")) {
-				if (version != null) return version;
-				return null;
-			}
+			if (name.equals("project.groupId"))
+				return groupId;
+			if (name.equals("project.artifactId"))
+				return artifactId;
+			if (name.equals("project.version"))
+				return version;
 			if (name.equals("parent.groupId")) {
 				if (parentLoading != null) return parentLoading.getResult().groupId;
 				return null;
@@ -903,8 +950,9 @@ public class MavenPOM implements LibraryDescriptor {
 				if (s.startsWith("!")) {
 					if (name.equals(s.substring(1)))
 						return false;
-				} else if (!name.equals(s))
+				} else if (!name.equals(s)) {
 					return false;
+				}
 			}
 			if (profile.activationOS.arch != null) {
 				String arch = System.getProperty("os.arch").toLowerCase(Locale.US);
@@ -912,8 +960,9 @@ public class MavenPOM implements LibraryDescriptor {
 				if (s.startsWith("!")) {
 					if (arch.equals(s.substring(1)))
 						return false;
-				} else if (!arch.equals(s))
+				} else if (!arch.equals(s)) {
 					return false;
+				}
 			}
 			if (profile.activationOS.family != null) {
 				OSFamily family = SystemEnvironment.getOSFamily();
@@ -924,8 +973,9 @@ public class MavenPOM implements LibraryDescriptor {
 				if (s.startsWith("!")) {
 					if (fam.equals(s.substring(1)))
 						return false;
-				} else if (!fam.equals(s))
+				} else if (!fam.equals(s)) {
 					return false;
+				}
 			}
 			if (profile.activationOS.version != null) {
 				String ver = System.getProperty("os.version").toLowerCase(Locale.US);
@@ -933,8 +983,9 @@ public class MavenPOM implements LibraryDescriptor {
 				if (s.startsWith("!")) {
 					if (ver.equals(s.substring(1)))
 						return false;
-				} else if (!ver.equals(s))
+				} else if (!ver.equals(s)) {
 					return false;
+				}
 			}
 		}
 		if (profile.activationPropertyName != null) {
@@ -951,11 +1002,7 @@ public class MavenPOM implements LibraryDescriptor {
 				String value = profile.activationPropertyName;
 				boolean presentExpected = !value.startsWith("!");
 				if (!presentExpected) value = value.substring(1);
-				if (p1 == null) {
-					if (p2 == null) return false;
-					if (presentExpected != p2.equals(value)) return false;
-				}
-				if (presentExpected != p1.equals(value)) {
+				if (p1 == null || presentExpected != p1.equals(value)) {
 					if (p2 == null) return false;
 					if (presentExpected != p2.equals(value)) return false;
 				}
@@ -971,15 +1018,6 @@ public class MavenPOM implements LibraryDescriptor {
 			// TODO
 		}
 		return true;
-	}
-	
-	private void addProfile(Profile profile) {
-		if (profile.build.outputDirectory != null)
-			build.outputDirectory = profile.build.outputDirectory;
-		properties.putAll(profile.properties);
-		dependencies.addAll(profile.dependencies);
-		dependencyManagement.addAll(profile.dependencyManagement);
-		repositories.addAll(profile.repositories);
 	}
 
 	/** Parse a version specification in POM format. */

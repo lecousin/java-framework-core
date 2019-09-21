@@ -78,8 +78,8 @@ public final class FileSystemWatcher {
 		private Logger logger;
 		
 		private static class Listening {
-			public Path path;
-			public PathEventListener listener;
+			private Path path;
+			private PathEventListener listener;
 		}
 		
 		private static HashMap<WatchKey, Listening> keys = new HashMap<>();
@@ -90,31 +90,31 @@ public final class FileSystemWatcher {
 			listening.listener = listener;
 			WatchKey key;
 			synchronized (keys) {
-				keys.put(key = path.register(service, kinds), listening);
+				key = path.register(service, kinds);
+				keys.put(key, listening);
 			}
-			return new Runnable() {
-				@Override
-				public void run() {
-					key.cancel();
-					synchronized (FileSystemWatcher.class) {
-						synchronized (keys) {
-							keys.remove(key);
-							if (keys.isEmpty()) close();
-						}
+			return () -> {
+				key.cancel();
+				synchronized (FileSystemWatcher.class) {
+					synchronized (keys) {
+						keys.remove(key);
+						if (keys.isEmpty()) close();
 					}
 				}
 			};
 		}
 		
 		@Override
+		@SuppressWarnings({
+			"squid:S2142", // InterruptedException
+			"squid:S3776" // complexity
+		})
 		public void run() {
 			while (!stop) {
 				WatchKey key;
 	            try {
 	                key = service.take();
-	            } catch (InterruptedException x) {
-	                break;
-	            } catch (ClosedWatchServiceException x) {
+	            } catch (InterruptedException | ClosedWatchServiceException x) {
 	                break;
 	            }
 	            Listening l;
@@ -125,39 +125,25 @@ public final class FileSystemWatcher {
 	                if (StandardWatchEventKinds.OVERFLOW.equals(kind))
 	                	continue;
 	                @SuppressWarnings("unchecked")
-					WatchEvent<Path> ev = (WatchEvent<Path>)event;
-	                Path name = ev.context();
+	                String name = ((WatchEvent<Path>)event).context().toString();
 	                
 	                if (StandardWatchEventKinds.ENTRY_CREATE.equals(kind)) {
-	                	if (logger.debug())
-	                		logger.debug("File " + name.toString() + " created into " + l.path.toString());
-	                	try { l.listener.fileCreated(l.path, name.toString()); }
-	                	catch (Throwable t) {
-	                		if (logger.error())
-	                			logger.error("Exception thrown by FileSystemWatcher listener " + l.listener, t);
-	                	}
+	                	logEvent(name, " created into ", l.path);
+	                	try { l.listener.fileCreated(l.path, name); }
+	                	catch (Exception t) { logListenerError(l.listener, t); }
 	                } else if (StandardWatchEventKinds.ENTRY_DELETE.equals(kind)) {
-	                	if (logger.debug())
-	                		logger.debug("File " + name.toString() + " removed from " + l.path.toString());
-	                	try { l.listener.fileRemoved(l.path, name.toString()); }
-	                	catch (Throwable t) {
-	                		if (logger.error())
-	                			logger.error("Exception thrown by FileSystemWatcher listener " + l.listener, t);
-	                	}
+	                	logEvent(name, " removed from ", l.path);
+	                	try { l.listener.fileRemoved(l.path, name); }
+	                	catch (Exception t) { logListenerError(l.listener, t); }
 	                } else if (StandardWatchEventKinds.ENTRY_MODIFY.equals(kind)) {
-	                	if (logger.debug())
-	                		logger.debug("File " + name.toString() + " modified into " + l.path.toString());
-	                	try { l.listener.fileModified(l.path, name.toString()); }
-	                	catch (Throwable t) {
-	                		if (logger.error())
-	                			logger.error("Exception thrown by FileSystemWatcher listener " + l.listener, t);
-	                	}
+	                	logEvent(name, " modified into ", l.path);
+	                	try { l.listener.fileModified(l.path, name); }
+	                	catch (Exception t) { logListenerError(l.listener, t); }
 	                }
 	            }
 	            
 	            // reset key and remove from set if directory no longer accessible
-	            boolean valid = key.reset();
-	            if (!valid) {
+	            if (!key.reset()) {
 	            	synchronized (keys) {
 	            		keys.remove(key);
 	            		if (keys.isEmpty()) close();
@@ -167,14 +153,24 @@ public final class FileSystemWatcher {
 			app.closed(this);
 			stop = true;
 			try { service.close(); }
-			catch (Throwable e) { /* ignore */ }
+			catch (Exception e) { /* ignore */ }
 		}
 		
 		@Override
 		public void close() {
 			stop = true;
 			try { service.close(); }
-			catch (Throwable e) { /* ignore */ }
+			catch (Exception e) { /* ignore */ }
+		}
+		
+		private void logListenerError(PathEventListener listener, Throwable error) {
+			if (logger.error())
+    			logger.error("Exception thrown by FileSystemWatcher listener " + listener, error);
+		}
+		
+		private void logEvent(String name, String eventType, Path context) {
+			if (logger.debug())
+				logger.debug("File " + name + eventType + context.toString());
 		}
 	}
 	

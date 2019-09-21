@@ -1,10 +1,10 @@
 package net.lecousin.framework.locale;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -72,7 +72,6 @@ public class LocalizedProperties implements IMemoryManageable {
 	/** Register the path on which localized properties can be found for a namespace.
 	 * If the namespace already exists, the new path will override the previous one.
 	 */
-	@SuppressWarnings("resource")
 	public ISynchronizationPoint<Exception> registerNamespace(String namespace, String path, ClassLoader classLoader) {
 		Namespace ns;
 		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
@@ -121,22 +120,19 @@ public class LocalizedProperties implements IMemoryManageable {
 				for (UnprotectedStringBuffer us : list) l.tag[i++] = us.asString();
 				languages.add(l);
 			}
-			languages.sort(new Comparator<Namespace.Language>() {
-				@Override
-				public int compare(Namespace.Language l1, Namespace.Language l2) {
-					/* Order:
-					 *  tags are alphabetically ordered
-					 *  but tags xx-yy are before tag xx
-					 */
-					int i = 0;
-					do {
-						if (i == l1.tag.length) return 1;
-						if (i == l2.tag.length) return -1;
-						int c = l1.tag[i].compareTo(l2.tag[i]);
-						if (c != 0) return c;
-						i++;
-					} while (true);
-				}
+			languages.sort((l1, l2) -> {
+				/* Order:
+				 *  tags are alphabetically ordered
+				 *  but tags xx-yy are before tag xx
+				 */
+				int i = 0;
+				do {
+					if (i == l1.tag.length) return 1;
+					if (i == l2.tag.length) return -1;
+					int c = l1.tag[i].compareTo(l2.tag[i]);
+					if (c != 0) return c;
+					i++;
+				} while (true);
 			});
 			toLoad.languages = languages.toArray(new Namespace.Language[languages.size()]);
 			// set parents
@@ -154,10 +150,8 @@ public class LocalizedProperties implements IMemoryManageable {
 			sp.unblock();
 			logger.info("Namespace " + namespace + " loaded with " + languages.size() + " languages from " + path);
 		}), sp);
-		sp.listenInline(() -> { input.closeAsync(); });
-		sp.onError((error) -> {
-			logger.error("Error loading localized properties namespace file " + path + ".languages", error);
-		});
+		input.closeAfter(sp);
+		sp.onError(error -> logger.error("Error loading localized properties namespace file " + path + ".languages", error));
 		return sp;
 	}
 	
@@ -173,7 +167,6 @@ public class LocalizedProperties implements IMemoryManageable {
 		return namespaces.keySet();
 	}
 	
-	@SuppressWarnings("resource")
 	private void load(Namespace ns, Namespace.Language lang) {
 		String path = ns.path + '.' + String.join("-", lang.tag);
 		IOProvider.Readable provider = new IOProviderFromPathUsingClassloader(ns.classLoader).get(path);
@@ -211,7 +204,7 @@ public class LocalizedProperties implements IMemoryManageable {
 	}
 
 	/** Localization. */
-	public String localizeSync(String[] languageTag, String namespace, String key, Object... values) {
+	public String localizeSync(String[] languageTag, String namespace, String key, Serializable... values) {
 		try {
 			return localize(languageTag, namespace, key, values).blockResult(0);
 		} catch (Exception e) {
@@ -220,7 +213,7 @@ public class LocalizedProperties implements IMemoryManageable {
 	}
 	
 	/** Localization. */
-	public AsyncWork<String, NoException> localize(String[] languageTag, String namespace, String key, Object... values) {
+	public AsyncWork<String, NoException> localize(String[] languageTag, String namespace, String key, Serializable... values) {
 		AsyncWork<String, NoException> result = new AsyncWork<>();
 		Namespace ns;
 		synchronized (namespaces) {
@@ -253,7 +246,7 @@ public class LocalizedProperties implements IMemoryManageable {
 		return result;
 	}
 	
-	private void localize(Namespace ns, Namespace.Language lang, String key, Object[] values, AsyncWork<String, NoException> result) {
+	private void localize(Namespace ns, Namespace.Language lang, String key, Serializable[] values, AsyncWork<String, NoException> result) {
 		boolean needsLoading = false;
 		synchronized (lang) {
 			if (lang.loading == null) {
@@ -261,34 +254,31 @@ public class LocalizedProperties implements IMemoryManageable {
 				needsLoading = true;
 			}
 		}
-		lang.loading.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				synchronized (lang) {
-					String content = null;
-					if (!lang.loading.hasError())
-						content = lang.properties.get(key.toLowerCase());
-					if (content != null) {
-						localize(lang.tag, key, content, values, result);
-						lang.lastUsage = System.currentTimeMillis();
-						return;
-					}
+		lang.loading.listenInline(() -> {
+			synchronized (lang) {
+				String content = null;
+				if (!lang.loading.hasError())
+					content = lang.properties.get(key.toLowerCase());
+				if (content != null) {
+					localize(lang.tag, key, content, values, result);
+					lang.lastUsage = System.currentTimeMillis();
+					return;
 				}
-				if (lang.parent != null)
-					localize(ns, lang.parent, key, values, result);
-				else
-					result.unblockSuccess("!! missing key " + key + " !!");
 			}
+			if (lang.parent != null)
+				localize(ns, lang.parent, key, values, result);
+			else
+				result.unblockSuccess("!! missing key " + key + " !!");
 		});
 		if (needsLoading)
 			load(ns, lang);
 	}
 	
-	private static void localize(String[] languageTag, String key, String content, Object[] values, AsyncWork<String, NoException> result) {
+	private static void localize(String[] languageTag, String key, String content, Serializable[] values, AsyncWork<String, NoException> result) {
 		for (int i = 0; i < values.length; ++i)
 			if (values[i] instanceof ILocalizableString) {
 				AsyncWork<String, NoException> l = ((ILocalizableString)values[i]).localize(languageTag);
-				Object[] newValues = new Object[values.length];
+				Serializable[] newValues = new Serializable[values.length];
 				System.arraycopy(values, 0, newValues, 0, values.length);
 				int ii = i;
 				l.listenAsync(new Task.Cpu.FromRunnable(() -> {
@@ -300,7 +290,7 @@ public class LocalizedProperties implements IMemoryManageable {
 		result.unblockSuccess(setCase(replaceValues(content, values), key));
 	}
 	
-	private static String replaceValues(String s, Object[] values) {
+	private static String replaceValues(String s, Serializable[] values) {
 		for (int i = 0; i < values.length; ++i)
 			s = s.replace("{" + i + "}", ObjectUtil.toString(values[i]));
 		return s;
@@ -329,12 +319,11 @@ public class LocalizedProperties implements IMemoryManageable {
 	public List<String> getItemsDescription() {
 		ArrayList<String> items = new ArrayList<>(namespaces.size());
 		synchronized (namespaces) {
-			for (String ns : namespaces.keySet()) {
+			for (Map.Entry<String, Namespace> ns : namespaces.entrySet()) {
 				int loaded = 0;
-				Namespace n = namespaces.get(ns);
-				for (Namespace.Language lang : n.languages) // TODO here we may have a NPE
+				for (Namespace.Language lang : ns.getValue().languages) // TODO here we may have a NPE
 					if (lang.loading != null) loaded++;
-				items.add("Localized properties for namespace " + ns + " (" + loaded + " language(s) loaded)");
+				items.add("Localized properties for namespace " + ns.getKey() + " (" + loaded + " language(s) loaded)");
 			}
 		}
 		return items;
@@ -346,32 +335,32 @@ public class LocalizedProperties implements IMemoryManageable {
 		switch (level) {
 		default:
 		case EXPIRED_ONLY:
-			maxIdle = 10 * 60 * 1000;
+			maxIdle = 10L * 60 * 1000;
 			break;
 		case LOW:
-			maxIdle = 2 * 60 * 1000;
+			maxIdle = 2L * 60 * 1000;
 			break;
 		case MEDIUM:
-			maxIdle = 45 * 1000;
+			maxIdle = 45L * 1000;
 			break;
 		case URGENT:
-			maxIdle = 5 * 1000;
+			maxIdle = 5L * 1000;
 			break;
 		}
 		synchronized (namespaces) {
 			for (Namespace ns : namespaces.values()) {
 				if (ns.languages != null)
-				for (Namespace.Language lang : ns.languages) {
-					synchronized (lang) {
-						if (lang.loading == null) continue;
-						if (!lang.loading.isUnblocked()) continue;
-						if (lang.properties != null && System.currentTimeMillis() - lang.lastUsage > maxIdle) {
-							lang.loading = null;
-							lang.properties = null;
-							lang.lastUsage = 0;
+					for (Namespace.Language lang : ns.languages) {
+						synchronized (lang) {
+							if (lang.loading == null) continue;
+							if (!lang.loading.isUnblocked()) continue;
+							if (lang.properties != null && System.currentTimeMillis() - lang.lastUsage > maxIdle) {
+								lang.loading = null;
+								lang.properties = null;
+								lang.lastUsage = 0;
+							}
 						}
 					}
-				}
 			}
 		}
 	}
@@ -438,12 +427,9 @@ public class LocalizedProperties implements IMemoryManageable {
 								needsLoading = true;
 							}
 						}
-						l.loading.listenInline(new Runnable() {
-							@Override
-							public void run() {
-								synchronized (l) {
-									result.unblockSuccess(new HashMap<>(l.properties));
-								}
+						l.loading.listenInline(() -> {
+							synchronized (l) {
+								result.unblockSuccess(new HashMap<>(l.properties));
 							}
 						}, result);
 						if (needsLoading)

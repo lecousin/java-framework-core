@@ -24,7 +24,7 @@ public interface AttributeAnnotationToRuleOnType<TAnnotation extends Annotation>
 	 * serialization rules.
 	 */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public static List<SerializationRule> addRules(SerializationClass type, boolean onGet, List<SerializationRule> rules) {
+	static List<SerializationRule> addRules(SerializationClass type, boolean onGet, List<SerializationRule> rules) {
 		List<SerializationRule> newRules = new LinkedList<>();
 		for (Attribute attr : type.getAttributes()) {
 			if (onGet && !attr.canGet()) continue;
@@ -33,7 +33,7 @@ public interface AttributeAnnotationToRuleOnType<TAnnotation extends Annotation>
 				for (AttributeAnnotationToRuleOnType toRule : getAnnotationToRules(a)) {
 					SerializationRule rule;
 					try { rule = toRule.createRule(a, attr); }
-					catch (Throwable t) {
+					catch (Exception t) {
 						LCCore.getApplication().getDefaultLogger().error(
 							"Error creating rule from annotation " + a.annotationType().getName()
 							+ " on attribute " + attr.getOriginalName() + " of type "
@@ -71,15 +71,14 @@ public interface AttributeAnnotationToRuleOnType<TAnnotation extends Annotation>
 	 * It looks first on the annotation class if there is an inner class implementing AttributeAnnotationToRuleOnAttribute.
 	 * If none is found, it looks into the registry.
 	 */
-	public static List<AttributeAnnotationToRuleOnType<?>> getAnnotationToRules(Annotation a) {
+	static List<AttributeAnnotationToRuleOnType<?>> getAnnotationToRules(Annotation a) {
 		LinkedList<AttributeAnnotationToRuleOnType<?>> list = new LinkedList<>();
 		for (Class<?> c : a.annotationType().getDeclaredClasses()) {
 			if (!AttributeAnnotationToRuleOnType.class.isAssignableFrom(c)) continue;
 			try { list.add((AttributeAnnotationToRuleOnType<?>)c.newInstance()); }
-			catch (Throwable t) {
+			catch (Exception t) {
 				LCCore.getApplication().getDefaultLogger().error(
 					"Error creating AttributeAnnotationToRule " + a.annotationType().getName(), t);
-				continue;
 			}
 		}
 		for (Pair<Class<? extends Annotation>, AttributeAnnotationToRuleOnType<?>> p : Registry.registry)
@@ -89,7 +88,11 @@ public interface AttributeAnnotationToRuleOnType<TAnnotation extends Annotation>
 	}
 	
 	/** Registry of converters between annotations and serialization rules. */
-	public static class Registry {
+	public static final class Registry {
+		
+		private Registry() {
+			// no instance
+		}
 
 		private static List<Pair<Class<? extends Annotation>, AttributeAnnotationToRuleOnType<?>>> registry = new ArrayList<>();
 

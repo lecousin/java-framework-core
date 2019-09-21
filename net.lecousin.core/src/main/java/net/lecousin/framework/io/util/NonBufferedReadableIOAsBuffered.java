@@ -145,24 +145,21 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 			public Void run() {
 				ByteBuffer buf = ByteBuffer.allocate(4096);
 				AsyncWork<Integer, IOException> read = readAsync(buf);
-				read.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (read.hasError()) {
-							if (ondone != null) ondone.accept(new Pair<>(null, read.getError()));
-							result.unblockError(read.getError());
-							return;
-						}
-						int nb = read.getResult().intValue();
-						if (nb <= 0) {
-							if (ondone != null) ondone.accept(new Pair<>(null, null));
-							result.unblockSuccess(null);
-							return;
-						}
-						buf.flip();
-						if (ondone != null) ondone.accept(new Pair<>(buf, null));
-						result.unblockSuccess(buf);
+				read.listenInline(() -> {
+					if (read.hasError()) {
+						if (ondone != null) ondone.accept(new Pair<>(null, read.getError()));
+						result.unblockError(read.getError());
+						return;
 					}
+					int nb = read.getResult().intValue();
+					if (nb <= 0) {
+						if (ondone != null) ondone.accept(new Pair<>(null, null));
+						result.unblockSuccess(null);
+						return;
+					}
+					buf.flip();
+					if (ondone != null) ondone.accept(new Pair<>(buf, null));
+					result.unblockSuccess(buf);
 				});
 				return null;
 			}

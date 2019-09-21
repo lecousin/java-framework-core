@@ -12,6 +12,8 @@ import net.lecousin.framework.exception.NoException;
  */
 public class CompositeLocalizable implements ILocalizableString {
 
+	private static final long serialVersionUID = 1L;
+
 	/** Constructor. */
 	public CompositeLocalizable(String sep, ILocalizableString... elements) {
 		this.sep = sep;
@@ -32,23 +34,20 @@ public class CompositeLocalizable implements ILocalizableString {
 		}
 		AsyncWork<String, NoException> result = new AsyncWork<>();
 		jp.start();
-		jp.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				StringBuffer s = new StringBuffer();
-				for (AsyncWork<String, NoException> es : list) {
-					if (s.length() > 0) s.append(sep);
-					s.append(es.getResult());
-				}
-				result.unblockSuccess(s.toString());
+		jp.listenInline(() -> {
+			StringBuilder s = new StringBuilder();
+			for (AsyncWork<String, NoException> es : list) {
+				if (s.length() > 0) s.append(sep);
+				s.append(es.getResult());
 			}
+			result.unblockSuccess(s.toString());
 		});
 		return result;
 	}
 	
 	@Override
 	public String localizeSync(String[] languageTag) {
-		StringBuffer s = new StringBuffer();
+		StringBuilder s = new StringBuilder();
 		for (ILocalizableString ls : elements) {
 			if (s.length() > 0) s.append(sep);
 			s.append(ls.localizeSync(languageTag));

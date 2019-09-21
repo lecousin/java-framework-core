@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.Pair;
 
 /**
@@ -39,19 +40,19 @@ class ReadFileTask extends Task.OnFile<Integer,IOException> {
 		int nbRead = 0;
 		if (pos >= 0)
 			try { file.channel.position(pos); }
-			catch (ClosedChannelException e) { throw new CancelException("File has been closed"); }
+			catch (ClosedChannelException e) { throw IO.cancelClosed(); }
 			catch (IOException e) {
 				throw new IOException("Unable to seek to position " + pos + " in file " + file.path, e);
 			}
 		if (!fully) {
 			try { nbRead = file.channel.read(buffer); }
-			catch (ClosedChannelException e) { throw new CancelException("File has been closed"); }
+			catch (ClosedChannelException e) { throw IO.cancelClosed(); }
 		} else {
 			nbRead = 0;
 			while (buffer.remaining() > 0) {
 				int nb;
 				try { nb = file.channel.read(buffer); }
-				catch (ClosedChannelException e) { throw new CancelException("File has been closed"); }
+				catch (ClosedChannelException e) { throw IO.cancelClosed(); }
 				if (nb <= 0) break;
 				nbRead += nb;
 			}

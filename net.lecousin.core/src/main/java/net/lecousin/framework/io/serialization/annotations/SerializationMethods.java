@@ -25,10 +25,10 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 public @interface SerializationMethods {
 
 	/** Method to use for serialization. */
-	public String serialization();
+	String serialization();
 
 	/** Method to use for deserialization. */
-	public String deserialization();
+	String deserialization();
 	
 	/** Convert an annotation into a CustomAttributeSerialization rule. */
 	public static class ToRule implements AttributeAnnotationToRuleOnType<SerializationMethods> {
@@ -66,7 +66,7 @@ public @interface SerializationMethods {
 								if ((serializationMethod.getModifiers() & Modifier.STATIC) != 0)
 									return serializationMethod.invoke(null);
 								return serializationMethod.invoke(containerInstance);
-							} catch (Throwable t) {
+							} catch (Exception t) {
 								LCCore.getApplication().getDefaultLogger()
 								.error("Error calling method " + serializationMethod.getName()
 									+ " on class " + serializationMethod.getDeclaringClass().getName(), t);
@@ -82,7 +82,7 @@ public @interface SerializationMethods {
 								if ((deserializationMethod.getModifiers() & Modifier.STATIC) != 0)
 									return deserializationMethod.invoke(null, src);
 								return deserializationMethod.invoke(containerInstance, src);
-							} catch (Throwable t) {
+							} catch (Exception t) {
 								LCCore.getApplication().getDefaultLogger()
 								.error("Error calling method " + deserializationMethod.getName()
 									+ " on class " + deserializationMethod.getDeclaringClass().getName(), t);
@@ -91,7 +91,7 @@ public @interface SerializationMethods {
 						}
 					}
 				);
-			} catch (Throwable t) {
+			} catch (Exception t) {
 				LCCore.getApplication().getDefaultLogger().error(
 					"Error creating CustomAttributeSerializer from annotation SerializationMethods", t);
 				return null;

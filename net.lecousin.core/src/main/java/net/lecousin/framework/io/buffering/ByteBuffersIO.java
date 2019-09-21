@@ -50,10 +50,10 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	/** Merge the byte arrays of this class into a single one and return it. */
 	public byte[] createSingleByteArray() {
 		byte[] buf = new byte[totalSize];
-		int pos = 0;
+		int bufPos = 0;
 		for (Triple<byte[],Integer,Integer> t : buffers) {
-			System.arraycopy(t.getValue1(), t.getValue2().intValue(), buf, pos, t.getValue3().intValue());
-			pos += t.getValue3().intValue();
+			System.arraycopy(t.getValue1(), t.getValue2().intValue(), buf, bufPos, t.getValue3().intValue());
+			bufPos += t.getValue3().intValue();
 		}
 		return buf;
 	}
@@ -94,54 +94,54 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	@Override
 	public synchronized int readSync(long pos, ByteBuffer buffer) {
 		// seek to given pos
-		int bufferIndex = this.bufferIndex;
-		int bufferPos = this.bufferPos;
+		int readBufferIndex = this.bufferIndex;
+		int readBufferPos = this.bufferPos;
 		long n = pos - this.pos;
 		if (n > 0) {
 			long rem = n;
-			while (bufferIndex < buffers.size() && rem > 0) {
-				int l = buffers.get(bufferIndex).getValue3().intValue() - bufferPos;
+			while (readBufferIndex < buffers.size() && rem > 0) {
+				int l = buffers.get(readBufferIndex).getValue3().intValue() - readBufferPos;
 				if (l > rem) {
-					bufferPos += rem;
-					rem = 0;
+					readBufferPos += rem;
+					//rem = 0;
 					break;
 				}
 				rem -= l;
-				bufferPos = 0;
-				bufferIndex++;
+				readBufferPos = 0;
+				readBufferIndex++;
 			}
 		} else {
 			if (this.pos + n < 0) n = -this.pos;
 			long rem = -n;
 			while (rem > 0) {
-				if (bufferPos >= rem) {
-					bufferPos -= rem;
+				if (readBufferPos >= rem) {
+					readBufferPos -= rem;
 					break;
 				}
-				rem -= bufferPos;
-				if (bufferIndex == 0) {
-					bufferPos = 0;
-					n += rem;
+				rem -= readBufferPos;
+				if (readBufferIndex == 0) {
+					readBufferPos = 0;
+					//n += rem;
 					break;
 				}
-				bufferIndex--;
-				bufferPos = buffers.get(bufferIndex).getValue3().intValue();
+				readBufferIndex--;
+				readBufferPos = buffers.get(readBufferIndex).getValue3().intValue();
 			}
 		}
 		
-		if (bufferIndex == buffers.size()) return -1;
+		if (readBufferIndex == buffers.size()) return -1;
 		int done = 0;
-		while (bufferIndex < buffers.size() && buffer.hasRemaining()) {
-			Triple<byte[],Integer,Integer> b = buffers.get(bufferIndex);
+		while (readBufferIndex < buffers.size() && buffer.hasRemaining()) {
+			Triple<byte[],Integer,Integer> b = buffers.get(readBufferIndex);
 			int len = buffer.remaining();
-			if (len > b.getValue3().intValue() - bufferPos)
-				len = b.getValue3().intValue() - bufferPos;
-			buffer.put(b.getValue1(), b.getValue2().intValue() + bufferPos, len);
-			bufferPos += len;
+			if (len > b.getValue3().intValue() - readBufferPos)
+				len = b.getValue3().intValue() - readBufferPos;
+			buffer.put(b.getValue1(), b.getValue2().intValue() + readBufferPos, len);
+			readBufferPos += len;
 			done += len;
-			if (bufferPos == b.getValue3().intValue()) {
-				bufferIndex++;
-				bufferPos = 0;
+			if (readBufferPos == b.getValue3().intValue()) {
+				readBufferIndex++;
+				readBufferPos = 0;
 			}
 		}
 		return done;

@@ -326,8 +326,9 @@ public class SerializationClass {
 								superParams.add(params.get(i));
 								break;
 							}
-					} else
+					} else {
 						superParams.add(new TypeDefinition(null, arg));
+					}
 				}
 			}
 			populateAttributes(type.getSuperclass(), superParams);
@@ -348,21 +349,21 @@ public class SerializationClass {
 			Field f = containerType.getBase().getField(attributeName);
 			if ((f.getModifiers() & (Modifier.STATIC | Modifier.FINAL)) != 0)
 				return new TypeDefinition(containerType, f.getGenericType());
-		} catch (Throwable t) { /* ignore */ }
+		} catch (Exception t) { /* ignore */ }
 		try {
 			Method m = containerType.getBase()
 				.getMethod("get" + Character.toUpperCase(attributeName.charAt(0)) + attributeName.substring(1));
 			Class<?> returnType = m.getReturnType();
 			if (returnType != null && !Void.class.equals(returnType) && !void.class.equals(returnType))
 				return new TypeDefinition(containerType, m.getGenericReturnType());
-		} catch (Throwable t) { /* ignore */ }
+		} catch (Exception t) { /* ignore */ }
 		try {
 			Method m = containerType.getBase()
 				.getMethod("is" + Character.toUpperCase(attributeName.charAt(0)) + attributeName.substring(1));
 			Class<?> returnType = m.getReturnType();
 			if (boolean.class.equals(returnType) || Boolean.class.equals(returnType))
 				return new TypeDefinition(containerType, m.getGenericReturnType());
-		} catch (Throwable t) { /* ignore */ }
+		} catch (Exception t) { /* ignore */ }
 		return null;
 	}
 	

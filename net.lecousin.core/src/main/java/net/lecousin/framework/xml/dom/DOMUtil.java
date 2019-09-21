@@ -12,6 +12,10 @@ import org.w3c.dom.Text;
  * Utility methods to manipulate DOM.
  */
 public final class DOMUtil {
+	
+	private DOMUtil() {
+		// no instance
+	}
 
 	/** Return the first child of the given name, or null. */
 	public static Element getChild(Element parent, String childName) {
@@ -26,7 +30,7 @@ public final class DOMUtil {
 	
 	/** Return the children with the given name. */
 	public static List<Element> getChildren(Element parent, String childName) {
-		ArrayList<Element> children = new ArrayList<Element>();
+		ArrayList<Element> children = new ArrayList<>();
 		NodeList nodes = parent.getChildNodes();
 		for (int i = 0; i < nodes.getLength(); ++i) {
 			Node node = nodes.item(i);

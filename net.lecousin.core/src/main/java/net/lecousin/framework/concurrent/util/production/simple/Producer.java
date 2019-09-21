@@ -9,9 +9,9 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 public interface Producer<T> {
 
 	/** Ask to produce a new object. */
-	public AsyncWork<T,? extends Exception> produce(Production<T> production);
+	AsyncWork<T,? extends Exception> produce(Production<T> production);
 	
 	/** Cancel any pending production and stop it. */
-	public void cancel(CancelException event);
+	void cancel(CancelException event);
 	
 }

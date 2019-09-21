@@ -69,7 +69,7 @@ public class DefaultDecoder extends Decoder {
 				return len;
 			cr = decoder.flush(cb);
 			if (cr.isOverflow()) {
-				if (nextChars != null) nextChars = CharBuffer.allocate(10);
+				if (nextChars == null) nextChars = CharBuffer.allocate(10);
 				else nextChars.compact();
 				decoder.flush(nextChars);
 				nextChars.flip();

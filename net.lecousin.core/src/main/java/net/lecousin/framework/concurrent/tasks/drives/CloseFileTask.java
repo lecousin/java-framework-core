@@ -10,8 +10,8 @@ class CloseFileTask extends Task./*OnFile*/Cpu<Void,IOException> {
 	public CloseFileTask(FileAccess file) {
 		/*super(file.manager, "Close file", Task.PRIORITY_NORMAL);*/
 		super("Close file", Task.PRIORITY_NORMAL);
-		if (file.openTask.getStatus() < Task.STATUS_RUNNING) 
-			if (file.openTask.cancelIfExecutionNotStarted(new CancelException("Close file requested", null))) {
+		if (file.openTask.getStatus() < Task.STATUS_RUNNING &&
+			file.openTask.cancelIfExecutionNotStarted(new CancelException("Close file requested", null))) {
 				setDone(null, null);
 				return;
 			}

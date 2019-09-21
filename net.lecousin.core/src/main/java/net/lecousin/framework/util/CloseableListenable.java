@@ -9,22 +9,22 @@ import net.lecousin.framework.event.Listener;
 public interface CloseableListenable {
 
 	/** Close. */
-	public void close() throws Exception;
+	void close() throws Exception;
 	
 	/** Return true if closed. */
-	public boolean isClosed();
+	boolean isClosed();
 	
 	/** Add a listener to be called once this resource is closed. */
-	public void addCloseListener(Listener<CloseableListenable> listener);
+	void addCloseListener(Listener<CloseableListenable> listener);
 
 	/** Add a listener to be called once this resource is closed. */
-	public void addCloseListener(Runnable listener);
+	void addCloseListener(Runnable listener);
 	
 	/** Remove a listener. */
-	public void removeCloseListener(Listener<CloseableListenable> listener);
+	void removeCloseListener(Listener<CloseableListenable> listener);
 	
 	/** Remove a listener. */
-	public void removeCloseListener(Runnable listener);
+	void removeCloseListener(Runnable listener);
 	
 	/** Default implementation to handle listeners fired on close. */
 	public static class Impl implements CloseableListenable {

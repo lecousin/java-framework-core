@@ -93,7 +93,7 @@ public class UnprotectedString implements IString {
 	
 	/** Set the character at the given index. */
 	@Override
-	public void setCharAt(int index, char c) throws IllegalArgumentException {
+	public void setCharAt(int index, char c) {
 		if (index < 0 || index > end - start) throw new IllegalArgumentException("Character index " + index + " does not exist");
 		chars[start + index] = c;
 	}

@@ -27,7 +27,7 @@ public interface StringParser<T> {
 	
 	/** Parse a string. */
 	@SuppressWarnings("unchecked")
-	public static <T> T parse(Class<T> type, StringFormat format, String string) throws ParseException, IllegalArgumentException {
+	static <T> T parse(Class<T> type, StringFormat format, String string) throws ParseException, IllegalArgumentException {
 		StringParser<?> parser;
 		if (!format.pattern().isEmpty()) {
 			try {
@@ -52,7 +52,7 @@ public interface StringParser<T> {
 	
 	/** Parse a string. */
 	@SuppressWarnings("unchecked")
-	public static <T> T parse(Class<T> type, String string) throws IllegalArgumentException {
+	static <T> T parse(Class<T> type, String string) throws IllegalArgumentException {
 		// look for a static parse(String) method
 		Method parse;
 		try {

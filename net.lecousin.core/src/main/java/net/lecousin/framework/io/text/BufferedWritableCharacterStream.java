@@ -94,17 +94,14 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 				}
 				encodedBuffer.flip();
 				AsyncWork<Integer,IOException> writing = output.writeAsync(encodedBuffer);
-				writing.listenInline(new Runnable() {
-					@Override
-					public void run() {
-						if (!writing.isSuccessful())
-							flushing.error(writing.getError());
-						else if (result.isOverflow())
-							encodeAndWrite();
-						else {
-							cb2.clear();
-							flushing.unblock();
-						}
+				writing.listenInline(() -> {
+					if (!writing.isSuccessful())
+						flushing.error(writing.getError());
+					else if (result.isOverflow())
+						encodeAndWrite();
+					else {
+						cb2.clear();
+						flushing.unblock();
 					}
 				});
 				return null;
@@ -123,8 +120,9 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 				flushOnly = true;
 				result = encoder.flush(encodedBuffer);
 			}
-		} else
+		} else {
 			result = encoder.flush(encodedBuffer);
+		}
 		encodedBuffer.flip();
 		AsyncWork<Integer,IOException> writing;
 		if (encodedBuffer.hasRemaining())
@@ -141,14 +139,11 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 			sp = new SynchronizationPoint<>();
 		SynchronizationPoint<IOException> spp = sp;
 		boolean fo = flushOnly;
-		writing.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (!writing.isSuccessful())
-					spp.error(writing.getError());
-				else
-					finalFlush(spp, fo);
-			}
+		writing.listenInline(() -> {
+			if (!writing.isSuccessful())
+				spp.error(writing.getError());
+			else
+				finalFlush(spp, fo);
 		});
 		return operation(sp);
 	}
@@ -207,10 +202,7 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 			sp = flushing;
 		}
 		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
-		sp.listenInline(
-			() -> { flushBufferAsync().listenInline(result); },
-			result
-		);
+		sp.listenInline(() -> flushBufferAsync().listenInline(result), result);
 		return result;
 	}
 	
@@ -223,21 +215,18 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 					if (pos == 0)
 						return finalFlush(null, false);
 					try { flushBuffer(); }
-					catch (IOException e) { return new SynchronizationPoint<IOException>(e); }
+					catch (IOException e) { return new SynchronizationPoint<>(e); }
 				}
 				sp = flushing;
 				break;
 			}
 		} while (true);
 		SynchronizationPoint<IOException> sp2 = new SynchronizationPoint<>();
-		sp.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (sp.hasError())
-					sp2.error(sp.getError());
-				else
-					flush().listenInline(sp2);
-			}
+		sp.listenInline(() -> {
+			if (sp.hasError())
+				sp2.error(sp.getError());
+			else
+				flush().listenInline(sp2);
 		});
 		return sp2;
 	}
@@ -291,12 +280,7 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 						result.unblock();
 					return null;
 				}
-				flushBufferAsync().listenInline(
-					() -> {
-						writeAsync(c, off + l, len - l, result);
-					},
-					result
-				);
+				flushBufferAsync().listenInline(() -> writeAsync(c, off + l, len - l, result), result);
 				return null;
 			}
 		}.start();

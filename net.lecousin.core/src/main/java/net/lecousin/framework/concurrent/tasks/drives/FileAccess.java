@@ -79,14 +79,11 @@ public class FileAccess implements AutoCloseable {
 	}
 	
 	public void getSize(final AsyncWork<Long,IOException> sp) {
-		Runnable ready = new Runnable() {
-			@Override
-			public void run() {
-				if (openTask.isSuccessful())
-					sp.unblockSuccess(Long.valueOf(size));
-				else
-					sp.unblockError(openTask.getError());
-			}
+		Runnable ready = () -> {
+			if (openTask.isSuccessful())
+				sp.unblockSuccess(Long.valueOf(size));
+			else
+				sp.unblockError(openTask.getError());
 		};
 		openTask.getOutput().listenInline(ready);
 	}

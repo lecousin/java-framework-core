@@ -9,7 +9,11 @@ import net.lecousin.framework.util.StringParser.Parse;
 /**
  * Range of long values, with a minimum and maximum.
  */
+@SuppressWarnings("squid:ClassVariableVisibilityCheck")
 public class RangeLong {
+	
+	public long min;
+	public long max;
 
 	/** Constructor. */
 	public RangeLong(long min, long max) {
@@ -25,7 +29,7 @@ public class RangeLong {
 	
 	/** Parse from a String. */
 	@Parse
-	public RangeLong(String string) throws ParseException, NumberFormatException {
+	public RangeLong(String string) throws ParseException {
 		if (string == null || string.isEmpty())
 			throw new ParseException("Empty string", 0);
 		char c = string.charAt(0);
@@ -33,31 +37,41 @@ public class RangeLong {
 			int sep = string.indexOf('-');
 			if (sep < 0)
 				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]", 1);
-			min = Long.parseLong(string.substring(1, sep));
+			try {
+				min = Long.parseLong(string.substring(1, sep));
+			} catch (NumberFormatException e) {
+				throw new ParseException("Invalid number: " + e.getMessage(), 1);
+			}
 			if (c == ']') min++;
 			c = string.charAt(string.length() - 1);
 			if (c != ']' && c != '[')
 				throw new ParseException("Must start with [ or ], followed by a number, a -, a number, and finally [ or ]",
 					string.length() - 1);
-			max = Long.parseLong(string.substring(sep + 1, string.length() - 1));
+			try {
+				max = Long.parseLong(string.substring(sep + 1, string.length() - 1));
+			} catch (NumberFormatException e) {
+				throw new ParseException("Invalid number: " + e.getMessage(), sep + 1);
+			}
 			if (c == '[') max--;
 			if (max < min) {
 				long i = min;
 				min = max;
 				max = i;
 			}
-		} else
-			min = max = Long.parseLong(string);
+		} else {
+			try {
+				min = max = Long.parseLong(string);
+			} catch (NumberFormatException e) {
+				throw new ParseException("Invalid number: " + e.getMessage(), 0);
+			}
+		}
 	}
-	
-	public long min;
-	public long max;
 
 	public RangeLong copy() { return new RangeLong(min,max); }
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj == null || !(obj instanceof RangeLong)) return false;
+		if (!(obj instanceof RangeLong)) return false;
 		RangeLong r = (RangeLong)obj;
 		return r.min == min && r.max == max;
 	}

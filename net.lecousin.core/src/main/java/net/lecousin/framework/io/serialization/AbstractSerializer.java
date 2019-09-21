@@ -47,7 +47,7 @@ public abstract class AbstractSerializer implements Serializer {
 		@Override
 		public Void run() throws CancelException {
 			try { r.run(); }
-			catch (Throwable t) {
+			catch (Exception t) {
 				throw new CancelException("Error thrown by serialization", t);
 			}
 			return null;
@@ -61,9 +61,7 @@ public abstract class AbstractSerializer implements Serializer {
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
 		init.listenAsyncSP(new SerializationTask(() -> {
 			ISynchronizationPoint<? extends Exception> sp = serializeValue(null, object, typeDef, "", rules);
-			sp.listenInlineSP(() -> {
-				finalizeSerialization().listenInlineSP(result);
-			}, result);
+			sp.listenInlineSP(() -> finalizeSerialization().listenInlineSP(result), result);
 		}), result);
 		return result;
 	}
@@ -202,10 +200,9 @@ public abstract class AbstractSerializer implements Serializer {
 		if (start.isUnblocked()) {
 			if (start.hasError()) return start;
 			serializeAttribute(attributes, 0, context, path, rules, result);
-		} else
-			start.listenAsyncSP(new SerializationTask(() -> {
-				serializeAttribute(attributes, 0, context, path, rules, result);
-			}), result);
+		} else {
+			start.listenAsyncSP(new SerializationTask(() -> serializeAttribute(attributes, 0, context, path, rules, result)), result);
+		}
 		return result;
 	}
 	
@@ -342,9 +339,8 @@ public abstract class AbstractSerializer implements Serializer {
 			serializeCollectionElement(context, context.getIterator(), 0, path, rules, result);
 			return result;
 		}
-		start.listenAsyncSP(new SerializationTask(() -> {
-			serializeCollectionElement(context, context.getIterator(), 0, path, rules, result);
-		}), result);
+		start.listenAsyncSP(new SerializationTask(() ->
+			serializeCollectionElement(context, context.getIterator(), 0, path, rules, result)), result);
 		return result;
 	}
 	
@@ -384,9 +380,8 @@ public abstract class AbstractSerializer implements Serializer {
 				if (start.hasError()) value.error(start.getError());
 				else serializeValue(context, element, context.getElementType(), elementPath, rules).listenInlineSP(value);
 			} else {
-				start.listenAsyncSP(new SerializationTask(() -> {
-					serializeValue(context, element, context.getElementType(), elementPath, rules).listenInlineSP(value);
-				}), value);
+				start.listenAsyncSP(new SerializationTask(() ->
+					serializeValue(context, element, context.getElementType(), elementPath, rules).listenInlineSP(value)), value);
 			}
 			
 			SynchronizationPoint<Exception> next = new SynchronizationPoint<>();
@@ -395,9 +390,8 @@ public abstract class AbstractSerializer implements Serializer {
 				if (value.hasError()) next.error(value.getError());
 				else endCollectionValueElement(context, element, elementIndex, elementPath, rules).listenInlineSP(next);
 			} else {
-				value.listenAsyncSP(new SerializationTask(() -> {
-					endCollectionValueElement(context, element, currentIndex, elementPath, rules).listenInlineSP(next);
-				}), next);
+				value.listenAsyncSP(new SerializationTask(() ->
+					endCollectionValueElement(context, element, currentIndex, elementPath, rules).listenInlineSP(next)), next);
 			}
 			
 			if (next.isUnblocked()) {
@@ -456,14 +450,12 @@ public abstract class AbstractSerializer implements Serializer {
 
 	// *** InputStream ***
 
-	@SuppressWarnings("resource")
 	protected ISynchronizationPoint<? extends Exception> serializeInputStreamValue(
 		SerializationContext context, InputStream in, String path, List<SerializationRule> rules) {
 		return serializeIOReadableValue(context, new IOFromInputStream(in, in.toString(), Threading.getUnmanagedTaskManager(), priority),
 			path, rules);
 	}
 
-	@SuppressWarnings("resource")
 	protected ISynchronizationPoint<? extends Exception> serializeInputStreamAttribute(
 		AttributeContext context, InputStream in, String path, List<SerializationRule> rules) {
 		return serializeIOReadableAttribute(context, 

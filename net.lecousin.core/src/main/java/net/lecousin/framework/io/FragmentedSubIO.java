@@ -65,7 +65,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		
 		@Override
 		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-			return super.readAsync(pos, buffer, (res) -> {
+			return super.readAsync(pos, buffer, res -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					pos += res.getValue1().intValue();
 				if (ondone != null) ondone.accept(res);
@@ -105,7 +105,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		
 		@Override
 		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-			return readFullyAsync(pos, buffer, (res) -> {
+			return readFullyAsync(pos, buffer, res -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					pos += res.getValue1().intValue();
 				if (ondone != null) ondone.accept(res);
@@ -166,7 +166,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 
 		@Override
 		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
-			return super.writeAsync(pos, buffer, (res) -> {
+			return super.writeAsync(pos, buffer, res -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					pos += res.getValue1().intValue();
 				if (ondone != null) ondone.accept(res);
@@ -211,7 +211,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 	
 	@Override
 	public AsyncWork<Long, IOException> getSizeAsync() {
-		AsyncWork<Long, IOException> sp = new AsyncWork<Long, IOException>();
+		AsyncWork<Long, IOException> sp = new AsyncWork<>();
 		sp.unblockSuccess(Long.valueOf(getSizeSync()));
 		return sp;
 	}
@@ -321,10 +321,10 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 	}
 	
 	protected long skipSync(long n) {
-		long size = getSizeSync();
+		long siz = getSizeSync();
 		long prevPos = pos;
 		pos += n;
-		if (pos > size) pos = size;
+		if (pos > siz) pos = siz;
 		if (pos < 0) pos = 0;
 		return pos - prevPos;
 	}
@@ -412,7 +412,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		if (start + len > s) {
 			int prevLimit = buffer.limit();
 			buffer.limit((int)(prevLimit - ((start + len) - s)));
-			IOUtil.listenOnDone(((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer), (nb) -> {
+			IOUtil.listenOnDone(((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer), nb -> {
 				buffer.limit(prevLimit);
 				int i = nb.intValue();
 				if (!buffer.hasRemaining() || !it.hasNext()) {
@@ -423,9 +423,8 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 			}, sp, ondone);
 			return;
 		}
-		IOUtil.listenOnDone(((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer), (nb) -> {
-			IOUtil.success(Integer.valueOf(nb.intValue() + done), sp, ondone);
-		}, sp, ondone);
+		IOUtil.listenOnDone(((IO.Writable.Seekable)io).writeAsync(r.min + start, buffer),
+			nb -> IOUtil.success(Integer.valueOf(nb.intValue() + done), sp, ondone), sp, ondone);
 	}
 	
 }

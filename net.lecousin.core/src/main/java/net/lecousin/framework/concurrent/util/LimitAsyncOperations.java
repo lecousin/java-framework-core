@@ -116,8 +116,9 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 						AsyncWork<OutputResultType, OutputErrorType> newOp = executor.execute(b.getValue1());
 						lastWrite = newOp;
 						newOp.listenInline(new WriteListener(b.getValue1(), newOp, b.getValue2()));
-					} else
+					} else {
 						isReady = true;
+					}
 				}
 			}
 			if (result != null)

@@ -11,6 +11,6 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 public interface BlockedThreadHandler {
 
 	/** Singal that the current thread is blocked by the given synchronization point. */
-	public void blocked(ISynchronizationPoint<?> synchPoint, long timeout);
+	void blocked(ISynchronizationPoint<?> synchPoint, long timeout);
 	
 }

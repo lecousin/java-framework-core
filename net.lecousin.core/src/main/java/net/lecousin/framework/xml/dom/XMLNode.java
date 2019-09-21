@@ -113,22 +113,22 @@ public abstract class XMLNode implements Node {
 	}
 	
 	@Override
-	public Node appendChild(Node newChild) throws DOMException {
+	public Node appendChild(Node newChild) {
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Operation not allowed");
 	}
 	
 	@Override
-	public Node insertBefore(Node newChild, Node refChild) throws DOMException {
+	public Node insertBefore(Node newChild, Node refChild) {
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Operation not allowed");
 	}
 	
 	@Override
-	public Node removeChild(Node oldChild) throws DOMException {
+	public Node removeChild(Node oldChild) {
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Operation not allowed");
 	}
 	
 	@Override
-	public Node replaceChild(Node newChild, Node oldChild) throws DOMException {
+	public Node replaceChild(Node newChild, Node oldChild) {
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Operation not allowed");
 	}
 
@@ -253,7 +253,7 @@ public abstract class XMLNode implements Node {
 	}
 
 	@Override
-	public short compareDocumentPosition(Node other) throws DOMException {
+	public short compareDocumentPosition(Node other) {
 		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "compareDocumentPosition not supported");
 	}
 	

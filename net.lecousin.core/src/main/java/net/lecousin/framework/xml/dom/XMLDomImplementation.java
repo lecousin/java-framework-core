@@ -14,12 +14,12 @@ public class XMLDomImplementation implements DOMImplementation {
 	public static XMLDomImplementation getInstance() { return instance; }
 
 	@Override
-	public XMLDocumentType createDocumentType(String qualifiedName, String publicId, String systemId) throws DOMException {
+	public XMLDocumentType createDocumentType(String qualifiedName, String publicId, String systemId) {
 		return new XMLDocumentType(null, qualifiedName, publicId, systemId);
 	}
 
 	@Override
-	public XMLDocument createDocument(String namespaceURI, String qualifiedName, DocumentType doctype) throws DOMException {
+	public XMLDocument createDocument(String namespaceURI, String qualifiedName, DocumentType doctype) {
 		XMLDocument doc = new XMLDocument();
 		if (doctype != null) {
 			if (!(doctype instanceof XMLDocumentType))

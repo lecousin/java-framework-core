@@ -77,7 +77,7 @@ public interface SerializationContextPattern {
 		
 		/** Return the attribute. */
 		public Attribute getAttribute(SerializationClass type, SerializationContext context) {
-			if (!matches(type, context))
+			if (!super.matches(type, context))
 				return null;
 			Attribute a = type.getAttributeByOriginalName(attributeName);
 			if (a == null)
@@ -89,11 +89,8 @@ public interface SerializationContextPattern {
 		
 		@Override
 		public boolean matches(SerializationClass type, SerializationContext context, Attribute attribute) {
-			if (!super.matches(type, context, attribute))
-				return false;
-			if (!attribute.getOriginalName().equals(attributeName))
-				return false;
-			return true;
+			return super.matches(type, context, attribute) &&
+				attribute.getOriginalName().equals(attributeName);
 		}
 		
 		@Override

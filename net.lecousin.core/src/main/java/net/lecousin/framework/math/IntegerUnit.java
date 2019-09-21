@@ -15,6 +15,7 @@ import net.lecousin.framework.math.TimeUnit.Millisecond;
 import net.lecousin.framework.math.TimeUnit.Minute;
 import net.lecousin.framework.math.TimeUnit.Second;
 import net.lecousin.framework.plugins.ExtensionPoint;
+import net.lecousin.framework.plugins.ExtensionPoints;
 import net.lecousin.framework.plugins.Plugin;
 
 /** Represent an integer unit. */
@@ -25,7 +26,7 @@ public interface IntegerUnit {
 	@Target({ElementType.FIELD})
 	public @interface Unit {
 		/** Integer unit. */
-		public Class<? extends IntegerUnit> value();
+		Class<? extends IntegerUnit> value();
 	}
 	
 	/** Error when converting from a unit to another. */
@@ -54,11 +55,9 @@ public interface IntegerUnit {
 
 		/** Constructor. */
 		public ConverterRegistry() {
-			instance = this;
 			converters.add(new TimeUnit.Converter());
 		}
 
-		private static ConverterRegistry instance;
 		private ArrayList<Converter> converters = new ArrayList<>();
 		
 		@Override
@@ -76,10 +75,15 @@ public interface IntegerUnit {
 		public void allPluginsLoaded() {
 			// nothing to do
 		}
-		
+
+		private static ConverterRegistry instance;
+
 		/** Conversion. */
 		public static long convert(long value, Class<? extends IntegerUnit> from, Class<? extends IntegerUnit> to)
 		throws UnitConversionException {
+			if (instance == null) {
+				instance = ExtensionPoints.getExtensionPoint(ConverterRegistry.class);
+			}
 			for (Converter c : instance.converters)
 				if (c.supportConversion(from, to))
 					return c.convert(value, from, to);

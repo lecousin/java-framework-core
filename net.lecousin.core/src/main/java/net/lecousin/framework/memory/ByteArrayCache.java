@@ -35,7 +35,7 @@ public class ByteArrayCache implements IMemoryManageable {
 	/** Maximum total size of buffers to keep in this cache. */
 	public int maxTotalSize = 64 * 1024 * 1024;
 	/** Time before a cached buffer can be removed to free memory. */
-	public long timeBeforeToRemove = 5 * 60 * 1000; // every 5 minutes
+	public long timeBeforeToRemove = 5L * 60 * 1000; // every 5 minutes
 
 	private static class ArraysBySize {
 		private TurnArray<byte[]> arrays;

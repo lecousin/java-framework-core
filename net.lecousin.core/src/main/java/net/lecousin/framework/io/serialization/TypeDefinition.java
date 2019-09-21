@@ -40,14 +40,12 @@ public class TypeDefinition {
 					return;
 				}
 			throw new IllegalArgumentException("Unexpected type " + type.getClass() + ": " + type.toString());
-		} else if (type instanceof WildcardType) {
+		} else if ((type instanceof WildcardType) || (type instanceof GenericArrayType)) {
 			base = Object.class;
 			parameters = new ArrayList<>(0);
-		} else if (type instanceof GenericArrayType) {
-			base = Object.class;
-			parameters = new ArrayList<>(0);
-		} else
+		} else {
 			throw new IllegalArgumentException("Unexpected type " + type.getClass() + ": " + type.toString());
+		}
 	}
 	
 	/** Create a type of the given class and generic parameters. */
@@ -74,9 +72,8 @@ public class TypeDefinition {
 			return new TypeDefinition(instanceType);
 		TypeDefinition[] params = new TypeDefinition[types.length];
 		Type superClass = instanceType.getGenericSuperclass();
-		if (superClass != null)
-			if (getTypeParameters(superClass, definition, types, params))
-				return new TypeDefinition(instanceType, params);
+		if (superClass != null && getTypeParameters(superClass, definition, types, params))
+			return new TypeDefinition(instanceType, params);
 		for (Type superInt : instanceType.getGenericInterfaces())
 			if (getTypeParameters(superInt, definition, types, params))
 				return new TypeDefinition(instanceType, params);

@@ -29,7 +29,7 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 	
 	/** Parse from string. */
 	@Parse
-	public FragmentedRangeBigInteger(String string) throws ParseException, NumberFormatException {
+	public FragmentedRangeBigInteger(String string) throws ParseException {
 		if (string == null || string.isEmpty())
 			return;
 		char c = string.charAt(0);
@@ -278,6 +278,7 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 	}
 
 	/** Remove the given range. */
+	@SuppressWarnings("squid:ForLoopCounterChangedCheck") // when removing an element, we need to change it
 	public void removeRange(BigInteger start, BigInteger end) {
 		for (int i = 0; i < size(); ++i) {
 			RangeBigInteger r = get(i);
@@ -291,7 +292,6 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 					BigInteger j = r.max;
 					r.max = start.subtract(BigInteger.ONE);
 					start = j.add(BigInteger.ONE);
-					continue;
 				} else {
 					RangeBigInteger nr = new RangeBigInteger(end.add(BigInteger.ONE), r.max);
 					r.max = start.subtract(BigInteger.ONE);
@@ -306,7 +306,6 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 					remove(i);
 					start = r.max.add(BigInteger.ONE);
 					i--;
-					continue;
 				} else {
 					r.min = end.add(BigInteger.ONE);
 					return;
@@ -319,7 +318,6 @@ public class FragmentedRangeBigInteger extends LinkedList<RangeBigInteger> {
 					remove(i);
 					start = r.max.add(BigInteger.ONE);
 					i--;
-					continue;
 				} else {
 					r.min = end.add(BigInteger.ONE);
 					return;

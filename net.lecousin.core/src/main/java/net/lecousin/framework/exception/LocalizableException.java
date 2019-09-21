@@ -27,14 +27,16 @@ public class LocalizableException extends Exception {
 	/** Constructor. */
 	public LocalizableException(String message, Throwable cause) {
 		super(message, cause);
+		string = null;
 	}
 
 	/** Constructor. */
 	public LocalizableException(String message) {
 		super(message);
+		string = null;
 	}
 	
-	private ILocalizableString string;
+	private final ILocalizableString string;
 	
 	@Override
 	public String getMessage() {

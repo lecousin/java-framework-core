@@ -18,11 +18,11 @@ import net.lecousin.framework.util.Factory;
 public @interface Instantiation {
 
 	/** Path of the field to use as discriminator. */
-	public String discriminator();
+	String discriminator();
 	
 	/** Factory to create an instance based on the discriminator. */
 	@SuppressWarnings("rawtypes")
-	public Class<? extends Factory> factory();
+	Class<? extends Factory> factory();
 	
 	/** Convert an annotation into an AttributeInstantiation rule. */
 	public static class ToRule implements AttributeAnnotationToRuleOnType<Instantiation> {

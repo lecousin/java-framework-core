@@ -23,6 +23,8 @@ import net.lecousin.framework.util.Pair;
  * @param <TError> type of error
  */
 public class AsyncWork<T,TError extends Exception> implements ISynchronizationPoint<TError>, Future<T> {
+	
+	private static final String TO_STRING_INLINE = "AsyncWork.listenInline: ";
 
 	/** Constructor. */
 	public AsyncWork() {}
@@ -46,13 +48,13 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	 */
 	public static interface AsyncWorkListener<T, TError extends Exception> {
 		/** Called when the AsyncWork is unblocked with a result. */
-		public void ready(T result);
+		void ready(T result);
 		
 		/** Called when the AsyncWork is unblocked by an error. */
-		public void error(TError error);
+		void error(TError error);
 		
 		/** Called when the AsyncWork is unblocked by a cancellation. */
-		public void cancelled(CancelException event);
+		void cancelled(CancelException event);
 	}
 	
 	/** Implementation with a listener and an ISynchronizationPoint for error or cancel event.
@@ -207,7 +209,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			
 			@Override
 			public String toString() {
-				return "AsyncWork.listenInline: " + onready;
+				return TO_STRING_INLINE + onready;
 			}
 		});
 	}
@@ -232,7 +234,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			
 			@Override
 			public String toString() {
-				return "AsyncWork.listenInline: " + onready;
+				return TO_STRING_INLINE + onready;
 			}
 		});
 	}
@@ -257,7 +259,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			
 			@Override
 			public String toString() {
-				return "AsyncWork.listenInline: " + onready;
+				return TO_STRING_INLINE + onready;
 			}
 		});
 	}
@@ -282,7 +284,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			
 			@Override
 			public String toString() {
-				return "AsyncWork.listenInline: " + r;
+				return TO_STRING_INLINE + r;
 			}
 		});
 	}
@@ -297,15 +299,17 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			
 			@Override
 			public void error(TError error) {
+				// ignore
 			}
 			
 			@Override
 			public void cancelled(CancelException event) {
+				// ignore
 			}
 			
 			@Override
 			public String toString() {
-				return "AsyncWork.listenInline: " + onSuccess;
+				return TO_STRING_INLINE + onSuccess;
 			}
 		});
 	}
@@ -345,38 +349,38 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listenersInline = new ArrayList<>(2);
 		}
 		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class);
-		while (true) {
+		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
 					try { listeners.get(i).ready(result); }
-					catch (Throwable t) { log.error(
-						"Exception thrown by an inline listener of AsyncWork: " + listeners.get(i), t); }
+					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
 			else
 				for (int i = 0; i < listeners.size(); ++i) {
 					long start = System.nanoTime();
 					try { listeners.get(i).ready(result); }
-					catch (Throwable t) { log.error(
-						"Exception thrown by an inline listener of AsyncWork: " + listeners.get(i), t); }
+					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
 					long time = System.nanoTime() - start;
 					if (time > 1000000) // more than 1ms
 						log.debug("Listener ready took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
 				}
-			synchronized (this) {
-				if (listenersInline.isEmpty()) {
-					listenersInline = null;
-					listeners = null;
-					this.notifyAll();
-					break;
-				}
-				listeners.clear();
-				ArrayList<AsyncWorkListener<T,TError>> tmp = listeners;
-				listeners = listenersInline;
-				listenersInline = tmp;
-			}
-		}
+			listeners = getNextListeners(listeners);
+		} while (listeners != null);
 	}
-	
+
+	private synchronized ArrayList<AsyncWorkListener<T,TError>> getNextListeners(ArrayList<AsyncWorkListener<T,TError>> previousListeners) {
+		if (listenersInline.isEmpty()) {
+			listenersInline = null;
+			this.notifyAll();
+			return null;
+		}
+		ArrayList<AsyncWorkListener<T,TError>> nextListeners = listenersInline;
+		previousListeners.clear();
+		listenersInline = previousListeners;
+		return nextListeners;
+	}
+
 	/** Unblock this AsyncWork with an error. Equivalent to the method error. */
+	@SuppressWarnings("squid:S3776") // complexity
 	public final void unblockError(TError error) {
 		ArrayList<AsyncWorkListener<T,TError>> listeners;
 		synchronized (this) {
@@ -391,14 +395,14 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listenersInline = new ArrayList<>(2);
 		}
 		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class);
-		while (true) {
+		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
 					try { listeners.get(i).error(error); }
-					catch (Throwable t) { log.error(
-							"Exception thrown by an inline listener of AsyncWork, cancel it: " + listeners.get(i), t);
+					catch (Exception t) {
+						logListenerError(log, listeners.get(i), t);
 						try { listeners.get(i).cancelled(new CancelException("Error in listener", t)); }
-						catch (Throwable t2) { log.error(
+						catch (Exception t2) { log.error(
 							"Exception thrown while cancelling inline listener of AsyncWork after error: "
 							+ listeners.get(i), t2); }
 					}
@@ -406,11 +410,10 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 				for (int i = 0; i < listeners.size(); ++i) {
 					long start = System.nanoTime();
 					try { listeners.get(i).error(error); }
-					catch (Throwable t) { log.error(
-							"Exception thrown by an inline listener of AsyncWork, cancel it: "
-							+ listeners.get(i), t);
+					catch (Exception t) {
+						logListenerError(log, listeners.get(i), t);
 						try { listeners.get(i).cancelled(new CancelException("Error in listener", t)); }
-						catch (Throwable t2) { log.error(
+						catch (Exception t2) { log.error(
 							"Exception thrown while cancelling inline listener of AsyncWork after error: "
 							+ listeners.get(i), t2); }
 					}
@@ -418,19 +421,8 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 					if (time > 1000000) // more than 1ms
 						log.debug("Listener error took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
 				}
-			synchronized (this) {
-				if (listenersInline.isEmpty()) {
-					listenersInline = null;
-					listeners = null;
-					this.notifyAll();
-					break;
-				}
-				listeners.clear();
-				ArrayList<AsyncWorkListener<T,TError>> tmp = listeners;
-				listeners = listenersInline;
-				listenersInline = tmp;
-			}
-		}
+			listeners = getNextListeners(listeners);
+		} while (listeners != null);
 	}
 	
 	@Override
@@ -453,35 +445,22 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			listenersInline = new ArrayList<>(2);
 		}
 		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class);
-		while (true) {
+		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
 					try { listeners.get(i).cancelled(event); }
-					catch (Throwable t) { log.error(
-						"Exception thrown by an inline listener of AsyncWork: " + listeners.get(i), t); }
+					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
 			else
 				for (int i = 0; i < listeners.size(); ++i) {
 					long start = System.nanoTime();
 					try { listeners.get(i).cancelled(event); }
-					catch (Throwable t) { log.error(
-						"Exception thrown by an inline listener of AsyncWork: " + listeners.get(i), t); }
+					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
 					long time = System.nanoTime() - start;
 					if (time > 1000000) // more than 1ms
 						log.debug("Listener cancelled took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
 				}
-			synchronized (this) {
-				if (listenersInline.isEmpty()) {
-					listenersInline = null;
-					listeners = null;
-					this.notifyAll();
-					break;
-				}
-				listeners.clear();
-				ArrayList<AsyncWorkListener<T,TError>> tmp = listeners;
-				listeners = listenersInline;
-				listenersInline = tmp;
-			}
-		}
+			listeners = getNextListeners(listeners);
+		} while (listeners != null);
 	}
 	
 	@Override
@@ -503,6 +482,7 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S2274")
 	public final void block(long timeout) {
 		Thread t;
 		BlockedThreadHandler blockedHandler;
@@ -514,10 +494,17 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 				if (timeout <= 0) {
 					while (!unblocked || listenersInline != null)
 						try { this.wait(0); }
-						catch (InterruptedException e) { return; }
-				} else
+						catch (InterruptedException e) {
+							Thread.currentThread().interrupt();
+							return;
+						}
+				} else {
 					try { this.wait(timeout); }
-					catch (InterruptedException e) { return; }
+					catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return;
+					}
+				}
 			}
 		}
 		if (blockedHandler != null)
@@ -542,7 +529,10 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			if (blockedHandler == null)
 				while (!unblocked || listenersInline != null)
 					try { this.wait(timeout < 0 ? 0 : timeout); }
-					catch (InterruptedException e) { return null; }
+					catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return null;
+					}
 		}
 		if (blockedHandler != null)
 			blockedHandler.blocked(this, timeout);
@@ -557,11 +547,14 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			while (!unblocked || listenersInline != null) {
 				long start = System.currentTimeMillis();
 				try { this.wait(logAfter + 1000); }
-				catch (InterruptedException e) { return; }
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
+				}
 				if (System.currentTimeMillis() - start <= logAfter)
 					continue;
-				System.err.println("Still blocked after " + (logAfter / 1000) + "s.");
-				new Exception("").printStackTrace(System.err);
+				Logger logger = LCCore.get().getThreadingLogger();
+				logger.warn("Still blocked after " + (logAfter / 1000) + "s.", new Exception(""));
 			}
 		}
 	}

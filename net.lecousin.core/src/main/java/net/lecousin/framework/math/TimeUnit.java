@@ -32,6 +32,7 @@ public interface TimeUnit extends IntegerUnit {
 	public static class Converter implements IntegerUnit.Converter {
 
 		@Override
+		@SuppressWarnings("squid:S1126")
 		public boolean supportConversion(Class<? extends IntegerUnit> from, Class<? extends IntegerUnit> to) {
 			if (!from.equals(Millisecond.class) &&
 				!from.equals(Second.class) &&

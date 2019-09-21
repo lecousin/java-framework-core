@@ -13,58 +13,58 @@ import net.lecousin.framework.mutable.MutableLong;
 public interface WorkProgress {
 
 	/** Set the total amount of work to be done. */
-	public void setAmount(long work);
+	void setAmount(long work);
 	
 	/** Return the total amount of work to be done. */
-	public long getAmount();
+	long getAmount();
 	
 	/** Set the position (amount of work already done). */
-	public void setPosition(long position);
+	void setPosition(long position);
 	
 	/** Return the current position, which is the current amount of work already done. */
-	public long getPosition();
+	long getPosition();
 	
 	/** Return the amount of remaining work. */
-	public long getRemainingWork();
+	long getRemainingWork();
 	
 	/** Add an amount of work already done. */
-	public void progress(long amountDone);
+	void progress(long amountDone);
 	
 	/** Signal all the work has been done. */
-	public void done();
+	void done();
 	
 	/** Signal an error. */
-	public void error(Exception error);
+	void error(Exception error);
 	
 	/** Cancel the underlying work. */
-	public void cancel(CancelException reason);
+	void cancel(CancelException reason);
 	
 	/** Return a synchronization point that will be unblocked by one of the method done, error or cancel. */
-	public ISynchronizationPoint<Exception> getSynch();
+	ISynchronizationPoint<Exception> getSynch();
 	
 	/** Add a listener to call on every change in the progress. */
-	public void listen(Runnable onchange);
+	void listen(Runnable onchange);
 
 	/** Remove a listener to call on every change in the progress. */
-	public void unlisten(Runnable onchange);
+	void unlisten(Runnable onchange);
 	
 	/** Stop triggering events to listener, this may be useful before doing several modifications. */
-	public void interruptEvents();
+	void interruptEvents();
 	
 	/** Resume triggering events after a call to interruptEvents(), and optionally trigger an event now. */
-	public void resumeEvents(boolean trigger);
+	void resumeEvents(boolean trigger);
 	
 	/** Return the text describing the work being done. */
-	public String getText();
+	String getText();
 
 	/** Set the text describing the work being done. */
-	public void setText(String text);
+	void setText(String text);
 	
 	/** Return a sub-text describing the work being done. */
-	public String getSubText();
+	String getSubText();
 	
 	/** Set the sub-text describing the work being done. */
-	public void setSubText(String text);
+	void setSubText(String text);
 	
 	/** Interface for a multi-task progress, which is composed of sub-WorkProgress. */
 	public interface MultiTask {
@@ -72,10 +72,10 @@ public interface WorkProgress {
 		/** Interface for a sub-task. */
 		public interface SubTask {
 			/** Amount of work on the parent done by this sub-task. */
-			public long getWorkOnParent();
+			long getWorkOnParent();
 			
 			/** Progress of this sub-task. */
-			public WorkProgress getProgress();
+			WorkProgress getProgress();
 			
 			/** Simple implementation of SubTask. */
 			public static class Wrapper implements SubTask {
@@ -103,50 +103,44 @@ public interface WorkProgress {
 		}
 		
 		/** Return the sub-WorkProgress. */
-		public List<? extends SubTask> getTasks();
+		List<? extends SubTask> getTasks();
 		
 		/** Add the given sub-progress as a sub-task for the given amount of work (this amount is added to the total amount to be done). */
-		public SubTask addTask(WorkProgress task, long amount);
+		SubTask addTask(WorkProgress task, long amount);
 		
 		/** Remove a sub-task, but the amount of the parent remains unchanged. */
-		public void removeTask(SubTask subTask);
+		void removeTask(SubTask subTask);
 	}
 	
 	/** Link this WorkProgress with the given synchronization point: once the synchronization point is unblocked,
 	 * one of the done, error or cancel method is called.
 	 */
-	public static void linkTo(WorkProgress progress, ISynchronizationPoint<?> sp) {
-		sp.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (sp.hasError()) progress.error(sp.getError());
-				else if (sp.isCancelled()) progress.cancel(sp.getCancelEvent());
-				else progress.done();
-			}
+	static void linkTo(WorkProgress progress, ISynchronizationPoint<?> sp) {
+		sp.listenInline(() -> {
+			if (sp.hasError()) progress.error(sp.getError());
+			else if (sp.isCancelled()) progress.cancel(sp.getCancelEvent());
+			else progress.done();
 		});
 	}
 	
 	/** Link this WorkProgress with the given task: once the task is done,
 	 * one of the done, error or cancel method is called.
 	 */
-	public static void linkTo(WorkProgress progress, Task<?,?> task) {
+	static void linkTo(WorkProgress progress, Task<?,?> task) {
 		linkTo(progress, task.getOutput());
 	}
 	
 	/** Once the given sub-task is done, the given amount of work is added to the progress. */
-	public static void link(WorkProgress subTask, WorkProgress progress, long work) {
+	static void link(WorkProgress subTask, WorkProgress progress, long work) {
 		MutableLong sent = new MutableLong(0);
-		subTask.getSynch().listenInline(new Runnable() {
-			@Override
-			public void run() {
-				if (subTask.getSynch().hasError())
-					progress.error(subTask.getSynch().getError());
-				else if (subTask.getSynch().isCancelled())
-					progress.cancel(subTask.getSynch().getCancelEvent());
-				else {
-					progress.progress(work - sent.get());
-					sent.set(work);
-				}
+		subTask.getSynch().listenInline(() -> {
+			if (subTask.getSynch().hasError())
+				progress.error(subTask.getSynch().getError());
+			else if (subTask.getSynch().isCancelled())
+				progress.cancel(subTask.getSynch().getCancelEvent());
+			else {
+				progress.progress(work - sent.get());
+				sent.set(work);
 			}
 		});
 		if (subTask.getSynch().isUnblocked()) return;

@@ -58,7 +58,7 @@ public class TestDirectoryTasks extends LCCoreAbstractTest {
 		Assert.assertTrue(file.createNewFile());
 		
 		DirectoryReader.Request request = new DirectoryReader.Request();
-		request.getCreation().getIsSymbolicLink().getLastAccess().getLastModified().getSize();
+		request.readCreation().readIsSymbolicLink().readLastAccess().readLastModified().readSize();
 		DirectoryReader reader = new DirectoryReader(root.toFile(), Task.PRIORITY_NORMAL, request);
 		Assert.assertEquals(root.toFile(), reader.getDirectory());
 		reader.start().getOutput().blockThrow(0);

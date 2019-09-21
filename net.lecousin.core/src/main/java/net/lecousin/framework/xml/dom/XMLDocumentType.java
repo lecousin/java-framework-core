@@ -83,6 +83,7 @@ public class XMLDocumentType extends XMLNode implements DocumentType {
 	
 	@Override
 	public void setTextContent(String textContent) {
+		// nothing
 	}
 	
 }

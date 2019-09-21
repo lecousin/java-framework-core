@@ -2,6 +2,7 @@ package net.lecousin.framework.io.buffering;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -44,6 +45,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 			
 			@Override
 			public void cancelled(CancelException event) {
+				// nothing
 			}
 		});
 	}
@@ -117,7 +119,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 			canRead.block(0);
 			synchronized (this) {
 				if (error != null) throw error;
-				if (io == null) throw new IOException("IO closed");
+				if (io == null) throw new ClosedChannelException();
 				// check if we reached the beginning of the file
 				if (bufferPosInFile == 0 && posInBuffer == minInBuffer) return -1;
 				if (posInBuffer == minInBuffer) {
@@ -144,7 +146,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 			canRead.block(0);
 			synchronized (this) {
 				if (error != null) throw error;
-				if (io == null) throw new IOException("IO closed");
+				if (io == null) throw new ClosedChannelException();
 				// check if we reached the end of the file
 				if (bufferPosInFile + (maxInBuffer - minInBuffer) == fileSize && posInBuffer == maxInBuffer) return -1;
 				if (posInBuffer == maxInBuffer) {
@@ -172,7 +174,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 			canRead.block(0);
 			synchronized (this) {
 				if (error != null) throw error;
-				if (io == null) throw new IOException("IO closed");
+				if (io == null) throw new ClosedChannelException();
 				// check if we reached the end of the file
 				if (bufferPosInFile + (maxInBuffer - minInBuffer) == fileSize && posInBuffer == maxInBuffer) return -1;
 				if (posInBuffer == maxInBuffer) {
@@ -207,7 +209,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 			canRead.block(0);
 			synchronized (this) {
 				if (error != null) throw error;
-				if (io == null) throw new IOException("IO closed");
+				if (io == null) throw new ClosedChannelException();
 				// check if we reached the end of the file
 				if (bufferPosInFile + (maxInBuffer - minInBuffer) == fileSize && posInBuffer == maxInBuffer) return done;
 				if (posInBuffer == maxInBuffer) {

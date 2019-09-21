@@ -1,5 +1,6 @@
 package net.lecousin.framework.core.tests.util;
 
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
@@ -90,7 +91,7 @@ public class TestUnprotectedString extends TestIString {
 	}
 	
 	@Test(timeout=30000)
-	public void test() {
+	public void test() throws CharacterCodingException {
 		UnprotectedString s = new UnprotectedString("Hello");
 		/*ByteBuffer bb = */s.encode(StandardCharsets.UTF_8);
 		// TODO check

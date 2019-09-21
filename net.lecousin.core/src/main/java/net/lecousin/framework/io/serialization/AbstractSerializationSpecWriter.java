@@ -57,9 +57,7 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 				sp = specifyValue(null, new TypeDefinition(type), rules);
 			else
 				sp = specifyAnyValue(null);
-			sp.listenInlineSP(() -> {
-				finalizeSpecWriter().listenInlineSP(result);
-			}, result);
+			sp.listenInlineSP(() -> finalizeSpecWriter().listenInlineSP(result), result);
 		}), result);
 		return result;
 	}
@@ -258,9 +256,7 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 			else specifyTypeAttribute(context, attributes, index + 1, rules, sp);
 			return;
 		}
-		s.listenAsyncSP(new SpecTask(() -> {
-			specifyTypeAttribute(context, attributes, index + 1, rules, sp);
-		}), sp);
+		s.listenAsyncSP(new SpecTask(() -> specifyTypeAttribute(context, attributes, index + 1, rules, sp)), sp);
 	}
 	
 	protected abstract ISynchronizationPoint<? extends Exception> specifyTypeAttribute(AttributeContext context, List<SerializationRule> rules);

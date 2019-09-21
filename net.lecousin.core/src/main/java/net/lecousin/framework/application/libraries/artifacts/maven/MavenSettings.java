@@ -2,6 +2,7 @@ package net.lecousin.framework.application.libraries.artifacts.maven;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +31,7 @@ public class MavenSettings {
 	}
 	
 	/** Load a settings file. */
-	public static MavenSettings load(File file) throws Exception {
+	public static MavenSettings load(File file) throws IOException, XMLStreamException, LibraryManagementException {
 		try (FileInputStream input = new FileInputStream(file)) {
 			return load(input);
 		}

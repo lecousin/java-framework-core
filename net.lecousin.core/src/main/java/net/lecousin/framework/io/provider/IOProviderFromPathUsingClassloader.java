@@ -30,7 +30,7 @@ public class IOProviderFromPathUsingClassloader implements IOProviderFrom.Readab
 			if (m != null) {
 				IOProvider.Readable provider;
 				try { provider = (IOProvider.Readable)m.invoke(loader, path); }
-				catch (Throwable t) { provider = null; }
+				catch (Exception t) { provider = null; }
 				if (provider != null)
 					return provider;
 			}
@@ -40,7 +40,6 @@ public class IOProviderFromPathUsingClassloader implements IOProviderFrom.Readab
 			return null;
 		String p = path;
 		return new IOProvider.Readable() {
-			@SuppressWarnings("resource")
 			@Override
 			public IO.Readable provideIOReadable(byte priority) throws FileNotFoundException {
 				InputStream in = loader.getResourceAsStream(p);

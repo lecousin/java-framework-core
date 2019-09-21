@@ -28,7 +28,7 @@ public class FragmentedRangeInteger extends LinkedList<RangeInteger> {
 	
 	/** Parse from string. */
 	@Parse
-	public FragmentedRangeInteger(String string) throws ParseException, NumberFormatException {
+	public FragmentedRangeInteger(String string) throws ParseException {
 		if (string == null || string.isEmpty())
 			return;
 		char c = string.charAt(0);
@@ -179,8 +179,7 @@ public class FragmentedRangeInteger extends LinkedList<RangeInteger> {
 		for (RangeInteger r : this) {
 			if (r.min > start) return false;
 			if (r.max < start) continue;
-			if (r.max < end) return false;
-			return true;
+			return r.max >= end;
 		}
 		return false;
 	}
@@ -270,6 +269,7 @@ public class FragmentedRangeInteger extends LinkedList<RangeInteger> {
 	}
 
 	/** Remove the given range. */
+	@SuppressWarnings("squid:ForLoopCounterChangedCheck") // when removing an element, we need to change it
 	public void remove(int start, int end) {
 		for (int i = 0; i < size(); ++i) {
 			RangeInteger r = get(i);
@@ -283,7 +283,6 @@ public class FragmentedRangeInteger extends LinkedList<RangeInteger> {
 					int j = r.max;
 					r.max = start - 1;
 					start = j + 1;
-					continue;
 				} else {
 					RangeInteger nr = new RangeInteger(end + 1, r.max);
 					r.max = start - 1;
@@ -298,7 +297,6 @@ public class FragmentedRangeInteger extends LinkedList<RangeInteger> {
 					remove(i);
 					start = r.max + 1;
 					i--;
-					continue;
 				} else {
 					r.min = end + 1;
 					return;
@@ -311,7 +309,6 @@ public class FragmentedRangeInteger extends LinkedList<RangeInteger> {
 					remove(i);
 					start = r.max + 1;
 					i--;
-					continue;
 				} else {
 					r.min = end + 1;
 					return;

@@ -1,5 +1,6 @@
 package net.lecousin.framework.locale.annotations;
 
+import java.io.Serializable;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Member;
 
@@ -20,16 +21,14 @@ public final class LocalizableAnnotations {
 			String ns = p.namespace();
 			if (ns.length() == 0) {
 				LocalizableNamespace lns = element.getAnnotation(LocalizableNamespace.class);
-				if (lns == null) {
-					if (element instanceof Member)
-						lns = ((Member)element).getDeclaringClass().getAnnotation(LocalizableNamespace.class);
-				}
+				if (lns == null && element instanceof Member)
+					lns = ((Member)element).getDeclaringClass().getAnnotation(LocalizableNamespace.class);
 				if (lns != null)
 					ns = lns.value();
 			}
 			String[] values = p.values();
-			Object[] v = new Object[values.length];
-			for (int i = 0; i < values.length; ++i) v[i] = values[i];
+			Serializable[] v = new Serializable[values.length];
+			System.arraycopy(values, 0, v, 0, values.length);
 			return new LocalizableString(ns, p.key(), v);
 		}
 		for (Property p : element.getAnnotationsByType(Property.class)) {

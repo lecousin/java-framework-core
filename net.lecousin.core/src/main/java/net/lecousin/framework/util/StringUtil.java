@@ -1,6 +1,7 @@
 package net.lecousin.framework.util;
 
 import java.math.BigInteger;
+import java.text.ParseException;
 
 /**
  * Utility methods for String.
@@ -145,7 +146,7 @@ public final class StringUtil {
 				if (i > 0) s.append(", ");
 				s.append(values[i].name());
 			}
-		} catch (Throwable t) { /* ignore */ }
+		} catch (Exception t) { /* ignore */ }
 		return s.toString();
 	}
 	
@@ -154,12 +155,12 @@ public final class StringUtil {
 		if (size < 1024)
 			return Long.toString(size);
 		if (size < 1024 * 1024)
-			return String.format("%.2f KB", new Double(((double)size) / 1024));
+			return String.format("%.2f KB", Double.valueOf(((double)size) / 1024));
 		if (size < 1024L * 1024 * 1024)
-			return String.format("%.2f MB", new Double(((double)size) / (1024 * 1024)));
+			return String.format("%.2f MB", Double.valueOf(((double)size) / (1024 * 1024)));
 		if (size < 1024L * 1024 * 1024 * 1024)
-			return String.format("%.2f GB", new Double(((double)size) / (1024 * 1024 * 1024)));
-		return String.format("%.2f TB", new Double(((double)size) / (1024L * 1024 * 1024 * 1024)));
+			return String.format("%.2f GB", Double.valueOf(((double)size) / (1024 * 1024 * 1024)));
+		return String.format("%.2f TB", Double.valueOf(((double)size) / (1024L * 1024 * 1024 * 1024)));
 	}
 	
 	/** Create a string for the given size, expressed in bytes or KB or MB or GB or TB, with 2 decimals. */
@@ -178,14 +179,13 @@ public final class StringUtil {
 	}
 	
 	/** Parse the given string containing a size with a unit (B for bytes, K for KB...). */
-	public static long parseSize(String s) throws NumberFormatException {
+	@SuppressWarnings("squid:S3776") // complexity
+	public static long parseSize(String s) throws ParseException {
 		int len = s.length();
-		long value;
 		char c = s.charAt(0);
-		if (c >= '0' && c <= '9')
-			value = c - '0';
-		else
-			throw new NumberFormatException("A size must start with a digit: " + s);
+		if (c < '0' || c > '9')
+			throw new ParseException("A size must start with a digit: " + s, 0);
+		long value = (long)c - '0';
 		int pos = 1;
 		// read digits
 		while (pos < len) {
@@ -208,7 +208,11 @@ public final class StringUtil {
 			// decimal
 			int i = pos + 1;
 			while (i < len && Character.isDigit(s.charAt(i))) i++;
-			dvalue = Double.valueOf(Long.toString(value) + s.substring(pos, i));
+			try {
+				dvalue = Double.valueOf(Long.toString(value) + s.substring(pos, i));
+			} catch (NumberFormatException e) {
+				throw new ParseException("Invalid size number: " + s, pos);
+			}
 			pos = i;
 			if (pos == len) return value;
 			// skip spaces
@@ -228,7 +232,7 @@ public final class StringUtil {
 			return dvalue != null ? (long)(dvalue.doubleValue() * 1024 * 1024 * 1024) : value * 1024 * 1024 * 1024;
 		if (c == 'T')
 			return dvalue != null ? (long)(dvalue.doubleValue() * 1024 * 1024 * 1024 * 1024) : value * 1024 * 1024 * 1024 * 1024;
-		throw new NumberFormatException("Invalid size unit: " + s);
+		throw new ParseException("Invalid size unit: " + s, pos);
 	}
 	
 	/** Create a string for the given duration. */

@@ -51,8 +51,8 @@ public class IOWritePool {
 	public SynchronizationPoint<IOException> onDone() {
 		synchronized (buffers) {
 			if (writing == null) return new SynchronizationPoint<>(true);
-			if (writing.hasError()) return new SynchronizationPoint<IOException>(writing.getError());
-			if (writing.isCancelled()) return new SynchronizationPoint<IOException>(writing.getCancelEvent());
+			if (writing.hasError()) return new SynchronizationPoint<>(writing.getError());
+			if (writing.isCancelled()) return new SynchronizationPoint<>(writing.getCancelEvent());
 			if (waitDone == null) waitDone = new SynchronizationPoint<>();
 		}
 		return waitDone;

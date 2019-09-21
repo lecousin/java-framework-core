@@ -30,7 +30,7 @@ public class XMLText extends XMLCharacterData implements Text {
 	}
 
 	@Override
-	public XMLText splitText(int offset) throws DOMException {
+	public XMLText splitText(int offset) {
 		if (parent == null)
 			throw new DOMException(DOMException.WRONG_DOCUMENT_ERR, "Cannot split a text node which has no parent");
 		String s;
@@ -83,7 +83,7 @@ public class XMLText extends XMLCharacterData implements Text {
 	}
 
 	@Override
-	public XMLText replaceWholeText(String content) throws DOMException {
+	public XMLText replaceWholeText(String content) {
 		setData(content);
 		if (parent == null) return this;
 		while (getPreviousSibling() instanceof XMLText)
