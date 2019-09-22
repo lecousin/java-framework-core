@@ -16,20 +16,47 @@ public class Tree<T> {
 	 * @param <T> type of element
 	 */
 	public static class Node<T> {
+		private Node(T element, Tree<T> subNodes) {
+			this.element = element;
+			this.subNodes = subNodes;
+		}
+		
 		private T element;
-		private Tree<T> subNodes = new Tree<>();
+		private Tree<T> subNodes;
 		
 		public T getElement() { return element; }
 		
 		public Tree<T> getSubNodes() { return subNodes; }
 	}
 	
+	/** Tree with a reference to the parent.
+	 * @param <T> type of element
+	 */
+	public static class WithParent<T> extends Tree<T> {
+		/** Constructor. */
+		public WithParent(WithParent<T> parent) {
+			this.parent = parent;
+		}
+		
+		private WithParent<T> parent;
+		
+		public WithParent<T> getParent() { return parent; }
+		
+		@Override
+		protected WithParent<T> newSubTree() {
+			return new WithParent<>(this);
+		}
+	}
+	
 	private ArrayList<Node<T>> nodes = new ArrayList<>();
+	
+	protected Tree<T> newSubTree() {
+		return new Tree<>();
+	}
 	
 	/** Append a new node with the given element. */
 	public Node<T> add(T element) {
-		Node<T> node = new Node<>();
-		node.element = element;
+		Node<T> node = new Node<>(element, newSubTree());
 		nodes.add(node);
 		return node;
 	}

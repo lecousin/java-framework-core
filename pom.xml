@@ -17,7 +17,7 @@
   </modules>
   
   <properties>
-  	<sonar.exclusions>**/src/test/**/*</sonar.exclusions>
+  	<sonar.test.exclusions>**/src/test/**/*</sonar.test.exclusions>
   	<sonar.coverage.exclusions>
   		**/application/launcher/*,
 		**/net/lecousin/framework/application/libraries/classloader/*,

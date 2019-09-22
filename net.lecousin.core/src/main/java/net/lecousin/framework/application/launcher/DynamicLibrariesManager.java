@@ -38,7 +38,7 @@ import net.lecousin.framework.application.libraries.classloader.AppClassLoader;
 import net.lecousin.framework.application.libraries.classpath.LoadLibraryExtensionPointsFile;
 import net.lecousin.framework.application.libraries.classpath.LoadLibraryPluginsFile;
 import net.lecousin.framework.collections.CollectionsUtil;
-import net.lecousin.framework.collections.TreeWithParent;
+import net.lecousin.framework.collections.Tree;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
@@ -282,8 +282,8 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		app.getDefaultLogger().debug("Building dependencies tree");
 		if (splash != null) splash.setText("Analyzing dependencies");
 
-		TreeWithParent<DependencyNode> tree = new TreeWithParent<>(null);
-		Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts = new HashMap<>();
+		Tree.WithParent<DependencyNode> tree = new Tree.WithParent<>(null);
+		Map<String, Map<String, List<Tree.WithParent.Node<DependencyNode>>>> artifacts = new HashMap<>();
 		JoinPoint<NoException> treeDone = new JoinPoint<>();
 		buildDependenciesTree(descr, tree, artifacts, new ArrayList<>(0), treeDone, addPlugins, splash, stepDependencies);
 		treeDone.start();
@@ -314,8 +314,8 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 
 	@SuppressWarnings({"squid:S2445", "squid:S00107"})
 	private void buildDependenciesTree(
-		LibraryDescriptor descr, TreeWithParent<DependencyNode> tree,
-		Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts,
+		LibraryDescriptor descr, Tree.WithParent<DependencyNode> tree,
+		Map<String, Map<String, List<Tree.WithParent.Node<DependencyNode>>>> artifacts,
 		Collection<Pair<String, String>> exclusions, JoinPoint<NoException> jp,
 		List<LibraryDescriptor> addPlugins,
 		WorkProgress progress, long work) {
@@ -351,16 +351,16 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	
 	@SuppressWarnings("squid:S00107") // number of arguments
 	private void buildDependenciesTreeForDependency(
-		LibraryDescriptor descr, TreeWithParent<DependencyNode> tree,
-		Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts,
+		LibraryDescriptor descr, Tree.WithParent<DependencyNode> tree,
+		Map<String, Map<String, List<Tree.WithParent.Node<DependencyNode>>>> artifacts,
 		Collection<Pair<String, String>> exclusions, JoinPoint<NoException> jp,
 		LibraryDescriptor.Dependency dep,
 		WorkProgress progress, long step
 	) {
 		DependencyNode node = createDependencyNode(descr, dep);
-		TreeWithParent.Node<DependencyNode> n;
+		Tree.WithParent.Node<DependencyNode> n;
 		synchronized (tree) { n = tree.add(node); }
-		List<TreeWithParent.Node<DependencyNode>> l = getDependenciesListFor(dep, n, artifacts);
+		List<Tree.WithParent.Node<DependencyNode>> l = getDependenciesListFor(dep, n, artifacts);
 		jp.addToJoin(1);
 		node.getDescriptor().listenInline(() -> {
 			if (node.getDescriptor().getResult() != null) {
@@ -368,8 +368,8 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 				excl.addAll(exclusions);
 				excl.addAll(dep.getExcludedDependencies());
 				if (progress != null) progress.progress(step / 2);
-				buildDependenciesTree(node.getDescriptor().getResult(), n.getSubNodes(), artifacts, excl,
-					jp, null, progress, step - step / 2);
+				buildDependenciesTree(node.getDescriptor().getResult(), (Tree.WithParent<DependencyNode>)n.getSubNodes(),
+					artifacts, excl, jp, null, progress, step - step / 2);
 			} else {
 				if (progress != null) progress.progress(step);
 				if (dep.isOptional()) {
@@ -414,17 +414,17 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		return node;
 	}
 	
-	private static List<TreeWithParent.Node<DependencyNode>> getDependenciesListFor(
-		LibraryDescriptor.Dependency dep, TreeWithParent.Node<DependencyNode> n,
-		Map<String,Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts
+	private static List<Tree.WithParent.Node<DependencyNode>> getDependenciesListFor(
+		LibraryDescriptor.Dependency dep, Tree.WithParent.Node<DependencyNode> n,
+		Map<String,Map<String, List<Tree.WithParent.Node<DependencyNode>>>> artifacts
 	) {
 		synchronized (artifacts) {
-			Map<String, List<TreeWithParent.Node<DependencyNode>>> group = artifacts.get(dep.getGroupId());
+			Map<String, List<Tree.WithParent.Node<DependencyNode>>> group = artifacts.get(dep.getGroupId());
 			if (group == null) {
 				group = new HashMap<>();
 				artifacts.put(dep.getGroupId(), group);
 			}
-			List<TreeWithParent.Node<DependencyNode>> list = group.get(dep.getArtifactId());
+			List<Tree.WithParent.Node<DependencyNode>> list = group.get(dep.getArtifactId());
 			if (list == null) {
 				list = new LinkedList<>();
 				group.put(dep.getArtifactId(), list);
@@ -435,15 +435,15 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	}
 	
 	private static void removeArtifact(
-		List<TreeWithParent.Node<DependencyNode>> list,
-		TreeWithParent.Node<DependencyNode> n,
+		List<Tree.WithParent.Node<DependencyNode>> list,
+		Tree.WithParent.Node<DependencyNode> n,
 		LibraryDescriptor.Dependency dep,
-		Map<String,Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts
+		Map<String,Map<String, List<Tree.WithParent.Node<DependencyNode>>>> artifacts
 	) {
 		synchronized (artifacts) {
 			list.remove(n);
 			if (list.isEmpty()) {
-				Map<String, List<TreeWithParent.Node<DependencyNode>>> group =
+				Map<String, List<Tree.WithParent.Node<DependencyNode>>> group =
 					artifacts.get(dep.getGroupId());
 				group.remove(dep.getArtifactId());
 				if (group.isEmpty())
@@ -454,7 +454,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	
 	private class ResolveVersionConflicts extends Task.Cpu<Map<String, LibraryDescriptor>, LibraryManagementException> {
 		private ResolveVersionConflicts(
-			Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts,
+			Map<String, Map<String, List<Tree.WithParent.Node<DependencyNode>>>> artifacts,
 			LibraryDescriptorLoader resolver, WorkProgress progress, long work
 		) {
 			super("Resolve library version conflicts", Task.PRIORITY_IMPORTANT);
@@ -464,7 +464,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			this.work = work;
 		}
 		
-		private Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts;
+		private Map<String, Map<String, List<Tree.WithParent.Node<DependencyNode>>>> artifacts;
 		private LibraryDescriptorLoader resolver;
 		private WorkProgress progress;
 		private long work;
@@ -474,10 +474,10 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			if (progress != null) progress.setText("Resolving dependencies versions");
 			app.getDefaultLogger().debug("Resolving version conflicts");
 			Map<String, LibraryDescriptor> versions = new HashMap<>();
-			for (Map.Entry<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> group : artifacts.entrySet()) {
-				for (Map.Entry<String, List<TreeWithParent.Node<DependencyNode>>> artifact : group.getValue().entrySet()) {
+			for (Map.Entry<String, Map<String, List<Tree.WithParent.Node<DependencyNode>>>> group : artifacts.entrySet()) {
+				for (Map.Entry<String, List<Tree.WithParent.Node<DependencyNode>>> artifact : group.getValue().entrySet()) {
 					// create a mapping of versions, and remove errors
-					Map<Version, List<TreeWithParent.Node<DependencyNode>>> artifactVersions = getArtifactVersions(artifact);
+					Map<Version, List<Tree.WithParent.Node<DependencyNode>>> artifactVersions = getArtifactVersions(artifact);
 					if (artifactVersions.isEmpty()) {
 						// error
 						throw new LibraryManagementException("Unable to load library "
@@ -508,10 +508,10 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			return versions;
 		}
 		
-		private Map<Version, List<TreeWithParent.Node<DependencyNode>>> getArtifactVersions(
-			Map.Entry<String, List<TreeWithParent.Node<DependencyNode>>> artifact) {
-			Map<Version, List<TreeWithParent.Node<DependencyNode>>> artifactVersions = new HashMap<>();
-			for (TreeWithParent.Node<DependencyNode> node : artifact.getValue()) {
+		private Map<Version, List<Tree.WithParent.Node<DependencyNode>>> getArtifactVersions(
+			Map.Entry<String, List<Tree.WithParent.Node<DependencyNode>>> artifact) {
+			Map<Version, List<Tree.WithParent.Node<DependencyNode>>> artifactVersions = new HashMap<>();
+			for (Tree.WithParent.Node<DependencyNode> node : artifact.getValue()) {
 				if (node.getElement().getDescriptor().hasError()) {
 					app.getDefaultLogger().error(
 						"Dependency ignored: " + node.getElement().getDependency().getGroupId() + ':'
@@ -520,7 +520,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 					continue;
 				}
 				Version version = node.getElement().getDescriptor().getResult().getVersion();
-				List<TreeWithParent.Node<DependencyNode>> nodes = artifactVersions.get(version);
+				List<Tree.WithParent.Node<DependencyNode>> nodes = artifactVersions.get(version);
 				if (nodes == null) {
 					nodes = new LinkedList<>();
 					artifactVersions.put(version, nodes);
@@ -774,8 +774,8 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 					}
 					l.descr = loadDescr.getResult();
 					
-					TreeWithParent<DependencyNode> tree = new TreeWithParent<>(null);
-					Map<String, Map<String, List<TreeWithParent.Node<DependencyNode>>>> artifacts = new HashMap<>();
+					Tree.WithParent<DependencyNode> tree = new Tree.WithParent<>(null);
+					Map<String, Map<String, List<Tree.WithParent.Node<DependencyNode>>>> artifacts = new HashMap<>();
 					JoinPoint<NoException> treeDone = new JoinPoint<>();
 					// exclude libraries already loaded
 					ArrayList<Pair<String, String>> exclusions = new ArrayList<>(libraries.size());

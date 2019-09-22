@@ -271,6 +271,7 @@ public final class Application {
 	/** Method to call at the beginning of the application, typically in the main method. */
 	@SuppressWarnings({
 		"squid:S3776", // complexity: we do not want to split into sub-methods
+		"squid:S5304", // environment variables are only printed
 	})
 	public static ISynchronizationPoint<ApplicationBootstrapException> start(
 		Artifact artifact,

@@ -923,6 +923,7 @@ public final class IOUtil {
 	}
 
 	
+	@SuppressWarnings("squid:S00107")
 	private static void copySameTM(
 		IO.Readable input, IO.Writable output, int bufferSize, long total, 
 		AsyncWork<Long,IOException> end, boolean closeIOs, WorkProgress progress, long work
@@ -936,6 +937,7 @@ public final class IOUtil {
 		}.start();
 	}
 	
+	@SuppressWarnings("squid:S00107")
 	private static void copySameTMStep(
 		IO.Readable input, IO.Writable output, ByteBuffer buf, long written, long total,
 		AsyncWork<Long,IOException> end, boolean closeIOs, WorkProgress progress, long work
@@ -1081,6 +1083,7 @@ public final class IOUtil {
 		AsyncWork<Long, IOException> sp = new AsyncWork<>();
 		Task.Cpu<Void,NoException> task = new Task.Cpu<Void,NoException>("Start copying files", priority) {
 			@Override
+			@SuppressWarnings("squid:S2095") // input and output are closed
 			public Void run() {
 				FileIO.ReadOnly input = new FileIO.ReadOnly(src, priority);
 				FileIO.WriteOnly output = new FileIO.WriteOnly(dst, priority);
@@ -1120,7 +1123,7 @@ public final class IOUtil {
 	}
 	
 	/** Read the content of a file and return a byte array. */
-	@SuppressWarnings("resource")
+	@SuppressWarnings("squid:S2095") // f is closed
 	public static AsyncWork<byte[], IOException> readFully(File file, byte priority) {
 		AsyncWork<byte[], IOException> result = new AsyncWork<>();
 		FileIO.ReadOnly f = new FileIO.ReadOnly(file, priority);

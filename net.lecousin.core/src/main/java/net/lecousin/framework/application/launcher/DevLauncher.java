@@ -41,6 +41,7 @@ public class DevLauncher {
 	@SuppressWarnings({
 		"squid:S106", // loggers are not yet available
 		"squid:S3776", // we do not want to split into several methods
+		"squid:S4823" // we use args carefully
 	})
 	public static void main(String[] args) {
 		// start the splash screen as soon as possible

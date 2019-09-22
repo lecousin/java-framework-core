@@ -29,6 +29,7 @@ import net.lecousin.framework.memory.MemoryManager;
 /**
  * JAR class loader.
  */
+@SuppressWarnings("squid:S5042") // the zip file contains the classes...
 public class ZipClassLoader extends AbstractClassLoader implements IMemoryManageable {
 
 	static {

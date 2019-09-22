@@ -17,8 +17,8 @@ import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.application.libraries.artifacts.LibrariesRepository;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptorLoader;
-import net.lecousin.framework.collections.TreeWithParent;
-import net.lecousin.framework.collections.TreeWithParent.Node;
+import net.lecousin.framework.collections.Tree;
+import net.lecousin.framework.collections.Tree.Node;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.AsyncWork;
 import net.lecousin.framework.exception.NoException;
@@ -243,7 +243,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 		for (Map.Entry<Version, List<Node<DependencyNode>>> e : artifactVersions.entrySet()) {
 			for (Node<DependencyNode> node : e.getValue()) {
 				int depth = 0;
-				TreeWithParent<DependencyNode> tree = node.getSubNodes().getParent();
+				Tree.WithParent<DependencyNode> tree = ((Tree.WithParent<DependencyNode>)node.getSubNodes()).getParent();
 				while (tree.getParent() != null) {
 					depth++;
 					tree = tree.getParent();
