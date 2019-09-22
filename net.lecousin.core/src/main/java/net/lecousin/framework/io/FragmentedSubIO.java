@@ -402,6 +402,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		return sp;
 	}
 	
+	@SuppressWarnings("squid:S00107")
 	protected void writeAsync(
 		Iterator<RangeLong> it, RangeLong r, long p, int done, long pos,
 		ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone, AsyncWork<Integer,IOException> sp

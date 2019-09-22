@@ -591,14 +591,14 @@ public abstract class AbstractDeserializer implements Deserializer {
 					return;
 				}
 				Object element = p.getValue1();
-				if (element != null) {
-					if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
-						!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-						result.error(new SerializationException("Invalid collection element type "
-								+ element.getClass().getName()
-								+ ", expected is " + context.getElementType().getBase().getName()));
-							return;
-					}
+				if (element != null &&
+					Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
+					!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+
+					result.error(new SerializationException("Invalid collection element type "
+							+ element.getClass().getName()
+							+ ", expected is " + context.getElementType().getBase().getName()));
+						return;
 				}
 				((Collection)context.getCollection()).add(element);
 				elementIndex++;

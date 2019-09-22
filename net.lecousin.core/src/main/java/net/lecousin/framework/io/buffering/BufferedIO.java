@@ -310,8 +310,8 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 					oldestToBeWritten = new OldestList<>(32);
 				synchronized (MemoryManagement.this) {
 					for (Buffer b = head; b != null; b = b.next) {
-						if (b.owner.closing) continue;
-						if (b.usage.isUsed()) continue;
+						if (b.owner.closing ||
+							b.usage.isUsed()) continue;
 						if (b.lastWrite > 0) {
 							if (now - b.lastWrite >= 30000)
 								flush(b);
@@ -324,19 +324,8 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 						}
 					}
 				}
-				if (oldestToBeWritten != null) {
-					long target = toBeWritten - toBeWrittenThreshold + toBeWrittenThreshold / 10;
-					synchronized (MemoryManagement.this) {
-						for (Buffer b : oldestToBeWritten) {
-							if (b.owner.closing) continue;
-							if (b.usage.isUsed()) continue;
-							if (b.lastWrite == 0) continue;
-							if (flush(b))
-								target -= b.data.length;
-							if (target < 0) break;
-						}
-					}
-				}
+				if (oldestToBeWritten != null)
+					flushOldest(oldestToBeWritten);
 				if (now - lastFree > 5 * 60 * 1000)
 					freeBuffers(10, false);
 				else if (old2 > 0)
@@ -344,6 +333,20 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 				else if (old1 > 5)
 					freeBuffers(old1 / 2, false);
 				return null;
+			}
+			
+			private void flushOldest(OldestList<Buffer> oldestToBeWritten) {
+				long target = toBeWritten - toBeWrittenThreshold + toBeWrittenThreshold / 10;
+				synchronized (MemoryManagement.this) {
+					for (Buffer b : oldestToBeWritten) {
+						if (b.owner.closing ||
+							b.usage.isUsed() ||
+							b.lastWrite == 0) continue;
+						if (flush(b))
+							target -= b.data.length;
+						if (target < 0) break;
+					}
+				}
 			}
 			
 			private boolean flush(Buffer b) {

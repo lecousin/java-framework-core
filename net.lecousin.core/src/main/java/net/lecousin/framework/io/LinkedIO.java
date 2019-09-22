@@ -589,8 +589,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				pos += n;
 			}
 			if (!buffer.hasRemaining()) {
-				if (ondone != null) ondone.accept(new Pair<>(nb, null));
-				r2.unblockSuccess(nb);
+				IOUtil.success(nb, r2, ondone);
 			} else {
 				readFullyAsync(buffer, res -> {
 					if (ondone == null) return;
@@ -603,7 +602,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 						else n2 += n1;
 						ondone.accept(new Pair<>(Integer.valueOf(n2), null));
 					}
-				}) .listenInline(nb2 -> {
+				}).listenInline(nb2 -> {
 					int n1 = n;
 					if (n1 < 0) n1 = 0;
 					int n2 = nb2.intValue();
@@ -744,8 +743,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				pos += nb.intValue();
 				done.add(nb.longValue());
 				if (done.get() == n) {
-					if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(n), null));
-					result.unblockSuccess(Long.valueOf(n));
+					IOUtil.success(Long.valueOf(n), result, ondone);
 					return;
 				}
 				if (sizes.get(ioIndex) == null)
@@ -753,8 +751,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				if (ioIndex == ios.size() - 1) {
 					ioIndex++;
 					posInIO = 0;
-					if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(done.get()), null));
-					result.unblockSuccess(Long.valueOf(done.get()));
+					IOUtil.success(Long.valueOf(done.get()), result, ondone);
 					return;
 				}
 				nextIOAsync(() -> operation(((IO.Readable)ios.get(ioIndex)).skipAsync(n - done.get(), null)).listenInline(that),
@@ -780,13 +777,11 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				pos += nb.intValue();
 				done.add(nb.longValue());
 				if (done.get() == n) {
-					if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(n), null));
-					result.unblockSuccess(Long.valueOf(n));
+					IOUtil.success(Long.valueOf(n), result, ondone);
 					return;
 				}
 				if (ioIndex == 0) {
-					if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(done.get()), null));
-					result.unblockSuccess(Long.valueOf(done.get()));
+					IOUtil.success(Long.valueOf(done.get()), result, ondone);
 					return;
 				}
 				AsyncWorkListener<Long, IOException> l = this;

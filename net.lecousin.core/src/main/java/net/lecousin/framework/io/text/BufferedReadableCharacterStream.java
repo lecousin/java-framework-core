@@ -135,95 +135,112 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 		bytes.compact();
 		int remaining = bytes.remaining();
 		AsyncWork<Integer,IOException> readTask = input.readFullyAsync(bytes);
-		Task.Cpu<Void,NoException> decode = new Task.Cpu<Void,NoException>("Decode character stream", input.getPriority()) {
-			@Override
-			public Void run() {
-				if (nextReady.isCancelled()) return null; // closed
-				if (readTask.isCancelled()) {
-					if (bytes == null)
-						return null; // closed
-					synchronized (ready) {
-						nextReady.cancel(readTask.getCancelEvent());
-					}
-					return null;
-				}
-				if (readTask.hasError()) {
-					synchronized (ready) {
-						nextReady.error(readTask.getError());
-					}
-					return null;
-				}
-				if (nextReady.isCancelled()) return null; // closed
-				try {
-					int nb = readTask.getResult().intValue();
-					bytes.flip();
-					boolean end;
-					if (nb < remaining) {
-						input.closeAsync();
-						if (!bytes.hasRemaining()) {
-							synchronized (ready) {
-								endReached = true;
-								nextReady.unblock();
-							}
-							return null;
-						}
-						end = true;
-					} else {
-						end = false;
-					}
-					if (nextReady.isCancelled()) return null; // closed
-					CharBuffer buf = CharBuffer.allocate(bufferSize);
-					CoderResult cr = decoder.decode(bytes, buf, endReached);
-					if (cr.isOverflow() && buf.position() == 0)
-						cr.throwException();
-					if (nextReady.isCancelled()) return null; // closed
-					if (buf.position() == 0) {
-						if (end) {
-							synchronized (ready) {
-								endReached = true;
-								nextReady.unblock();
-							}
-							return null;
-						}
-						throw new EOFException();
-					}
-					buf.flip();
-					boolean full;
-					SynchronizationPoint<IOException> sp;
-					synchronized (ready) {
-						ready.addLast(buf);
-						full = ready.isFull();
-						sp = nextReady;
-						if (end)
-							nextReady = new SynchronizationPoint<>(true);
-						else
-							nextReady = new SynchronizationPoint<>();
-						endReached = end;
-					}
-					sp.unblock();
-					if (!full && !endReached)
-						bufferize();
-					return null;
-				} catch (IOException e) {
-					if (!nextReady.isUnblocked())
-						synchronized (ready) {
-							nextReady.error(e);
-						}
-					return null;
-				} catch (NullPointerException e) {
-					// closed
-					return null;
-				} catch (Exception t) {
-					if (!nextReady.isUnblocked())
-						synchronized (ready) {
-							nextReady.error(IO.error(t));
-						}
-					LCCore.getApplication().getDefaultLogger().error("Error while buffering", t);
-					return null;
-				}
-			}
-		};
+		DecodeTask decode = new DecodeTask(readTask, remaining);
 		operation(decode).startOn(readTask, true);
+	}
+	
+	private class DecodeTask extends Task.Cpu<Void,NoException> {
+		
+		private DecodeTask(AsyncWork<Integer,IOException> readTask, int remaining) {
+			super("Decode character stream", input.getPriority());
+			this.readTask = readTask;
+			this.remaining = remaining;
+		}
+		
+		private AsyncWork<Integer,IOException> readTask;
+		private int remaining;
+		
+		@Override
+		@SuppressWarnings("squid:S1696") // NullPointerException
+		public Void run() {
+			if (nextReady.isCancelled()) return null; // closed
+			if (readTask.isCancelled()) {
+				if (bytes == null)
+					return null; // closed
+				synchronized (ready) {
+					nextReady.cancel(readTask.getCancelEvent());
+				}
+				return null;
+			}
+			if (readTask.hasError()) {
+				synchronized (ready) {
+					nextReady.error(readTask.getError());
+				}
+				return null;
+			}
+			if (nextReady.isCancelled()) return null; // closed
+			try {
+				decode();
+				return null;
+			} catch (IOException e) {
+				if (!nextReady.isUnblocked())
+					synchronized (ready) {
+						nextReady.error(e);
+					}
+				return null;
+			} catch (NullPointerException e) {
+				// closed
+				return null;
+			} catch (Exception t) {
+				if (!nextReady.isUnblocked())
+					synchronized (ready) {
+						nextReady.error(IO.error(t));
+					}
+				LCCore.getApplication().getDefaultLogger().error("Error while buffering", t);
+				return null;
+			}
+		}
+		
+		private void decode() throws IOException {
+			int nb = readTask.getResult().intValue();
+			bytes.flip();
+			boolean end;
+			if (nb < remaining) {
+				input.closeAsync();
+				if (!bytes.hasRemaining()) {
+					synchronized (ready) {
+						endReached = true;
+						nextReady.unblock();
+					}
+					return;
+				}
+				end = true;
+			} else {
+				end = false;
+			}
+			if (nextReady.isCancelled()) return; // closed
+			CharBuffer buf = CharBuffer.allocate(bufferSize);
+			CoderResult cr = decoder.decode(bytes, buf, endReached);
+			if (cr.isOverflow() && buf.position() == 0)
+				cr.throwException();
+			if (nextReady.isCancelled()) return; // closed
+			if (buf.position() == 0) {
+				if (end) {
+					synchronized (ready) {
+						endReached = true;
+						nextReady.unblock();
+					}
+					return;
+				}
+				throw new EOFException();
+			}
+			buf.flip();
+			boolean full;
+			SynchronizationPoint<IOException> sp;
+			synchronized (ready) {
+				ready.addLast(buf);
+				full = ready.isFull();
+				sp = nextReady;
+				if (end)
+					nextReady = new SynchronizationPoint<>(true);
+				else
+					nextReady = new SynchronizationPoint<>();
+				endReached = end;
+			}
+			sp.unblock();
+			if (!full && !endReached)
+				bufferize();
+		}
 	}
 	
 	@Override
@@ -355,71 +372,86 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 		if (len <= 0)
 			return new AsyncWork<>(Integer.valueOf(0), null);
 		AsyncWork<Integer, IOException> result = new AsyncWork<>();
-		operation(new Task.Cpu<Void, NoException>("BufferedReadableCharacterStream.readAsync", input.getPriority()) {
-			@Override
-			public Void run() {
-				int done = 0;
-				int offset = off;
-				int length = len;
-				if (back != -1) {
-					buf[offset++] = (char)back;
-					back = -1;
-					length--;
-					if (length == 0) {
-						result.unblockSuccess(Integer.valueOf(1));
-						return null;
-					}
-					done = 1;
-				}
-				if (chars == null) {
-					boolean full;
-					SynchronizationPoint<IOException> sp;
-					synchronized (ready) {
-						full = ready.isFull();
-						chars = ready.pollFirst();
-						sp = nextReady;
-						if (chars == null && endReached) {
-							if (done > 0)
-								result.unblockSuccess(Integer.valueOf(done));
-							else
-								result.unblockSuccess(Integer.valueOf(-1));
-							return null;
-						}
-					}
-					if (full && !endReached) bufferize();
-					if (chars == null) {
-						int don = done;
-						readAsync(buf, offset + done, length - done).listenInline(
-							nb -> result.unblockSuccess(Integer.valueOf(don + nb.intValue())),
-							result
-						);
-						return null;
-					}
-					if (sp.hasError()) {
-						result.error(sp.getError());
-						return null;
-					}
-					if (sp.isCancelled()) {
-						result.cancel(sp.getCancelEvent());
-						return null;
-					}
-				}
-				int len = length;
-				if (len > chars.remaining()) len = chars.remaining();
-				chars.get(buf, offset, len);
-				if (!chars.hasRemaining()) {
-					boolean full;
-					synchronized (ready) {
-						full = ready.isFull();
-						chars = ready.pollFirst();
-					}
-					if (full && !endReached) bufferize();
-				}
-				result.unblockSuccess(Integer.valueOf(len + done));
-				return null;
-			}
-		}).startOn(canStartReading(), true);
+		operation(new ReadAsyncTask(buf, off, len, result)).startOn(canStartReading(), true);
 		return result;
+	}
+	
+	private class ReadAsyncTask extends Task.Cpu<Void, NoException> {
+		
+		private ReadAsyncTask(char[] buf, int offset, int length, AsyncWork<Integer, IOException> result) {
+			super("BufferedReadableCharacterStream.readAsync", input.getPriority());
+			this.buf = buf;
+			this.offset = offset;
+			this.length = length;
+			this.readResult = result;
+		}
+		
+		private char[] buf;
+		private int offset;
+		private int length;
+		private AsyncWork<Integer, IOException> readResult;
+		
+		@Override
+		public Void run() {
+			int done = 0;
+			
+			if (back != -1) {
+				buf[offset++] = (char)back;
+				back = -1;
+				length--;
+				if (length == 0) {
+					readResult.unblockSuccess(Integer.valueOf(1));
+					return null;
+				}
+				done = 1;
+			}
+			
+			if (chars == null && !getNextChars(done, readResult))
+				return null;
+			
+			int len = length;
+			if (len > chars.remaining()) len = chars.remaining();
+			chars.get(buf, offset, len);
+			
+			if (!chars.hasRemaining()) {
+				boolean full;
+				synchronized (ready) {
+					full = ready.isFull();
+					chars = ready.pollFirst();
+				}
+				if (full && !endReached) bufferize();
+			}
+			
+			readResult.unblockSuccess(Integer.valueOf(len + done));
+			return null;
+		}
+		
+		private boolean getNextChars(int done, AsyncWork<Integer, IOException> result) {
+			boolean full;
+			SynchronizationPoint<IOException> sp;
+			synchronized (ready) {
+				full = ready.isFull();
+				chars = ready.pollFirst();
+				sp = nextReady;
+				if (chars == null && endReached) {
+					if (done > 0)
+						result.unblockSuccess(Integer.valueOf(done));
+					else
+						result.unblockSuccess(Integer.valueOf(-1));
+					return false;
+				}
+			}
+			if (full && !endReached) bufferize();
+			if (chars == null) {
+				int don = done;
+				readAsync(buf, offset + done, length - done).listenInline(
+					nb -> result.unblockSuccess(Integer.valueOf(don + nb.intValue())),
+					result
+				);
+				return false;
+			}
+			return !sp.forwardIfNotSuccessful(result);
+		}
 	}
 	
 	@Override

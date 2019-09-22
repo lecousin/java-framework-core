@@ -15,12 +15,8 @@ public class LCLogger extends MarkerIgnoringBase {
 		this.logger = logger;
 	}
 	
-	private String name;
-	private net.lecousin.framework.log.Logger logger;
+	private transient net.lecousin.framework.log.Logger logger;
 	
-	@Override
-	public String getName() { return name; }
-
 	@Override
 	public boolean isTraceEnabled() { return logger.trace(); }
 

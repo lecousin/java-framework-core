@@ -13,7 +13,7 @@ public class LCLoggerFactory implements ILoggerFactory {
     private ConcurrentMap<String, Logger> loggerMap;
 
     public LCLoggerFactory() {
-        loggerMap = new ConcurrentHashMap<String, Logger>();
+        loggerMap = new ConcurrentHashMap<>();
     }
 
     /**

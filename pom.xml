@@ -28,6 +28,15 @@
 		**/DebugUtil*.*,
 		**/SystemEnvironment.*
   	</sonar.coverage.exclusions>
+  	<sonar.cpd.exclusions>
+  		**/framework/collections/sort/RedBlackTree*.*,
+  		**/framework/memory/*ArrayCache.*,
+  		**/framework/io/SubIO.*,
+  		**/framework/io/FileIO.*,
+  		**/framework/io/FragmentedSubIO.*,
+  		**/framework/io/LinkedIO.*,
+  		**/framework/xml/XMLStreamReader.*
+  	</sonar.cpd.exclusions>
   </properties>
   
   <licenses>

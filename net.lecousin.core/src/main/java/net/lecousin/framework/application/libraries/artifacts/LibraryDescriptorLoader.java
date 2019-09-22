@@ -56,6 +56,6 @@ public interface LibraryDescriptorLoader {
 	}
 	
 	/** When several versions of the same library are specified, this method resolve the conflict and return the version to be loaded. */
-	Version resolveVersionConflict(String groupId, String artifactId, Map<Version, List<Tree.WithParent.Node<DependencyNode>>> artifactVersions);
+	Version resolveVersionConflict(String groupId, String artifactId, Map<Version, List<Tree.Node<DependencyNode>>> artifactVersions);
 	
 }

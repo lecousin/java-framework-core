@@ -182,45 +182,46 @@ public final class IOUtil {
 		IO.Readable io, ByteBuffer buffer, int done, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		AsyncWork<Integer,IOException> read = io.readAsync(buffer);
-		if (read.isUnblocked()) {
-			if (!read.isSuccessful()) {
-				if (ondone != null && read.getError() != null) ondone.accept(new Pair<>(null, read.getError()));
+		if (!read.isUnblocked())
+			return readFullyAsync(read, io, buffer, done, ondone);
+		
+		if (!read.isSuccessful()) {
+			if (ondone != null && read.getError() != null) ondone.accept(new Pair<>(null, read.getError()));
+			return read;
+		}
+		if (!buffer.hasRemaining()) {
+			if (done == 0) {
+				if (ondone != null) ondone.accept(new Pair<>(read.getResult(), null));
 				return read;
 			}
-			if (!buffer.hasRemaining()) {
-				if (done == 0) {
-					if (ondone != null) ondone.accept(new Pair<>(read.getResult(), null));
-					return read;
-				}
-				if (read.getResult().intValue() <= 0) return success(Integer.valueOf(done), ondone);
-				return success(Integer.valueOf(read.getResult().intValue() + done), ondone);
-			}
-			if (read.getResult().intValue() <= 0) {
-				if (done == 0) {
-					if (ondone != null) ondone.accept(new Pair<>(read.getResult(), null));
-					return read;
-				}
-				return success(Integer.valueOf(done), ondone);
-			}
-			return readFullyAsync(io, buffer, read.getResult().intValue() + done, ondone);
+			if (read.getResult().intValue() <= 0) return success(Integer.valueOf(done), ondone);
+			return success(Integer.valueOf(read.getResult().intValue() + done), ondone);
 		}
+		if (read.getResult().intValue() <= 0) {
+			if (done == 0) {
+				if (ondone != null) ondone.accept(new Pair<>(read.getResult(), null));
+				return read;
+			}
+			return success(Integer.valueOf(done), ondone);
+		}
+		return readFullyAsync(io, buffer, read.getResult().intValue() + done, ondone);
+	}
+	
+	private static AsyncWork<Integer,IOException> readFullyAsync(
+		AsyncWork<Integer,IOException> read, IO.Readable io, ByteBuffer buffer, int done, Consumer<Pair<Integer,IOException>> ondone
+	) {
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 		MutableInteger total = new MutableInteger(done);
 		Mutable<AsyncWork<Integer,IOException>> r = new Mutable<>(read);
 		read.listenInline(new AsyncWorkListenerReady<Integer, IOException>((result, that) -> {
 			do {
 				if (!buffer.hasRemaining() || result.intValue() <= 0) {
-					if (total.get() == 0) {
-						if (ondone != null) ondone.accept(new Pair<>(result, null));
-						sp.unblockSuccess(result);
-					} else if (result.intValue() >= 0) {
-						Integer i = Integer.valueOf(result.intValue() + total.get());
-						if (ondone != null) ondone.accept(new Pair<>(i, null));
-						sp.unblockSuccess(i);
-					} else {
-						if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(total.get()), null));
-						sp.unblockSuccess(Integer.valueOf(total.get()));
-					}
+					if (total.get() == 0)
+						success(result, sp, ondone);
+					else if (result.intValue() >= 0)
+						success(Integer.valueOf(result.intValue() + total.get()), sp, ondone);
+					else
+						success(Integer.valueOf(total.get()), sp, ondone);
 					return;
 				}
 				total.add(result.intValue());
@@ -261,24 +262,24 @@ public final class IOUtil {
 				return read;
 			}
 		}
+		return readFullyAsync(read, io, pos, buffer, ondone);
+	}
+	
+	private static AsyncWork<Integer,IOException> readFullyAsync(
+		AsyncWork<Integer,IOException> read, IO.Readable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
+	) {
 		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
 		MutableInteger total = new MutableInteger(0);
 		Mutable<AsyncWork<Integer,IOException>> r = new Mutable<>(read);
 		read.listenInline(new AsyncWorkListenerReady<Integer, IOException>((result, that) -> {
 			do {
 				if (!buffer.hasRemaining() || result.intValue() <= 0) {
-					if (total.get() == 0) {
-						if (ondone != null) ondone.accept(new Pair<>(result, null));
-						sp.unblockSuccess(result);
-					} else if (result.intValue() >= 0) {
-						Integer i = Integer.valueOf(result.intValue() + total.get());
-						if (ondone != null) ondone.accept(new Pair<>(i, null));
-						sp.unblockSuccess(i);
-					} else {
-						Integer i = Integer.valueOf(total.get());
-						if (ondone != null) ondone.accept(new Pair<>(i, null));
-						sp.unblockSuccess(i);
-					}
+					if (total.get() == 0)
+						success(result, sp, ondone);
+					else if (result.intValue() >= 0)
+						success(Integer.valueOf(result.intValue() + total.get()), sp, ondone);
+					else
+						success(Integer.valueOf(total.get()), sp, ondone);
 					return;
 				}
 				total.add(result.intValue());
@@ -316,6 +317,8 @@ public final class IOUtil {
 				readFullyAsync(io, bufferSize, bb, result);
 		}), result);
 	}
+
+	private static final String READING_FROM = "Reading from ";
 	
 	/**
 	 * Implement an asynchronous read using a task calling the synchronous one.
@@ -329,7 +332,7 @@ public final class IOUtil {
 		IO.Readable io, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>(
-			"Reading from " + io.getSourceDescription(), io.getPriority(), ondone
+			READING_FROM + io.getSourceDescription(), io.getPriority(), ondone
 		) {
 			@Override
 			public Integer run() throws IOException {
@@ -353,7 +356,7 @@ public final class IOUtil {
 		IO.Readable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>(
-			"Reading from " + io.getSourceDescription(), io.getPriority(), ondone
+			READING_FROM + io.getSourceDescription(), io.getPriority(), ondone
 		) {
 			@Override
 			public Integer run() throws IOException {
@@ -376,7 +379,7 @@ public final class IOUtil {
 		IO.Readable io, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>(
-			"Reading from " + io.getSourceDescription(), io.getPriority(), ondone
+			READING_FROM + io.getSourceDescription(), io.getPriority(), ondone
 		) {
 			@Override
 			public Integer run() throws IOException {
@@ -400,7 +403,7 @@ public final class IOUtil {
 		IO.Readable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Integer,IOException> task = new Task.Cpu<Integer,IOException>(
-			"Reading from " + io.getSourceDescription(), io.getPriority(), ondone
+			READING_FROM + io.getSourceDescription(), io.getPriority(), ondone
 		) {
 			@Override
 			public Integer run() throws IOException {
@@ -462,14 +465,12 @@ public final class IOUtil {
 			do {
 				int read = nb.intValue();
 				if (read <= 0) {
-					if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(done.get()), null));
-					result.unblockSuccess(Long.valueOf(done.get()));
+					IOUtil.success(Long.valueOf(done.get()), result, ondone);
 					return;
 				}
 				done.add(nb.intValue());
 				if (done.get() == n) {
-					if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(n), null));
-					result.unblockSuccess(Long.valueOf(n));
+					IOUtil.success(Long.valueOf(n), result, ondone);
 					return;
 				}
 				b.clear();
@@ -529,7 +530,7 @@ public final class IOUtil {
 	public static int readSyncUsingAsync(IO.Readable io, ByteBuffer buffer) throws IOException {
 		AsyncWork<Integer,IOException> sp = io.readAsync(buffer);
 		try { return sp.blockResult(0).intValue(); }
-		catch (CancelException e) { throw new IOException("Cancelled",e); }
+		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
 	
 	/**
@@ -538,7 +539,7 @@ public final class IOUtil {
 	public static int readSyncUsingAsync(IO.Readable.Seekable io, long pos, ByteBuffer buffer) throws IOException {
 		AsyncWork<Integer,IOException> sp = io.readAsync(pos, buffer);
 		try { return sp.blockResult(0).intValue(); }
-		catch (CancelException e) { throw new IOException("Cancelled",e); }
+		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
 	
 	/**
@@ -547,7 +548,7 @@ public final class IOUtil {
 	public static int readFullySyncUsingAsync(IO.Readable io, ByteBuffer buffer) throws IOException {
 		AsyncWork<Integer,IOException> sp = io.readFullyAsync(buffer);
 		try { return sp.blockResult(0).intValue(); }
-		catch (CancelException e) { throw new IOException("Cancelled",e); }
+		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
 	
 	/**
@@ -556,7 +557,7 @@ public final class IOUtil {
 	public static int readFullySyncUsingAsync(IO.Readable.Seekable io, long pos, ByteBuffer buffer) throws IOException {
 		AsyncWork<Integer,IOException> sp = io.readFullyAsync(pos, buffer);
 		try { return sp.blockResult(0).intValue(); }
-		catch (CancelException e) { throw new IOException("Cancelled",e); }
+		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
 	
 	/**
@@ -565,7 +566,7 @@ public final class IOUtil {
 	public static long skipSyncUsingAsync(IO.Readable io, long n) throws IOException {
 		AsyncWork<Long,IOException> sp = io.skipAsync(n);
 		try { return sp.blockResult(0).longValue(); }
-		catch (CancelException e) { throw new IOException("Cancelled",e); }
+		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
 	
 	/**
@@ -574,7 +575,7 @@ public final class IOUtil {
 	public static int writeSyncUsingAsync(IO.Writable io, ByteBuffer buffer) throws IOException {
 		AsyncWork<Integer,IOException> sp = io.writeAsync(buffer);
 		try { return sp.blockResult(0).intValue(); }
-		catch (CancelException e) { throw new IOException("Cancelled",e); }
+		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
 	
 	/**
@@ -583,7 +584,7 @@ public final class IOUtil {
 	public static int writeSyncUsingAsync(IO.Writable.Seekable io, long pos, ByteBuffer buffer) throws IOException {
 		AsyncWork<Integer,IOException> sp = io.writeAsync(pos, buffer);
 		try { return sp.blockResult(0).intValue(); }
-		catch (CancelException e) { throw new IOException("Cancelled",e); }
+		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
 	
 	/**
@@ -831,23 +832,7 @@ public final class IOUtil {
 				return;
 			}
 			// unknown size
-			TaskManager tmIn = getUnderlyingTaskManager(input);
-			TaskManager tmOut = getUnderlyingTaskManager(output);
-			if (tmIn == tmOut) {
-				// same task manager
-				//  - no need to pre-fill many buffers in input
-				//  - use a buffer size quite large
-				copySameTM(input, output, 2 * 1024 * 1024, -1, sp, closeIOs, progress, work);
-				return;
-			}
-			// different task manager
-			if (input instanceof IO.Readable.Buffered) {
-				// input is already buffered, let's use it as is
-				copyStep((IO.Readable.Buffered)input, output, sp, 0, closeIOs, progress, work);
-				return;
-			}
-			PreBufferedReadable binput = new PreBufferedReadable(input, 65536, input.getPriority(), 1024 * 1024, input.getPriority(), 16);
-			copyStep(binput, output, sp, 0, closeIOs, progress, work);
+			copyUnknownSize(input, output, closeIOs, sp, progress, work);
 			return;
 		}
 		// known size
@@ -886,6 +871,28 @@ public final class IOUtil {
 			binput = new PreBufferedReadable(input, size, 128 * 1024, input.getPriority(), 512 * 1024, input.getPriority(), 8);
 		else
 			binput = new PreBufferedReadable(input, size, 256 * 1024, input.getPriority(), 2 * 1024 * 1024, input.getPriority(), 5);
+		copyStep(binput, output, sp, 0, closeIOs, progress, work);
+	}
+	
+	private static void copyUnknownSize(
+		IO.Readable input, IO.Writable output, boolean closeIOs, AsyncWork<Long, IOException> sp, WorkProgress progress, long work
+	) {
+		TaskManager tmIn = getUnderlyingTaskManager(input);
+		TaskManager tmOut = getUnderlyingTaskManager(output);
+		if (tmIn == tmOut) {
+			// same task manager
+			//  - no need to pre-fill many buffers in input
+			//  - use a buffer size quite large
+			copySameTM(input, output, 2 * 1024 * 1024, -1, sp, closeIOs, progress, work);
+			return;
+		}
+		// different task manager
+		if (input instanceof IO.Readable.Buffered) {
+			// input is already buffered, let's use it as is
+			copyStep((IO.Readable.Buffered)input, output, sp, 0, closeIOs, progress, work);
+			return;
+		}
+		PreBufferedReadable binput = new PreBufferedReadable(input, 65536, input.getPriority(), 1024 * 1024, input.getPriority(), 16);
 		copyStep(binput, output, sp, 0, closeIOs, progress, work);
 	}
 	

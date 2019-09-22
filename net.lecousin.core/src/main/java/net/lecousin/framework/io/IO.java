@@ -308,7 +308,12 @@ public interface IO extends IConcurrentCloseable {
 		if (e instanceof IOException) return (IOException)e;
 		return new IOException(e);
 	}
-	
+
+	/** Create an IOException from a CancelException. */
+	static IOException errorCancelled(CancelException e) {
+		return new IOException("Cancelled", e);
+	}
+
 	/** Return a CancelException with message IO closed. */
 	static CancelException cancelClosed() {
 		return new CancelException("IO closed");

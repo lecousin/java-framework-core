@@ -25,7 +25,8 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	public TwoBuffersIO(IO.Readable io, int firstBuffer, int secondBuffer) {
 		this.io = io;
 		buf1 = new byte[firstBuffer];
-		operation(read1 = io.readFullyAsync(ByteBuffer.wrap(buf1)));
+		read1 = io.readFullyAsync(ByteBuffer.wrap(buf1));
+		operation(read1);
 		if (secondBuffer > 0) {
 			buf2 = new byte[secondBuffer];
 			read1.onSuccess(() -> {
@@ -36,7 +37,8 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 					nb2 = 0;
 					read2 = new AsyncWork<>(Integer.valueOf(0), null);
 				} else {
-					operation(read2 = io.readFullyAsync(ByteBuffer.wrap(buf2)));
+					read2 = io.readFullyAsync(ByteBuffer.wrap(buf2));
+					operation(read2);
 				}
 				synchronized (buf1) { buf1.notifyAll(); }
 			});
@@ -133,7 +135,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	private void needRead1() throws IOException {
 		if (!read1.isUnblocked()) read1.block(0);
 		if (!read1.isSuccessful()) {
-			if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
+			if (read1.isCancelled()) throw IO.errorCancelled(read1.getCancelEvent());
 			throw read1.getError();
 		}
 		nb1 = read1.getResult().intValue();
@@ -144,7 +146,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (read2 == null) waitRead2();
 		if (!read2.isUnblocked()) read2.block(0);
 		if (!read2.isSuccessful()) {
-			if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
+			if (read2.isCancelled()) throw IO.errorCancelled(read2.getCancelEvent());
 			throw read2.getError();
 		}
 		nb2 = read2.getResult().intValue();
@@ -302,7 +304,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	private <T> AsyncWork<T, IOException> needRead1Async(Callable<T> onReady, Consumer<Pair<T,IOException>> ondone) {
 		if (!read1.isUnblocked()) {
 			AsyncWork<T, IOException> sp = new AsyncWork<>();
-			IOUtil.listenOnDone(read1, new Task.Cpu.FromRunnable("TwoBuffersIO", io.getPriority(), () -> {
+			IOUtil.listenOnDone(read1, new Task.Cpu.FromRunnable("TwoBuffersIO.needRead1Async", io.getPriority(), () -> {
 				try {
 					IOUtil.success(onReady.call(), sp, ondone);
 				} catch (Exception e) {
@@ -323,7 +325,7 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	private <T> AsyncWork<T, IOException> needRead2Async(Callable<T> onReady, Consumer<Pair<T,IOException>> ondone) {
 		if (!read1.isUnblocked() || read2 == null) {
 			AsyncWork<T, IOException> sp = new AsyncWork<>();
-			IOUtil.listenOnDone(read1, new Task.Cpu.FromRunnable("TwoBuffersIO", io.getPriority(), () -> {
+			IOUtil.listenOnDone(read1, new Task.Cpu.FromRunnable("TwoBuffersIO.needRead2Async", io.getPriority(), () -> {
 				try {
 					IOUtil.success(onReady.call(), sp, ondone);
 				} catch (Exception e) {
@@ -424,46 +426,9 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 	}
 
 	@Override
+	@SuppressWarnings("squid:S3776") // complexity
 	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
-		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
-			@Override
-			public ByteBuffer run() throws IOException {
-				if (nb1 < 0) {
-					if (read1.hasError()) throw read1.getError();
-					if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-					nb1 = read1.getResult().intValue();
-					if (nb1 < 0) nb1 = 0;
-					if (nb1 == 0)
-						return null;
-				}
-				if (pos < nb1) {
-					ByteBuffer buf = ByteBuffer.allocate(nb1 - pos);
-					buf.put(buf1, pos, nb1 - pos);
-					buf.flip();
-					pos = nb1;
-					return buf;
-				}
-				if (buf2 == null) return null;
-				if (nb2 < 0) {
-					if (read1.hasError()) throw read1.getError();
-					if (read1.isCancelled()) throw new IOException("Cancelled", read1.getCancelEvent());
-					if (read2 == null) waitRead2();
-					if (read2.hasError()) throw read2.getError();
-					if (read2.isCancelled()) throw new IOException("Cancelled", read2.getCancelEvent());
-					nb2 = read2.getResult().intValue();
-					if (nb2 < 0) nb2 = 0;
-					if (nb2 == 0)
-						return null;
-				}
-				if (pos >= nb1 + nb2) return null;
-				ByteBuffer buf = ByteBuffer.allocate(nb1 + nb2 - pos);
-				if (pos < nb1) buf.put(buf1, pos, nb1 - pos);
-				buf.put(buf2, pos - nb1, nb2 - (pos - nb1));
-				buf.flip();
-				pos = nb1 + nb2;
-				return buf;
-			}
-		};
+		ReadNextBufferTask task = new ReadNextBufferTask(ondone);
 		
 		if (nb1 < 0) {
 			if (!read1.isUnblocked()) {
@@ -505,6 +470,51 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		if (pos >= nb1 + nb2) return IOUtil.success(null, ondone);
 		operation(task.start());
 		return task.getOutput();
+	}
+	
+	private class ReadNextBufferTask extends Task.Cpu<ByteBuffer, IOException> {
+		private ReadNextBufferTask(Consumer<Pair<ByteBuffer, IOException>> ondone) {
+			super("Read next buffer", TwoBuffersIO.this.getPriority(), ondone);
+		}
+		
+		@Override
+		@SuppressWarnings("squid:S3776") // complexity
+		public ByteBuffer run() throws IOException {
+			if (nb1 < 0) {
+				if (read1.hasError()) throw read1.getError();
+				if (read1.isCancelled()) throw IO.errorCancelled(read1.getCancelEvent());
+				nb1 = read1.getResult().intValue();
+				if (nb1 < 0) nb1 = 0;
+				if (nb1 == 0)
+					return null;
+			}
+			if (pos < nb1) {
+				ByteBuffer buf = ByteBuffer.allocate(nb1 - pos);
+				buf.put(buf1, pos, nb1 - pos);
+				buf.flip();
+				pos = nb1;
+				return buf;
+			}
+			if (buf2 == null) return null;
+			if (nb2 < 0) {
+				if (read1.hasError()) throw read1.getError();
+				if (read1.isCancelled()) throw IO.errorCancelled(read1.getCancelEvent());
+				if (read2 == null) waitRead2();
+				if (read2.hasError()) throw read2.getError();
+				if (read2.isCancelled()) throw IO.errorCancelled(read2.getCancelEvent());
+				nb2 = read2.getResult().intValue();
+				if (nb2 < 0) nb2 = 0;
+				if (nb2 == 0)
+					return null;
+			}
+			if (pos >= nb1 + nb2) return null;
+			ByteBuffer buf = ByteBuffer.allocate(nb1 + nb2 - pos);
+			if (pos < nb1) buf.put(buf1, pos, nb1 - pos);
+			buf.put(buf2, pos - nb1, nb2 - (pos - nb1));
+			buf.flip();
+			pos = nb1 + nb2;
+			return buf;
+		}
 	}
 	
 	@Override
