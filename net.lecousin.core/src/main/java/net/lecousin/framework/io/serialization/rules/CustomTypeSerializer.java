@@ -8,6 +8,7 @@ import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContextPattern;
+import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.rules.CustomAttributeSerializer.CustomAttribute;
 
@@ -30,6 +31,7 @@ public class CustomTypeSerializer implements SerializationRule {
 	private SerializationContextPattern context;
 	
 	@Override
+	@SuppressWarnings("squid:S3516") // always return false
 	public boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) {
 		if (this.context != null && !this.context.matches(type, context))
 			return false;
@@ -47,7 +49,7 @@ public class CustomTypeSerializer implements SerializationRule {
 	}
 	
 	@Override
-	public Object convertSerializationValue(Object value, TypeDefinition type, SerializationContext context) {
+	public Object convertSerializationValue(Object value, TypeDefinition type, SerializationContext context) throws SerializationException {
 		if (!type.equals(serializer.sourceType()))
 			return value;
 		if (this.context != null && !this.context.matches(context))
@@ -65,7 +67,7 @@ public class CustomTypeSerializer implements SerializationRule {
 	}
 	
 	@Override
-	public Object getDeserializationValue(Object value, TypeDefinition type, SerializationContext context) {
+	public Object getDeserializationValue(Object value, TypeDefinition type, SerializationContext context) throws SerializationException {
 		if (!type.equals(serializer.sourceType()))
 			return value;
 		if (this.context != null && !this.context.matches(context))

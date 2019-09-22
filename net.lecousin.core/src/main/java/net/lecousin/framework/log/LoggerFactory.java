@@ -53,6 +53,7 @@ public class LoggerFactory {
 		return application;
 	}
 	
+	@SuppressWarnings("squid:S2886") // no need for synchronized
 	public Logger getDefault() {
 		return defaultLogger;
 	}
@@ -119,7 +120,7 @@ public class LoggerFactory {
 	}
 	
 	/** Load configuration from a file. */
-	public synchronized void configure(InputStream input) throws Exception {
+	public synchronized void configure(InputStream input) throws LoggerConfigurationException, XMLStreamException, IOException {
 		XMLInputFactory factory = XMLInputFactory.newFactory();
 		factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
 		configure(factory.createXMLStreamReader(new PropertiesStream(application, input)));

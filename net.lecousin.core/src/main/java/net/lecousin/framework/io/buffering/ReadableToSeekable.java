@@ -441,6 +441,7 @@ public class ReadableToSeekable extends ConcurrentCloseable implements IO.Readab
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S1199") // nested block
 	public long seekSync(SeekType type, long move) throws IOException {
 		switch (type) {
 		case FROM_BEGINNING:

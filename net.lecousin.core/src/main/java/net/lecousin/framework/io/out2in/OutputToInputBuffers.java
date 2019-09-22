@@ -219,7 +219,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				if (eof)
 					return -1;
 				if (lock.hasError())
-					throw new IOException("An error occured during the transfer of data", lock.getError());
+					throw new OutputToInputTransferException(lock.getError());
 			}
 			lock.lock();
 		} while (true);
@@ -268,7 +268,11 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 					Integer r = Integer.valueOf(done > 0 ? done : -1);
 					if (ondone != null) ondone.accept(new Pair<>(r, null));
 					return new AsyncWork<>(r, null);
-				} else if (!lock.isUnblocked()) {
+				} else if (lock.hasError()) {
+					IOException e = new OutputToInputTransferException(lock.getError());
+					if (ondone != null) ondone.accept(new Pair<>(null, e));
+					return new AsyncWork<>(null, e);
+				} else /*if (!lock.isUnblocked())*/ {
 					if (done == 0)
 						return readFullyAsync(buffer, ondone);
 					AsyncWork<Integer, IOException> r = new AsyncWork<>();
@@ -291,11 +295,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 						r.unblockSuccess(Integer.valueOf(n));
 					}, r);
 					return r;
-				} else if (lock.hasError()) {
-					IOException e = new IOException("An error occured during the transfer of data", lock.getError());
-					if (ondone != null) ondone.accept(new Pair<>(null, e));
-					return new AsyncWork<>(null, e);
-				}
+				} 
 			}
 			int len = buffer.remaining();
 			if (len >= b.remaining()) {
@@ -337,7 +337,9 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 			else if (!lock.isUnblocked())
 				return -2;
 			else if (lock.hasError())
-				throw new IOException("An error occured during the transfer of data", lock.getError());
+				throw new OutputToInputTransferException(lock.getError());
+			else
+				return -2;
 		}
 		int res = b.get() & 0xFF;
 		if (b.remaining() == 0) {
@@ -383,7 +385,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 					if (eof)
 						return done;
 					if (lock.hasError())
-						throw new IOException("An error occured during the transfer of data", lock.getError());
+						throw new OutputToInputTransferException(lock.getError());
 				}
 				lock.lock();
 			} while (true);
@@ -423,7 +425,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				if (eof)
 					return -1;
 				if (lock.hasError())
-					throw new IOException("An error occured during the transfer of data", lock.getError());
+					throw new OutputToInputTransferException(lock.getError());
 			}
 			lock.lock();
 		} while (true);
@@ -452,7 +454,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				if (eof)
 					return -1;
 				if (lock.hasError())
-					throw new IOException("An error occured during the transfer of data", lock.getError());
+					throw new OutputToInputTransferException(lock.getError());
 			}
 			lock.lock();
 		} while (true);
@@ -494,7 +496,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				if (eof)
 					return 0;
 				if (lock.hasError())
-					throw new IOException("An error occured during the transfer of data", lock.getError());
+					throw new OutputToInputTransferException(lock.getError());
 			}
 			lock.lock();
 		} while (true);
@@ -534,7 +536,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 						}
 						if (eof) break;
 						if (lock.hasError())
-							throw new IOException("An error occured during the transfer of data", lock.getError());
+							throw new OutputToInputTransferException(lock.getError());
 					}
 					lock.lock();
 				} while (true);

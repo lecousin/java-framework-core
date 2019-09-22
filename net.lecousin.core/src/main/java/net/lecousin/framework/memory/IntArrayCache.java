@@ -23,19 +23,60 @@ public class IntArrayCache implements IMemoryManageable {
 			IntArrayCache instance = app.getInstance(IntArrayCache.class);
 			if (instance != null)
 				return instance;
-			app.setInstance(IntArrayCache.class, instance = new IntArrayCache());
+			instance = new IntArrayCache();
+			app.setInstance(IntArrayCache.class, instance);
 			return instance;
 		}
 	}
 	
 	/** Maximum number of buffers of the same size to keep, when size is under 128K, default to 20. */
-	public int maxBuffersBySizeUnder128KB = 20;
+	private int maxBuffersBySizeUnder128KB = 20;
 	/** Maximum number of buffers of the same size to keep, when size is above 128K, default to 8. */
-	public int maxBuffersBySizeAbove128KB = 8;
+	private int maxBuffersBySizeAbove128KB = 8;
 	/** Maximum total size of buffers to keep in this cache. */
-	public int maxTotalSize = 16 * 1024 * 1024;
+	private int maxTotalSize = 16 * 1024 * 1024;
 	/** Time before a cached buffer can be removed to free memory. */
-	public long timeBeforeToRemove = 5L * 60 * 1000; // every 5 minutes
+	private long timeBeforeToRemove = 5L * 60 * 1000; // every 5 minutes
+
+	/** Maximum number of buffers of the same size to keep, when size is under 128K, default to 20. */
+	public int getMaxBuffersBySizeUnder128KB() {
+		return maxBuffersBySizeUnder128KB;
+	}
+
+	/** Maximum number of buffers of the same size to keep, when size is under 128K, default to 20. */
+	public void setMaxBuffersBySizeUnder128KB(int maxBuffersBySizeUnder128KB) {
+		this.maxBuffersBySizeUnder128KB = maxBuffersBySizeUnder128KB;
+	}
+
+	/** Maximum number of buffers of the same size to keep, when size is above 128K, default to 8. */
+	public int getMaxBuffersBySizeAbove128KB() {
+		return maxBuffersBySizeAbove128KB;
+	}
+
+	/** Maximum number of buffers of the same size to keep, when size is above 128K, default to 8. */
+	public void setMaxBuffersBySizeAbove128KB(int maxBuffersBySizeAbove128KB) {
+		this.maxBuffersBySizeAbove128KB = maxBuffersBySizeAbove128KB;
+	}
+
+	/** Maximum total size of buffers to keep in this cache. */
+	public int getMaxTotalSize() {
+		return maxTotalSize;
+	}
+
+	/** Maximum total size of buffers to keep in this cache. */
+	public void setMaxTotalSize(int maxTotalSize) {
+		this.maxTotalSize = maxTotalSize;
+	}
+
+	/** Time before a cached buffer can be removed to free memory. */
+	public long getTimeBeforeToRemove() {
+		return timeBeforeToRemove;
+	}
+
+	/** Time before a cached buffer can be removed to free memory. */
+	public void setTimeBeforeToRemove(long timeBeforeToRemove) {
+		this.timeBeforeToRemove = timeBeforeToRemove;
+	}
 
 	private static class ArraysBySize {
 		private TurnArray<int[]> arrays;

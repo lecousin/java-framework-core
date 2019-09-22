@@ -122,7 +122,10 @@ public class TwoBuffersIO extends ConcurrentCloseable implements IO.Readable.Buf
 		synchronized (buf1) {
 			while (read2 == null) {
 				try { buf1.wait(); }
-				catch (InterruptedException e) { /* ignore */ }
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					break;
+				}
 			}
 		}
 	}

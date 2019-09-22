@@ -11,6 +11,11 @@ public class XMLException extends LocalizableException {
 	
 	public static final String LOCALIZED_NAMESPACE_XML_ERROR = "lc.xml.error";
 	public static final String LOCALIZED_MESSAGE_NOT_XML = "Not an XML file";
+	public static final String LOCALIZED_MESSAGE_INVALID_XML = "Invalid XML";
+	public static final String LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER = "Unexpected character";
+	public static final String LOCALIZED_MESSAGE_UNEXPECTED_END = "Unexpected end";
+	public static final String LOCALIZED_MESSAGE_UNEXPECTED_ELEMENT = "Unexpected element";
+	public static final String LOCALIZED_MESSAGE_EXPECTED_CHARACTER = "Expected character";
 
 	private static final long serialVersionUID = -963187033082725980L;
 

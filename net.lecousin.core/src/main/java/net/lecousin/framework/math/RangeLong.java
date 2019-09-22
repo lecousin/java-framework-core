@@ -29,6 +29,7 @@ public class RangeLong {
 	
 	/** Parse from a String. */
 	@Parse
+	@SuppressWarnings("squid:S1192") // same string 3 times
 	public RangeLong(String string) throws ParseException {
 		if (string == null || string.isEmpty())
 			throw new ParseException("Empty string", 0);

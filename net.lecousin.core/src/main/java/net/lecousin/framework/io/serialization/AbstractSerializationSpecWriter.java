@@ -26,9 +26,9 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 
 	protected byte priority;
 	
-	protected abstract ISynchronizationPoint<? extends Exception> initializeSpecWriter(IO.Writable output);
+	protected abstract ISynchronizationPoint<SerializationException> initializeSpecWriter(IO.Writable output);
 	
-	protected abstract ISynchronizationPoint<? extends Exception> finalizeSpecWriter();
+	protected abstract ISynchronizationPoint<SerializationException> finalizeSpecWriter();
 	
 	/** Utility to create tasks. */
 	protected class SpecTask extends Task.Cpu<Void, NoException> {
@@ -47,17 +47,17 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> writeSpecification(Class<?> type, IO.Writable output, List<SerializationRule> rules) {
+	public ISynchronizationPoint<SerializationException> writeSpecification(Class<?> type, IO.Writable output, List<SerializationRule> rules) {
 		priority = output.getPriority();
-		ISynchronizationPoint<? extends Exception> init = initializeSpecWriter(output);
-		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
-		init.listenAsyncSP(new SpecTask(() -> {
-			ISynchronizationPoint<? extends Exception> sp;
+		ISynchronizationPoint<SerializationException> init = initializeSpecWriter(output);
+		SynchronizationPoint<SerializationException> result = new SynchronizationPoint<>();
+		init.listenAsync(new SpecTask(() -> {
+			ISynchronizationPoint<SerializationException> sp;
 			if (type != null)
 				sp = specifyValue(null, new TypeDefinition(type), rules);
 			else
 				sp = specifyAnyValue(null);
-			sp.listenInlineSP(() -> finalizeSpecWriter().listenInlineSP(result), result);
+			sp.listenInline(() -> finalizeSpecWriter().listenInline(result), result);
 		}), result);
 		return result;
 	}
@@ -72,10 +72,11 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 		return AttributeAnnotationToRuleOnAttribute.addRules(a, true, currentList);
 	}
 	
-	protected abstract ISynchronizationPoint<? extends Exception> specifyAnyValue(SerializationContext context);
+	protected abstract ISynchronizationPoint<SerializationException> specifyAnyValue(SerializationContext context);
 	
 	/** Can be used when already initialized. */
-	public ISynchronizationPoint<? extends Exception> specifyValue(
+	@SuppressWarnings("squid:S3776") // complexity
+	public ISynchronizationPoint<SerializationException> specifyValue(
 		SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules
 	) {
 		for (SerializationRule rule : rules)
@@ -154,33 +155,33 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	
 	// *** boolean ***
 	
-	protected abstract ISynchronizationPoint<? extends Exception> specifyBooleanValue(SerializationContext context, boolean nullable);
+	protected abstract ISynchronizationPoint<SerializationException> specifyBooleanValue(SerializationContext context, boolean nullable);
 
 	// *** number ***
 
-	protected abstract ISynchronizationPoint<? extends Exception> specifyNumericValue(
+	protected abstract ISynchronizationPoint<SerializationException> specifyNumericValue(
 		SerializationContext context, Class<?> type, boolean nullable, Number min, Number max);
 
 	// *** character ***
 	
-	protected abstract ISynchronizationPoint<? extends Exception> specifyCharacterValue(SerializationContext context, boolean nullable);
+	protected abstract ISynchronizationPoint<SerializationException> specifyCharacterValue(SerializationContext context, boolean nullable);
 	
 	// *** string ***
 	
-	protected abstract ISynchronizationPoint<? extends Exception> specifyStringValue(SerializationContext context, TypeDefinition type);
+	protected abstract ISynchronizationPoint<SerializationException> specifyStringValue(SerializationContext context, TypeDefinition type);
 
 	// *** enum ***
 	
-	protected abstract ISynchronizationPoint<? extends Exception> specifyEnumValue(SerializationContext context, TypeDefinition type);
+	protected abstract ISynchronizationPoint<SerializationException> specifyEnumValue(SerializationContext context, TypeDefinition type);
 
 	// *** collection ***
 	
-	protected abstract ISynchronizationPoint<? extends Exception> specifyCollectionValue(
+	protected abstract ISynchronizationPoint<SerializationException> specifyCollectionValue(
 		CollectionContext context, List<SerializationRule> rules);
 	
 	// *** map ***
 
-	protected ISynchronizationPoint<? extends Exception> specifyMapValue(
+	protected ISynchronizationPoint<SerializationException> specifyMapValue(
 		SerializationContext context, TypeDefinition type, List<SerializationRule> rules
 	) {
 		TypeDefinition elementType = new TypeDefinition(MapEntry.class, type.getParameters());
@@ -191,7 +192,7 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	
 	// *** InputStream ***
 
-	protected ISynchronizationPoint<? extends Exception> specifyInputStreamValue(
+	protected ISynchronizationPoint<SerializationException> specifyInputStreamValue(
 		SerializationContext context, List<SerializationRule> rules
 	) {
 		return specifyIOReadableValue(context, rules);
@@ -199,12 +200,12 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	
 	// *** IO.Readable ***
 
-	protected abstract ISynchronizationPoint<? extends Exception> specifyIOReadableValue(
+	protected abstract ISynchronizationPoint<SerializationException> specifyIOReadableValue(
 		SerializationContext context, List<SerializationRule> rules);
 	
 	// *** byte[] ***
 	
-	protected ISynchronizationPoint<? extends Exception> specifyByteArrayValue(
+	protected ISynchronizationPoint<SerializationException> specifyByteArrayValue(
 		SerializationContext context, List<SerializationRule> rules
 	) {
 		return specifyIOReadableValue(context, rules);
@@ -212,7 +213,7 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	
 	// *** object ***
 	
-	protected ISynchronizationPoint<? extends Exception> specifyObjectValue(
+	protected ISynchronizationPoint<SerializationException> specifyObjectValue(
 		SerializationContext context, TypeDefinition typeDef, List<SerializationRule> rules
 	) {
 		ObjectContext ctx;
@@ -222,17 +223,17 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 			ctx = new ObjectContext(context, null, sc, typeDef);
 			rules = addRulesForType(sc, rules);
 			sc.apply(rules, ctx, true);
-		} catch (Exception e) {
+		} catch (SerializationException e) {
 			return new SynchronizationPoint<>(e);
 		}
 		return specifyTypedValue(ctx, rules);
 	}
 
-	protected abstract ISynchronizationPoint<? extends Exception> specifyTypedValue(ObjectContext context, List<SerializationRule> rules);
+	protected abstract ISynchronizationPoint<SerializationException> specifyTypedValue(ObjectContext context, List<SerializationRule> rules);
 	
-	protected ISynchronizationPoint<? extends Exception> specifyTypeContent(ObjectContext context, List<SerializationRule> rules) {
+	protected ISynchronizationPoint<SerializationException> specifyTypeContent(ObjectContext context, List<SerializationRule> rules) {
 		List<Attribute> attributes = sortAttributes(context.getSerializationClass().getAttributes());
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		SynchronizationPoint<SerializationException> sp = new SynchronizationPoint<>();
 		specifyTypeAttribute(context, attributes, 0, rules, sp);
 		return sp;
 	}
@@ -242,7 +243,8 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 	}
 	
 	protected void specifyTypeAttribute(
-		ObjectContext context, List<Attribute> attributes, int index, List<SerializationRule> rules, SynchronizationPoint<Exception> sp
+		ObjectContext context, List<Attribute> attributes, int index, List<SerializationRule> rules,
+		SynchronizationPoint<SerializationException> sp
 	) {
 		if (index == attributes.size()) {
 			sp.unblock();
@@ -250,15 +252,16 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 		}
 		Attribute attr = attributes.get(index);
 		AttributeContext ctx = new AttributeContext(context, attr);
-		ISynchronizationPoint<? extends Exception> s = specifyTypeAttribute(ctx, rules);
+		ISynchronizationPoint<SerializationException> s = specifyTypeAttribute(ctx, rules);
 		if (s.isUnblocked()) {
 			if (s.hasError()) sp.error(s.getError());
 			else specifyTypeAttribute(context, attributes, index + 1, rules, sp);
 			return;
 		}
-		s.listenAsyncSP(new SpecTask(() -> specifyTypeAttribute(context, attributes, index + 1, rules, sp)), sp);
+		s.listenAsync(new SpecTask(() -> specifyTypeAttribute(context, attributes, index + 1, rules, sp)), sp);
 	}
 	
-	protected abstract ISynchronizationPoint<? extends Exception> specifyTypeAttribute(AttributeContext context, List<SerializationRule> rules);
+	protected abstract ISynchronizationPoint<SerializationException> specifyTypeAttribute(
+		AttributeContext context, List<SerializationRule> rules);
 	
 }

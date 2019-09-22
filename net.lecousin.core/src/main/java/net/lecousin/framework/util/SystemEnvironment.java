@@ -13,17 +13,17 @@ public final class SystemEnvironment {
 
 	/** Type of operating system. */
 	public enum OSFamily {
-		dos("dos"),
-		mac("mac"),
-		netware("netware"),
-		os2("os/2"),
-		tandem("tandem"),
-		unix("unix"),
-		windows("windows"),
-		win9x("win9x"),
-		zos("z/os"),
-		os400("os/400"),
-		openvms("openvms");
+		DOS("dos"),
+		MAC("mac"),
+		NETWARE("netware"),
+		OS2("os/2"),
+		TANDEM("tandem"),
+		UNIX("unix"),
+		WINDOWS("windows"),
+		WIN9X("win9x"),
+		ZOS("z/os"),
+		OS400("os/400"),
+		OPENVMS("openvms");
 		
 		OSFamily(String name) {
 			this.name = name;
@@ -42,28 +42,28 @@ public final class SystemEnvironment {
 				name.contains("98") ||
 				name.contains("me") ||
 				name.contains("ce"))
-				return OSFamily.win9x;
-			return OSFamily.windows;
+				return OSFamily.WIN9X;
+			return OSFamily.WINDOWS;
 		}
 		if (name.contains("os/2"))
-			return OSFamily.os2;
+			return OSFamily.OS2;
 		if (name.contains("netware"))
-			return OSFamily.netware;
+			return OSFamily.NETWARE;
 		String sep = System.getProperty("path.separator");
 		if (sep.equals(";"))
-			return OSFamily.dos;
+			return OSFamily.DOS;
 		if (name.contains("nonstop_kernel"))
-			return OSFamily.tandem;
+			return OSFamily.TANDEM;
 		if (name.contains("openvms"))
-			return OSFamily.openvms;
+			return OSFamily.OPENVMS;
 		if (sep.equals(":") && (!name.contains("mac") || name.endsWith("x")))
-			return OSFamily.unix;
+			return OSFamily.UNIX;
 		if (name.contains("mac"))
-			return OSFamily.mac;
+			return OSFamily.MAC;
 		if (name.contains("z/os") || name.contains("os/390"))
-			return OSFamily.zos;
+			return OSFamily.ZOS;
 		if (name.contains("os/400"))
-			return OSFamily.os400;
+			return OSFamily.OS400;
 		return null;
 	}
 	

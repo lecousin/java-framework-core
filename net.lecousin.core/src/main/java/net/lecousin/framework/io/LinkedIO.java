@@ -851,16 +851,16 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 	
 	protected AsyncWork<Long, IOException> getSizeAsync() {
 		@SuppressWarnings("unchecked")
-		AsyncWork<Long, IOException>[] sizes = new AsyncWork[ios.size()];
+		AsyncWork<Long, IOException>[] getSizes = new AsyncWork[ios.size()];
 		for (int i = 0; i < ios.size(); ++i)
-			sizes[i] = ((IO.KnownSize)ios.get(i)).getSizeAsync();
-		JoinPoint<IOException> jp = JoinPoint.fromSynchronizationPointsSimilarError(sizes);
+			getSizes[i] = ((IO.KnownSize)ios.get(i)).getSizeAsync();
+		JoinPoint<IOException> jp = JoinPoint.fromSynchronizationPointsSimilarError(getSizes);
 		AsyncWork<Long, IOException> result = new AsyncWork<>();
 		operation(jp).listenInline(
 			() -> {
 				long total = 0;
-				for (int i = 0; i < sizes.length; ++i)
-					total += sizes[i].getResult().longValue();
+				for (int i = 0; i < getSizes.length; ++i)
+					total += getSizes[i].getResult().longValue();
 				result.unblockSuccess(Long.valueOf(total));
 			},
 			result
@@ -905,7 +905,8 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			Long s = sizes.get(ioIndex);
 			if (s == null) {
 				IO.Readable.Seekable io = (IO.Readable.Seekable)ios.get(ioIndex);
-				sizes.set(ioIndex, s = Long.valueOf(io.seekSync(SeekType.FROM_END, 0)));
+				s = Long.valueOf(io.seekSync(SeekType.FROM_END, 0));
+				sizes.set(ioIndex, s);
 			}
 			if (pos + s.longValue() > move) {
 				posInIO = move - pos;
@@ -963,7 +964,8 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 					}), result);
 					return operation(result);
 				}
-				sizes.set(i, s = seek.getResult());
+				s = seek.getResult();
+				sizes.set(i, s);
 			}
 			if (p + s.longValue() > pos) {
 				IO.Readable.Seekable io = (IO.Readable.Seekable)ios.get(i);
@@ -1072,7 +1074,8 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				}), true);
 				return;
 			}
-			sizes.set(ioIndex, s = seek.getResult());
+			s = seek.getResult();
+			sizes.set(ioIndex, s);
 		}
 		if (posInIO == s.longValue()) {
 			nextIOAsync(() -> writeAsync(buffer, done, result, ondone), result, ondone);
@@ -1133,7 +1136,8 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 					}), result);
 					return result;
 				}
-				sizes.set(i, s = seek.getResult());
+				s = seek.getResult();
+				sizes.set(i, s);
 			}
 			if (p + s.longValue() > pos) {
 				AsyncWork<Integer, IOException> result = new AsyncWork<>();
@@ -1162,7 +1166,8 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				}), result);
 				return;
 			}
-			sizes.set(i, s = seek.getResult());
+			s = seek.getResult();
+			sizes.set(i, s);
 		}
 		int len = (int)(s.longValue() - (pos - p));
 		int limit = buffer.limit();

@@ -10,6 +10,7 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 public interface Serializer {
 
 	/** Serialize the given object. */
-	ISynchronizationPoint<Exception> serialize(Object object, TypeDefinition typeDef, IO.Writable output, List<SerializationRule> rules);
+	ISynchronizationPoint<SerializationException> serialize(
+		Object object, TypeDefinition typeDef, IO.Writable output, List<SerializationRule> rules);
 	
 }

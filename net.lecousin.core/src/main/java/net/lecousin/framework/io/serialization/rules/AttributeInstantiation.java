@@ -7,6 +7,7 @@ import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.SerializationContextPattern.OnClassAttribute;
+import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.util.Factory;
 
 /** Base class specifying a rule on how to instantiate an attribute by providing a factory which
@@ -31,7 +32,7 @@ public class AttributeInstantiation implements SerializationRule {
 	@Override
 	public boolean apply(
 		SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing
-	) throws Exception {
+	) throws SerializationException {
 		Attribute a = pattern.getAttribute(type, context);
 		if (a == null)
 			return false;
@@ -39,7 +40,7 @@ public class AttributeInstantiation implements SerializationRule {
 			type.replaceAttribute(a, new InstantiationAttribute(a, factory.newInstance()));
 			return false;
 		} catch (Exception t) {
-			throw new Exception("Unable to replace attribute by an InstantiationAttribute", t);
+			throw new SerializationException("Unable to replace attribute by an InstantiationAttribute", t);
 		}
 	}
 	

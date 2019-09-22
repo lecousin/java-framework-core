@@ -3,7 +3,9 @@ package net.lecousin.framework.core.test.collections.maps;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Random;
 
 import org.junit.Assert;
@@ -63,6 +65,29 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 			remove(values.remove(rand.nextInt(values.size())).longValue(), map, checkMap);
 		checkEmpty(map);
 	}
+
+	@Test(timeout=120000)
+	public void testLongMapRandomWithNegativeValues() {
+		LongMap<Object> map = createLongMap();
+		HashMap<Long, Object> checkMap = new HashMap<>();
+		checkEmpty(map);
+		LinkedList<Long> values = new LinkedList<>();
+		Random rand = new Random();
+		long value = 0;
+		for (int i = 0; i < 2500; ++i) {
+			value += rand.nextLong();
+			if (rand.nextBoolean())
+				value = -value;
+			values.add(Long.valueOf(value));
+		}
+		while (!values.isEmpty())
+			put(values.remove(rand.nextInt(values.size())).longValue(), map, checkMap);
+		values.clear();
+		values.addAll(checkMap.keySet());
+		while (!values.isEmpty())
+			remove(values.remove(rand.nextInt(values.size())).longValue(), map, checkMap);
+		checkEmpty(map);
+	}
 	
 	@Test(timeout=30000)
 	public void testClear() {
@@ -76,6 +101,52 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 		checkEmpty(map);
 	}
 	
+	@Test(timeout=30000)
+	public void testValuesIterator() {
+		LongMap<Object> map = createLongMap();
+		List<Long> list = new LinkedList<>();
+		for (long i = 0; i < 100; ++i) {
+			map.put(i, Long.valueOf(i));
+			list.add(Long.valueOf(i));
+		}
+		Assert.assertEquals(100, map.size());
+		Iterator<Object> it = map.values();
+		while (it.hasNext()) {
+			Object o = it.next();
+			Assert.assertTrue(o instanceof Long);
+			long i = ((Long)o).longValue();
+			Assert.assertTrue(i < 100 && i >= 0);
+			Assert.assertTrue(list.remove(o));
+		}
+		Assert.assertTrue(list.isEmpty());
+		try {
+			it.next();
+			throw new AssertionError("NoSuchElement");
+		} catch (NoSuchElementException e) {
+			// ok
+		}
+		// test remove half
+		try {
+			it = map.values();
+			int i = 0;
+			while (it.hasNext()) {
+				it.next();
+				if ((i % 2) == 0) it.remove();
+				++i;
+			}
+			Assert.assertEquals(50, map.size());
+			i = 0;
+			it = map.values();
+			while (it.hasNext()) {
+				i++;
+				it.next();
+			}
+			Assert.assertEquals(50, i);
+		} catch (UnsupportedOperationException e) {
+			// ok if not supported
+		}
+	}
+
 	protected void checkEmpty(LongMap<Object> map) {
 		Assert.assertEquals(0, map.size());
 		Assert.assertTrue(map.isEmpty());

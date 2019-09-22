@@ -10,9 +10,9 @@ public interface CustomSerializer {
 	TypeDefinition targetType();
 	
 	/** Serialize an object of SourceType into a TargetType. */
-	Object serialize(Object src, Object containerInstance);
+	Object serialize(Object src, Object containerInstance) throws SerializationException;
 	
 	/** Deserialize an object of TargetType into a SourceType. */
-	Object deserialize(Object src, Object containerInstance);
+	Object deserialize(Object src, Object containerInstance) throws SerializationException;
 	
 }

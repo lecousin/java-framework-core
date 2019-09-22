@@ -106,9 +106,11 @@ public abstract class FullReadLines<T> {
 			stream.closeAsync();
 		}
 	}
-	
+
+	@SuppressWarnings("squid:S00112") // implementation should be free to throw any type
 	protected abstract void processLine(UnprotectedStringBuffer line) throws Exception;
 	
+	@SuppressWarnings("squid:S00112") // implementation should be free to throw any type
 	protected abstract T generateResult() throws Exception;
 	
 }

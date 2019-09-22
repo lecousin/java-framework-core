@@ -9,6 +9,7 @@ import net.lecousin.framework.event.Listener;
 public interface CloseableListenable {
 
 	/** Close. */
+	@SuppressWarnings("squid:S00112") // implementation should be able to throw any exception
 	void close() throws Exception;
 	
 	/** Return true if closed. */

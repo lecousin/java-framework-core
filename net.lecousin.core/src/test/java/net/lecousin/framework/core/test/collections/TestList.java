@@ -8,6 +8,8 @@ import java.util.ListIterator;
 import org.junit.Assert;
 import org.junit.Test;
 
+import net.lecousin.framework.collections.CollectionsUtil;
+
 public abstract class TestList extends TestCollection {
 
 	@Override
@@ -340,6 +342,28 @@ public abstract class TestList extends TestCollection {
 			Assert.assertTrue(it.next().equals(Long.valueOf(expectedValues[i])));
 		}
 		Assert.assertFalse(it.hasNext());
+	}
+	
+	@Test(timeout=30000)
+	public void testAddOutOfRange() {
+		List<Long> l = createLongCollection();
+		ArrayList<Long> l2 = new ArrayList<>();
+		l.add(Long.valueOf(10));
+		l2.add(Long.valueOf(10));
+		l.add(Long.valueOf(20));
+		l2.add(Long.valueOf(20));
+		l.add(Long.valueOf(30));
+		l2.add(Long.valueOf(30));
+		Assert.assertTrue(CollectionsUtil.equals(l, l2));
+		for (long val = 100; val < 200; val++) {
+			try {
+				l.add(1000, Long.valueOf(val));
+				l2.add(Long.valueOf(val));
+			} catch (IndexOutOfBoundsException e) {
+				// ok
+			}
+			Assert.assertTrue(CollectionsUtil.equals(l, l2));
+		}
 	}
 
 }

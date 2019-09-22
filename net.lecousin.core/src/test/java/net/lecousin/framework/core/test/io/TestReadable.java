@@ -34,7 +34,34 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		return createReadableFromFile(openFile(), getFileSize());
 	}
 	
-	@SuppressWarnings("resource")
+	@Test(timeout=120000)
+	public void testReadableBySmallBufferSync() throws Exception {
+		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
+		byte[] b = new byte[testBuf.length / 2 + testBuf.length / 3];
+		ByteBuffer buffer = ByteBuffer.wrap(b);
+		long pos = 0;
+		long size = (long)nbBuf * testBuf.length;
+		while (pos < size) {
+			if (io instanceof IO.PositionKnown)
+				Assert.assertEquals(pos, ((IO.PositionKnown)io).getPosition());
+			buffer.clear();
+			int nb = io.readSync(buffer);
+			Assert.assertTrue(nb > 0);
+			for (int i = 0; i < nb; ++i) {
+				int off = (int)((pos + i) % testBuf.length);
+				Assert.assertEquals(testBuf[off], b[i]);
+			}
+			pos += nb;
+		}
+		buffer.clear();
+		int nb = io.readSync(buffer);
+		if (nb > 0)
+			throw new Exception("" + nb + " byte(s) read after the end of the file");
+		if (io instanceof IO.PositionKnown)
+			Assert.assertEquals(nbBuf * testBuf.length, ((IO.PositionKnown)io).getPosition());
+		io.close();
+	}
+	
 	@Test(timeout=120000)
 	public void testReadableBufferByBufferSync() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());

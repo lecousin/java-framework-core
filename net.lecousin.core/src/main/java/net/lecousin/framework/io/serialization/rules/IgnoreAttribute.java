@@ -30,6 +30,7 @@ public class IgnoreAttribute implements SerializationRule {
 	private SerializationContextPattern contextPattern;
 	
 	@Override
+	@SuppressWarnings("squid:S3516") // always return false
 	public boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) {
 		if (!contextPattern.matches(type, context))
 			return false;

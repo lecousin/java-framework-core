@@ -1,11 +1,13 @@
 package net.lecousin.framework.core.tests.collections;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import net.lecousin.framework.collections.CollectionsUtil;
 import net.lecousin.framework.collections.LinkedArrayList;
 import net.lecousin.framework.core.test.collections.TestList;
 
@@ -178,4 +180,46 @@ public class TestLinkedArrayList extends TestList {
 		}
 	}
 	
+	@Test(timeout=30000)
+	public void testAddLongOutOfRange() {
+		LinkedArrayList<Long> l = new LinkedArrayList<>(2);
+		ArrayList<Long> l2 = new ArrayList<>();
+		l.add(Long.valueOf(10));
+		l2.add(Long.valueOf(10));
+		l.add(Long.valueOf(20));
+		l2.add(Long.valueOf(20));
+		l.add(Long.valueOf(30));
+		l2.add(Long.valueOf(30));
+		Assert.assertTrue(CollectionsUtil.equals(l, l2));
+		for (long val = 100; val < 200; val++) {
+			try {
+				l.addlong(1000L, Long.valueOf(val));
+				l2.add(Long.valueOf(val));
+			} catch (IndexOutOfBoundsException e) {
+				// ok
+			}
+			Assert.assertTrue(CollectionsUtil.equals(l, l2));
+		}
+	}
+
+	@Test(timeout=30000)
+	public void testAppendArray() {
+		LinkedArrayList<Long> l = new LinkedArrayList<>(2);
+		for (long val = 1; val <= 20; val++)
+			l.add(Long.valueOf(val));
+		Long[] arr = new Long[100];
+		for (int i = 0; i < 100; ++i)
+			arr[i] = Long.valueOf(1000 + i);
+		l.appendArray(arr, 20, 50);
+		l.appendArray(arr, 0, 1);
+		l.appendArray(arr, 0, 1);
+		Assert.assertEquals(72, l.size());
+		for (int i = 0; i < 20; ++i)
+			Assert.assertEquals(Long.valueOf(i + 1), l.get(i));
+		for (int i = 20; i < 70; ++i)
+			Assert.assertEquals(Long.valueOf(1000 + i), l.get(i));
+		Assert.assertEquals(Long.valueOf(1000), l.get(70));
+		Assert.assertEquals(Long.valueOf(1000), l.get(71));
+	}
+
 }

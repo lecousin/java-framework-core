@@ -24,16 +24,22 @@ public class TestTreeWithParent extends LCCoreAbstractTest {
 		Assert.assertEquals(0, n.getSubNodes().size());
 		n = tree.get(0);
 		Assert.assertFalse(null == n);
+		Assert.assertNull(tree.get(Integer.valueOf(5151)));
 		Assert.assertEquals(tree, n.getSubNodes().getParent());
 		Assert.assertEquals(51, n.getElement().intValue());
 		Assert.assertEquals(0, n.getSubNodes().size());
+		Assert.assertFalse(tree.remove(Integer.valueOf(5151)));
 		Assert.assertTrue(tree.remove(Integer.valueOf(51)));
 		Assert.assertEquals(0, tree.size());
 		tree.add(Integer.valueOf(51));
+		Assert.assertFalse(tree.removeInstance(Integer.valueOf(5151)));
 		Assert.assertTrue(tree.removeInstance(tree.get(0).getElement()));
 		Assert.assertEquals(0, tree.size());
 		Assert.assertEquals(0, tree.getElements().size());
 		Assert.assertEquals(0, tree.getNodes().size());
+		Assert.assertFalse(tree.remove(Integer.valueOf(1)));
+		Assert.assertFalse(tree.removeInstance(Integer.valueOf(1)));
+		Assert.assertNull(tree.get(Integer.valueOf(1)));
 	}
 	
 }

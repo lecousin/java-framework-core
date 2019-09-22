@@ -4,6 +4,7 @@ import java.util.List;
 
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationContext;
+import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 
 /** Interface for a serialization rule. */
@@ -13,13 +14,14 @@ public interface SerializationRule {
 	/** Apply the rule to the given type, knowing the given context.
 	 * If true is returned no other rule will be applied on the type.
 	 */
-	boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) throws Exception;
+	boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing)
+	throws SerializationException;
 	
 	/** Check if this rule is equivalent to the given rule. */
 	boolean isEquivalent(SerializationRule rule);
 	
 	/** Before to serialize a value, this method is called in order to give the opportunity to convert to another value. */
-	default Object convertSerializationValue(Object value, TypeDefinition type, SerializationContext context) {
+	default Object convertSerializationValue(Object value, TypeDefinition type, SerializationContext context) throws SerializationException {
 		return value;
 	}
 	
@@ -34,7 +36,7 @@ public interface SerializationRule {
 	/** Can be used to change the deserialization, in a similar way as the method
 	 * convertSerializationValue during serialization.
 	 */
-	default Object getDeserializationValue(Object value, TypeDefinition type, SerializationContext context) throws Exception {
+	default Object getDeserializationValue(Object value, TypeDefinition type, SerializationContext context) throws SerializationException {
 		return value;
 	}
 	
@@ -46,12 +48,12 @@ public interface SerializationRule {
 	}
 
 	/** Called if the method canInstantiate previously returned true during deserialization. */
-	default Object instantiate(TypeDefinition type, SerializationContext context) throws Exception {
+	default Object instantiate(TypeDefinition type, SerializationContext context) throws SerializationException {
 		return null;
 	}
 	
 	/** Called each time a type is instantiated during deserialization. */
-	default void onInstantiation(TypeDefinition type, Object instance, SerializationContext context) throws Exception {
+	default void onInstantiation(TypeDefinition type, Object instance, SerializationContext context) throws SerializationException {
 	}
 	
 }

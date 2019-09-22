@@ -225,6 +225,10 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	@Override
 	public void setPriority(byte priority) { this.priority = priority; }
 	
+	@SuppressWarnings({
+		"squid:S2259", // false positive: firstNextReadTask cannot be null if nextBuffer > 0
+		"squid:S3776" // complexity
+	})
 	private void start(int firstBuffer, byte firstBufferPriority, int nextBuffer, byte nextBufferPriority, int maxNbNextBuffersReady) {
 		if (nextBuffer < 0)
 			throw new IllegalArgumentException("next buffer size must be positive, or zero to disable it, given: " + nextBuffer);
@@ -253,25 +257,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		
 		Task<Void,NoException> firstNextReadTask = null;
 		if (nextBuffer > 0) {
-			firstNextReadTask = new Task.Cpu<Void,NoException>(
-				"First next read of pre-buffered IO " + getSourceDescription(), nextBufferPriority
-			) {
-				@Override
-				public Void run() {
-					SynchronizationPoint<NoException> dr = null;
-					synchronized (PreBufferedReadable.this) {
-						nextReadTask = null;
-						if (error == null && !endReached && !stopReading && !isClosing() && !isClosed())
-							nextRead();
-						else if (dataReady != null) {
-							dr = dataReady;
-							dataReady = null;
-						}
-					}
-					if (dr != null) dr.unblock();
-					return null;
-				}
-			};
+			firstNextReadTask = new FirstNextReadTask(nextBufferPriority);
 			nextReadTask = firstNextReadTask.getOutput();
 		}
 		
@@ -355,6 +341,28 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			operation(firstNextReadTask.getOutput());
 			jpNextRead.start();
 			jpNextRead.listenAsync(firstNextReadTask, true);
+		}
+	}
+	
+	private class FirstNextReadTask extends Task.Cpu<Void, NoException> {
+		private FirstNextReadTask(byte nextBufferPriority) {
+			super("First next read of pre-buffered IO " + getSourceDescription(), nextBufferPriority);
+		}
+		
+		@Override
+		public Void run() {
+			SynchronizationPoint<NoException> dr = null;
+			synchronized (PreBufferedReadable.this) {
+				nextReadTask = null;
+				if (error == null && !endReached && !stopReading && !isClosing() && !isClosed())
+					nextRead();
+				else if (dataReady != null) {
+					dr = dataReady;
+					dataReady = null;
+				}
+			}
+			if (dr != null) dr.unblock();
+			return null;
 		}
 	}
 	
@@ -574,6 +582,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		}
 	}
 	
+	@SuppressWarnings("squid:S1696") // NullPointerException
 	private void nextRead() {
 		if (isClosing() || isClosed()) {
 			SynchronizationPoint<NoException> dr;
@@ -588,7 +597,6 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		ByteBuffer buffer = reusableBuffers.removeFirst();
 		buffer.clear();
 		nextReadTask = operation(src.readFullyAsync(buffer));
-		// TODO this listener may take few milliseconds, see how to make it in a task
 		nextReadTask.listenInline(() -> {
 			if (nextReadTask == null) return; // case we have been closed
 			Throwable e;
@@ -605,37 +613,37 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 						dr.unblock();
 					}
 				}
-			} else {
-				int nb;
-				try { nb = ((Integer)nextReadTask.getResult()).intValue(); }
-				catch (NullPointerException ex) { nb = 0; /* we are closed */ }
-				SynchronizationPoint<NoException> sp = null;
-				synchronized (PreBufferedReadable.this) {
-					nextReadTask = null;
-					if (buffersReady == null) return; // closed
-					if (nb <= 0) {
-						endReached = true;
-					} else {
-						read += nb;
-						if (nb < buffer.limit() || (size > 0 && read == size)) 
-							endReached = true;
-						buffer.flip();
-						if (current == null) current = buffer;
-						else buffersReady.addLast(buffer);
-						if (!endReached && !reusableBuffers.isEmpty() && !stopReading)
-							nextRead();
-					}
-					if (endReached && size > 0 && read < size && buffersReady != null && !isClosing() && !isClosed())
-						error = new IOException("Unexpected end after " + read
-							+ " bytes read, known size is " + size + " in " + getSourceDescription());
-					if (dataReady != null) {
-						sp = dataReady;
-						dataReady = null;
-					}
-				}
-				if (sp != null)
-					sp.unblock();
+				return;
 			}
+			int nb;
+			try { nb = ((Integer)nextReadTask.getResult()).intValue(); }
+			catch (NullPointerException ex) { nb = 0; /* we are closed */ }
+			SynchronizationPoint<NoException> sp = null;
+			synchronized (PreBufferedReadable.this) {
+				nextReadTask = null;
+				if (buffersReady == null) return; // closed
+				if (nb <= 0) {
+					endReached = true;
+				} else {
+					read += nb;
+					if (nb < buffer.limit() || (size > 0 && read == size)) 
+						endReached = true;
+					buffer.flip();
+					if (current == null) current = buffer;
+					else buffersReady.addLast(buffer);
+					if (!endReached && !reusableBuffers.isEmpty() && !stopReading)
+						nextRead();
+				}
+				if (endReached && size > 0 && read < size && buffersReady != null && !isClosing() && !isClosed())
+					error = new IOException("Unexpected end after " + read
+						+ " bytes read, known size is " + size + " in " + getSourceDescription());
+				if (dataReady != null) {
+					sp = dataReady;
+					dataReady = null;
+				}
+			}
+			if (sp != null)
+				sp.unblock();
 		});
 	}
 	
@@ -751,13 +759,13 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			if (alreadyDone == 0)
 				return readFullyAsync(buffer, ondone);
 			AsyncWork<Integer, IOException> res = new AsyncWork<>();
-			readFullyAsync(buffer, (r) -> {
+			readFullyAsync(buffer, r -> {
 				if (ondone != null) {
 					if (r.getValue1() != null) ondone.accept(
 						new Pair<>(Integer.valueOf(r.getValue1().intValue() + alreadyDone), null));
 					else ondone.accept(r);
 				}
-			}).listenInline((nb) -> res.unblockSuccess(Integer.valueOf(alreadyDone + nb.intValue())), res);
+			}).listenInline(nb -> res.unblockSuccess(Integer.valueOf(alreadyDone + nb.intValue())), res);
 			return res;
 		}
 		int len = buffer.remaining();

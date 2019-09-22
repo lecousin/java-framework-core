@@ -162,4 +162,33 @@ public class TestCollectionsUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(18, list.size());
 	}
 	
+	@Test(timeout=30000)
+	public void testMap() {
+		List<Integer> input = createList();
+		List<Long> output = CollectionsUtil.map(input, i -> Long.valueOf(i.longValue()));
+		Assert.assertEquals(input.size(), output.size());
+		for (int i = 0; i < input.size(); ++i) {
+			Integer intValue = input.get(i);
+			Object out = output.get(i);
+			Assert.assertTrue(out instanceof Long);
+			Assert.assertEquals(intValue.longValue(), ((Long)out).longValue());
+		}
+	}
+	
+	@Test(timeout=30000)
+	public void testFindElement() {
+		List<Integer> list = createList();
+		for (Integer val : list)
+			Assert.assertEquals(val, CollectionsUtil.findElement(list, i -> i.intValue() == val.intValue()));
+		Assert.assertNull(CollectionsUtil.findElement(list, i -> false));
+	}
+	
+	@Test(timeout=30000)
+	public void testFilterSingle() {
+		List<Integer> list = createList();
+		for (Integer val : list)
+			Assert.assertEquals(val, CollectionsUtil.filterSingle((Integer i) -> i.intValue() == val.intValue()).apply(list));
+		Assert.assertNull(CollectionsUtil.filterSingle((Integer i) -> false).apply(list));
+	}
+	
 }

@@ -1,6 +1,6 @@
 package net.lecousin.framework.core.tests.util;
 
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -26,7 +26,7 @@ public class TestUnprotectedStringBuffer extends TestIString {
 		Assert.assertEquals("World Hello", s.asString());
 		Assert.assertEquals("Worxxd Hexxxxo", s.replace('l', "xx").asString());
 		Assert.assertEquals("Worxxyzyexxxxo", s.replace(5, 7, new UnprotectedStringBuffer("yzy")).asString());
-		Function<UnprotectedStringBuffer, UnprotectedStringBuffer> provider = value -> new UnprotectedStringBuffer(Integer.toString(Integer.parseInt(value.asString()) * 2));
+		UnaryOperator<UnprotectedStringBuffer> provider = value -> new UnprotectedStringBuffer(Integer.toString(Integer.parseInt(value.asString()) * 2));
 		s = new UnprotectedStringBuffer(new UnprotectedStringBuffer("abcd${123}efgh${200}ijk"));
 		s.searchAndReplace("${", "}", provider);
 		Assert.assertEquals("abcd246efgh400ijk", s.asString());

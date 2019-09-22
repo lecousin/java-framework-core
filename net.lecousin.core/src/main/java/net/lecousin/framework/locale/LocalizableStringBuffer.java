@@ -32,37 +32,34 @@ public class LocalizableStringBuffer implements ILocalizableString {
 	@Override
 	public AsyncWork<String, NoException> localize(String[] languageTag) {
 		JoinPoint<NoException> jp = new JoinPoint<>();
-		List<AsyncWork<String, NoException>> list = new LinkedList<>();
-		for (Object o : this.list)
+		List<AsyncWork<String, NoException>> localizations = new LinkedList<>();
+		for (Serializable o : this.list)
 			if (o instanceof ILocalizableString) {
 				AsyncWork<String, NoException> l = ((ILocalizableString)o).localize(languageTag);
 				jp.addToJoin(l);
-				list.add(l);
+				localizations.add(l);
 			}
 		AsyncWork<String, NoException> result = new AsyncWork<>();
 		jp.start();
-		jp.listenInline(new Runnable() {
-			@Override
-			public void run() {
-				Iterator<AsyncWork<String, NoException>> it = list.iterator();
-				StringBuffer s = new StringBuffer();
-				for (Serializable o : LocalizableStringBuffer.this.list) {
-					if (o instanceof String)
-						s.append((String)o);
-					else if (o instanceof ILocalizableString)
-						s.append(it.next().getResult());
-					else
-						s.append(o);
-				}
-				result.unblockSuccess(s.toString());
+		jp.listenInline(() -> {
+			Iterator<AsyncWork<String, NoException>> it = localizations.iterator();
+			StringBuilder s = new StringBuilder();
+			for (Serializable o : LocalizableStringBuffer.this.list) {
+				if (o instanceof String)
+					s.append((String)o);
+				else if (o instanceof ILocalizableString)
+					s.append(it.next().getResult());
+				else
+					s.append(o);
 			}
+			result.unblockSuccess(s.toString());
 		});
 		return result;
 	}
 	
 	@Override
 	public String localizeSync(String[] languageTag) {
-		StringBuffer s = new StringBuffer();
+		StringBuilder s = new StringBuilder();
 		for (Serializable o : list) {
 			if (o instanceof String)
 				s.append((String)o);

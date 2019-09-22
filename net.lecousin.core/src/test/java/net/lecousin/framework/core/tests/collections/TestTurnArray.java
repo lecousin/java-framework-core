@@ -152,6 +152,13 @@ public class TestTurnArray extends TestDeque {
 		Assert.assertTrue(q.removeAny(Long.valueOf(23)));
 		Assert.assertFalse(q.removeAny(Long.valueOf(23)));
 		testDequeEmpty(q);
+		
+		try {
+			new TurnArray<Integer>(-10);
+			throw new AssertionError("IllegalArgumentException expected");
+		} catch (IllegalArgumentException e) {
+			// ok
+		}
 	}
 	
 	@Test(timeout=120000)

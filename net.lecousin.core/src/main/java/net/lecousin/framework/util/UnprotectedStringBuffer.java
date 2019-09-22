@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
@@ -362,6 +362,7 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	/** Compare this UnprotectedStringBuffer with another. */
+	@SuppressWarnings("squid:S1201") // we want the name equals
 	public boolean equals(UnprotectedStringBuffer s) {
 		if (length() != s.length()) return false;
 		if (strings == null) return true;
@@ -501,6 +502,7 @@ public class UnprotectedStringBuffer implements IString {
 		return result;
 	}
 	
+	@SuppressWarnings("squid:S3012") // false positive: Collections.addAll cannot be used on a subset of the array
 	private void replace(int startBuffer, int startBufferIndex, int endBuffer, int endBufferIndex, UnprotectedStringBuffer replace) {
 		ArrayList<UnprotectedString> list = new ArrayList<>(
 			startBuffer + 1 + replace.lastUsed + 1 + lastUsed - endBuffer + 1
@@ -697,7 +699,7 @@ public class UnprotectedStringBuffer implements IString {
 	 * This may be typically used to replace variables such as ${xxx} with their values.
 	 */
 	public void searchAndReplace(
-		CharSequence start, CharSequence end, Function<UnprotectedStringBuffer, UnprotectedStringBuffer> valueProvider
+		CharSequence start, CharSequence end, UnaryOperator<UnprotectedStringBuffer> valueProvider
 	) {
 		if (strings == null) return;
 		int buffer = 0;

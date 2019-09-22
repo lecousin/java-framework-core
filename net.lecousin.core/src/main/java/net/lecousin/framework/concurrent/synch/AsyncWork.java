@@ -7,6 +7,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import net.lecousin.framework.application.LCCore;
@@ -238,6 +239,33 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 			}
 		});
 	}
+	
+	/** Call onready on success, or forward error/cancellation to onErrorAndCancel. */
+	public final <TError2 extends Exception> void listenInline(
+		Listener<T> onready, ISynchronizationPoint<TError2> onErrorAndCancel, Function<TError, TError2> errorConverter
+	) {
+		listenInline(new AsyncWorkListener<T,TError>() {
+			@Override
+			public void ready(T result) {
+				onready.fire(result);
+			}
+			
+			@Override
+			public void error(TError error) {
+				onErrorAndCancel.error(errorConverter.apply(error));
+			}
+			
+			@Override
+			public void cancelled(CancelException event) {
+				onErrorAndCancel.cancel(event);
+			}
+			
+			@Override
+			public String toString() {
+				return TO_STRING_INLINE + onready;
+			}
+		});
+	}
 
 	@Override
 	public final void listenInline(Runnable onready, ISynchronizationPoint<TError> onErrorAndCancel) {
@@ -315,6 +343,26 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 	}
 	
 	/** Forward the result, error, or cancellation to the given AsyncWork. */
+	public final <TError2 extends Exception> void listenInline(AsyncWork<T, TError2> sp, Function<TError, TError2> errorConverter) {
+		listenInline(new AsyncWorkListener<T,TError>() {
+			@Override
+			public void ready(T result) {
+				sp.unblockSuccess(result);
+			}
+			
+			@Override
+			public void error(TError error) {
+				sp.unblockError(errorConverter.apply(error));
+			}
+			
+			@Override
+			public void cancelled(CancelException event) {
+				sp.unblockCancel(event);
+			}
+		});
+	}
+
+	/** Forward the result, error, or cancellation to the given AsyncWork. */
 	public final void listenInlineGenericError(AsyncWork<T, Exception> sp) {
 		listenInline(new AsyncWorkListener<T,TError>() {
 			@Override
@@ -332,6 +380,13 @@ public class AsyncWork<T,TError extends Exception> implements ISynchronizationPo
 				sp.unblockCancel(event);
 			}
 		});
+	}
+	
+	/** Create an AsyncWork from the given one, adapting the error. */
+	public final <TError2 extends Exception> AsyncWork<T, TError2> convertError(Function<TError, TError2> converter) {
+		AsyncWork<T, TError2> a = new AsyncWork<T, TError2>();
+		listenInline(a, converter);
+		return a;
 	}
 	
 	/** Unblock this AsyncWork with the given result. */

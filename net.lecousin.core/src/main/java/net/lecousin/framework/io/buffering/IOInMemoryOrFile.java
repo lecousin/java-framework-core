@@ -331,13 +331,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable implements IO.Readable
 					});
 					file = null;
 				}
-				int nbBuf = (int)(newSize / BUFFER_SIZE);
-				if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
-				if (memory.length > nbBuf) {
-					byte[][] newMem = new byte[nbBuf][];
-					System.arraycopy(memory, 0, newMem, 0, nbBuf);
-					memory = newMem;
-				}
 			} else {
 				file.setSizeSync(newSize - maxSizeInMemory);
 			}

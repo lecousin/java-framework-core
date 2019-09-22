@@ -25,9 +25,12 @@ public interface StringParser<T> {
 		
 	}
 	
-	/** Parse a string. */
+	/** Parse a string.
+	 * @throws IllegalArgumentException if the class cannot be instantiated
+	 * @throws ParseException if parsing failed
+	 */
 	@SuppressWarnings("unchecked")
-	static <T> T parse(Class<T> type, StringFormat format, String string) throws ParseException, IllegalArgumentException {
+	static <T> T parse(Class<T> type, StringFormat format, String string) throws ParseException {
 		StringParser<?> parser;
 		if (!format.pattern().isEmpty()) {
 			try {
@@ -50,9 +53,11 @@ public interface StringParser<T> {
 		return (T)o;
 	}
 	
-	/** Parse a string. */
+	/** Parse a string.
+	 * @throws IllegalArgumentException in case the parse method invocation failed
+	 */
 	@SuppressWarnings("unchecked")
-	static <T> T parse(Class<T> type, String string) throws IllegalArgumentException {
+	static <T> T parse(Class<T> type, String string) {
 		// look for a static parse(String) method
 		Method parse;
 		try {

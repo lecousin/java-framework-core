@@ -16,7 +16,7 @@ public interface Deserializer {
 	void setMaximumTextSize(int max);
 	
 	/** Deserialize an object/value of the given type from the given input. */
-	<T> AsyncWork<T, Exception> deserialize(TypeDefinition type, IO.Readable input, List<SerializationRule> rules);
+	<T> AsyncWork<T, SerializationException> deserialize(TypeDefinition type, IO.Readable input, List<SerializationRule> rules);
 	
 	
 	/** Allow to handle stream with external reference. */
@@ -25,7 +25,7 @@ public interface Deserializer {
 		boolean isReference(String text);
 		
 		/** Retrieve the stream from the given reference. */
-		AsyncWork<IO.Readable, Exception> getStreamFromReference(String text);
+		AsyncWork<IO.Readable, SerializationException> getStreamFromReference(String text);
 	}
 
 	/** Register a stream reference handler. */

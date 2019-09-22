@@ -72,6 +72,7 @@ public class FragmentedRangeInteger extends LinkedList<RangeInteger> {
 	public void addRange(RangeInteger r) { addRange(r.min, r.max); }
 	
 	/** Add the given range. */
+	@SuppressWarnings("squid:S3776") // complexity
 	public void addRange(int start, int end) {
 		if (isEmpty()) {
 			add(new RangeInteger(start, end));

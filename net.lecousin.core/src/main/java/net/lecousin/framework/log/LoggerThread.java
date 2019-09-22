@@ -6,53 +6,47 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.appenders.Appender;
-import net.lecousin.framework.util.AsyncCloseable;
 import net.lecousin.framework.util.Pair;
 
 class LoggerThread {
 
+	@SuppressWarnings({"squid:S2142","squid:S106"})
 	LoggerThread(Application app) {
 		SynchronizationPoint<Exception> stopped = new SynchronizationPoint<>();
-		thread = app.getThreadFactory().newThread(new Runnable() {
-			@Override
-			public void run() {
-				while (true) {
-					Pair<Appender,Log> log;
-					synchronized (logs) {
-						log = logs.pollFirst();
-						if (log == null) {
-							if (flushing != null) {
-								flushing.unblock();
-								flushing = null;
-							}
-							if (stop) break;
-							try { logs.wait(); }
-							catch (InterruptedException e) { break; }
-							continue;
+		thread = app.getThreadFactory().newThread(() -> {
+			while (true) {
+				Pair<Appender,Log> log;
+				synchronized (logs) {
+					log = logs.pollFirst();
+					if (log == null) {
+						if (flushing != null) {
+							flushing.unblock();
+							flushing = null;
 						}
-					}
-					try { log.getValue1().append(log.getValue2()); }
-					catch (Exception t) {
-						app.getConsole().err("Error in log appender " + log.getValue1() + ": " + t.getMessage());
-						app.getConsole().err(t);
+						if (stop) break;
+						try { logs.wait(); }
+						catch (InterruptedException e) { break; }
+						continue;
 					}
 				}
-				System.out.println("Logger Thread stopped.");
-				stopped.unblock();
+				try { log.getValue1().append(log.getValue2()); }
+				catch (Exception t) {
+					app.getConsole().err("Error in log appender " + log.getValue1() + ": " + t.getMessage());
+					app.getConsole().err(t);
+				}
 			}
+			System.out.println("Logger Thread stopped.");
+			stopped.unblock();
 		});
 		thread.setName("Logger for " + app.getGroupId() + "." + app.getArtifactId() + " " + app.getVersion().toString());
 		if (app.isStopping()) return;
 		thread.start();
-		app.toClose(new AsyncCloseable<Exception>() {
-			@Override
-			public ISynchronizationPoint<Exception> closeAsync() {
-				stop = true;
-				synchronized (logs) {
-					logs.notify();
-				}
-				return stopped;
+		app.toClose(() -> {
+			stop = true;
+			synchronized (logs) {
+				logs.notify();
 			}
+			return stopped;
 		});
 	}
 	

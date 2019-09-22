@@ -251,6 +251,6 @@ public abstract class TestWritableSeekable extends TestWritable {
 		flush(io);
 		io.close();
 		check();
-	}	
+	}
 	
 }

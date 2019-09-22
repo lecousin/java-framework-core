@@ -52,6 +52,7 @@ public class ListOfArrays<T> implements Iterable<T> {
 		
 		@Override
 		public T next() {
+			if (array == null) throw new NoSuchElementException();
 			T e;
 			try { e = array[pos2++]; }
 			catch (ArrayIndexOutOfBoundsException err) {
@@ -60,6 +61,7 @@ public class ListOfArrays<T> implements Iterable<T> {
 			if (pos2 == array.length) {
 				pos2 = 0;
 				pos1++;
+				array = null;
 				while (pos1 < arrays.size()) {
 					array = arrays.get(pos1);
 					if (array.length > 0) break;

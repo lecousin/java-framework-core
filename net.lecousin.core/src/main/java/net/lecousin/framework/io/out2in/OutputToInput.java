@@ -144,13 +144,14 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S2589") // eof may change in a concurrent operation
 	public int readSync(long pos, ByteBuffer buffer) throws IOException {
 		if (lock.hasError() && !eof)
-			throw new IOException("An error occured during the transfer of data", lock.getError());
+			throw new OutputToInputTransferException(lock.getError());
 		while (pos >= writePos) {
 			if (eof) return -1;
 			if (lock.hasError() && !eof)
-				throw new IOException("An error occured during the transfer of data", lock.getError());
+				throw new OutputToInputTransferException(lock.getError());
 			lock.lock();
 		}
 		int nb;
@@ -187,18 +188,17 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S2589") // may change in a concurrent operation
 	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		if (lock.hasError() && !eof) {
-			IOException e = new IOException("An error occured during the transfer of data", lock.getError());
+			IOException e = new OutputToInputTransferException(lock.getError());
 			if (ondone != null) ondone.accept(new Pair<>(null, e));
 			return new AsyncWork<>(null, e);
 		}
 		if (pos >= writePos) {
-			if (eof) {
-				if (pos >= writePos) {
-					if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(-1), null));
-					return new AsyncWork<>(Integer.valueOf(-1), null);
-				}
+			if (eof && pos >= writePos) {
+				if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(-1), null));
+				return new AsyncWork<>(Integer.valueOf(-1), null);
 			}
 			AsyncWork<Integer, IOException> result = new AsyncWork<>();
 			lock.listenAsync(operation(new Task.Cpu<Integer, IOException>("OutputToInput.readAsync", io.getPriority()) {
@@ -242,6 +242,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S2589") // may change in a concurrent operation
 	public long skipSync(long n) throws IOException {
 		if (n == 0) return 0;
 		if (n < 0) {
@@ -252,7 +253,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 		}
 		if (readPos + n > writePos) {
 			if (lock.hasError() && !eof)
-				throw new IOException("An error occured during the transfer of data", lock.getError());
+				throw new OutputToInputTransferException(lock.getError());
 			while (readPos + n > writePos) {
 				if (eof) {
 					n = writePos - readPos;
@@ -260,7 +261,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 					return n;
 				}
 				if (lock.hasError() && !eof)
-					throw new IOException("An error occured during the transfer of data", lock.getError());
+					throw new OutputToInputTransferException(lock.getError());
 				lock.lock();
 			}
 		}
@@ -330,7 +331,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 				skipSync(-move);
 				return readPos;
 			}
-			throw new IOException("An error occured during the transfer of data", lock.getError());
+			throw new OutputToInputTransferException(lock.getError());
 		default:
 			throw new IOException("Unknown SeekType " + type);
 		}
@@ -355,7 +356,7 @@ public class OutputToInput extends ConcurrentCloseable implements IO.OutputToInp
 			return res;
 		case FROM_END:
 			if (lock.hasError() && !eof) {
-				IOException e = new IOException("An error occured during the transfer of data", lock.getError());
+				IOException e = new OutputToInputTransferException(lock.getError());
 				if (ondone != null) ondone.accept(new Pair<>(null, e));
 				return new AsyncWork<>(null, e);
 			}

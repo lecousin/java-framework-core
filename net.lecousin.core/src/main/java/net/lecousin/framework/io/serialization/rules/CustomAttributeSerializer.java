@@ -7,6 +7,7 @@ import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContextPattern.OnClassAttribute;
+import net.lecousin.framework.io.serialization.SerializationException;
 
 /** Rule to customize the serialization of an attribute. */
 public class CustomAttributeSerializer implements SerializationRule {
@@ -26,6 +27,7 @@ public class CustomAttributeSerializer implements SerializationRule {
 	private CustomSerializer serializer;
 	
 	@Override
+	@SuppressWarnings("squid:S3516") // always return false
 	public boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) {
 		Attribute a = pattern.getAttribute(type, context);
 		if (a == null)
@@ -61,13 +63,13 @@ public class CustomAttributeSerializer implements SerializationRule {
 		}
 		
 		@Override
-		public Object getValue(Object instance) throws Exception {
+		public Object getValue(Object instance) throws SerializationException {
 			Object source = super.getValue(instance);
 			return serializer.serialize(source, instance);
 		}
 		
 		@Override
-		public void setValue(Object instance, Object value) throws Exception {
+		public void setValue(Object instance, Object value) throws SerializationException {
 			super.setValue(instance, serializer.deserialize(value, instance));
 		}
 	}

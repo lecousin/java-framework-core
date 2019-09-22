@@ -117,6 +117,7 @@ public class IntegerMapLinkedArrayList<T> implements IntegerMap<T> {
 			@Override
 			public void remove() {
 				it.remove();
+				size--;
 			}
 		};
 	}

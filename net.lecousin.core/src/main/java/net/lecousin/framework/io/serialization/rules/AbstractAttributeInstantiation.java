@@ -7,6 +7,7 @@ import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.SerializationContextPattern.OnClassAttribute;
+import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.util.Factory;
 
 /** Base class specifying a rule on how to instantiate an attribute. */
@@ -32,17 +33,17 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 	@Override
 	public boolean apply(
 		SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing
-	) throws Exception {
+	) throws SerializationException {
 		Attribute a = pattern.getAttribute(type, context);
 		if (a == null)
 			return false;
 		Attribute discr = type.getAttributeByOriginalName(discriminator);
 		if (discr == null || !discr.canGet())
-			throw new Exception("Unable to get discriminator attribute " + discriminator);
+			throw new SerializationException("Unable to get discriminator attribute " + discriminator);
 		try {
 			type.replaceAttribute(a, new InstantiationAttribute(a, discr, factory.newInstance()));
 		} catch (Exception t) {
-			throw new Exception("Unable to replace attribute by an InstantiationAttribute", t);
+			throw new SerializationException("Unable to replace attribute by an InstantiationAttribute", t);
 		}
 		return false;
 	}
@@ -66,7 +67,7 @@ public class AbstractAttributeInstantiation implements SerializationRule {
 		
 		@SuppressWarnings("unchecked")
 		@Override
-		public Object instantiate(AttributeContext context) throws Exception {
+		public Object instantiate(AttributeContext context) throws SerializationException {
 			return factory.create(discriminator.getValue(context.getParent().getInstance()));
 		}
 		

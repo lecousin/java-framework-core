@@ -60,30 +60,30 @@ public class TestIntArrayCache extends LCCoreAbstractTest {
 		Assert.assertTrue(b == b1024 || b == b1024_2);
 		cache.free(b1024);
 		// free many buffers
-		for (int i = 0; i < cache.maxBuffersBySizeUnder128KB + 1; ++i)
+		for (int i = 0; i < cache.getMaxBuffersBySizeUnder128KB() + 1; ++i)
 			cache.free(new int[8192]);
-		for (int i = 0; i < cache.maxBuffersBySizeAbove128KB + 1; ++i)
+		for (int i = 0; i < cache.getMaxBuffersBySizeAbove128KB() + 1; ++i)
 			cache.free(new int[2 * 1024 * 1024]);
-		for (int i = 0; i < cache.maxBuffersBySizeUnder128KB + 1; ++i)
+		for (int i = 0; i < cache.getMaxBuffersBySizeUnder128KB() + 1; ++i)
 			cache.free(new int[30000]);
-		for (int i = 0; i < cache.maxBuffersBySizeUnder128KB + 1; ++i)
+		for (int i = 0; i < cache.getMaxBuffersBySizeUnder128KB() + 1; ++i)
 			cache.free(new int[20000]);
-		for (int i = 0; i < cache.maxBuffersBySizeUnder128KB + 1; ++i)
+		for (int i = 0; i < cache.getMaxBuffersBySizeUnder128KB() + 1; ++i)
 			cache.free(new int[10000]);
 		// free memory
 		cache.freeMemory(FreeMemoryLevel.EXPIRED_ONLY);
 		cache.freeMemory(FreeMemoryLevel.LOW);
 		cache.freeMemory(FreeMemoryLevel.MEDIUM);
 		cache.freeMemory(FreeMemoryLevel.URGENT);
-		long expirationTime = cache.timeBeforeToRemove;
-		cache.timeBeforeToRemove = -1;
-		for (int i = 0; i < cache.maxBuffersBySizeUnder128KB; ++i)
+		long expirationTime = cache.getTimeBeforeToRemove();
+		cache.setTimeBeforeToRemove(-1);
+		for (int i = 0; i < cache.getMaxBuffersBySizeUnder128KB(); ++i)
 			cache.free(new int[1024]);
-		for (int i = 0; i < cache.maxBuffersBySizeUnder128KB; ++i)
+		for (int i = 0; i < cache.getMaxBuffersBySizeUnder128KB(); ++i)
 			cache.free(new int[2048]);
-		for (int i = 0; i < cache.maxBuffersBySizeUnder128KB; ++i)
+		for (int i = 0; i < cache.getMaxBuffersBySizeUnder128KB(); ++i)
 			cache.free(new int[4096]);
-		for (int i = 0; i < cache.maxBuffersBySizeUnder128KB; ++i)
+		for (int i = 0; i < cache.getMaxBuffersBySizeUnder128KB(); ++i)
 			cache.free(new int[8192]);
 		cache.freeMemory(FreeMemoryLevel.EXPIRED_ONLY);
 		cache.freeMemory(FreeMemoryLevel.MEDIUM);
@@ -92,7 +92,7 @@ public class TestIntArrayCache extends LCCoreAbstractTest {
 		cache.freeMemory(FreeMemoryLevel.MEDIUM);
 		cache.freeMemory(FreeMemoryLevel.MEDIUM);
 		cache.freeMemory(FreeMemoryLevel.URGENT);
-		cache.timeBeforeToRemove = expirationTime;
+		cache.setTimeBeforeToRemove(expirationTime);
 		cache.free(new int[1024]);
 		cache.free(new int[1024]);
 		cache.get(1024, false);

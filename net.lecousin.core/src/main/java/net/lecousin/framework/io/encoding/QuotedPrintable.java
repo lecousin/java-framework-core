@@ -13,6 +13,7 @@ public final class QuotedPrintable {
 	private QuotedPrintable() { /* no instance. */ }
 
 	/** Decode the given input. */
+	@SuppressWarnings("squid:3776") // complexity
 	public static ByteBuffer decode(ByteBuffer input) throws IOException {
 		byte[] out = new byte[input.remaining()];
 		int pos = 0;
@@ -89,6 +90,7 @@ public final class QuotedPrintable {
 	}
 	
 	/** Encode the given input. */
+	@SuppressWarnings("squid:3776") // complexity
 	public static ByteBuffer encode(byte[] input) {
 		int pos = input.length + input.length / 3;
 		if (pos < 64) pos = 64;

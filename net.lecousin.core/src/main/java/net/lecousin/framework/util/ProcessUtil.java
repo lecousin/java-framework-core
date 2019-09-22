@@ -19,6 +19,7 @@ public final class ProcessUtil {
 	/**
 	 * Create a thread that wait for the given process to end, and call the given listener.
 	 */
+	@SuppressWarnings("squid:S2142") // InterruptedException
 	public static void onProcessExited(Process process, Listener<Integer> exitValueListener) {
 		Application app = LCCore.getApplication();
 		Mutable<Thread> mt = new Mutable<>(null);
@@ -112,7 +113,7 @@ public final class ProcessUtil {
 			} while (true);
 			if (line.length() > 0)
 				listener.fire(line.toString());
-			try { input.close(); } catch (Exception t) { /* ignore */ }
+			try { input.close(); } catch (Exception e) { /* ignore */ }
 			app.interrupted(t);
 		}
 	}

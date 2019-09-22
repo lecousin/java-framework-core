@@ -398,6 +398,7 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Ask to start the task. This does not start it immediately, but adds it to the queue of tasks to execute. */
+	@SuppressWarnings("squid:S00112") // RuntimeException
 	public final Task<T,TError> start() {
 		if (this instanceof Done) return this;
 		if (cancelling != null) result.cancelled(cancelling);

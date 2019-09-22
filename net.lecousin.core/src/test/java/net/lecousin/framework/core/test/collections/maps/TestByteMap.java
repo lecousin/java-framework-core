@@ -3,7 +3,9 @@ package net.lecousin.framework.core.test.collections.maps;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Random;
 
 import org.junit.Assert;
@@ -68,6 +70,53 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 		checkEmpty(map);
 	}
 	
+	
+	@Test(timeout=30000)
+	public void testValuesIterator() {
+		ByteMap<Object> map = createByteMap();
+		List<Byte> list = new LinkedList<>();
+		for (byte i = 0; i < 100; ++i) {
+			map.put(i, Byte.valueOf(i));
+			list.add(Byte.valueOf(i));
+		}
+		Assert.assertEquals(100, map.size());
+		Iterator<Object> it = map.values();
+		while (it.hasNext()) {
+			Object o = it.next();
+			Assert.assertTrue(o instanceof Byte);
+			byte i = ((Byte)o).byteValue();
+			Assert.assertTrue(i < 100 && i >= 0);
+			Assert.assertTrue(list.remove(o));
+		}
+		Assert.assertTrue(list.isEmpty());
+		try {
+			it.next();
+			throw new AssertionError("NoSuchElement");
+		} catch (NoSuchElementException e) {
+			// ok
+		}
+		// test remove half
+		try {
+			it = map.values();
+			int i = 0;
+			while (it.hasNext()) {
+				it.next();
+				if ((i % 2) == 0) it.remove();
+				++i;
+			}
+			Assert.assertEquals(50, map.size());
+			i = 0;
+			it = map.values();
+			while (it.hasNext()) {
+				i++;
+				it.next();
+			}
+			Assert.assertEquals(50, i);
+		} catch (UnsupportedOperationException e) {
+			// ok if not supported
+		}
+	}
+
 	protected void checkEmpty(ByteMap<Object> map) {
 		Assert.assertEquals(0, map.size());
 		Assert.assertTrue(map.isEmpty());

@@ -131,9 +131,8 @@ public class RollingFileAppender implements Appender, Closeable {
 				public Void run() {
 					if (!file.exists()) {
 						File dir = file.getParentFile();
-						if (!dir.exists())
-							if (!dir.mkdirs())
-								return error("Cannot create log directory: " + dir.getAbsolutePath(), null, result);
+						if (!dir.exists() && !dir.mkdirs())
+							return error("Cannot create log directory: " + dir.getAbsolutePath(), null, result);
 						try {
 							if (!file.createNewFile())
 								return error("Cannot create log file: " + file.getAbsolutePath(), null, result);
@@ -180,15 +179,12 @@ public class RollingFileAppender implements Appender, Closeable {
 					public Void run() {
 						File dir = file.getParentFile();
 						File f = new File(dir, file.getName() + '.' + maxFiles);
-						if (f.exists())
-							if (!f.delete())
-								return error("Unable to remove log file " + f.getAbsolutePath(), null, result);
+						if (f.exists() && !f.delete())
+							return error("Unable to remove log file " + f.getAbsolutePath(), null, result);
 						for (int i = maxFiles - 1; i >= 1; --i) {
 							f = new File(dir, file.getName() + '.' + i);
-							if (f.exists())
-								if (!f.renameTo(new File(dir, file.getName() + '.' + (i + 1))))
-									return error(
-										"Unable to rename log file " + f.getAbsolutePath(), null, result);
+							if (f.exists() && !f.renameTo(new File(dir, file.getName() + '.' + (i + 1))))
+								return error("Unable to rename log file " + f.getAbsolutePath(), null, result);
 						}
 						f = new File(dir, file.getName() + ".1");
 						if (!file.renameTo(f))

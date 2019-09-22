@@ -98,14 +98,15 @@ public class XMLDocument extends XMLNode implements Document {
 			switch (stream.event.type) {
 			case DOCTYPE:
 				if (doc.docType != null)
-					throw new XMLException(stream.getPosition(), "Unexpected element ", "DOCTYPE");
+					throw new XMLException(stream.getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_ELEMENT, "DOCTYPE");
 				doc.docType = new XMLDocumentType(doc, stream.event.text.asString(),
 					stream.event.publicId != null ? stream.event.publicId.asString() : null,
 					stream.event.system != null ? stream.event.system.asString() : null);
 				break;
 			case START_ELEMENT:
 				if (doc.root != null)
-					throw new XMLException(stream.getPosition(), "Unexpected element ", stream.event.text.asString());
+					throw new XMLException(stream.getPosition(),
+						XMLException.LOCALIZED_MESSAGE_UNEXPECTED_ELEMENT, stream.event.text.asString());
 				doc.root = XMLElement.create(doc, stream);
 				break;
 			default: break;
@@ -155,7 +156,8 @@ public class XMLDocument extends XMLNode implements Document {
 				case START_ELEMENT:
 					if (doc.root != null) {
 						// TODO XMLException
-						result.error(new IOException("Unexpected element " + stream.event.text.asString()));
+						result.error(new IOException(XMLException.LOCALIZED_MESSAGE_UNEXPECTED_ELEMENT + ' '
+							+ stream.event.text.asString()));
 						return;
 					}
 					AsyncWork<XMLElement, Exception> root = XMLElement.create(doc, stream);

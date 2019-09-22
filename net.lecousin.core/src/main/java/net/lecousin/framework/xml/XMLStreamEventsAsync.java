@@ -79,9 +79,8 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				if (Type.END_ELEMENT.equals(event.type)) {
 					if (event.context.getFirst() == parent)
 						return new AsyncWork<>(Boolean.FALSE, null);
-				} else if (Type.START_ELEMENT.equals(event.type)) {
-					if (event.context.size() > 1 && event.context.get(1) == parent)
-						return new AsyncWork<>(Boolean.TRUE, null);
+				} else if (Type.START_ELEMENT.equals(event.type) && event.context.size() > 1 && event.context.get(1) == parent) {
+					return new AsyncWork<>(Boolean.TRUE, null);
 				}
 				next = next();
 				continue;
@@ -97,9 +96,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 					result.unblockSuccess(Boolean.FALSE);
 				else if (Type.START_ELEMENT.equals(event.type) && event.context.size() > 1 && event.context.get(1) == parent)
 					result.unblockSuccess(Boolean.TRUE);
-				else new ParsingTask(() -> {
-					nextInnerElement(parent).listenInline(result);
-				}).start();
+				else new ParsingTask(() -> nextInnerElement(parent).listenInline(result)).start();
 			}, result
 		);
 		return result;
@@ -125,9 +122,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				if (n.hasError()) result.error(n.getError());
 				else if (!n.getResult().booleanValue()) result.unblockSuccess(Boolean.FALSE);
 				else if (event.text.equals(childName)) result.unblockSuccess(Boolean.TRUE);
-				else new ParsingTask(() -> {
-					nextInnerElement(parent, childName).listenInline(result);
-				}).start();
+				else new ParsingTask(() -> nextInnerElement(parent, childName).listenInline(result)).start();
 			}, result
 		);
 		return result;
@@ -172,9 +167,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 						next = next();
 						continue;
 					}
-					closeElement().listenAsync(new ParsingTask(() -> {
-						readInnerText(innerText, result);
-					}), result);
+					closeElement().listenAsync(new ParsingTask(() -> readInnerText(innerText, result)), result);
 					return;
 				}
 				if (Type.END_ELEMENT.equals(event.type)) {
@@ -189,28 +182,26 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		next.listenInline(() -> {
 			if (Type.START_ELEMENT.equals(event.type)) {
 				if (event.isClosed) {
-					new ParsingTask(() -> { readInnerText(innerText, result); }).start();
+					new ParsingTask(() -> readInnerText(innerText, result)).start();
 					return;
 				}
-				closeElement().listenAsync(new ParsingTask(() -> {
-					readInnerText(innerText, result);
-				}), result);
+				closeElement().listenAsync(new ParsingTask(() -> readInnerText(innerText, result)), result);
 				return;
 			}
 			if (Type.COMMENT.equals(event.type)) {
-				new ParsingTask(() -> { readInnerText(innerText, result); }).start();
+				new ParsingTask(() -> readInnerText(innerText, result)).start();
 				return;
 			}
 			if (Type.TEXT.equals(event.type)) {
 				innerText.append(event.text);
-				new ParsingTask(() -> { readInnerText(innerText, result); }).start();
+				new ParsingTask(() -> readInnerText(innerText, result)).start();
 				return;
 			}
 			if (Type.END_ELEMENT.equals(event.type)) {
 				result.unblockSuccess(innerText);
 				return;
 			}
-			new ParsingTask(() -> { readInnerText(innerText, result); }).start();
+			new ParsingTask(() -> readInnerText(innerText, result)).start();
 		}, result);
 	}
 	
@@ -230,23 +221,19 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		do {
 			if (!next.isUnblocked()) break;
 			if (next.hasError()) return next;
-			if (Type.END_ELEMENT.equals(event.type)) {
-				if (event.context.getFirst() == ctx)
-					return next;
-			}
+			if (Type.END_ELEMENT.equals(event.type) && event.context.getFirst() == ctx)
+				return next;
 			next = next();
 		} while (true);
 		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
 		ISynchronizationPoint<Exception> n = next;
 		next.listenInline(() -> {
 			if (!check(n, result)) return;
-			if (Type.END_ELEMENT.equals(event.type)) {
-				if (event.context.getFirst() == ctx) {
-					result.unblock();
-					return;
-				}
+			if (Type.END_ELEMENT.equals(event.type) && event.context.getFirst() == ctx) {
+				result.unblock();
+				return;
 			}
-			new ParsingTask(() -> { closeElement(ctx).listenInline(result); }).start();
+			new ParsingTask(() -> closeElement(ctx).listenInline(result)).start();
 		}, result);
 		return result;
 	}
@@ -266,7 +253,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		next.listenInline(() -> {
 			if (n.hasError()) result.error(n.getError());
 			else if (Type.START_ELEMENT.equals(event.type) && event.text.equals(elementName)) result.unblock();
-			else new ParsingTask(() -> { searchElement(elementName).listenInline(result); }).start();
+			else new ParsingTask(() -> searchElement(elementName).listenInline(result)).start();
 		}, result);
 		return result;
 	}
@@ -294,7 +281,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 			if (n.hasError()) result.error(n.getError());
 			else if (!n.getResult().booleanValue()) result.unblockSuccess(Boolean.FALSE);
 			else if (ii == innerElements.length - 1) result.unblockSuccess(Boolean.TRUE);
-			else new ParsingTask(() -> { goInto(event.context.getFirst(), ii + 1, innerElements).listenInline(result); }).start();
+			else new ParsingTask(() -> goInto(event.context.getFirst(), ii + 1, innerElements).listenInline(result)).start();
 		}, result);
 		return result;
 	}
@@ -324,13 +311,13 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				next = nextInnerElement(parent);
 				continue;
 			}
-			read.listenInline((value) -> {
+			read.listenInline(value -> {
 				texts.put(name,  value.asString());
-				new ParsingTask(() -> { readInnerElementsText(parent, texts, result); }).start();
+				new ParsingTask(() -> readInnerElementsText(parent, texts, result)).start();
 			}, result);
 			return;
 		} while (true);
-		next.listenInline((res) -> {
+		next.listenInline(res -> {
 			if (!res.booleanValue()) {
 				result.unblockSuccess(texts);
 				return;
@@ -344,9 +331,9 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 					readInnerElementsText(parent, texts, result);
 					return;
 				}
-				read.listenInline((value) -> {
+				read.listenInline(value -> {
 					texts.put(name,  value.asString());
-					new ParsingTask(() -> { readInnerElementsText(parent, texts, result); }).start();
+					new ParsingTask(() -> readInnerElementsText(parent, texts, result)).start();
 				}, result);
 			}).start();
 		}, result);

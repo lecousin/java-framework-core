@@ -321,8 +321,9 @@ public class LocalizedProperties implements IMemoryManageable {
 		synchronized (namespaces) {
 			for (Map.Entry<String, Namespace> ns : namespaces.entrySet()) {
 				int loaded = 0;
-				for (Namespace.Language lang : ns.getValue().languages) // TODO here we may have a NPE
-					if (lang.loading != null) loaded++;
+				if (ns.getValue().languages != null)
+					for (Namespace.Language lang : ns.getValue().languages)
+						if (lang.loading != null) loaded++;
 				items.add("Localized properties for namespace " + ns.getKey() + " (" + loaded + " language(s) loaded)");
 			}
 		}

@@ -28,12 +28,11 @@ public class TestBufferedToInputStream extends TestInputStream {
 		super(testFile, testBuf, nbBuf);
 	}
 
-	@SuppressWarnings("resource")
 	@Override
 	protected InputStream openStream() {
 		FileIO.ReadOnly io = new FileIO.ReadOnly(testFile, Task.PRIORITY_NORMAL);
 		SimpleBufferedReadable bio = new SimpleBufferedReadable(io, 4096);
-		return new BufferedToInputStream(bio, false);
+		return new BufferedToInputStream(bio, nbBuf == 0);
 	}
 	
 	@Override

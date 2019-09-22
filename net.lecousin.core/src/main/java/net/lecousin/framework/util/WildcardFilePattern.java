@@ -1,7 +1,8 @@
 package net.lecousin.framework.util;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Stack;
+import java.util.Deque;
 
 /**
  * Pattern to match file names, where character * and ? can be used.
@@ -63,11 +64,11 @@ public class WildcardFilePattern implements IStringPattern {
         boolean anyChars = false;
         int textIdx = 0;
         int wcsIdx = 0;
-        final Stack<int[]> backtrack = new Stack<>();
+        final Deque<int[]> backtrack = new ArrayDeque<>();
 
         // loop around a backtrack stack, to handle complex * matching
         do {
-            if (backtrack.size() > 0) {
+            if (!backtrack.isEmpty()) {
                 final int[] array = backtrack.pop();
                 wcsIdx = array[0];
                 textIdx = array[1];
@@ -126,7 +127,7 @@ public class WildcardFilePattern implements IStringPattern {
                 return true;
             }
 
-        } while (backtrack.size() > 0);
+        } while (!backtrack.isEmpty());
 
         return false;
     }

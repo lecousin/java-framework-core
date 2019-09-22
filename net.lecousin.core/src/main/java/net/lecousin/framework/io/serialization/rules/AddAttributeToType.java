@@ -6,6 +6,7 @@ import java.util.List;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
+import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.util.ClassUtil;
 
@@ -30,20 +31,25 @@ public class AddAttributeToType implements SerializationRule {
 	@Override
 	public boolean apply(
 		SerializationClass sc, SerializationContext context, List<SerializationRule> rules, boolean serializing
-	) throws Exception {
+	) throws SerializationException {
 		if (!type.isAssignableFrom(sc.getType().getBase()))
 			return false;
 		TypeDefinition t = null;
 		Method sm = null;
 		Method dm = null;
 		if (serializingMethodName != null && !serializingMethodName.isEmpty()) {
-			sm = type.getMethod(serializingMethodName);
+			try {
+				sm = type.getMethod(serializingMethodName);
+			} catch (NoSuchMethodException e) {
+				throw new SerializationException(
+					"Serialization method " + serializingMethodName + " does not exist on calss " + type.getName(), e);
+			}
 			t = new TypeDefinition(sc.getType(), sm.getGenericReturnType());
 		}
 		if (deserializingMethodName != null && !deserializingMethodName.isEmpty()) {
 			dm = ClassUtil.getMethod(type, deserializingMethodName, 1);
 			if (dm == null)
-				throw new NoSuchMethodException(
+				throw new SerializationException(
 					"Deserialization method " + deserializingMethodName + " does not exist on class " + type.getName());
 			if (t == null)
 				t = new TypeDefinition(sc.getType(), dm.getGenericParameterTypes()[0]);

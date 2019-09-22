@@ -3,12 +3,12 @@ package net.lecousin.framework.core.test.io;
 import java.io.EOFException;
 import java.io.File;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFiles {
 	
@@ -116,6 +116,32 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 		ioBuf.close();
 	}
 	
+	@Test(timeout=120000)
+	public void testReadableBufferedBySmallBufferSync() throws Exception {
+		long size = getFileSize();
+		IO.ReadableByteStream io = createReadableByteStreamFromFile(openFile(), size);
+		byte[] b = new byte[testBuf.length / 2 + testBuf.length / 3];
+		long pos = 0;
+		while (pos < size) {
+			if (io instanceof IO.PositionKnown)
+				Assert.assertEquals(pos, ((IO.PositionKnown)io).getPosition());
+			int nb = io.read(b, 0, b.length);
+			Assert.assertTrue(nb > 0);
+			for (int i = 0; i < nb; ++i) {
+				int off = (int)((pos + i) % testBuf.length);
+				Assert.assertEquals(testBuf[off], b[i]);
+			}
+			pos += nb;
+		}
+		int nb = io.read(b, 0, b.length);
+		if (nb > 0)
+			throw new Exception("" + nb + " byte(s) read after the end of the file");
+		if (io instanceof IO.PositionKnown)
+			Assert.assertEquals(nbBuf * testBuf.length, ((IO.PositionKnown)io).getPosition());
+		io.close();
+	}
+	
+
 	@SuppressWarnings("resource")
 	@Test(timeout=120000)
 	public void testSkip() throws Exception {

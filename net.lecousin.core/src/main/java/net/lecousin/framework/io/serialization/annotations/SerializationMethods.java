@@ -10,6 +10,7 @@ import java.lang.reflect.Modifier;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.io.serialization.CustomSerializer;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
+import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.rules.CustomAttributeSerializer;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
@@ -43,7 +44,7 @@ public @interface SerializationMethods {
 					new TypeDefinition(attribute.getParent().getType(), serializationMethod.getGenericReturnType());
 				Method deserializationMethod = container.getMethod(annotation.deserialization(), targetType.getBase());
 				if (!deserializationMethod.getReturnType().equals(sourceType.getBase()))
-					throw new Exception("Deserialization method " + deserializationMethod.getName()
+					throw new SerializationException("Deserialization method " + deserializationMethod.getName()
 						+ " must return a value of type " + sourceType.getBase().getName());
 				return new CustomAttributeSerializer(
 					attribute.getDeclaringClass(), attribute.getOriginalName(),

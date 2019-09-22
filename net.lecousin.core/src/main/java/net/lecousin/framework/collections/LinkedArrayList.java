@@ -418,7 +418,7 @@ public class LinkedArrayList<T> implements List<T> {
 			Array<T> a = new Array<>(arraySize, tail, null);
 			tail = a;
 			int len = length > arraySize ? arraySize : length;
-			System.arraycopy(a, offset, a.elements, 0, len);
+			System.arraycopy(array, offset, a.elements, 0, len);
 			a.size = len;
 			size += len;
 			offset += len;

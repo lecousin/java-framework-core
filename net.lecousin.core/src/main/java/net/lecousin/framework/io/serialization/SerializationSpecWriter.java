@@ -10,6 +10,6 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 public interface SerializationSpecWriter {
 
 	/** Write the specification for the given type. */
-	ISynchronizationPoint<Exception> writeSpecification(Class<?> type, IO.Writable output, List<SerializationRule> rules);
+	ISynchronizationPoint<SerializationException> writeSpecification(Class<?> type, IO.Writable output, List<SerializationRule> rules);
 	
 }

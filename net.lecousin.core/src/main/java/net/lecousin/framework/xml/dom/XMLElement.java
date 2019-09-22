@@ -82,9 +82,7 @@ public class XMLElement extends XMLNode implements Element {
 	
 	@Override
 	public String getTagName() {
-		if (prefix != null && prefix.length() > 0)
-			return prefix + ':' + localName;
-		return localName;
+		return getNodeName();
 	}
 	
 	@Override
@@ -607,6 +605,7 @@ public class XMLElement extends XMLNode implements Element {
 		return parseContent(stream, null);
 	}
 	
+	@SuppressWarnings("squid:S1199") // nested block
 	private ISynchronizationPoint<Exception> parseContent(XMLStreamEventsAsync stream, ISynchronizationPoint<Exception> s) {
 		do {
 			ISynchronizationPoint<Exception> next = s != null ? s : stream.next();

@@ -9,6 +9,7 @@ import java.util.concurrent.ThreadFactory;
 public abstract class TaskManager {
 	
 	/** Constructor. */
+	@SuppressWarnings("squid:S00112") // RuntimeException
 	public TaskManager(
 		String name, Object resource, ThreadFactory threadFactory, Class<? extends TaskPriorityManager> taskPriorityManager
 	) {

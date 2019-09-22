@@ -67,7 +67,7 @@ public class SerializationClass {
 	}
 	
 	/** Apply rules. */
-	public void apply(List<SerializationRule> rules, SerializationContext context, boolean serializing) throws Exception {
+	public void apply(List<SerializationRule> rules, SerializationContext context, boolean serializing) throws SerializationException {
 		for (SerializationRule rule : rules)
 			if (rule.apply(this, context, rules, serializing))
 				break;
@@ -177,43 +177,49 @@ public class SerializationClass {
 		
 		/** Return true if a getter exists or the field is public. */
 		public boolean canGet() {
-			if (getter != null)
-				return true;
-			if (field != null && (field.getModifiers() & Modifier.PUBLIC) != 0)
-				return true;
-			return false;
+			return (getter != null) ||
+				(field != null && (field.getModifiers() & Modifier.PUBLIC) != 0);
 		}
 
 		/** Return true if a setter exists or the field is public. */
 		public boolean canSet() {
-			if (setter != null)
-				return true;
-			if (field != null && (field.getModifiers() & Modifier.PUBLIC) != 0)
-				return true;
-			return false;
+			return (setter != null) ||
+				(field != null && (field.getModifiers() & Modifier.PUBLIC) != 0);
 		}
 		
 		/** Return the value of this attribute for the given instance. */
-		public Object getValue(Object instance) throws Exception {
-			Object val;
-			if (getter != null)
-				val = getter.invoke(instance);
-			else
-				val = field.get(instance);
-			return val;
+		public Object getValue(Object instance) throws SerializationException {
+			try {
+				Object val;
+				if (getter != null)
+					val = getter.invoke(instance);
+				else
+					val = field.get(instance);
+				return val;
+			} catch (Exception e) {
+				throw new SerializationException("Error getting field " + originalName, e);
+			}
 		}
 		
 		/** Set the value of this attribute for the given instance. */
-		public void setValue(Object instance, Object value) throws Exception {
-			if (setter != null)
-				setter.invoke(instance, value);
-			else
-				field.set(instance, value);
+		public void setValue(Object instance, Object value) throws SerializationException {
+			try {
+				if (setter != null)
+					setter.invoke(instance, value);
+				else
+					field.set(instance, value);
+			} catch (Exception e) {
+				throw new SerializationException("Error setting field " + originalName, e);
+			}
 		}
 		
 		/** Instantiate a new object of the type of this attribute. */
-		public Object instantiate(AttributeContext context) throws Exception {
-			return SerializationClass.instantiate(context.getAttribute().getType().getBase());
+		public Object instantiate(AttributeContext context) throws SerializationException {
+			try {
+				return SerializationClass.instantiate(context.getAttribute().getType().getBase());
+			} catch (Exception e) {
+				throw new SerializationException("Error instantiating field " + originalName, e);
+			}
 		}
 		
 		/** Return true if this attribute has a custom instantiation and no type information should not be serialized. */
@@ -264,55 +270,10 @@ public class SerializationClass {
 		if (Object.class.equals(type))
 			return;
 		for (Field f : type.getDeclaredFields()) {
-			if ((f.getModifiers() & (Modifier.STATIC | Modifier.FINAL)) != 0) continue;
-			String name = f.getName();
-			Attribute a = getAttributeByOriginalName(name);
-			if (a == null) {
-				a = new Attribute(this, f);
-				attributes.add(a);
-			}
+			populateFieldAttribute(f);
 		}
 		for (Method m : type.getDeclaredMethods()) {
-			if ((m.getModifiers() & Modifier.PUBLIC) == 0) continue;
-			String name = m.getName();
-			if (name.startsWith("get")) {
-				if (name.length() == 3) continue;
-				name = Character.toLowerCase(name.charAt(3)) + name.substring(4);
-				if (m.getParameterCount() != 0) continue;
-				Class<?> returnType = m.getReturnType();
-				if (returnType == null || Void.class.equals(returnType) || void.class.equals(returnType)) continue;
-				Attribute a = getAttributeByOriginalName(name);
-				if (a == null) {
-					a = new Attribute(this, name, new TypeDefinition(new TypeDefinition(type, params), m.getGenericReturnType()));
-					attributes.add(a);
-				}
-				if (a.getter == null)
-					a.getter = m;
-			} else if (name.startsWith("is")) {
-				if (name.length() == 2) continue;
-				name = Character.toLowerCase(name.charAt(3)) + name.substring(4);
-				if (m.getParameterCount() != 0) continue;
-				Class<?> returnType = m.getReturnType();
-				if (returnType == null || Void.class.equals(returnType) || void.class.equals(returnType)) continue;
-				if (!returnType.equals(boolean.class) && !returnType.equals(Boolean.class)) continue;
-				Attribute a = getAttributeByOriginalName(name);
-				if (a == null) {
-					a = new Attribute(this, name, new TypeDefinition(returnType));
-					attributes.add(a);
-				}
-				if (a.getter == null)
-					a.getter = m;
-			} else if (name.startsWith("set")) {
-				if (name.length() == 3) continue;
-				name = Character.toLowerCase(name.charAt(3)) + name.substring(4);
-				if (m.getParameterCount() != 1) continue;
-				Attribute a = getAttributeByOriginalName(name);
-				if (a == null)
-					a = new Attribute(this, name,
-						new TypeDefinition(new TypeDefinition(type, params), m.getGenericParameterTypes()[0]));
-				if (a.setter == null)
-					a.setter = m;
-			}
+			populateMethodAttribute(m, type, params);
 		}
 		if (type.getSuperclass() != null) {
 			Type t = type.getGenericSuperclass();
@@ -333,6 +294,67 @@ public class SerializationClass {
 			}
 			populateAttributes(type.getSuperclass(), superParams);
 		}
+	}
+	
+	private void populateFieldAttribute(Field f) {
+		if ((f.getModifiers() & (Modifier.STATIC | Modifier.FINAL)) != 0) return;
+		String name = f.getName();
+		Attribute a = getAttributeByOriginalName(name);
+		if (a == null) {
+			a = new Attribute(this, f);
+			attributes.add(a);
+		}
+	}
+	
+	private void populateMethodAttribute(Method m, Class<?> type, List<TypeDefinition> params) {
+		if ((m.getModifiers() & Modifier.PUBLIC) == 0) return;
+		String name = m.getName();
+		if (name.startsWith("get")) {
+			if (name.length() == 3) return;
+			if (m.getParameterCount() != 0) return;
+			Class<?> returnType = m.getReturnType();
+			if (returnType == null || Void.class.equals(returnType) || void.class.equals(returnType)) return;
+			createAttributeFromGetter(Character.toLowerCase(name.charAt(3)) + name.substring(4), m, type, params);
+		} else if (name.startsWith("is")) {
+			if (name.length() == 2) return;
+			if (m.getParameterCount() != 0) return;
+			Class<?> returnType = m.getReturnType();
+			if (returnType == null || (!returnType.equals(boolean.class) && !returnType.equals(Boolean.class))) return;
+			createAttributeFromGetterIs(Character.toLowerCase(name.charAt(2)) + name.substring(3), m, returnType);
+		} else if (name.startsWith("set")) {
+			if (name.length() == 3) return;
+			if (m.getParameterCount() != 1) return;
+			createAttributeFromSetter(Character.toLowerCase(name.charAt(3)) + name.substring(4), m, type, params);
+		}
+	}
+	
+	private void createAttributeFromGetter(String name, Method m, Class<?> type, List<TypeDefinition> params) {
+		Attribute a = getAttributeByOriginalName(name);
+		if (a == null) {
+			a = new Attribute(this, name, new TypeDefinition(new TypeDefinition(type, params), m.getGenericReturnType()));
+			attributes.add(a);
+		}
+		if (a.getter == null)
+			a.getter = m;
+	}
+
+	private void createAttributeFromGetterIs(String name, Method m, Class<?> returnType) {
+		Attribute a = getAttributeByOriginalName(name);
+		if (a == null) {
+			a = new Attribute(this, name, new TypeDefinition(returnType));
+			attributes.add(a);
+		}
+		if (a.getter == null)
+			a.getter = m;
+	}
+	
+	private void createAttributeFromSetter(String name, Method m, Class<?> type, List<TypeDefinition> params) {
+		Attribute a = getAttributeByOriginalName(name);
+		if (a == null)
+			a = new Attribute(this, name,
+				new TypeDefinition(new TypeDefinition(type, params), m.getGenericParameterTypes()[0]));
+		if (a.setter == null)
+			a.setter = m;
 	}
 	
 	private void filterAttributes() {
@@ -369,7 +391,7 @@ public class SerializationClass {
 	
 	/** Instantiate the given type. */
 	@SuppressWarnings("rawtypes")
-	public static Object instantiate(Class<?> type) throws Exception {
+	public static Object instantiate(Class<?> type) throws ReflectiveOperationException {
 		if (type.isAssignableFrom(ArrayList.class))
 			return new ArrayList();
 		if (type.isAssignableFrom(LinkedList.class))
@@ -384,7 +406,7 @@ public class SerializationClass {
 	/** Instantiate the given type. */
 	public static Object instantiate(
 		TypeDefinition type, SerializationContext context, List<SerializationRule> rules, boolean forceType
-	) throws Exception {
+	) throws SerializationException, ReflectiveOperationException {
 		Object instance = null;
 		for (SerializationRule rule : rules)
 			if (rule.canInstantiate(type, context)) {

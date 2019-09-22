@@ -125,11 +125,12 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			} else if (isNameStartChar(c)) {
 				readStartTag(c);
 			} else {
-				throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 			}
 		} catch (EOFException e) {
-			throw new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
-					new LocalizableString("lc.xml.error", "in XML document"));
+			throw new XMLException(getPosition(),
+				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
+				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document"));
 		}
 	}
 	
@@ -141,22 +142,23 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		char c;
 		if ((c = stream.read()) == '-') {
 			// comment ?
-			if ((c = stream.read()) == '-')
+			if (stream.read() == '-')
 				readComment();
 			else
-				throw new XMLException(getPosition(), "Invalid XML");
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML);
 		} else if (c == '[') {
 			// CDATA ?
 			if (!readExpectedChars(CDATA))
-				throw new XMLException(getPosition(), "Invalid XML");
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML);
 			readCData();
 		} else if (c == 'D') {
 			// DOCTYPE ?
 			if (!readExpectedChars(OCTYPE))
-				throw new XMLException(getPosition(), "Invalid XML");
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML);
 			readDocType();
-		} else
-			throw new XMLException(getPosition(), "Invalid XML");
+		} else {
+			throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML);
+		}
 	}
 	
 	private static final char[] YSTEM = new char[] { 'Y', 'S', 'T', 'E', 'M' };
@@ -171,14 +173,14 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		while (isSpaceChar(c = stream.read()));
 		if (c == 'S') {
 			if (!readExpectedChars(YSTEM))
-				throw new XMLException(getPosition(), "Invalid XML");
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML);
 			readSpace();
 			event.system = readSystemLiteral();
 			c = stream.read();
 			while (isSpaceChar(c)) c = stream.read();
 		} else if (c == 'P') {
 			if (!readExpectedChars(UBLIC))
-				throw new XMLException(getPosition(), "Invalid XML");
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML);
 			readSpace();
 			event.publicId = readPublicIDLiteral();
 			readSpace();
@@ -192,7 +194,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			while (isSpaceChar(c)) c = stream.read();
 		}
 		if (c != '>')
-			throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+			throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 	}
 	
 	private void readComment() throws XMLException, IOException {
@@ -328,8 +330,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			} while (true);
 		} catch (EOFException e) {
 			throw new XMLException(getPosition(),
-				new LocalizableString("lc.xml.error", "Unexpected end"),
-				new LocalizableString("lc.xml.error", "inside comment"));
+				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
+				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "inside comment"));
 		}
 	}
 	
@@ -486,11 +488,12 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			} while (true);
 		} catch (EOFException e) {
 			throw new XMLException(getPosition(),
-				new LocalizableString("lc.xml.error", "Unexpected end"),
-				new LocalizableString("lc.xml.error", "inside CDATA"));
+				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
+				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "inside CDATA"));
 		}
 	}
 	
+	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	private void readStartTag(char c) throws XMLException, IOException {
 		event.type = Type.START_ELEMENT;
 		event.attributes = new LinkedList<>();
@@ -500,12 +503,12 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			if (c == '>') break;
 			if (c == '/') {
 				if (stream.read() != '>')
-					throw new XMLException(getPosition(), "Invalid XML");
+					throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML);
 				event.isClosed = true;
 				break;
 			}
 			if (!isNameStartChar(c))
-				throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 			Attribute a = new Attribute();
 			
 			// attribute name
@@ -522,18 +525,20 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			// equal
 			while (isSpaceChar(c = stream.read()));
 			if (c != '=')
-				throw new XMLException(getPosition(), "Expected character", Character.valueOf(c), Character.valueOf('='));
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_EXPECTED_CHARACTER,
+					Character.valueOf(c), Character.valueOf('='));
 			
 			// attribute value
 			while (isSpaceChar(c = stream.read()));
 			a.value = new UnprotectedStringBuffer(new UnprotectedString(32));
 			if (c == '"' || c == '\'') readAttrValue(a.value, c);
-			else throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+			else throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 			event.attributes.add(a);
 		} while (true);
 		onStartElement();
 	}
 	
+	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	private void readProcessingInstruction() throws XMLException, IOException {
 		event.type = Type.PROCESSING_INSTRUCTION;
 		event.attributes = new LinkedList<>();
@@ -577,7 +582,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			while (isSpaceChar(c = stream.read()));
 			a.value = new UnprotectedStringBuffer();
 			if (c == '"' || c == '\'') readAttrValue(a.value, c);
-			else throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+			else throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 			event.attributes.add(a);
 		} while (true);
 	}
@@ -587,12 +592,11 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			char c = stream.read();
 			if (c == quote) break;
 			if (c == '<') throw new XMLException(getPosition(),
-				new LocalizableString("lc.xml.error", "Unexpected character", Character.valueOf(c)),
-				new LocalizableString("lc.xml.error", "in attribute value"));
+				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER,
+				Character.valueOf(c)), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in attribute value"));
 			if (c == '&') value.append(readReference());
 			else if (c == '\n') value.append(' ');
-			else if (c == '\r') continue;
-			else value.append(c);
+			else if (c != '\r') value.append(c);
 		} while (true);
 	}
 	
@@ -621,8 +625,9 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 							t.append('\r');
 							continue;
 						}
-					} else
+					} else {
 						t.append(c);
+					}
 					c = stream.read();
 				} while (true);
 			} else {
@@ -650,8 +655,9 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 								t.append('\r');
 							continue;
 						}
-					} else if (t.length() < maxTextSize)
+					} else if (t.length() < maxTextSize) {
 						t.append(c);
+					}
 					c = stream.read();
 				} while (true);
 			}
@@ -660,6 +666,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		}
 	}
 	
+	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	private CharSequence readReference() throws XMLException, IOException {
 		char c = stream.read();
 		if (c == '#') return new UnprotectedString(readCharRef());
@@ -667,7 +674,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		continueReadName(name = new UnprotectedStringBuffer(), c);
 		c = stream.read();
 		if (c != ';')
-			throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+			throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 		return resolveEntityRef(name);
 	}
 	
@@ -679,12 +686,13 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		} else {
 			n = new DecimalNumber();
 			if (!n.addChar(c))
-				throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 		}
 		do {
 			c = stream.read();
 			if (c == ';') break;
-			if (!n.addChar(c)) throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+			if (!n.addChar(c)) throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER,
+				Character.valueOf(c));
 		} while (true);
 		return Character.toChars((int)n.getNumber());
 	}
@@ -704,9 +712,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			if (l == 3) {
 				if (name.charAt(1) == 'm' && name.charAt(2) == 'p')
 					return new UnprotectedString('&');
-			} else if (l == 4) {
-				if (name.charAt(1) == 'p' && name.charAt(2) == 'o' && name.charAt(3) == 's')
-					return new UnprotectedString('\'');
+			} else if (l == 4 && name.charAt(1) == 'p' && name.charAt(2) == 'o' && name.charAt(3) == 's') {
+				return new UnprotectedString('\'');
 			}
 		} else if (c == 'l') {
 			if (l == 2 && name.charAt(1) == 't')
@@ -714,9 +721,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		} else if (c == 'g') {
 			if (l == 2 && name.charAt(1) == 't')
 				return new UnprotectedString('>');
-		} else if (c == 'q') {
-			if (l == 4 && name.charAt(1) == 'u' && name.charAt(2) == 'o' && name.charAt(3) == 't')
-				return new UnprotectedString('"');
+		} else if (c == 'q' && l == 4 && name.charAt(1) == 'u' && name.charAt(2) == 'o' && name.charAt(3) == 't') {
+			return new UnprotectedString('"');
 		}
 		UnprotectedStringBuffer s = new UnprotectedStringBuffer();
 		s.append('&');
@@ -728,7 +734,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private UnprotectedStringBuffer readSystemLiteral() throws XMLException, IOException {
 		char c = stream.read();
-		if (c != '"' && c != '\'') throw new XMLException(getPosition(), "Expected character", Character.valueOf(c),
+		if (c != '"' && c != '\'')
+			throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_EXPECTED_CHARACTER, Character.valueOf(c),
 			"simple or double quote");
 		UnprotectedStringBuffer literal = new UnprotectedStringBuffer();
 		char quote = c;
@@ -742,7 +749,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 
 	private UnprotectedStringBuffer readPublicIDLiteral() throws XMLException, IOException {
 		char quote = stream.read();
-		if (quote != '"' && quote != '\'') throw new XMLException(getPosition(), "Expected character", Character.valueOf(quote), "\",\'");
+		if (quote != '"' && quote != '\'')
+			throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_EXPECTED_CHARACTER, Character.valueOf(quote), "\",\'");
 		UnprotectedStringBuffer literal = new UnprotectedStringBuffer();
 		do {
 			char c = stream.read();
@@ -760,7 +768,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			char c = stream.read();
 			if (c == '>') break;
 			if (!isSpaceChar(c))
-				throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 		} while (true);
 		ElementContext ctx = event.context.peekFirst();
 		if (ctx == null)
@@ -786,8 +794,9 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			try { c = stream.read(); }
 			catch (EOFException e) {
 				throw new XMLException(getPosition(),
-					new LocalizableString("lc.xml.error", "Unexpected end"),
-					new LocalizableString("lc.xml.error", "in internal subset declaration"));
+					new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+						XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
+					new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in internal subset declaration"));
 			}
 			if (isSpaceChar(c)) continue;
 			if (c == ']')
@@ -797,7 +806,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				continue;
 			}
 			if (c != '<')
-				throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 			readIntSubsetTag();
 		} while (true);
 		
@@ -812,12 +821,12 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				char c = stream.read();
 				if (isSpaceChar(c)) continue;
 				if (c == ';') break;
-				throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 			} while (true);
 		} catch (EOFException e) {
 			throw new XMLException(getPosition(),
-				new LocalizableString("lc.xml.error", "Unexpected end"),
-				new LocalizableString("lc.xml.error", "in internal subset declaration"));
+				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
+				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in internal subset declaration"));
 		}
 	}
 	
@@ -829,14 +838,16 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			} else if (c == '?') {
 				readProcessingInstruction();
 			} else {
-				throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+				throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 			}
 		} catch (EOFException e) {
-			throw new XMLException(getPosition(), new LocalizableString("lc.xml.error", "Unexpected end"),
-					new LocalizableString("lc.xml.error", "in XML document"));
+			throw new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
+				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document"));
 		}
 	}
 	
+	@SuppressWarnings("squid:S1764")
 	private void readIntSubsetTagExclamation() throws XMLException, IOException {
 		// can be a comment, a CDATA, or a DOCTYPE
 		char c = stream.read();
@@ -847,7 +858,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				readComment();
 				return;
 			}
-			throw new XMLException(getPosition(), "Invalid XML");
+			throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML);
 		} else if (c == 'E') {
 			c = stream.read();
 			if (c == 'L') {
@@ -894,7 +905,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				return;
 			}
 		}
-		throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+		throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 	}
 	
 	private void readElementDeclaration() throws XMLException, IOException {
@@ -946,10 +957,12 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readName(UnprotectedStringBuffer name) throws XMLException, IOException {
 		char c = stream.read();
-		if (!isNameStartChar(c)) throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+		if (!isNameStartChar(c))
+			throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 		continueReadName(name, c);
 	}
 	
+	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	private void continueReadName(UnprotectedStringBuffer name, char c) throws IOException {
 		char[] chars = new char[16];
 		chars[0] = c;
@@ -988,9 +1001,11 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		} while (true);
 	}
 	
+	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	private void readSpace() throws XMLException, IOException {
 		char c;
-		if (!isSpaceChar(c = stream.read())) throw new XMLException(getPosition(), "Unexpected character", Character.valueOf(c));
+		if (!isSpaceChar(c = stream.read()))
+			throw new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 		do {
 			if (!isSpaceChar(c = stream.read())) {
 				stream.back(c);
@@ -1005,14 +1020,12 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		if (c < 0xF8) {
 			if (c < 0x3A) return false; // :
 			if (c < 0xC0) {
-				if (c == ':' /*3A*/ || c == '_' /*5F*/) return true;
-				if (c >= 'a' && c <= 'z') return true; /*61-7A*/
-				if (c >= 'A' && c <= 'Z') return true; /*41-5A*/
-				return false;
+				return
+					(c == ':' /*3A*/ || c == '_' /*5F*/) ||
+					(c >= 'a' && c <= 'z') || /*61-7A*/
+					(c >= 'A' && c <= 'Z'); /*41-5A*/
 			}
-			if (c == 0xD7) return false;
-			if (c == 0xF7) return false;
-			return true;
+			return (c != 0xD7 && c != 0xF7);
 		}
 		if (c < 0x2000) {
 			if (c >= 0x300 && c <= 0x36F) return false;
@@ -1040,34 +1053,30 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		return true;
 	}
 	
-	private static boolean isNameChar(char c) {
+	/** Return true if the given character is a valid character for a name. */
+	public static boolean isNameChar(char c) {
 		if (c < 0xF8) {
 			if (c < 0x3A) {
-				if (c < 0x2D) return false;
-				if (c == 0x2F) return false;
-				return true;
+				return c >= 0x2D && c != 0x2F;
 			}
 			if (c < 0xC0) {
-				if (c == ':' /*3A*/ || c == '_' /*5F*/) return true;
-				if (c >= 'a' && c <= 'z') return true; /*61-7A*/
-				if (c >= 'A' && c <= 'Z') return true; /*41-5A*/
-				return c == 0xB7;
+				return
+					(c == ':' /*3A*/ || c == '_' /*5F*/) ||
+					(c >= 'a' && c <= 'z') || /*61-7A*/
+					(c >= 'A' && c <= 'Z') || /*41-5A*/
+					c == 0xB7;
 			}
-			if (c == 0xD7) return false;
-			if (c == 0xF7) return false;
-			return true;
+			return c != 0xD7 && c != 0xF7;
 		}
 		if (c < 0x2000) {
-			if (c == 0x37E) return false;
-			return true;
+			return c != 0x37E;
 		}
 		if (c < 0xD800) {
 			if (c <= 0x3000) {
 				if (c < 0x2070)
 					return c != 0x200C && c != 0x200D && c != 0x203F && c != 0x2040;
 				if (c < 0x2190) return true;
-				if (c < 0x2C00) return false;
-				if (c > 0x2FEF) return false;
+				if (c < 0x2C00 || c > 0x2FEF) return false;
 			}
 			return true;
 		}

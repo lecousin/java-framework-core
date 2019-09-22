@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.InputStream;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
@@ -43,6 +44,18 @@ public abstract class TestInputStream extends TestIO.UsingGeneratedTestFiles {
 		}
 		int nb = in.read(buf);
 		Assert.assertTrue(nb <= 0);
+		in.close();
+	}
+	
+	@Test(timeout=120000)
+	public void testByByte() throws Exception {
+		Assume.assumeTrue(nbBuf < 500);
+		InputStream in = openStream();
+		for (int i = 0; i < nbBuf; ++i) {
+			for (int j = 0; j < testBuf.length; ++j)
+				Assert.assertEquals(testBuf[j] & 0xFF, in.read());
+		}
+		Assert.assertEquals(-1, in.read());
 		in.close();
 	}
 

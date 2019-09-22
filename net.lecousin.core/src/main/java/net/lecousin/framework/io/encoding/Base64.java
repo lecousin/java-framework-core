@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
-import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
 import net.lecousin.framework.io.text.ICharacterStream;
@@ -358,54 +357,50 @@ public final class Base64 {
 				writeBuffer(io, writer, result, buf, nbBuf, buffer, lastWrite);
 		}, result);
 	}
+	
+	private static class EncodeBase64StreamTask extends Task.Cpu.FromRunnable {
+		
+		private EncodeBase64StreamTask(byte priority, Runnable runnable) {
+			super("Encode base 64 stream", priority, runnable);
+		}
+		
+	}
 
 	private static void writeBuffer(
 		IO.Readable.Buffered io, IO.WriterAsync writer, SynchronizationPoint<IOException> result,
 		byte[] buf, int nbBuf, ByteBuffer buffer, ISynchronizationPoint<IOException> lastWrite
 	) {
-		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Encode base 64 stream", io.getPriority()) {
-			@Override
-			public Void run() {
-				if (lastWrite != null) {
-					if (lastWrite.hasError()) {
-						result.error(lastWrite.getError());
-						return null;
-					}
-					if (lastWrite.isCancelled()) {
-						result.cancel(lastWrite.getCancelEvent());
-						return null;
-					}
+		EncodeBase64StreamTask task = new EncodeBase64StreamTask(io.getPriority(), () -> {
+			if (lastWrite != null && lastWrite.forwardIfNotSuccessful(result))
+				return;
+			int nb = nbBuf;
+			if (nb > 0) {
+				while (nb < 3 && buffer.hasRemaining())
+					buf[nb++] = buffer.get();
+				if (nb == 3) {
+					byte[] out = new byte[4];
+					encode3BytesBase64(buf, 0, out, 0);
+					writeBuffer(io, writer, result, buf, 0, buffer, writer.writeAsync(ByteBuffer.wrap(out)));
+					return;
 				}
-				int nb = nbBuf;
-				if (nb > 0) {
-					while (nb < 3 && buffer.hasRemaining())
-						buf[nb++] = buffer.get();
-					if (nb == 3) {
-						byte[] out = new byte[4];
-						encode3BytesBase64(buf, 0, out, 0);
-						writeBuffer(io, writer, result, buf, 0, buffer, writer.writeAsync(ByteBuffer.wrap(out)));
-						return null;
-					}
-					if (nb < 3) {
-						encodeAsyncNextBuffer(io, writer, result, buf, nb, lastWrite);
-						return null;
-					}
+				if (nb < 3) {
+					encodeAsyncNextBuffer(io, writer, result, buf, nb, lastWrite);
+					return;
 				}
-				int l = buffer.remaining() / 3;
-				ISynchronizationPoint<IOException> write;
-				if (l > 0) {
-					byte[] out = encodeBase64(buffer.array(), buffer.arrayOffset() + buffer.position(), l * 3);
-					write = writer.writeAsync(ByteBuffer.wrap(out));
-					buffer.position(buffer.position() + l * 3);
-				} else {
-					write = null;
-				}
-				nb = buffer.remaining();
-				buffer.get(buf, 0, nb);
-				encodeAsyncNextBuffer(io, writer, result, buf, nb, write);
-				return null;
 			}
-		};
+			int l = buffer.remaining() / 3;
+			ISynchronizationPoint<IOException> write;
+			if (l > 0) {
+				byte[] out = encodeBase64(buffer.array(), buffer.arrayOffset() + buffer.position(), l * 3);
+				write = writer.writeAsync(ByteBuffer.wrap(out));
+				buffer.position(buffer.position() + l * 3);
+			} else {
+				write = null;
+			}
+			nb = buffer.remaining();
+			buffer.get(buf, 0, nb);
+			encodeAsyncNextBuffer(io, writer, result, buf, nb, write);
+		});
 		if (lastWrite == null || lastWrite.isUnblocked()) task.start();
 		else task.startOn(lastWrite, true);
 	}
@@ -414,49 +409,37 @@ public final class Base64 {
 		IO.Readable.Buffered io, ICharacterStream.WriterAsync writer, SynchronizationPoint<IOException> result,
 		byte[] buf, int nbBuf, ByteBuffer buffer, ISynchronizationPoint<IOException> lastWrite
 	) {
-		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Encode base 64 stream", io.getPriority()) {
-			@Override
-			public Void run() {
-				if (lastWrite != null) {
-					if (lastWrite.hasError()) {
-						result.error(lastWrite.getError());
-						return null;
-					}
-					if (lastWrite.isCancelled()) {
-						result.cancel(lastWrite.getCancelEvent());
-						return null;
-					}
+		EncodeBase64StreamTask task = new EncodeBase64StreamTask(io.getPriority(), () -> {
+			if (lastWrite != null && lastWrite.forwardIfNotSuccessful(result))
+				return;
+			int nb = nbBuf;
+			if (nb > 0) {
+				while (nb < 3 && buffer.hasRemaining())
+					buf[nb++] = buffer.get();
+				if (nb == 3) {
+					char[] out = new char[4];
+					encode3BytesBase64(buf, 0, out, 0);
+					writeBuffer(io, writer, result, buf, 0, buffer, writer.writeAsync(out, 0, 4));
+					return;
 				}
-				int nb = nbBuf;
-				if (nb > 0) {
-					while (nb < 3 && buffer.hasRemaining())
-						buf[nb++] = buffer.get();
-					if (nb == 3) {
-						char[] out = new char[4];
-						encode3BytesBase64(buf, 0, out, 0);
-						writeBuffer(io, writer, result, buf, 0, buffer, writer.writeAsync(out, 0, 4));
-						return null;
-					}
-					if (nb < 3) {
-						encodeAsyncNextBuffer(io, writer, result, buf, nb, lastWrite);
-						return null;
-					}
+				if (nb < 3) {
+					encodeAsyncNextBuffer(io, writer, result, buf, nb, lastWrite);
+					return;
 				}
-				int l = buffer.remaining() / 3;
-				ISynchronizationPoint<IOException> write;
-				if (l > 0) {
-					char[] out = encodeBase64ToChars(buffer.array(), buffer.arrayOffset() + buffer.position(), l * 3);
-					write = writer.writeAsync(out);
-					buffer.position(buffer.position() + l * 3);
-				} else {
-					write = null;
-				}
-				nb = buffer.remaining();
-				buffer.get(buf, 0, nb);
-				encodeAsyncNextBuffer(io, writer, result, buf, nb, write);
-				return null;
 			}
-		};
+			int l = buffer.remaining() / 3;
+			ISynchronizationPoint<IOException> write;
+			if (l > 0) {
+				char[] out = encodeBase64ToChars(buffer.array(), buffer.arrayOffset() + buffer.position(), l * 3);
+				write = writer.writeAsync(out);
+				buffer.position(buffer.position() + l * 3);
+			} else {
+				write = null;
+			}
+			nb = buffer.remaining();
+			buffer.get(buf, 0, nb);
+			encodeAsyncNextBuffer(io, writer, result, buf, nb, write);
+		});
 		if (lastWrite == null || lastWrite.isUnblocked()) task.start();
 		else task.startOn(lastWrite, true);
 	}
@@ -472,25 +455,13 @@ public final class Base64 {
 				lastWrite.listenInline(result);
 			return;
 		}
-		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Encode base 64 stream", io.getPriority()) {
-			@Override
-			public Void run() {
-				if (lastWrite != null) {
-					if (lastWrite.hasError()) {
-						result.error(lastWrite.getError());
-						return null;
-					}
-					if (lastWrite.isCancelled()) {
-						result.cancel(lastWrite.getCancelEvent());
-						return null;
-					}
-				}
-				byte[] out = new byte[4];
-				encodeUpTo3BytesBase64(buf, 0, out, 0, nbBuf);
-				writer.writeAsync(ByteBuffer.wrap(out)).listenInline(result);
-				return null;
-			}
-		};
+		EncodeBase64StreamTask task = new EncodeBase64StreamTask(io.getPriority(), () -> {
+			if (lastWrite != null && lastWrite.forwardIfNotSuccessful(result))
+				return;
+			byte[] out = new byte[4];
+			encodeUpTo3BytesBase64(buf, 0, out, 0, nbBuf);
+			writer.writeAsync(ByteBuffer.wrap(out)).listenInline(result);
+		});
 		if (lastWrite == null || lastWrite.isUnblocked()) task.start();
 		else task.startOn(lastWrite, true);
 	}
@@ -506,25 +477,13 @@ public final class Base64 {
 				lastWrite.listenInline(result);
 			return;
 		}
-		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Encode base 64 stream", io.getPriority()) {
-			@Override
-			public Void run() {
-				if (lastWrite != null) {
-					if (lastWrite.hasError()) {
-						result.error(lastWrite.getError());
-						return null;
-					}
-					if (lastWrite.isCancelled()) {
-						result.cancel(lastWrite.getCancelEvent());
-						return null;
-					}
-				}
-				char[] out = new char[4];
-				encodeUpTo3BytesBase64(buf, 0, out, 0, nbBuf);
-				writer.writeAsync(out, 0, 4).listenInline(result);
-				return null;
-			}
-		};
+		EncodeBase64StreamTask task = new EncodeBase64StreamTask(io.getPriority(), () -> {
+			if (lastWrite != null && lastWrite.forwardIfNotSuccessful(result))
+				return;
+			char[] out = new char[4];
+			encodeUpTo3BytesBase64(buf, 0, out, 0, nbBuf);
+			writer.writeAsync(out, 0, 4).listenInline(result);
+		});
 		if (lastWrite == null || lastWrite.isUnblocked()) task.start();
 		else task.startOn(lastWrite, true);
 	}

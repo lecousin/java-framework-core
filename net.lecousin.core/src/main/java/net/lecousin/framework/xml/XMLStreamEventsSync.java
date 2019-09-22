@@ -45,14 +45,10 @@ public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 		try {
 			do {
 				next();
-				if (Type.END_ELEMENT.equals(event.type)) {
-					if (event.context.getFirst() == parent)
-						return false;
-				}
-				if (Type.START_ELEMENT.equals(event.type)) {
-					if (event.context.size() > 1 && event.context.get(1) == parent)
-						return true;
-				}
+				if (Type.END_ELEMENT.equals(event.type) && event.context.getFirst() == parent)
+					return false;
+				if (Type.START_ELEMENT.equals(event.type) && event.context.size() > 1 && event.context.get(1) == parent)
+					return true;
 			} while (true);
 		} catch (EOFException e) {
 			return false;
@@ -71,7 +67,8 @@ public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 	/** Read inner text and close element. */
 	public UnprotectedStringBuffer readInnerText() throws XMLException, IOException {
 		if (!Type.START_ELEMENT.equals(event.type))
-throw new IOException("Invalid call of readInnerText: it must be called on a start element, current event type is: " + event.type);
+			throw new IOException("Invalid call of readInnerText: it must be called on a start element, current event type is: "
+				+ event.type);
 		if (event.isClosed) return new UnprotectedStringBuffer();
 		UnprotectedStringBuffer elementName = event.text;
 		UnprotectedStringBuffer innerText = new UnprotectedStringBuffer();
@@ -108,10 +105,8 @@ throw new IOException("Invalid call of readInnerText: it must be called on a sta
 			catch (EOFException e) {
 				throw new XMLException(getPosition(), "Unexpected end", "closeElement(" + ctx.text.asString() + ")");
 			}
-			if (Type.END_ELEMENT.equals(event.type)) {
-				if (event.context.getFirst() == ctx)
-					return;
-			}
+			if (Type.END_ELEMENT.equals(event.type) && event.context.getFirst() == ctx)
+				return;
 		} while (true);
 	}
 
@@ -121,10 +116,8 @@ throw new IOException("Invalid call of readInnerText: it must be called on a sta
 	public boolean searchElement(String elementName) throws XMLException, IOException {
 		try {
 			do {
-				if (Type.START_ELEMENT.equals(event.type)) {
-					if (event.text.equals(elementName))
-						return true;
-				}
+				if (Type.START_ELEMENT.equals(event.type) && event.text.equals(elementName))
+					return true;
 				next();
 			} while (true);
 		} catch (EOFException e) {

@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -33,6 +34,7 @@ public final class ClassUtil {
 	}
 	
 	/** Get all fields from the given class and all its super classes, with the ones from the root class first. */
+	@SuppressWarnings("squid:S1319") // ArrayList instead of List
 	public static ArrayList<Field> getAllFieldsInheritedFirst(Class<?> cl) {
 		ArrayList<Field[]> all = new ArrayList<>();
 		Field[] fields = cl.getDeclaredFields();
@@ -45,12 +47,12 @@ public final class ClassUtil {
 		}
 		ArrayList<Field> result = new ArrayList<>(total);
 		for (int i = all.size() - 1; i >= 0; --i)
-			for (Field f : all.get(i))
-				result.add(f);
+			Collections.addAll(result, all.get(i));
 		return result;
 	}
 	
 	/** Get all methods from the given class and all its super classes, with the ones from the root class first. */
+	@SuppressWarnings("squid:S1319") // ArrayList instead of List
 	public static ArrayList<Method> getAllMethodsInheritedFirst(Class<?> cl) {
 		ArrayList<Method[]> all = new ArrayList<>();
 		Method[] methods = cl.getDeclaredMethods();
@@ -63,8 +65,7 @@ public final class ClassUtil {
 		}
 		ArrayList<Method> result = new ArrayList<>(total);
 		for (int i = all.size() - 1; i >= 0; --i)
-			for (Method m : all.get(i))
-				result.add(m);
+			Collections.addAll(result, all.get(i));
 		return result;
 	}
 	
@@ -134,31 +135,33 @@ public final class ClassUtil {
 				continue;
 			boolean ok = true;
 			for (int i = 0; i < params.length; ++i) {
-				if (params[i] == null) {
-					if (types[i].isPrimitive()) {
-						ok = false;
-						break;
-					}
-					continue;
+				if (!isMethodParameterCompatibleWith(types[i], params[i])) {
+					ok = false;
+					break;
 				}
-				if (types[i].isAssignableFrom(params[i].getClass())) continue;
-				if (types[i].isPrimitive()) {
-					if (types[i].equals(boolean.class) && params[i] instanceof Boolean) continue;
-					if (types[i].equals(byte.class) && params[i] instanceof Byte) continue;
-					if (types[i].equals(short.class) && params[i] instanceof Short) continue;
-					if (types[i].equals(int.class) && params[i] instanceof Integer) continue;
-					if (types[i].equals(long.class) && params[i] instanceof Long) continue;
-					if (types[i].equals(float.class) && params[i] instanceof Float) continue;
-					if (types[i].equals(double.class) && params[i] instanceof Double) continue;
-				}
-				ok = false;
-				break;
 			}
 			if (!ok)
 				continue;
 			return m;
 		}
 		return null;
+	}
+	
+	/** Return true if paramType can be assigned with paramValue. */
+	public static boolean isMethodParameterCompatibleWith(Class<?> paramType, Object paramValue) {
+		if (paramValue == null)
+			return !paramType.isPrimitive();
+		if (paramType.isAssignableFrom(paramValue.getClass())) return true;
+		if (paramType.isPrimitive()) {
+			if (paramType.equals(boolean.class) && paramValue instanceof Boolean) return true;
+			if (paramType.equals(byte.class) && paramValue instanceof Byte) return true;
+			if (paramType.equals(short.class) && paramValue instanceof Short) return true;
+			if (paramType.equals(int.class) && paramValue instanceof Integer) return true;
+			if (paramType.equals(long.class) && paramValue instanceof Long) return true;
+			if (paramType.equals(float.class) && paramValue instanceof Float) return true;
+			if (paramType.equals(double.class) && paramValue instanceof Double) return true;
+		}
+		return false;
 	}
 	
 	/** Search for a method. */
@@ -187,6 +190,7 @@ public final class ClassUtil {
 	}
 	
 	/** Set a value to a field, using a path. The path is a list of fields separated by dot. */
+	@SuppressWarnings("squid:S1141") // nested try
 	public static boolean setFieldFromPath(Object object, String path, Object value) {
 		String[] names = path.split("\\.");
 		for (int i = 0; i < names.length; ++i) {
@@ -261,8 +265,7 @@ public final class ClassUtil {
 	}
 	
 	private static void getAllAnnotations(Class<?> clazz, List<Annotation> list) {
-		for (Annotation a : clazz.getDeclaredAnnotations())
-			list.add(a);
+		Collections.addAll(list, clazz.getDeclaredAnnotations());
 		if (clazz.getSuperclass() != null)
 			getAllAnnotations(clazz.getSuperclass(), list);
 		for (Class<?> i : clazz.getInterfaces())
@@ -285,8 +288,7 @@ public final class ClassUtil {
 					if (Annotation.class.isAssignableFrom(t)) {
 						Repeatable r = t.getAnnotation(Repeatable.class);
 						if (r != null && r.value().isAssignableFrom(a.getClass())) {
-							for (Annotation ra : (Annotation[])m.invoke(a))
-								result.add(ra);
+							Collections.addAll(result, (Annotation[])m.invoke(a));
 							continue;
 						}
 					}

@@ -73,6 +73,7 @@ public class FragmentedRangeLong extends LinkedList<RangeLong> {
 	public void addRange(RangeLong r) { addRange(r.min, r.max); }
 	
 	/** Add the given range. */
+	@SuppressWarnings("squid:S3776") // complexity
 	public void addRange(long start, long end) {
 		if (isEmpty()) {
 			add(new RangeLong(start, end));
@@ -329,7 +330,7 @@ public class FragmentedRangeLong extends LinkedList<RangeLong> {
 	}
 	
 	/** Remove a value by index. */
-	public long removeValueAt(long index) throws NoSuchElementException {
+	public long removeValueAt(long index) {
 		for (RangeLong r : this) {
 			long nb = r.max - r.min + 1;
 			if (index >= nb) {
