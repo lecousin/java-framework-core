@@ -1,4 +1,4 @@
-package net.lecousin.framework.concurrent.synch;
+package net.lecousin.framework.concurrent.async;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -6,10 +6,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.ThreadingDebugHelper;
 import net.lecousin.framework.log.Logger;
@@ -18,26 +18,31 @@ import net.lecousin.framework.log.Logger;
  * Simplest implementation of a synchronization point.
  * @param <TError> type of exception it may raise
  */
-public class SynchronizationPoint<TError extends Exception> implements ISynchronizationPoint<TError>, Future<Void> {
+public class Async<TError extends Exception> implements IAsync<TError>, Future<Void> {
 
 	/** Constructor. */
-	public SynchronizationPoint() {}
+	public Async() {}
 	
 	/** Constructor with an initial state. */
-	public SynchronizationPoint(boolean unblocked) {
+	public Async(boolean unblocked) {
 		this.unblocked = unblocked;
 	}
 	
 	/** Create an unblocked point with an error. */ 
-	public SynchronizationPoint(TError error) {
+	public Async(TError error) {
 		this.unblocked = true;
 		this.error = error;
 	}
 	
 	/** Create an unblocked point with a cancellation. */
-	public SynchronizationPoint(CancelException cancel) {
+	public Async(CancelException cancel) {
 		this.unblocked = true;
 		this.cancelled = cancel;
+	}
+	
+	/** Create an asynchronous unit from the given one, converting the error using the given converter. */
+	public <TError2 extends Exception> Async(IAsync<TError2> toConvert, Function<TError2, TError> errorConverter) {
+		toConvert.onDone(this, errorConverter);
 	}
 	
 	private boolean unblocked = false;
@@ -52,7 +57,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	}
 	
 	@Override
-	public final void listenInline(Runnable r) {
+	public final void onDone(Runnable r) {
 		synchronized (this) {
 			if (!unblocked || listenersInline != null) {
 				if (listenersInline == null) listenersInline = new ArrayList<>(5);
@@ -78,7 +83,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class);
+		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(Async.class);
 		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
@@ -169,7 +174,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	}
 	
 	@Override
-	public final synchronized boolean isUnblocked() {
+	public final synchronized boolean isDone() {
 		return unblocked;
 	}
 	
@@ -216,7 +221,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	@Override
 	public final Void get() throws InterruptedException, ExecutionException {
 		block(0);
-		if (!isUnblocked()) throw new InterruptedException();
+		if (!isDone()) throw new InterruptedException();
 		if (hasError()) throw new ExecutionException(error);
 		if (isCancelled()) throw new ExecutionException(cancelled);
 		return null;
@@ -225,7 +230,7 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	@Override
 	public final Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
 		block(unit.toMillis(timeout));
-		if (!isUnblocked()) throw new TimeoutException();
+		if (!isDone()) throw new TimeoutException();
 		if (hasError()) throw new ExecutionException(error);
 		if (isCancelled()) throw new ExecutionException(cancelled);
 		return null;
@@ -234,14 +239,9 @@ public class SynchronizationPoint<TError extends Exception> implements ISynchron
 	// skip checkstyle: OverloadMethodsDeclarationOrder
 	@Override
 	public final boolean cancel(boolean mayInterruptIfRunning) {
-		if (isUnblocked()) return false;
+		if (isDone()) return false;
 		cancel(new CancelException("Cancelled"));
 		return true;
-	}
-	
-	@Override
-	public final boolean isDone() {
-		return isUnblocked();
 	}
 	
 }

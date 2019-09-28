@@ -12,6 +12,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import javax.swing.ImageIcon;
@@ -40,12 +41,11 @@ import net.lecousin.framework.application.libraries.classpath.LoadLibraryPlugins
 import net.lecousin.framework.collections.CollectionsUtil;
 import net.lecousin.framework.collections.Tree;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.tasks.drives.FullReadFileTask;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Readable;
@@ -92,7 +92,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	
 	private static class Lib {
 		private LibraryDescriptor descr;
-		private SynchronizationPoint<LibraryManagementException> load = new SynchronizationPoint<>();
+		private Async<LibraryManagementException> load = new Async<>();
 		private LoadedLibrary library;
 	}
 	
@@ -158,22 +158,22 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		// load dev projects
 		if (splash != null)
 			splash.setText("Analyzing development projects");
-		AsyncWork<List<LibraryDescriptor>, LibraryManagementException> devProjects = loadDevProjects(stepDevProjects);
+		AsyncSupplier<List<LibraryDescriptor>, LibraryManagementException> devProjects = loadDevProjects(stepDevProjects);
 		// get application project
-		devProjects.listenAsync("Load application libraries", Task.PRIORITY_IMPORTANT,
+		devProjects.thenStart("Load application libraries", Task.PRIORITY_IMPORTANT,
 			() -> loadDevApp(devProjects, stepDependencies, stepVersionConflicts), canStartApp);
 	}
 	
-	private AsyncWork<List<LibraryDescriptor>, LibraryManagementException> loadDevProjects(long stepDevProjects) {
+	private AsyncSupplier<List<LibraryDescriptor>, LibraryManagementException> loadDevProjects(long stepDevProjects) {
 		JoinPoint<LibraryManagementException> jpDevProjects = new JoinPoint<>();
-		ArrayList<AsyncWork<? extends LibraryDescriptor, LibraryManagementException>> devProjects = new ArrayList<>(devPaths.size());
+		ArrayList<AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException>> devProjects = new ArrayList<>(devPaths.size());
 		new Task.Cpu.FromRunnable("Load development projects", Task.PRIORITY_IMPORTANT, () -> {
 			int nb = devPaths.size();
 			long w = stepDevProjects;
 			for (File dir : devPaths) {
 				long step = w / nb--;
 				w -= step;
-				AsyncWork<? extends LibraryDescriptor, LibraryManagementException> load =
+				AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> load =
 					CollectionsUtil.<LibraryDescriptorLoader>filterSingle(loader -> loader.detect(dir))
 					.andThen(loader -> loader != null ? loader.loadProject(dir, Task.PRIORITY_IMPORTANT) : null)
 					.apply(loaders);
@@ -183,7 +183,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 					continue;
 				}
 				if (splash != null)
-					load.listenInline(() -> splash.progress(step));
+					load.onDone(() -> splash.progress(step));
 				devProjects.add(load);
 				jpDevProjects.addToJoin(load);
 			}
@@ -191,13 +191,13 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			// free memory
 			devPaths = null;
 		}).start();
-		AsyncWork<List<LibraryDescriptor>, LibraryManagementException> result = new AsyncWork<>();
-		jpDevProjects.listenInline(() -> result.unblockSuccess(CollectionsUtil.map(devProjects, AsyncWork::getResult)), result);
+		AsyncSupplier<List<LibraryDescriptor>, LibraryManagementException> result = new AsyncSupplier<>();
+		jpDevProjects.onDone(() -> result.unblockSuccess(CollectionsUtil.map(devProjects, AsyncSupplier::getResult)), result);
 		return result;
 	}
 	
 	private void loadDevApp(
-		AsyncWork<List<LibraryDescriptor>, LibraryManagementException> devProjects,
+		AsyncSupplier<List<LibraryDescriptor>, LibraryManagementException> devProjects,
 		long stepDependencies, long stepVersionConflicts
 	) {
 		LibraryDescriptor appLibDescr = null;
@@ -244,10 +244,10 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			canStartApp.error(new LibraryManagementException("Application not found"));
 			return;
 		}
-		AsyncWork<? extends LibraryDescriptor, LibraryManagementException> load = loaders.get(loaderIndex).loadLibrary(
+		AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> load = loaders.get(loaderIndex).loadLibrary(
 			app.getGroupId(), app.getArtifactId(), new SingleVersion(app.getVersion()),
 			Task.PRIORITY_IMPORTANT, new ArrayList<>(0));
-		load.listenInline(() -> {
+		load.onDone(() -> {
 			if (!load.isSuccessful() || load.getResult() == null) {
 				searchApplication(loaderIndex + 1, stepDependencies, stepVersionConflicts);
 				return;
@@ -289,7 +289,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		treeDone.start();
 		ResolveVersionConflicts resolveConflicts = new ResolveVersionConflicts(artifacts, descr.getLoader(), splash, stepVersionConflicts);
 		resolveConflicts.startOn(treeDone, true);
-		resolveConflicts.getOutput().listenInline(() -> {
+		resolveConflicts.getOutput().onDone(() -> {
 			app.getDefaultLogger().debug("Dependencies analyzed, loading and initializing libraries");
 			
 			if (splash != null) splash.setText("Initializing libraries");
@@ -299,7 +299,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			libraries.put(descr.getGroupId() + ':' + descr.getArtifactId(), lib);
 			appLib = lib;
 			new LoadLibrary(lib, resolveConflicts.getResult(), addPlugins).start();
-			lib.load.listenAsync(new Task.Cpu<Void, NoException>("Finishing to initialize", Task.PRIORITY_IMPORTANT) {
+			lib.load.thenStart(new Task.Cpu<Void, NoException>("Finishing to initialize", Task.PRIORITY_IMPORTANT) {
 				@Override
 				public Void run() {
 					if (canStartApp.hasError()) return null;
@@ -362,7 +362,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		synchronized (tree) { n = tree.add(node); }
 		List<Tree.Node<DependencyNode>> l = getDependenciesListFor(dep, n, artifacts);
 		jp.addToJoin(1);
-		node.getDescriptor().listenInline(() -> {
+		node.getDescriptor().onDone(() -> {
 			if (node.getDescriptor().getResult() != null) {
 				Set<Pair<String, String>> excl = new HashSet<>();
 				excl.addAll(exclusions);
@@ -399,13 +399,13 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	private static DependencyNode createDependencyNode(LibraryDescriptor descr, LibraryDescriptor.Dependency dep) {
 		DependencyNode node = new DependencyNode(dep);
 		if (dep.getGroupId() == null || dep.getGroupId().length() == 0)
-			node.setDescriptor(new AsyncWork<>(null, new LibraryManagementException("Missing groupId in dependency")));
+			node.setDescriptor(new AsyncSupplier<>(null, new LibraryManagementException("Missing groupId in dependency")));
 		else if (dep.getArtifactId() == null || dep.getArtifactId().length() == 0)
-			node.setDescriptor(new AsyncWork<>(null, new LibraryManagementException("Missing artifactId in dependency")));
+			node.setDescriptor(new AsyncSupplier<>(null, new LibraryManagementException("Missing artifactId in dependency")));
 		else {
 			VersionSpecification depV = dep.getVersionSpecification();
 			if (depV == null)
-				node.setDescriptor(new AsyncWork<>(null, new LibraryManagementException("Missing version in dependency")));
+				node.setDescriptor(new AsyncSupplier<>(null, new LibraryManagementException("Missing version in dependency")));
 			else
 				node.setDescriptor(descr.getLoader().loadLibrary(
 					dep.getGroupId(), dep.getArtifactId(), depV,
@@ -563,20 +563,20 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			}
 			jp.start();
 			
-			lib.descr.getClasses().listenInline(file -> {
+			lib.descr.getClasses().onDone(file -> {
 				if (file != null) {
 					if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(
 						lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString()
 						+ " loaded from " + file.getAbsolutePath());
 					lib.library = new LoadedLibrary(new Artifact(lib.descr.getGroupId(), lib.descr.getArtifactId(),
 						lib.descr.getVersion()), appClassLoader.add(file, null));
-					jp.listenAsync(new Init(lib), lib.load);
+					jp.thenStart(new Init(lib), lib.load);
 				} else {
 					if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug("No classes in " + lib.descr.getGroupId()
 						+ ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString());
 					lib.library = new LoadedLibrary(new Artifact(lib.descr.getGroupId(), lib.descr.getArtifactId(),
 						lib.descr.getVersion()), null);
-					jp.listenInline(lib.load);
+					jp.onDone(lib.load);
 				}
 			});
 			return null;
@@ -606,7 +606,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		}
 		
 		private Lib lib;
-		private ISynchronizationPoint<Exception> previousStep = null;
+		private IAsync<Exception> previousStep = null;
 		
 		@Override
 		public Void run() {
@@ -629,7 +629,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 				return null;
 			
 			jp.start();
-			jp.listenInline(() -> {
+			jp.onDone(() -> {
 				if (jp.hasError()) {
 					if (!lib.load.hasError()) lib.load.error(jp.getError());
 					return;
@@ -640,7 +640,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		}
 		
 		private boolean loadExtensionPoints(JoinPoint<LibraryManagementException> jp) {
-			AsyncWork<Void, Exception> ep = null;
+			AsyncSupplier<Void, Exception> ep = null;
 			IO.Readable io;
 			try {
 				io = ((AbstractClassLoader)lib.library.getClassLoader())
@@ -706,11 +706,11 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 					Task.PRIORITY_RATHER_IMPORTANT, 8);
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(bio, StandardCharsets.UTF_8, 256, 32);
 				LoadLibraryPluginsFile task = new LoadLibraryPluginsFile(stream, lib.library.getClassLoader());
-				SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+				Async<Exception> sp = new Async<>();
 				if (previousStep == null)
-					task.start().listenInlineSP(sp);
+					task.start().onDone(sp);
 				else
-					previousStep.listenInlineSP(() -> task.start().listenInlineSP(sp), sp);
+					previousStep.onDone(() -> task.start().onDone(sp), sp);
 				jp.addToJoin(sp, error -> new LibraryManagementException("Error loading plugin from " + lib, error));
 				io.closeAfter(sp);
 			}
@@ -719,12 +719,12 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	}
 
 	@Override
-	public ISynchronizationPoint<LibraryManagementException> onLibrariesLoaded() {
+	public IAsync<LibraryManagementException> onLibrariesLoaded() {
 		return canStartApp;
 	}
 
 	@Override
-	public AsyncWork<LoadedLibrary, LibraryManagementException> loadNewLibrary(
+	public AsyncSupplier<LoadedLibrary, LibraryManagementException> loadNewLibrary(
 		String groupId, String artifactId, VersionSpecification version, boolean optional, byte priority,
 		WorkProgress progress, long work
 	) {
@@ -735,13 +735,13 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		synchronized (libraries) {
 			Lib lib = libraries.get(key);
 			if (lib != null) {
-				if (lib.load.isUnblocked()) {
+				if (lib.load.isDone()) {
 					if (lib.load.hasError())
-						return new AsyncWork<>(null, lib.load.getError());
-					return new AsyncWork<>(lib.library, null);
+						return new AsyncSupplier<>(null, lib.load.getError());
+					return new AsyncSupplier<>(lib.library, null);
 				}
-				AsyncWork<LoadedLibrary, LibraryManagementException> result = new AsyncWork<>();
-				lib.load.listenInline(() -> {
+				AsyncSupplier<LoadedLibrary, LibraryManagementException> result = new AsyncSupplier<>();
+				lib.load.onDone(() -> {
 					if (lib.load.hasError())
 						result.error(lib.load.getError());
 					else
@@ -752,8 +752,8 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			l = new Lib();
 			libraries.put(key, l);
 		}
-		MutableInteger loaderIndex = new MutableInteger(0);
-		AsyncWork<LoadedLibrary, LibraryManagementException> result = new AsyncWork<>();
+		final MutableInteger loaderIndex = new MutableInteger(0);
+		AsyncSupplier<LoadedLibrary, LibraryManagementException> result = new AsyncSupplier<>();
 		Runnable nextLoader = new Runnable() {
 			@Override
 			public void run() {
@@ -763,10 +763,10 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 					result.error(error);
 					return;
 				}
-				AsyncWork<? extends LibraryDescriptor, LibraryManagementException> loadDescr =
+				AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> loadDescr =
 					loaders.get(loaderIndex.get()).loadLibrary(groupId, artifactId, version, priority, new ArrayList<>(0));
 				Runnable next = this;
-				loadDescr.listenInline(() -> {
+				loadDescr.onDone(() -> {
 					if (loadDescr.getResult() == null) {
 						loaderIndex.inc();
 						next.run();
@@ -788,12 +788,12 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 					ResolveVersionConflicts resolveConflicts =
 						new ResolveVersionConflicts(artifacts, l.descr.getLoader(), null, 0);
 					resolveConflicts.startOn(treeDone, true);
-					resolveConflicts.getOutput().listenInline(() -> {
+					resolveConflicts.getOutput().onDone(() -> {
 						app.getDefaultLogger().debug("Dependencies analyzed, loading and initializing libraries");
 
 						LoadLibrary load = new LoadLibrary(l, resolveConflicts.getResult(), null);
 						load.start();
-						result.unblockOn(l.load, () -> l.library);
+						l.load.onDone(result, () -> l.library);
 					}, result);
 				});
 			}
@@ -934,13 +934,13 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	}
 	*/
 	
-	Task.Cpu<ISynchronizationPoint<Exception>, ApplicationBootstrapException> startApp() {
-		Task.Cpu<ISynchronizationPoint<Exception>, ApplicationBootstrapException> task =
-			new Task.Cpu<ISynchronizationPoint<Exception>, ApplicationBootstrapException>(
+	Task.Cpu<IAsync<Exception>, ApplicationBootstrapException> startApp() {
+		Task.Cpu<IAsync<Exception>, ApplicationBootstrapException> task =
+			new Task.Cpu<IAsync<Exception>, ApplicationBootstrapException>(
 				app.getGroupId() + ':' + app.getArtifactId() + ':' + app.getVersion().toString(), Task.PRIORITY_NORMAL
 			) {
 			@Override
-			public ISynchronizationPoint<Exception> run() throws ApplicationBootstrapException {
+			public IAsync<Exception> run() throws ApplicationBootstrapException {
 				if (splash != null) splash.setText("Starting application " + appCfg.getName());
 				@SuppressWarnings("rawtypes")
 				Class cl;
@@ -959,9 +959,9 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 					throw new ApplicationBootstrapException("Application class cannot be instantiated", e);
 				}
 				WorkProgress progress = splash != null ? splash : new FakeWorkProgress();
-				ISynchronizationPoint<Exception> start = startup.start(app, progress);
+				IAsync<Exception> start = startup.start(app, progress);
 				
-				progress.getSynch().listenInline(() ->
+				progress.getSynch().onDone(() ->
 					/*
 					long end = System.nanoTime();
 					app.getConsole().out("Application started in "+(end-app.getStartTime())/1000000+"ms. ("
@@ -981,7 +981,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	@Override
 	public void scanLibraries(
 		String rootPackage, boolean includeSubPackages, Predicate<String> packageFilter, Predicate<String> classFilter,
-		Listener<Class<?>> classScanner
+		Consumer<Class<?>> classScanner
 	) {
 		appClassLoader.scanLibraries(rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);
 	}

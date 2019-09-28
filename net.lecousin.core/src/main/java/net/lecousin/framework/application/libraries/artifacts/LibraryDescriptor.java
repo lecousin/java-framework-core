@@ -7,7 +7,7 @@ import java.util.List;
 
 import net.lecousin.framework.application.Version;
 import net.lecousin.framework.application.VersionSpecification;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.Pair;
 
@@ -38,7 +38,7 @@ public interface LibraryDescriptor {
 	boolean hasClasses();
 	
 	/** Return a directory or a JAR file containing the classes to be loaded. */
-	AsyncWork<File, NoException> getClasses();
+	AsyncSupplier<File, NoException> getClasses();
 	
 	
 	/** Describes a dependency of a library to another. */

@@ -8,16 +8,14 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListenerReady;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
-import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.buffering.ByteBuffersIO;
@@ -87,13 +85,13 @@ public final class IOUtil {
 	}
 	
 	/** Read fully into a byte[], and unblock the given result upon completion. */
-	public static void readFully(IO.Readable io, AsyncWork<byte[], IOException> result) {
+	public static void readFully(IO.Readable io, AsyncSupplier<byte[], IOException> result) {
 		if (io instanceof IO.KnownSize) {
 			readFullyKnownSize((IO.Readable & IO.KnownSize)io, result);
 			return;
 		}
-		AsyncWork<ByteBuffersIO, IOException> read = readFullyAsync(io, 65536);
-		read.listenAsync(new Task.Cpu.FromRunnable("readFully: convert ByteArraysIO into byte[]", io.getPriority(), () -> {
+		AsyncSupplier<ByteBuffersIO, IOException> read = readFullyAsync(io, 65536);
+		read.thenStart(new Task.Cpu.FromRunnable("readFully: convert ByteArraysIO into byte[]", io.getPriority(), () -> {
 			if (read.hasError()) result.error(read.getError());
 			else if (read.isCancelled()) result.cancel(read.getCancelEvent());
 			else result.unblockSuccess(read.getResult().createSingleByteArray());
@@ -101,8 +99,8 @@ public final class IOUtil {
 	}
 	
 	/** Read fully into a byte[], and unblock the given result upon completion. */
-	public static <T extends IO.Readable & IO.KnownSize> void readFullyKnownSize(T io, AsyncWork<byte[], IOException> result) {
-		AsyncWork<Long, IOException> getSize = io.getSizeAsync();
+	public static <T extends IO.Readable & IO.KnownSize> void readFullyKnownSize(T io, AsyncSupplier<byte[], IOException> result) {
+		AsyncSupplier<Long, IOException> getSize = io.getSizeAsync();
 		Runnable launchRead = () -> {
 			if (getSize.hasError()) result.error(getSize.getError());
 			else if (getSize.isCancelled()) result.cancel(getSize.getCancelEvent());
@@ -115,15 +113,15 @@ public final class IOUtil {
 				readFullyKnownSize(io, (int)size, result);
 			}
 		};
-		if (getSize.isUnblocked()) {
+		if (getSize.isDone()) {
 			launchRead.run();
 			return;
 		}
-		getSize.listenAsync(new Task.Cpu.FromRunnable("readFully", io.getPriority(), launchRead), true);
+		getSize.thenStart(new Task.Cpu.FromRunnable("readFully", io.getPriority(), launchRead), true);
 	}
 
 	/** Read fully into a byte[], and unblock the given result upon completion. */
-	public static void readFullyKnownSize(IO.Readable io, int size, AsyncWork<byte[], IOException> result) {
+	public static void readFullyKnownSize(IO.Readable io, int size, AsyncSupplier<byte[], IOException> result) {
 		byte[] bytes;
 		try { bytes = new byte[size]; }
 		catch (Exception t) {
@@ -164,7 +162,7 @@ public final class IOUtil {
 	 * @param ondone a listener to call before to return the result
 	 * @return the number of bytes read, which is less than the remaining bytes of the buffer only if the end of the IO is reached.
 	 */
-	public static AsyncWork<Integer,IOException> readFullyAsync(
+	public static AsyncSupplier<Integer,IOException> readFullyAsync(
 		IO.Readable io, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		return readFullyAsync(io,buffer,0,ondone);
@@ -178,11 +176,11 @@ public final class IOUtil {
 	 * @param ondone a listener to call before to return the result
 	 * @return the number of bytes read, which is less than the remaining bytes of the buffer only if the end of the IO is reached.
 	 */
-	public static AsyncWork<Integer,IOException> readFullyAsync(
+	public static AsyncSupplier<Integer,IOException> readFullyAsync(
 		IO.Readable io, ByteBuffer buffer, int done, Consumer<Pair<Integer,IOException>> ondone
 	) {
-		AsyncWork<Integer,IOException> read = io.readAsync(buffer);
-		if (!read.isUnblocked())
+		AsyncSupplier<Integer,IOException> read = io.readAsync(buffer);
+		if (!read.isDone())
 			return readFullyAsync(read, io, buffer, done, ondone);
 		
 		if (!read.isSuccessful()) {
@@ -207,13 +205,13 @@ public final class IOUtil {
 		return readFullyAsync(io, buffer, read.getResult().intValue() + done, ondone);
 	}
 	
-	private static AsyncWork<Integer,IOException> readFullyAsync(
-		AsyncWork<Integer,IOException> read, IO.Readable io, ByteBuffer buffer, int done, Consumer<Pair<Integer,IOException>> ondone
+	private static AsyncSupplier<Integer,IOException> readFullyAsync(
+		AsyncSupplier<Integer,IOException> read, IO.Readable io, ByteBuffer buffer, int done, Consumer<Pair<Integer,IOException>> ondone
 	) {
-		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
+		AsyncSupplier<Integer,IOException> sp = new AsyncSupplier<>();
 		MutableInteger total = new MutableInteger(done);
-		Mutable<AsyncWork<Integer,IOException>> r = new Mutable<>(read);
-		read.listenInline(new AsyncWorkListenerReady<Integer, IOException>((result, that) -> {
+		Mutable<AsyncSupplier<Integer,IOException>> r = new Mutable<>(read);
+		read.listen(new RecursiveAsyncSupplierListener<Integer>((result, that) -> {
 			do {
 				if (!buffer.hasRemaining() || result.intValue() <= 0) {
 					if (total.get() == 0)
@@ -225,12 +223,12 @@ public final class IOUtil {
 					return;
 				}
 				total.add(result.intValue());
-				AsyncWork<Integer, IOException> reading = io.readAsync(buffer);
+				AsyncSupplier<Integer, IOException> reading = io.readAsync(buffer);
 				r.set(reading);
 				if (reading.isSuccessful()) result = reading.getResult();
 				else break;
 			} while (true);
-			r.get().listenInline(that);
+			r.get().listen(that);
 		}, sp, ondone));
 		sp.onCancel(cancel -> r.get().unblockCancel(cancel));
 		return sp;
@@ -244,11 +242,11 @@ public final class IOUtil {
 	 * @param ondone a listener to call before to return the result
 	 * @return the number of bytes read, which is less than the remaining bytes of the buffer only if the end of the IO is reached.
 	 */
-	public static AsyncWork<Integer,IOException> readFullyAsync(
+	public static AsyncSupplier<Integer,IOException> readFullyAsync(
 		IO.Readable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
-		AsyncWork<Integer,IOException> read = io.readAsync(pos, buffer);
-		if (read.isUnblocked()) {
+		AsyncSupplier<Integer,IOException> read = io.readAsync(pos, buffer);
+		if (read.isDone()) {
 			if (!read.isSuccessful()) {
 				if (ondone != null && read.getError() != null) ondone.accept(new Pair<>(null, read.getError()));
 				return read;
@@ -265,13 +263,14 @@ public final class IOUtil {
 		return readFullyAsync(read, io, pos, buffer, ondone);
 	}
 	
-	private static AsyncWork<Integer,IOException> readFullyAsync(
-		AsyncWork<Integer,IOException> read, IO.Readable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
+	private static AsyncSupplier<Integer,IOException> readFullyAsync(
+		AsyncSupplier<Integer,IOException> read, IO.Readable.Seekable io, long pos, ByteBuffer buffer,
+		Consumer<Pair<Integer,IOException>> ondone
 	) {
-		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
+		AsyncSupplier<Integer,IOException> sp = new AsyncSupplier<>();
 		MutableInteger total = new MutableInteger(0);
-		Mutable<AsyncWork<Integer,IOException>> r = new Mutable<>(read);
-		read.listenInline(new AsyncWorkListenerReady<Integer, IOException>((result, that) -> {
+		Mutable<AsyncSupplier<Integer,IOException>> r = new Mutable<>(read);
+		read.listen(new RecursiveAsyncSupplierListener<Integer>((result, that) -> {
 			do {
 				if (!buffer.hasRemaining() || result.intValue() <= 0) {
 					if (total.get() == 0)
@@ -283,12 +282,12 @@ public final class IOUtil {
 					return;
 				}
 				total.add(result.intValue());
-				AsyncWork<Integer, IOException> reading = io.readAsync(pos + total.get(), buffer);
+				AsyncSupplier<Integer, IOException> reading = io.readAsync(pos + total.get(), buffer);
 				r.set(reading);
 				if (reading.isSuccessful()) result = reading.getResult();
 				else break;
 			} while (true);
-			r.get().listenInline(that);
+			r.get().listen(that);
 		}, sp, ondone));
 		sp.onCancel(cancel -> r.get().unblockCancel(cancel));
 		return sp;
@@ -297,17 +296,17 @@ public final class IOUtil {
 	/**
 	 * Read the content of IO.Readable in memory and put it into a ByteBuffersIO.
 	 */
-	public static AsyncWork<ByteBuffersIO, IOException> readFullyAsync(IO.Readable io, int bufferSize) {
+	public static AsyncSupplier<ByteBuffersIO, IOException> readFullyAsync(IO.Readable io, int bufferSize) {
 		ByteBuffersIO bb = new ByteBuffersIO(false, io.getSourceDescription(), io.getPriority());
-		AsyncWork<ByteBuffersIO, IOException> result = new AsyncWork<>();
+		AsyncSupplier<ByteBuffersIO, IOException> result = new AsyncSupplier<>();
 		readFullyAsync(io, bufferSize, bb, result);
 		return result;
 	}
 	
-	private static void readFullyAsync(IO.Readable io, int bufferSize, ByteBuffersIO bb, AsyncWork<ByteBuffersIO, IOException> result) {
+	private static void readFullyAsync(IO.Readable io, int bufferSize, ByteBuffersIO bb, AsyncSupplier<ByteBuffersIO, IOException> result) {
 		byte[] buffer = new byte[bufferSize];
-		AsyncWork<Integer, IOException> read = io.readFullyAsync(ByteBuffer.wrap(buffer));
-		read.listenAsync(new Task.Cpu.FromRunnable("readFully", io.getPriority(), () -> {
+		AsyncSupplier<Integer, IOException> read = io.readFullyAsync(ByteBuffer.wrap(buffer));
+		read.thenStart(new Task.Cpu.FromRunnable("readFully", io.getPriority(), () -> {
 			int nb = read.getResult().intValue();
 			if (nb > 0)
 				bb.addBuffer(buffer, 0, nb);
@@ -437,7 +436,7 @@ public final class IOUtil {
 	 * Implement an asynchronous skip using a task calling a synchronous skip.
 	 * This must be used only if the synchronous skip is using only CPU.
 	 */
-	public static AsyncWork<Long,IOException> skipAsyncUsingSync(IO.Readable io, long n, Consumer<Pair<Long,IOException>> ondone) {
+	public static AsyncSupplier<Long,IOException> skipAsyncUsingSync(IO.Readable io, long n, Consumer<Pair<Long,IOException>> ondone) {
 		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Skipping bytes", io.getPriority(), ondone) {
 			@Override
 			public Long run() throws IOException {
@@ -452,16 +451,16 @@ public final class IOUtil {
 	/**
 	 * Implement an asynchronous skip using readAsync.
 	 */
-	public static AsyncWork<Long, IOException> skipAsyncByReading(IO.Readable io, long n, Consumer<Pair<Long,IOException>> ondone) {
+	public static AsyncSupplier<Long, IOException> skipAsyncByReading(IO.Readable io, long n, Consumer<Pair<Long,IOException>> ondone) {
 		if (n <= 0) {
 			if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(0), null));
-			return new AsyncWork<>(Long.valueOf(0), null);
+			return new AsyncSupplier<>(Long.valueOf(0), null);
 		}
 		ByteBuffer b = ByteBuffer.allocate(n > 65536 ? 65536 : (int)n);
 		MutableLong done = new MutableLong(0);
-		AsyncWork<Long, IOException> result = new AsyncWork<>();
-		io.readAsync(b).listenInline(new AsyncWorkListenerReady<Integer, IOException>((nb, that) -> {
-			AsyncWork<Integer, IOException> next;
+		AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
+		io.readAsync(b).listen(new RecursiveAsyncSupplierListener<Integer>((nb, that) -> {
+			AsyncSupplier<Integer, IOException> next;
 			do {
 				int read = nb.intValue();
 				if (read <= 0) {
@@ -480,8 +479,8 @@ public final class IOUtil {
 				if (next.isSuccessful()) nb = next.getResult();
 				else break;
 			} while (true);
-			next.listenInline(that);
-		}, result));
+			next.listen(that);
+		}, result, null));
 		return result;
 	}
 	
@@ -489,30 +488,30 @@ public final class IOUtil {
 	 * Write the given Readable to a temporary file, and return the temporary file.
 	 * The given IO is closed when done.
 	 */
-	public static AsyncWork<File, IOException> toTempFile(IO.Readable io) {
+	public static AsyncSupplier<File, IOException> toTempFile(IO.Readable io) {
 		IO.Readable.Buffered bio;
 		if (io instanceof IO.Readable.Buffered)
 			bio = (IO.Readable.Buffered)io;
 		else
 			bio = new SimpleBufferedReadable(io, 65536);
-		AsyncWork<FileIO.ReadWrite, IOException> createFile =
+		AsyncSupplier<FileIO.ReadWrite, IOException> createFile =
 			TemporaryFiles.get().createAndOpenFileAsync("net.lecousin.framework.io", "streamtofile");
-		AsyncWork<File, IOException> result = new AsyncWork<>();
-		createFile.listenInline(() -> {
+		AsyncSupplier<File, IOException> result = new AsyncSupplier<>();
+		createFile.onDone(() -> {
 			File file = createFile.getResult().getFile();
-			copy(bio, createFile.getResult(), -1, true, null, 0).listenInline(() -> result.unblockSuccess(file), result);
+			copy(bio, createFile.getResult(), -1, true, null, 0).onDone(() -> result.unblockSuccess(file), result);
 		}, result);
 		return result;
 	}
 	
 	/** Create a temporary file with the given content. */
-	public static AsyncWork<File, IOException> toTempFile(byte[] bytes) {
-		AsyncWork<FileIO.ReadWrite, IOException> createFile =
+	public static AsyncSupplier<File, IOException> toTempFile(byte[] bytes) {
+		AsyncSupplier<FileIO.ReadWrite, IOException> createFile =
 				TemporaryFiles.get().createAndOpenFileAsync("net.lecousin.framework.io", "bytestofile");
-		AsyncWork<File, IOException> result = new AsyncWork<>();
-		createFile.listenInline(() -> {
+		AsyncSupplier<File, IOException> result = new AsyncSupplier<>();
+		createFile.onDone(() -> {
 			File file = createFile.getResult().getFile();
-			createFile.getResult().writeAsync(ByteBuffer.wrap(bytes)).listenInline(() -> {
+			createFile.getResult().writeAsync(ByteBuffer.wrap(bytes)).onDone(() -> {
 				try {
 					createFile.getResult().close();
 					result.unblockSuccess(file);
@@ -528,7 +527,7 @@ public final class IOUtil {
 	 * Implement a synchronous read using an asynchronous one and blocking until it finishes.
 	 */
 	public static int readSyncUsingAsync(IO.Readable io, ByteBuffer buffer) throws IOException {
-		AsyncWork<Integer,IOException> sp = io.readAsync(buffer);
+		AsyncSupplier<Integer,IOException> sp = io.readAsync(buffer);
 		try { return sp.blockResult(0).intValue(); }
 		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
@@ -537,7 +536,7 @@ public final class IOUtil {
 	 * Implement a synchronous read using an asynchronous one and blocking until it finishes.
 	 */
 	public static int readSyncUsingAsync(IO.Readable.Seekable io, long pos, ByteBuffer buffer) throws IOException {
-		AsyncWork<Integer,IOException> sp = io.readAsync(pos, buffer);
+		AsyncSupplier<Integer,IOException> sp = io.readAsync(pos, buffer);
 		try { return sp.blockResult(0).intValue(); }
 		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
@@ -546,7 +545,7 @@ public final class IOUtil {
 	 * Implement a synchronous read using an asynchronous one and blocking until it finishes.
 	 */
 	public static int readFullySyncUsingAsync(IO.Readable io, ByteBuffer buffer) throws IOException {
-		AsyncWork<Integer,IOException> sp = io.readFullyAsync(buffer);
+		AsyncSupplier<Integer,IOException> sp = io.readFullyAsync(buffer);
 		try { return sp.blockResult(0).intValue(); }
 		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
@@ -555,7 +554,7 @@ public final class IOUtil {
 	 * Implement a synchronous read using an asynchronous one and blocking until it finishes.
 	 */
 	public static int readFullySyncUsingAsync(IO.Readable.Seekable io, long pos, ByteBuffer buffer) throws IOException {
-		AsyncWork<Integer,IOException> sp = io.readFullyAsync(pos, buffer);
+		AsyncSupplier<Integer,IOException> sp = io.readFullyAsync(pos, buffer);
 		try { return sp.blockResult(0).intValue(); }
 		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
@@ -564,7 +563,7 @@ public final class IOUtil {
 	 * Implement a synchronous skip using an asynchronous one and blocking until it finishes.
 	 */
 	public static long skipSyncUsingAsync(IO.Readable io, long n) throws IOException {
-		AsyncWork<Long,IOException> sp = io.skipAsync(n);
+		AsyncSupplier<Long,IOException> sp = io.skipAsync(n);
 		try { return sp.blockResult(0).longValue(); }
 		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
@@ -573,7 +572,7 @@ public final class IOUtil {
 	 * Implement a synchronous write using an asynchronous one and blocking until it finishes.
 	 */
 	public static int writeSyncUsingAsync(IO.Writable io, ByteBuffer buffer) throws IOException {
-		AsyncWork<Integer,IOException> sp = io.writeAsync(buffer);
+		AsyncSupplier<Integer,IOException> sp = io.writeAsync(buffer);
 		try { return sp.blockResult(0).intValue(); }
 		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
@@ -582,7 +581,7 @@ public final class IOUtil {
 	 * Implement a synchronous write using an asynchronous one and blocking until it finishes.
 	 */
 	public static int writeSyncUsingAsync(IO.Writable.Seekable io, long pos, ByteBuffer buffer) throws IOException {
-		AsyncWork<Integer,IOException> sp = io.writeAsync(pos, buffer);
+		AsyncSupplier<Integer,IOException> sp = io.writeAsync(pos, buffer);
 		try { return sp.blockResult(0).intValue(); }
 		catch (CancelException e) { throw IO.errorCancelled(e); }
 	}
@@ -628,13 +627,13 @@ public final class IOUtil {
 	/**
 	 * Read all bytes from the given Readable and convert it as a String using the given charset encoding.
 	 */
-	public static AsyncWork<UnprotectedStringBuffer,IOException> readFullyAsString(IO.Readable io, Charset charset, byte priority) {
-		AsyncWork<UnprotectedStringBuffer,IOException> result = new AsyncWork<>();
+	public static AsyncSupplier<UnprotectedStringBuffer,IOException> readFullyAsString(IO.Readable io, Charset charset, byte priority) {
+		AsyncSupplier<UnprotectedStringBuffer,IOException> result = new AsyncSupplier<>();
 		if (io instanceof IO.KnownSize) {
-			((IO.KnownSize)io).getSizeAsync().listenInline(size ->
+			((IO.KnownSize)io).getSizeAsync().onDone(size ->
 				new Task.Cpu.FromRunnable("Prepare readFullyAsString", priority, () -> {
 					byte[] buf = new byte[size.intValue()];
-					io.readFullyAsync(ByteBuffer.wrap(buf)).listenAsync(
+					io.readFullyAsync(ByteBuffer.wrap(buf)).thenStart(
 					new Task.Cpu.FromRunnable("readFullyAsString", priority, () -> {
 						try {
 							result.unblockSuccess(new UnprotectedStringBuffer(
@@ -659,11 +658,11 @@ public final class IOUtil {
 	
 	private static void readFullyAsString(
 		BufferedReadableCharacterStream stream, UnprotectedStringBuffer str,
-		AsyncWork<UnprotectedStringBuffer,IOException> result, byte priority
+		AsyncSupplier<UnprotectedStringBuffer,IOException> result, byte priority
 	) {
 		do {
-			AsyncWork<UnprotectedString, IOException> read = stream.readNextBufferAsync();
-			if (read.isUnblocked()) {
+			AsyncSupplier<UnprotectedString, IOException> read = stream.readNextBufferAsync();
+			if (read.isDone()) {
 				if (read.hasError()) {
 					result.error(read.getError());
 					return;
@@ -675,7 +674,7 @@ public final class IOUtil {
 				str.append(read.getResult());
 				continue;
 			}
-			read.listenAsync(new Task.Cpu.FromRunnable("readFullyAsString: " + stream.getDescription(), priority, () -> {
+			read.thenStart(new Task.Cpu.FromRunnable("readFullyAsString: " + stream.getDescription(), priority, () -> {
 				if (read.getResult() == null) {
 					result.unblockSuccess(str);
 					return;
@@ -768,7 +767,7 @@ public final class IOUtil {
 	 * Implement a synchronous sync by calling an asynchronous one and blocking until the result is available.
 	 */
 	public static long seekSyncUsingAsync(IO.Seekable io, SeekType type, long move) throws IOException {
-		AsyncWork<Long,IOException> seek = io.seekAsync(type, move);
+		AsyncSupplier<Long,IOException> seek = io.seekAsync(type, move);
 		seek.blockException(0);
 		return seek.getResult().longValue();
 	}
@@ -802,16 +801,17 @@ public final class IOUtil {
 	 * @param work amount of work in the progress
 	 * @return number of bytes copied
 	 */
-	public static AsyncWork<Long, IOException> copy(
+	public static AsyncSupplier<Long, IOException> copy(
 		IO.Readable input, IO.Writable output, long size, boolean closeIOs, WorkProgress progress, long work
 	) {
-		AsyncWork<Long, IOException> sp = new AsyncWork<>();
+		AsyncSupplier<Long, IOException> sp = new AsyncSupplier<>();
 		copy(input, output, size, closeIOs, sp, progress, work);
 		return sp;
 	}
 	
 	private static void copy(
-		IO.Readable input, IO.Writable output, long size, boolean closeIOs, AsyncWork<Long, IOException> sp, WorkProgress progress, long work
+		IO.Readable input, IO.Writable output, long size, boolean closeIOs,
+		AsyncSupplier<Long, IOException> sp, WorkProgress progress, long work
 	) {
 		if (size == 0) {
 			if (progress != null) progress.progress(work);
@@ -820,8 +820,8 @@ public final class IOUtil {
 		}
 		if (size < 0) {
 			if (input instanceof IO.KnownSize) {
-				AsyncWork<Long, IOException> getSize = ((IO.KnownSize)input).getSizeAsync();
-				getSize.listenInline(() -> {
+				AsyncSupplier<Long, IOException> getSize = ((IO.KnownSize)input).getSizeAsync();
+				getSize.onDone(() -> {
 					if (getSize.hasError())
 						copyEnd(input, output, sp, getSize.getError(), null, closeIOs, 0);
 					else if (getSize.isCancelled())
@@ -875,7 +875,7 @@ public final class IOUtil {
 	}
 	
 	private static void copyUnknownSize(
-		IO.Readable input, IO.Writable output, boolean closeIOs, AsyncWork<Long, IOException> sp, WorkProgress progress, long work
+		IO.Readable input, IO.Writable output, boolean closeIOs, AsyncSupplier<Long, IOException> sp, WorkProgress progress, long work
 	) {
 		TaskManager tmIn = getUnderlyingTaskManager(input);
 		TaskManager tmOut = getUnderlyingTaskManager(output);
@@ -898,7 +898,7 @@ public final class IOUtil {
 	
 	private static void copyEnd(
 		IO.Readable input, IO.Writable output,
-		AsyncWork<Long, IOException> sp, IOException error, CancelException cancel,
+		AsyncSupplier<Long, IOException> sp, IOException error, CancelException cancel,
 		boolean closeIOs, long written
 	) {
 		if (!closeIOs) {
@@ -910,9 +910,9 @@ public final class IOUtil {
 				sp.unblockSuccess(Long.valueOf(written));
 			return;
 		}
-		ISynchronizationPoint<Exception> sp1 = input.closeAsync();
-		ISynchronizationPoint<Exception> sp2 = output.closeAsync();
-		JoinPoint.fromSynchronizationPoints(sp1, sp2).listenInline(() -> {
+		IAsync<IOException> sp1 = input.closeAsync();
+		IAsync<IOException> sp2 = output.closeAsync();
+		JoinPoint.from(sp1, sp2).onDone(() -> {
 			Exception e = error;
 			if (e == null) {
 				if (sp1.hasError()) e = sp1.getError();
@@ -933,7 +933,7 @@ public final class IOUtil {
 	@SuppressWarnings("squid:S00107")
 	private static void copySameTM(
 		IO.Readable input, IO.Writable output, int bufferSize, long total, 
-		AsyncWork<Long,IOException> end, boolean closeIOs, WorkProgress progress, long work
+		AsyncSupplier<Long,IOException> end, boolean closeIOs, WorkProgress progress, long work
 	) {
 		new Task.Cpu<Void, NoException>("Allocate buffers to copy IOs", input.getPriority()) {
 			@Override
@@ -947,9 +947,9 @@ public final class IOUtil {
 	@SuppressWarnings("squid:S00107")
 	private static void copySameTMStep(
 		IO.Readable input, IO.Writable output, ByteBuffer buf, long written, long total,
-		AsyncWork<Long,IOException> end, boolean closeIOs, WorkProgress progress, long work
+		AsyncSupplier<Long,IOException> end, boolean closeIOs, WorkProgress progress, long work
 	) {
-		input.readFullyAsync(buf).listenInline(new AsyncWorkListener<Integer, IOException>() {
+		input.readFullyAsync(buf).listen(new Listener<Integer, IOException>() {
 			@Override
 			public void ready(Integer result) {
 				int nb = result.intValue();
@@ -959,8 +959,8 @@ public final class IOUtil {
 				} else {
 					buf.flip();
 					if (progress != null) progress.progress(nb * work / (total * 2));
-					AsyncWork<Integer,IOException> write = output.writeAsync(buf);
-					write.listenInline(new AsyncWorkListener<Integer, IOException>() {
+					AsyncSupplier<Integer,IOException> write = output.writeAsync(buf);
+					write.listen(new Listener<Integer, IOException>() {
 						@Override
 						public void ready(Integer result) {
 							long w;
@@ -1004,11 +1004,11 @@ public final class IOUtil {
 	}
 
 	private static void copyStep(
-		IO.Readable.Buffered input, IO.Writable output, AsyncWork<Long, IOException> sp, long written,
+		IO.Readable.Buffered input, IO.Writable output, AsyncSupplier<Long, IOException> sp, long written,
 		boolean closeIOs, WorkProgress progress, long work
 	) {
-		AsyncWork<ByteBuffer, IOException> read = input.readNextBufferAsync();
-		read.listenInline(() -> {
+		AsyncSupplier<ByteBuffer, IOException> read = input.readNextBufferAsync();
+		read.onDone(() -> {
 			if (read.hasError()) {
 				copyEnd(input, output, sp, read.getError(), null, closeIOs, written);
 				return;
@@ -1024,8 +1024,8 @@ public final class IOUtil {
 				return;
 			}
 			if (progress != null && work >= 2) progress.progress(1);
-			AsyncWork<Integer, IOException> write = output.writeAsync(buf);
-			write.listenInline(() -> {
+			AsyncSupplier<Integer, IOException> write = output.writeAsync(buf);
+			write.onDone(() -> {
 				if (write.hasError()) {
 					copyEnd(input, output, sp, write.getError(), null, closeIOs, written);
 					return;
@@ -1052,8 +1052,8 @@ public final class IOUtil {
 	 * @param len number of bytes to copy
 	 */
 	public static <T extends IO.Writable.Seekable & IO.Readable.Seekable>
-	SynchronizationPoint<IOException> copy(T io, long src, long dst, long len) {
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+	Async<IOException> copy(T io, long src, long dst, long len) {
+		Async<IOException> sp = new Async<>();
 		if (len < 4 * 1024 * 1024) {
 			ByteBuffer buffer = ByteBuffer.allocate((int)len);
 			copy(io, src, dst, buffer, len, sp);
@@ -1065,13 +1065,13 @@ public final class IOUtil {
 	}
 	
 	private static <T extends IO.Writable.Seekable & IO.Readable.Seekable>
-	void copy(T io, long src, long dst, ByteBuffer buffer, long len, SynchronizationPoint<IOException> sp) {
-		io.readFullyAsync(src, buffer).listenInline(() -> {
+	void copy(T io, long src, long dst, ByteBuffer buffer, long len, Async<IOException> sp) {
+		io.readFullyAsync(src, buffer).onDone(() -> {
 			buffer.flip();
-			AsyncWork<Integer, IOException> write = io.writeAsync(dst, buffer);
+			AsyncSupplier<Integer, IOException> write = io.writeAsync(dst, buffer);
 			if (len <= 4 * 1024 * 1024)
-				write.listenInline(sp);
-			else write.listenInline(() -> {
+				write.onDone(sp);
+			else write.onDone(() -> {
 				long nl = len - 4 * 1024 * 1024;
 				buffer.clear();
 				if (nl < 4 * 1024 * 1024) buffer.limit((int)nl);
@@ -1084,17 +1084,17 @@ public final class IOUtil {
 	// ---- copy files ----
 	
 	/** Copy a file. */
-	public static AsyncWork<Long, IOException> copy(
-		File src, File dst, byte priority, long knownSize, WorkProgress progress, long work, ISynchronizationPoint<?> startOn
+	public static AsyncSupplier<Long, IOException> copy(
+		File src, File dst, byte priority, long knownSize, WorkProgress progress, long work, IAsync<?> startOn
 	) {
-		AsyncWork<Long, IOException> sp = new AsyncWork<>();
+		AsyncSupplier<Long, IOException> sp = new AsyncSupplier<>();
 		Task.Cpu<Void,NoException> task = new Task.Cpu<Void,NoException>("Start copying files", priority) {
 			@Override
 			@SuppressWarnings("squid:S2095") // input and output are closed
 			public Void run() {
 				FileIO.ReadOnly input = new FileIO.ReadOnly(src, priority);
 				FileIO.WriteOnly output = new FileIO.WriteOnly(dst, priority);
-				input.canStart().listenInline(() -> {
+				input.canStart().onDone(() -> {
 					if (input.canStart().hasError()) {
 						copyEnd(input, output, sp,
 							new IOException("Unable to open file " + src.getAbsolutePath(),
@@ -1117,7 +1117,7 @@ public final class IOUtil {
 	
 
 	/** Implement an asynchronous close using a task calling the synchronous close. */
-	public static ISynchronizationPoint<IOException> closeAsync(Closeable toClose) {
+	public static IAsync<IOException> closeAsync(Closeable toClose) {
 		Task<Void,IOException> task = new Task.Cpu<Void, IOException>("Closing resource", Task.PRIORITY_RATHER_IMPORTANT) {
 			@Override
 			public Void run() throws IOException {
@@ -1131,10 +1131,10 @@ public final class IOUtil {
 	
 	/** Read the content of a file and return a byte array. */
 	@SuppressWarnings("squid:S2095") // f is closed
-	public static AsyncWork<byte[], IOException> readFully(File file, byte priority) {
-		AsyncWork<byte[], IOException> result = new AsyncWork<>();
+	public static AsyncSupplier<byte[], IOException> readFully(File file, byte priority) {
+		AsyncSupplier<byte[], IOException> result = new AsyncSupplier<>();
 		FileIO.ReadOnly f = new FileIO.ReadOnly(file, priority);
-		f.getSizeAsync().listenInline(new AsyncWorkListener<Long, IOException>() {
+		f.getSizeAsync().listen(new Listener<Long, IOException>() {
 			@Override
 			public void error(IOException error) {
 				try { f.close(); } catch (Exception e) { /* ignore */ }
@@ -1150,7 +1150,7 @@ public final class IOUtil {
 			@Override
 			public void ready(Long size) {
 				byte[] buf = new byte[size.intValue()];
-				f.readFullyAsync(ByteBuffer.wrap(buf)).listenInline(new AsyncWorkListener<Integer, IOException>() {
+				f.readFullyAsync(ByteBuffer.wrap(buf)).listen(new Listener<Integer, IOException>() {
 					@Override
 					public void error(IOException error) {
 						try { f.close(); } catch (Exception e) { /* ignore */ }
@@ -1200,9 +1200,9 @@ public final class IOUtil {
 	 * but calls ondone before if not null and the result is not cancelled.
 	 */
 	public static <T> void listenOnDone(
-		AsyncWork<T, IOException> toListen, AsyncWork<T, IOException> toUnblock, Consumer<Pair<T,IOException>> ondone
+		AsyncSupplier<T, IOException> toListen, AsyncSupplier<T, IOException> toUnblock, Consumer<Pair<T,IOException>> ondone
 	) {
-		toListen.listenInline(
+		toListen.onDone(
 			result -> {
 				if (ondone != null) ondone.accept(new Pair<>(result, null));
 				toUnblock.unblockSuccess(result);
@@ -1220,10 +1220,10 @@ public final class IOUtil {
 	 * If ondone is not null, it is called before <code>onReady</code> and <code>onErrorOrCancel</code>.
 	 */
 	public static <T, T2> void listenOnDone(
-		AsyncWork<T, IOException> toListen, Listener<T> onReady, ISynchronizationPoint<IOException> onErrorOrCancel,
+		AsyncSupplier<T, IOException> toListen, Consumer<T> onReady, IAsync<IOException> onErrorOrCancel,
 		Consumer<Pair<T2,IOException>> ondone
 	) {
-		toListen.listenInline(
+		toListen.onDone(
 			onReady,
 			error -> {
 				if (ondone != null) ondone.accept(new Pair<>(null, error));
@@ -1238,10 +1238,10 @@ public final class IOUtil {
 	 * If ondone is not null, it is called before <code>onReady</code> and <code>onErrorOrCancel</code>.
 	 */
 	public static <T, T2> void listenOnDone(
-		AsyncWork<T, IOException> toListen, Task<?,?> onReady, ISynchronizationPoint<IOException> onErrorOrCancel,
+		AsyncSupplier<T, IOException> toListen, Task<?,?> onReady, IAsync<IOException> onErrorOrCancel,
 		Consumer<Pair<T2,IOException>> ondone
 	) {
-		toListen.listenInline(() -> {
+		toListen.onDone(() -> {
 			if (toListen.isCancelled()) {
 				if (onErrorOrCancel != null) onErrorOrCancel.cancel(toListen.getCancelEvent());
 			} else if (toListen.hasError()) {
@@ -1258,10 +1258,10 @@ public final class IOUtil {
 	 * If ondone is not null, it is called before <code>onReady</code> and <code>onErrorOrCancel</code>.
 	 */
 	public static <T> void listenOnDone(
-		ISynchronizationPoint<IOException> toListen, Runnable onReady, ISynchronizationPoint<IOException> onErrorOrCancel,
+		IAsync<IOException> toListen, Runnable onReady, IAsync<IOException> onErrorOrCancel,
 		Consumer<Pair<T,IOException>> ondone
 	) {
-		toListen.listenInline(
+		toListen.onDone(
 			onReady,
 			error -> {
 				if (ondone != null) ondone.accept(new Pair<>(null, error));
@@ -1270,38 +1270,91 @@ public final class IOUtil {
 			onErrorOrCancel::cancel
 		);
 	}
+
+	/** Create a consumer that call forward the error to the given sync and call onDone. */ 
+	public static <T> Consumer<IOException> errorConsumer(IAsync<IOException> async, Consumer<Pair<T, IOException>> ondone) {
+		return error -> {
+			async.error(error);
+			ondone.accept(new Pair<>(null, error));
+		};
+	}
+	
+	/** Recursive listener, forwarding error or cancel and calling onDone on error.
+	 * @param <T> type of result
+	 */
+	public static class RecursiveAsyncSupplierListener<T> implements AsyncSupplier.Listener<T, IOException> {
+		
+		/** On success listener that receive the listener instance to perform recursive operation.
+		 * @param <T> type of result
+		 */
+		public static interface OnSuccess<T> {
+			/** On success listener. */
+			void accept(T result, RecursiveAsyncSupplierListener<T> listener);
+		}
+
+		/** Constructor. */
+		public RecursiveAsyncSupplierListener(
+			OnSuccess<T> onSuccess,
+			IAsync<IOException> onErrorOrCancel,
+			Consumer<Pair<T, IOException>> onDone
+		) {
+			this.onSuccess = onSuccess;
+			this.onErrorOrCancel = onErrorOrCancel;
+			this.onDone = onDone;
+		}
+		
+		private OnSuccess<T> onSuccess;
+		private IAsync<IOException> onErrorOrCancel;
+		private Consumer<Pair<T, IOException>> onDone;
+		
+		@Override
+		public void ready(T result) {
+			onSuccess.accept(result, this);
+		}
+		
+		@Override
+		public void error(IOException error) {
+			if (onErrorOrCancel != null) onErrorOrCancel.error(error);
+			if (onDone != null) onDone.accept(new Pair<>(null, error));
+		}
+		
+		@Override
+		public void cancelled(CancelException event) {
+			if (onErrorOrCancel != null) onErrorOrCancel.cancel(event);
+		}
+	}
 	
 	/** Shortcut to transfer an error to ondone if it is not null, and to the AsyncWork. */
 	public static <TResult, TError extends Exception>
-	void error(TError error, AsyncWork<TResult, TError> result, Consumer<Pair<TResult, TError>> ondone) {
+	void error(TError error, AsyncSupplier<TResult, TError> result, Consumer<Pair<TResult, TError>> ondone) {
 		if (ondone != null) ondone.accept(new Pair<>(null, error));
 		result.error(error);
 	}
 	
 	/** Shortcut to transfer an error to ondone if it is not null, and create an AsyncWork with this error. */
 	public static <TResult, TError extends Exception>
-	AsyncWork<TResult, TError> error(TError error, Consumer<Pair<TResult, TError>> ondone) {
+	AsyncSupplier<TResult, TError> error(TError error, Consumer<Pair<TResult, TError>> ondone) {
 		if (ondone != null) ondone.accept(new Pair<>(null, error));
-		return new AsyncWork<>(null, error);
+		return new AsyncSupplier<>(null, error);
 	}
 	
 	/** Shortcut to transfer a result to ondone if it is not null, and to the AsyncWork. */
 	public static <TResult, TError extends Exception>
-	void success(TResult res, AsyncWork<TResult, TError> result, Consumer<Pair<TResult, TError>> ondone) {
+	void success(TResult res, AsyncSupplier<TResult, TError> result, Consumer<Pair<TResult, TError>> ondone) {
 		if (ondone != null) ondone.accept(new Pair<>(res, null));
 		result.unblockSuccess(res);
 	}
 	
 	/** Shortcut to transfer a result to ondone if it is not null, and create an AsyncWork with this result. */
 	public static <TResult, TError extends Exception>
-	AsyncWork<TResult, TError> success(TResult result, Consumer<Pair<TResult, TError>> ondone) {
+	AsyncSupplier<TResult, TError> success(TResult result, Consumer<Pair<TResult, TError>> ondone) {
 		if (ondone != null) ondone.accept(new Pair<>(result, null));
-		return new AsyncWork<>(result, null);
+		return new AsyncSupplier<>(result, null);
 	}
 	
 	/** Shortcut to transfer error or cancellation. */
 	public static <TResult, TError extends Exception>
-	void notSuccess(ISynchronizationPoint<TError> sp, AsyncWork<TResult, TError> result, Consumer<Pair<TResult, TError>> ondone) {
+	void notSuccess(IAsync<TError> sp, AsyncSupplier<TResult, TError> result, Consumer<Pair<TResult, TError>> ondone) {
 		if (sp.hasError())
 			error(sp.getError(), result, ondone);
 		else

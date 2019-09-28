@@ -12,11 +12,11 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.function.UnaryOperator;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.ICharacterStream;
 
@@ -894,18 +894,18 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	/** CharacterStream implementation. */
-	protected class CS extends ConcurrentCloseable implements ICharacterStream.Readable.Buffered {
+	protected class CS extends ConcurrentCloseable<IOException> implements ICharacterStream.Readable.Buffered {
 		private int buffer = 0;
 		private int bufferIndex = 0;
 		private byte priority = Task.PRIORITY_NORMAL;
 		
 		@Override
-		protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		protected IAsync<IOException> closeUnderlyingResources() {
 			return null;
 		}
 		
 		@Override
-		protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		protected void closeResources(Async<IOException> ondone) {
 			ondone.unblock();
 		}
 		
@@ -964,7 +964,7 @@ public class UnprotectedStringBuffer implements IString {
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> readAsync(char[] buf, int offset, int length) {
+		public AsyncSupplier<Integer, IOException> readAsync(char[] buf, int offset, int length) {
 			return new Task.Cpu<Integer, IOException>("UnprotectedStringBuffer.readAsync", priority) {
 				@Override
 				public Integer run() {
@@ -974,17 +974,17 @@ public class UnprotectedStringBuffer implements IString {
 		}
 		
 		@Override
-		public AsyncWork<UnprotectedString, IOException> readNextBufferAsync() {
-			if (strings == null) return new AsyncWork<>(null, null);
+		public AsyncSupplier<UnprotectedString, IOException> readNextBufferAsync() {
+			if (strings == null) return new AsyncSupplier<>(null, null);
 			while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
 				buffer++;
 				bufferIndex = 0;
 			}
-			if (buffer > lastUsed) return new AsyncWork<>(null, null);
+			if (buffer > lastUsed) return new AsyncSupplier<>(null, null);
 			UnprotectedString str = strings[buffer].substring(bufferIndex);
 			buffer++;
 			bufferIndex = 0;
-			return new AsyncWork<>(str, null);
+			return new AsyncSupplier<>(str, null);
 		}
 		
 		@Override
@@ -1022,13 +1022,13 @@ public class UnprotectedStringBuffer implements IString {
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> canStartReading() {
-			return new SynchronizationPoint<>(true);
+		public IAsync<IOException> canStartReading() {
+			return new Async<>(true);
 		}
 	}
 	
 	/** CharacterStream implementation. */
-	protected class WCS extends ConcurrentCloseable implements ICharacterStream.Writable.Buffered {
+	protected class WCS extends ConcurrentCloseable<IOException> implements ICharacterStream.Writable.Buffered {
 		private byte priority = Task.PRIORITY_NORMAL;
 
 		@Override
@@ -1042,7 +1042,7 @@ public class UnprotectedStringBuffer implements IString {
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length) {
+		public IAsync<IOException> writeAsync(char[] c, int offset, int length) {
 			return new Task.Cpu<Void, IOException>("UnprotectedStringBuffer.writeAsync", priority) {
 				@Override
 				public Void run() throws IOException, CancelException {
@@ -1053,14 +1053,14 @@ public class UnprotectedStringBuffer implements IString {
 		}
 
 		@Override
-		public ISynchronizationPoint<IOException> writeAsync(char c) {
+		public IAsync<IOException> writeAsync(char c) {
 			append(c);
-			return new SynchronizationPoint<>(true);
+			return new Async<>(true);
 		}
 
 		@Override
-		public ISynchronizationPoint<IOException> flush() {
-			return new SynchronizationPoint<>(true);
+		public IAsync<IOException> flush() {
+			return new Async<>(true);
 		}
 
 		@Override
@@ -1074,12 +1074,12 @@ public class UnprotectedStringBuffer implements IString {
 		}
 
 		@Override
-		protected ISynchronizationPoint<?> closeUnderlyingResources() {
+		protected IAsync<IOException> closeUnderlyingResources() {
 			return null;
 		}
 		
 		@Override
-		protected void closeResources(SynchronizationPoint<Exception> ondone) {
+		protected void closeResources(Async<IOException> ondone) {
 			ondone.unblock();
 		}
 		
@@ -1096,9 +1096,9 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	/** Encode this string with the given charset and write the result on the given writable IO. */
-	public SynchronizationPoint<IOException> encode(Charset charset, IO.Writable output, byte priority) {
-		if (strings == null) return new SynchronizationPoint<>(true);
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+	public Async<IOException> encode(Charset charset, IO.Writable output, byte priority) {
+		if (strings == null) return new Async<>(true);
+		Async<IOException> result = new Async<>();
 		CharsetEncoder encoder = charset.newEncoder();
 		encode(0, encoder, output, priority, null, result);
 		return result;
@@ -1106,28 +1106,28 @@ public class UnprotectedStringBuffer implements IString {
 	
 	private void encode(
 		int index, CharsetEncoder encoder, IO.Writable output, byte priority,
-		ISynchronizationPoint<IOException> prevWrite, SynchronizationPoint<IOException> result
+		IAsync<IOException> prevWrite, Async<IOException> result
 	) {
 		new Task.Cpu.FromRunnable("Encode string into bytes", priority, () -> {
 			try {
 				ByteBuffer bytes = encoder.encode(strings[index].asCharBuffer());
-				if (prevWrite == null || prevWrite.isUnblocked()) {
+				if (prevWrite == null || prevWrite.isDone()) {
 					if (prevWrite != null && prevWrite.hasError()) {
 						result.error(prevWrite.getError());
 						return;
 					}
-					ISynchronizationPoint<IOException> write = output.writeAsync(bytes);
+					IAsync<IOException> write = output.writeAsync(bytes);
 					if (index == lastUsed) {
-						write.listenInline(result);
+						write.onDone(result);
 						return;
 					}
 					encode(index + 1, encoder, output, priority, write, result);
 					return;
 				}
-				prevWrite.listenInline(() -> {
-					ISynchronizationPoint<IOException> write = output.writeAsync(bytes);
+				prevWrite.onDone(() -> {
+					IAsync<IOException> write = output.writeAsync(bytes);
 					if (index == lastUsed) {
-						write.listenInline(result);
+						write.onDone(result);
 						return;
 					}
 					encode(index + 1, encoder, output, priority, write, result);

@@ -1,8 +1,8 @@
 package net.lecousin.framework.concurrent.util.production.simple;
 
-import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
+import net.lecousin.framework.concurrent.async.CancelException;
 
 /**
  * Implement a consumer for a specific type, and transform it before to pass it to another consumer.
@@ -17,15 +17,15 @@ public abstract class ProductTransformation<Input,Output> implements Consumer<In
 	}
 	
 	private Consumer<Output> consumer;
-	private AsyncWork<?,? extends Exception> consuming = null;
+	private AsyncSupplier<?,? extends Exception> consuming = null;
 	private Output waitingData = null;
 	private CancelException cancelled = null;
 	private Exception error = null;
-	private AsyncWork<?,? extends Exception> endReached = null;
+	private AsyncSupplier<?,? extends Exception> endReached = null;
 	
 	@Override
-	public AsyncWork<?, ? extends Exception> consume(Input product) {
-		AsyncWork<Void,Exception> sp = new AsyncWork<>();
+	public AsyncSupplier<?, ? extends Exception> consume(Input product) {
+		AsyncSupplier<Void,Exception> sp = new AsyncSupplier<>();
 		if (error != null) {
 			sp.unblockError(error);
 			return sp;
@@ -34,8 +34,8 @@ public abstract class ProductTransformation<Input,Output> implements Consumer<In
 			sp.unblockCancel(cancelled);
 			return sp;
 		}
-		AsyncWork<Output,Exception> processing = process(product);
-		processing.listenInline(new AsyncWorkListener<Output, Exception>() {
+		AsyncSupplier<Output,Exception> processing = process(product);
+		processing.listen(new Listener<Output, Exception>() {
 			@Override
 			public void ready(Output result) {
 				synchronized (consumer) {
@@ -69,12 +69,12 @@ public abstract class ProductTransformation<Input,Output> implements Consumer<In
 		return sp;
 	}
 	
-	protected abstract AsyncWork<Output,Exception> process(Input input);
+	protected abstract AsyncSupplier<Output,Exception> process(Input input);
 	
-	private void consumeTransformed(Output data, AsyncWork<Void,Exception> sp) {
+	private void consumeTransformed(Output data, AsyncSupplier<Void,Exception> sp) {
 		consuming = consumer.consume(data);
 		sp.unblockSuccess(null);
-		consuming.listenInline(() -> {
+		consuming.onDone(() -> {
 			synchronized (consumer) {
 				if (error != null) {
 					sp.unblockError(error);
@@ -97,7 +97,7 @@ public abstract class ProductTransformation<Input,Output> implements Consumer<In
 					consumeTransformed(waitingData, sp);
 					waitingData = null;
 				} else if (endReached != null) {
-					consumer.endOfProduction().listenInline(() -> endReached.unblockSuccess(null));
+					consumer.endOfProduction().onDone(() -> endReached.unblockSuccess(null));
 				}
 			}
 		});
@@ -114,11 +114,11 @@ public abstract class ProductTransformation<Input,Output> implements Consumer<In
 	}
 	
 	@Override
-	public AsyncWork<?, ? extends Exception> endOfProduction() {
+	public AsyncSupplier<?, ? extends Exception> endOfProduction() {
 		synchronized (consumer) {
 			if (consuming == null)
 				return consumer.endOfProduction();
-			endReached = new AsyncWork<>();
+			endReached = new AsyncSupplier<>();
 			return endReached;
 		}
 	}

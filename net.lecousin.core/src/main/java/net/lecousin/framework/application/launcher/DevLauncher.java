@@ -19,7 +19,7 @@ import net.lecousin.framework.application.libraries.artifacts.maven.MavenLocalRe
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenPOMLoader;
 import net.lecousin.framework.application.libraries.artifacts.maven.MavenSettings;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.util.SystemEnvironment;
 import net.lecousin.framework.util.Triple;
 
@@ -193,7 +193,7 @@ public class DevLauncher {
 			DynamicLibrariesManager librariesManager =
 				new DynamicLibrariesManager(devPaths, splash, loaders, appDir, cfg, addPlugins);
 			
-			ISynchronizationPoint<ApplicationBootstrapException> start = Application.start(
+			IAsync<ApplicationBootstrapException> start = Application.start(
 				new Artifact(groupId, artifactId, new Version(version)),
 				appParameters,
 				cfg.getProperties(),
@@ -214,7 +214,7 @@ public class DevLauncher {
 				return;
 			}
 	
-			Task.Cpu<ISynchronizationPoint<Exception>, ApplicationBootstrapException> startApp = librariesManager.startApp();
+			Task.Cpu<IAsync<Exception>, ApplicationBootstrapException> startApp = librariesManager.startApp();
 			startApp.getOutput().block(0);
 			if (!startApp.isSuccessful()) {
 				if (startApp.isCancelled()) {
@@ -227,7 +227,7 @@ public class DevLauncher {
 				LCCore.stop(true);
 				return;
 			}
-			ISynchronizationPoint<Exception> appClosed = startApp.getResult();
+			IAsync<Exception> appClosed = startApp.getResult();
 			if (appClosed != null) {
 				appClosed.block(0);
 				if (appClosed.isCancelled()) {

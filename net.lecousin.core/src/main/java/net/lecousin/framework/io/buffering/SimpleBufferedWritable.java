@@ -7,9 +7,9 @@ import java.util.function.Consumer;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -22,7 +22,7 @@ import net.lecousin.framework.util.Pair;
  * Once it is full, it is flushed to the underlying writable, and new data are written on the second buffer.<br/>
  * If the second buffer is full before the first one is flushed, operations are blocking.
  */
-public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Writable.Buffered {
+public class SimpleBufferedWritable extends ConcurrentCloseable<IOException> implements IO.Writable.Buffered {
 
 	/** Constructor. */
 	public SimpleBufferedWritable(Writable out, int bufferSize) {
@@ -39,18 +39,18 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 	private ByteBuffer bb;
 	private ByteBuffer bb2;
 	private int pos = 0;
-	private AsyncWork<Integer,IOException> writing = null;
+	private AsyncSupplier<Integer,IOException> writing = null;
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartWriting() {
-		return new SynchronizationPoint<>(true);
+	public IAsync<IOException> canStartWriting() {
+		return new Async<>(true);
 	}
 	
 	private void flushBuffer() throws IOException {
 		do {
-			AsyncWork<Integer,IOException> sp;
+			AsyncSupplier<Integer,IOException> sp;
 			synchronized (out) {
-				if (writing != null && writing.isUnblocked()) {
+				if (writing != null && writing.isDone()) {
 					if (writing.hasError())
 						throw writing.getError();
 					writing = null;
@@ -73,9 +73,9 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 		} while (true);
 	}
 	
-	private AsyncWork<Integer,IOException> flushBufferAsync() throws IOException {
+	private AsyncSupplier<Integer,IOException> flushBufferAsync() throws IOException {
 		synchronized (out) {
-			if (writing != null && writing.isUnblocked()) {
+			if (writing != null && writing.isDone()) {
 				if (writing.hasError())
 					throw writing.getError();
 				writing = null;
@@ -97,15 +97,15 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> flush() {
+	public IAsync<IOException> flush() {
 		if (pos == 0) {
 			if (writing == null)
-				return new SynchronizationPoint<>(true);
+				return new Async<>(true);
 			return writing;
 		}
-		AsyncWork<Integer,IOException> w;
+		AsyncSupplier<Integer,IOException> w;
 		synchronized (out) {
-			if (writing != null && writing.isUnblocked()) {
+			if (writing != null && writing.isDone()) {
 				if (writing.hasError())
 					return writing;
 				writing = null;
@@ -125,8 +125,8 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 			}
 			w = writing;
 		}
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		w.listenInline(() -> flush().listenInline(sp), sp);
+		Async<IOException> sp = new Async<>();
+		w.onDone(() -> flush().onDone(sp), sp);
 		return operation(sp);
 	}
 	
@@ -167,14 +167,14 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buf, Consumer<Pair<Integer,IOException>> ondone) {
-		AsyncWork<Integer,IOException> result = new AsyncWork<>();
+	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buf, Consumer<Pair<Integer,IOException>> ondone) {
+		AsyncSupplier<Integer,IOException> result = new AsyncSupplier<>();
 		writeAsync(buf, 0, result, ondone);
 		return result;
 	}
 	
 	private void writeAsync(
-		ByteBuffer buf, int done, AsyncWork<Integer,IOException> result, Consumer<Pair<Integer,IOException>> ondone
+		ByteBuffer buf, int done, AsyncSupplier<Integer,IOException> result, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Void,NoException> task = new Task.Cpu<Void,NoException>("Write async to SimpleBufferedWritable", out.getPriority()) {
 			@Override
@@ -187,7 +187,7 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 					pos += len;
 					d += len;
 					if (pos == buffer.length) {
-						AsyncWork<Integer,IOException> flush;
+						AsyncSupplier<Integer,IOException> flush;
 						try { flush = flushBufferAsync(); }
 						catch (IOException e) {
 							IOUtil.error(e, result, ondone);
@@ -195,7 +195,7 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 						}
 						if (flush != null) {
 							int dd = d;
-							flush.listenInline(() -> {
+							flush.onDone(() -> {
 								if (!flush.isSuccessful()) {
 									IOUtil.error(flush.getError(), result , ondone);
 									return;
@@ -232,21 +232,21 @@ public class SimpleBufferedWritable extends ConcurrentCloseable implements IO.Wr
 	public TaskManager getTaskManager() { return Threading.getCPUTaskManager(); }
 
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		ISynchronizationPoint<IOException> flush = flush();
-		flush.listenInline(() -> {
-			ISynchronizationPoint<Exception> close = out.closeAsync();
+	protected IAsync<IOException> closeUnderlyingResources() {
+		Async<IOException> sp = new Async<>();
+		IAsync<IOException> flush = flush();
+		flush.onDone(() -> {
+			IAsync<IOException> close = out.closeAsync();
 			if (flush.hasError())
 				sp.error(flush.getError());
 			else
-				close.listenInline(sp);
+				close.onDone(sp);
 		});
 		return sp;
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		out = null;
 		buffer = null;
 		buffer2 = null;

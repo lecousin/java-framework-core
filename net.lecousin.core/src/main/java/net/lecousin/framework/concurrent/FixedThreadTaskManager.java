@@ -9,7 +9,8 @@ import java.util.concurrent.ThreadFactory;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.DebugUtil;
 
@@ -32,7 +33,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 	private TurnArray<TaskWorker> spare;
 	private TurnArray<TaskWorker> blocked;
 	private LinkedList<TaskWorker> aside = new LinkedList<>();
-	private LinkedList<AsyncWork<TaskWorker,NoException>> pausesToDo = new LinkedList<>();
+	private LinkedList<AsyncSupplier<TaskWorker,NoException>> pausesToDo = new LinkedList<>();
 	
 	public int getNbThreads() { return nbThreads; }
 	
@@ -52,7 +53,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		}
 		// resume blocked threads
 		do {
-			AsyncWork<TaskWorker,NoException> waitPause = getPauseToDo();
+			AsyncSupplier<TaskWorker,NoException> waitPause = getPauseToDo();
 			if (waitPause == null)
 				break;
 			waitPause.unblockSuccess(null);
@@ -145,7 +146,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		}
 	}
 	
-	AsyncWork<TaskWorker,NoException> getPauseToDo() {
+	AsyncSupplier<TaskWorker,NoException> getPauseToDo() {
 		if (pausesToDo.isEmpty()) return null;
 		synchronized (pausesToDo) {
 			if (pausesToDo.isEmpty()) return null;
@@ -196,7 +197,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 				+ ((System.nanoTime() - since) / 1000000) + "ms.");
 		}
 		// pause the next worker as soon as it is done with its work
-		AsyncWork<TaskWorker,NoException> pause = new AsyncWork<>();
+		AsyncSupplier<TaskWorker,NoException> pause = new AsyncSupplier<>();
 		synchronized (taskPriorityManager) {
 			synchronized (pausesToDo) {
 				pausesToDo.add(pause);

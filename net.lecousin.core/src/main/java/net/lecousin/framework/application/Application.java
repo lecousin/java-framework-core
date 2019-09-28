@@ -22,9 +22,9 @@ import net.lecousin.framework.application.libraries.classpath.DefaultLibrariesMa
 import net.lecousin.framework.concurrent.Console;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskMonitoring;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.tasks.LoadPropertiesFileTask;
 import net.lecousin.framework.concurrent.tasks.SavePropertiesFileTask;
 import net.lecousin.framework.exception.NoException;
@@ -273,7 +273,7 @@ public final class Application {
 		"squid:S3776", // complexity: we do not want to split into sub-methods
 		"squid:S5304", // environment variables are only printed
 	})
-	public static ISynchronizationPoint<ApplicationBootstrapException> start(
+	public static IAsync<ApplicationBootstrapException> start(
 		Artifact artifact,
 		String[] commandLineArguments,
 		Map<String,String> properties,
@@ -325,7 +325,7 @@ public final class Application {
 		JoinPoint<Exception> loading = new JoinPoint<>();
 		
 		// load preferences
-		ISynchronizationPoint<Exception> loadPref = app.loadPreferences();
+		IAsync<Exception> loadPref = app.loadPreferences();
 		loading.addToJoin(loadPref);
 		
 		// init locale
@@ -348,10 +348,10 @@ public final class Application {
 		loading.addToJoin(loadLocale.getOutput());
 		
 		loading.start();
-		SynchronizationPoint<ApplicationBootstrapException> sp = new SynchronizationPoint<>();
-		loading.listenInline(() -> {
+		Async<ApplicationBootstrapException> sp = new Async<>();
+		loading.onDone(() -> {
 			app.appClassLoader = librariesManager.start(app);
-			librariesManager.onLibrariesLoaded().listenInline(sp,
+			librariesManager.onLibrariesLoaded().onDone(sp,
 				error -> new ApplicationBootstrapException("Error loading libraries", error));
 		});
 		
@@ -359,12 +359,12 @@ public final class Application {
 	}
 	
 	/** Method to call at the beginning of the application, typically in the main method. */
-	public static ISynchronizationPoint<ApplicationBootstrapException> start(Artifact artifact, boolean debugMode) {
+	public static IAsync<ApplicationBootstrapException> start(Artifact artifact, boolean debugMode) {
 		return start(artifact, new String[0], debugMode);
 	}
 	
 	/** Method to call at the beginning of the application, typically in the main method. */
-	public static ISynchronizationPoint<ApplicationBootstrapException> start(Artifact artifact, String[] args, boolean debugMode) {
+	public static IAsync<ApplicationBootstrapException> start(Artifact artifact, String[] args, boolean debugMode) {
 		return start(artifact, args, null, debugMode, Executors.defaultThreadFactory(), new DefaultLibrariesManager(), null);
 	}
 
@@ -394,7 +394,7 @@ public final class Application {
 			t.interrupt();
 		}
 
-		List<Pair<AsyncCloseable<?>,ISynchronizationPoint<?>>> closing = new LinkedList<>();
+		List<Pair<AsyncCloseable<?>,IAsync<?>>> closing = new LinkedList<>();
 		for (AsyncCloseable<?> s : new ArrayList<>(toCloseAsync)) {
 			System.out.println(" * Closing " + s);
 			closing.add(new Pair<>(s, s.closeAsync()));
@@ -403,9 +403,9 @@ public final class Application {
 		long start = System.currentTimeMillis();
 		boolean allClosed = false;
 		do {
-			for (Iterator<Pair<AsyncCloseable<?>,ISynchronizationPoint<?>>> it = closing.iterator(); it.hasNext(); ) {
-				Pair<AsyncCloseable<?>,ISynchronizationPoint<?>> s = it.next();
-				if (s.getValue2().isUnblocked()) {
+			for (Iterator<Pair<AsyncCloseable<?>,IAsync<?>>> it = closing.iterator(); it.hasNext(); ) {
+				Pair<AsyncCloseable<?>,IAsync<?>> s = it.next();
+				if (s.getValue2().isDone()) {
 					System.out.println(" * Closed: " + s.getValue1());
 					it.remove();
 				}
@@ -447,17 +447,17 @@ public final class Application {
 		savePreferences();
 	}
 	
-	private ISynchronizationPoint<Exception> loadingPreferences = null;
+	private IAsync<Exception> loadingPreferences = null;
 	
 	/** Load preferences. */
-	public synchronized ISynchronizationPoint<Exception> loadPreferences() {
+	public synchronized IAsync<Exception> loadPreferences() {
 		if (loadingPreferences != null) return loadingPreferences;
 		File f = new File(getProperty(PROPERTY_CONFIG_DIRECTORY));
 		f = new File(f, "preferences");
 		if (!f.exists()) {
 			getDefaultLogger().info("No preferences file");
 			preferences = new Properties();
-			loadingPreferences = new SynchronizationPoint<>(true);
+			loadingPreferences = new Async<>(true);
 			return loadingPreferences;
 		}
 		getDefaultLogger().info("Loading preferences from " + f.getAbsolutePath());
@@ -469,12 +469,12 @@ public final class Application {
 		return loadingPreferences;
 	}
 
-	ISynchronizationPoint<IOException> savingPreferences = null;
+	IAsync<IOException> savingPreferences = null;
 	
 	private synchronized void savePreferences() {
-		if (savingPreferences != null && !savingPreferences.isUnblocked()) {
+		if (savingPreferences != null && !savingPreferences.isDone()) {
 			// we need to save again once done
-			savingPreferences.listenInline(this::savePreferences);
+			savingPreferences.onDone(this::savePreferences);
 			return;
 		}
 		File f = new File(getProperty(PROPERTY_CONFIG_DIRECTORY));

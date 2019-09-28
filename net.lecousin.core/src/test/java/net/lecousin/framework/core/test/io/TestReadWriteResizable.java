@@ -5,9 +5,9 @@ import java.nio.ByteBuffer;
 
 import org.junit.Test;
 
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 
@@ -144,9 +144,9 @@ public abstract class TestReadWriteResizable extends TestIO {
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.KnownSize & IO.Resizable>
 	void testResizeAsync() throws Exception {
 		T io = openReadWriteResizable();
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		AsyncWork<Long,IOException> op = io.getSizeAsync();
-		op.listenInline(new Runnable() {
+		Async<Exception> sp = new Async<>();
+		AsyncSupplier<Long,IOException> op = io.getSizeAsync();
+		op.onDone(new Runnable() {
 			@Override
 			public void run() {
 				if (op.hasError()) { sp.error(op.getError()); return; }
@@ -154,13 +154,13 @@ public abstract class TestReadWriteResizable extends TestIO {
 					sp.error(new Exception("ReadWrite must be empty at first"));
 					return;
 				}
-				ISynchronizationPoint<IOException> op = io.setSizeAsync(1);
-				op.listenInline(new Runnable() {
+				IAsync<IOException> op = io.setSizeAsync(1);
+				op.onDone(new Runnable() {
 					@Override
 					public void run() {
 						if (op.hasError()) { sp.error(op.getError()); return; }
-						AsyncWork<Long,IOException> op = io.getSizeAsync();
-						op.listenInline(new Runnable() {
+						AsyncSupplier<Long,IOException> op = io.getSizeAsync();
+						op.onDone(new Runnable() {
 							@Override
 							public void run() {
 								if (op.hasError()) { sp.error(op.getError()); return; }
@@ -175,8 +175,8 @@ public abstract class TestReadWriteResizable extends TestIO {
 									sp.error(new Exception("Resize error: new position is " + p + ", expected is 0"));
 									return;
 								}
-								AsyncWork<Integer,IOException> op = io.writeAsync(ByteBuffer.wrap(new byte[10]));
-								op.listenInline(new Runnable() {
+								AsyncSupplier<Integer,IOException> op = io.writeAsync(ByteBuffer.wrap(new byte[10]));
+								op.onDone(new Runnable() {
 									@Override
 									public void run() {
 										if (op.hasError()) { sp.error(op.getError()); return; }
@@ -187,8 +187,8 @@ public abstract class TestReadWriteResizable extends TestIO {
 											sp.error(new Exception("Write error: new position is " + p + ", expected is 10"));
 											return;
 										}
-										AsyncWork<Long,IOException> op = io.getSizeAsync();
-										op.listenInline(new Runnable() {
+										AsyncSupplier<Long,IOException> op = io.getSizeAsync();
+										op.onDone(new Runnable() {
 											@Override
 											public void run() {
 												if (op.hasError()) { sp.error(op.getError()); return; }
@@ -196,8 +196,8 @@ public abstract class TestReadWriteResizable extends TestIO {
 													sp.error(new Exception("Resize error: new size is " + op.getResult().longValue() + ", expected is 10"));
 													return;
 												}
-												ISynchronizationPoint<IOException> op = io.setSizeAsync(3);
-												op.listenInline(new Runnable() {
+												IAsync<IOException> op = io.setSizeAsync(3);
+												op.onDone(new Runnable() {
 													@Override
 													public void run() {
 														if (op.hasError()) { sp.error(op.getError()); return; }
@@ -208,8 +208,8 @@ public abstract class TestReadWriteResizable extends TestIO {
 															sp.error(new Exception("Resize error: new position is " + p + ", expected is 3"));
 															return;
 														}
-														AsyncWork<Long,IOException> op = io.getSizeAsync();
-														op.listenInline(new Runnable() {
+														AsyncSupplier<Long,IOException> op = io.getSizeAsync();
+														op.onDone(new Runnable() {
 															@Override
 															public void run() {
 																if (op.hasError()) { sp.error(op.getError()); return; }

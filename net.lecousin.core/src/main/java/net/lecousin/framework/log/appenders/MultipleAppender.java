@@ -8,8 +8,8 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.LoggerConfigurationException;
@@ -110,7 +110,7 @@ public class MultipleAppender implements Appender {
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> flush() {
+	public IAsync<Exception> flush() {
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		for (Appender a : appenders)
 			jp.addToJoin(a.flush());

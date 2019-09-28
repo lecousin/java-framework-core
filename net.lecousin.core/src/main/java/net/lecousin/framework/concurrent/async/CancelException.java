@@ -1,4 +1,4 @@
-package net.lecousin.framework.concurrent;
+package net.lecousin.framework.concurrent.async;
 
 /** Exception used when cancelling an asynchronous task. */
 public class CancelException extends Exception {

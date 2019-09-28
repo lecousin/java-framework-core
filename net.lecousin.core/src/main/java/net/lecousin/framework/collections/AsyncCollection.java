@@ -3,8 +3,7 @@ package net.lecousin.framework.collections;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import net.lecousin.framework.event.Listener;
+import java.util.function.Consumer;
 
 /**
  * Collection where elements come asynchronously.
@@ -35,21 +34,21 @@ public interface AsyncCollection<T> {
 	 */
 	public static class Listen<T> implements AsyncCollection<T> {
 		/** Constructor. */
-		public Listen(Listener<Collection<T>> onElementsReady, Runnable onDone, Listener<Exception> onError) {
+		public Listen(Consumer<Collection<T>> onElementsReady, Runnable onDone, Consumer<Exception> onError) {
 			this.onElementsReady = onElementsReady;
 			this.onDone = onDone;
 			this.onError = onError;
 		}
 		
-		private Listener<Collection<T>> onElementsReady;
+		private Consumer<Collection<T>> onElementsReady;
 		private Runnable onDone;
 		private boolean isDone = false;
-		private Listener<Exception> onError;
+		private Consumer<Exception> onError;
 		private boolean hasError = false;
 		
 		@Override
 		public void newElements(Collection<T> elements) {
-			onElementsReady.fire(elements);
+			onElementsReady.accept(elements);
 		}
 		
 		@Override
@@ -65,7 +64,7 @@ public interface AsyncCollection<T> {
 		
 		@Override
 		public void error(Exception error) {
-			if (onError != null) onError.fire(error);
+			if (onError != null) onError.accept(error);
 			hasError = true;
 		}
 		
@@ -152,7 +151,7 @@ public interface AsyncCollection<T> {
 		private Exception error = null;
 		private ArrayList<AsyncCollection<T>> listeners = new ArrayList<>(5);
 		private ArrayList<Runnable> doneListeners = new ArrayList<>(2);
-		private ArrayList<Listener<Exception>> errorListeners = new ArrayList<>(2);
+		private ArrayList<Consumer<Exception>> errorListeners = new ArrayList<>(2);
 		
 		@Override
 		public void newElements(Collection<T> elements) {
@@ -204,8 +203,8 @@ public interface AsyncCollection<T> {
 			for (AsyncCollection<T> col : listeners)
 				col.error(error);
 			listeners = null;
-			for (Listener<Exception> r : errorListeners)
-				r.fire(error);
+			for (Consumer<Exception> r : errorListeners)
+				r.accept(error);
 			errorListeners = null;
 		}
 		
@@ -217,14 +216,14 @@ public interface AsyncCollection<T> {
 		/** Add a listener to be called when the error method is called.
 		 * If the error method has been already called, the listener is immediately called.
 		 */
-		public void onerror(Listener<Exception> listener) {
+		public void onerror(Consumer<Exception> listener) {
 			synchronized (this) {
 				if (error == null) {
 					errorListeners.add(listener);
 					return;
 				}
 			}
-			listener.fire(error);
+			listener.accept(error);
 		}
 				
 		/** Send the elements of this collection to the given collection.

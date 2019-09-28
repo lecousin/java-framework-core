@@ -5,8 +5,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.util.Pair;
 
 class WriteFileTask extends Task.OnFile<Integer,IOException> {

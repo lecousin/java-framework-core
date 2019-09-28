@@ -1,8 +1,8 @@
 package net.lecousin.framework.concurrent.util.production.simple;
 
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
 
 /**
  * Production model: a producer produces objects that are consumed by a consumer.<br/>
@@ -23,9 +23,9 @@ public class Production<T> {
 	private boolean endReached = false;
 	private Producer<T> producer;
 	private Consumer<T> consumer;
-	private AsyncWork<?,? extends Exception> consuming = null;
-	private AsyncWork<T,? extends Exception> producing = null;
-	private AsyncWork<Void,Exception> spEnd = new AsyncWork<>();
+	private AsyncSupplier<?,? extends Exception> consuming = null;
+	private AsyncSupplier<T,? extends Exception> producing = null;
+	private AsyncSupplier<Void,Exception> spEnd = new AsyncSupplier<>();
 	
 	/** Start the production. */
 	public void start() {
@@ -43,14 +43,14 @@ public class Production<T> {
 		}
 	}
 	
-	public AsyncWork<Void,Exception> getSyncOnFinished() {
+	public AsyncSupplier<Void,Exception> getSyncOnFinished() {
 		return spEnd;
 	}
 	
 	private void produce() {
 		if (endReached) return;
 		producing = producer.produce(this);
-		producing.listenInline(() -> {
+		producing.onDone(() -> {
 			if (!producing.isSuccessful()) {
 				if (producing.isCancelled()) {
 					consumer.cancel(producing.getCancelEvent());
@@ -83,7 +83,7 @@ public class Production<T> {
 	
 	private void consume(T product) {
 		consuming = consumer.consume(product);
-		consuming.listenInline(() -> {
+		consuming.onDone(() -> {
 			if (!consuming.isSuccessful()) {
 				if (consuming.isCancelled()) {
 					producer.cancel(consuming.getCancelEvent());
@@ -115,7 +115,7 @@ public class Production<T> {
 	private void end() {
 		if (ended) return;
 		ended = true;
-		consumer.endOfProduction().listenInline(() -> spEnd.unblockSuccess(null));
+		consumer.endOfProduction().onDone(() -> spEnd.unblockSuccess(null));
 	}
 	
 }

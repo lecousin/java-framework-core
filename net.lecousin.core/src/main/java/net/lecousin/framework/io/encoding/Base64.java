@@ -6,8 +6,8 @@ import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
 import net.lecousin.framework.io.text.ICharacterStream;
@@ -311,34 +311,34 @@ public final class Base64 {
 	}
 	
 	/** Encode the Readable IO into the Writer. */
-	public static ISynchronizationPoint<IOException> encodeAsync(IO.Readable io, IO.WriterAsync writer) {
+	public static IAsync<IOException> encodeAsync(IO.Readable io, IO.WriterAsync writer) {
 		return encodeAsync(io instanceof IO.Readable.Buffered ? (IO.Readable.Buffered)io : new SimpleBufferedReadable(io, 8192), writer);
 	}
 
 	/** Encode the Readable IO into the Writer. */
-	public static ISynchronizationPoint<IOException> encodeAsync(IO.Readable.Buffered io, IO.WriterAsync writer) {
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+	public static IAsync<IOException> encodeAsync(IO.Readable.Buffered io, IO.WriterAsync writer) {
+		Async<IOException> result = new Async<>();
 		encodeAsyncNextBuffer(io, writer, result, new byte[3], 0, null);
 		return result;
 	}
 	
 	/** Encode the Readable IO into the Writer. */
-	public static ISynchronizationPoint<IOException> encodeAsync(IO.Readable io, ICharacterStream.WriterAsync writer) {
+	public static IAsync<IOException> encodeAsync(IO.Readable io, ICharacterStream.WriterAsync writer) {
 		return encodeAsync(io instanceof IO.Readable.Buffered ? (IO.Readable.Buffered)io : new SimpleBufferedReadable(io, 8192), writer);
 	}
 	
 	/** Encode the Readable IO into the Writer. */
-	public static ISynchronizationPoint<IOException> encodeAsync(IO.Readable.Buffered io, ICharacterStream.WriterAsync writer) {
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+	public static IAsync<IOException> encodeAsync(IO.Readable.Buffered io, ICharacterStream.WriterAsync writer) {
+		Async<IOException> result = new Async<>();
 		encodeAsyncNextBuffer(io, writer, result, new byte[3], 0, null);
 		return result;
 	}
 
 	private static void encodeAsyncNextBuffer(
-		IO.Readable.Buffered io, IO.WriterAsync writer, SynchronizationPoint<IOException> result,
-		byte[] buf, int nbBuf, ISynchronizationPoint<IOException> lastWrite
+		IO.Readable.Buffered io, IO.WriterAsync writer, Async<IOException> result,
+		byte[] buf, int nbBuf, IAsync<IOException> lastWrite
 	) {
-		io.readNextBufferAsync().listenInline(buffer -> {
+		io.readNextBufferAsync().onDone(buffer -> {
 			if (buffer == null)
 				writeFinalBuffer(io, writer, result, buf, nbBuf, lastWrite);
 			else
@@ -347,10 +347,10 @@ public final class Base64 {
 	}
 	
 	private static void encodeAsyncNextBuffer(
-		IO.Readable.Buffered io, ICharacterStream.WriterAsync writer, SynchronizationPoint<IOException> result,
-		byte[] buf, int nbBuf, ISynchronizationPoint<IOException> lastWrite
+		IO.Readable.Buffered io, ICharacterStream.WriterAsync writer, Async<IOException> result,
+		byte[] buf, int nbBuf, IAsync<IOException> lastWrite
 	) {
-		io.readNextBufferAsync().listenInline(buffer -> {
+		io.readNextBufferAsync().onDone(buffer -> {
 			if (buffer == null)
 				writeFinalBuffer(io, writer, result, buf, nbBuf, lastWrite);
 			else
@@ -367,8 +367,8 @@ public final class Base64 {
 	}
 
 	private static void writeBuffer(
-		IO.Readable.Buffered io, IO.WriterAsync writer, SynchronizationPoint<IOException> result,
-		byte[] buf, int nbBuf, ByteBuffer buffer, ISynchronizationPoint<IOException> lastWrite
+		IO.Readable.Buffered io, IO.WriterAsync writer, Async<IOException> result,
+		byte[] buf, int nbBuf, ByteBuffer buffer, IAsync<IOException> lastWrite
 	) {
 		EncodeBase64StreamTask task = new EncodeBase64StreamTask(io.getPriority(), () -> {
 			if (lastWrite != null && lastWrite.forwardIfNotSuccessful(result))
@@ -389,7 +389,7 @@ public final class Base64 {
 				}
 			}
 			int l = buffer.remaining() / 3;
-			ISynchronizationPoint<IOException> write;
+			IAsync<IOException> write;
 			if (l > 0) {
 				byte[] out = encodeBase64(buffer.array(), buffer.arrayOffset() + buffer.position(), l * 3);
 				write = writer.writeAsync(ByteBuffer.wrap(out));
@@ -401,13 +401,13 @@ public final class Base64 {
 			buffer.get(buf, 0, nb);
 			encodeAsyncNextBuffer(io, writer, result, buf, nb, write);
 		});
-		if (lastWrite == null || lastWrite.isUnblocked()) task.start();
+		if (lastWrite == null || lastWrite.isDone()) task.start();
 		else task.startOn(lastWrite, true);
 	}
 	
 	private static void writeBuffer(
-		IO.Readable.Buffered io, ICharacterStream.WriterAsync writer, SynchronizationPoint<IOException> result,
-		byte[] buf, int nbBuf, ByteBuffer buffer, ISynchronizationPoint<IOException> lastWrite
+		IO.Readable.Buffered io, ICharacterStream.WriterAsync writer, Async<IOException> result,
+		byte[] buf, int nbBuf, ByteBuffer buffer, IAsync<IOException> lastWrite
 	) {
 		EncodeBase64StreamTask task = new EncodeBase64StreamTask(io.getPriority(), () -> {
 			if (lastWrite != null && lastWrite.forwardIfNotSuccessful(result))
@@ -428,7 +428,7 @@ public final class Base64 {
 				}
 			}
 			int l = buffer.remaining() / 3;
-			ISynchronizationPoint<IOException> write;
+			IAsync<IOException> write;
 			if (l > 0) {
 				char[] out = encodeBase64ToChars(buffer.array(), buffer.arrayOffset() + buffer.position(), l * 3);
 				write = writer.writeAsync(out);
@@ -440,19 +440,19 @@ public final class Base64 {
 			buffer.get(buf, 0, nb);
 			encodeAsyncNextBuffer(io, writer, result, buf, nb, write);
 		});
-		if (lastWrite == null || lastWrite.isUnblocked()) task.start();
+		if (lastWrite == null || lastWrite.isDone()) task.start();
 		else task.startOn(lastWrite, true);
 	}
 
 	private static void writeFinalBuffer(
-		IO.Readable.Buffered io, IO.WriterAsync writer, SynchronizationPoint<IOException> result,
-		byte[] buf, int nbBuf, ISynchronizationPoint<IOException> lastWrite
+		IO.Readable.Buffered io, IO.WriterAsync writer, Async<IOException> result,
+		byte[] buf, int nbBuf, IAsync<IOException> lastWrite
 	) {
 		if (nbBuf == 0) {
-			if (lastWrite == null || lastWrite.isUnblocked())
+			if (lastWrite == null || lastWrite.isDone())
 				result.unblock();
 			else
-				lastWrite.listenInline(result);
+				lastWrite.onDone(result);
 			return;
 		}
 		EncodeBase64StreamTask task = new EncodeBase64StreamTask(io.getPriority(), () -> {
@@ -460,21 +460,21 @@ public final class Base64 {
 				return;
 			byte[] out = new byte[4];
 			encodeUpTo3BytesBase64(buf, 0, out, 0, nbBuf);
-			writer.writeAsync(ByteBuffer.wrap(out)).listenInline(result);
+			writer.writeAsync(ByteBuffer.wrap(out)).onDone(result);
 		});
-		if (lastWrite == null || lastWrite.isUnblocked()) task.start();
+		if (lastWrite == null || lastWrite.isDone()) task.start();
 		else task.startOn(lastWrite, true);
 	}
 
 	private static void writeFinalBuffer(
-		IO.Readable.Buffered io, ICharacterStream.WriterAsync writer, SynchronizationPoint<IOException> result,
-		byte[] buf, int nbBuf, ISynchronizationPoint<IOException> lastWrite
+		IO.Readable.Buffered io, ICharacterStream.WriterAsync writer, Async<IOException> result,
+		byte[] buf, int nbBuf, IAsync<IOException> lastWrite
 	) {
 		if (nbBuf == 0) {
-			if (lastWrite == null || lastWrite.isUnblocked())
+			if (lastWrite == null || lastWrite.isDone())
 				result.unblock();
 			else
-				lastWrite.listenInline(result);
+				lastWrite.onDone(result);
 			return;
 		}
 		EncodeBase64StreamTask task = new EncodeBase64StreamTask(io.getPriority(), () -> {
@@ -482,9 +482,9 @@ public final class Base64 {
 				return;
 			char[] out = new char[4];
 			encodeUpTo3BytesBase64(buf, 0, out, 0, nbBuf);
-			writer.writeAsync(out, 0, 4).listenInline(result);
+			writer.writeAsync(out, 0, 4).onDone(result);
 		});
-		if (lastWrite == null || lastWrite.isUnblocked()) task.start();
+		if (lastWrite == null || lastWrite.isDone()) task.start();
 		else task.startOn(lastWrite, true);
 	}
 	

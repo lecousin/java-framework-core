@@ -57,22 +57,22 @@ public class TestMultiTaskProgress extends LCCoreAbstractTest {
 		p.addTask(t2, 200);
 		t3 = p.createTaskProgress(300, "Task3");
 		Assert.assertEquals(650, p.getAmount());
-		Assert.assertFalse(p.getSynch().isUnblocked());
+		Assert.assertFalse(p.getSynch().isDone());
 		Assert.assertEquals(0, p.getPosition());
 		t1.done();
 		try { Thread.sleep(1000); }
 		catch (InterruptedException e) {}
-		Assert.assertFalse(p.getSynch().isUnblocked());
+		Assert.assertFalse(p.getSynch().isDone());
 		Assert.assertEquals(150, p.getPosition());
 		t2.done();
 		try { Thread.sleep(1000); }
 		catch (InterruptedException e) {}
-		Assert.assertFalse(p.getSynch().isUnblocked());
+		Assert.assertFalse(p.getSynch().isDone());
 		Assert.assertEquals(350, p.getPosition());
 		t3.done();
 		try { Thread.sleep(1000); }
 		catch (InterruptedException e) {}
-		Assert.assertTrue(p.getSynch().isUnblocked());
+		Assert.assertTrue(p.getSynch().isDone());
 		Assert.assertEquals(650, p.getPosition());
 	}
 	

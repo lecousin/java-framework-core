@@ -1,7 +1,7 @@
 package net.lecousin.framework.application;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.progress.FakeWorkProgress;
 import net.lecousin.framework.progress.WorkProgress;
 
@@ -15,13 +15,13 @@ public interface ApplicationBootstrap {
 	 * is asked to shutdown. The method {@link WorkProgress#done()} must be called on the given progress
 	 * to signal the end of the startup.
 	 */
-	ISynchronizationPoint<Exception> start(Application app, WorkProgress progress) throws ApplicationBootstrapException;
+	IAsync<Exception> start(Application app, WorkProgress progress) throws ApplicationBootstrapException;
 	
 	/**
 	 * Utility method to start an application in a main.
 	 */
 	static void main(Artifact artifact, String[] args, boolean debugMode, ApplicationBootstrap startup) {
-		ISynchronizationPoint<ApplicationBootstrapException> start = Application.start(artifact, args, debugMode);
+		IAsync<ApplicationBootstrapException> start = Application.start(artifact, args, debugMode);
 		RunInMain t = new RunInMain(startup);
 		t.startOn(start, false);
 		start.block(0);
@@ -34,7 +34,7 @@ public interface ApplicationBootstrap {
 	/**
 	 * Utility class that runs the bootstrap in a task.
 	 */
-	public static class RunInMain extends Task.Cpu<ISynchronizationPoint<Exception>, Exception> {
+	public static class RunInMain extends Task.Cpu<IAsync<Exception>, Exception> {
 		/** Constructor. */
 		public RunInMain(ApplicationBootstrap bootstrap) {
 			super("Start application", Task.PRIORITY_NORMAL);
@@ -44,7 +44,7 @@ public interface ApplicationBootstrap {
 		protected ApplicationBootstrap bootstrap;
 		
 		@Override
-		public ISynchronizationPoint<Exception> run() throws Exception {
+		public IAsync<Exception> run() throws Exception {
 			return bootstrap.start(LCCore.getApplication(), new FakeWorkProgress());
 		}
 	}

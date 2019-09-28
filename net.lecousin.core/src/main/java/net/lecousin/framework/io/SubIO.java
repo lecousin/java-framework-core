@@ -6,9 +6,9 @@ import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -18,7 +18,7 @@ import net.lecousin.framework.util.Pair;
 /**
  * Sub-part of an IO.
  */
-public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownSize, IO.PositionKnown {
+public abstract class SubIO extends ConcurrentCloseable<IOException> implements IO, IO.KnownSize, IO.PositionKnown {
 
 	private SubIO(IO src, long start, long size, String description, boolean closeSrcOnClose) {
 		io = src;
@@ -47,7 +47,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> canStartReading() {
+		public IAsync<IOException> canStartReading() {
 			return super.canStartReading();
 		}
 		
@@ -57,7 +57,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		
 		@Override
-		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		public AsyncSupplier<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 			return super.readAsync(buffer, ondone);
 		}
 		
@@ -67,7 +67,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		
 		@Override
-		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		public AsyncSupplier<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 			return super.readFullyAsync(buffer, ondone);
 		}
 		
@@ -82,10 +82,10 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		
 		@Override
-		public AsyncWork<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+		public AsyncSupplier<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 			if (n <= 0) {
 				if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(0), null));
-				return new AsyncWork<>(Long.valueOf(0), null);
+				return new AsyncSupplier<>(Long.valueOf(0), null);
 			}
 			if (pos + n < 0) n = -pos;
 			if (pos + n > size) n = size - pos;
@@ -108,7 +108,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			}
 			
 			@Override
-			public ISynchronizationPoint<IOException> canStartReading() {
+			public IAsync<IOException> canStartReading() {
 				return super.canStartReading();
 			}
 			
@@ -125,14 +125,14 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			}
 			
 			@Override
-			public AsyncWork<Integer,IOException> readAsync(
+			public AsyncSupplier<Integer,IOException> readAsync(
 				long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 			) {
 				return super.readAsync(pos, buffer, ondone);
 			}
 			
 			@Override
-			public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+			public AsyncSupplier<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 				return super.readAsync(pos, buffer, res -> {
 					if (res.getValue1() != null && res.getValue1().intValue() > 0)
 						pos += res.getValue1().intValue();
@@ -153,14 +153,14 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			}
 			
 			@Override
-			public AsyncWork<Integer,IOException> readFullyAsync(
+			public AsyncSupplier<Integer,IOException> readFullyAsync(
 				long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 			) {
 				return super.readFullyAsync(pos, buffer, ondone);
 			}
 			
 			@Override
-			public AsyncWork<Integer,IOException> readFullyAsync(
+			public AsyncSupplier<Integer,IOException> readFullyAsync(
 				ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 			) {
 				return super.readFullyAsync(pos, buffer, res -> {
@@ -176,7 +176,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			}
 			
 			@Override
-			public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
+			public AsyncSupplier<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 				return super.seekAsync(type, move, ondone);
 			}
 			
@@ -189,10 +189,10 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			}
 			
 			@Override
-			public AsyncWork<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+			public AsyncSupplier<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 				long l = skipSync(n);
 				if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(l), null));
-				return new AsyncWork<>(Long.valueOf(l), null);
+				return new AsyncSupplier<>(Long.valueOf(l), null);
 			}
 			
 			/** Sub-part of a Buffered Seekable Readable IO. */
@@ -205,13 +205,13 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 				}
 
 				@Override
-				public ISynchronizationPoint<IOException> canStartReading() {
-					ISynchronizationPoint<IOException> sp = ((IO.Readable.Buffered)io).canStartReading();
-					if (!sp.isUnblocked()) return sp;
+				public IAsync<IOException> canStartReading() {
+					IAsync<IOException> sp = ((IO.Readable.Buffered)io).canStartReading();
+					if (!sp.isDone()) return sp;
 					try {
 						if (((IO.Readable.Seekable)io).getPosition() == start + pos) return sp;
 					} catch (IOException e) {
-						return new SynchronizationPoint<>(e);
+						return new Async<>(e);
 					}
 					return ((IO.Readable.Seekable)io).seekAsync(SeekType.FROM_BEGINNING, start + pos);
 				}
@@ -243,7 +243,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 				}
 				
 				@Override
-				public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+				public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(
 					ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 				) {
 					try {
@@ -251,7 +251,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 							return readFullyAsync(buffer, ondone);
 					} catch (IOException e) {
 						if (ondone != null) ondone.accept(new Pair<>(null, e));
-						return new AsyncWork<>(null, e);
+						return new AsyncSupplier<>(null, e);
 					}
 					int limit;
 					if (buffer.remaining() > size - pos) {
@@ -273,9 +273,9 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 				public int readAsync() throws IOException {
 					if (pos == size) return -1;
 					if (((IO.Readable.Seekable)io).getPosition() != start + pos) {
-						AsyncWork<Long, IOException> seek =
+						AsyncSupplier<Long, IOException> seek =
 							((IO.Readable.Seekable)io).seekAsync(SeekType.FROM_BEGINNING, start + pos);
-						if (!seek.isUnblocked())
+						if (!seek.isDone())
 							return -2;
 						if (seek.hasError()) throw seek.getError();
 					}
@@ -291,22 +291,23 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 				}
 
 				@Override
-				public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(
+				public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(
 					Consumer<Pair<ByteBuffer, IOException>> ondone
 				) {
 					if (pos == size) {
 						if (ondone != null) ondone.accept(new Pair<>(null, null));
-						return new AsyncWork<>(null, null);
+						return new AsyncSupplier<>(null, null);
 					}
-					AsyncWork<ByteBuffer, IOException> result = new AsyncWork<>();
+					AsyncSupplier<ByteBuffer, IOException> result = new AsyncSupplier<>();
 					Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Read next buffer", getPriority()) {
 						@Override
 						public Void run() {
 							int len = 16384;
 							if (len > size - pos) len = (int)(size - pos);
 							ByteBuffer buf = ByteBuffer.allocate(len);
-							AsyncWork<Integer, IOException> read = ((IO.Readable.Seekable)io).readAsync(start + pos, buf);
-							read.listenInline(() -> {
+							AsyncSupplier<Integer, IOException> read =
+								((IO.Readable.Seekable)io).readAsync(start + pos, buf);
+							read.onDone(() -> {
 								if (read.hasError()) {
 									if (ondone != null) ondone.accept(new Pair<>(null, read.getError()));
 									result.error(read.getError());
@@ -341,7 +342,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> canStartWriting() {
+		public IAsync<IOException> canStartWriting() {
 			return super.canStartWriting();
 		}
 		
@@ -351,7 +352,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+		public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 			return super.writeAsync(buffer, ondone);
 		}
 		
@@ -366,7 +367,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			}
 			
 			@Override
-			public ISynchronizationPoint<IOException> canStartWriting() {
+			public IAsync<IOException> canStartWriting() {
 				return super.canStartWriting();
 			}
 			
@@ -383,14 +384,14 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			}
 			
 			@Override
-			public AsyncWork<Integer, IOException> writeAsync(
+			public AsyncSupplier<Integer, IOException> writeAsync(
 				long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 			) {
 				return super.writeAsync(pos, buffer, ondone);
 			}
 			
 			@Override
-			public AsyncWork<Integer, IOException> writeAsync(
+			public AsyncSupplier<Integer, IOException> writeAsync(
 				ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 			) {
 				return super.writeAsync(pos, buffer, res -> {
@@ -406,7 +407,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 			}
 			
 			@Override
-			public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
+			public AsyncSupplier<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 				return super.seekAsync(type, move, ondone);
 			}
 		}
@@ -426,7 +427,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 
 		@Override
-		public ISynchronizationPoint<IOException> canStartReading() {
+		public IAsync<IOException> canStartReading() {
 			return super.canStartReading();
 		}
 		
@@ -443,14 +444,14 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		
 		@Override
-		public AsyncWork<Integer,IOException> readAsync(
+		public AsyncSupplier<Integer,IOException> readAsync(
 			long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 		) {
 			return super.readAsync(pos, buffer, ondone);
 		}
 		
 		@Override
-		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		public AsyncSupplier<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 			return super.readAsync(pos, buffer, res -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					pos += res.getValue1().intValue();
@@ -471,14 +472,14 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		
 		@Override
-		public AsyncWork<Integer,IOException> readFullyAsync(
+		public AsyncSupplier<Integer,IOException> readFullyAsync(
 			long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 		) {
 			return super.readFullyAsync(pos, buffer, ondone);
 		}
 		
 		@Override
-		public AsyncWork<Integer,IOException> readFullyAsync(
+		public AsyncSupplier<Integer,IOException> readFullyAsync(
 			ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 		) {
 			return super.readFullyAsync(pos, buffer, res -> {
@@ -494,7 +495,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		
 		@Override
-		public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
+		public AsyncSupplier<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 			return super.seekAsync(type, move, ondone);
 		}
 		
@@ -507,14 +508,14 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		
 		@Override
-		public AsyncWork<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+		public AsyncSupplier<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 			long l = skipSync(n);
 			if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(l), null));
-			return new AsyncWork<>(Long.valueOf(l), null);
+			return new AsyncSupplier<>(Long.valueOf(l), null);
 		}
 
 		@Override
-		public ISynchronizationPoint<IOException> canStartWriting() {
+		public IAsync<IOException> canStartWriting() {
 			return super.canStartWriting();
 		}
 		
@@ -531,14 +532,14 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> writeAsync(
+		public AsyncSupplier<Integer, IOException> writeAsync(
 			long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 		) {
 			return super.writeAsync(pos, buffer, ondone);
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+		public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 			return super.writeAsync(pos, buffer, res -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					pos += res.getValue1().intValue();
@@ -563,13 +564,13 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 	public void setPriority(byte priority) { if (io != null) io.setPriority(priority); }
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		if (!closeContainer) return null;
 		return io.closeAsync();
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		io = null;
 		ondone.unblock();
 	}
@@ -580,8 +581,8 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 	}
 	
 	@Override
-	public AsyncWork<Long, IOException> getSizeAsync() {
-		return new AsyncWork<>(Long.valueOf(size), null);
+	public AsyncSupplier<Long, IOException> getSizeAsync() {
+		return new AsyncSupplier<>(Long.valueOf(size), null);
 	}
 	
 	@Override
@@ -593,7 +594,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 	// ************************************
 
 	
-	protected ISynchronizationPoint<IOException> canStartReading() {
+	protected IAsync<IOException> canStartReading() {
 		return ((IO.Readable)io).canStartReading();
 	}
 	
@@ -609,7 +610,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		return nb;
 	}
 	
-	protected AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	protected AsyncSupplier<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		int limit = -1;
 		if (pos + buffer.remaining() > size) {
 			limit = buffer.limit();
@@ -637,7 +638,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		return nb;
 	}
 	
-	protected AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	protected AsyncSupplier<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		int limit = -1;
 		if (pos + buffer.remaining() > size) {
 			limit = buffer.limit();
@@ -671,12 +672,12 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		return nb;
 	}
 	
-	protected AsyncWork<Integer,IOException> readAsync(
+	protected AsyncSupplier<Integer,IOException> readAsync(
 		long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		if (pos > size) {
 			if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(-1), null));
-			return new AsyncWork<>(Integer.valueOf(-1),null);
+			return new AsyncSupplier<>(Integer.valueOf(-1),null);
 		}
 		int limit = -1;
 		if (pos + buffer.remaining() > size) {
@@ -703,10 +704,10 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		return nb;
 	}
 	
-	protected AsyncWork<Integer,IOException> readFullyAsync(
+	protected AsyncSupplier<Integer,IOException> readFullyAsync(
 		long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
-		if (pos > size) return new AsyncWork<>(Integer.valueOf(-1),null);
+		if (pos > size) return new AsyncSupplier<>(Integer.valueOf(-1),null);
 		int limit = -1;
 		if (pos + buffer.remaining() > size) {
 			limit = buffer.limit();
@@ -741,7 +742,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		}
 	}
 	
-	protected AsyncWork<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
+	protected AsyncSupplier<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 		return IOUtil.seekAsyncUsingSync((IO.Seekable)this, type, move, ondone).getOutput();
 	}
 
@@ -751,7 +752,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 	// ************************************
 	
 
-	protected ISynchronizationPoint<IOException> canStartWriting() {
+	protected IAsync<IOException> canStartWriting() {
 		return ((IO.Writable)io).canStartWriting();
 	}
 
@@ -767,7 +768,7 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		return nb;
 	}
 	
-	protected AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	protected AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		int limit = -1;
 		if (pos + buffer.remaining() > size) {
 			limit = buffer.limit();
@@ -800,10 +801,10 @@ public abstract class SubIO extends ConcurrentCloseable implements IO, IO.KnownS
 		return nb;
 	}
 	
-	protected AsyncWork<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	protected AsyncSupplier<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		if (pos > size) {
 			if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(-1), null));
-			return new AsyncWork<>(Integer.valueOf(-1),null);
+			return new AsyncSupplier<>(Integer.valueOf(-1),null);
 		}
 		int limit = -1;
 		if (pos + buffer.remaining() > size) {

@@ -6,16 +6,16 @@ import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
 /**
  * Implements Writable from an OutputStream.
  */
-public class IOFromOutputStream extends ConcurrentCloseable implements IO.Writable {
+public class IOFromOutputStream extends ConcurrentCloseable<IOException> implements IO.Writable {
 
 	/** Constructor. */
 	public IOFromOutputStream(OutputStream stream, String sourceDescription, TaskManager manager, byte priority) {
@@ -60,8 +60,8 @@ public class IOFromOutputStream extends ConcurrentCloseable implements IO.Writab
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartWriting() {
-		return new SynchronizationPoint<>(true);
+	public IAsync<IOException> canStartWriting() {
+		return new Async<>(true);
 	}
 	
 	@Override
@@ -79,17 +79,17 @@ public class IOFromOutputStream extends ConcurrentCloseable implements IO.Writab
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone)).getOutput();
 	}
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		return IOUtil.closeAsync(stream);
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		stream = null;
 		ondone.unblock();
 	}

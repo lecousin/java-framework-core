@@ -2,9 +2,9 @@ package net.lecousin.framework.progress;
 
 import java.util.List;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.mutable.MutableLong;
 
 /**
@@ -40,7 +40,7 @@ public interface WorkProgress {
 	void cancel(CancelException reason);
 	
 	/** Return a synchronization point that will be unblocked by one of the method done, error or cancel. */
-	ISynchronizationPoint<Exception> getSynch();
+	IAsync<Exception> getSynch();
 	
 	/** Add a listener to call on every change in the progress. */
 	void listen(Runnable onchange);
@@ -115,8 +115,8 @@ public interface WorkProgress {
 	/** Link this WorkProgress with the given synchronization point: once the synchronization point is unblocked,
 	 * one of the done, error or cancel method is called.
 	 */
-	static void linkTo(WorkProgress progress, ISynchronizationPoint<?> sp) {
-		sp.listenInline(() -> {
+	static void linkTo(WorkProgress progress, IAsync<?> sp) {
+		sp.onDone(() -> {
 			if (sp.hasError()) progress.error(sp.getError());
 			else if (sp.isCancelled()) progress.cancel(sp.getCancelEvent());
 			else progress.done();
@@ -133,7 +133,7 @@ public interface WorkProgress {
 	/** Once the given sub-task is done, the given amount of work is added to the progress. */
 	static void link(WorkProgress subTask, WorkProgress progress, long work) {
 		MutableLong sent = new MutableLong(0);
-		subTask.getSynch().listenInline(() -> {
+		subTask.getSynch().onDone(() -> {
 			if (subTask.getSynch().hasError())
 				progress.error(subTask.getSynch().getError());
 			else if (subTask.getSynch().isCancelled())
@@ -143,10 +143,10 @@ public interface WorkProgress {
 				sent.set(work);
 			}
 		});
-		if (subTask.getSynch().isUnblocked()) return;
+		if (subTask.getSynch().isDone()) return;
 		Runnable listener = () -> {
 			long done = subTask.getPosition() * work / subTask.getAmount();
-			if (sent.get() < done && !progress.getSynch().isUnblocked()) {
+			if (sent.get() < done && !progress.getSynch().isDone()) {
 				progress.progress(done - sent.get());
 				sent.set(done);
 			}

@@ -19,9 +19,9 @@ import javax.swing.JWindow;
 import javax.swing.RepaintManager;
 import javax.swing.border.LineBorder;
 
-import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.event.AsyncEvent;
 import net.lecousin.framework.progress.WorkProgress;
 
@@ -64,14 +64,14 @@ public class SplashScreen implements WorkProgress {
 	private String subText = "";
 	private long amount = 10000;
 	private long worked = 0;
-	private SynchronizationPoint<Exception> synch = new SynchronizationPoint<>();
+	private Async<Exception> synch = new Async<>();
 	private AsyncEvent event = null;
 	
 	/** Close this window. */
 	public void close() {
 		JWindow w;
 		synchronized (this) {
-			if (!synch.isUnblocked()) synch.unblock();
+			if (!synch.isDone()) synch.unblock();
 			if (win == null) return;
 			w = win;
 			win = null;
@@ -382,7 +382,7 @@ public class SplashScreen implements WorkProgress {
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> getSynch() {
+	public IAsync<Exception> getSynch() {
 		return synch;
 	}
 	

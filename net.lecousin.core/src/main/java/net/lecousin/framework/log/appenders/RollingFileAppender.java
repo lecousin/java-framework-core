@@ -13,8 +13,8 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.LimitAsyncOperations;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
@@ -116,16 +116,16 @@ public class RollingFileAppender implements Appender, Closeable {
 	private LogPattern pattern;
 	private Level level;
 	private boolean closed = false;
-	private LimitAsyncOperations<FileLogOperation, Void, Exception> opStack = new LimitAsyncOperations<>(100, data -> data.execute());
+	private LimitAsyncOperations<FileLogOperation, Void, IOException> opStack = new LimitAsyncOperations<>(100, data -> data.execute());
 	
 	private static interface FileLogOperation {
-		AsyncWork<Void, Exception> execute();
+		AsyncSupplier<Void, IOException> execute();
 	}
 	
 	private class OpenLogFile implements FileLogOperation {
 		@Override
-		public AsyncWork<Void, Exception> execute() {
-			AsyncWork<Void, Exception> result = new AsyncWork<>();
+		public AsyncSupplier<Void, IOException> execute() {
+			AsyncSupplier<Void, IOException> result = new AsyncSupplier<>();
 			new Task.OnFile<Void, NoException>(file, "Open log file", Task.PRIORITY_RATHER_LOW) {
 				@Override
 				public Void run() {
@@ -141,12 +141,12 @@ public class RollingFileAppender implements Appender, Closeable {
 						}
 					}
 					output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
-					output.seekAsync(SeekType.FROM_END, 0).listenInlineSP(() -> 
+					output.seekAsync(SeekType.FROM_END, 0).onDone(() -> 
 						output.writeAsync(
 							ByteBuffer.wrap(("\nStart logging with max size = " + maxSize
 								+ " and max files = " + maxFiles + "\n\n")
 							.getBytes(StandardCharsets.UTF_8)))
-						.listenInlineSP(() -> result.unblockSuccess(null), result),
+						.onDone(() -> result.unblockSuccess(null), result),
 					result);
 					return null;
 				}
@@ -164,17 +164,17 @@ public class RollingFileAppender implements Appender, Closeable {
 		private ByteBuffer log;
 		
 		@Override
-		public AsyncWork<Void, Exception> execute() {
-			AsyncWork<Void, Exception> result = new AsyncWork<>();
+		public AsyncSupplier<Void, IOException> execute() {
+			AsyncSupplier<Void, IOException> result = new AsyncSupplier<>();
 			long fileSize;
 			try {
 				fileSize = output.getSizeSync();
-			} catch (Exception e) {
+			} catch (IOException e) {
 				result.error(e);
 				return result;
 			}
 			if (fileSize >= maxSize) {
-				output.closeAsync().listenAsync(new Task.OnFile<Void, NoException>(file, "Roll log file", Task.PRIORITY_RATHER_LOW) {
+				output.closeAsync().thenStart(new Task.OnFile<Void, NoException>(file, "Roll log file", Task.PRIORITY_RATHER_LOW) {
 					@Override
 					public Void run() {
 						File dir = file.getParentFile();
@@ -197,13 +197,13 @@ public class RollingFileAppender implements Appender, Closeable {
 							return error("Cannot create log file: " + file.getAbsolutePath(), t, result);
 						}
 						output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
-						output.writeAsync(log).listenInlineSP(() -> result.unblockSuccess(null), result);
+						output.writeAsync(log).onDone(() -> result.unblockSuccess(null), result);
 						return null;
 					}
 				}, result);
 				return result;
 			}
-			output.writeAsync(log).listenInlineSP(() -> result.unblockSuccess(null), result);
+			output.writeAsync(log).onDone(() -> result.unblockSuccess(null), result);
 			return result;
 		}
 	}
@@ -261,12 +261,12 @@ public class RollingFileAppender implements Appender, Closeable {
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> flush() {
+	public IAsync<?> flush() {
 		return opStack.flush();
 	}
 	
-	private Void error(String message, Throwable cause, AsyncWork<Void, Exception> result) {
-		Exception error = new Exception(message, cause);
+	private Void error(String message, Throwable cause, AsyncSupplier<Void, IOException> result) {
+		IOException error = new IOException(message, cause);
 		factory.getApplication().getConsole().err(error);
 		result.error(error);
 		return null;

@@ -11,18 +11,18 @@ import java.nio.charset.CodingErrorAction;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.UnprotectedString;
 
 /** Implement a buffered readable character stream from a readable IO. */
-public class BufferedReadableCharacterStream extends ConcurrentCloseable implements ICharacterStream.Readable.Buffered {
+public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOException> implements ICharacterStream.Readable.Buffered {
 
 	/** Constructor. */
 	public BufferedReadableCharacterStream(IO.Readable input, Charset charset, int bufferSize, int maxBuffers) {
@@ -70,7 +70,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 		chars = initChars;
 		// start decoding
 		if (input instanceof IO.Readable.Buffered)
-			((IO.Readable.Buffered)input).canStartReading().listenInline(this::bufferize);
+			((IO.Readable.Buffered)input).canStartReading().onDone(this::bufferize);
 		else
 			bufferize();
 	}
@@ -84,19 +84,19 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 	private CharBuffer chars;
 	private boolean endReached = false;
 	private int back = -1;
-	private SynchronizationPoint<IOException> nextReady = new SynchronizationPoint<>();
+	private Async<IOException> nextReady = new Async<>();
 	
 	@Override
-	public SynchronizationPoint<IOException> canStartReading() {
+	public Async<IOException> canStartReading() {
 		synchronized (ready) {
 			if (ready.isEmpty())
 				return nextReady;
-			return new SynchronizationPoint<>(true);
+			return new Async<>(true);
 		}
 	}
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		synchronized (ready) {
 			nextReady.cancel(new CancelException("Closed"));
 		}
@@ -104,7 +104,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		bytes = null;
 		chars = null;
 		decoder = null;
@@ -134,20 +134,20 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 	private void bufferize() {
 		bytes.compact();
 		int remaining = bytes.remaining();
-		AsyncWork<Integer,IOException> readTask = input.readFullyAsync(bytes);
+		AsyncSupplier<Integer,IOException> readTask = input.readFullyAsync(bytes);
 		DecodeTask decode = new DecodeTask(readTask, remaining);
 		operation(decode).startOn(readTask, true);
 	}
 	
 	private class DecodeTask extends Task.Cpu<Void,NoException> {
 		
-		private DecodeTask(AsyncWork<Integer,IOException> readTask, int remaining) {
+		private DecodeTask(AsyncSupplier<Integer,IOException> readTask, int remaining) {
 			super("Decode character stream", input.getPriority());
 			this.readTask = readTask;
 			this.remaining = remaining;
 		}
 		
-		private AsyncWork<Integer,IOException> readTask;
+		private AsyncSupplier<Integer,IOException> readTask;
 		private int remaining;
 		
 		@Override
@@ -173,7 +173,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 				decode();
 				return null;
 			} catch (IOException e) {
-				if (!nextReady.isUnblocked())
+				if (!nextReady.isDone())
 					synchronized (ready) {
 						nextReady.error(e);
 					}
@@ -182,7 +182,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 				// closed
 				return null;
 			} catch (Exception t) {
-				if (!nextReady.isUnblocked())
+				if (!nextReady.isDone())
 					synchronized (ready) {
 						nextReady.error(IO.error(t));
 					}
@@ -226,15 +226,15 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 			}
 			buf.flip();
 			boolean full;
-			SynchronizationPoint<IOException> sp;
+			Async<IOException> sp;
 			synchronized (ready) {
 				ready.addLast(buf);
 				full = ready.isFull();
 				sp = nextReady;
 				if (end)
-					nextReady = new SynchronizationPoint<>(true);
+					nextReady = new Async<>(true);
 				else
-					nextReady = new SynchronizationPoint<>();
+					nextReady = new Async<>();
 				endReached = end;
 			}
 			sp.unblock();
@@ -268,7 +268,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 		}
 		while (chars == null) {
 			boolean full;
-			SynchronizationPoint<IOException> sp;
+			Async<IOException> sp;
 			synchronized (ready) {
 				full = ready.isFull();
 				chars = ready.pollFirst();
@@ -307,7 +307,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 		}
 		while (chars == null) {
 			boolean full;
-			SynchronizationPoint<IOException> sp;
+			Async<IOException> sp;
 			synchronized (ready) {
 				full = ready.isFull();
 				chars = ready.pollFirst();
@@ -368,17 +368,17 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(char[] buf, int off, int len) {
+	public AsyncSupplier<Integer, IOException> readAsync(char[] buf, int off, int len) {
 		if (len <= 0)
-			return new AsyncWork<>(Integer.valueOf(0), null);
-		AsyncWork<Integer, IOException> result = new AsyncWork<>();
+			return new AsyncSupplier<>(Integer.valueOf(0), null);
+		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 		operation(new ReadAsyncTask(buf, off, len, result)).startOn(canStartReading(), true);
 		return result;
 	}
 	
 	private class ReadAsyncTask extends Task.Cpu<Void, NoException> {
 		
-		private ReadAsyncTask(char[] buf, int offset, int length, AsyncWork<Integer, IOException> result) {
+		private ReadAsyncTask(char[] buf, int offset, int length, AsyncSupplier<Integer, IOException> result) {
 			super("BufferedReadableCharacterStream.readAsync", input.getPriority());
 			this.buf = buf;
 			this.offset = offset;
@@ -389,7 +389,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 		private char[] buf;
 		private int offset;
 		private int length;
-		private AsyncWork<Integer, IOException> readResult;
+		private AsyncSupplier<Integer, IOException> readResult;
 		
 		@Override
 		public Void run() {
@@ -426,9 +426,9 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 			return null;
 		}
 		
-		private boolean getNextChars(int done, AsyncWork<Integer, IOException> result) {
+		private boolean getNextChars(int done, AsyncSupplier<Integer, IOException> result) {
 			boolean full;
-			SynchronizationPoint<IOException> sp;
+			Async<IOException> sp;
 			synchronized (ready) {
 				full = ready.isFull();
 				chars = ready.pollFirst();
@@ -444,7 +444,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 			if (full && !endReached) bufferize();
 			if (chars == null) {
 				int don = done;
-				readAsync(buf, offset + done, length - done).listenInline(
+				readAsync(buf, offset + done, length - done).onDone(
 					nb -> result.unblockSuccess(Integer.valueOf(don + nb.intValue())),
 					result
 				);
@@ -455,18 +455,18 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 	}
 	
 	@Override
-	public AsyncWork<UnprotectedString, IOException> readNextBufferAsync() {
+	public AsyncSupplier<UnprotectedString, IOException> readNextBufferAsync() {
 		if (back != -1) {
 			char c = (char)back;
 			back = -1;
-			return new AsyncWork<>(new UnprotectedString(c), null);
+			return new AsyncSupplier<>(new UnprotectedString(c), null);
 		}
-		AsyncWork<UnprotectedString, IOException> result = new AsyncWork<>();
+		AsyncSupplier<UnprotectedString, IOException> result = new AsyncSupplier<>();
 		readNextBufferAsync(result);
 		return result;
 	}
 	
-	private void readNextBufferAsync(AsyncWork<UnprotectedString, IOException> result) {
+	private void readNextBufferAsync(AsyncSupplier<UnprotectedString, IOException> result) {
 		if (chars == null) {
 			boolean full;
 			synchronized (ready) {
@@ -483,7 +483,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable impleme
 			}
 			if (full && !endReached) bufferize();
 			if (chars == null) {
-				canStartReading().listenAsync(
+				canStartReading().thenStart(
 				new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readNextBufferAsync", getPriority(),
 					() -> readNextBufferAsync(result)), result);
 				return;

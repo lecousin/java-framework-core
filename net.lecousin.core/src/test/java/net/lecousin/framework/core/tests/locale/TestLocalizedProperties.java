@@ -1,7 +1,9 @@
 package net.lecousin.framework.core.tests.locale;
 
+import java.io.IOException;
+
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.locale.LocalizedProperties;
 
@@ -15,7 +17,7 @@ public class TestLocalizedProperties extends LCCoreAbstractTest {
 		LocalizedProperties lp = LCCore.getApplication().getLocalizedProperties();
 		ClassLoader cl = getClass().getClassLoader();
 		
-		ISynchronizationPoint<Exception> sp = lp.registerNamespace("test-error", "does/not/exist", cl);
+		IAsync<IOException> sp = lp.registerNamespace("test-error", "does/not/exist", cl);
 		try {
 			sp.blockThrow(0);
 			throw new AssertionError("Loading a namespace that does not exist must fail");

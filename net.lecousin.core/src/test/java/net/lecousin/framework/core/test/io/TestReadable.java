@@ -10,8 +10,8 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -147,19 +147,19 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[testBuf.length];
 		ByteBuffer buffer = ByteBuffer.wrap(b);
-		SynchronizationPoint<Exception> done = new SynchronizationPoint<>();
+		Async<Exception> done = new Async<>();
 		MutableInteger i = new MutableInteger(0);
-		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
+		Mutable<AsyncSupplier<Integer,IOException>> read = new Mutable<>(null);
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
 		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		if (io instanceof IO.PositionKnown)
 			Assert.assertEquals(0, ((IO.PositionKnown)io).getPosition());
 		read.set(io.readFullyAsync(buffer, ondone));
-		read.get().listenInline(new Runnable() {
+		read.get().onDone(new Runnable() {
 			@Override
 			public void run() {
 				do {
-					AsyncWork<Integer,IOException> res = read.get();
+					AsyncSupplier<Integer,IOException> res = read.get();
 					if (res.isCancelled()) {
 						done.error(new Exception("Operation cancelled", res.getCancelEvent()));
 						return;
@@ -213,8 +213,8 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 						onDoneBefore.set(false);
 						read.set(io.readFullyAsync(buffer, ondone));
 					}
-				} while (read.get().isUnblocked());
-				read.get().listenInline(this);
+				} while (read.get().isDone());
+				read.get().onDone(this);
 			}
 		});
 		done.blockThrow(0);
@@ -228,13 +228,13 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[testBuf.length * 1000];
 		ByteBuffer buffer = ByteBuffer.wrap(b);
-		SynchronizationPoint<Exception> done = new SynchronizationPoint<>();
+		Async<Exception> done = new Async<>();
 		MutableInteger i = new MutableInteger(0);
-		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
+		Mutable<AsyncSupplier<Integer,IOException>> read = new Mutable<>(null);
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
 		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		read.set(io.readFullyAsync(buffer, ondone));
-		read.get().listenInline(new Runnable() {
+		read.get().onDone(new Runnable() {
 			@Override
 			public void run() {
 				do {
@@ -243,7 +243,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 						return;
 					}
 					onDoneBefore.set(false);
-					AsyncWork<Integer,IOException> res = read.get();
+					AsyncSupplier<Integer,IOException> res = read.get();
 					if (res.hasError()) {
 						done.error(res.getError());
 						return;
@@ -270,8 +270,8 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 	
 					buffer.clear();
 					read.set(io.readFullyAsync(buffer, ondone));
-				} while (read.get().isUnblocked());
-				read.get().listenInline(this);
+				} while (read.get().isDone());
+				read.get().onDone(this);
 			}
 		});
 		done.blockThrow(0);
@@ -283,13 +283,13 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[8192];
 		ByteBuffer buffer = ByteBuffer.wrap(b);
-		SynchronizationPoint<Exception> done = new SynchronizationPoint<>();
+		Async<Exception> done = new Async<>();
 		MutableInteger pos = new MutableInteger(0);
-		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
+		Mutable<AsyncSupplier<Integer,IOException>> read = new Mutable<>(null);
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
 		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		read.set(io.readAsync(buffer, ondone));
-		read.get().listenInline(new Runnable() {
+		read.get().onDone(new Runnable() {
 			@Override
 			public void run() {
 				do {
@@ -298,7 +298,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 						return;
 					}
 					onDoneBefore.set(false);
-					AsyncWork<Integer,IOException> res = read.get();
+					AsyncSupplier<Integer,IOException> res = read.get();
 					if (res.hasError()) {
 						done.error(res.getError());
 						return;
@@ -328,8 +328,8 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 					pos.set(p + nb);
 					buffer.clear();
 					read.set(io.readAsync(buffer, ondone));
-				} while (read.get().isUnblocked());
-				read.get().listenInline(this);
+				} while (read.get().isDone());
+				read.get().onDone(this);
 			}
 		});
 		done.blockThrow(0);
@@ -376,9 +376,9 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		byte[] b = new byte[1];
 		ByteBuffer buffer = ByteBuffer.wrap(b);
 		MutableLong toSkip = new MutableLong(1);
-		SynchronizationPoint<Exception> result = new SynchronizationPoint<>();
-		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
-		Mutable<AsyncWork<Long,IOException>> skip = new Mutable<>(null);
+		Async<Exception> result = new Async<>();
+		Mutable<AsyncSupplier<Integer,IOException>> read = new Mutable<>(null);
+		Mutable<AsyncSupplier<Long,IOException>> skip = new Mutable<>(null);
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
 		Consumer<Pair<Long,IOException>> ondone = param -> onDoneBefore.set(true);
 		Mutable<Runnable> skipListener = new Mutable<>(null);
@@ -404,7 +404,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 					skip.set(io.skipAsync(toSkip.get(), null));
 				else
 					skip.set(io.skipAsync(toSkip.get(), ondone));
-				skip.get().listenInline(skipListener.get());
+				skip.get().onDone(skipListener.get());
 			}
 		};
 		skipListener.set(new Runnable() {
@@ -442,12 +442,12 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 				}
 				buffer.clear();
 				read.set(io.readFullyAsync(buffer));
-				read.get().listenInline(readListener);
+				read.get().onDone(readListener);
 			}
 		});
 
 		read.set(io.readFullyAsync(buffer));
-		read.get().listenInline(readListener);
+		read.get().onDone(readListener);
 		
 		result.blockThrow(0);
 		
@@ -545,7 +545,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		super.basicTests(io);
 		if (io instanceof IO.KnownSize) {
 			Assert.assertEquals(((long)testBuf.length) * nbBuf, ((IO.KnownSize)io).getSizeSync());
-			AsyncWork<Long, IOException> getSize = ((IO.KnownSize)io).getSizeAsync();
+			AsyncSupplier<Long, IOException> getSize = ((IO.KnownSize)io).getSizeAsync();
 			getSize.blockException(0);
 			Assert.assertEquals(((long)testBuf.length) * nbBuf, getSize.getResult().longValue());
 		}

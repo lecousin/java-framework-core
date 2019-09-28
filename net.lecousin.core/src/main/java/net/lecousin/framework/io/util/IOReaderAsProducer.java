@@ -3,9 +3,9 @@ package net.lecousin.framework.io.util;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.util.production.simple.Producer;
 import net.lecousin.framework.concurrent.util.production.simple.Production;
 import net.lecousin.framework.io.IO;
@@ -23,14 +23,14 @@ public class IOReaderAsProducer implements Producer<ByteBuffer> {
 	
 	private IO.Readable io;
 	private int bufferSize;
-	private AsyncWork<Integer,IOException> read = null;
+	private AsyncSupplier<Integer,IOException> read = null;
 	
 	@Override
-	public AsyncWork<ByteBuffer, IOException> produce(Production<ByteBuffer> production) {
-		AsyncWork<ByteBuffer, IOException> sp = new AsyncWork<>();
+	public AsyncSupplier<ByteBuffer, IOException> produce(Production<ByteBuffer> production) {
+		AsyncSupplier<ByteBuffer, IOException> sp = new AsyncSupplier<>();
 		ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 		read = io.readFullyAsync(buffer); // TODO not fully, to be able to produce event not everything can be read
-		read.listenInline(new AsyncWorkListener<Integer, IOException>() {
+		read.listen(new Listener<Integer, IOException>() {
 			@Override
 			public void ready(Integer result) {
 				read = null;
@@ -61,7 +61,7 @@ public class IOReaderAsProducer implements Producer<ByteBuffer> {
 
 	@Override
 	public void cancel(CancelException event) {
-		AsyncWork<Integer,IOException> r = read;
+		AsyncSupplier<Integer,IOException> r = read;
 		if (r != null) r.unblockCancel(event);
 	}
 }

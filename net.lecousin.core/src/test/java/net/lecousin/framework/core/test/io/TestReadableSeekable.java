@@ -12,10 +12,10 @@ import org.junit.Test;
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.collections.LinkedArrayList;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -91,12 +91,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		MutableInteger offset = new MutableInteger(nbBuf > 0 ? offsets.remove(rand.nextInt(offsets.size())).intValue() : 0);
 		if (nbBuf == 0) j.set(testBuf.length);
 		
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
 		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		
-		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
+		Mutable<AsyncSupplier<Integer,IOException>> read = new Mutable<>(null);
 		Runnable listener = new Runnable() {
 			@Override
 			public void run() {
@@ -157,13 +157,13 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 						onDoneBefore.set(false);
 						read.set(io.readAsync(offset.get()*testBuf.length+j.get(), buffer, ondone));
 					}
-				} while (read.get().isUnblocked());
-				read.get().listenInline(this);
+				} while (read.get().isDone());
+				read.get().onDone(this);
 			}
 		};
 		
 		read.set(io.readAsync(offset.get()*testBuf.length+j.get(), buffer, ondone));
-		read.get().listenInline(listener);
+		read.get().onDone(listener);
 
 		sp.blockThrow(0);
 		
@@ -200,11 +200,11 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	public void testSeekableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), getFileSize());
 		Assert.assertEquals(0, io.getPosition());
-		SynchronizationPoint<Exception> sp = _testSeekableBufferByBufferFullyAsync(io);
+		Async<Exception> sp = _testSeekableBufferByBufferFullyAsync(io);
 		sp.blockThrow(0);
 		io.close();
 	}
-	private SynchronizationPoint<Exception> _testSeekableBufferByBufferFullyAsync(IO.Readable.Seekable io) {
+	private Async<Exception> _testSeekableBufferByBufferFullyAsync(IO.Readable.Seekable io) {
 		byte[] b = new byte[testBuf.length];
 		ByteBuffer buffer = ByteBuffer.wrap(b);
 		LinkedArrayList<Integer> offsets = new LinkedArrayList<Integer>(20);
@@ -212,12 +212,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		
 		MutableInteger offset = new MutableInteger(nbBuf > 0 ? offsets.remove(rand.nextInt(offsets.size())).intValue() : 0);
 		
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
 		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		
-		Mutable<AsyncWork<Integer,IOException>> read = new Mutable<>(null);
+		Mutable<AsyncSupplier<Integer,IOException>> read = new Mutable<>(null);
 		Runnable listener = new Runnable() {
 			@Override
 			public void run() {
@@ -273,13 +273,13 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 						onDoneBefore.set(false);
 						read.set(io.readFullyAsync(offset.get()*testBuf.length, buffer, ondone));
 					}
-				} while (read.get().isUnblocked());
-				read.get().listenInline(this);
+				} while (read.get().isDone());
+				read.get().onDone(this);
 			}
 		};
 		
 		read.set(io.readFullyAsync(offset.get()*testBuf.length, buffer, ondone));
-		read.get().listenInline(listener);
+		read.get().onDone(listener);
 		
 		return sp;
 	}
@@ -296,7 +296,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			Task<Void,NoException> task = new Task.Cpu<Void,NoException>("Test Concurrent access to IO.Readable.Seekable",Task.PRIORITY_NORMAL) {
 				@Override
 				public Void run() {
-					SynchronizationPoint<Exception> sp = _testSeekableBufferByBufferFullyAsync(io);
+					Async<Exception> sp = _testSeekableBufferByBufferFullyAsync(io);
 					jp.addToJoin(sp);
 					jp.joined();
 					return null;
@@ -371,7 +371,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		long size = getFileSize();
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), size);
 		
-		ISynchronizationPoint<?> sp = new SynchronizationPoint<>(true);
+		IAsync<?> sp = new Async<>(true);
 		
 		sp = testSeekAsync(sp, io, SeekType.FROM_BEGINNING, 0, 0, size);
 		sp = testSeekAsync(sp, io, SeekType.FROM_END, 0, size, size);
@@ -398,8 +398,8 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		io.close();
 	}
 	
-	private ISynchronizationPoint<?> testSeekAsync(ISynchronizationPoint<?> startOn, IO.Readable.Seekable io, SeekType type, long move, long expectedPosition, long size) {
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+	private IAsync<?> testSeekAsync(IAsync<?> startOn, IO.Readable.Seekable io, SeekType type, long move, long expectedPosition, long size) {
+		Async<Exception> sp = new Async<>();
 		
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
 		Consumer<Pair<Long,IOException>> ondone;
@@ -410,15 +410,15 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			ondone = param -> onDoneBefore.set(true);
 		}
 
-		startOn.listenInline(new Runnable() {
+		startOn.onDone(new Runnable() {
 			@Override
 			public void run() {
 				if (startOn.hasError()) {
 					sp.error(startOn.getError());
 					return;
 				}
-				AsyncWork<Long, IOException> seek = io.seekAsync(type, move, ondone);
-				seek.listenInline(new Runnable() {
+				AsyncSupplier<Long, IOException> seek = io.seekAsync(type, move, ondone);
+				seek.onDone(new Runnable() {
 					@Override
 					public void run() {
 						if (seek.hasError()) {
@@ -446,8 +446,8 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 							return;
 						}
 						byte[] b = new byte[1];
-						AsyncWork<Integer, IOException> read = io.readAsync(ByteBuffer.wrap(b));
-						read.listenInline(new Runnable() {
+						AsyncSupplier<Integer, IOException> read = io.readAsync(ByteBuffer.wrap(b));
+						read.onDone(new Runnable() {
 							@Override
 							public void run() {
 								if (read.hasError()) {
@@ -476,8 +476,8 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 										sp.error(new Exception("getPosition returned an invalid position " + p + ", expected is " + (expectedPosition + 1)));
 										return;
 									}
-									AsyncWork<Long, IOException> seek = io.seekAsync(SeekType.FROM_CURRENT, -1);
-									seek.listenInline(new Runnable() {
+									AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_CURRENT, -1);
+									seek.onDone(new Runnable() {
 										@Override
 										public void run() {
 											if (seek.hasError()) {
@@ -529,10 +529,10 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		long size = getFileSize();
 		IO.Readable.Seekable io = createReadableSeekableFromFile(openFile(), size);
 
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		
-		AsyncWork<Long, IOException> op = io.seekAsync(SeekType.FROM_BEGINNING, -10);
-		op.listenInline(new Runnable() {
+		AsyncSupplier<Long, IOException> op = io.seekAsync(SeekType.FROM_BEGINNING, -10);
+		op.onDone(new Runnable() {
 			@Override
 			public void run() {
 				if (op.hasError()) { sp.error(op.getError()); return; }
@@ -540,8 +540,8 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 					sp.error(new Exception("Invalid position " + op.getResult().longValue() + ", expected is 0"));
 					return;
 				}
-				AsyncWork<Long, IOException> op = io.seekAsync(SeekType.FROM_END, -10);
-				op.listenInline(new Runnable() {
+				AsyncSupplier<Long, IOException> op = io.seekAsync(SeekType.FROM_END, -10);
+				op.onDone(new Runnable() {
 					@Override
 					public void run() {
 						if (op.hasError()) { sp.error(op.getError()); return; }
@@ -550,8 +550,8 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 							return;
 						}
 						
-						AsyncWork<Long, IOException> op = io.seekAsync(SeekType.FROM_CURRENT, 10);
-						op.listenInline(new Runnable() {
+						AsyncSupplier<Long, IOException> op = io.seekAsync(SeekType.FROM_CURRENT, 10);
+						op.onDone(new Runnable() {
 							@Override
 							public void run() {
 								if (op.hasError()) { sp.error(op.getError()); return; }
@@ -559,8 +559,8 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 									sp.error(new Exception("Invalid position " + op.getResult().longValue() + ", expected is " + size));
 									return;
 								}
-								AsyncWork<Long, IOException> op = io.seekAsync(SeekType.FROM_BEGINNING, -1);
-								op.listenInline(new Runnable() {
+								AsyncSupplier<Long, IOException> op = io.seekAsync(SeekType.FROM_BEGINNING, -1);
+								op.onDone(new Runnable() {
 									@Override
 									public void run() {
 										if (op.hasError()) { sp.error(op.getError()); return; }
@@ -568,8 +568,8 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 											sp.error(new Exception("Invalid position " + op.getResult().longValue() + ", expected is 0"));
 											return;
 										}
-										AsyncWork<Long, IOException> op = io.seekAsync(SeekType.FROM_CURRENT, -10);
-										op.listenInline(new Runnable() {
+										AsyncSupplier<Long, IOException> op = io.seekAsync(SeekType.FROM_CURRENT, -10);
+										op.onDone(new Runnable() {
 											@Override
 											public void run() {
 												if (op.hasError()) { sp.error(op.getError()); return; }
@@ -660,7 +660,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 				checkBuffer(b, 0, nb, pos);
 			}
 			pos += nb;
-			AsyncWork<Long, IOException> skipped = io.skipAsync(testBuf.length / 4);
+			AsyncSupplier<Long, IOException> skipped = io.skipAsync(testBuf.length / 4);
 			skipped.blockThrow(0);
 			if (skipped.getResult().longValue() != testBuf.length / 4) {
 				if (pos + skipped.getResult().longValue() != size)

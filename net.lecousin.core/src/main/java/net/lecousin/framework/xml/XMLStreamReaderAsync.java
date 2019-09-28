@@ -6,8 +6,8 @@ import java.nio.charset.Charset;
 import java.util.LinkedList;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.encoding.DecimalNumber;
@@ -57,13 +57,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	/* Public methods */
 
 	@Override
-	public ISynchronizationPoint<Exception> start() {
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		io.canStartReading().listenAsync(new Task.Cpu.FromRunnable(() -> {
+	public IAsync<Exception> start() {
+		Async<Exception> sp = new Async<>();
+		io.canStartReading().thenStart(new Task.Cpu.FromRunnable(() -> {
 			try {
 				Starter start = new Starter(io, defaultEncoding, charactersBuffersSize, maxBuffers);
 				stream = start.start();
-				next().listenInline(sp);
+				next().onDone(sp);
 			} catch (Exception e) {
 				sp.error(e);
 			}
@@ -72,8 +72,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	}
 	
 	@Override
-	public SynchronizationPoint<Exception> next() {
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+	public Async<Exception> next() {
+		Async<Exception> sp = new Async<>();
 		reset();
 		state = State.START;
 		nextChar(sp);
@@ -92,17 +92,17 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	}
 	
 	/** Shortcut to move forward to the first START_ELEMENT event, skipping the header or comments. */
-	public ISynchronizationPoint<Exception> startRootElement() {
-		ISynchronizationPoint<Exception> start = start();
-		if (start.isUnblocked()) {
+	public IAsync<Exception> startRootElement() {
+		IAsync<Exception> start = start();
+		if (start.isDone()) {
 			if (start.hasError()) return start;
 			if (Type.START_ELEMENT.equals(event.type)) return start;
 			return nextStartElement();
 		}
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		start.listenAsync(new ParsingTask(() -> {
+		Async<Exception> sp = new Async<>();
+		start.thenStart(new ParsingTask(() -> {
 			if (Type.START_ELEMENT.equals(event.type)) sp.unblock();
-			else nextStartElement().listenInline(sp);
+			else nextStartElement().onDone(sp);
 		}), sp);
 		return sp;
 	}
@@ -144,7 +144,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	private State state;
 	private int statePos = 0;
 
-	private void nextChar(SynchronizationPoint<Exception> sp) {
+	private void nextChar(Async<Exception> sp) {
 		do {
 			int c;
 			try { c = stream.readAsync(); }
@@ -153,7 +153,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				return;
 			}
 			if (c == -2) {
-				stream.canStartReading().listenAsync(new ParsingTask(() -> nextChar(sp)), true);
+				stream.canStartReading().thenStart(new ParsingTask(() -> nextChar(sp)), true);
 				return;
 			}
 			boolean continu;
@@ -294,7 +294,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		} while (true);
 	}
 	
-	private boolean readTag(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readTag(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -331,7 +331,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return false;
 	}
 	
-	private boolean readTagExclamation(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readTagExclamation(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -407,7 +407,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readDocType(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readDocType(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -424,7 +424,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readDocTypeName(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readDocTypeName(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -451,7 +451,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return false;
 	}
 	
-	private boolean readDocTypeSpace(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readDocTypeSpace(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -482,7 +482,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return false;
 	}
 	
-	private boolean readDocTypePublicName(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readDocTypePublicName(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -513,7 +513,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readDocTypePublicSpace(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readDocTypePublicSpace(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -531,7 +531,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readDocTypePublicId(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readDocTypePublicId(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -557,7 +557,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return false;
 	}
 	
-	private boolean readDocTypeSystemName(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readDocTypeSystemName(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -588,7 +588,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 
-	private boolean readDocTypeSystemSpace(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readDocTypeSystemSpace(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -606,7 +606,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readDocTypeSystemValue(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readDocTypeSystemValue(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -623,7 +623,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readComment(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readComment(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -660,7 +660,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readCData(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readCData(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -697,7 +697,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readStartElementName(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readStartElementName(int i, Async<Exception> sp) {
 		if (i == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -728,7 +728,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	}
 	
 	@SuppressWarnings("squid:S3516") // always return false
-	private boolean readStartElementClosed(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readStartElementClosed(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -745,7 +745,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return false;
 	}
 	
-	private boolean readStartElementSpace(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readStartElementSpace(int i, Async<Exception> sp) {
 		if (i == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -784,7 +784,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readAttributeName(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readAttributeName(int i, Async<Exception> sp) {
 		if (i == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -810,7 +810,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return readAttributeNameSpace(c, sp);
 	}
 	
-	private boolean readAttributeNameSpace(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readAttributeNameSpace(int i, Async<Exception> sp) {
 		if (i == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -830,7 +830,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readAttributeValueSpace(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readAttributeValueSpace(int i, Async<Exception> sp) {
 		if (i == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -858,7 +858,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return false;
 	}
 	
-	private boolean readAttributeValue(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readAttributeValue(int i, Async<Exception> sp) {
 		if (i == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -895,7 +895,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readProcessingInstruction(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readProcessingInstruction(int i, Async<Exception> sp) {
 		if (i == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -920,7 +920,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return readStartElementSpace(i, sp);
 	}
 	
-	private boolean readProcessingInstructionClosed(int c, SynchronizationPoint<Exception> sp) {
+	private boolean readProcessingInstructionClosed(int c, Async<Exception> sp) {
 		if (c == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -937,7 +937,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return false;
 	}
 	
-	private boolean readChars(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readChars(int i, Async<Exception> sp) {
 		if (i == -1) {
 			event.text.replace("\r\n", "\n");
 			resolveReferences(event.text);
@@ -963,7 +963,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readEndElementName(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readEndElementName(int i, Async<Exception> sp) {
 		if (i == -1) {
 			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -1062,7 +1062,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		}
 	}
 	
-	private boolean readInternalSubset(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readInternalSubset(int i, Async<Exception> sp) {
 		if (i == -1) {
 			sp.error(new XMLException(getPosition(),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -1090,7 +1090,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private boolean readInternalSubsetPEReference(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readInternalSubsetPEReference(int i, Async<Exception> sp) {
 		if (i == -1) {
 			sp.error(new XMLException(getPosition(),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
@@ -1130,7 +1130,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return false;
 	}
 	
-	private boolean readInternalSubsetTag(int i, SynchronizationPoint<Exception> sp) {
+	private boolean readInternalSubsetTag(int i, Async<Exception> sp) {
 		if (i == -1) {
 			sp.error(new XMLException(getPosition(),
 					new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,

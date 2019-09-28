@@ -1,7 +1,7 @@
 package net.lecousin.framework.plugins;
 
 import net.lecousin.framework.application.ApplicationClassLoader;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 
 /**
@@ -16,8 +16,8 @@ public interface CustomExtensionPoint {
 	
 	/** Load configuration. */
 	@SuppressWarnings("unused")
-	default <T extends ClassLoader & ApplicationClassLoader> ISynchronizationPoint<Exception> loadPluginConfiguration(
-		IO.Readable io, T libraryClassLoader, ISynchronizationPoint<?>... startOn
+	default <T extends ClassLoader & ApplicationClassLoader> IAsync<Exception> loadPluginConfiguration(
+		IO.Readable io, T libraryClassLoader, IAsync<?>... startOn
 	) {
 		return null;
 	}

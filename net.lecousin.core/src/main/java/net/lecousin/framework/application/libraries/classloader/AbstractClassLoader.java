@@ -9,14 +9,14 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.collections.CompoundCollection;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.provider.IOProvider;
@@ -61,7 +61,7 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	protected abstract IO.Readable openResourcePointer(Object pointer, byte priority) throws IOException;
 	
 	protected abstract void scan(String rootPackage, boolean includeSubPackages,
-		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner);
+		Predicate<String> packageFilter, Predicate<String> classFilter, Consumer<Class<?>> classScanner);
 	
 	private List<AbstractClassLoader> subLoaders = null;
 	
@@ -74,7 +74,7 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	private static HashMap<String,Pair<Thread,JoinPoint<NoException>>> classLoadingSP = new HashMap<>();
 	
 	/** Get the synchronized object for loading the given class. */
-	public static ISynchronizationPoint<NoException> getClassLoadingSP(String name) {
+	public static IAsync<NoException> getClassLoadingSP(String name) {
 		synchronized (classLoadingSP) {
 			Pair<Thread,JoinPoint<NoException>> p = classLoadingSP.get(name);
 			if (p == null) {
@@ -98,14 +98,14 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 			Pair<Thread,JoinPoint<NoException>> sp = classLoadingSP.get(name);
 			JoinPoint<NoException> jp = sp.getValue2();
 			jp.joined();
-			if (jp.isUnblocked())
+			if (jp.isDone())
 				classLoadingSP.remove(name);
 		}
 	}
 	
 	@Override
 	protected final Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-		ISynchronizationPoint<NoException> sp = getClassLoadingSP(name);
+		IAsync<NoException> sp = getClassLoadingSP(name);
 		while (sp != null) {
 			//sp.block(0); it was good because we can launch new tasks, but it may cause blocking everything
 			sp.blockPause(15000);
@@ -136,7 +136,7 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	}
 	
 	final Class<?> loadClassInLibrary(String name) throws IOException {
-		ISynchronizationPoint<NoException> sp = getClassLoadingSP(name);
+		IAsync<NoException> sp = getClassLoadingSP(name);
 		while (sp != null) {
 			//sp.block(0);
 			sp.blockPause(15000);

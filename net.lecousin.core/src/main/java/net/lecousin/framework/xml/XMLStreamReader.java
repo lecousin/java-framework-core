@@ -6,7 +6,7 @@ import java.nio.charset.Charset;
 import java.util.LinkedList;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.encoding.DecimalNumber;
@@ -58,14 +58,14 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	/** Utility method that initialize a XMLStreamReader, initialize it, and
 	 * return an AsyncWork which is unblocked when characters are available to be read.
 	 */
-	public static AsyncWork<XMLStreamReader, Exception> start(IO.Readable.Buffered io, int charactersBufferSize, int maxBuffers) {
-		AsyncWork<XMLStreamReader, Exception> result = new AsyncWork<>();
+	public static AsyncSupplier<XMLStreamReader, Exception> start(IO.Readable.Buffered io, int charactersBufferSize, int maxBuffers) {
+		AsyncSupplier<XMLStreamReader, Exception> result = new AsyncSupplier<>();
 		new Task.Cpu.FromRunnable("Start reading XML " + io.getSourceDescription(), io.getPriority(), () -> {
 			XMLStreamReader reader = new XMLStreamReader(io, charactersBufferSize, maxBuffers);
 			try {
 				Starter start = new Starter(io, reader.defaultEncoding, reader.charactersBuffersSize, reader.maxBuffers);
 				reader.stream = start.start();
-				reader.stream.canStartReading().listenAsync(
+				reader.stream.canStartReading().thenStart(
 				new Task.Cpu.FromRunnable("Start reading XML " + io.getSourceDescription(), io.getPriority(), () -> {
 					try {
 						reader.next();

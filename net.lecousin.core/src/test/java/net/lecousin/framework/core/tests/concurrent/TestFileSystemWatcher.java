@@ -9,8 +9,8 @@ import org.junit.Test;
 
 import net.lecousin.framework.concurrent.FileSystemWatcher;
 import net.lecousin.framework.concurrent.FileSystemWatcher.PathEventListener;
+import net.lecousin.framework.concurrent.async.WaitingDataQueueSynchronizationPoint;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.WaitingDataQueueSynchronizationPoint;
 import net.lecousin.framework.concurrent.tasks.drives.RemoveFileTask;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.util.Triple;
@@ -35,9 +35,9 @@ public class TestFileSystemWatcher extends LCCoreAbstractTest {
 				queue.newDataReady(new Triple<>(parent, childName, Integer.valueOf(3)));
 			}
 		};
-		Assert.assertFalse(queue.isUnblocked());
+		Assert.assertFalse(queue.isDone());
 		Runnable stop = FileSystemWatcher.watch(dir, listener);
-		Assert.assertFalse(queue.isUnblocked());
+		Assert.assertFalse(queue.isDone());
 
 		Path file = Files.createTempFile(dir, "test", "file");
 		Triple<Path, String, Integer> event = queue.waitForData(5000);
@@ -45,7 +45,7 @@ public class TestFileSystemWatcher extends LCCoreAbstractTest {
 		Assert.assertEquals(3, event.getValue3().intValue());
 		Assert.assertEquals(dir, event.getValue1());
 		Assert.assertTrue(event.getValue2().startsWith("test") && event.getValue2().endsWith("file"));
-		Assert.assertFalse(queue.isUnblocked());
+		Assert.assertFalse(queue.isDone());
 		
 		FileOutputStream out = new FileOutputStream(file.toFile());
 		out.write(new byte[] { 1, 2, 3 });
@@ -58,7 +58,7 @@ public class TestFileSystemWatcher extends LCCoreAbstractTest {
 		do {
 			event = queue.waitForData(1000);
 		} while (event != null);
-		Assert.assertFalse(queue.isUnblocked());
+		Assert.assertFalse(queue.isDone());
 		
 		new RemoveFileTask(file.toFile(), Task.PRIORITY_NORMAL).start().getOutput().blockThrow(0);
 		do {
@@ -70,7 +70,7 @@ public class TestFileSystemWatcher extends LCCoreAbstractTest {
 		Assert.assertEquals(1, event.getValue3().intValue());
 		Assert.assertEquals(dir, event.getValue1());
 		Assert.assertTrue(event.getValue2().startsWith("test") && event.getValue2().endsWith("file"));
-		Assert.assertFalse(queue.isUnblocked());
+		Assert.assertFalse(queue.isDone());
 		
 		stop.run();
 	}

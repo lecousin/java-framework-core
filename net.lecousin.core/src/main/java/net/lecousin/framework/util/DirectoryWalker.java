@@ -8,8 +8,8 @@ import java.util.ArrayList;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.tasks.drives.DirectoryReader;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.util.FileInfo;
@@ -44,7 +44,7 @@ public abstract class DirectoryWalker<T> {
 	private TaskManager taskManager;
 	
 	/** Start the directory analysis. */
-	public ISynchronizationPoint<IOException> start(byte priority, WorkProgress progress, long work) {
+	public IAsync<IOException> start(byte priority, WorkProgress progress, long work) {
 		JoinPoint<IOException> jp = new JoinPoint<>();
 		jp.addToJoin(1);
 		processDirectory("", root, rootObject, jp, priority, progress, work);
@@ -68,7 +68,7 @@ public abstract class DirectoryWalker<T> {
 			}
 		};
 		reader.start();
-		reader.getOutput().listenAsync(new Task.Cpu<Void, NoException>("DirectoryWalker", priority) {
+		reader.getOutput().thenStart(new Task.Cpu<Void, NoException>("DirectoryWalker", priority) {
 			@Override
 			public Void run() {
 				if (reader.hasError()) {

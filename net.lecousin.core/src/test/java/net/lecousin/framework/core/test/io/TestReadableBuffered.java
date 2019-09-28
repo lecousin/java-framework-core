@@ -10,8 +10,8 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.FileIO.ReadOnly;
 import net.lecousin.framework.io.IO;
@@ -39,7 +39,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
 		MutableInteger i = new MutableInteger(0);
 		MutableInteger j = new MutableInteger(0);
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		Runnable run = new Runnable() {
 			@Override
 			public void run() {
@@ -55,7 +55,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 						return;
 					}
 					if (c == -2) {
-						io.canStartReading().listenAsync(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
+						io.canStartReading().thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
 						return;
 					}
 					sp.error(new Exception("Remaining byte(s) at the end of the file"));
@@ -67,7 +67,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 					if (i.get() + skipBuf > nbBuf) skipBuf = nbBuf - i.get();
 					i.add(skipBuf);
 					j.set(0);
-					io.skipAsync(skipBuf * testBuf.length).listenAsyncSP(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), sp);
+					io.skipAsync(skipBuf * testBuf.length).thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), sp, e -> e);
 					return;
 				}
 				while (j.get() < testBuf.length) {
@@ -78,7 +78,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 						return;
 					}
 					if (c == -2) {
-						io.canStartReading().listenAsync(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
+						io.canStartReading().thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
 						return;
 					}
 					if (c == -1) {
@@ -104,13 +104,13 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 	@Test(timeout=120000)
 	public void testReadableBufferedNextBufferAsync() throws Exception {
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
-		SynchronizationPoint<Exception> done = new SynchronizationPoint<>();
+		Async<Exception> done = new Async<>();
 		MutableInteger pos = new MutableInteger(0);
-		Mutable<AsyncWork<ByteBuffer,IOException>> read = new Mutable<>(null);
+		Mutable<AsyncSupplier<ByteBuffer,IOException>> read = new Mutable<>(null);
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
 		Consumer<Pair<ByteBuffer,IOException>> ondone = param -> onDoneBefore.set(true);
 		read.set(io.readNextBufferAsync(ondone));
-		read.get().listenInline(new Runnable() {
+		read.get().onDone(new Runnable() {
 			@Override
 			public void run() {
 				do {
@@ -119,7 +119,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 						return;
 					}
 					onDoneBefore.set(false);
-					AsyncWork<ByteBuffer,IOException> res = read.get();
+					AsyncSupplier<ByteBuffer,IOException> res = read.get();
 					if (res.hasError()) {
 						done.error(res.getError());
 						return;
@@ -156,8 +156,8 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 					pos.set(p + nb);
 	
 					read.set(io.readNextBufferAsync(ondone));
-				} while (read.get().isUnblocked());
-				read.get().listenInline(this);
+				} while (read.get().isDone());
+				read.get().onDone(this);
 			}
 		});
 		done.blockThrow(0);
@@ -169,7 +169,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		Assume.assumeTrue(nbBuf > 0);
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
 		byte[] buf = new byte[testBuf.length];
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		new Task.Cpu.FromRunnable("Test readFullySyncIfPossible", Task.PRIORITY_NORMAL, () -> {
 			nextSyncIfPossible(io, 0, buf, sp);
 		}).start();
@@ -177,7 +177,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		io.close();
 	}
 	
-	private void nextSyncIfPossible(IO.Readable.Buffered io, int index, byte[] buf, SynchronizationPoint<Exception> sp) {
+	private void nextSyncIfPossible(IO.Readable.Buffered io, int index, byte[] buf, Async<Exception> sp) {
 		MutableBoolean ondoneCalled = new MutableBoolean(false);
 		Consumer<Pair<Integer, IOException>> ondone = (res) -> {
 			ondoneCalled.set(true);
@@ -188,8 +188,8 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 				return;
 			}
 			ondoneCalled.set(false);
-			AsyncWork<Integer, IOException> r = io.readFullySyncIfPossible(ByteBuffer.wrap(buf), ondone);
-			if (r.isUnblocked()) {
+			AsyncSupplier<Integer, IOException> r = io.readFullySyncIfPossible(ByteBuffer.wrap(buf), ondone);
+			if (r.isDone()) {
 				if (r.hasError()) {
 					sp.error(r.getError());
 					return;
@@ -212,7 +212,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 				continue;
 			}
 			int i = index;
-			r.listenAsyncSP(new Task.Cpu.FromRunnable("Test readFullySyncIfPossible", Task.PRIORITY_NORMAL, () -> {
+			r.thenStart(new Task.Cpu.FromRunnable("Test readFullySyncIfPossible", Task.PRIORITY_NORMAL, () -> {
 				if (!ondoneCalled.get()) {
 					sp.error(new Exception("ondone not called"));
 					return;
@@ -228,7 +228,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 					return;
 				}
 				nextSyncIfPossible(io, i + 1, buf, sp);
-			}), sp);
+			}), sp, e -> e);
 			return;
 		} while (true);
 	}

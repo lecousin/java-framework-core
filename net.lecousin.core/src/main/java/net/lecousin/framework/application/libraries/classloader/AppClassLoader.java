@@ -8,6 +8,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import net.lecousin.framework.application.Application;
@@ -15,7 +16,6 @@ import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.collections.CompoundCollection;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOAsInputStream;
 import net.lecousin.framework.io.IOFromInputStream;
@@ -258,7 +258,7 @@ public class AppClassLoader implements ApplicationClassLoader {
 	/** Scan libraries to find classes. */
 	public void scanLibraries(
 		String rootPackage, boolean includeSubPackages,
-		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Consumer<Class<?>> classScanner
 	) {
 		for (AbstractClassLoader cl : libs)
 			cl.scan(rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);

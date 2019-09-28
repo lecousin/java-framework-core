@@ -1,6 +1,7 @@
 package net.lecousin.framework.event;
 
 import java.util.ArrayList;
+import java.util.function.Consumer;
 
 /**
  * A SingleEvent is an event that can occur only once.
@@ -11,12 +12,12 @@ public class SingleEvent<T> implements Listenable<T> {
 
 	private boolean occured = false;
 	private T data = null;
-	private ArrayList<Listener<T>> listeners = null;
+	private ArrayList<Consumer<T>> listeners = null;
 	private ArrayList<Runnable> listenersRunnable = null;
 	
 	@Override
-	public synchronized void addListener(Listener<T> listener) {
-		if (occured) listener.fire(data);
+	public synchronized void addListener(Consumer<T> listener) {
+		if (occured) listener.accept(data);
 		else {
 			if (listeners == null) listeners = new ArrayList<>();
 			listeners.add(listener);
@@ -33,7 +34,7 @@ public class SingleEvent<T> implements Listenable<T> {
 	}
 	
 	@Override
-	public synchronized void removeListener(Listener<T> listener) {
+	public synchronized void removeListener(Consumer<T> listener) {
 		if (listeners == null) return;
 		listeners.remove(listener);
 		if (listeners.isEmpty()) listeners = null;
@@ -59,8 +60,8 @@ public class SingleEvent<T> implements Listenable<T> {
 		occured = true;
 		data = event;
 		if (listeners != null) {
-			for (Listener<T> listener : listeners)
-				listener.fire(event);
+			for (Consumer<T> listener : listeners)
+				listener.accept(event);
 			listeners = null;
 		}
 		if (listenersRunnable != null) {

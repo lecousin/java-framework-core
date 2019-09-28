@@ -2,7 +2,7 @@ package net.lecousin.framework.io.serialization;
 
 import java.util.List;
 
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
@@ -16,7 +16,7 @@ public interface Deserializer {
 	void setMaximumTextSize(int max);
 	
 	/** Deserialize an object/value of the given type from the given input. */
-	<T> AsyncWork<T, SerializationException> deserialize(TypeDefinition type, IO.Readable input, List<SerializationRule> rules);
+	<T> AsyncSupplier<T, SerializationException> deserialize(TypeDefinition type, IO.Readable input, List<SerializationRule> rules);
 	
 	
 	/** Allow to handle stream with external reference. */
@@ -25,7 +25,7 @@ public interface Deserializer {
 		boolean isReference(String text);
 		
 		/** Retrieve the stream from the given reference. */
-		AsyncWork<IO.Readable, SerializationException> getStreamFromReference(String text);
+		AsyncSupplier<IO.Readable, SerializationException> getStreamFromReference(String text);
 	}
 
 	/** Register a stream reference handler. */

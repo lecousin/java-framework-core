@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.concurrent.ThreadFactory;
 
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.async.CancelException;
 
 /**
  * A Task Manager that use a pool of threads to execute tasks.

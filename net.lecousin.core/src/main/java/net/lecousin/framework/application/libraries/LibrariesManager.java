@@ -2,12 +2,12 @@ package net.lecousin.framework.application.libraries;
 
 import java.io.File;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 
 /** Allows to load libraries and get information about loaded ones. */
@@ -20,7 +20,7 @@ public interface LibrariesManager {
 	
 	/** Return a synchronization point which is blocked until this libraries manager has been initialized
 	 * and has loaded all required libraries. */
-	ISynchronizationPoint<LibraryManagementException> onLibrariesLoaded();
+	IAsync<LibraryManagementException> onLibrariesLoaded();
 	
 	/** Open a resource or return null if it does not exist. */
 	IO.Readable getResource(String path, byte priority);
@@ -30,6 +30,6 @@ public interface LibrariesManager {
 	
 	/** Go through each library to scan its content. */
 	void scanLibraries(String rootPackage, boolean includeSubPackages,
-		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner);
+		Predicate<String> packageFilter, Predicate<String> classFilter, Consumer<Class<?>> classScanner);
 	
 }

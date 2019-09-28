@@ -1,10 +1,11 @@
 package net.lecousin.framework.core.tests.event;
 
+import java.util.function.Consumer;
+
 import org.junit.Assert;
 import org.junit.Test;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.event.SingleEvent;
 import net.lecousin.framework.mutable.MutableInteger;
 
@@ -15,8 +16,8 @@ public class TestSingleEvent extends LCCoreAbstractTest {
 		MutableInteger called1 = new MutableInteger(0);
 		MutableInteger called2 = new MutableInteger(0);
 		MutableInteger received = new MutableInteger(0);
-		Listener<Integer> listener1 = (value) -> { called1.inc(); received.set(value.intValue()); };
-		Listener<Integer> listener11 = (value) -> { called1.inc(); received.set(value.intValue()); };
+		Consumer<Integer> listener1 = (value) -> { called1.inc(); received.set(value.intValue()); };
+		Consumer<Integer> listener11 = (value) -> { called1.inc(); received.set(value.intValue()); };
 		Runnable listener2 = () -> { called2.inc(); };
 		Runnable listener22 = () -> { called2.inc(); };
 		SingleEvent<Integer> event = new SingleEvent<>();

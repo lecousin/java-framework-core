@@ -10,8 +10,8 @@ import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -85,9 +85,9 @@ public abstract class TestWritable extends TestIO.UsingTestData {
 		Assume.assumeTrue(nbBuf > 0);
 		IO.Writable io = createWritable();
 		MutableInteger i = new MutableInteger(0);
-		Mutable<AsyncWork<Integer,IOException>> write = new Mutable<>(null);
+		Mutable<AsyncSupplier<Integer,IOException>> write = new Mutable<>(null);
 		Mutable<ByteBuffer> buf = new Mutable<>(null);
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		Runnable listener = new Runnable() {
 			@Override
 			public void run() {
@@ -116,13 +116,13 @@ public abstract class TestWritable extends TestIO.UsingTestData {
 					}
 					buf.set(ByteBuffer.wrap(testBuf));
 					write.set(io.writeAsync(buf.get()));
-				} while (write.get().isUnblocked());
-				write.get().listenInline(this);
+				} while (write.get().isDone());
+				write.get().onDone(this);
 			}
 		};
 		buf.set(ByteBuffer.wrap(testBuf));
 		write.set(io.writeAsync(buf.get()));
-		write.get().listenInline(listener);
+		write.get().onDone(listener);
 		
 		sp.blockThrow(0);
 		flush(io);

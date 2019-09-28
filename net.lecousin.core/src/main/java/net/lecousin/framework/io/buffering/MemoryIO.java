@@ -8,9 +8,9 @@ import java.util.function.Consumer;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -21,7 +21,7 @@ import net.lecousin.framework.util.Pair;
  * <br/>
  * Each byte array is allocated using the given bufferSize.
  */
-public class MemoryIO extends ConcurrentCloseable
+public class MemoryIO extends ConcurrentCloseable<IOException>
 	implements IO.Readable.Buffered, IO.Readable.Seekable, IO.Writable.Seekable, IO.Writable.Buffered, IO.KnownSize, IO.Resizable {
 
 	/** Constructor. */
@@ -38,25 +38,25 @@ public class MemoryIO extends ConcurrentCloseable
 	private byte priority = Task.PRIORITY_NORMAL;
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		return null;
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		pos = size = -1;
 		buffers = null;
 		ondone.unblock();
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartReading() {
-		return new SynchronizationPoint<>(true);
+	public IAsync<IOException> canStartReading() {
+		return new Async<>(true);
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartWriting() {
-		return new SynchronizationPoint<>(true);
+	public IAsync<IOException> canStartWriting() {
+		return new Async<>(true);
 	}
 	
 	@Override
@@ -175,7 +175,7 @@ public class MemoryIO extends ConcurrentCloseable
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return IOUtil.success(Integer.valueOf(readFullySync(buffer)), ondone);
 	}
 	
@@ -185,27 +185,27 @@ public class MemoryIO extends ConcurrentCloseable
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput());
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readAsyncUsingSync(this, pos, buffer, ondone).getOutput());
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readFullyAsyncUsingSync(this, buffer, ondone).getOutput());
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readFullyAsyncUsingSync(this, pos, buffer, ondone).getOutput());
 	}
 
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
+	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		if (pos == size) return IOUtil.success(null, ondone);
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
 			@Override
@@ -233,8 +233,8 @@ public class MemoryIO extends ConcurrentCloseable
 	}
 	
 	@Override
-	public AsyncWork<Long, IOException> getSizeAsync() {
-		return new AsyncWork<>(Long.valueOf(size), null);
+	public AsyncSupplier<Long, IOException> getSizeAsync() {
+		return new AsyncSupplier<>(Long.valueOf(size), null);
 	}
 	
 	@Override
@@ -270,7 +270,7 @@ public class MemoryIO extends ConcurrentCloseable
 	}
 	
 	@Override
-	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
+	public AsyncSupplier<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 		return IOUtil.success(Long.valueOf(seekSync(type, move)), ondone);
 	}
 	
@@ -302,7 +302,7 @@ public class MemoryIO extends ConcurrentCloseable
 	}
 	
 	@Override
-	public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+	public AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		return IOUtil.success(Long.valueOf(skipSync(n)), ondone);
 	}
 	
@@ -396,12 +396,12 @@ public class MemoryIO extends ConcurrentCloseable
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone)).getOutput();
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.writeAsyncUsingSync(this, pos, buffer, ondone)).getOutput();
 	}
 	
@@ -434,26 +434,26 @@ public class MemoryIO extends ConcurrentCloseable
 	}
 	
 	@Override
-	public AsyncWork<Void, IOException> setSizeAsync(long newSize) {
+	public AsyncSupplier<Void, IOException> setSizeAsync(long newSize) {
 		return operation(IOUtil.setSizeAsyncUsingSync(this, newSize, priority)).getOutput();
 	}
 	
 	/** Create a MemoryIO and fill it with the content of the given Readable.
 	 * This can be used to convert a Readable into a Seekable.
 	 */
-	public static AsyncWork<IO.Readable.Seekable,IOException> from(IO.Readable io) {
-		AsyncWork<IO.Readable.Seekable,IOException> sp = new AsyncWork<>();
+	public static AsyncSupplier<IO.Readable.Seekable,IOException> from(IO.Readable io) {
+		AsyncSupplier<IO.Readable.Seekable,IOException> sp = new AsyncSupplier<>();
 		if (io instanceof IO.KnownSize) {
 			// if we know the size, better to use FullyBufferedIO
-			((IO.KnownSize)io).getSizeAsync().listenInline(result -> {
+			((IO.KnownSize)io).getSizeAsync().onDone(result -> {
 				long size = result.longValue();
 				TwoBuffersIO.DeterminedSize buf = new TwoBuffersIO.DeterminedSize(io, (int)size, 0);
-				buf.canStartReading().listenInline(() -> sp.unblockSuccess(buf));
+				buf.canStartReading().onDone(() -> sp.unblockSuccess(buf));
 			}, sp);
 			return sp;
 		}
 		MemoryIO mem = new MemoryIO(32768, "MemoryIO: " + io.getSourceDescription());
-		IOUtil.copy(io, mem, -1, false, null, 0).listenInline(result -> {
+		IOUtil.copy(io, mem, -1, false, null, 0).onDone(result -> {
 			mem.seekSync(SeekType.FROM_BEGINNING, 0);
 			sp.unblockSuccess(mem);
 		}, sp);
@@ -461,25 +461,25 @@ public class MemoryIO extends ConcurrentCloseable
 	}
 
 	@Override
-	public ISynchronizationPoint<IOException> flush() {
-		return new SynchronizationPoint<>(true);
+	public IAsync<IOException> flush() {
+		return new Async<>(true);
 	}
 	
 	/** Asynchronously write the content of this MemoryIO into the given Writable. */
-	public SynchronizationPoint<IOException> writeAsyncTo(IO.Writable io) {
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+	public Async<IOException> writeAsyncTo(IO.Writable io) {
+		Async<IOException> sp = new Async<>();
 		writeAsyncTo(io, sp, 0);
 		operation(sp);
 		return sp;
 	}
 	
-	private void writeAsyncTo(IO.Writable io, SynchronizationPoint<IOException> sp, int bufferIndex) {
+	private void writeAsyncTo(IO.Writable io, Async<IOException> sp, int bufferIndex) {
 		int lastIndex = size / bufferSize;
 		while (bufferIndex < lastIndex) {
-			AsyncWork<Integer, IOException> write = io.writeAsync(ByteBuffer.wrap(buffers[bufferIndex]));
-			if (!write.isUnblocked()) {
+			AsyncSupplier<Integer, IOException> write = io.writeAsync(ByteBuffer.wrap(buffers[bufferIndex]));
+			if (!write.isDone()) {
 				int i = bufferIndex;
-				write.listenInline(() -> {
+				write.onDone(() -> {
 					if (write.hasError()) sp.error(write.getError());
 					else if (write.isCancelled()) sp.cancel(write.getCancelEvent());
 					else writeAsyncTo(io, sp, i + 1);
@@ -488,7 +488,7 @@ public class MemoryIO extends ConcurrentCloseable
 			}
 			if (write.hasError()) sp.error(write.getError());
 			else if (write.isCancelled()) sp.cancel(write.getCancelEvent());
-			if (sp.isUnblocked()) return;
+			if (sp.isDone()) return;
 			bufferIndex++;
 		}
 		int bufferPos = size % bufferSize;
@@ -496,6 +496,6 @@ public class MemoryIO extends ConcurrentCloseable
 			sp.unblock();
 			return;
 		}
-		io.writeAsync(ByteBuffer.wrap(buffers[bufferIndex], 0, bufferPos)).listenInline(sp);
+		io.writeAsync(ByteBuffer.wrap(buffers[bufferIndex], 0, bufferPos)).onDone(sp);
 	}
 }

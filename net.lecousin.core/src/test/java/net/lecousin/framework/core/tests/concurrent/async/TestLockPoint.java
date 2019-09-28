@@ -1,9 +1,9 @@
-package net.lecousin.framework.core.tests.concurrent.synch;
+package net.lecousin.framework.core.tests.concurrent.async;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.LockPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.LockPoint;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
 import org.junit.Assert;
@@ -19,7 +19,7 @@ public class TestLockPoint extends LCCoreAbstractTest {
 		Assert.assertFalse(lp.isCancelled());
 		Assert.assertTrue(lp.hasError());
 		Assert.assertFalse(lp.isSuccessful());
-		Assert.assertTrue(lp.isUnblocked());
+		Assert.assertTrue(lp.isDone());
 		Assert.assertEquals(0, lp.getAllListeners().size());
 		lp.lock();
 		
@@ -29,14 +29,14 @@ public class TestLockPoint extends LCCoreAbstractTest {
 		Assert.assertTrue(lp.isCancelled());
 		Assert.assertFalse(lp.hasError());
 		Assert.assertFalse(lp.isSuccessful());
-		Assert.assertTrue(lp.isUnblocked());
+		Assert.assertTrue(lp.isDone());
 		Assert.assertEquals(0, lp.getAllListeners().size());
 		lp.lock();
 
 		lp = new LockPoint<>();
 		lp.lock();
 		Assert.assertEquals(0, lp.getAllListeners().size());
-		lp.listenInline(() -> {});
+		lp.onDone(() -> {});
 		Assert.assertEquals(1, lp.getAllListeners().size());
 		
 		lp = new LockPoint<>();
@@ -45,7 +45,7 @@ public class TestLockPoint extends LCCoreAbstractTest {
 		
 		LockPoint<Exception> lp2 = new LockPoint<>();
 		lp2.lock();
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		new Task.Cpu.FromRunnable(() -> {
 			sp.unblock();
 			lp2.blockPause(5000);
@@ -56,7 +56,7 @@ public class TestLockPoint extends LCCoreAbstractTest {
 		
 		LockPoint<Exception> lp3 = new LockPoint<>();
 		lp3.lock();
-		SynchronizationPoint<Exception> sp3 = new SynchronizationPoint<>();
+		Async<Exception> sp3 = new Async<>();
 		new Task.Cpu.FromRunnable(() -> {
 			sp3.unblock();
 			lp3.block(5000);

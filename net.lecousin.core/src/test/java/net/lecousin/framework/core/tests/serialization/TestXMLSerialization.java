@@ -12,11 +12,8 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.core.test.serialization.TestSerialization;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Readable;
@@ -36,6 +33,10 @@ import net.lecousin.framework.xml.XMLWriter;
 import net.lecousin.framework.xml.serialization.XMLDeserializer;
 import net.lecousin.framework.xml.serialization.XMLSerializer;
 import net.lecousin.framework.xml.serialization.XMLSpecWriter;
+
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 public class TestXMLSerialization extends TestSerialization {
@@ -58,14 +59,14 @@ public class TestXMLSerialization extends TestSerialization {
 		return new XMLSerializer(null, "test", null) {
 			@SuppressWarnings("resource")
 			@Override
-			protected ISynchronizationPoint<SerializationException> initializeSerialization(Writable output) {
+			protected IAsync<SerializationException> initializeSerialization(Writable output) {
 				bout = new SimpleBufferedWritable(output, 5);
 				this.output = new XMLWriter(new BufferedWritableCharacterStream(bout, StandardCharsets.UTF_8, 3), includeXMLDeclaration, false);
 				if (namespaces == null)
 					namespaces = new HashMap<>();
 				if (!namespaces.containsKey(XMLUtil.XSI_NAMESPACE_URI))
 					namespaces.put(XMLUtil.XSI_NAMESPACE_URI, "xsi");
-				return this.output.start(rootNamespaceURI, rootLocalName, namespaces).convertSP(e -> new SerializationException("Error writing XML", e));
+				return new Async<>(this.output.start(rootNamespaceURI, rootLocalName, namespaces), e -> new SerializationException("Error writing XML", e));
 			}
 		};
 	}
@@ -76,7 +77,7 @@ public class TestXMLSerialization extends TestSerialization {
 			return new XMLDeserializer(null, "test");
 		return new XMLDeserializer(null, "test") {
 			@Override
-			protected ISynchronizationPoint<Exception> createAndStartReader(Readable input) {
+			protected IAsync<Exception> createAndStartReader(Readable input) {
 				XMLStreamReaderAsync reader = new XMLStreamReaderAsync(input, forceEncoding, 2, 32);
 				this.input = reader;
 				reader.setMaximumTextSize(16384);

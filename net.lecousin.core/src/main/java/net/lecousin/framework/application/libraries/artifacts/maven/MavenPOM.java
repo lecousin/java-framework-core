@@ -20,7 +20,7 @@ import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.application.libraries.artifacts.LibrariesRepository;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -46,26 +46,26 @@ public class MavenPOM implements LibraryDescriptor {
 	public static final String ELEMENT_DEPENDENCIES = "dependencies";
 	
 	/** Load a POM file. */
-	public static AsyncWork<MavenPOM, LibraryManagementException> load(
+	public static AsyncSupplier<MavenPOM, LibraryManagementException> load(
 		URI pomFile, byte priority, MavenPOMLoader pomLoader, boolean fromRepository
 	) {
-		AsyncWork<MavenPOM, LibraryManagementException> result = new AsyncWork<>();
+		AsyncSupplier<MavenPOM, LibraryManagementException> result = new AsyncSupplier<>();
 		IOProvider p = IOProviderFromURI.getInstance().get(pomFile);
 		if (p == null)
-			return new AsyncWork<>(null,
+			return new AsyncSupplier<>(null,
 				new MavenPOMException(pomFile, new FileNotFoundException(pomFile.toString())));
 		if (!(p instanceof IOProvider.Readable))
-			return new AsyncWork<>(null, new MavenPOMException(pomFile, "not readable"));
+			return new AsyncSupplier<>(null, new MavenPOMException(pomFile, "not readable"));
 		IO.Readable fileIO;
 		try { fileIO = ((IOProvider.Readable)p).provideIOReadable(priority); }
 		catch (IOException e) {
-			return new AsyncWork<>(null, new MavenPOMException(pomFile, e));
+			return new AsyncSupplier<>(null, new MavenPOMException(pomFile, e));
 		}
 		Task<Void, NoException> task = new Task.Cpu<Void, NoException>("Loading POM", priority) {
 			@SuppressWarnings("unchecked")
 			@Override
 			public Void run() {
-				AsyncWork<? extends IO.Readable.Buffered, IOException> readFile;
+				AsyncSupplier<? extends IO.Readable.Buffered, IOException> readFile;
 				int bufSize;
 				if (fileIO instanceof IO.KnownSize) {
 					try { bufSize = (int)((IO.KnownSize)fileIO).getSizeSync(); }
@@ -74,9 +74,9 @@ public class MavenPOM implements LibraryDescriptor {
 						return null;
 					}
 					byte[] buf = new byte[bufSize];
-					readFile = new AsyncWork<>();
-					fileIO.readFullyAsync(ByteBuffer.wrap(buf)).listenInline(
-						() -> ((AsyncWork<ByteArrayIO, IOException>)readFile).unblockSuccess(
+					readFile = new AsyncSupplier<>();
+					fileIO.readFullyAsync(ByteBuffer.wrap(buf)).onDone(
+						() -> ((AsyncSupplier<ByteArrayIO, IOException>)readFile).unblockSuccess(
 							new ByteArrayIO(buf, pomFile.toString())),
 						readFile);
 				} else {
@@ -84,22 +84,22 @@ public class MavenPOM implements LibraryDescriptor {
 					readFile = IOUtil.readFullyAsync(fileIO, 4096);
 				}
 				MavenPOM pom = new MavenPOM(pomLoader, pomFile);
-				readFile.listenAsync(new Task.Cpu.FromRunnable("Loading POM", priority, () -> {
+				readFile.thenStart(new Task.Cpu.FromRunnable("Loading POM", priority, () -> {
 					fileIO.closeAsync();
 					if (readFile.hasError()) {
 						result.error(new MavenPOMException(pomFile, readFile.getError()));
 						return;
 					}
 					IO.Readable.Buffered bio = readFile.getResult();
-					AsyncWork<XMLStreamReader, Exception> startXMLReader = XMLStreamReader.start(bio, bufSize, 3);
+					AsyncSupplier<XMLStreamReader, Exception> startXMLReader = XMLStreamReader.start(bio, bufSize, 3);
 					Reader read = pom.new Reader(startXMLReader, priority, fromRepository, pomFile, pomLoader);
 					read.startOn(startXMLReader, true);
-					read.getOutput().listenInline(() -> {
+					read.getOutput().onDone(() -> {
 						if (pom.parentLoading == null) {
 							pom.new Finalize(result, priority).start();
 							return;
 						}
-						pom.parentLoading.listenInline(() -> pom.new Finalize(result, priority).start(), result);
+						pom.parentLoading.onDone(() -> pom.new Finalize(result, priority).start(), result);
 					}, result);
 				}), true);
 				return null;
@@ -126,7 +126,7 @@ public class MavenPOM implements LibraryDescriptor {
 	private String parentGroupId;
 	private String parentVersion;
 	private String parentRelativePath = "../pom.xml";
-	private AsyncWork<MavenPOM, LibraryManagementException> parentLoading;
+	private AsyncSupplier<MavenPOM, LibraryManagementException> parentLoading;
 	
 	private static class Build {
 		private String outputDirectory;
@@ -275,9 +275,9 @@ public class MavenPOM implements LibraryDescriptor {
 	private File classesFile = null;
 	
 	@Override
-	public AsyncWork<File, NoException> getClasses() {
-		if (!hasClasses()) return new AsyncWork<>(null, null);
-		if (classesFile != null) return new AsyncWork<>(classesFile, null);
+	public AsyncSupplier<File, NoException> getClasses() {
+		if (!hasClasses()) return new AsyncSupplier<>(null, null);
+		if (classesFile != null) return new AsyncSupplier<>(classesFile, null);
 		if ("file".equals(pomFile.getScheme())) {
 			File pf = new File(pomFile);
 			pf = pf.getParentFile();
@@ -295,19 +295,19 @@ public class MavenPOM implements LibraryDescriptor {
 					if (f.exists()) classesFile = f;
 				}
 			}
-			return new AsyncWork<>(classesFile, null);
+			return new AsyncSupplier<>(classesFile, null);
 		}
 		try {
 			URI uri = pomFile.resolve(".").resolve(artifactId + '-' + version + ".jar");
 			IOProvider p = IOProviderFromURI.getInstance().get(uri);
 			if (!(p instanceof IOProvider.Readable))
-				return new AsyncWork<>(null, null);
+				return new AsyncSupplier<>(null, null);
 			IO.Readable io = ((IOProvider.Readable)p).provideIOReadable(Task.PRIORITY_IMPORTANT);
 			if (io == null)
-				return new AsyncWork<>(null, null);
-			AsyncWork<File, IOException> download = IOUtil.toTempFile(io);
-			AsyncWork<File, NoException> result = new AsyncWork<>();
-			download.listenInline(() -> {
+				return new AsyncSupplier<>(null, null);
+			AsyncSupplier<File, IOException> download = IOUtil.toTempFile(io);
+			AsyncSupplier<File, NoException> result = new AsyncSupplier<>();
+			download.onDone(() -> {
 				if (download.isSuccessful()) {
 					classesFile = download.getResult();
 					result.unblockSuccess(classesFile);
@@ -318,7 +318,7 @@ public class MavenPOM implements LibraryDescriptor {
 			});
 			return result;
 		} catch (Exception e) {
-			return new AsyncWork<>(null, null);
+			return new AsyncSupplier<>(null, null);
 		}
 	}
 	
@@ -340,7 +340,7 @@ public class MavenPOM implements LibraryDescriptor {
 	}
 
 	private class Reader extends Task.Cpu<Void, LibraryManagementException> {
-		private Reader(AsyncWork<XMLStreamReader, Exception> startXMLReader, byte priority,
+		private Reader(AsyncSupplier<XMLStreamReader, Exception> startXMLReader, byte priority,
 			boolean fromRepository, URI pomFile, MavenPOMLoader pomLoader) {
 			super("Read POM " + pomFile.toString(), priority);
 			this.startXMLReader = startXMLReader;
@@ -349,7 +349,7 @@ public class MavenPOM implements LibraryDescriptor {
 			this.pomLoader = pomLoader;
 		}
 		
-		private AsyncWork<XMLStreamReader, Exception> startXMLReader;
+		private AsyncSupplier<XMLStreamReader, Exception> startXMLReader;
 		private boolean fromRepository;
 		private URI pomFile;
 		private MavenPOMLoader pomLoader;
@@ -755,12 +755,12 @@ public class MavenPOM implements LibraryDescriptor {
 	}
 	
 	private class Finalize extends Task.Cpu<Void, NoException> {
-		public Finalize(AsyncWork<MavenPOM, LibraryManagementException> result, byte priority) {
+		public Finalize(AsyncSupplier<MavenPOM, LibraryManagementException> result, byte priority) {
 			super("Finalize POM loading", priority);
 			this.finalResult = result;
 		}
 		
-		private AsyncWork<MavenPOM, LibraryManagementException> finalResult;
+		private AsyncSupplier<MavenPOM, LibraryManagementException> finalResult;
 		
 		@Override
 		public Void run() {

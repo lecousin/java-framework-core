@@ -2,7 +2,7 @@ package net.lecousin.framework.io.serialization;
 
 import java.util.List;
 
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
@@ -10,7 +10,7 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 public interface Serializer {
 
 	/** Serialize the given object. */
-	ISynchronizationPoint<SerializationException> serialize(
+	IAsync<SerializationException> serialize(
 		Object object, TypeDefinition typeDef, IO.Writable output, List<SerializationRule> rules);
 	
 }

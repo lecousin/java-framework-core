@@ -9,8 +9,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestWritable;
 import net.lecousin.framework.io.FileIO;

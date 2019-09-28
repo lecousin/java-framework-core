@@ -1,11 +1,12 @@
 package net.lecousin.framework.core.tests.event;
 
-import net.lecousin.framework.event.ListenableProperty;
-import net.lecousin.framework.event.Listener;
-import net.lecousin.framework.mutable.MutableInteger;
+import java.util.function.Consumer;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import net.lecousin.framework.event.ListenableProperty;
+import net.lecousin.framework.mutable.MutableInteger;
 
 public class TestListenableProperty {
 
@@ -18,12 +19,7 @@ public class TestListenableProperty {
 		Assert.assertFalse(prop.hasListeners());
 		MutableInteger val1 = new MutableInteger(0);
 		MutableInteger val2 = new MutableInteger(0);
-		Listener<Integer> listener = new Listener<Integer>() {
-			@Override
-			public void fire(Integer event) {
-				val1.set(event.intValue());
-			}
-		};
+		Consumer<Integer> listener = event -> val1.set(event.intValue());
 		prop.addListener(listener);
 		Runnable runnable = new Runnable() {
 			@Override

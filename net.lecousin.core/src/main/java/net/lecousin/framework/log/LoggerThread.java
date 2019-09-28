@@ -2,8 +2,8 @@ package net.lecousin.framework.log;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.appenders.Appender;
 import net.lecousin.framework.util.Pair;
@@ -12,7 +12,7 @@ class LoggerThread {
 
 	@SuppressWarnings({"squid:S2142","squid:S106"})
 	LoggerThread(Application app) {
-		SynchronizationPoint<Exception> stopped = new SynchronizationPoint<>();
+		Async<Exception> stopped = new Async<>();
 		thread = app.getThreadFactory().newThread(() -> {
 			while (true) {
 				Pair<Appender,Log> log;
@@ -53,7 +53,7 @@ class LoggerThread {
 	private Thread thread;
 	private TurnArray<Pair<Appender,Log>> logs = new TurnArray<>(200);
 	private boolean stop = false;
-	private SynchronizationPoint<Exception> flushing = null;
+	private Async<Exception> flushing = null;
 
 	void log(Appender appender, Log log) {
 		Pair<Appender,Log> p = new Pair<>(appender,log);
@@ -63,10 +63,10 @@ class LoggerThread {
 		}
 	}
 	
-	ISynchronizationPoint<Exception> flush() {
+	IAsync<Exception> flush() {
 		synchronized (logs) {
 			if (flushing != null) return flushing;
-			flushing = new SynchronizationPoint<>();
+			flushing = new Async<>();
 			logs.notify();
 			return flushing;
 		}

@@ -23,8 +23,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -69,12 +69,12 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		MemoryIO io = new MemoryIO(1024, "test");
 		io.lockClose();
 		Serializer s = createSerializer();
-		ISynchronizationPoint<SerializationException> r1 = s.serialize(value, new TypeDefinition(type), io, new ArrayList<>(0));
+		IAsync<SerializationException> r1 = s.serialize(value, new TypeDefinition(type), io, new ArrayList<>(0));
 		r1.blockThrow(0);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		print(io, value);
 		Deserializer d = createDeserializer();
-		AsyncWork<Object, SerializationException> r2 = d.deserialize(new TypeDefinition(type), io, new ArrayList<>(0));
+		AsyncSupplier<Object, SerializationException> r2 = d.deserialize(new TypeDefinition(type), io, new ArrayList<>(0));
 		r2.blockThrow(0);
 		Assert.assertEquals(value, r2.getResult());
 		testSpec(type, io);
@@ -520,7 +520,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		MyImplementation impl = new MyImplementation();
 		MemoryIO io = new MemoryIO(1024, "test");
 		Serializer s = createSerializer();
-		ISynchronizationPoint<SerializationException> res = s.serialize(impl, new TypeDefinition(MyInterface.class), io, new ArrayList<>(0));
+		IAsync<SerializationException> res = s.serialize(impl, new TypeDefinition(MyInterface.class), io, new ArrayList<>(0));
 		res.blockThrow(0);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		print(io, impl);
@@ -954,7 +954,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	protected MemoryIO serializeInMemory(Object o, TypeDefinition type) throws Exception {
 		MemoryIO io = new MemoryIO(1024, "test");
 		Serializer s = createSerializer();
-		ISynchronizationPoint<SerializationException> res = s.serialize(o, type, io, new ArrayList<>(0));
+		IAsync<SerializationException> res = s.serialize(o, type, io, new ArrayList<>(0));
 		res.blockThrow(0);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		return io;
@@ -964,7 +964,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		File tmp = File.createTempFile("test", "serialization");
 		FileIO.ReadWrite io = new FileIO.ReadWrite(tmp, Task.PRIORITY_NORMAL);
 		Serializer s = createSerializer();
-		ISynchronizationPoint<SerializationException> res = s.serialize(o, type, io, new ArrayList<>(0));
+		IAsync<SerializationException> res = s.serialize(o, type, io, new ArrayList<>(0));
 		res.blockThrow(0);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		return io;
@@ -973,7 +973,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	@SuppressWarnings("unchecked")
 	protected <T> T deserialize(IO.Readable io, TypeDefinition type) throws Exception {
 		Deserializer d = createDeserializer();
-		AsyncWork<Object, SerializationException> res = d.deserialize(type, io, new ArrayList<>(0));
+		AsyncSupplier<Object, SerializationException> res = d.deserialize(type, io, new ArrayList<>(0));
 		res.blockThrow(0);
 		return (T)res.getResult();
 	}

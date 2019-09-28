@@ -10,16 +10,16 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.util.AsyncCloseable;
 
 /** Charset decoder. */
-public abstract class Decoder implements Closeable, AsyncCloseable<Exception> {
+public abstract class Decoder implements Closeable, AsyncCloseable<IOException> {
 	
 	/** Get a decoder for the given charset. */
 	public static Decoder get(Charset charset) throws InstantiationException, IllegalAccessException {
@@ -68,12 +68,12 @@ public abstract class Decoder implements Closeable, AsyncCloseable<Exception> {
 	}
 	
 	protected IO.Readable.Buffered io;
-	protected AsyncWork<ByteBuffer, IOException> nextBuffer;
+	protected AsyncSupplier<ByteBuffer, IOException> nextBuffer;
 	protected ByteBuffer currentBuffer = null;
 	
 	/** When the decode method returns -2, this method can be used to know when new data is available to be decoded. */
-	public ISynchronizationPoint<IOException> canDecode() {
-		if (currentBuffer != null) return new SynchronizationPoint<>(true);
+	public IAsync<IOException> canDecode() {
+		if (currentBuffer != null) return new Async<>(true);
 		return nextBuffer;
 	}
 	
@@ -93,7 +93,7 @@ public abstract class Decoder implements Closeable, AsyncCloseable<Exception> {
 		int nb = 0;
 		do {
 			if (currentBuffer == null) {
-				if (!nextBuffer.isUnblocked())
+				if (!nextBuffer.isDone())
 					return nb > 0 ? nb : -2;
 				currentBuffer = nextBuffer.blockResult(0);
 				if (currentBuffer != null)
@@ -130,7 +130,7 @@ public abstract class Decoder implements Closeable, AsyncCloseable<Exception> {
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> closeAsync() {
+	public IAsync<IOException> closeAsync() {
 		return io.closeAsync();
 	}
 	

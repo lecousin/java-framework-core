@@ -6,11 +6,11 @@ import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Properties;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.BufferedWritableCharacterStream;
@@ -23,23 +23,23 @@ public class SavePropertiesFileTask extends Task.Cpu<Void,IOException> {
 	
 	/** Save properties to a file. */
 	@SuppressWarnings("squid:S2095") // io is closed
-	public static ISynchronizationPoint<IOException> savePropertiesFile(Properties properties, File file, Charset charset, byte priority) {
+	public static IAsync<IOException> savePropertiesFile(Properties properties, File file, Charset charset, byte priority) {
 		FileIO.ReadWrite io = new FileIO.ReadWrite(file, priority);
-		AsyncWork<Void,IOException> resize = io.setSizeAsync(0);
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
-		resize.listenInline(() -> {
+		AsyncSupplier<Void,IOException> resize = io.setSizeAsync(0);
+		Async<IOException> result = new Async<>();
+		resize.onDone(() -> {
 			if (resize.hasError()) {
 				result.error(resize.getError());
 				io.closeAsync();
 				return;
 			}
-			savePropertiesFile(properties, io, charset, priority, true).listenInline(result);
+			savePropertiesFile(properties, io, charset, priority, true).onDone(result);
 		});
 		return result;
 	}
 	
 	/** Save properties to a Writable IO. */
-	public static ISynchronizationPoint<IOException> savePropertiesFile(
+	public static IAsync<IOException> savePropertiesFile(
 		Properties properties, IO.Writable output, Charset charset, byte priority, boolean closeIOAtEnd
 	) {
 		BufferedWritableCharacterStream stream = new BufferedWritableCharacterStream(output, charset, 4096);
@@ -47,7 +47,7 @@ public class SavePropertiesFileTask extends Task.Cpu<Void,IOException> {
 	}
 	
 	/** Save properties to a writable character stream. */
-	public static ISynchronizationPoint<IOException> savePropertiesFile(
+	public static IAsync<IOException> savePropertiesFile(
 		Properties properties, ICharacterStream.Writable.Buffered output, byte priority, boolean closeStreamAtEnd
 	) {
 		SavePropertiesFileTask task = new SavePropertiesFileTask(properties, output, priority, closeStreamAtEnd);

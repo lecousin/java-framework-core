@@ -1,7 +1,7 @@
 package net.lecousin.framework.io.text;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
@@ -28,19 +28,19 @@ public abstract class FullReadLines<T> {
 	}
 	
 	/** Start to read lines in a separate task. */
-	public final AsyncWork<T, Exception> start() {
-		AsyncWork<T, Exception> result = new AsyncWork<>();
+	public final AsyncSupplier<T, Exception> start() {
+		AsyncSupplier<T, Exception> result = new AsyncSupplier<>();
 		resume(result);
 		return result;
 	}
 	
 	private UnprotectedStringBuffer line = null;
 	
-	private void resume(AsyncWork<T, Exception> result) {
-		stream.canStartReading().listenAsync(new Task.Cpu.FromRunnable(description, priority, () -> scan(result)), true);
+	private void resume(AsyncSupplier<T, Exception> result) {
+		stream.canStartReading().thenStart(new Task.Cpu.FromRunnable(description, priority, () -> scan(result)), true);
 	}
 	
-	private void scan(AsyncWork<T, Exception> result) {
+	private void scan(AsyncSupplier<T, Exception> result) {
 		do {
 			if (line == null) line = new UnprotectedStringBuffer();
 			int c;
@@ -79,7 +79,7 @@ public abstract class FullReadLines<T> {
 		} while (true);
 	}
 	
-	private void finish(AsyncWork<T, Exception> result) {
+	private void finish(AsyncSupplier<T, Exception> result) {
 		T r;
 		try { r = generateResult(); }
 		catch (Exception e) {
@@ -89,18 +89,18 @@ public abstract class FullReadLines<T> {
 		if (closeStreamAtEnd == null)
 			result.unblockSuccess(r);
 		else if (IO.OperationType.SYNCHRONOUS.equals(closeStreamAtEnd)) {
-			stream.closeAsync().listenInline(() -> result.unblockSuccess(r));
+			stream.closeAsync().onDone(() -> result.unblockSuccess(r));
 		} else {
 			result.unblockSuccess(r);
 			stream.closeAsync();
 		}
 	}
 
-	private void error(Exception error, AsyncWork<T, Exception> result) {
+	private void error(Exception error, AsyncSupplier<T, Exception> result) {
 		if (closeStreamAtEnd == null)
 			result.error(error);
 		else if (IO.OperationType.SYNCHRONOUS.equals(closeStreamAtEnd)) {
-			stream.closeAsync().listenInline(() -> result.error(error));
+			stream.closeAsync().onDone(() -> result.error(error));
 		} else {
 			result.error(error);
 			stream.closeAsync();

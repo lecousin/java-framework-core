@@ -1,4 +1,4 @@
-package net.lecousin.framework.concurrent.synch;
+package net.lecousin.framework.concurrent.async;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -6,7 +6,6 @@ import java.util.Collection;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.log.Logger;
 
@@ -21,7 +20,7 @@ import net.lecousin.framework.log.Logger;
  * @param <DataType> type of data in the queue
  * @param <TError> type of error
  */
-public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Exception> implements ISynchronizationPoint<TError> {
+public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Exception> implements IAsync<TError> {
 
 	private TurnArray<DataType> waitingData = new TurnArray<>();
 	private TError error = null;
@@ -106,7 +105,7 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	}
 	
 	@Override
-	public boolean isUnblocked() {
+	public boolean isDone() {
 		return !waitingData.isEmpty() || cancel != null || error != null || end;
 	}
 	
@@ -158,7 +157,7 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	}
 	
 	@Override
-	public void listenInline(Runnable listener) {
+	public void onDone(Runnable listener) {
 		synchronized (this) {
 			if (waitingData.isEmpty() && !end) {
 				if (listeners == null) listeners = new ArrayList<>();

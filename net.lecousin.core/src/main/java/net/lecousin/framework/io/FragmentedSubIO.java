@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.math.RangeLong;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
@@ -18,7 +18,7 @@ import net.lecousin.framework.util.Pair;
  * A fragmented sub-IO allows to specify a list of fragments inside a seekable IO, and does like those fragments are a contiguous IO.
  * TODO improve perf by storing the fragment containing the current position ?
  */
-public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.KnownSize, IO.Seekable {
+public abstract class FragmentedSubIO extends ConcurrentCloseable<IOException> implements IO.KnownSize, IO.Seekable {
 
 	/** Constructor. */
 	public FragmentedSubIO(IO.Seekable io, List<RangeLong> fragments, boolean closeParentIOOnClose, String description) {
@@ -38,13 +38,13 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 	protected String description;
 
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		if (!closeParentIOOnClose) return null;
 		return io.closeAsync();
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		io = null;
 		fragments = null;
 		ondone.unblock();
@@ -59,12 +59,12 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		}
 
 		@Override
-		public ISynchronizationPoint<IOException> canStartReading() {
+		public IAsync<IOException> canStartReading() {
 			return ((IO.Readable.Seekable)io).canStartReading();
 		}
 		
 		@Override
-		public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		public AsyncSupplier<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 			return super.readAsync(pos, buffer, res -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					pos += res.getValue1().intValue();
@@ -73,7 +73,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> readAsync(
+		public AsyncSupplier<Integer, IOException> readAsync(
 			long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 		) {
 			return super.readAsync(pos, buffer, ondone);
@@ -104,7 +104,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		}
 		
 		@Override
-		public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		public AsyncSupplier<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 			return readFullyAsync(pos, buffer, res -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					pos += res.getValue1().intValue();
@@ -113,7 +113,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		}
 		
 		@Override
-		public AsyncWork<Integer,IOException> readFullyAsync(
+		public AsyncSupplier<Integer,IOException> readFullyAsync(
 			long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 		) {
 			return operation(IOUtil.readFullyAsync(this, pos, buffer, ondone));
@@ -125,7 +125,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		}
 		
 		@Override
-		public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
+		public AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 			return super.skipAsync(n, ondone);
 		}
 	}
@@ -141,7 +141,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		}
 
 		@Override
-		public ISynchronizationPoint<IOException> canStartWriting() {
+		public IAsync<IOException> canStartWriting() {
 			return super.canStartWriting();
 		}
 
@@ -158,14 +158,14 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> writeAsync(
+		public AsyncSupplier<Integer, IOException> writeAsync(
 			long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 		) {
 			return super.writeAsync(pos, buffer, ondone);
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+		public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 			return super.writeAsync(pos, buffer, res -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					pos += res.getValue1().intValue();
@@ -210,15 +210,15 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 	}
 	
 	@Override
-	public AsyncWork<Long, IOException> getSizeAsync() {
-		AsyncWork<Long, IOException> sp = new AsyncWork<>();
+	public AsyncSupplier<Long, IOException> getSizeAsync() {
+		AsyncSupplier<Long, IOException> sp = new AsyncSupplier<>();
 		sp.unblockSuccess(Long.valueOf(getSizeSync()));
 		return sp;
 	}
 	
 	// Readable
 	
-	protected AsyncWork<Integer,IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	protected AsyncSupplier<Integer,IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		Iterator<RangeLong> it = fragments.iterator();
 		long p = 0;
 		while (it.hasNext()) {
@@ -240,7 +240,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 			}
 			return operation(((IO.Readable.Seekable)io).readAsync(r.min + start, buffer, ondone));
 		}
-		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
+		AsyncSupplier<Integer,IOException> sp = new AsyncSupplier<>();
 		if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(0), null));
 		sp.unblockSuccess(Integer.valueOf(0));
 		return sp;
@@ -330,16 +330,16 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 	}
 	
 	@Override
-	public AsyncWork<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
-		AsyncWork<Long,IOException> sp = new AsyncWork<>();
+	public AsyncSupplier<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
+		AsyncSupplier<Long,IOException> sp = new AsyncSupplier<>();
 		seekSync(type, move);
 		if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(pos), null));
 		sp.unblockSuccess(Long.valueOf(pos));
 		return sp;
 	}
 	
-	protected AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
-		AsyncWork<Long,IOException> sp = new AsyncWork<>();
+	protected AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
+		AsyncSupplier<Long,IOException> sp = new AsyncSupplier<>();
 		long skipped = skipSync(n);
 		if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(skipped), null));
 		sp.unblockSuccess(Long.valueOf(skipped));
@@ -348,7 +348,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 	
 	// Writable
 	
-	protected ISynchronizationPoint<IOException> canStartWriting() {
+	protected IAsync<IOException> canStartWriting() {
 		return ((IO.Writable)io).canStartWriting();
 	}
 
@@ -382,7 +382,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 		return total;
 	}
 
-	protected AsyncWork<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	protected AsyncSupplier<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		Iterator<RangeLong> it = fragments.iterator();
 		long p = 0;
 		while (it.hasNext()) {
@@ -392,11 +392,11 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 				p += s;
 				continue;
 			}
-			AsyncWork<Integer,IOException> sp = new AsyncWork<>();
+			AsyncSupplier<Integer,IOException> sp = new AsyncSupplier<>();
 			writeAsync(it, r, p, 0, pos, buffer, ondone, sp);
 			return operation(sp);
 		}
-		AsyncWork<Integer,IOException> sp = new AsyncWork<>();
+		AsyncSupplier<Integer,IOException> sp = new AsyncSupplier<>();
 		if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(0), null));
 		sp.unblockSuccess(Integer.valueOf(0));
 		return sp;
@@ -405,7 +405,7 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable implements IO.
 	@SuppressWarnings("squid:S00107")
 	protected void writeAsync(
 		Iterator<RangeLong> it, RangeLong r, long p, int done, long pos,
-		ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone, AsyncWork<Integer,IOException> sp
+		ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone, AsyncSupplier<Integer,IOException> sp
 	) {
 		long start = pos - p;
 		int len = buffer.remaining();

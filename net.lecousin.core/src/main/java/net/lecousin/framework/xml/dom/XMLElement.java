@@ -9,9 +9,9 @@ import java.util.ListIterator;
 import java.util.Map;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.ObjectUtil;
 import net.lecousin.framework.util.Pair;
@@ -551,21 +551,21 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	/** Create an Element from a XMLStreamEvents. */
-	public static AsyncWork<XMLElement, Exception> create(XMLDocument doc, XMLStreamEventsAsync stream) throws IllegalStateException {
+	public static AsyncSupplier<XMLElement, Exception> create(XMLDocument doc, XMLStreamEventsAsync stream) throws IllegalStateException {
 		if (!Event.Type.START_ELEMENT.equals(stream.event.type))
 			throw new IllegalStateException("Method XMLElement.create must be called with a stream being on a START_ELEMENT event");
 		XMLElement element = new XMLElement(doc, stream.event.context.getFirst());
 		for (XMLStreamEvents.Attribute a : stream.event.attributes)
 			element.addAttribute(new XMLAttribute(doc, a.namespacePrefix.asString(),
 				a.localName.asString(), a.value != null ? a.value.asString() : null));
-		ISynchronizationPoint<Exception> parse = element.parseContent(stream);
-		AsyncWork<XMLElement, Exception> result = new AsyncWork<>();
-		if (parse.isUnblocked()) {
+		IAsync<Exception> parse = element.parseContent(stream);
+		AsyncSupplier<XMLElement, Exception> result = new AsyncSupplier<>();
+		if (parse.isDone()) {
 			if (parse.hasError()) result.error(parse.getError());
 			else result.unblockSuccess(element);
 			return result;
 		}
-		parse.listenInline(() -> { result.unblockSuccess(element); }, result);
+		parse.onDone(() -> { result.unblockSuccess(element); }, result);
 		return result;
 	}
 	
@@ -600,31 +600,31 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	/** Parse the content of this element. */
-	public ISynchronizationPoint<Exception> parseContent(XMLStreamEventsAsync stream) {
-		if (stream.event.isClosed) return new SynchronizationPoint<>(true);
+	public IAsync<Exception> parseContent(XMLStreamEventsAsync stream) {
+		if (stream.event.isClosed) return new Async<>(true);
 		return parseContent(stream, null);
 	}
 	
 	@SuppressWarnings("squid:S1199") // nested block
-	private ISynchronizationPoint<Exception> parseContent(XMLStreamEventsAsync stream, ISynchronizationPoint<Exception> s) {
+	private IAsync<Exception> parseContent(XMLStreamEventsAsync stream, IAsync<Exception> s) {
 		do {
-			ISynchronizationPoint<Exception> next = s != null ? s : stream.next();
-			if (next.isUnblocked()) {
+			IAsync<Exception> next = s != null ? s : stream.next();
+			if (next.isDone()) {
 				if (next.hasError()) return next;
 				switch (stream.event.type) {
 				case START_ELEMENT: {
-					AsyncWork<XMLElement, Exception> child = create(doc, stream);
-					if (child.isUnblocked()) {
+					AsyncSupplier<XMLElement, Exception> child = create(doc, stream);
+					if (child.isDone()) {
 						if (child.hasError()) return child;
 						appendChild(child.getResult());
 						break;
 					}
-					SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-					child.listenAsync(new Task.Cpu<Void, NoException>("Parsing XML to DOM", stream.getPriority()) {
+					Async<Exception> sp = new Async<>();
+					child.thenStart(new Task.Cpu<Void, NoException>("Parsing XML to DOM", stream.getPriority()) {
 						@Override
 						public Void run() {
 							appendChild(child.getResult());
-							parseContent(stream, null).listenInlineSP(sp);
+							parseContent(stream, null).onDone(sp);
 							return null;
 						}
 					}, sp);
@@ -646,18 +646,18 @@ public class XMLElement extends XMLNode implements Element {
 					break;
 				default:
 					// TODO XMLException
-					return new SynchronizationPoint<>(
+					return new Async<>(
 						new IOException("Unexpected XML event " + stream.event.type + " in an element"));
 				}
 				s = null;
 				continue;
 			}
 			// blocked
-			SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-			next.listenAsync(new Task.Cpu<Void, NoException>("Parsing XML to DOM", stream.getPriority()) {
+			Async<Exception> sp = new Async<>();
+			next.thenStart(new Task.Cpu<Void, NoException>("Parsing XML to DOM", stream.getPriority()) {
 				@Override
 				public Void run() {
-					parseContent(stream, next).listenInlineSP(sp);
+					parseContent(stream, next).onDone(sp);
 					return null;
 				}
 			}, sp);

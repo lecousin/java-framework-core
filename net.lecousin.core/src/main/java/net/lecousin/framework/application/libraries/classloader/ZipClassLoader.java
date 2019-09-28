@@ -8,15 +8,15 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import net.lecousin.framework.application.libraries.classpath.DefaultLibrariesManager;
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
@@ -213,7 +213,7 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 	@Override
 	protected void scan(
 		String rootPackage, boolean includeSubPackages,
-		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Consumer<Class<?>> classScanner
 	) {
 		try {
 			DefaultLibrariesManager.scanJarLibrary(this, getZip(),

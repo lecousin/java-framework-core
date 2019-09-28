@@ -10,8 +10,8 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import net.lecousin.framework.collections.LinkedArrayList;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.mutable.Mutable;
@@ -108,12 +108,12 @@ public abstract class TestWritableSeekable extends TestWritable {
 		
 		MutableInteger offset = new MutableInteger(nbBuf > 0 ? offsets.remove(rand.nextInt(offsets.size())).intValue() : 0);
 		
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
 		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		
-		Mutable<AsyncWork<Integer,IOException>> write = new Mutable<>(null);
+		Mutable<AsyncSupplier<Integer,IOException>> write = new Mutable<>(null);
 		Runnable listener = new Runnable() {
 			@Override
 			public void run() {
@@ -149,13 +149,13 @@ public abstract class TestWritableSeekable extends TestWritable {
 					}
 					offset.set(offsets.remove(rand.nextInt(offsets.size())).intValue());
 					write.set(io.writeAsync(offset.get()*testBuf.length, ByteBuffer.wrap(testBuf), ondone));
-				} while (write.get().isUnblocked());
-				write.get().listenInline(this);
+				} while (write.get().isDone());
+				write.get().onDone(this);
 			}
 		};
 		
 		write.set(io.writeAsync(offset.get()*testBuf.length, ByteBuffer.wrap(testBuf), ondone));
-		write.get().listenInline(listener);
+		write.get().onDone(listener);
 		
 		sp.blockThrow(0);
 		flush(io);
@@ -176,13 +176,13 @@ public abstract class TestWritableSeekable extends TestWritable {
 		
 		MutableInteger offset = new MutableInteger(nbBuf > 0 ? offsets.remove(rand.nextInt(offsets.size())).intValue() : 0);
 		
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		
 		MutableBoolean onDoneBeforeSeek = new MutableBoolean(false);
 		Consumer<Pair<Long,IOException>> ondoneseek = param -> onDoneBeforeSeek.set(true);
 		
-		Mutable<AsyncWork<Long,IOException>> seek = new Mutable<>(null);
-		Mutable<AsyncWork<Integer,IOException>> write = new Mutable<>(null);
+		Mutable<AsyncSupplier<Long,IOException>> seek = new Mutable<>(null);
+		Mutable<AsyncSupplier<Integer,IOException>> write = new Mutable<>(null);
 		
 		Mutable<Runnable> listenerWrite = new Mutable<>(null);
 		
@@ -206,7 +206,7 @@ public abstract class TestWritableSeekable extends TestWritable {
 				}
 				
 				write.set(io.writeAsync(ByteBuffer.wrap(testBuf)));
-				write.get().listenInline(listenerWrite.get());
+				write.get().onDone(listenerWrite.get());
 			}
 		};
 		
@@ -240,12 +240,12 @@ public abstract class TestWritableSeekable extends TestWritable {
 				else
 					seek.set(io.seekAsync(SeekType.FROM_END, nbBuf*testBuf.length - offset.get()*testBuf.length));
 				
-				seek.get().listenInline(listenerSeek);
+				seek.get().onDone(listenerSeek);
 			}
 		});
 		
 		seek.set(io.seekAsync(SeekType.FROM_BEGINNING, offset.get()*testBuf.length, ondoneseek));
-		seek.get().listenInline(listenerSeek);
+		seek.get().onDone(listenerSeek);
 			
 		sp.blockThrow(0);
 		flush(io);

@@ -1,6 +1,7 @@
 package net.lecousin.framework.event;
 
 import java.util.ArrayList;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.application.LCCore;
 
@@ -10,11 +11,11 @@ import net.lecousin.framework.application.LCCore;
  */
 public class Event<T> implements Listenable<T> {
 
-	private ArrayList<Listener<T>> listeners = null;
+	private ArrayList<Consumer<T>> listeners = null;
 	private ArrayList<Runnable> listenersRunnable = null;
 
 	@Override
-	public synchronized void addListener(Listener<T> listener) {
+	public synchronized void addListener(Consumer<T> listener) {
 		if (listeners == null) listeners = new ArrayList<>(5);
 		listeners.add(listener);
 	}
@@ -26,7 +27,7 @@ public class Event<T> implements Listenable<T> {
 	}
 	
 	@Override
-	public synchronized void removeListener(Listener<T> listener) {
+	public synchronized void removeListener(Consumer<T> listener) {
 		if (listeners == null) return;
 		listeners.remove(listener);
 		if (listeners.isEmpty()) listeners = null;
@@ -44,7 +45,7 @@ public class Event<T> implements Listenable<T> {
 	
 	/** Fire the event (call the listeners). */
 	public void fire(T event) {
-		ArrayList<Listener<T>> list1;
+		ArrayList<Consumer<T>> list1;
 		ArrayList<Runnable> list2;
 		synchronized (this) {
 			if (listeners == null) list1 = null;
@@ -54,7 +55,7 @@ public class Event<T> implements Listenable<T> {
 		}
 		if (list1 != null)
 			for (int i = 0; i < list1.size(); ++i)
-				try { list1.get(i).fire(event); }
+				try { list1.get(i).accept(event); }
 				catch (Exception t) {
 					LCCore.getApplication().getDefaultLogger().error("Event listener error: " + list1.get(i), t);
 				}
@@ -67,7 +68,7 @@ public class Event<T> implements Listenable<T> {
 	}
 	
 	/** Bridge between 2 events: create a listener that will fire the given event when called. */
-	public static <T> Listener<T> createListenerToFire(Event<T> event) {
+	public static <T> Consumer<T> createListenerToFire(Event<T> event) {
 		return event::fire;
 	}
 	

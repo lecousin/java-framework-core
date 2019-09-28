@@ -7,8 +7,8 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.concurrent.Console;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.log.LogPattern;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.Logger.Level;
@@ -90,8 +90,8 @@ public class ConsoleAppender implements Appender {
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> flush() {
-		return new SynchronizationPoint<>(true);
+	public IAsync<Exception> flush() {
+		return new Async<>(true);
 	}
 
 }

@@ -1,8 +1,8 @@
 package net.lecousin.framework.progress;
 
-import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.event.AsyncEvent;
 
 /** Default implementation of a WorkProgress. */
@@ -29,7 +29,7 @@ public class WorkProgressImpl implements WorkProgress {
 	protected long position = 0;
 	protected String text;
 	protected String subText;
-	protected SynchronizationPoint<Exception> synch = new SynchronizationPoint<>();
+	protected Async<Exception> synch = new Async<>();
 	protected boolean eventsInterrupted = false;
 	protected AsyncEvent event = null;
 	
@@ -85,7 +85,7 @@ public class WorkProgressImpl implements WorkProgress {
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> getSynch() {
+	public IAsync<Exception> getSynch() {
 		return synch;
 	}
 	

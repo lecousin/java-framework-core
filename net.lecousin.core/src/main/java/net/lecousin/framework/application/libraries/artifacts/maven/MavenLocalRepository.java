@@ -8,7 +8,7 @@ import java.util.List;
 
 import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -28,7 +28,7 @@ public class MavenLocalRepository implements MavenRepository {
 	private boolean snapshotsEnabled;
 	
 	@Override
-	public AsyncWork<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, byte priority) {
+	public AsyncSupplier<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, byte priority) {
 		Task<List<String>, NoException> task = new Task.OnFile<List<String>, NoException>(
 			dir, "Search artifact versions in local Maven repository", priority
 		) {
@@ -55,17 +55,17 @@ public class MavenLocalRepository implements MavenRepository {
 	}
 	
 	@Override
-	public AsyncWork<MavenPOM, LibraryManagementException> load(
+	public AsyncSupplier<MavenPOM, LibraryManagementException> load(
 		String groupId, String artifactId, String version, MavenPOMLoader pomLoader, byte priority
 	) {
 		if (version.toLowerCase().endsWith("-SNAPSHOT")) {
 			if (!snapshotsEnabled)
-				return new AsyncWork<>(null, null);
+				return new AsyncSupplier<>(null, null);
 		} else {
 			if (!releasesEnabled)
-				return new AsyncWork<>(null, null);
+				return new AsyncSupplier<>(null, null);
 		}
-		AsyncWork<MavenPOM, LibraryManagementException> result = new AsyncWork<>();
+		AsyncSupplier<MavenPOM, LibraryManagementException> result = new AsyncSupplier<>();
 		Task<Void, NoException> task = new Task.OnFile<Void, NoException>(dir, "Search Maven POM in local repository", priority) {
 			@Override
 			public Void run() {
@@ -89,7 +89,7 @@ public class MavenLocalRepository implements MavenRepository {
 					result.unblockSuccess(null);
 					return null;
 				}
-				pomLoader.loadPOM(pom.toURI(), true, priority).listenInline(result);
+				pomLoader.loadPOM(pom.toURI(), true, priority).forward(result);
 				return null;
 			}
 		};
@@ -119,7 +119,7 @@ public class MavenLocalRepository implements MavenRepository {
 	}
 	
 	@Override
-	public AsyncWork<File, IOException> loadFile(
+	public AsyncSupplier<File, IOException> loadFile(
 		String groupId, String artifactId, String version, String classifier, String type, byte priority
 	) {
 		return new Task.OnFile<File, IOException>(dir, "Search file in Maven repository", priority) {

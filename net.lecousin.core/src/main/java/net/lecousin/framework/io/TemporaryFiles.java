@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 
 /** Utility class to create temporary files. */
 public final class TemporaryFiles {
@@ -85,7 +85,7 @@ public final class TemporaryFiles {
 	}
 	
 	/** Create a temporary file. */
-	public AsyncWork<File, IOException> createFileAsync(String prefix, String suffix) {
+	public AsyncSupplier<File, IOException> createFileAsync(String prefix, String suffix) {
 		return new Task.OnFile<File, IOException>(tempDir, "Create temporary file", Task.PRIORITY_NORMAL) {
 			@Override
 			public File run() throws IOException {
@@ -101,7 +101,7 @@ public final class TemporaryFiles {
 	}
 
 	/** Create and open a temporary file. */
-	public AsyncWork<FileIO.ReadWrite, IOException> createAndOpenFileAsync(String prefix, String suffix) {
+	public AsyncSupplier<FileIO.ReadWrite, IOException> createAndOpenFileAsync(String prefix, String suffix) {
 		return new Task.OnFile<FileIO.ReadWrite, IOException>(tempDir, "Create temporary file", Task.PRIORITY_NORMAL) {
 			@Override
 			public FileIO.ReadWrite run() throws IOException {
@@ -125,7 +125,7 @@ public final class TemporaryFiles {
 	}
 	
 	/** Create a temporary directory. */
-	public AsyncWork<File, IOException> createDirectoryAsync(String prefix) {
+	public AsyncSupplier<File, IOException> createDirectoryAsync(String prefix) {
 		return new Task.OnFile<File, IOException>(tempDir, "Create temporary directory", Task.PRIORITY_NORMAL) {
 			@Override
 			public File run() throws IOException {

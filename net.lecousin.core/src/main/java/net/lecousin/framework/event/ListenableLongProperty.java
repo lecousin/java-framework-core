@@ -1,5 +1,7 @@
 package net.lecousin.framework.event;
 
+import java.util.function.Consumer;
+
 /**
  * Property that calls listeners when modified.
  * It extends Mutable to hold the object of this property, and implements Listenable to add/remove lsiteners.
@@ -50,7 +52,7 @@ public class ListenableLongProperty implements Listenable<Long> {
 	}
 	
 	@Override
-	public void addListener(Listener<Long> listener) {
+	public void addListener(Consumer<Long> listener) {
 		event.addListener(listener);
 	}
 	
@@ -60,7 +62,7 @@ public class ListenableLongProperty implements Listenable<Long> {
 	}
 	
 	@Override
-	public void removeListener(Listener<Long> listener) {
+	public void removeListener(Consumer<Long> listener) {
 		event.removeListener(listener);
 	}
 	

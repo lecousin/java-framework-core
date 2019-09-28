@@ -1,12 +1,13 @@
 package net.lecousin.framework.core.tests.event;
 
-import net.lecousin.framework.core.test.LCCoreAbstractTest;
-import net.lecousin.framework.event.Event;
-import net.lecousin.framework.event.Listener;
-import net.lecousin.framework.mutable.MutableInteger;
+import java.util.function.Consumer;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.event.Event;
+import net.lecousin.framework.mutable.MutableInteger;
 
 public class TestEvent extends LCCoreAbstractTest {
 
@@ -17,19 +18,9 @@ public class TestEvent extends LCCoreAbstractTest {
 		MutableInteger called2 = new MutableInteger(0);
 		Runnable runnable2 = () -> { called2.inc(); };
 		MutableInteger val1 = new MutableInteger(0);
-		Listener<Integer> listener1 = new Listener<Integer>() {
-			@Override
-			public void fire(Integer value) {
-				val1.set(value.intValue());
-			}
-		};
+		Consumer<Integer> listener1 = value -> val1.set(value.intValue());
 		MutableInteger val2 = new MutableInteger(0);
-		Listener<Integer> listener2 = new Listener<Integer>() {
-			@Override
-			public void fire(Integer value) {
-				val2.set(value.intValue());
-			}
-		};
+		Consumer<Integer> listener2 = value -> val2.set(value.intValue());
 		
 		Event<Integer> e = new Event<>();
 		

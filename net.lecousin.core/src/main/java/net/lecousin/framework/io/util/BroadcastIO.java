@@ -4,15 +4,15 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
@@ -20,7 +20,7 @@ import net.lecousin.framework.util.Pair;
 /**
  * Aggregation of several IOs, every write is performed on all IOs.
  */
-public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
+public class BroadcastIO extends ConcurrentCloseable<IOException> implements IO.Writable {
 
 	/** Constructor. */
 	public BroadcastIO(IO.Writable[] ios, byte priority, boolean closeIOs) {
@@ -61,9 +61,9 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 	}
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
-		if (!closeIOs) return new SynchronizationPoint<>(true);
-		JoinPoint<Exception> jp = new JoinPoint<>();
+	protected IAsync<IOException> closeUnderlyingResources() {
+		if (!closeIOs) return new Async<>(true);
+		JoinPoint<IOException> jp = new JoinPoint<>();
 		for (int i = 0; i < ios.length; ++i)
 			jp.addToJoin(ios[i].closeAsync());
 		jp.start();
@@ -71,13 +71,13 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		ios = null;
 		ondone.unblock();
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartWriting() {
+	public IAsync<IOException> canStartWriting() {
 		JoinPoint<IOException> jp = new JoinPoint<>();
 		for (int i = 0; i < ios.length; ++i)
 			jp.addToJoin(ios[i].canStartWriting());
@@ -93,7 +93,7 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 		for (int i = 0; i < ios.length; ++i) {
 			ios[i].writeAsync(
 				i == ios.length - 1 ? buffer : buffer.duplicate()
-			).listenInline(new AsyncWorkListener<Integer, IOException>() {
+			).listen(new Listener<Integer, IOException>() {
 				
 				@Override
 				public void ready(Integer result) {
@@ -121,8 +121,8 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
-		AsyncWork<Integer, IOException> result = new AsyncWork<>();
+	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 		new Task.Cpu.FromRunnable("BroadcastIO.writeAsync", priority, () -> {
 			JoinPoint<IOException> jp = new JoinPoint<>();
 			jp.addToJoin(ios.length);
@@ -130,7 +130,7 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 			for (int i = 0; i < ios.length; ++i) {
 				ios[i].writeAsync(
 					i == ios.length - 1 ? buffer : buffer.duplicate()
-				).listenInline(new AsyncWorkListener<Integer, IOException>() {
+				).listen(new Listener<Integer, IOException>() {
 					
 					@Override
 					public void ready(Integer result) {
@@ -153,7 +153,7 @@ public class BroadcastIO extends ConcurrentCloseable implements IO.Writable {
 				});
 			}
 			jp.start();
-			jp.listenInline(() -> result.unblockSuccess(Integer.valueOf(nb)), result);
+			jp.onDone(() -> result.unblockSuccess(Integer.valueOf(nb)), result);
 		}).start();
 		return result;
 	}

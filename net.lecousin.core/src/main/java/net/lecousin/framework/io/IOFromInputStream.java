@@ -5,17 +5,17 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
 /** Implements Readable from an InputStream. */
-public class IOFromInputStream extends ConcurrentCloseable implements IO.Readable {
+public class IOFromInputStream extends ConcurrentCloseable<IOException> implements IO.Readable {
 
 	/** Constructor. */
 	public IOFromInputStream(InputStream stream, String sourceDescription, TaskManager manager, byte priority) {
@@ -46,14 +46,14 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 		}
 		
 		@Override
-		public AsyncWork<Long, IOException> getSizeAsync() {
-			return new AsyncWork<>(Long.valueOf(size), null);
+		public AsyncSupplier<Long, IOException> getSizeAsync() {
+			return new AsyncSupplier<>(Long.valueOf(size), null);
 		}
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartReading() {
-		return new SynchronizationPoint<>(true);
+	public IAsync<IOException> canStartReading() {
+		return new Async<>(true);
 	}
 
 	public InputStream getInputStream() { return stream; }
@@ -76,12 +76,12 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	}
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		return IOUtil.closeAsync(stream);
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		stream = null;
 		ondone.unblock();
 	}
@@ -122,7 +122,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	}
 	
 	@Override
-	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		Task<Integer,IOException> t = new Task<Integer,IOException>(manager, "Read from InputStream", priority, ondone) {
 			@Override
 			public Integer run() throws IOException, CancelException {
@@ -142,7 +142,7 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	}
 	
 	@Override
-	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		Task<Integer,IOException> t = new Task<Integer,IOException>(manager, "Read from InputStream", priority, ondone) {
 			@Override
 			public Integer run() throws IOException, CancelException {
@@ -170,10 +170,10 @@ public class IOFromInputStream extends ConcurrentCloseable implements IO.Readabl
 	
 	
 	@Override
-	public AsyncWork<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+	public AsyncSupplier<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		if (n <= 0) {
 			if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(0), null));
-			return new AsyncWork<>(Long.valueOf(0), null);
+			return new AsyncSupplier<>(Long.valueOf(0), null);
 		}
 		// InputStream does not comply to our restrictions, and may end up after the end of the stream, so we cannot use the skip method
 		Task<Long,IOException> t = new Task<Long,IOException>(manager, "Skip from InputStream", priority, ondone) {

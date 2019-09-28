@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -26,12 +26,12 @@ public final class ThreadingDebugHelper {
 	}
 	
 	/** Indicates that a JoinPoint is waiting for a synchronization point. */
-	public static synchronized void registerJoin(JoinPoint<?> jp, ISynchronizationPoint<?> sp) {
+	public static synchronized void registerJoin(JoinPoint<?> jp, IAsync<?> sp) {
 		for (JP j : jps)
 			if (j.jp == jp) {
 				j.toJoinTraces.add(Thread.currentThread().getStackTrace());
 				j.toJoinSP.add(sp);
-				sp.listenInline(() -> {
+				sp.onDone(() -> {
 					int i = j.toJoinSP.indexOf(sp);
 					j.toJoinSP.remove(i);
 					j.toJoinTraces.remove(i);
@@ -45,7 +45,7 @@ public final class ThreadingDebugHelper {
 		Task.Cpu<Void,NoException> task = new Task.Cpu<Void,NoException>("Check JoinPoint", Task.PRIORITY_LOW) {
 			@Override
 			public Void run() {
-				if (jp.isUnblocked()) return null;
+				if (jp.isDone()) return null;
 				synchronized (ThreadingDebugHelper.class) {
 					for (int i = 0; i < jps.size(); ++i)
 						if (jps.get(i).jp == jp) {
@@ -58,8 +58,8 @@ public final class ThreadingDebugHelper {
 									.append(":").append(e.getLineNumber()).append("\r\n");
 							s.append(" + Remaining joins:\r\n");
 							for (int k = 0; k < j.toJoinSP.size(); ++k) {
-								ISynchronizationPoint<?> sp = j.toJoinSP.get(k);
-								if (sp.isUnblocked()) continue;
+								IAsync<?> sp = j.toJoinSP.get(k);
+								if (sp.isDone()) continue;
 								s.append("    + ");
 								if (sp instanceof Task.Output)
 									s.append("Task [").append(((Task<?,?>.Output)sp).getTask().getDescription())
@@ -83,7 +83,7 @@ public final class ThreadingDebugHelper {
 	}
 	
 	/** Indicate the given JoinPoint has been unblocked. */
-	public static synchronized void unblocked(SynchronizationPoint<?> sp) {
+	public static synchronized void unblocked(Async<?> sp) {
 		if (sp instanceof JoinPoint) {
 			for (int i = 0; i < jps.size(); ++i)
 				if (jps.get(i).jp == sp) {
@@ -99,7 +99,7 @@ public final class ThreadingDebugHelper {
 		private JoinPoint<?> jp;
 		private StackTraceElement[] creationTrace;
 		private ArrayList<StackTraceElement[]> toJoinTraces = new ArrayList<>();
-		private ArrayList<ISynchronizationPoint<?>> toJoinSP = new ArrayList<>();
+		private ArrayList<IAsync<?>> toJoinSP = new ArrayList<>();
 	}
 	
 	private static class MonitoredTask {
@@ -109,14 +109,14 @@ public final class ThreadingDebugHelper {
 		
 		Task<?,?> task;
 		long creation = System.currentTimeMillis();
-		LinkedList<ISynchronizationPoint<?>> waitingFor = new LinkedList<>();
+		LinkedList<IAsync<?>> waitingFor = new LinkedList<>();
 	}
 	
 	private static LinkedList<MonitoredTask> tasks = new LinkedList<>();
 	
 	static void newTask(Task<?,?> task) {
 		synchronized (tasks) { tasks.add(new MonitoredTask(task)); }
-		task.getOutput().listenInline(() -> {
+		task.getOutput().onDone(() -> {
 			synchronized (tasks) {
 				for (Iterator<MonitoredTask> it = tasks.iterator(); it.hasNext(); )
 					if (it.next().task == task) {
@@ -127,7 +127,7 @@ public final class ThreadingDebugHelper {
 		});
 	}
 	
-	static void waitingFor(Task<?,?> task, ISynchronizationPoint<?> sp) {
+	static void waitingFor(Task<?,?> task, IAsync<?> sp) {
 		synchronized (tasks) {
 			for (MonitoredTask t : tasks) {
 				if (t.task != task) continue;
@@ -138,7 +138,7 @@ public final class ThreadingDebugHelper {
 	}
 	
 	/** Indicate a task is waiting for a synchronization point to start. */
-	static void waitingFor(Task<?,?> task, ISynchronizationPoint<?>[] sp) {
+	static void waitingFor(Task<?,?> task, IAsync<?>[] sp) {
 		synchronized (tasks) {
 			for (MonitoredTask t : tasks) {
 				if (t.task != task) continue;
@@ -176,10 +176,10 @@ public final class ThreadingDebugHelper {
 							StringBuilder s = new StringBuilder();
 							s.append("Task not yet done: ").append(t.task.description).append("\r\n");
 							s.append("  -> status = ").append(t.task.status).append("\r\n");
-							for (ISynchronizationPoint<?> sp : t.waitingFor) {
+							for (IAsync<?> sp : t.waitingFor) {
 								s.append(" -> Waiting for ");
 								s.append(sp.toString());
-								if (sp.isUnblocked())
+								if (sp.isDone())
 									s.append(" [unblocked]");
 								if (sp.hasError())
 									s.append(" [has error]");

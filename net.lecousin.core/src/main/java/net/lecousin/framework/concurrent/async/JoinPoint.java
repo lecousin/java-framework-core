@@ -1,4 +1,4 @@
-package net.lecousin.framework.concurrent.synch;
+package net.lecousin.framework.concurrent.async;
 
 import java.util.Collection;
 import java.util.function.Function;
@@ -20,7 +20,7 @@ import net.lecousin.framework.exception.NoException;
  * immediately unblocked, whatever there are remaining waited events or not, and whatever it has been started already or not.
  * @param <TError> type of exception it may raise
  */
-public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TError> {
+public class JoinPoint<TError extends Exception> extends Async<TError> {
 
 	/** Constructor. */
 	public JoinPoint() {
@@ -52,9 +52,9 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * <li>Call the joined method if the synchronization point has been unblocked with success</li>
 	 * </ul>
 	 */
-	public synchronized void addToJoin(ISynchronizationPoint<? extends TError> sp) {
+	public synchronized void addToJoin(IAsync<? extends TError> sp) {
 		nbToJoin++;
-		sp.listenInline(() -> {
+		sp.onDone(() -> {
 			if (sp.isCancelled())
 				cancel(sp.getCancelEvent());
 			else if (sp.hasError())
@@ -74,9 +74,9 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * <li>Call the joined method if the synchronization point has been unblocked with success</li>
 	 * </ul>
 	 */
-	public synchronized void addToJoin(ISynchronizationPoint<?> sp, Function<Exception, TError> errorConverter) {
+	public synchronized void addToJoin(IAsync<?> sp, Function<Exception, TError> errorConverter) {
 		nbToJoin++;
-		sp.listenInline(() -> {
+		sp.onDone(() -> {
 			if (sp.isCancelled())
 				cancel(sp.getCancelEvent());
 			else if (sp.hasError())
@@ -101,17 +101,17 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * Once the synchronization point is unblock (whatever it succeed, it has an error or it has been cancelled)
 	 * the joined method is called.
 	 */
-	public synchronized void addToJoinNoException(ISynchronizationPoint<?> sp) {
+	public synchronized void addToJoinNoException(IAsync<?> sp) {
 		nbToJoin++;
-		sp.listenInline(this::joined);
+		sp.onDone(this::joined);
 		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
 	}
 	
 	/** Similar to addToJoin, but in case the synchronization point is cancelled,
 	 * it is simply consider as done, and do not cancel this JoinPoint. */
-	public synchronized void addToJoinDoNotCancel(ISynchronizationPoint<? extends TError> sp) {
+	public synchronized void addToJoinDoNotCancel(IAsync<? extends TError> sp) {
 		nbToJoin++;
-		sp.listenInline(() -> {
+		sp.onDone(() -> {
 			if (sp.hasError())
 				error(sp.getError());
 			else
@@ -138,7 +138,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 			LCCore.getApplication().getDefaultLogger().error("JoinPoint: nbToJoin already 0", new Exception());
 			return;
 		}
-		if (isUnblocked()) {
+		if (isDone()) {
 			nbToJoin--;
 			if (!hasError() && !isCancelled())
 				LCCore.getApplication().getDefaultLogger().error("JoinPoint: joined after timeout", new Exception());
@@ -153,12 +153,12 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * nothing is done, else we force it to become unblocked, and the given callback is called if any.
 	 */
 	public synchronized void timeout(long millis, Runnable callback) {
-		if (isUnblocked()) return;
+		if (isDone()) return;
 		Task<Void,NoException> task = new Task.Cpu<Void,NoException>("JoinPoint timeout", Task.PRIORITY_RATHER_LOW) {
 			@Override
 			public Void run() {
 				synchronized (JoinPoint.this) {
-					if (isUnblocked()) return null;
+					if (JoinPoint.this.isDone()) return null;
 					if (callback != null)
 						try { callback.run(); }
 						catch (Exception t) {
@@ -170,7 +170,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 			}
 		};
 		task.executeIn(millis);
-		if (isUnblocked()) return;
+		if (isDone()) return;
 		task.start();
 	}
 	
@@ -179,12 +179,12 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * This method is similar to the method timeout, except that this JoinPoint is not unblocked when the timeout is reached.
 	 */
 	public synchronized void listenTime(long timeout, Runnable callback) {
-		if (isUnblocked()) return;
+		if (isDone()) return;
 		Task<Void,NoException> task = new Task.Cpu<Void,NoException>("JoinPoint timeout", Task.PRIORITY_RATHER_LOW) {
 			@Override
 			public Void run() {
 				synchronized (JoinPoint.this) {
-					if (isUnblocked()) return null;
+					if (JoinPoint.this.isDone()) return null;
 					if (callback != null)
 						try { callback.run(); }
 						catch (Exception t) {
@@ -196,14 +196,14 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 			}
 		};
 		task.executeIn(timeout);
-		if (isUnblocked()) return;
+		if (isDone()) return;
 		task.start();
 	}
 	
 	/**
 	 * Shortcut method to create a JoinPoint waiting for the given synchronization points, <b>the JoinPoint is started by this method</b>.
 	 */
-	public static JoinPoint<Exception> fromSynchronizationPoints(ISynchronizationPoint<?>... synchPoints) {
+	public static JoinPoint<Exception> from(IAsync<?>... synchPoints) {
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		for (int i = 0; i < synchPoints.length; ++i)
 			jp.addToJoin(synchPoints[i]);
@@ -214,9 +214,9 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	/**
 	 * Shortcut method to create a JoinPoint waiting for the given synchronization points, <b>the JoinPoint is started by this method</b>.
 	 */
-	public static JoinPoint<Exception> fromSynchronizationPoints(Collection<? extends ISynchronizationPoint<?>> synchPoints) {
+	public static JoinPoint<Exception> from(Collection<? extends IAsync<?>> synchPoints) {
 		JoinPoint<Exception> jp = new JoinPoint<>();
-		for (ISynchronizationPoint<?> sp : synchPoints)
+		for (IAsync<?> sp : synchPoints)
 			jp.addToJoin(sp);
 		jp.start();
 		return jp;
@@ -227,7 +227,7 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * If some given synchronization points are null, they are just skipped.
 	 */
 	@SafeVarargs
-	public static <T extends Exception> JoinPoint<T> fromSynchronizationPointsSimilarError(ISynchronizationPoint<T>... synchPoints) {
+	public static <T extends Exception> JoinPoint<T> fromSimilarError(IAsync<T>... synchPoints) {
 		JoinPoint<T> jp = new JoinPoint<>();
 		for (int i = 0; i < synchPoints.length; ++i)
 			if (synchPoints[i] != null)
@@ -263,13 +263,13 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * The JoinPoint is not unblocked until all tasks are done. If any has error or is cancel, the error or cancellation
 	 * reason is not given to the JoinPoint, in contrary of the method fromTasks.
 	 */
-	public static JoinPoint<NoException> onAllDone(Collection<? extends Task<?,?>> tasks) {
+	public static JoinPoint<NoException> fromTasksNoErrorOrCancel(Collection<? extends Task<?,?>> tasks) {
 		JoinPoint<NoException> jp = new JoinPoint<>();
 		jp.addToJoin(tasks.size());
 		Runnable jpr = jp::joined;
 		jp.start();
 		for (Task<?,?> t : tasks)
-			t.getOutput().listenInline(jpr);
+			t.getOutput().onDone(jpr);
 		return jp;
 	}
 	
@@ -279,13 +279,13 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * If any synchronization point has an error or is cancelled, the JoinPoint is immediately unblocked.
 	 * If some given synchronization points are null, they are just skipped.
 	 */
-	public static void listenInline(Runnable listener, ISynchronizationPoint<?>... synchPoints) {
+	public static void joinThenDo(Runnable listener, IAsync<?>... synchPoints) {
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		for (int i = 0; i < synchPoints.length; ++i)
 			if (synchPoints[i] != null)
 				jp.addToJoin(synchPoints[i]);
 		jp.start();
-		jp.listenInline(listener);
+		jp.onDone(listener);
 	}
 
 	/**
@@ -295,13 +295,13 @@ public class JoinPoint<TError extends Exception> extends SynchronizationPoint<TE
 	 * If any has error or is cancel, the error or cancellation reason is not given to the JoinPoint,
 	 * in contrary of the method listenInline.
 	 */
-	public static void listenInlineOnAllDone(Runnable listener, ISynchronizationPoint<?>... synchPoints) {
+	public static void joinOnDoneThenDo(Runnable listener, IAsync<?>... synchPoints) {
 		JoinPoint<NoException> jp = new JoinPoint<>();
 		jp.addToJoin(synchPoints.length);
 		Runnable jpr = jp::joined;
 		for (int i = 0; i < synchPoints.length; ++i)
-			synchPoints[i].listenInline(jpr);
+			synchPoints[i].onDone(jpr);
 		jp.start();
-		jp.listenInline(listener);
+		jp.onDone(listener);
 	}
 }

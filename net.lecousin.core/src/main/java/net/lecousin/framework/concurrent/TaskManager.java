@@ -3,6 +3,8 @@ package net.lecousin.framework.concurrent;
 import java.util.List;
 import java.util.concurrent.ThreadFactory;
 
+import net.lecousin.framework.concurrent.async.CancelException;
+
 /**
  * Base class to implement a TaskManager, which is responsible to execute tasks in threads.
  */

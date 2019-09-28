@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.util.Pair;
 

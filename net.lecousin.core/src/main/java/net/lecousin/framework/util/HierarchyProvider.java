@@ -1,9 +1,9 @@
 package net.lecousin.framework.util;
 
 import java.util.List;
+import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 
 /**
  * Generic interface to navigate in a hierarchy.
@@ -30,8 +30,8 @@ public interface HierarchyProvider {
 		/**
 		 * Go through the descendants of the given element, and call the listener for each element.
 		 */
-		default void goThrough(ElementType element, Listener<ElementType> listener) {
-			listener.fire(element);
+		default void goThrough(ElementType element, Consumer<ElementType> listener) {
+			listener.accept(element);
 			for (ElementType child : getChildren(element, true))
 				goThrough(child, listener);
 		}
@@ -49,10 +49,10 @@ public interface HierarchyProvider {
 		boolean mayHaveChildren(ElementType element);
 		
 		/** Return true if the given element has children. */
-		AsyncWork<Boolean,Exception> hasChildren(ElementType element, boolean refresh, byte priority);
+		AsyncSupplier<Boolean,Exception> hasChildren(ElementType element, boolean refresh, byte priority);
 		
 		/** Return the children of the given element. */
-		AsyncWork<List<? extends ElementType>,Exception> getChildren(ElementType element, boolean refresh, byte priority);
+		AsyncSupplier<List<? extends ElementType>,Exception> getChildren(ElementType element, boolean refresh, byte priority);
 	}
 	
 }

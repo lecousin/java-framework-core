@@ -1,8 +1,8 @@
 package net.lecousin.framework.core.tests.progress;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.progress.WorkProgress;
 import net.lecousin.framework.progress.WorkProgressImpl;
@@ -37,12 +37,12 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		Assert.assertEquals("Test", p.getText());
 		p.setSubText("12345");
 		Assert.assertEquals("12345", p.getSubText());
-		SynchronizationPoint<Exception> changed = new SynchronizationPoint<>();
+		Async<Exception> changed = new Async<>();
 		Runnable listener = () -> {
 			changed.unblock();
 		};
 		p.listen(listener);
-		Assert.assertFalse(changed.isUnblocked());
+		Assert.assertFalse(changed.isDone());
 		p.progress(200);
 		Assert.assertEquals(1000, p.getAmount());
 		Assert.assertEquals(700, p.getRemainingWork());
@@ -70,7 +70,7 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		Assert.assertEquals(699, p.getRemainingWork());
 		Assert.assertEquals(301, p.getPosition());
 		changed.blockThrow(500);
-		Assert.assertFalse(changed.isUnblocked());
+		Assert.assertFalse(changed.isDone());
 		p.setAmount(900);
 		Assert.assertEquals(900, p.getAmount());
 		Assert.assertEquals(599, p.getRemainingWork());

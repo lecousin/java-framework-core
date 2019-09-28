@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -38,7 +38,7 @@ public class LocalizableString implements ILocalizableString {
 	}
 	
 	@Override
-	public AsyncWork<String, NoException> localize(String[] languageTag) {
+	public AsyncSupplier<String, NoException> localize(String[] languageTag) {
 		return LCCore.getApplication().getLocalizedProperties().localize(languageTag, namespace, string, values);
 	}
 	

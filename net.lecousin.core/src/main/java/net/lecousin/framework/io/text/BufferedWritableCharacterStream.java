@@ -8,15 +8,15 @@ import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
 
 /** Implement a buffered writable character stream from a writable IO. */
-public class BufferedWritableCharacterStream extends ConcurrentCloseable implements ICharacterStream.Writable.Buffered {
+public class BufferedWritableCharacterStream extends ConcurrentCloseable<IOException> implements ICharacterStream.Writable.Buffered {
 
 	/** Constructor. */
 	public BufferedWritableCharacterStream(IO.Writable output, Charset charset, int bufferSize) {
@@ -44,12 +44,12 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 	private int pos = 0;
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		return output.closeAsync();
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		output = null;
 		encoder = null;
 		buffer = null;
@@ -80,7 +80,7 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 		return encoder.charset();
 	}
 	
-	private SynchronizationPoint<IOException> flushing = null;
+	private Async<IOException> flushing = null;
 
 	private void encodeAndWrite() {
 		new Task.Cpu<Void,NoException>("Encoding characters", output.getPriority()) {
@@ -93,8 +93,8 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 					return null;
 				}
 				encodedBuffer.flip();
-				AsyncWork<Integer,IOException> writing = output.writeAsync(encodedBuffer);
-				writing.listenInline(() -> {
+				AsyncSupplier<Integer,IOException> writing = output.writeAsync(encodedBuffer);
+				writing.onDone(() -> {
 					if (!writing.isSuccessful())
 						flushing.error(writing.getError());
 					else if (result.isOverflow())
@@ -110,7 +110,7 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 		operation(flushing);
 	}
 	
-	private ISynchronizationPoint<IOException> finalFlush(SynchronizationPoint<IOException> sp, boolean flushOnly) {
+	private IAsync<IOException> finalFlush(Async<IOException> sp, boolean flushOnly) {
 		encodedBuffer.clear();
 		CoderResult result;
 		if (!flushOnly) {
@@ -124,22 +124,22 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 			result = encoder.flush(encodedBuffer);
 		}
 		encodedBuffer.flip();
-		AsyncWork<Integer,IOException> writing;
+		AsyncSupplier<Integer,IOException> writing;
 		if (encodedBuffer.hasRemaining())
 			writing = output.writeAsync(encodedBuffer);
 		else
-			writing = new AsyncWork<>(Integer.valueOf(0), null);
+			writing = new AsyncSupplier<>(Integer.valueOf(0), null);
 		if (!result.isOverflow()) {
 			if (sp == null)
 				return writing;
-			writing.listenInline(sp);
+			writing.onDone(sp);
 			return operation(sp);
 		}
 		if (sp == null)
-			sp = new SynchronizationPoint<>();
-		SynchronizationPoint<IOException> spp = sp;
+			sp = new Async<>();
+		Async<IOException> spp = sp;
 		boolean fo = flushOnly;
-		writing.listenInline(() -> {
+		writing.onDone(() -> {
 			if (!writing.isSuccessful())
 				spp.error(writing.getError());
 			else
@@ -150,9 +150,9 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 	
 	private void flushBuffer() throws IOException {
 		do {
-			SynchronizationPoint<IOException> sp;
+			Async<IOException> sp;
 			synchronized (output) {
-				if (flushing != null && flushing.isUnblocked()) {
+				if (flushing != null && flushing.isDone()) {
 					if (flushing.hasError())
 						throw flushing.getError();
 					flushing = null;
@@ -165,7 +165,7 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 					cb2 = cb;
 					cb = tmp2;
 					cb.clear();
-					flushing = new SynchronizationPoint<>();
+					flushing = new Async<>();
 					cb2.limit(pos);
 					encodeAndWrite();
 					pos = 0;
@@ -177,12 +177,12 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 		} while (true);
 	}
 
-	private SynchronizationPoint<IOException> flushBufferAsync() {
-		SynchronizationPoint<IOException> sp;
+	private Async<IOException> flushBufferAsync() {
+		Async<IOException> sp;
 		synchronized (output) {
-			if (flushing != null && flushing.isUnblocked()) {
+			if (flushing != null && flushing.isDone()) {
 				if (flushing.hasError())
-					return new SynchronizationPoint<>(flushing.getError());
+					return new Async<>(flushing.getError());
 				flushing = null;
 			}
 			if (flushing == null) {
@@ -193,40 +193,40 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 				cb2 = cb;
 				cb = tmp2;
 				cb.clear();
-				flushing = new SynchronizationPoint<>();
+				flushing = new Async<>();
 				cb2.limit(pos);
 				encodeAndWrite();
 				pos = 0;
-				return new SynchronizationPoint<>(true);
+				return new Async<>(true);
 			}
 			sp = flushing;
 		}
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
-		sp.listenInline(() -> flushBufferAsync().listenInline(result), result);
+		Async<IOException> result = new Async<>();
+		sp.onDone(() -> flushBufferAsync().onDone(result), result);
 		return result;
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> flush() {
-		SynchronizationPoint<IOException> sp;
+	public IAsync<IOException> flush() {
+		Async<IOException> sp;
 		do {
 			synchronized (output) {
-				if (flushing == null || flushing.isUnblocked()) {
+				if (flushing == null || flushing.isDone()) {
 					if (pos == 0)
 						return finalFlush(null, false);
 					try { flushBuffer(); }
-					catch (IOException e) { return new SynchronizationPoint<>(e); }
+					catch (IOException e) { return new Async<>(e); }
 				}
 				sp = flushing;
 				break;
 			}
 		} while (true);
-		SynchronizationPoint<IOException> sp2 = new SynchronizationPoint<>();
-		sp.listenInline(() -> {
+		Async<IOException> sp2 = new Async<>();
+		sp.onDone(() -> {
 			if (sp.hasError())
 				sp2.error(sp.getError());
 			else
-				flush().listenInline(sp2);
+				flush().onDone(sp2);
 		});
 		return sp2;
 	}
@@ -252,21 +252,21 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 	}
 
 	@Override
-	public ISynchronizationPoint<IOException> writeAsync(char c) {
+	public IAsync<IOException> writeAsync(char c) {
 		buffer[pos++] = c;
 		if (pos == buffer.length)
 			return flushBufferAsync();
-		return new SynchronizationPoint<>(true);
+		return new Async<>(true);
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> writeAsync(char[] c, int off, int len) {
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+	public IAsync<IOException> writeAsync(char[] c, int off, int len) {
+		Async<IOException> result = new Async<>();
 		writeAsync(c, off, len, result);
 		return operation(result);
 	}
 	
-	private void writeAsync(char[] c, int off, int len, SynchronizationPoint<IOException> result) {
+	private void writeAsync(char[] c, int off, int len, Async<IOException> result) {
 		new Task.Cpu<Void, NoException>("BufferedWritableCharacterStream.writeAsync", output.getPriority()) {
 			@Override
 			public Void run() {
@@ -275,12 +275,12 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable impleme
 				pos += l;
 				if (l == len) {
 					if (pos == buffer.length)
-						flushBufferAsync().listenInline(result);
+						flushBufferAsync().onDone(result);
 					else
 						result.unblock();
 					return null;
 				}
-				flushBufferAsync().listenInline(() -> writeAsync(c, off + l, len - l, result), result);
+				flushBufferAsync().onDone(() -> writeAsync(c, off + l, len - l, result), result);
 				return null;
 			}
 		}.start();

@@ -14,11 +14,11 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOAsInputStream;
@@ -43,9 +43,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 	protected byte priority;
 	protected int maxTextSize = -1;
 	
-	protected abstract ISynchronizationPoint<SerializationException> initializeDeserialization(IO.Readable input);
+	protected abstract IAsync<SerializationException> initializeDeserialization(IO.Readable input);
 	
-	protected abstract ISynchronizationPoint<SerializationException> finalizeDeserialization();
+	protected abstract IAsync<SerializationException> finalizeDeserialization();
 	
 	@Override
 	public int getMaximumTextSize() {
@@ -58,13 +58,13 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	@Override
-	public <T> AsyncWork<T, SerializationException> deserialize(TypeDefinition type, IO.Readable input, List<SerializationRule> rules) {
+	public <T> AsyncSupplier<T, SerializationException> deserialize(TypeDefinition type, IO.Readable input, List<SerializationRule> rules) {
 		priority = input.getPriority();
-		ISynchronizationPoint<SerializationException> init = initializeDeserialization(input);
-		AsyncWork<T, SerializationException> result = new AsyncWork<>();
-		init.listenAsync(new DeserializationTask(() -> {
-			AsyncWork<T, SerializationException> sp = deserializeValue(null, type, "", rules);
-			sp.listenInline(obj -> finalizeDeserialization().listenInline(() -> result.unblockSuccess(obj), result), result);
+		IAsync<SerializationException> init = initializeDeserialization(input);
+		AsyncSupplier<T, SerializationException> result = new AsyncSupplier<>();
+		init.thenStart(new DeserializationTask(() -> {
+			AsyncSupplier<T, SerializationException> sp = deserializeValue(null, type, "", rules);
+			sp.onDone(obj -> finalizeDeserialization().onDone(() -> result.unblockSuccess(obj), result), result);
 		}), result);
 		return result;
 	}
@@ -100,7 +100,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	
 	/** Deserialize a value. */
 	@SuppressWarnings("unchecked")
-	public <T> AsyncWork<T, SerializationException> deserializeValue(
+	public <T> AsyncSupplier<T, SerializationException> deserializeValue(
 		SerializationContext context, TypeDefinition type, String path, List<SerializationRule> rules
 	) {
 		rules = addRulesForType(new SerializationClass(type), rules);
@@ -111,9 +111,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 			newType = rule.getDeserializationType(newType, context);
 		}
 		
-		AsyncWork<?, SerializationException> value = deserializeValueType(context, newType, path, rules);
-		AsyncWork<T, SerializationException> result = new AsyncWork<>();
-		if (value.isUnblocked()) {
+		AsyncSupplier<?, SerializationException> value = deserializeValueType(context, newType, path, rules);
+		AsyncSupplier<T, SerializationException> result = new AsyncSupplier<>();
+		if (value.isDone()) {
 			if (value.hasError()) result.error(value.getError());
 			else {
 				Object o = value.getResult();
@@ -130,7 +130,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			return result;
 		}
 		List<SerializationRule> rul = rules;
-		value.listenAsync(new DeserializationTask(() -> {
+		value.thenStart(new DeserializationTask(() -> {
 			Object o = value.getResult();
 			ListIterator<TypeDefinition> itType = rulesTypes.listIterator(rul.size());
 			ListIterator<SerializationRule> itRule = rul.listIterator(rul.size());
@@ -146,21 +146,21 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes", "squid:S3776" })
-	private <T> AsyncWork<T, SerializationException> deserializeValueType(
+	private <T> AsyncSupplier<T, SerializationException> deserializeValueType(
 		SerializationContext context, TypeDefinition type, String path, List<SerializationRule> rules
 	) {
 		Class<?> c = type.getBase();
 		
 		if (c.isArray()) {
 			if (byte[].class.equals(c))
-				return (AsyncWork<T, SerializationException>)deserializeByteArrayValue(context, rules);
-			return (AsyncWork<T, SerializationException>)deserializeCollectionValue(context, type, path, rules);
+				return (AsyncSupplier<T, SerializationException>)deserializeByteArrayValue(context, rules);
+			return (AsyncSupplier<T, SerializationException>)deserializeCollectionValue(context, type, path, rules);
 		}
 		
 		if (boolean.class.equals(c))
-			return (AsyncWork<T, SerializationException>)deserializeBooleanValue(false);
+			return (AsyncSupplier<T, SerializationException>)deserializeBooleanValue(false);
 		if (Boolean.class.equals(c))
-			return (AsyncWork<T, SerializationException>)deserializeBooleanValue(true);
+			return (AsyncSupplier<T, SerializationException>)deserializeBooleanValue(true);
 		
 		if (byte.class.equals(c) ||
 			short.class.equals(c) ||
@@ -168,19 +168,19 @@ public abstract class AbstractDeserializer implements Deserializer {
 			long.class.equals(c) ||
 			float.class.equals(c) ||
 			double.class.equals(c))
-			return (AsyncWork<T, SerializationException>)deserializeNumericValue(c, false, null);
+			return (AsyncSupplier<T, SerializationException>)deserializeNumericValue(c, false, null);
 		if (Number.class.isAssignableFrom(c))
-			return (AsyncWork<T, SerializationException>)deserializeNumericValue(c, true, null);
+			return (AsyncSupplier<T, SerializationException>)deserializeNumericValue(c, true, null);
 			
 		if (char.class.equals(c))
-			return (AsyncWork<T, SerializationException>)deserializeCharacterValue(false);
+			return (AsyncSupplier<T, SerializationException>)deserializeCharacterValue(false);
 		if (Character.class.equals(c))
-			return (AsyncWork<T, SerializationException>)deserializeCharacterValue(true);
+			return (AsyncSupplier<T, SerializationException>)deserializeCharacterValue(true);
 		
 		if (CharSequence.class.isAssignableFrom(c)) {
-			AsyncWork<? extends CharSequence, SerializationException> str = deserializeStringValue();
-			AsyncWork<T, SerializationException> result = new AsyncWork<>();
-			str.listenInline(
+			AsyncSupplier<? extends CharSequence, SerializationException> str = deserializeStringValue();
+			AsyncSupplier<T, SerializationException> result = new AsyncSupplier<>();
+			str.onDone(
 				string -> {
 					if (string == null) {
 						result.unblockSuccess(null);
@@ -220,9 +220,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 		}
 
 		if (c.isEnum()) {
-			AsyncWork<? extends CharSequence, SerializationException> str = deserializeStringValue();
-			AsyncWork<T, SerializationException> result = new AsyncWork<>();
-			str.listenInline(
+			AsyncSupplier<? extends CharSequence, SerializationException> str = deserializeStringValue();
+			AsyncSupplier<T, SerializationException> result = new AsyncSupplier<>();
+			str.onDone(
 				string -> {
 					if (string == null) {
 						result.unblockSuccess(null);
@@ -240,42 +240,44 @@ public abstract class AbstractDeserializer implements Deserializer {
 		}
 
 		if (Collection.class.isAssignableFrom(c))
-			return (AsyncWork<T, SerializationException>)deserializeCollectionValue(context, type, path, rules);
+			return (AsyncSupplier<T, SerializationException>)deserializeCollectionValue(context, type, path, rules);
 
 		if (Map.class.isAssignableFrom(c))
-			return (AsyncWork<T, SerializationException>)deserializeMapValue(context, type, path, rules);
+			return (AsyncSupplier<T, SerializationException>)deserializeMapValue(context, type, path, rules);
 		
 		if (InputStream.class.isAssignableFrom(c))
-			return (AsyncWork<T, SerializationException>)deserializeInputStreamValue(context, rules);
+			return (AsyncSupplier<T, SerializationException>)deserializeInputStreamValue(context, rules);
 		
 		if (IO.Readable.class.isAssignableFrom(c))
-			return (AsyncWork<T, SerializationException>)deserializeIOReadableValue(context, rules);
+			return (AsyncSupplier<T, SerializationException>)deserializeIOReadableValue(context, rules);
 
 		return deserializeObjectValue(context, type, path, rules);
 	}
 	
 	// *** boolean ***
 	
-	protected abstract AsyncWork<Boolean, SerializationException> deserializeBooleanValue(boolean nullable);
+	protected abstract AsyncSupplier<Boolean, SerializationException> deserializeBooleanValue(boolean nullable);
 
 	@SuppressWarnings("unused")
-	protected AsyncWork<Boolean, SerializationException> deserializeBooleanAttributeValue(AttributeContext context, boolean nullable) {
+	protected AsyncSupplier<Boolean, SerializationException> deserializeBooleanAttributeValue(AttributeContext context, boolean nullable) {
 		return deserializeBooleanValue(nullable);
 	}
 	
 	// *** numeric ***
 
-	protected abstract AsyncWork<? extends Number, SerializationException> deserializeNumericValue(
+	protected abstract AsyncSupplier<? extends Number, SerializationException> deserializeNumericValue(
 		Class<?> type, boolean nullable, Class<? extends IntegerUnit> targetUnit);
 
-	protected AsyncWork<? extends Number, SerializationException> deserializeNumericAttributeValue(AttributeContext context, boolean nullable) {
+	protected AsyncSupplier<? extends Number, SerializationException> deserializeNumericAttributeValue(
+		AttributeContext context, boolean nullable
+	) {
 		Unit unit = context.getAttribute().getAnnotation(false, Unit.class);
 		Class<? extends IntegerUnit> target = unit != null ? unit.value() : null;
 		return deserializeNumericValue(context.getAttribute().getType().getBase(), nullable, target);
 	}
 	
 	/** Convert a BigDecimal into the specified type. */
-	public static void convertBigDecimalValue(BigDecimal n, Class<?> type, AsyncWork<Number, SerializationException> result) {
+	public static void convertBigDecimalValue(BigDecimal n, Class<?> type, AsyncSupplier<Number, SerializationException> result) {
 		try {
 			if (byte.class.equals(type) || Byte.class.equals(type))
 				result.unblockSuccess(Byte.valueOf(n.byteValueExact()));
@@ -344,10 +346,10 @@ public abstract class AbstractDeserializer implements Deserializer {
 	// *** character ***
 	
 	/** By default, deserialize a string and get the first character. */
-	protected AsyncWork<Character, SerializationException> deserializeCharacterValue(boolean nullable) {
-		AsyncWork<? extends CharSequence, SerializationException> read = deserializeStringValue();
-		AsyncWork<Character, SerializationException> result = new AsyncWork<>();
-		read.listenInline(string -> {
+	protected AsyncSupplier<Character, SerializationException> deserializeCharacterValue(boolean nullable) {
+		AsyncSupplier<? extends CharSequence, SerializationException> read = deserializeStringValue();
+		AsyncSupplier<Character, SerializationException> result = new AsyncSupplier<>();
+		read.onDone(string -> {
 			if (string == null || string.length() == 0) {
 				if (nullable)
 					result.unblockSuccess(null);
@@ -366,13 +368,13 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	/** By default, deserialize a string and get the first character. */
-	protected AsyncWork<Character, SerializationException> deserializeCharacterAttributeValue(AttributeContext context, boolean nullable) {
+	protected AsyncSupplier<Character, SerializationException> deserializeCharacterAttributeValue(AttributeContext context, boolean nullable) {
 		Attribute fakeAttr = new Attribute(context.getAttribute());
 		fakeAttr.setType(new TypeDefinition(String.class));
 		AttributeContext fakeContext = new AttributeContext(context.getParent(), fakeAttr);
-		AsyncWork<? extends CharSequence, SerializationException> read = deserializeStringAttributeValue(fakeContext);
-		AsyncWork<Character, SerializationException> result = new AsyncWork<>();
-		read.listenInline(string -> {
+		AsyncSupplier<? extends CharSequence, SerializationException> read = deserializeStringAttributeValue(fakeContext);
+		AsyncSupplier<Character, SerializationException> result = new AsyncSupplier<>();
+		read.onDone(string -> {
 			if (string == null || string.length() == 0) {
 				if (nullable)
 					result.unblockSuccess(null);
@@ -392,9 +394,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 	
 	// *** string ***
 	
-	protected abstract AsyncWork<? extends CharSequence, SerializationException> deserializeStringValue();
+	protected abstract AsyncSupplier<? extends CharSequence, SerializationException> deserializeStringValue();
 	
-	protected AsyncWork<? extends CharSequence, SerializationException> deserializeStringAttributeValue(
+	protected AsyncSupplier<? extends CharSequence, SerializationException> deserializeStringAttributeValue(
 		@SuppressWarnings({"unused","squid:S1172"}) AttributeContext context
 	) {
 		return deserializeStringValue();
@@ -403,11 +405,11 @@ public abstract class AbstractDeserializer implements Deserializer {
 	// *** Collection ***
 	
 	@SuppressWarnings("rawtypes")
-	protected AsyncWork<Object, SerializationException> deserializeCollectionValue(
+	protected AsyncSupplier<Object, SerializationException> deserializeCollectionValue(
 		SerializationContext context, TypeDefinition type, String path, List<SerializationRule> rules
 	) {
-		AsyncWork<Boolean, SerializationException> start = startCollectionValue();
-		AsyncWork<Object, SerializationException> result = new AsyncWork<>();
+		AsyncSupplier<Boolean, SerializationException> start = startCollectionValue();
+		AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
 		Collection<?> col;
 		TypeDefinition elementType;
 		if (type.getBase().isArray()) {
@@ -416,21 +418,21 @@ public abstract class AbstractDeserializer implements Deserializer {
 		} else {
 			try { col = (Collection<?>)SerializationClass.instantiate(type, context, rules, false); }
 			catch (SerializationException e) {
-				return new AsyncWork<>(null, e);
+				return new AsyncSupplier<>(null, e);
 			} catch (Exception e) {
-				return new AsyncWork<>(null, new SerializationException("Error instantiating collection", e));
+				return new AsyncSupplier<>(null, new SerializationException("Error instantiating collection", e));
 			}
 			if (type.getParameters().isEmpty())
-				return new AsyncWork<>(null, new SerializationException(
+				return new AsyncSupplier<>(null, new SerializationException(
 					"Cannot deserialize collection without an element type specified"));
 			elementType = type.getParameters().get(0);
 		}
 		CollectionContext ctx = new CollectionContext(context, col, type, elementType);
-		if (start.isUnblocked()) {
-			if (start.hasError()) return new AsyncWork<>(null, start.getError());
+		if (start.isDone()) {
+			if (start.hasError()) return new AsyncSupplier<>(null, start.getError());
 			deserializeNextCollectionValueElement(ctx, 0, path, rules, result);
 		} else {
-			start.listenAsync(new DeserializationTask(() -> {
+			start.thenStart(new DeserializationTask(() -> {
 				try {
 					deserializeNextCollectionValueElement(ctx, 0, path, rules, result);
 				} catch (Exception e) {
@@ -442,17 +444,17 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	/** Return true if the start has been found, false if null has been found, or an error. */
-	protected abstract AsyncWork<Boolean, SerializationException> startCollectionValue();
+	protected abstract AsyncSupplier<Boolean, SerializationException> startCollectionValue();
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void deserializeNextCollectionValueElement(
 		CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules,
-		AsyncWork<Object, SerializationException> result
+		AsyncSupplier<Object, SerializationException> result
 	) {
 		do {
-			AsyncWork<Pair<Object, Boolean>, SerializationException> next =
+			AsyncSupplier<Pair<Object, Boolean>, SerializationException> next =
 				deserializeCollectionValueElement(context, elementIndex, colPath, rules);
-			if (next.isUnblocked()) {
+			if (next.isDone()) {
 				if (next.hasError()) {
 					result.error(next.getError());
 					return;
@@ -481,7 +483,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 				continue;
 			}
 			int currentIndex = elementIndex;
-			next.listenInline(() -> {
+			next.onDone(() -> {
 				Pair<Object, Boolean> p = next.getResult();
 				if (!p.getValue2().booleanValue()) {
 					// end of collection
@@ -511,14 +513,14 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	/** Return the element (possibly null) with true if an element is found, or null with false if the end of the collection has been reached. */
-	protected abstract AsyncWork<Pair<Object, Boolean>, SerializationException> deserializeCollectionValueElement(
+	protected abstract AsyncSupplier<Pair<Object, Boolean>, SerializationException> deserializeCollectionValueElement(
 		CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules);
 	
 	@SuppressWarnings("rawtypes")
-	protected AsyncWork<Object, SerializationException> deserializeCollectionAttributeValue(
+	protected AsyncSupplier<Object, SerializationException> deserializeCollectionAttributeValue(
 		AttributeContext context, String path, List<SerializationRule> rules
 	) {
-		AsyncWork<Boolean, SerializationException> start = startCollectionAttributeValue(context);
+		AsyncSupplier<Boolean, SerializationException> start = startCollectionAttributeValue(context);
 		Collection<?> col;
 		TypeDefinition elementType;
 		TypeDefinition colType = context.getAttribute().getType();
@@ -537,22 +539,22 @@ public abstract class AbstractDeserializer implements Deserializer {
 		} else {
 			try { col = (Collection<?>)SerializationClass.instantiate(colType, context, rules, false); }
 			catch (SerializationException e) {
-				return new AsyncWork<>(null, e);
+				return new AsyncSupplier<>(null, e);
 			} catch (Exception e) {
-				return new AsyncWork<>(null, new SerializationException("Error instantiating collection", e));
+				return new AsyncSupplier<>(null, new SerializationException("Error instantiating collection", e));
 			}
 			if (colType.getParameters().isEmpty())
-				return new AsyncWork<>(null, new SerializationException(
+				return new AsyncSupplier<>(null, new SerializationException(
 					"Cannot deserialize collection without an element type specified"));
 			elementType = colType.getParameters().get(0);
 		}
 		CollectionContext ctx = new CollectionContext(context, col, colType, elementType);
-		AsyncWork<Object, SerializationException> result = new AsyncWork<>();
-		if (start.isUnblocked()) {
-			if (start.hasError()) return new AsyncWork<>(null, start.getError());
+		AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
+		if (start.isDone()) {
+			if (start.hasError()) return new AsyncSupplier<>(null, start.getError());
 			deserializeNextCollectionAttributeValueElement(ctx, 0, path, rules, result);
 		} else {
-			start.listenAsync(new DeserializationTask(() -> {
+			start.thenStart(new DeserializationTask(() -> {
 				try {
 					deserializeNextCollectionAttributeValueElement(ctx, 0, path, rules, result);
 				} catch (Exception e) {
@@ -564,19 +566,19 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	/** Return true if the start has been found, false if null has been found, or an error. */
-	protected AsyncWork<Boolean, SerializationException> startCollectionAttributeValue(@SuppressWarnings("unused") AttributeContext context) {
+	protected AsyncSupplier<Boolean, SerializationException> startCollectionAttributeValue(@SuppressWarnings("unused") AttributeContext context) {
 		return startCollectionValue();
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void deserializeNextCollectionAttributeValueElement(
 		CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules,
-		AsyncWork<Object, SerializationException> result
+		AsyncSupplier<Object, SerializationException> result
 	) {
 		do {
-			AsyncWork<Pair<Object, Boolean>, SerializationException> next =
+			AsyncSupplier<Pair<Object, Boolean>, SerializationException> next =
 				deserializeCollectionAttributeValueElement(context, elementIndex, colPath, rules);
-			if (next.isUnblocked()) {
+			if (next.isDone()) {
 				if (next.hasError()) {
 					result.error(next.getError());
 					return;
@@ -605,7 +607,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 				continue;
 			}
 			int currentIndex = elementIndex;
-			next.listenInline(() -> {
+			next.onDone(() -> {
 				Pair<Object, Boolean> p = next.getResult();
 				if (!p.getValue2().booleanValue()) {
 					// end of collection
@@ -690,7 +692,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	/** Return the element with true if an element is found, or null with false if the end of the collection has been reached. */
-	protected AsyncWork<Pair<Object, Boolean>, SerializationException> deserializeCollectionAttributeValueElement(
+	protected AsyncSupplier<Pair<Object, Boolean>, SerializationException> deserializeCollectionAttributeValueElement(
 		CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules
 	) {
 		return deserializeCollectionValueElement(context, elementIndex, colPath, rules);
@@ -699,14 +701,14 @@ public abstract class AbstractDeserializer implements Deserializer {
 	// *** Map ***
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	protected AsyncWork<Map<?,?>, SerializationException> deserializeMapValue(
+	protected AsyncSupplier<Map<?,?>, SerializationException> deserializeMapValue(
 		SerializationContext context, TypeDefinition typeDef, String path, List<SerializationRule> rules
 	) {
 		TypeDefinition type = new TypeDefinition(MapEntry.class, typeDef.getParameters());
 		type = new TypeDefinition(ArrayList.class, type);
-		AsyncWork<Object, SerializationException> value = deserializeValueType(context, type, path, rules);
-		AsyncWork<Map<?,?>, SerializationException> result = new AsyncWork<>();
-		if (value.isUnblocked()) {
+		AsyncSupplier<Object, SerializationException> value = deserializeValueType(context, type, path, rules);
+		AsyncSupplier<Map<?,?>, SerializationException> result = new AsyncSupplier<>();
+		if (value.isDone()) {
 			if (value.hasError()) result.error(value.getError());
 			else
 				try {
@@ -716,7 +718,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 				}
 			return result;
 		}
-		value.listenAsync(new DeserializationTask(() -> {
+		value.thenStart(new DeserializationTask(() -> {
 			try {
 				result.unblockSuccess(getMap((ArrayList<MapEntry>)value.getResult(), typeDef, context, rules));
 			} catch (SerializationException e) {
@@ -727,7 +729,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	protected AsyncWork<Map<?,?>, SerializationException> deserializeMapAttributeValue(
+	protected AsyncSupplier<Map<?,?>, SerializationException> deserializeMapAttributeValue(
 		AttributeContext context, String path, List<SerializationRule> rules
 	) {
 		TypeDefinition type = new TypeDefinition(MapEntry.class, context.getAttribute().getType().getParameters());
@@ -735,9 +737,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 		Attribute fakeAttribute = new Attribute(context.getAttribute());
 		fakeAttribute.setType(type);
 		AttributeContext ctx = new AttributeContext(context.getParent(), fakeAttribute);
-		AsyncWork<Object, SerializationException> value = deserializeCollectionAttributeValue(ctx, path, rules);
-		AsyncWork<Map<?,?>, SerializationException> result = new AsyncWork<>();
-		if (value.isUnblocked()) {
+		AsyncSupplier<Object, SerializationException> value = deserializeCollectionAttributeValue(ctx, path, rules);
+		AsyncSupplier<Map<?,?>, SerializationException> result = new AsyncSupplier<>();
+		if (value.isDone()) {
 			if (value.hasError()) result.error(value.getError());
 			else 
 				try {
@@ -748,7 +750,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 				}
 			return result;
 		}
-		value.listenAsync(new DeserializationTask(() -> {
+		value.thenStart(new DeserializationTask(() -> {
 			try {
 				result.unblockSuccess(
 					getMap((ArrayList<MapEntry>)value.getResult(), context.getAttribute().getType(), context, rules));
@@ -777,17 +779,17 @@ public abstract class AbstractDeserializer implements Deserializer {
 	
 	// *** InputStream ***
 
-	protected AsyncWork<InputStream, SerializationException> deserializeInputStreamValue(
+	protected AsyncSupplier<InputStream, SerializationException> deserializeInputStreamValue(
 		SerializationContext context, List<SerializationRule> rules
 	) {
-		AsyncWork<IO.Readable, SerializationException> io = deserializeIOReadableValue(context, rules);
-		if (io.isUnblocked()) {
-			if (io.hasError()) return new AsyncWork<>(null, io.getError());
-			if (io.getResult() == null) return new AsyncWork<>(null, null);
-			return new AsyncWork<>(IOAsInputStream.get(io.getResult(), false), null);
+		AsyncSupplier<IO.Readable, SerializationException> io = deserializeIOReadableValue(context, rules);
+		if (io.isDone()) {
+			if (io.hasError()) return new AsyncSupplier<>(null, io.getError());
+			if (io.getResult() == null) return new AsyncSupplier<>(null, null);
+			return new AsyncSupplier<>(IOAsInputStream.get(io.getResult(), false), null);
 		}
-		AsyncWork<InputStream, SerializationException> result = new AsyncWork<>();
-		io.listenInline(
+		AsyncSupplier<InputStream, SerializationException> result = new AsyncSupplier<>();
+		io.onDone(
 			inputStream -> {
 				if (inputStream == null)
 					result.unblockSuccess(null);
@@ -799,17 +801,17 @@ public abstract class AbstractDeserializer implements Deserializer {
 		return result;
 	}
 	
-	protected AsyncWork<InputStream, SerializationException> deserializeInputStreamAttributeValue(
+	protected AsyncSupplier<InputStream, SerializationException> deserializeInputStreamAttributeValue(
 		AttributeContext context, List<SerializationRule> rules
 	) {
-		AsyncWork<IO.Readable, SerializationException> io = deserializeIOReadableAttributeValue(context, rules);
-		if (io.isUnblocked()) {
-			if (io.hasError()) return new AsyncWork<>(null, io.getError());
-			if (io.getResult() == null) return new AsyncWork<>(null, null);
-			return new AsyncWork<>(IOAsInputStream.get(io.getResult(), false), null);
+		AsyncSupplier<IO.Readable, SerializationException> io = deserializeIOReadableAttributeValue(context, rules);
+		if (io.isDone()) {
+			if (io.hasError()) return new AsyncSupplier<>(null, io.getError());
+			if (io.getResult() == null) return new AsyncSupplier<>(null, null);
+			return new AsyncSupplier<>(IOAsInputStream.get(io.getResult(), false), null);
 		}
-		AsyncWork<InputStream, SerializationException> result = new AsyncWork<>();
-		io.listenInline(
+		AsyncSupplier<InputStream, SerializationException> result = new AsyncSupplier<>();
+		io.onDone(
 			inputStream -> {
 				if (inputStream == null)
 					result.unblockSuccess(null);
@@ -830,26 +832,28 @@ public abstract class AbstractDeserializer implements Deserializer {
 		streamReferenceHandlers.add(handler);
 	}
 	
-	protected abstract AsyncWork<IO.Readable, SerializationException> deserializeIOReadableValue(
+	protected abstract AsyncSupplier<IO.Readable, SerializationException> deserializeIOReadableValue(
 		SerializationContext context, List<SerializationRule> rules);
 	
-	protected abstract AsyncWork<IO.Readable, SerializationException> deserializeIOReadableAttributeValue(
+	protected abstract AsyncSupplier<IO.Readable, SerializationException> deserializeIOReadableAttributeValue(
 		AttributeContext context, List<SerializationRule> rules);
 	
 	// *** byte[] by default using IO ***
 	
-	protected AsyncWork<byte[], SerializationException> deserializeByteArrayValue(SerializationContext context, List<SerializationRule> rules) {
-		AsyncWork<IO.Readable, SerializationException> io = deserializeIOReadableValue(context, rules);
-		AsyncWork<byte[], IOException> res = new AsyncWork<>();
-		AsyncWork<byte[], SerializationException> result = new AsyncWork<>();
-		res.listenInline(result, ioe -> new SerializationException("Error deserializing byte array", ioe));
-		if (io.isUnblocked()) {
-			if (io.hasError()) return new AsyncWork<>(null, io.getError());
-			if (io.getResult() == null) return new AsyncWork<>(null, null);
+	protected AsyncSupplier<byte[], SerializationException> deserializeByteArrayValue(
+		SerializationContext context, List<SerializationRule> rules
+	) {
+		AsyncSupplier<IO.Readable, SerializationException> io = deserializeIOReadableValue(context, rules);
+		AsyncSupplier<byte[], IOException> res = new AsyncSupplier<>();
+		AsyncSupplier<byte[], SerializationException> result = new AsyncSupplier<>();
+		res.forward(result, ioe -> new SerializationException("Error deserializing byte array", ioe));
+		if (io.isDone()) {
+			if (io.hasError()) return new AsyncSupplier<>(null, io.getError());
+			if (io.getResult() == null) return new AsyncSupplier<>(null, null);
 			IOUtil.readFully(io.getResult(), res);
 			return result;
 		}
-		io.listenInline(
+		io.onDone(
 			r -> {
 				if (r == null)
 					result.unblockSuccess(null);
@@ -861,20 +865,20 @@ public abstract class AbstractDeserializer implements Deserializer {
 		return result;
 	}
 	
-	protected AsyncWork<byte[], SerializationException> deserializeByteArrayAttributeValue(
+	protected AsyncSupplier<byte[], SerializationException> deserializeByteArrayAttributeValue(
 		AttributeContext context, List<SerializationRule> rules
 	) {
-		AsyncWork<IO.Readable, SerializationException> io = deserializeIOReadableAttributeValue(context, rules);
-		AsyncWork<byte[], IOException> res = new AsyncWork<>();
-		AsyncWork<byte[], SerializationException> result = new AsyncWork<>();
-		res.listenInline(result, ioe -> new SerializationException("Error deserializing byte array", ioe));
-		if (io.isUnblocked()) {
-			if (io.hasError()) return new AsyncWork<>(null, io.getError());
-			if (io.getResult() == null) return new AsyncWork<>(null, null);
+		AsyncSupplier<IO.Readable, SerializationException> io = deserializeIOReadableAttributeValue(context, rules);
+		AsyncSupplier<byte[], IOException> res = new AsyncSupplier<>();
+		AsyncSupplier<byte[], SerializationException> result = new AsyncSupplier<>();
+		res.forward(result, ioe -> new SerializationException("Error deserializing byte array", ioe));
+		if (io.isDone()) {
+			if (io.hasError()) return new AsyncSupplier<>(null, io.getError());
+			if (io.getResult() == null) return new AsyncSupplier<>(null, null);
 			IOUtil.readFully(io.getResult(), res);
 			return result;
 		}
-		io.listenInline(
+		io.onDone(
 			r -> {
 				if (r == null)
 					result.unblockSuccess(null);
@@ -889,20 +893,20 @@ public abstract class AbstractDeserializer implements Deserializer {
 	// *** Object ***
 
 	@SuppressWarnings("unchecked")
-	protected <T> AsyncWork<T, SerializationException> deserializeObjectValue(
+	protected <T> AsyncSupplier<T, SerializationException> deserializeObjectValue(
 		SerializationContext context, TypeDefinition type, String path, List<SerializationRule> rules
 	) {
-		AsyncWork<Object, SerializationException> start = startObjectValue(context, type, rules);
-		if (start.isUnblocked()) {
-			if (start.hasError()) return (AsyncWork<T, SerializationException>)start;
+		AsyncSupplier<Object, SerializationException> start = startObjectValue(context, type, rules);
+		if (start.isDone()) {
+			if (start.hasError()) return (AsyncSupplier<T, SerializationException>)start;
 			Object instance = start.getResult();
-			if (instance == null) return (AsyncWork<T, SerializationException>)start;
-			AsyncWork<Object, SerializationException> result = new AsyncWork<>();
+			if (instance == null) return (AsyncSupplier<T, SerializationException>)start;
+			AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
 			deserializeObjectAttributes(context, instance, type, path, rules, result);
-			return (AsyncWork<T, SerializationException>)result;
+			return (AsyncSupplier<T, SerializationException>)result;
 		}
-		AsyncWork<Object, SerializationException> result = new AsyncWork<>();
-		start.listenInline(
+		AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
+		start.onDone(
 			instance -> {
 				if (instance == null) result.unblockSuccess(null);
 				else new DeserializationTask(() ->
@@ -910,7 +914,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 				).start();
 			}, result
 		);
-		return (AsyncWork<T, SerializationException>)result;
+		return (AsyncSupplier<T, SerializationException>)result;
 	}
 
 	/** Instantiate the type if the start of an object has been found, null if null has been found, or an error.
@@ -918,12 +922,12 @@ public abstract class AbstractDeserializer implements Deserializer {
 	 * The deserializer should handle the case a specific type to instantiate is specified,
 	 * and may need to read a first attribute to get this type.
 	 */
-	protected abstract AsyncWork<Object, SerializationException> startObjectValue(
+	protected abstract AsyncSupplier<Object, SerializationException> startObjectValue(
 		SerializationContext context, TypeDefinition type, List<SerializationRule> rules);
 	
 	protected void deserializeObjectAttributes(
 		SerializationContext parentContext, Object instance, TypeDefinition typeDef,
-		String path, List<SerializationRule> rules, AsyncWork<Object, SerializationException> result
+		String path, List<SerializationRule> rules, AsyncSupplier<Object, SerializationException> result
 	) {
 		ObjectContext ctx;
 		try { 
@@ -942,11 +946,11 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	protected void deserializeNextObjectAttribute(
-		ObjectContext context, String path, List<SerializationRule> rules, AsyncWork<Object, SerializationException> result
+		ObjectContext context, String path, List<SerializationRule> rules, AsyncSupplier<Object, SerializationException> result
 	) {
 		do {
-			AsyncWork<String, SerializationException> name = deserializeObjectAttributeName(context);
-			if (name.isUnblocked()) {
+			AsyncSupplier<String, SerializationException> name = deserializeObjectAttributeName(context);
+			if (name.isDone()) {
 				if (name.hasError()) {
 					result.error(name.getError());
 					return;
@@ -967,19 +971,19 @@ public abstract class AbstractDeserializer implements Deserializer {
 						+ context.getInstance().getClass().getName()));
 					return;
 				}
-				ISynchronizationPoint<SerializationException> val =
+				IAsync<SerializationException> val =
 					deserializeObjectAttributeValue(context, a, path + '.' + n, rules);
-				if (val.isUnblocked()) {
+				if (val.isDone()) {
 					if (val.hasError()) {
 						result.error(val.getError());
 						return;
 					}
 					continue;
 				}
-				val.listenAsync(new DeserializationTask(() -> deserializeNextObjectAttribute(context, path, rules, result)), result);
+				val.thenStart(new DeserializationTask(() -> deserializeNextObjectAttribute(context, path, rules, result)), result);
 				return;
 			}
-			name.listenInline(
+			name.onDone(
 				n -> {
 					if (n == null) {
 						result.unblockSuccess(context.getInstance());
@@ -997,9 +1001,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 						return;
 					}
 					new DeserializationTask(() -> {
-						ISynchronizationPoint<SerializationException> val =
+						IAsync<SerializationException> val =
 							deserializeObjectAttributeValue(context, a, path + '.' + n, rules);
-						if (val.isUnblocked()) {
+						if (val.isDone()) {
 							if (val.hasError()) {
 								result.error(val.getError());
 								return;
@@ -1007,7 +1011,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 							deserializeNextObjectAttribute(context, path, rules, result);
 							return;
 						}
-						val.listenAsync(new DeserializationTask(() ->
+						val.thenStart(new DeserializationTask(() ->
 							deserializeNextObjectAttribute(context, path, rules, result)
 						), result);
 					}).start();
@@ -1018,26 +1022,26 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 	
 	/** Return the name of the attribute read, or null if the object is closed. */
-	protected abstract AsyncWork<String, SerializationException> deserializeObjectAttributeName(ObjectContext context);
+	protected abstract AsyncSupplier<String, SerializationException> deserializeObjectAttributeName(ObjectContext context);
 	
-	protected ISynchronizationPoint<SerializationException> deserializeObjectAttributeValue(
+	protected IAsync<SerializationException> deserializeObjectAttributeValue(
 		ObjectContext context, Attribute a, String path, List<SerializationRule> rules
 	) {
 		AttributeContext ctx = new AttributeContext(context, a);
-		AsyncWork<?, SerializationException> value = deserializeObjectAttributeValue(ctx, path, rules);
-		if (value.isUnblocked()) {
+		AsyncSupplier<?, SerializationException> value = deserializeObjectAttributeValue(ctx, path, rules);
+		if (value.isDone()) {
 			if (value.hasError())
 				return value;
 			Object val = value.getResult();
 			if (!a.ignore())
 				try { a.setValue(context.getInstance(), val); }
 				catch (SerializationException e) {
-					return new SynchronizationPoint<>(e);
+					return new Async<>(e);
 				}
 			return value;
 		}
-		SynchronizationPoint<SerializationException> sp = new SynchronizationPoint<>();
-		value.listenInline(
+		Async<SerializationException> sp = new Async<>();
+		value.onDone(
 			val -> new DeserializationTask(() -> {
 				if (!a.ignore())
 					try { a.setValue(context.getInstance(), val); }
@@ -1052,7 +1056,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	protected AsyncWork<?, SerializationException> deserializeObjectAttributeValue(
+	protected AsyncSupplier<?, SerializationException> deserializeObjectAttributeValue(
 		AttributeContext context, String path, List<SerializationRule> rules
 	) {
 		Attribute a = context.getAttribute();
@@ -1087,9 +1091,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 			return deserializeCharacterAttributeValue(context, true);
 		
 		if (CharSequence.class.isAssignableFrom(c)) {
-			AsyncWork<? extends CharSequence, SerializationException> str = deserializeStringAttributeValue(context);
-			AsyncWork<Object, SerializationException> result = new AsyncWork<>();
-			str.listenInline(
+			AsyncSupplier<? extends CharSequence, SerializationException> str = deserializeStringAttributeValue(context);
+			AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
+			str.onDone(
 				string -> {
 					if (string == null) {
 						result.unblockSuccess(null);
@@ -1129,9 +1133,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 		}
 
 		if (c.isEnum()) {
-			AsyncWork<? extends CharSequence, SerializationException> str = deserializeStringAttributeValue(context);
-			AsyncWork<Object, SerializationException> result = new AsyncWork<>();
-			str.listenInline(
+			AsyncSupplier<? extends CharSequence, SerializationException> str = deserializeStringAttributeValue(context);
+			AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
+			str.onDone(
 				string -> {
 					if (string == null) {
 						result.unblockSuccess(null);
@@ -1163,7 +1167,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		return deserializeObjectAttributeObjectValue(context, path, rules);
 	}
 
-	protected AsyncWork<Object, SerializationException> deserializeObjectAttributeObjectValue(
+	protected AsyncSupplier<Object, SerializationException> deserializeObjectAttributeObjectValue(
 		AttributeContext context, String path, List<SerializationRule> rules
 	) {
 		return deserializeObjectValue(context, context.getAttribute().getType(), path, rules);

@@ -8,9 +8,9 @@ import net.lecousin.framework.collections.LinkedArrayList;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -20,7 +20,7 @@ import net.lecousin.framework.util.Triple;
 /**
  * Implementation of IO using a list of byte array.
  */
-public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Buffered, IO.Readable.Seekable, IO.KnownSize, IO.Writable {
+public class ByteBuffersIO extends ConcurrentCloseable<IOException> implements IO.Readable.Buffered, IO.Readable.Seekable, IO.KnownSize, IO.Writable {
 
 	/** Constructor.
 	 * @param copyBuffers if true each written buffer is copied into a new buffer,
@@ -148,7 +148,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return IOUtil.success(Integer.valueOf(readFullySync(buffer)), ondone);
 	}
 	
@@ -158,12 +158,12 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput());
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		Task<Integer, IOException> task = new Task.Cpu<Integer, IOException>("readAsync on ByteBuffersIO", this.getPriority(), ondone) {
 			@Override
 			public Integer run() {
@@ -175,7 +175,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	}
 	
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
+	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
 			@Override
 			public ByteBuffer run() {
@@ -204,12 +204,12 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return readAsync(buffer, ondone);
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return readAsync(pos, buffer, ondone);
 	}
 
@@ -253,7 +253,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+	public AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		return IOUtil.success(Long.valueOf(skipSync(n)), ondone);
 	}
 
@@ -301,13 +301,13 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	}
 
 	@Override
-	public ISynchronizationPoint<IOException> canStartReading() {
-		return new SynchronizationPoint<>(true);
+	public IAsync<IOException> canStartReading() {
+		return new Async<>(true);
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartWriting() {
-		return new SynchronizationPoint<>(true);
+	public IAsync<IOException> canStartWriting() {
+		return new Async<>(true);
 	}
 
 	@Override
@@ -316,8 +316,8 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> getSizeAsync() {
-		return new AsyncWork<>(Long.valueOf(totalSize), null);
+	public AsyncSupplier<Long, IOException> getSizeAsync() {
+		return new AsyncSupplier<>(Long.valueOf(totalSize), null);
 	}
 
 	@Override
@@ -343,7 +343,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
+	public AsyncSupplier<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 		return IOUtil.success(Long.valueOf(seekSync(type, move)), ondone);
 	}
 
@@ -358,12 +358,12 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	}
 
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		return null;
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		buffers = null;
 		ondone.unblock();
 	}
@@ -380,7 +380,7 @@ public class ByteBuffersIO extends ConcurrentCloseable implements IO.Readable.Bu
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		if (!copyBuffers) return IOUtil.success(Integer.valueOf(writeSync(buffer)), ondone);
 		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone).getOutput());
 	}

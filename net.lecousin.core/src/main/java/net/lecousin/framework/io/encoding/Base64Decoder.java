@@ -5,8 +5,8 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 
@@ -19,13 +19,13 @@ public class Base64Decoder {
 	}
 	
 	private IO.Writable output;
-	private ISynchronizationPoint<IOException> lastWrite = new SynchronizationPoint<>(true);
+	private IAsync<IOException> lastWrite = new Async<>(true);
 	private byte[] previous = new byte[4];
 	private int nbPrev = 0;
 	
 	/** Start a new Task to decode the given buffer. */
-	public ISynchronizationPoint<IOException> decode(ByteBuffer buffer) {
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+	public IAsync<IOException> decode(ByteBuffer buffer) {
+		Async<IOException> result = new Async<>();
 		new Task.Cpu<Void, NoException>("Decoding base 64", output.getPriority()) {
 			@Override
 			public Void run() {
@@ -65,8 +65,8 @@ public class Base64Decoder {
 	}
 	
 	/** Start a new Task to decode the given buffer. */
-	public ISynchronizationPoint<IOException> decode(CharBuffer buffer) {
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+	public IAsync<IOException> decode(CharBuffer buffer) {
+		Async<IOException> result = new Async<>();
 		new Task.Cpu<Void, NoException>("Decoding base 64", output.getPriority()) {
 			@Override
 			public Void run() {
@@ -108,28 +108,28 @@ public class Base64Decoder {
 	/** Decode any pending bytes, then return a synchronization point that will be unblocked once
 	 * the last writing operation is done.
 	 */
-	public ISynchronizationPoint<IOException> flush() {
+	public IAsync<IOException> flush() {
 		if (nbPrev == 0)
 			return lastWrite;
 		while (nbPrev < 4)
 			previous[nbPrev++] = '=';
 		try { write(Base64.decode(previous), null); }
 		catch (IOException e) {
-			return new SynchronizationPoint<>(e);
+			return new Async<>(e);
 		}
 		return lastWrite;
 	}
 	
-	private void write(byte[] buf, SynchronizationPoint<IOException> result) {
-		ISynchronizationPoint<IOException> last = lastWrite;
-		SynchronizationPoint<IOException> thisOne = new SynchronizationPoint<>();
+	private void write(byte[] buf, Async<IOException> result) {
+		IAsync<IOException> last = lastWrite;
+		Async<IOException> thisOne = new Async<>();
 		lastWrite = thisOne;
-		last.listenInline(() -> {
+		last.onDone(() -> {
 			if (last.hasError()) {
 				if (result != null) result.error(last.getError());
 				return;
 			}
-			output.writeAsync(ByteBuffer.wrap(buf)).listenInline(thisOne);
+			output.writeAsync(ByteBuffer.wrap(buf)).onDone(thisOne);
 			if (result != null) result.unblock();
 		});
 	}

@@ -6,9 +6,8 @@ import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.CloseableListenable;
 import net.lecousin.framework.util.Pair;
@@ -41,7 +40,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public ISynchronizationPoint<Exception> closeAsync() {
+	public IAsync<IOException> closeAsync() {
 		return io.closeAsync();
 	}
 	
@@ -51,7 +50,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartReading() {
+	public IAsync<IOException> canStartReading() {
 		return io.canStartReading();
 	}
 
@@ -61,7 +60,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 	
 	@Override
-	public void addCloseListener(Listener<CloseableListenable> listener) {
+	public void addCloseListener(Consumer<CloseableListenable> listener) {
 		io.addCloseListener(listener);
 	}
 	
@@ -71,7 +70,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 	
 	@Override
-	public void removeCloseListener(Listener<CloseableListenable> listener) {
+	public void removeCloseListener(Consumer<CloseableListenable> listener) {
 		io.removeCloseListener(listener);
 	}
 	
@@ -111,12 +110,12 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readAsync(buffer, ondone);
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readAsync(pos, buffer, ondone);
 	}
 
@@ -131,12 +130,12 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readFullyAsync(buffer, ondone);
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readFullyAsync(pos, buffer, ondone);
 	}
 
@@ -151,7 +150,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
+	public AsyncSupplier<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 		return io.seekAsync(type, move, ondone);
 	}
 
@@ -161,7 +160,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+	public AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		return io.skipAsync(n, ondone);
 	}
 
@@ -175,7 +174,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> getSizeAsync() {
+	public AsyncSupplier<Long, IOException> getSizeAsync() {
 		Task<Long,IOException> task = new Task<Long,IOException>(io.getTaskManager(), io.getSourceDescription(), io.getPriority()) {
 			@Override
 			public Long run() throws IOException {

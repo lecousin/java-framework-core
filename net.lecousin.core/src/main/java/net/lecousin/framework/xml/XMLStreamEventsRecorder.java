@@ -5,8 +5,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.xml.XMLStreamEvents.Event;
 
@@ -128,20 +127,20 @@ public interface XMLStreamEventsRecorder {
 		}
 		
 		@Override
-		public ISynchronizationPoint<Exception> start() {
+		public IAsync<Exception> start() {
 			return stream.start();
 		}
 
 		@Override
-		public SynchronizationPoint<Exception> next() {
+		public net.lecousin.framework.concurrent.async.Async<Exception> next() {
 			if (replaying != null) {
 				if (!replaying.hasNext())
-					return new SynchronizationPoint<>(new EOFException());
+					return new net.lecousin.framework.concurrent.async.Async<>(new EOFException());
 				event = replaying.next();
-				return new SynchronizationPoint<>(true);
+				return new net.lecousin.framework.concurrent.async.Async<>(true);
 			}
-			SynchronizationPoint<Exception> next = stream.next();
-			next.listenInline(() -> {
+			net.lecousin.framework.concurrent.async.Async<Exception> next = stream.next();
+			next.onDone(() -> {
 				if (next.isSuccessful()) {
 					event = stream.event;
 					if (recording)

@@ -10,9 +10,10 @@ import java.util.concurrent.ThreadFactory;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.DrivesTaskManager.DrivesProvider;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.util.AsyncCloseable;
 
@@ -83,8 +84,8 @@ public final class Threading {
 	private static class StopMultiThreading implements AsyncCloseable<Exception> {
 		@Override
 		@SuppressWarnings({"squid:S2142", "squid:S3776"})
-		public ISynchronizationPoint<Exception> closeAsync() {
-			SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		public IAsync<Exception> closeAsync() {
+			Async<Exception> sp = new Async<>();
 			Thread t = new Thread("Stopping tasks managers") {
 				@Override
 				public void run() {
@@ -219,8 +220,9 @@ public final class Threading {
 	}
 	
 	/** Wait for the given tasks to finish, if one has an error this error is immediately thrown without waiting for other tasks. */
-	public static <TError extends Exception> void waitUnblockedWithError(Collection<AsyncWork<?,TError>> tasks) throws TError, CancelException {
-		for (AsyncWork<?,TError> t : tasks)
+	public static <TError extends Exception> void waitUnblockedWithError(Collection<AsyncSupplier<?,TError>> tasks)
+	throws TError, CancelException {
+		for (AsyncSupplier<?,TError> t : tasks)
 			t.blockResult(0);
 	}
 	
@@ -230,10 +232,10 @@ public final class Threading {
 		if (tasks.size() == 1)
 			try { tasks.get(0).getOutput().block(0); }
 			catch (Exception e) { /* ignore */ }
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		for (Task<?,?> t : tasks) {
 			if (t.isDone()) return;
-			t.getOutput().synchWithNoError(sp);
+			t.getOutput().onDone(sp::unblock);
 		}
 		sp.block(0);
 	}

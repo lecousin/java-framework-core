@@ -3,21 +3,21 @@ package net.lecousin.framework.core.tests.concurrent;
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.CancelException;
+import org.junit.Assert;
+import org.junit.Test;
+
 import net.lecousin.framework.concurrent.DrivesTaskManager;
 import net.lecousin.framework.concurrent.DrivesTaskManager.DrivesProvider;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.tasks.drives.CreateDirectoryTask;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.TemporaryFiles;
 import net.lecousin.framework.util.Pair;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 public class TestDrivesTaskManager extends LCCoreAbstractTest {
 
@@ -37,27 +37,27 @@ public class TestDrivesTaskManager extends LCCoreAbstractTest {
 		File dir = new File(tmpDir, "test");
 		Object fakeDrive1 = new Object();
 		Object fakeDrive2 = new Object();
-		SynchronizationPoint<Exception> spDrive2Appear = new SynchronizationPoint<>();
-		SynchronizationPoint<Exception> spDrive2AppearDone = new SynchronizationPoint<>();
-		SynchronizationPoint<Exception> spDrive1Disappear = new SynchronizationPoint<>();
-		SynchronizationPoint<Exception> spDrive1DisappearDone = new SynchronizationPoint<>();
+		Async<Exception> spDrive2Appear = new Async<>();
+		Async<Exception> spDrive2AppearDone = new Async<>();
+		Async<Exception> spDrive1Disappear = new Async<>();
+		Async<Exception> spDrive1DisappearDone = new Async<>();
 		tm.setDrivesProvider(new DrivesProvider() {
 			@Override
 			public void provide(
-				Listener<Pair<Object, List<File>>> onNewDrive,
-				Listener<Pair<Object, List<File>>> onDriveRemoved,
-				Listener<Pair<Object, File>> onNewPartition,
-				Listener<Pair<Object, File>> onPartitionRemoved
+				Consumer<Pair<Object, List<File>>> onNewDrive,
+				Consumer<Pair<Object, List<File>>> onDriveRemoved,
+				Consumer<Pair<Object, File>> onNewPartition,
+				Consumer<Pair<Object, File>> onPartitionRemoved
 			) {
-				onNewDrive.fire(new Pair<>(fakeDrive1, Collections.singletonList(tmpDir)));
-				onNewPartition.fire(new Pair<>(fakeDrive1, dir));
-				onPartitionRemoved.fire(new Pair<>(fakeDrive1, dir));
-				spDrive2Appear.listenInline(() -> {
-					onNewDrive.fire(new Pair<>(fakeDrive2, Collections.singletonList(tmpDir)));
+				onNewDrive.accept(new Pair<>(fakeDrive1, Collections.singletonList(tmpDir)));
+				onNewPartition.accept(new Pair<>(fakeDrive1, dir));
+				onPartitionRemoved.accept(new Pair<>(fakeDrive1, dir));
+				spDrive2Appear.onDone(() -> {
+					onNewDrive.accept(new Pair<>(fakeDrive2, Collections.singletonList(tmpDir)));
 					spDrive2AppearDone.unblock();
 				});
-				spDrive1Disappear.listenInline(() -> {
-					onDriveRemoved.fire(new Pair<>(fakeDrive1, Collections.singletonList(tmpDir)));
+				spDrive1Disappear.onDone(() -> {
+					onDriveRemoved.accept(new Pair<>(fakeDrive1, Collections.singletonList(tmpDir)));
 					spDrive1DisappearDone.unblock();
 				});
 			}

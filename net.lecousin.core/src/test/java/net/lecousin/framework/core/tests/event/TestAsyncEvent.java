@@ -1,6 +1,6 @@
 package net.lecousin.framework.core.tests.event;
 
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.event.AsyncEvent;
 
@@ -11,7 +11,7 @@ public class TestAsyncEvent extends LCCoreAbstractTest {
 
 	@Test(timeout=30000)
 	public void test() {
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		Runnable listener = () -> { sp.unblock(); };
 
 		AsyncEvent e = new AsyncEvent();
@@ -29,7 +29,7 @@ public class TestAsyncEvent extends LCCoreAbstractTest {
 		Assert.assertFalse(e.hasListeners());
 		e.fire();
 		sp.block(3000);
-		Assert.assertFalse(sp.isUnblocked());
+		Assert.assertFalse(sp.isDone());
 	}
 	
 }

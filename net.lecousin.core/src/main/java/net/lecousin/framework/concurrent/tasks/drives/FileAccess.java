@@ -7,11 +7,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -78,14 +78,14 @@ public class FileAccess implements AutoCloseable {
 		return size;
 	}
 	
-	public void getSize(final AsyncWork<Long,IOException> sp) {
+	public void getSize(final AsyncSupplier<Long,IOException> sp) {
 		Runnable ready = () -> {
 			if (openTask.isSuccessful())
 				sp.unblockSuccess(Long.valueOf(size));
 			else
 				sp.unblockError(openTask.getError());
 		};
-		openTask.getOutput().listenInline(ready);
+		openTask.getOutput().onDone(ready);
 	}
 	
 	public void setSize(long newSize) throws IOException {

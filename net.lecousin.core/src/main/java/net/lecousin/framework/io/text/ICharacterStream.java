@@ -3,14 +3,14 @@ package net.lecousin.framework.io.text;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.IConcurrentCloseable;
 import net.lecousin.framework.util.UnprotectedString;
 
 /** Character stream. */
-public interface ICharacterStream extends IConcurrentCloseable {
+public interface ICharacterStream extends IConcurrentCloseable<IOException> {
 	
 	/** Return the priority. */
 	byte getPriority();
@@ -34,7 +34,7 @@ public interface ICharacterStream extends IConcurrentCloseable {
 		/** Read characters.
 		 * @return the number of character read which may be 0 or -1 in case the end of stream has been reached
 		 */
-		AsyncWork<Integer, IOException> readAsync(char[] buf, int offset, int length);
+		AsyncSupplier<Integer, IOException> readAsync(char[] buf, int offset, int length);
 		
 		/** Return true if the end of the stream has been reached, and no more character can be read. */
 		boolean endReached();
@@ -53,15 +53,15 @@ public interface ICharacterStream extends IConcurrentCloseable {
 		}
 
 		/** Read all requested characters. */
-		default AsyncWork<Integer, IOException> readFullyAsync(char[] buf, int offset, int length) {
+		default AsyncSupplier<Integer, IOException> readFullyAsync(char[] buf, int offset, int length) {
 			MutableInteger done = new MutableInteger(0);
-			AsyncWork<Integer, IOException> result = new AsyncWork<>();
+			AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 			Runnable next = new Runnable() {
 				@Override
 				public void run() {
 					Runnable that = this;
-					AsyncWork<Integer, IOException> read = readAsync(buf, offset + done.get(), length - done.get());
-					read.listenInline(
+					AsyncSupplier<Integer, IOException> read = readAsync(buf, offset + done.get(), length - done.get());
+					read.onDone(
 						() -> {
 							int nb = read.getResult().intValue();
 							if (nb <= 0) {
@@ -97,25 +97,25 @@ public interface ICharacterStream extends IConcurrentCloseable {
 			void back(char c);
 			
 			/** Return a synchronization point which is unblocked once some characters have been buffered. */
-			ISynchronizationPoint<IOException> canStartReading();
+			IAsync<IOException> canStartReading();
 			
 			/** Return the next buffer as soon as available, or null if then end of stream has been reached. */
-			AsyncWork<UnprotectedString, IOException> readNextBufferAsync();
+			AsyncSupplier<UnprotectedString, IOException> readNextBufferAsync();
 		}
 	}
 	
 	/** Asynchronous writable character stream. */
 	public interface WriterAsync {
 		/** Write characters. */
-		ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length);
+		IAsync<IOException> writeAsync(char[] c, int offset, int length);
 		
 		/** Write characters. */
-		default ISynchronizationPoint<IOException> writeAsync(char[] c) {
+		default IAsync<IOException> writeAsync(char[] c) {
 			return writeAsync(c, 0, c.length);
 		}
 		
 		/** Write characters of the given string. */
-		default ISynchronizationPoint<IOException> writeAsync(String s) {
+		default IAsync<IOException> writeAsync(String s) {
 			return writeAsync(s.toCharArray());
 		}
 	}
@@ -141,10 +141,10 @@ public interface ICharacterStream extends IConcurrentCloseable {
 			void writeSync(char c) throws IOException;
 
 			/** Write one character. */
-			ISynchronizationPoint<IOException> writeAsync(char c);
+			IAsync<IOException> writeAsync(char c);
 			
 			/** Flush any buffered character. */
-			ISynchronizationPoint<IOException> flush();
+			IAsync<IOException> flush();
 		}
 	}
 	

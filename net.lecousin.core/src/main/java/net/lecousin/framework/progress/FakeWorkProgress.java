@@ -1,13 +1,13 @@
 package net.lecousin.framework.progress;
 
-import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 
 /** Implementation of WorkProgress without really increasing any progression. */
 public class FakeWorkProgress implements WorkProgress {
 
-	private SynchronizationPoint<Exception> synch = new SynchronizationPoint<>(true);
+	private Async<Exception> synch = new Async<>(true);
 	
 	@Override
 	public long getPosition() {
@@ -55,7 +55,7 @@ public class FakeWorkProgress implements WorkProgress {
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> getSynch() {
+	public IAsync<Exception> getSynch() {
 		return synch;
 	}
 	

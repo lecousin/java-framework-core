@@ -9,9 +9,10 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
 import net.lecousin.framework.io.serialization.AbstractSerializationSpecWriter;
@@ -84,12 +85,12 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		this.pretty = pretty;
 	}
 	
-	static SerializationException convertError(IOException err) {
-		return new SerializationException("Error writing XSD", err);
-	}
+	private static Function<IOException, SerializationException> ioErrorConverter =
+		e -> new SerializationException("Error writing XSD", e);
+
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> initializeSpecWriter(IO.Writable output) {
+	protected IAsync<SerializationException> initializeSpecWriter(IO.Writable output) {
 		if (output instanceof IO.Writable.Buffered)
 			bout = (IO.Writable.Buffered)output;
 		else
@@ -104,18 +105,18 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		if (rootNamespaceURI != null)
 			this.output.addAttribute("targetNamespace", rootNamespaceURI);
 		this.output.openElement(XMLUtil.XSD_NAMESPACE_URI, "element", null);
-		return this.output.addAttribute("name", rootLocalName).convertSP(XMLSpecWriter::convertError);
+		return new Async<>(this.output.addAttribute("name", rootLocalName), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> finalizeSpecWriter() {
-		SynchronizationPoint<SerializationException> sp = new SynchronizationPoint<>();
-		output.end().listenInline(() -> bout.flush().listenInline(sp, XMLSpecWriter::convertError), sp, XMLSpecWriter::convertError);
+	protected IAsync<SerializationException> finalizeSpecWriter() {
+		Async<SerializationException> sp = new Async<>();
+		output.end().onDone(() -> bout.flush().onDone(sp, ioErrorConverter), sp, ioErrorConverter);
 		return sp;
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> specifyBooleanValue(SerializationContext context, boolean nullable) {
+	protected IAsync<SerializationException> specifyBooleanValue(SerializationContext context, boolean nullable) {
 		output.addAttribute("type", "xsd:boolean");
 		if (nullable) {
 			if (context instanceof AttributeContext)
@@ -127,11 +128,11 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 			output.addAttribute("minOccurs", "0");
 			output.addAttribute("maxOccurs", "unbounded");
 		}
-		return output.closeElement().convertSP(XMLSpecWriter::convertError);
+		return new Async<>(output.closeElement(), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> specifyNumericValue(
+	protected IAsync<SerializationException> specifyNumericValue(
 		SerializationContext context, Class<?> type, boolean nullable, Number min, Number max
 	) {
 		if (byte.class.equals(type) ||
@@ -169,11 +170,11 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 			output.addAttribute("maxOccurs", "unbounded");
 		}
 		// TODO min, max ? defining a type ??
-		return output.closeElement().convertSP(XMLSpecWriter::convertError);
+		return new Async<>(output.closeElement(), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> specifyStringValue(SerializationContext context, TypeDefinition type) {
+	protected IAsync<SerializationException> specifyStringValue(SerializationContext context, TypeDefinition type) {
 		output.addAttribute("type", "xsd:string");
 		if (context instanceof AttributeContext)
 			output.addAttribute("use", "optional");
@@ -184,11 +185,11 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 			output.addAttribute("maxOccurs", "unbounded");
 		}
 		// TODO restrictions ?
-		return output.closeElement().convertSP(XMLSpecWriter::convertError);
+		return new Async<>(output.closeElement(), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> specifyCharacterValue(SerializationContext context, boolean nullable) {
+	protected IAsync<SerializationException> specifyCharacterValue(SerializationContext context, boolean nullable) {
 		if (nullable) {
 			if (context instanceof AttributeContext)
 				output.addAttribute("use", "optional");
@@ -207,11 +208,11 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		output.closeElement(); // length
 		output.closeElement(); // restriction
 		output.closeElement(); // simpleType
-		return output.closeElement().convertSP(XMLSpecWriter::convertError);
+		return new Async<>(output.closeElement(), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> specifyEnumValue(SerializationContext context, TypeDefinition type) {
+	protected IAsync<SerializationException> specifyEnumValue(SerializationContext context, TypeDefinition type) {
 		if (context instanceof AttributeContext)
 			output.addAttribute("use", "optional");
 		else
@@ -235,11 +236,11 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		}
 		output.closeElement(); // restriction
 		output.closeElement(); // simpleType
-		return output.closeElement().convertSP(XMLSpecWriter::convertError);
+		return new Async<>(output.closeElement(), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> specifyCollectionValue(CollectionContext context, List<SerializationRule> rules) {
+	protected IAsync<SerializationException> specifyCollectionValue(CollectionContext context, List<SerializationRule> rules) {
 		if (context.getParent() instanceof AttributeContext)
 			return specifyValue(context, context.getElementType(), rules);
 		output.addAttribute("nillable", "true");
@@ -252,27 +253,27 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "sequence", null);
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "element", null);
 		output.addAttribute("name", "element");
-		ISynchronizationPoint<SerializationException> val = specifyValue(context, context.getElementType(), rules);
-		if (val.isUnblocked()) {
+		IAsync<SerializationException> val = specifyValue(context, context.getElementType(), rules);
+		if (val.isDone()) {
 			if (val.hasError()) return val;
 			output.closeElement(); // sequence
 			output.closeElement(); // complexType
-			return output.closeElement().convertSP(XMLSpecWriter::convertError); // collection
+			return new Async<>(output.closeElement(), ioErrorConverter); // collection
 		}
-		SynchronizationPoint<SerializationException> sp = new SynchronizationPoint<>();
-		val.listenAsync(new SpecTask(() -> {
+		Async<SerializationException> sp = new Async<>();
+		val.thenStart(new SpecTask(() -> {
 			output.closeElement(); // sequence
 			output.closeElement(); // complexType
-			output.closeElement().listenInline(sp, XMLSpecWriter::convertError); // collection
+			output.closeElement().onDone(sp, ioErrorConverter); // collection
 		}), sp);
 		return sp;
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> specifyIOReadableValue(SerializationContext context, List<SerializationRule> rules) {
+	protected IAsync<SerializationException> specifyIOReadableValue(SerializationContext context, List<SerializationRule> rules) {
 		output.addAttribute("type", "xsd:base64Binary");
 		output.addAttribute("nillable", "true");
-		return output.closeElement().convertSP(XMLSpecWriter::convertError);
+		return new Async<>(output.closeElement(), ioErrorConverter);
 	}
 	
 	/** Return the name for a type, replacing dollars by minus character. */
@@ -287,7 +288,7 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	private LinkedList<TypeContext> typesContext = new LinkedList<>();
 
 	@Override
-	protected ISynchronizationPoint<SerializationException> specifyAnyValue(SerializationContext context) {
+	protected IAsync<SerializationException> specifyAnyValue(SerializationContext context) {
 		if (context instanceof CollectionContext) {
 			output.addAttribute("minOccurs", "0");
 			output.addAttribute("maxOccurs", "unbounded");
@@ -300,11 +301,11 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		output.closeElement();
 		output.closeElement();
 		output.closeElement();
-		return output.closeElement().convertSP(XMLSpecWriter::convertError);
+		return new Async<>(output.closeElement(), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> specifyTypedValue(ObjectContext context, List<SerializationRule> rules) {
+	protected IAsync<SerializationException> specifyTypedValue(ObjectContext context, List<SerializationRule> rules) {
 		if (context.getParent() instanceof CollectionContext) {
 			output.addAttribute("minOccurs", "0");
 			output.addAttribute("maxOccurs", "unbounded");
@@ -314,20 +315,20 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "complexType", null);
 		TypeContext ctx = new TypeContext();
 		typesContext.addFirst(ctx);
-		ISynchronizationPoint<SerializationException> type = specifyTypeContent(context, rules);
-		if (type.isUnblocked()) {
+		IAsync<SerializationException> type = specifyTypeContent(context, rules);
+		if (type.isDone()) {
 			if (type.hasError()) return type;
 			typesContext.removeFirst();
 			if (ctx.sequenceStarted) output.closeElement();
 			output.closeElement(); // complexType
-			return output.closeElement().convertSP(XMLSpecWriter::convertError); // value
+			return new Async<>(output.closeElement(), ioErrorConverter); // value
 		}
-		SynchronizationPoint<SerializationException> sp = new SynchronizationPoint<>();
-		type.listenAsync(new SpecTask(() -> {
+		Async<SerializationException> sp = new Async<>();
+		type.thenStart(new SpecTask(() -> {
 			typesContext.removeFirst();
 			if (ctx.sequenceStarted) output.closeElement();
 			output.closeElement(); // complexType
-			output.closeElement().listenInline(sp, XMLSpecWriter::convertError); // value
+			output.closeElement().onDone(sp, ioErrorConverter); // value
 		}), sp);
 		return sp;
 	}
@@ -360,7 +361,7 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> specifyTypeAttribute(AttributeContext context, List<SerializationRule> rules) {
+	protected IAsync<SerializationException> specifyTypeAttribute(AttributeContext context, List<SerializationRule> rules) {
 		Attribute a = context.getAttribute();
 		Class<?> type = a.getType().getBase();
 		TypeContext ctx = typesContext.getFirst();

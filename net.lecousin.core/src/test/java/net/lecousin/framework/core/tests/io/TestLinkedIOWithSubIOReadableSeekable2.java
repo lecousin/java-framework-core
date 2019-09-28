@@ -10,12 +10,11 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.core.test.io.TestFragmented;
 import net.lecousin.framework.core.test.io.TestFragmented.FragmentedFile;
 import net.lecousin.framework.core.test.io.TestReadableSeekable;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.LinkedIO;
@@ -85,7 +84,7 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public void addCloseListener(Listener<CloseableListenable> listener) {
+		public void addCloseListener(Consumer<CloseableListenable> listener) {
 			io.addCloseListener(listener);
 		}
 
@@ -95,7 +94,7 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public ISynchronizationPoint<IOException> canStartReading() {
+		public IAsync<IOException> canStartReading() {
 			return io.canStartReading();
 		}
 
@@ -105,7 +104,7 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public ISynchronizationPoint<Exception> closeAsync() {
+		public IAsync<IOException> closeAsync() {
 			return io.closeAsync();
 		}
 
@@ -115,7 +114,7 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public void removeCloseListener(Listener<CloseableListenable> listener) {
+		public void removeCloseListener(Consumer<CloseableListenable> listener) {
 			io.removeCloseListener(listener);
 		}
 
@@ -155,13 +154,13 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public AsyncWork<Long, IOException> seekAsync(SeekType type, long move,
+		public AsyncSupplier<Long, IOException> seekAsync(SeekType type, long move,
 				Consumer<Pair<Long, IOException>> ondone) {
 			return io.seekAsync(type, move, ondone);
 		}
 
 		@Override
-		public AsyncWork<Long, IOException> seekAsync(SeekType type, long move) {
+		public AsyncSupplier<Long, IOException> seekAsync(SeekType type, long move) {
 			return io.seekAsync(type, move);
 		}
 
@@ -171,13 +170,13 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer,
+		public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer,
 				Consumer<Pair<Integer, IOException>> ondone) {
 			return io.readAsync(buffer, ondone);
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer) {
+		public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer) {
 			return io.readAsync(buffer);
 		}
 
@@ -187,13 +186,13 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer,
+		public AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer,
 				Consumer<Pair<Integer, IOException>> ondone) {
 			return io.readFullyAsync(buffer, ondone);
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer) {
+		public AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer) {
 			return io.readFullyAsync(buffer);
 		}
 
@@ -203,12 +202,12 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
+		public AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 			return io.skipAsync(n, ondone);
 		}
 
 		@Override
-		public AsyncWork<Long, IOException> skipAsync(long n) {
+		public AsyncSupplier<Long, IOException> skipAsync(long n) {
 			return io.skipAsync(n);
 		}
 
@@ -218,13 +217,13 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer,
+		public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer,
 				Consumer<Pair<Integer, IOException>> ondone) {
 			return io.readAsync(pos, buffer, ondone);
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer) {
+		public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer) {
 			return io.readAsync(pos, buffer);
 		}
 
@@ -234,13 +233,13 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer,
+		public AsyncSupplier<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer,
 				Consumer<Pair<Integer, IOException>> ondone) {
 			return io.readFullyAsync(pos, buffer, ondone);
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer) {
+		public AsyncSupplier<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer) {
 			return io.readFullyAsync(pos, buffer);
 		}
 		

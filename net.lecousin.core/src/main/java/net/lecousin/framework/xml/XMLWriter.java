@@ -9,8 +9,8 @@ import java.util.LinkedList;
 import java.util.Map;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.BufferedWritableCharacterStream;
 import net.lecousin.framework.io.text.CharacterStreamWritePool;
@@ -105,7 +105,7 @@ public class XMLWriter {
 	 * @param rootLocalName name of the root element
 	 * @param namespaces mapping from namespace URI and prefix, prefix may be empty for default namespace
 	 */
-	public ISynchronizationPoint<IOException> start(String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces) {
+	public IAsync<IOException> start(String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces) {
 		if (includeXMLDeclaration) {
 			writer.write(XML_DECLARATION_START);
 			writer.write(output.getEncoding().name());
@@ -119,7 +119,7 @@ public class XMLWriter {
 				writer.write(':');
 			}
 		}
-		ISynchronizationPoint<IOException> result = writer.write(rootLocalName);
+		IAsync<IOException> result = writer.write(rootLocalName);
 		if (namespaces != null && !namespaces.isEmpty()) {
 			for (Map.Entry<String, String> ns : namespaces.entrySet()) {
 				writer.write(XMLNS);
@@ -143,13 +143,13 @@ public class XMLWriter {
 	}
 	
 	/** End the document, close any open element, and flush the output stream. */
-	public ISynchronizationPoint<IOException> end() {
+	public IAsync<IOException> end() {
 		while (!context.isEmpty())
 			closeElement();
-		ISynchronizationPoint<IOException> write = writer.flush();
-		if (!write.isUnblocked()) {
-			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-			write.listenInline(() -> output.flush().listenInline(sp), sp);
+		IAsync<IOException> write = writer.flush();
+		if (!write.isDone()) {
+			Async<IOException> sp = new Async<>();
+			write.onDone(() -> output.flush().onDone(sp), sp);
 			return sp;
 		}
 		if (write.hasError())
@@ -163,12 +163,12 @@ public class XMLWriter {
 	}
 	
 	/** Add an attribute to the current element. */
-	public ISynchronizationPoint<IOException> addAttribute(CharSequence name, CharSequence value) {
+	public IAsync<IOException> addAttribute(CharSequence name, CharSequence value) {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new SynchronizationPoint<>(new IOException("XML document closed"));
+			return new Async<>(new IOException("XML document closed"));
 		if (!ctx.open)
-			return new SynchronizationPoint<>(new IOException("Cannot add attribute to XML element when the opening tag is closed"));
+			return new Async<>(new IOException("Cannot add attribute to XML element when the opening tag is closed"));
 		writer.write(' ');
 		writer.write(name);
 		writer.write(ATTRIBUTE_EQUALS);
@@ -180,16 +180,16 @@ public class XMLWriter {
 	 * This is optional to call this method, as any other method writing something inside the current element
 	 * will first check the opening tag is already closed or not.
 	 */
-	public ISynchronizationPoint<IOException> endOfAttributes() {
+	public IAsync<IOException> endOfAttributes() {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new SynchronizationPoint<>(new IOException("XML document closed"));
+			return new Async<>(new IOException("XML document closed"));
 		if (!ctx.open)
-			return new SynchronizationPoint<>(new IOException("Opening tag already closed"));
+			return new Async<>(new IOException("Opening tag already closed"));
 		return endOfAttributes(ctx);
 	}
 	
-	protected ISynchronizationPoint<IOException> endOfAttributes(Context ctx) {
+	protected IAsync<IOException> endOfAttributes(Context ctx) {
 		ctx.open = false;
 		if (!pretty)
 			return writer.write('>');
@@ -198,13 +198,13 @@ public class XMLWriter {
 	}
 	
 	/** Open a new element. */
-	public ISynchronizationPoint<IOException> openElement(String namespaceURI, String localName, Map<String, String> namespaces) {
+	public IAsync<IOException> openElement(String namespaceURI, String localName, Map<String, String> namespaces) {
 		if (lastNodeType == Node.TEXT_NODE)
 			writer.write('\n');
 		lastNodeType = Node.ELEMENT_NODE;
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new SynchronizationPoint<>(new IOException("XML document closed"));
+			return new Async<>(new IOException("XML document closed"));
 		if (ctx.open) {
 			endOfAttributes(ctx);
 		}
@@ -237,13 +237,13 @@ public class XMLWriter {
 	}
 	
 	/** Close the current element. */
-	public ISynchronizationPoint<IOException> closeElement() {
+	public IAsync<IOException> closeElement() {
 		if (lastNodeType == Node.TEXT_NODE)
 			writer.write('\n');
 		lastNodeType = Node.ELEMENT_NODE;
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new SynchronizationPoint<>(new IOException("XML document closed"));
+			return new Async<>(new IOException("XML document closed"));
 		if (ctx.open) {
 			context.removeFirst();
 			if (!pretty)
@@ -269,10 +269,10 @@ public class XMLWriter {
 	}
 	
 	/** Add text inside the current element. */
-	public ISynchronizationPoint<IOException> addText(CharSequence text) {
+	public IAsync<IOException> addText(CharSequence text) {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new SynchronizationPoint<>(new IOException("XML document closed"));
+			return new Async<>(new IOException("XML document closed"));
 		if (ctx.open)
 			endOfAttributes(ctx);
 		if (!pretty || lastNodeType == Node.TEXT_NODE)
@@ -283,10 +283,10 @@ public class XMLWriter {
 	}
 	
 	/** Add a CDATA section inside the current element. */
-	public ISynchronizationPoint<IOException> addCData(CharSequence data) {
+	public IAsync<IOException> addCData(CharSequence data) {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new SynchronizationPoint<>(new IOException("XML document closed"));
+			return new Async<>(new IOException("XML document closed"));
 		if (ctx.open)
 			endOfAttributes(ctx);
 		if (pretty) {
@@ -303,7 +303,7 @@ public class XMLWriter {
 	}
 	
 	/** Add a comment inside the current element. */
-	public ISynchronizationPoint<IOException> addComment(CharSequence comment) {
+	public IAsync<IOException> addComment(CharSequence comment) {
 		Context ctx = context.peekFirst();
 		if (ctx != null && ctx.open)
 			endOfAttributes(ctx);
@@ -321,7 +321,7 @@ public class XMLWriter {
 	}
 	
 	/** Write the given DOM element. */
-	public ISynchronizationPoint<IOException> write(Element element) {
+	public IAsync<IOException> write(Element element) {
 		String name = element.getLocalName();
 		if (name == null) name = element.getNodeName();
 		String uri = element.getNamespaceURI();
@@ -341,22 +341,22 @@ public class XMLWriter {
 		NodeList children = element.getChildNodes();
 		if (children.getLength() == 0)
 			return closeElement();
-		ISynchronizationPoint<IOException> open = endOfAttributes();
-		if (open.isUnblocked()) {
+		IAsync<IOException> open = endOfAttributes();
+		if (open.isDone()) {
 			if (open.hasError()) return open;
 			return writeChild(children, 0);
 		}
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		open.listenAsync(new Task.Cpu.FromRunnable("Write DOM", output.getPriority(), () ->
-			writeChild(children, 0).listenInline(sp)
+		Async<IOException> sp = new Async<>();
+		open.thenStart(new Task.Cpu.FromRunnable("Write DOM", output.getPriority(), () ->
+			writeChild(children, 0).onDone(sp)
 		), sp);
 		return sp;
 	}
 	
-	private ISynchronizationPoint<IOException> writeChild(NodeList children, int childIndex) {
+	private IAsync<IOException> writeChild(NodeList children, int childIndex) {
 		do {
 			Node child = children.item(childIndex);
-			ISynchronizationPoint<IOException> sp;
+			IAsync<IOException> sp;
 			if (child instanceof Element)
 				sp = write((Element)child);
 			else if (child instanceof Comment)
@@ -366,21 +366,21 @@ public class XMLWriter {
 			else if (child instanceof Text)
 				sp = addText(((Text)child).getData());
 			else
-				sp = new SynchronizationPoint<>(true);
-			if (sp.isUnblocked()) {
+				sp = new Async<>(true);
+			if (sp.isDone()) {
 				if (sp.hasError()) return sp;
 				childIndex++;
 				if (childIndex == children.getLength()) return sp;
 				continue;
 			}
-			SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+			Async<IOException> result = new Async<>();
 			int nextIndex = childIndex + 1;
-			sp.listenAsync(new Task.Cpu.FromRunnable("Write DOM", output.getPriority(), () -> {
+			sp.thenStart(new Task.Cpu.FromRunnable("Write DOM", output.getPriority(), () -> {
 				if (nextIndex == children.getLength()) {
 					result.unblock();
 					return;
 				}
-				writeChild(children, nextIndex).listenInline(result);
+				writeChild(children, nextIndex).onDone(result);
 			}), result);
 			return result;
 		} while (true);

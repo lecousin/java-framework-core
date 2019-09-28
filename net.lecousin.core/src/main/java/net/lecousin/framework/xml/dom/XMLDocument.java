@@ -5,9 +5,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.xml.XMLException;
 import net.lecousin.framework.xml.XMLStreamEventsAsync;
@@ -120,20 +120,20 @@ public class XMLDocument extends XMLNode implements Document {
 	}
 	
 	/** Create a document from a XMLStreamEvents. */
-	public static AsyncWork<XMLDocument, Exception> create(XMLStreamEventsAsync stream) {
+	public static AsyncSupplier<XMLDocument, Exception> create(XMLStreamEventsAsync stream) {
 		XMLDocument doc = new XMLDocument();
-		AsyncWork<XMLDocument, Exception> result = new AsyncWork<>();
-		create(doc, stream, result, new SynchronizationPoint<>(true));
+		AsyncSupplier<XMLDocument, Exception> result = new AsyncSupplier<>();
+		create(doc, stream, result, new Async<>(true));
 		return result;
 	}
 	
 	private static void create(
-		XMLDocument doc, XMLStreamEventsAsync stream, AsyncWork<XMLDocument, Exception> result, ISynchronizationPoint<Exception> n
+		XMLDocument doc, XMLStreamEventsAsync stream, AsyncSupplier<XMLDocument, Exception> result, IAsync<Exception> n
 	) {
 		do {
-			ISynchronizationPoint<Exception> next = n != null ? n : stream.next();
+			IAsync<Exception> next = n != null ? n : stream.next();
 			n = null;
-			if (next.isUnblocked()) {
+			if (next.isDone()) {
 				if (next.hasError()) {
 					if (next.getError() instanceof EOFException) {
 						result.unblockSuccess(doc);
@@ -160,8 +160,8 @@ public class XMLDocument extends XMLNode implements Document {
 							+ stream.event.text.asString()));
 						return;
 					}
-					AsyncWork<XMLElement, Exception> root = XMLElement.create(doc, stream);
-					if (root.isUnblocked()) {
+					AsyncSupplier<XMLElement, Exception> root = XMLElement.create(doc, stream);
+					if (root.isDone()) {
 						if (root.hasError()) {
 							result.error(root.getError());
 							return;
@@ -169,7 +169,7 @@ public class XMLDocument extends XMLNode implements Document {
 						doc.root = root.getResult();
 						break;
 					}
-					root.listenAsync(new Task.Cpu<Void, NoException>("Parsing XML root element", stream.getPriority()) {
+					root.thenStart(new Task.Cpu<Void, NoException>("Parsing XML root element", stream.getPriority()) {
 						@Override
 						public Void run() {
 							doc.root = root.getResult();
@@ -182,7 +182,7 @@ public class XMLDocument extends XMLNode implements Document {
 				}
 				continue;
 			}
-			next.listenAsync(new Task.Cpu<Void, NoException>("Parsing XML", stream.getPriority()) {
+			next.thenStart(new Task.Cpu<Void, NoException>("Parsing XML", stream.getPriority()) {
 				@Override
 				public Void run() {
 					create(doc, stream, result, next);

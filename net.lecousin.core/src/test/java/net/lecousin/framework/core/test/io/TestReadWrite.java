@@ -11,10 +11,10 @@ import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -76,8 +76,8 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		LinkedList<Integer> buffersToWrite = new LinkedList<>();
 		LinkedList<Integer> buffersToRead = new LinkedList<>();
 		for (int i = 0; i < nbBuf; ++i) buffersToWrite.add(Integer.valueOf(i));
-		ISynchronizationPoint<IOException> prevWrite = null;
-		ISynchronizationPoint<IOException> prevRead = null;
+		IAsync<IOException> prevWrite = null;
+		IAsync<IOException> prevRead = null;
 		for (int i = 0; i < nbBuf; i += 2) {
 			prevWrite = writeBuffer(io, prevWrite, buffersToWrite, buffersToRead);
 			if (i < nbBuf - 1)
@@ -104,10 +104,10 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		io.close();
 	}
 	
-	private <T extends IO.Readable.Seekable & IO.Writable.Seekable> ISynchronizationPoint<IOException> writeBuffer(
-		T io, ISynchronizationPoint<IOException> prevWrite, List<Integer> buffersToWrite, List<Integer> buffersToRead
+	private <T extends IO.Readable.Seekable & IO.Writable.Seekable> IAsync<IOException> writeBuffer(
+		T io, IAsync<IOException> prevWrite, List<Integer> buffersToWrite, List<Integer> buffersToRead
 	) {
-		SynchronizationPoint<IOException> done = new SynchronizationPoint<>();
+		Async<IOException> done = new Async<>();
 		Runnable r = new Runnable() {
 			@Override
 			public void run() {
@@ -127,8 +127,8 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 				MutableBoolean ondoneCalled = new MutableBoolean(false);
 				int bufIndex = index;
 				ByteBuffer buf = ByteBuffer.wrap(testBuf);
-				AsyncWork<Integer, IOException> write = io.writeAsync(index * testBuf.length, buf, param -> ondoneCalled.set(true));
-				write.listenInline(() -> {
+				AsyncSupplier<Integer, IOException> write = io.writeAsync(index * testBuf.length, buf, param -> ondoneCalled.set(true));
+				write.onDone(() -> {
 					if (!ondoneCalled.get()) {
 						done.error(new IOException("ondone not called by writeAsync"));
 						return;
@@ -152,14 +152,14 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		};
 		if (prevWrite == null) r.run();
 		else if (prevWrite.hasError()) return prevWrite;
-		else prevWrite.listenInline(r);
+		else prevWrite.onDone(r);
 		return done;
 	}
 
-	private <T extends IO.Readable.Seekable & IO.Writable.Seekable> ISynchronizationPoint<IOException> readBuffer(
-		T io, ISynchronizationPoint<IOException> prevWrite, ISynchronizationPoint<IOException> prevRead, List<Integer> buffersToRead
+	private <T extends IO.Readable.Seekable & IO.Writable.Seekable> IAsync<IOException> readBuffer(
+		T io, IAsync<IOException> prevWrite, IAsync<IOException> prevRead, List<Integer> buffersToRead
 	) {
-		SynchronizationPoint<IOException> done = new SynchronizationPoint<>();
+		Async<IOException> done = new Async<>();
 		Runnable r = new Runnable() {
 			@Override
 			public void run() {
@@ -191,8 +191,8 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 				byte[] b = new byte[testBuf.length];
 				long pos = index * testBuf.length;
 				MutableBoolean ondoneCalled = new MutableBoolean(false);
-				AsyncWork<Integer, IOException> read = io.readFullyAsync(pos, ByteBuffer.wrap(b), param -> ondoneCalled.set(true));
-				read.listenInline(new Runnable() {
+				AsyncSupplier<Integer, IOException> read = io.readFullyAsync(pos, ByteBuffer.wrap(b), param -> ondoneCalled.set(true));
+				read.onDone(new Runnable() {
 					@Override
 					public void run() {
 						if (read.hasError()) {
@@ -226,7 +226,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		};
 		if (prevWrite != null && prevWrite.hasError()) return prevWrite;
 		if (prevRead != null && prevRead.hasError()) return prevRead;
-		JoinPoint.listenInline(r, prevWrite, prevRead);
+		JoinPoint.joinThenDo(r, prevWrite, prevRead);
 		return done;
 	}
 	
@@ -344,7 +344,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		// make the file have its final size to be able to use SEEK_END
 		io.writeSync(nbBuf * testBuf.length - 1, ByteBuffer.wrap(testBuf, 0, 1));
 		// write odd buffers
-		ISynchronizationPoint<IOException> prev = null;
+		IAsync<IOException> prev = null;
 		int index = 0;
 		for (int i = 1; i < nbBuf; i += 2)
 			prev = writeBufferSeekAsync(io, i, index++, prev);
@@ -359,12 +359,12 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	}
 	
 	private <T extends IO.Readable.Seekable & IO.Writable.Seekable>
-	ISynchronizationPoint<IOException> writeBufferSeekAsync(T io, int bufIndex, int j, ISynchronizationPoint<IOException> prevWrite) {
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+	IAsync<IOException> writeBufferSeekAsync(T io, int bufIndex, int j, IAsync<IOException> prevWrite) {
+		Async<IOException> result = new Async<>();
 		Task.Cpu<Void, NoException> taskWrite = new Task.Cpu<Void, NoException>("writeBufferSeekAsync write", Task.PRIORITY_NORMAL) {
 			@Override
 			public Void run() {
-				io.writeAsync(ByteBuffer.wrap(testBuf)).listenInline(result);
+				io.writeAsync(ByteBuffer.wrap(testBuf)).onDone(result);
 				return null;
 			}
 		};
@@ -381,7 +381,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 						return null;
 					}
 				}
-				AsyncWork<Long, IOException> seek;
+				AsyncSupplier<Long, IOException> seek;
 				if ((j % 3) == 0)
 					seek = io.seekAsync(SeekType.FROM_BEGINNING, bufIndex * testBuf.length);
 				else if ((j % 3) == 1) {
@@ -389,7 +389,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 					catch (IOException e) { result.error(e); return null; }
 				} else
 					seek = io.seekAsync(SeekType.FROM_END, (nbBuf - bufIndex) * testBuf.length);
-				seek.listenInline(() -> {
+				seek.onDone(() -> {
 					if (seek.hasError()) result.error(seek.getError());
 					else if (seek.isCancelled()) result.cancel(seek.getCancelEvent());
 					else taskWrite.start();
@@ -403,8 +403,8 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	}
 	
 	private <T extends IO.Readable.Seekable & IO.Writable.Seekable>
-	ISynchronizationPoint<IOException> readReverseSeekAsync(T io, int bufIndex, ISynchronizationPoint<IOException> prevOp) {
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+	IAsync<IOException> readReverseSeekAsync(T io, int bufIndex, IAsync<IOException> prevOp) {
+		Async<IOException> result = new Async<>();
 		Task.Cpu<Void, NoException> taskRead = new Task.Cpu<Void, NoException>("readReverseSeekAsync read", Task.PRIORITY_NORMAL) {
 			@Override
 			public Void run() {
@@ -413,8 +413,8 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 					int ii = 0;
 					ii = ii + 1;
 				}
-				AsyncWork<Integer, IOException> read = io.readFullyAsync(ByteBuffer.wrap(b));
-				read.listenInline(() -> {
+				AsyncSupplier<Integer, IOException> read = io.readFullyAsync(ByteBuffer.wrap(b));
+				read.onDone(() -> {
 					if (read.hasError()) result.error(read.getError());
 					else if (read.isCancelled()) result.cancel(read.getCancelEvent());
 					else if (read.getResult().intValue() != testBuf.length)
@@ -444,7 +444,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 						return null;
 					}
 				}
-				AsyncWork<Long, IOException> seek;
+				AsyncSupplier<Long, IOException> seek;
 				if ((bufIndex % 3) == 0)
 					seek = io.seekAsync(SeekType.FROM_BEGINNING, bufIndex * testBuf.length);
 				else if ((bufIndex % 3) == 1) {
@@ -452,7 +452,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 					catch (IOException e) { result.error(e); return null; }
 				} else
 					seek = io.seekAsync(SeekType.FROM_END, (nbBuf - bufIndex) * testBuf.length);
-				seek.listenInline(() -> {
+				seek.onDone(() -> {
 					if (seek.hasError()) result.error(seek.getError());
 					else if (seek.isCancelled()) result.cancel(seek.getCancelEvent());
 					else taskRead.start();

@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -21,10 +22,9 @@ import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
-import net.lecousin.framework.event.Listener;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
@@ -59,7 +59,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	
 	private Application app;
 	private DefaultApplicationClassLoader acl;
-	private SynchronizationPoint<LibraryManagementException> started = new SynchronizationPoint<>();
+	private Async<LibraryManagementException> started = new Async<>();
 	private File[] additionalClassPath;
 	private ArrayList<File> classPath;
 	
@@ -90,16 +90,16 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			classPath.trimToSize();
 			additionalClassPath = null;
 			
-			SynchronizationPoint<Exception> sp = loadExtensionPoints();
+			Async<Exception> sp = loadExtensionPoints();
 			
-			LinkedList<ISynchronizationPoint<Exception>> tasks = new LinkedList<>();
+			LinkedList<IAsync<Exception>> tasks = new LinkedList<>();
 			tasks.add(sp);
-			sp.listenAsync(new Start2(tasks), true);
+			sp.thenStart(new Start2(tasks), true);
 			return null;
 		}
 
-		private SynchronizationPoint<Exception> loadExtensionPoints() {
-			SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		private Async<Exception> loadExtensionPoints() {
+			Async<Exception> sp = new Async<>();
 			Enumeration<URL> urls;
 			try { urls = acl.getResources("META-INF/net.lecousin/extensionpoints"); }
 			catch (IOException e) {
@@ -110,7 +110,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			return sp;
 		}
 		
-		private void loadExtensionPoints(Enumeration<URL> urls, SynchronizationPoint<Exception> sp) {
+		private void loadExtensionPoints(Enumeration<URL> urls, Async<Exception> sp) {
 			if (!urls.hasMoreElements()) {
 				sp.unblock();
 				return;
@@ -126,18 +126,18 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
 			BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 			LoadLibraryExtensionPointsFile load = new LoadLibraryExtensionPointsFile(stream, acl);
-			load.start().listenInline(() -> loadExtensionPoints(urls, sp), sp);
+			load.start().onDone(() -> loadExtensionPoints(urls, sp), sp);
 			stream.closeAfter(sp);
 		}
 	}
 	
 	private class Start2 extends Task.Cpu<Void, NoException> {
-		private Start2(LinkedList<ISynchronizationPoint<Exception>> tasks) {
+		private Start2(LinkedList<IAsync<Exception>> tasks) {
 			super("Start DefaultLibrariesManager - step 2", Task.PRIORITY_IMPORTANT);
 			this.tasks = tasks;
 		}
 		
-		private LinkedList<ISynchronizationPoint<Exception>> tasks;
+		private LinkedList<IAsync<Exception>> tasks;
 		
 		@Override
 		public Void run() {
@@ -145,15 +145,15 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				String path = custom.getPluginConfigurationFilePath();
 				if (path == null) continue;
 				CustomExtensionPointLoader loader = new CustomExtensionPointLoader(custom, path);
-				tasks.getLast().listenAsync(loader, false);
+				tasks.getLast().thenStart(loader, false);
 				tasks.add(loader.getOutput());
 			}
 			
-			SynchronizationPoint<Exception> plugins = new SynchronizationPoint<>();
-			tasks.getLast().listenAsync(
+			Async<Exception> plugins = new Async<>();
+			tasks.getLast().thenStart(
 				new Task.Cpu.FromRunnable("Load plugins from libraries", Task.PRIORITY_NORMAL, () -> loadPlugins(plugins)), false);
 			tasks.add(plugins);
-			tasks.getLast().listenAsync(new Task.Cpu<Void, NoException>("Finalize libraries loading", Task.PRIORITY_NORMAL) {
+			tasks.getLast().thenStart(new Task.Cpu<Void, NoException>("Finalize libraries loading", Task.PRIORITY_NORMAL) {
 				@Override
 				public Void run() {
 					ExtensionPoints.allPluginsLoaded();
@@ -162,7 +162,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				}
 			}, false);
 			
-			JoinPoint.fromSynchronizationPoints(tasks).listenInline(
+			JoinPoint.from(tasks).onDone(
 				() -> { /* ok */ },
 				error -> started.error(new LibraryManagementException("Error loading librairies", error)),
 				cancel -> started.cancel(cancel)
@@ -171,7 +171,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			return null;
 		}
 		
-		private void loadPlugins(SynchronizationPoint<Exception> sp) {
+		private void loadPlugins(Async<Exception> sp) {
 			Enumeration<URL> urls;
 			try { urls = acl.getResources("META-INF/net.lecousin/plugins"); }
 			catch (IOException e) {
@@ -181,7 +181,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			loadPlugins(urls, sp);
 		}
 		
-		private void loadPlugins(Enumeration<URL> urls, SynchronizationPoint<Exception> sp) {
+		private void loadPlugins(Enumeration<URL> urls, Async<Exception> sp) {
 			if (!urls.hasMoreElements()) {
 				sp.unblock();
 				return;
@@ -197,13 +197,13 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
 			BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 			LoadLibraryPluginsFile load = new LoadLibraryPluginsFile(stream, acl);
-			load.start().listenInline(() -> loadPlugins(urls, sp), sp);
+			load.start().onDone(() -> loadPlugins(urls, sp), sp);
 			stream.closeAfter(sp);
 		}
 	}
 	
 	@Override
-	public ISynchronizationPoint<LibraryManagementException> onLibrariesLoaded() {
+	public IAsync<LibraryManagementException> onLibrariesLoaded() {
 		return started;
 	}
 	
@@ -262,7 +262,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	@Override
 	public void scanLibraries(
 		String rootPackage, boolean includeSubPackages,
-		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Consumer<Class<?>> classScanner
 	) {
 		List<File> files = getLibrariesLocations();
 		for (File f : files) {
@@ -277,7 +277,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	/** Scan a directory looking for class files. */
 	public static void scanDirectoryLibrary(
 		ApplicationClassLoader classLoader, File dir, String rootPackage, boolean includeSubPackages,
-		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Consumer<Class<?>> classScanner
 	) {
 		String pkgPath = rootPackage.replace('.', '/');
 		File rootDir = new File(dir, pkgPath);
@@ -287,7 +287,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	
 	private static void scanClasses(
 		ApplicationClassLoader classLoader, File dir, String pkgName, boolean includeSubPackages,
-		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Consumer<Class<?>> classScanner
 	) {
 		File[] files = dir.listFiles();
 		if (files == null) return;
@@ -301,7 +301,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				if (classFilter == null || classFilter.test(name)) {
 					try {
 						Class<?> cl = classLoader.loadClass(name);
-						classScanner.fire(cl);
+						classScanner.accept(cl);
 					} catch (Exception t) {
 						// ignore
 					}
@@ -313,7 +313,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	/** Scan a JAR looking for class files. */
 	public static void scanJarLibrary(
 		ApplicationClassLoader classLoader, File file, String rootPackage, boolean includeSubPackages,
-		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Consumer<Class<?>> classScanner
 	) {
 		try (ZipFile jar = new ZipFile(file)) {
 			scanJarLibrary(classLoader, jar, rootPackage, includeSubPackages, packageFilter, classFilter, classScanner);
@@ -325,7 +325,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	/** Scan a JAR looking for class files. */
 	public static void scanJarLibrary(
 		ApplicationClassLoader classLoader, ZipFile jar, String rootPackage, boolean includeSubPackages,
-		Predicate<String> packageFilter, Predicate<String> classFilter, Listener<Class<?>> classScanner
+		Predicate<String> packageFilter, Predicate<String> classFilter, Consumer<Class<?>> classScanner
 	) {
 		String pkgPath = rootPackage.length() > 0 ? rootPackage.replace('.', '/') + '/' : "";
 		Enumeration<? extends ZipEntry> entries = jar.entries();
@@ -346,7 +346,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				if (classFilter != null && !classFilter.test(name)) continue;
 				try {
 					Class<?> cl = classLoader.loadClass(name);
-					classScanner.fire(cl);
+					classScanner.accept(cl);
 				} catch (Exception t) {
 					// ignore
 				}

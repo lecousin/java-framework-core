@@ -13,8 +13,8 @@ import net.lecousin.framework.application.StandaloneLCCore;
 import net.lecousin.framework.application.Version;
 import net.lecousin.framework.application.libraries.artifacts.LoadedLibrary;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.AsyncCloseable;
@@ -37,8 +37,8 @@ public class TestApplication extends LCCoreAbstractTest {
 		app.getLocalizedProperties();
 		app.closed(new AsyncCloseable<Exception>() {
 			@Override
-			public ISynchronizationPoint<Exception> closeAsync() {
-				return new SynchronizationPoint<>(true);
+			public IAsync<Exception> closeAsync() {
+				return new Async<>(true);
 			}
 		});
 		
@@ -112,8 +112,8 @@ public class TestApplication extends LCCoreAbstractTest {
 		LCCore.get().closed(c);
 		AsyncCloseable<Exception> ac = new AsyncCloseable<Exception>() {
 			@Override
-			public ISynchronizationPoint<Exception> closeAsync() {
-				return new SynchronizationPoint<>(true);
+			public IAsync<Exception> closeAsync() {
+				return new Async<>(true);
 			}
 		};
 		LCCore.get().closed(ac);

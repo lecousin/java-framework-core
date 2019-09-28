@@ -3,7 +3,7 @@ package net.lecousin.framework.io.util;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.io.IO;
 
 /**
@@ -37,7 +37,7 @@ public class LimitWriteOperationsReuseBuffers extends LimitWriteOperations {
 	}
 	
 	@Override
-	protected void writeDone(ByteBuffer buffer, AsyncWork<Integer, IOException> result) {
+	protected void writeDone(ByteBuffer buffer, AsyncSupplier<Integer, IOException> result) {
 		buffers.freeBuffer(buffer);
 		super.writeDone(buffer, result);
 	}

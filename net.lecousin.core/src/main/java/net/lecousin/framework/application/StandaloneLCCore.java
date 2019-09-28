@@ -15,7 +15,7 @@ import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.concurrent.DrivesTaskManager.DrivesProvider;
 import net.lecousin.framework.concurrent.StandaloneTaskPriorityManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.memory.MemoryManager;
 import net.lecousin.framework.util.AsyncCloseable;
@@ -202,7 +202,7 @@ public class StandaloneLCCore implements LCCore.Environment {
 			}
 		}
 
-		List<Pair<AsyncCloseable<?>,ISynchronizationPoint<?>>> closingResources = new LinkedList<>();
+		List<Pair<AsyncCloseable<?>,IAsync<?>>> closingResources = new LinkedList<>();
 		for (AsyncCloseable<?> s : new ArrayList<>(toCloseAsync)) {
 			System.out.println(" * Closing " + s);
 			closingResources.add(new Pair<>(s, s.closeAsync()));
@@ -210,9 +210,9 @@ public class StandaloneLCCore implements LCCore.Environment {
 		toCloseAsync.clear();
 		long start = System.currentTimeMillis();
 		do {
-			for (Iterator<Pair<AsyncCloseable<?>,ISynchronizationPoint<?>>> it = closingResources.iterator(); it.hasNext(); ) {
-				Pair<AsyncCloseable<?>,ISynchronizationPoint<?>> s = it.next();
-				if (s.getValue2().isUnblocked()) {
+			for (Iterator<Pair<AsyncCloseable<?>,IAsync<?>>> it = closingResources.iterator(); it.hasNext(); ) {
+				Pair<AsyncCloseable<?>,IAsync<?>> s = it.next();
+				if (s.getValue2().isDone()) {
 					System.out.println(" * Closed: " + s.getValue1());
 					it.remove();
 				}

@@ -8,7 +8,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.util.UnprotectedString;
@@ -61,7 +61,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 	@Test(timeout=120000)
 	public void testCharByCharAsync() throws Exception {
 		ICharacterStream.Readable.Buffered s = openStream(openFile());
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<Exception> sp = new Async<>();
 		continueReadAsync(s, 0, 0, sp);
 		sp.blockThrow(0);
 		s.back('z');
@@ -71,7 +71,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		s.close();
 	}
 	
-	private void continueReadAsync(ICharacterStream.Readable.Buffered s, int iBuf, int iChar, SynchronizationPoint<Exception> sp) throws Exception {
+	private void continueReadAsync(ICharacterStream.Readable.Buffered s, int iBuf, int iChar, Async<Exception> sp) throws Exception {
 		while (iBuf < nbBuf) {
 			if ((iBuf + iChar) % 13 == 3) {
 				s.back('b');
@@ -83,7 +83,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 			if (c == -2) {
 				int i = iBuf;
 				int j = iChar;
-				s.canStartReading().listenAsync(new Task.Cpu.FromRunnable("readAsync", Task.PRIORITY_NORMAL, () -> {
+				s.canStartReading().thenStart(new Task.Cpu.FromRunnable("readAsync", Task.PRIORITY_NORMAL, () -> {
 					try {
 						continueReadAsync(s, i, j, sp);
 					} catch (Exception e) {

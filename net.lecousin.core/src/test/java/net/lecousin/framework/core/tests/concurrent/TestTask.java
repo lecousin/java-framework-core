@@ -2,9 +2,9 @@ package net.lecousin.framework.core.tests.concurrent;
 
 import java.io.File;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.mutable.MutableBoolean;

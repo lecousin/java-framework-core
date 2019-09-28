@@ -2,8 +2,8 @@ package net.lecousin.framework.concurrent.tasks.drives;
 
 import java.io.IOException;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.async.CancelException;
 
 class CloseFileTask extends Task./*OnFile*/Cpu<Void,IOException> {
 

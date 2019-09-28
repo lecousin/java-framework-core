@@ -3,10 +3,10 @@ package net.lecousin.framework.util;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ThreadFactory;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.mutable.Mutable;
 
 /**
@@ -20,11 +20,11 @@ public final class ProcessUtil {
 	 * Create a thread that wait for the given process to end, and call the given listener.
 	 */
 	@SuppressWarnings("squid:S2142") // InterruptedException
-	public static void onProcessExited(Process process, Listener<Integer> exitValueListener) {
+	public static void onProcessExited(Process process, Consumer<Integer> exitValueListener) {
 		Application app = LCCore.getApplication();
 		Mutable<Thread> mt = new Mutable<>(null);
 		Thread t = app.getThreadFactory().newThread(() -> {
-			try { exitValueListener.fire(Integer.valueOf(process.waitFor())); }
+			try { exitValueListener.accept(Integer.valueOf(process.waitFor())); }
 			catch (InterruptedException e) { /* ignore and quit */ }
 			app.interrupted(mt.get());
 		});
@@ -35,7 +35,7 @@ public final class ProcessUtil {
 	}
 	
 	/** Launch 2 threads to consume both output and error streams, and call the listeners for each line read. */
-	public static void consumeProcessConsole(Process process, Listener<String> outputListener, Listener<String> errorListener) {
+	public static void consumeProcessConsole(Process process, Consumer<String> outputListener, Consumer<String> errorListener) {
 		Application app = LCCore.getApplication();
 		ThreadFactory factory = app.getThreadFactory();
 		Thread t;
@@ -60,13 +60,13 @@ public final class ProcessUtil {
 	public static class ConsoleConsumer implements Runnable {
 		
 		/** Constructor. */
-		public ConsoleConsumer(InputStream input, Listener<String> listener) {
+		public ConsoleConsumer(InputStream input, Consumer<String> listener) {
 			this.input = input;
 			this.listener = listener;
 		}
 		
 		private InputStream input;
-		private Listener<String> listener;
+		private Consumer<String> listener;
 		private Application app;
 		private Thread t;
 		
@@ -89,30 +89,30 @@ public final class ProcessUtil {
 						break;
 					} else if (i < 0) {
 						line.append(s.substring(0,j));
-						listener.fire(line.toString());
+						listener.accept(line.toString());
 						line = new StringBuilder();
 						s = s.substring(j + 1);
 					} else if (j < 0) {
 						line.append(s.substring(0,i));
-						listener.fire(line.toString());
+						listener.accept(line.toString());
 						line = new StringBuilder();
 						s = s.substring(i + 1);
 					} else if (i == j - 1) {
 						line.append(s.substring(0,i));
-						listener.fire(line.toString());
+						listener.accept(line.toString());
 						line = new StringBuilder();
 						s = s.substring(j + 1);
 					} else {
 						if (j < i) i = j;
 						line.append(s.substring(0,i));
-						listener.fire(line.toString());
+						listener.accept(line.toString());
 						line = new StringBuilder();
 						s = s.substring(i + 1);
 					}
 				}
 			} while (true);
 			if (line.length() > 0)
-				listener.fire(line.toString());
+				listener.accept(line.toString());
 			try { input.close(); } catch (Exception e) { /* ignore */ }
 			app.interrupted(t);
 		}

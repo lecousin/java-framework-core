@@ -2,7 +2,7 @@ package net.lecousin.framework.io.serialization;
 
 import java.util.List;
 
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 
@@ -10,6 +10,6 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 public interface SerializationSpecWriter {
 
 	/** Write the specification for the given type. */
-	ISynchronizationPoint<SerializationException> writeSpecification(Class<?> type, IO.Writable output, List<SerializationRule> rules);
+	IAsync<SerializationException> writeSpecification(Class<?> type, IO.Writable output, List<SerializationRule> rules);
 	
 }

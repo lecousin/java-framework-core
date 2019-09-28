@@ -7,9 +7,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
 import net.lecousin.framework.io.encoding.Base64;
@@ -88,8 +89,11 @@ public class XMLSerializer extends AbstractSerializer {
 		this.pretty = pretty;
 	}
 	
+	private static Function<IOException, SerializationException> ioErrorConverter =
+		e -> new SerializationException("Error writing XML", e);
+	
 	@Override
-	protected ISynchronizationPoint<SerializationException> initializeSerialization(IO.Writable output) {
+	protected IAsync<SerializationException> initializeSerialization(IO.Writable output) {
 		if (output instanceof IO.Writable.Buffered)
 			bout = (IO.Writable.Buffered)output;
 		else
@@ -99,69 +103,69 @@ public class XMLSerializer extends AbstractSerializer {
 			namespaces = new HashMap<>();
 		if (!namespaces.containsKey(XMLUtil.XSI_NAMESPACE_URI))
 			namespaces.put(XMLUtil.XSI_NAMESPACE_URI, "xsi");
-		return this.output.start(rootNamespaceURI, rootLocalName, namespaces)
-			.convertSP(e -> new SerializationException("Error writing XML", e));
+		return new Async<>(
+			this.output.start(rootNamespaceURI, rootLocalName, namespaces),
+			ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> finalizeSerialization() {
-		SynchronizationPoint<SerializationException> sp = new SynchronizationPoint<>();
-		output.end().listenInline(() -> bout.flush().listenInline(sp, e -> new SerializationException("Error writing XML", e)),
-			sp, e -> new SerializationException("Error writing XML", e));
+	protected IAsync<SerializationException> finalizeSerialization() {
+		Async<SerializationException> sp = new Async<>();
+		output.end().onDone(() -> bout.flush().onDone(sp, ioErrorConverter), sp, ioErrorConverter);
 		return sp;
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeBooleanValue(boolean value) {
-		return output.addText(Boolean.toString(value)).convertSP(e -> new SerializationException("Error writing XML", e));
+	protected IAsync<SerializationException> serializeBooleanValue(boolean value) {
+		return new Async<>(output.addText(Boolean.toString(value)), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeNullValue() {
-		return output.addAttribute("xsi:nil", "true").convertSP(e -> new SerializationException("Error writing XML", e));
+	protected IAsync<SerializationException> serializeNullValue() {
+		return new Async<>(output.addAttribute("xsi:nil", "true"), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeCharacterValue(char value) {
-		return output.addText(new String(new char[] { value })).convertSP(e -> new SerializationException("Error writing XML", e));
+	protected IAsync<SerializationException> serializeCharacterValue(char value) {
+		return new Async<>(output.addText(new String(new char[] { value })), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeNumericValue(Number value) {
-		return output.addText(value.toString()).convertSP(e -> new SerializationException("Error writing XML", e));
+	protected IAsync<SerializationException> serializeNumericValue(Number value) {
+		return new Async<>(output.addText(value.toString()), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeStringValue(CharSequence value) {
-		return output.addText(value).convertSP(e -> new SerializationException("Error writing XML", e));
+	protected IAsync<SerializationException> serializeStringValue(CharSequence value) {
+		return new Async<>(output.addText(value), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> startCollectionValue(
+	protected IAsync<SerializationException> startCollectionValue(
 		CollectionContext context, String path, List<SerializationRule> rules
 	) {
-		return output.endOfAttributes().convertSP(e -> new SerializationException("Error writing XML", e));
+		return new Async<>(output.endOfAttributes(), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> startCollectionValueElement(
+	protected IAsync<SerializationException> startCollectionValueElement(
 		CollectionContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules
 	) {
-		return output.openElement(null, "element", null).convertSP(e -> new SerializationException("Error writing XML", e));
+		return new Async<>(output.openElement(null, "element", null), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> endCollectionValueElement(
+	protected IAsync<SerializationException> endCollectionValueElement(
 		CollectionContext context, Object element, int elementIndex, String elementPath, List<SerializationRule> rules
 	) {
-		return output.closeElement().convertSP(e -> new SerializationException("Error writing XML", e));
+		return new Async<>(output.closeElement(), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> endCollectionValue(
+	protected IAsync<SerializationException> endCollectionValue(
 		CollectionContext context, String path, List<SerializationRule> rules
 	) {
-		return new SynchronizationPoint<>(true);
+		return new Async<>(true);
 	}
 	
 	protected static final Comparator<Attribute> attributesComparator = (o1, o2) -> {
@@ -190,7 +194,7 @@ public class XMLSerializer extends AbstractSerializer {
 	
 	@Override
 	@SuppressWarnings("squid:S1643")
-	protected ISynchronizationPoint<SerializationException> startObjectValue(ObjectContext context, String path, List<SerializationRule> rules) {
+	protected IAsync<SerializationException> startObjectValue(ObjectContext context, String path, List<SerializationRule> rules) {
 		Object instance = context.getInstance();
 		if (instance != null) {
 			boolean customInstantiator = false;
@@ -207,21 +211,20 @@ public class XMLSerializer extends AbstractSerializer {
 				if (!type.equals(instance.getClass())) {
 					String attrName = "class";
 					while (XMLDeserializer.hasAttribute(type, attrName)) attrName = "_" + attrName;
-					return output.addAttribute(attrName, instance.getClass().getName())
-						.convertSP(e -> new SerializationException("Error writing XML", e));
+					return new Async<>(output.addAttribute(attrName, instance.getClass().getName()), ioErrorConverter);
 				}
 			}
 		}
-		return new SynchronizationPoint<>(true);
+		return new Async<>(true);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> endObjectValue(ObjectContext context, String path, List<SerializationRule> rules) {
-		return new SynchronizationPoint<>(true);
+	protected IAsync<SerializationException> endObjectValue(ObjectContext context, String path, List<SerializationRule> rules) {
+		return new Async<>(true);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeNullAttribute(AttributeContext context, String path) {
+	protected IAsync<SerializationException> serializeNullAttribute(AttributeContext context, String path) {
 		Class<?> c = context.getAttribute().getType().getBase();
 		if (c.isPrimitive() ||
 			Boolean.class.equals(c) ||
@@ -229,59 +232,53 @@ public class XMLSerializer extends AbstractSerializer {
 			CharSequence.class.isAssignableFrom(c) ||
 			Character.class.equals(c) ||
 			c.isEnum())
-			return new SynchronizationPoint<>(true);
+			return new Async<>(true);
 		output.openElement(null, context.getAttribute().getName(), null);
 		output.addAttribute("xsi:nil", "true");
-		return output.closeElement().convertSP(e -> new SerializationException("Error writing XML", e));
+		return new Async<>(output.closeElement(), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeBooleanAttribute(AttributeContext context, boolean value, String path) {
-		return output.addAttribute(context.getAttribute().getName(), Boolean.toString(value))
-			.convertSP(e -> new SerializationException("Error writing XML", e));
+	protected IAsync<SerializationException> serializeBooleanAttribute(AttributeContext context, boolean value, String path) {
+		return new Async<>(output.addAttribute(context.getAttribute().getName(), Boolean.toString(value)), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeNumericAttribute(AttributeContext context, Number value, String path) {
-		return output.addAttribute(context.getAttribute().getName(), value.toString())
-			.convertSP(e -> new SerializationException("Error writing XML", e));
+	protected IAsync<SerializationException> serializeNumericAttribute(AttributeContext context, Number value, String path) {
+		return new Async<>(output.addAttribute(context.getAttribute().getName(), value.toString()), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeCharacterAttribute(AttributeContext context, char value, String path) {
-		return output.addAttribute(context.getAttribute().getName(), new UnprotectedString(value))
-			.convertSP(e -> new SerializationException("Error writing XML", e));
+	protected IAsync<SerializationException> serializeCharacterAttribute(AttributeContext context, char value, String path) {
+		return new Async<>(output.addAttribute(context.getAttribute().getName(), new UnprotectedString(value)), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeStringAttribute(AttributeContext context, CharSequence value, String path) {
-		return output.addAttribute(context.getAttribute().getName(), value)
-			.convertSP(e -> new SerializationException("Error writing XML", e));
+	protected IAsync<SerializationException> serializeStringAttribute(AttributeContext context, CharSequence value, String path) {
+		return new Async<>(output.addAttribute(context.getAttribute().getName(), value), ioErrorConverter);
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeObjectAttribute(
+	protected IAsync<SerializationException> serializeObjectAttribute(
 		AttributeContext context, Object value, String path, List<SerializationRule> rules
 	) {
 		output.openElement(null, context.getAttribute().getName(), null);
-		ISynchronizationPoint<SerializationException> s =
+		IAsync<SerializationException> s =
 			serializeObjectValue(context, value, context.getAttribute().getType(), path + '.' + context.getAttribute().getName(), rules);
-		if (s.isUnblocked()) {
+		if (s.isDone()) {
 			if (s.hasError()) return s;
-			return output.closeElement().convertSP(e -> new SerializationException("Error writing XML", e));
+			return new Async<>(output.closeElement(), ioErrorConverter);
 		}
-		SynchronizationPoint<SerializationException> sp = new SynchronizationPoint<>();
-		s.listenAsync(new SerializationTask(() -> output.closeElement()
-			.listenInline(sp, e -> new SerializationException("Error writing XML", e))),
-				sp, e -> new SerializationException("Error writing XML", e));
+		Async<SerializationException> sp = new Async<>();
+		s.thenStart(new SerializationTask(() -> output.closeElement().onDone(sp, ioErrorConverter)), sp);
 		return sp;
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeCollectionAttribute(
+	protected IAsync<SerializationException> serializeCollectionAttribute(
 		CollectionContext context, String path, List<SerializationRule> rules
 	) {
-		SynchronizationPoint<SerializationException> result = new SynchronizationPoint<>();
+		Async<SerializationException> result = new Async<>();
 		serializeCollectionAttributeElement(context, context.getIterator(), 0,
 			path + '.' + ((AttributeContext)context.getParent()).getAttribute().getName(), rules, result);
 		return result;
@@ -289,7 +286,7 @@ public class XMLSerializer extends AbstractSerializer {
 	
 	protected void serializeCollectionAttributeElement(
 		CollectionContext context, Iterator<?> it, int elementIndex, String colPath,
-		List<SerializationRule> rules, SynchronizationPoint<SerializationException> result
+		List<SerializationRule> rules, Async<SerializationException> result
 	) {
 		if (!it.hasNext()) {
 			result.unblock();
@@ -299,8 +296,8 @@ public class XMLSerializer extends AbstractSerializer {
 		String elementPath = colPath + '[' + elementIndex + ']';
 		Attribute colAttr = ((AttributeContext)context.getParent()).getAttribute();
 		output.openElement(null, colAttr.getName(), null);
-		ISynchronizationPoint<SerializationException> value = serializeValue(context, element, context.getElementType(), elementPath, rules);
-		if (value.isUnblocked()) {
+		IAsync<SerializationException> value = serializeValue(context, element, context.getElementType(), elementPath, rules);
+		if (value.isDone()) {
 			if (value.hasError()) result.error(value.getError());
 			else {
 				output.closeElement();
@@ -308,32 +305,32 @@ public class XMLSerializer extends AbstractSerializer {
 			}
 			return;
 		}
-		value.listenAsync(new SerializationTask(() -> {
+		value.thenStart(new SerializationTask(() -> {
 			output.closeElement();
 			serializeCollectionAttributeElement(context, it, elementIndex + 1, colPath, rules, result);
 		}), result);
 	}
 
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeIOReadableValue(
+	protected IAsync<SerializationException> serializeIOReadableValue(
 		SerializationContext context, IO.Readable io, String path, List<SerializationRule> rules
 	) {
-		ISynchronizationPoint<IOException> encode = Base64.encodeAsync(io, (char[] c, int offset, int length) ->
+		IAsync<IOException> encode = Base64.encodeAsync(io, (char[] c, int offset, int length) ->
 			output.addText(new UnprotectedString(c, offset, length, c.length))
 		);
-		if (encode.isUnblocked()) {
-			if (encode.hasError()) return encode.convertSP(e -> new SerializationException("Error writing XML", e));
-			return output.closeElement().convertSP(e -> new SerializationException("Error writing XML", e));
+		if (encode.isDone()) {
+			if (encode.hasError()) return new Async<>(encode, ioErrorConverter);
+			return new Async<>(output.closeElement(), ioErrorConverter);
 		}
-		SynchronizationPoint<SerializationException> sp = new SynchronizationPoint<>();
-		encode.listenAsync(new SerializationTask(() -> output.closeElement()
-			.listenInline(sp, e -> new SerializationException("Error writing XML", e))),
-			sp, e -> new SerializationException("Error writing XML", e));
+		Async<SerializationException> sp = new Async<>();
+		encode.thenStart(new SerializationTask(() -> output.closeElement()
+			.onDone(sp, ioErrorConverter)),
+			sp, ioErrorConverter);
 		return sp;
 	}
 
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeIOReadableAttribute(
+	protected IAsync<SerializationException> serializeIOReadableAttribute(
 		AttributeContext context, IO.Readable io, String path, List<SerializationRule> rules
 	) {
 		output.openElement(null, context.getAttribute().getName(), null);
@@ -341,7 +338,7 @@ public class XMLSerializer extends AbstractSerializer {
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> serializeAttribute(
+	protected IAsync<SerializationException> serializeAttribute(
 		AttributeContext context, String path, List<SerializationRule> rules
 	) {
 		XMLCustomSerialization custom = context.getAttribute().getAnnotation(false, XMLCustomSerialization.class);
@@ -351,7 +348,7 @@ public class XMLSerializer extends AbstractSerializer {
 		Object value;
 		try { value = context.getAttribute().getValue(context.getParent().getInstance()); }
 		catch (Exception e) {
-			return new SynchronizationPoint<>(
+			return new Async<>(
 				new SerializationException("Unable to get value of attribute " + context.getAttribute().getOriginalName()
 					+ " on " + context.getAttribute().getOriginalType().getClass().getName(), e));
 		}
@@ -362,7 +359,7 @@ public class XMLSerializer extends AbstractSerializer {
 		try {
 			return custom.value().newInstance().serialize(value, this, output, rules);
 		} catch (Exception e) {
-			return new SynchronizationPoint<>(new SerializationException("Error instantiating type", e));
+			return new Async<>(new SerializationException("Error instantiating type", e));
 		}
 	}
 	

@@ -3,10 +3,10 @@ package net.lecousin.framework.concurrent.util;
 import java.io.IOException;
 
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.Pair;
 
@@ -29,9 +29,9 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 	}
 	
 	private Executor<InputType, OutputResultType, OutputErrorType> executor;
-	private TurnArray<Pair<InputType,AsyncWork<OutputResultType,OutputErrorType>>> waiting;
-	private SynchronizationPoint<NoException> lock = null;
-	private AsyncWork<OutputResultType, OutputErrorType> lastWrite = new AsyncWork<>(null, null);
+	private TurnArray<Pair<InputType,AsyncSupplier<OutputResultType,OutputErrorType>>> waiting;
+	private Async<NoException> lock = null;
+	private AsyncSupplier<OutputResultType, OutputErrorType> lastWrite = new AsyncSupplier<>(null, null);
 	private CancelException cancelled = null;
 	private OutputErrorType error = null;
 	private boolean isReady = true;
@@ -45,7 +45,7 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 	 */
 	public static interface Executor<InputType, OutputResultType, OutputErrorType extends Exception> {
 		/** Launch asynchronous operation. */
-		AsyncWork<OutputResultType, OutputErrorType> execute(InputType data);
+		AsyncSupplier<OutputResultType, OutputErrorType> execute(InputType data);
 	}
 	
 	/**
@@ -53,25 +53,25 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 	 * If too many write operations are pending, the method is blocking.
 	 * @param data the data to write.
 	 */
-	public AsyncWork<OutputResultType, OutputErrorType> write(InputType data) throws IOException {
+	public AsyncSupplier<OutputResultType, OutputErrorType> write(InputType data) throws IOException {
 		do {
-			SynchronizationPoint<NoException> lk;
+			Async<NoException> lk;
 			synchronized (waiting) {
 				// if cancelled or errored, return immediately
-				if (error != null) return new AsyncWork<>(null, error);
-				if (cancelled != null) return new AsyncWork<>(null, null, cancelled);
+				if (error != null) return new AsyncSupplier<>(null, error);
+				if (cancelled != null) return new AsyncSupplier<>(null, null, cancelled);
 				
-				AsyncWork<OutputResultType, OutputErrorType> op;
+				AsyncSupplier<OutputResultType, OutputErrorType> op;
 				// if ready, write immediately
 				if (isReady) {
 					isReady = false;
 					op = lastWrite = executor.execute(data);
-					lastWrite.listenInline(new WriteListener(data, op, null));
+					lastWrite.onDone(new WriteListener(data, op, null));
 					return op;
 				}
 				// not ready
 				if (!waiting.isFull()) {
-					op = new AsyncWork<>();
+					op = new AsyncSupplier<>();
 					waiting.addLast(new Pair<>(data, op));
 					lastWrite = op;
 					return op;
@@ -79,7 +79,7 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 				// full
 				if (lock != null)
 					throw new IOException("Concurrent write");
-				lock = new SynchronizationPoint<>();
+				lock = new Async<>();
 				lk = lock;
 			}
 			lk.block(0);
@@ -88,7 +88,7 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 
 	private class WriteListener implements Runnable {
 		public WriteListener(
-			InputType data, AsyncWork<OutputResultType, OutputErrorType> op, AsyncWork<OutputResultType, OutputErrorType> result
+			InputType data, AsyncSupplier<OutputResultType, OutputErrorType> op, AsyncSupplier<OutputResultType, OutputErrorType> result
 		) {
 			this.data = data;
 			this.op = op;
@@ -96,12 +96,12 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 		}
 		
 		private InputType data;
-		private AsyncWork<OutputResultType, OutputErrorType> op;
-		private AsyncWork<OutputResultType, OutputErrorType> result;
+		private AsyncSupplier<OutputResultType, OutputErrorType> op;
+		private AsyncSupplier<OutputResultType, OutputErrorType> result;
 		
 		@Override
 		public void run() {
-			SynchronizationPoint<NoException> lk = null;
+			Async<NoException> lk = null;
 			synchronized (waiting) {
 				if (lock != null) {
 					lk = lock;
@@ -110,19 +110,19 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 				if (op.hasError()) error = op.getError();
 				else if (op.isCancelled()) cancelled = op.getCancelEvent();
 				else {
-					Pair<InputType, AsyncWork<OutputResultType, OutputErrorType>> b = waiting.pollFirst();
+					Pair<InputType, AsyncSupplier<OutputResultType, OutputErrorType>> b = waiting.pollFirst();
 					if (b != null) {
 						// something is waiting
-						AsyncWork<OutputResultType, OutputErrorType> newOp = executor.execute(b.getValue1());
+						AsyncSupplier<OutputResultType, OutputErrorType> newOp = executor.execute(b.getValue1());
 						lastWrite = newOp;
-						newOp.listenInline(new WriteListener(b.getValue1(), newOp, b.getValue2()));
+						newOp.onDone(new WriteListener(b.getValue1(), newOp, b.getValue2()));
 					} else {
 						isReady = true;
 					}
 				}
 			}
 			if (result != null)
-				op.listenInline(result);
+				op.forward(result);
 			if (lk != null)
 				lk.unblock();
 			writeDone(data, op);
@@ -130,22 +130,22 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 	}
 	
 	@SuppressWarnings("unused")
-	protected void writeDone(InputType data, AsyncWork<OutputResultType, OutputErrorType> result) {
+	protected void writeDone(InputType data, AsyncSupplier<OutputResultType, OutputErrorType> result) {
 		// to be overriden if needed
 	}
 	
 	/** Return the last pending operation, or null. */
-	public AsyncWork<OutputResultType, OutputErrorType> getLastPendingOperation() {
-		return lastWrite.isUnblocked() ? null : lastWrite;
+	public AsyncSupplier<OutputResultType, OutputErrorType> getLastPendingOperation() {
+		return lastWrite.isDone() ? null : lastWrite;
 	}
 	
 	/** Same as getLastPendingOperation but never return null (return an unblocked synchronization point instead). */
-	public ISynchronizationPoint<OutputErrorType> flush() {
-		SynchronizationPoint<OutputErrorType> sp = new SynchronizationPoint<>();
+	public IAsync<OutputErrorType> flush() {
+		Async<OutputErrorType> sp = new Async<>();
 		Runnable callback = new Runnable() {
 			@Override
 			public void run() {
-				AsyncWork<OutputResultType, OutputErrorType> last = null;
+				AsyncSupplier<OutputResultType, OutputErrorType> last = null;
 				synchronized (waiting) {
 					if (error != null) sp.error(error);
 					else if (cancelled != null) sp.cancel(cancelled);
@@ -153,7 +153,7 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 					else last = lastWrite;
 				}
 				if (last != null)
-					last.listenInline(this);
+					last.onDone(this);
 			}
 		};
 		callback.run();

@@ -1,6 +1,6 @@
 package net.lecousin.framework.concurrent;
 
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 
 /**
  * Handle a blocking situation.
@@ -11,6 +11,6 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 public interface BlockedThreadHandler {
 
 	/** Singal that the current thread is blocked by the given synchronization point. */
-	void blocked(ISynchronizationPoint<?> synchPoint, long timeout);
+	void blocked(IAsync<?> synchPoint, long timeout);
 	
 }

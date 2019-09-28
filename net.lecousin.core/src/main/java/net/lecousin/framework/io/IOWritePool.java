@@ -4,10 +4,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 
-import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
 
 /**
  * This class can be used if you are writing to a IO.Writable, but you don't want to wait for the previous write to be done before
@@ -28,16 +27,16 @@ public class IOWritePool {
 
 	private IO.Writable io;
 	private LinkedList<ByteBuffer> buffers = new LinkedList<>();
-	private AsyncWork<Integer,IOException> writing = null;
-	private AsyncWorkListener<Integer, IOException> listener = new Listener();
-	private SynchronizationPoint<IOException> waitDone = null;
+	private AsyncSupplier<Integer,IOException> writing = null;
+	private AsyncSupplier.Listener<Integer, IOException> listener = new Listener();
+	private Async<IOException> waitDone = null;
 	
 	/** Write the given buffer. */
 	public void write(ByteBuffer buffer) throws IOException {
 		synchronized (buffers) {
 			if (writing == null) {
 				writing = io.writeAsync(buffer);
-				writing.listenInline(listener);
+				writing.listen(listener);
 				return;
 			}
 			if (writing.hasError()) throw writing.getError();
@@ -48,24 +47,24 @@ public class IOWritePool {
 	/**
 	 * Must be called once all write operations have been done, and only one time.
 	 */
-	public SynchronizationPoint<IOException> onDone() {
+	public Async<IOException> onDone() {
 		synchronized (buffers) {
-			if (writing == null) return new SynchronizationPoint<>(true);
-			if (writing.hasError()) return new SynchronizationPoint<>(writing.getError());
-			if (writing.isCancelled()) return new SynchronizationPoint<>(writing.getCancelEvent());
-			if (waitDone == null) waitDone = new SynchronizationPoint<>();
+			if (writing == null) return new Async<>(true);
+			if (writing.hasError()) return new Async<>(writing.getError());
+			if (writing.isCancelled()) return new Async<>(writing.getCancelEvent());
+			if (waitDone == null) waitDone = new Async<>();
 		}
 		return waitDone;
 	}
 	
-	private class Listener implements AsyncWorkListener<Integer, IOException> {
+	private class Listener implements AsyncSupplier.Listener<Integer, IOException> {
 
 		@Override
 		public void ready(Integer result) {
 			synchronized (buffers) {
 				if (!buffers.isEmpty()) {
 					writing = io.writeAsync(buffers.removeFirst());
-					writing.listenInline(listener);
+					writing.listen(listener);
 					return;
 				}
 				writing = null;

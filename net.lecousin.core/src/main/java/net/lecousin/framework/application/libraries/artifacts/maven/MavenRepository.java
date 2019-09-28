@@ -4,7 +4,7 @@ import java.util.List;
 
 import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.application.libraries.artifacts.LibrariesRepository;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -13,10 +13,10 @@ import net.lecousin.framework.exception.NoException;
 public interface MavenRepository extends LibrariesRepository {
 
 	/** Return the list of available versions for the given artifact, or null if the artifact does not exist. */
-	AsyncWork<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, byte priority);
+	AsyncSupplier<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, byte priority);
 	
 	/** Load an artifact's POM file. */
-	AsyncWork<MavenPOM, LibraryManagementException> load(
+	AsyncSupplier<MavenPOM, LibraryManagementException> load(
 		String groupId, String artifactId, String version, MavenPOMLoader pomLoader, byte priority
 	);
 	

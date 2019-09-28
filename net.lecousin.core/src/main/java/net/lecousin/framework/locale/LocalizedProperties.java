@@ -15,11 +15,11 @@ import java.util.Set;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.collections.ArrayUtil;
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -57,14 +57,14 @@ public class LocalizedProperties implements IMemoryManageable {
 	private static class Namespace {
 		private ClassLoader classLoader;
 		private String path;
-		private ISynchronizationPoint<Exception> loading;
+		private IAsync<IOException> loading;
 		private Language[] languages;
 		
 		private static class Language {
 			private String[] tag;
 			private Language parent = null;
 			private Map<String, String> properties = null;
-			private SynchronizationPoint<Exception> loading = null;
+			private Async<IOException> loading = null;
 			private long lastUsage = 0;
 		}
 	}
@@ -72,9 +72,9 @@ public class LocalizedProperties implements IMemoryManageable {
 	/** Register the path on which localized properties can be found for a namespace.
 	 * If the namespace already exists, the new path will override the previous one.
 	 */
-	public ISynchronizationPoint<Exception> registerNamespace(String namespace, String path, ClassLoader classLoader) {
+	public IAsync<IOException> registerNamespace(String namespace, String path, ClassLoader classLoader) {
 		Namespace ns;
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
+		Async<IOException> sp = new Async<>();
 		synchronized (namespaces) {
 			ns = namespaces.get(namespace);
 			if (ns == null) {
@@ -93,21 +93,21 @@ public class LocalizedProperties implements IMemoryManageable {
 		IO.Readable input;
 		try { input = provider == null ? null : provider.provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT); }
 		catch (IOException e) {
-			sp.error(new Exception("Localized properties for namespace " + namespace
+			sp.error(new IOException("Localized properties for namespace " + namespace
 				+ " cannot be loaded because the file " + path + ".languages does not exist", e));
 			logger.error(sp.getError().getMessage());
 			return sp;
 		}
 		if (input == null) {
-			sp.error(new Exception("Localized properties for namespace " + namespace
+			sp.error(new IOException("Localized properties for namespace " + namespace
 				+ " cannot be loaded because the file " + path + ".languages does not exist"));
 			logger.error(sp.getError().getMessage());
 			return sp;
 		}
-		AsyncWork<UnprotectedStringBuffer, IOException> read = IOUtil.readFullyAsString(
+		AsyncSupplier<UnprotectedStringBuffer, IOException> read = IOUtil.readFullyAsString(
 			input, StandardCharsets.US_ASCII, Task.PRIORITY_RATHER_IMPORTANT);
 		Namespace toLoad = ns;
-		read.listenAsyncSP(new Task.Cpu.FromRunnable("Read localized properties namespace file", Task.PRIORITY_RATHER_IMPORTANT, () -> {
+		read.thenStart(new Task.Cpu.FromRunnable("Read localized properties namespace file", Task.PRIORITY_RATHER_IMPORTANT, () -> {
 			List<Namespace.Language> languages = new LinkedList<>();
 			UnprotectedStringBuffer str = read.getResult();
 			for (UnprotectedStringBuffer s : str.split(',')) {
@@ -159,7 +159,7 @@ public class LocalizedProperties implements IMemoryManageable {
 	 * If the namespace already exists, the new path will override the previous one.
 	 * The path is calculated by taking the package name of the given calss, then appending the subPath.
 	 */
-	public ISynchronizationPoint<Exception> registerNamespaceFrom(Class<?> cl, String namespace, String subPath) {
+	public IAsync<IOException> registerNamespaceFrom(Class<?> cl, String namespace, String subPath) {
 		return registerNamespace(namespace, ClassUtil.getPackageName(cl).replace('.', '/') + '/' + subPath, cl.getClassLoader());
 	}
 	
@@ -173,12 +173,12 @@ public class LocalizedProperties implements IMemoryManageable {
 		IO.Readable input;
 		try { input = provider != null ? provider.provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT) : null; }
 		catch (IOException e) {
-			lang.loading.error(new Exception("Localized properties file " + path + " does not exist", e));
+			lang.loading.error(new IOException("Localized properties file " + path + " does not exist", e));
 			logger.error(lang.loading.getError().getMessage());
 			return;
 		}
 		if (input == null) {
-			lang.loading.error(new Exception("Localized properties file " + path + " does not exist"));
+			lang.loading.error(new IOException("Localized properties file " + path + " does not exist"));
 			logger.error(lang.loading.getError().getMessage());
 			return;
 		}
@@ -200,7 +200,7 @@ public class LocalizedProperties implements IMemoryManageable {
 				return lang.properties;
 			}
 		};
-		reader.start().listenInline(lang.loading);
+		reader.start().onDone(lang.loading, IO::error);
 	}
 
 	/** Localization. */
@@ -213,8 +213,8 @@ public class LocalizedProperties implements IMemoryManageable {
 	}
 	
 	/** Localization. */
-	public AsyncWork<String, NoException> localize(String[] languageTag, String namespace, String key, Serializable... values) {
-		AsyncWork<String, NoException> result = new AsyncWork<>();
+	public AsyncSupplier<String, NoException> localize(String[] languageTag, String namespace, String key, Serializable... values) {
+		AsyncSupplier<String, NoException> result = new AsyncSupplier<>();
 		Namespace ns;
 		synchronized (namespaces) {
 			ns = namespaces.get(namespace);
@@ -223,16 +223,16 @@ public class LocalizedProperties implements IMemoryManageable {
 			result.unblockSuccess("!! unknown namespace " + namespace + " !!");
 			return result;
 		}
-		ns.loading.listenInline(new Runnable() {
+		ns.loading.onDone(new Runnable() {
 			@Override
 			public void run() {
 				if (ns.loading.hasError()) {
 					result.unblockSuccess("!! error loading namespace " + namespace + " !!");
 					return;
 				}
-				if (!ns.loading.isUnblocked()) {
+				if (!ns.loading.isDone()) {
 					// namespace has been overriden and is reloading
-					ns.loading.listenInline(this);
+					ns.loading.onDone(this);
 					return;
 				}
 				for (Namespace.Language l : ns.languages)
@@ -246,15 +246,15 @@ public class LocalizedProperties implements IMemoryManageable {
 		return result;
 	}
 	
-	private void localize(Namespace ns, Namespace.Language lang, String key, Serializable[] values, AsyncWork<String, NoException> result) {
+	private void localize(Namespace ns, Namespace.Language lang, String key, Serializable[] values, AsyncSupplier<String, NoException> result) {
 		boolean needsLoading = false;
 		synchronized (lang) {
 			if (lang.loading == null) {
-				lang.loading = new SynchronizationPoint<>();
+				lang.loading = new Async<>();
 				needsLoading = true;
 			}
 		}
-		lang.loading.listenInline(() -> {
+		lang.loading.onDone(() -> {
 			synchronized (lang) {
 				String content = null;
 				if (!lang.loading.hasError())
@@ -274,14 +274,16 @@ public class LocalizedProperties implements IMemoryManageable {
 			load(ns, lang);
 	}
 	
-	private static void localize(String[] languageTag, String key, String content, Serializable[] values, AsyncWork<String, NoException> result) {
+	private static void localize(
+		String[] languageTag, String key, String content, Serializable[] values, AsyncSupplier<String, NoException> result
+	) {
 		for (int i = 0; i < values.length; ++i)
 			if (values[i] instanceof ILocalizableString) {
-				AsyncWork<String, NoException> l = ((ILocalizableString)values[i]).localize(languageTag);
+				AsyncSupplier<String, NoException> l = ((ILocalizableString)values[i]).localize(languageTag);
 				Serializable[] newValues = new Serializable[values.length];
 				System.arraycopy(values, 0, newValues, 0, values.length);
 				int ii = i;
-				l.listenAsync(new Task.Cpu.FromRunnable(() -> {
+				l.thenStart(new Task.Cpu.FromRunnable(() -> {
 					newValues[ii] = l.getResult();
 					localize(languageTag, key, content, newValues, result);
 				}, "Localization", Task.PRIORITY_NORMAL), true);
@@ -354,7 +356,7 @@ public class LocalizedProperties implements IMemoryManageable {
 					for (Namespace.Language lang : ns.languages) {
 						synchronized (lang) {
 							if (lang.loading == null) continue;
-							if (!lang.loading.isUnblocked()) continue;
+							if (!lang.loading.isDone()) continue;
 							if (lang.properties != null && System.currentTimeMillis() - lang.lastUsage > maxIdle) {
 								lang.loading = null;
 								lang.properties = null;
@@ -401,22 +403,22 @@ public class LocalizedProperties implements IMemoryManageable {
 	}
 	
 	/** Return the localizable properties for the given namespace and language. */
-	public AsyncWork<Map<String, String>, Exception> getNamespaceContent(String namespace, String[] languageTag) {
-		AsyncWork<Map<String, String>, Exception> result = new AsyncWork<>();
+	public AsyncSupplier<Map<String, String>, IOException> getNamespaceContent(String namespace, String[] languageTag) {
+		AsyncSupplier<Map<String, String>, IOException> result = new AsyncSupplier<>();
 		Namespace ns;
 		synchronized (namespaces) {
 			ns = namespaces.get(namespace);
 		}
 		if (ns == null) {
-			result.error(new Exception("Unknown namespace " + namespace));
+			result.error(new IOException("Unknown namespace " + namespace));
 			return result;
 		}
-		ns.loading.listenInline(new Runnable() {
+		ns.loading.onDone(new Runnable() {
 			@Override
 			public void run() {
-				if (!ns.loading.isUnblocked()) {
+				if (!ns.loading.isDone()) {
 					// namespace has been overriden and is reloading
-					ns.loading.listenInline(this, result);
+					ns.loading.onDone(this, result);
 					return;
 				}
 				for (Namespace.Language l : ns.languages)
@@ -424,11 +426,11 @@ public class LocalizedProperties implements IMemoryManageable {
 						boolean needsLoading = false;
 						synchronized (l) {
 							if (l.loading == null) {
-								l.loading = new SynchronizationPoint<>();
+								l.loading = new Async<>();
 								needsLoading = true;
 							}
 						}
-						l.loading.listenInline(() -> {
+						l.loading.onDone(() -> {
 							synchronized (l) {
 								result.unblockSuccess(new HashMap<>(l.properties));
 							}
@@ -437,7 +439,7 @@ public class LocalizedProperties implements IMemoryManageable {
 							load(ns, l);
 						return;
 					}
-				result.error(new Exception("Language not found in namespace " + namespace));
+				result.error(new IOException("Language not found in namespace " + namespace));
 			}
 		}, result);
 		return result;

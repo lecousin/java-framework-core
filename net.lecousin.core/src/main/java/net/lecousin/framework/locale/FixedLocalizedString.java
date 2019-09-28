@@ -1,6 +1,6 @@
 package net.lecousin.framework.locale;
 
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -18,13 +18,13 @@ public class FixedLocalizedString implements ILocalizableString {
 	private String str;
 	
 	@Override
-	public AsyncWork<String, NoException> localize(String[] languageTag) {
-		return new AsyncWork<>(str, null);
+	public AsyncSupplier<String, NoException> localize(String[] languageTag) {
+		return new AsyncSupplier<>(str, null);
 	}
 	
 	@Override
-	public AsyncWork<String, NoException> localize(String languageTag) {
-		return new AsyncWork<>(str, null);
+	public AsyncSupplier<String, NoException> localize(String languageTag) {
+		return new AsyncSupplier<>(str, null);
 	}
 	
 	@Override
@@ -38,8 +38,8 @@ public class FixedLocalizedString implements ILocalizableString {
 	}
 	
 	@Override
-	public AsyncWork<String, NoException> appLocalization() {
-		return new AsyncWork<>(str, null);
+	public AsyncSupplier<String, NoException> appLocalization() {
+		return new AsyncSupplier<>(str, null);
 	}
 	
 	@Override

@@ -9,7 +9,7 @@ import java.util.List;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
@@ -59,7 +59,7 @@ public class MavenRemoteRepository implements MavenRepository {
 	}
 	
 	@Override
-	public AsyncWork<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, byte priority) {
+	public AsyncSupplier<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, byte priority) {
 		String path = groupId.replace('.', '/') + '/' + artifactId + "/maven-metadata.xml";
 		if (logger.info())
 			logger.info("Downloading " + url + path);
@@ -67,21 +67,21 @@ public class MavenRemoteRepository implements MavenRepository {
 		try {
 			IOProvider p = IOProviderFromURI.getInstance().get(new URI(url + path));
 			if (!(p instanceof IOProvider.Readable))
-				return new AsyncWork<>(null, null);
+				return new AsyncSupplier<>(null, null);
 			io = ((IOProvider.Readable)p).provideIOReadable(priority);
 		} catch (Exception e) {
 			if (logger.error())
 				logger.error("Unable to get IOProvider for " + url + path, e);
-			return new AsyncWork<>(null, null);
+			return new AsyncSupplier<>(null, null);
 		}
 		IO.Readable.Buffered bio;
 		if (io instanceof IO.Readable.Buffered)
 			bio = (IO.Readable.Buffered)io;
 		else
 			bio = new SimpleBufferedReadable(io, 8192);
-		AsyncWork<XMLStreamReader, Exception> start = XMLStreamReader.start(bio, 5000, 4);
-		AsyncWork<List<String>, NoException> result = new AsyncWork<>();
-		start.listenAsync(new Task.Cpu.FromRunnable("Read maven-metadata.xml", priority, () -> {
+		AsyncSupplier<XMLStreamReader, Exception> start = XMLStreamReader.start(bio, 5000, 4);
+		AsyncSupplier<List<String>, NoException> result = new AsyncSupplier<>();
+		start.thenStart(new Task.Cpu.FromRunnable("Read maven-metadata.xml", priority, () -> {
 			try {
 				XMLStreamReader xml = start.getResult();
 				while (!Type.START_ELEMENT.equals(xml.event.type)) xml.next();
@@ -112,7 +112,7 @@ public class MavenRemoteRepository implements MavenRepository {
 	}
 	
 	@Override
-	public AsyncWork<MavenPOM, LibraryManagementException> load(
+	public AsyncSupplier<MavenPOM, LibraryManagementException> load(
 		String groupId, String artifactId, String version, MavenPOMLoader pomLoader, byte priority
 	) {
 		String path = groupId.replace('.', '/') + '/' + artifactId + '/' + version + '/' + artifactId + '-' + version + ".pom";
@@ -121,7 +121,7 @@ public class MavenRemoteRepository implements MavenRepository {
 		try {
 			return pomLoader.loadPOM(new URI(url + path), true, priority);
 		} catch (Exception e) {
-			return new AsyncWork<>(null, new MavenPOMException("Error loading POM file " + url + path, e));
+			return new AsyncSupplier<>(null, new MavenPOMException("Error loading POM file " + url + path, e));
 		}
 	}
 
@@ -131,11 +131,11 @@ public class MavenRemoteRepository implements MavenRepository {
 	}
 	
 	@Override
-	public AsyncWork<File, IOException> loadFile(
+	public AsyncSupplier<File, IOException> loadFile(
 		String groupId, String artifactId, String version, String classifier, String type, byte priority
 	) {
 		// TODO
-		return new AsyncWork<>(null, null);
+		return new AsyncSupplier<>(null, null);
 	}
 
 	

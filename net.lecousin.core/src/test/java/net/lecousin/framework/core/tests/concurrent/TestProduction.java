@@ -5,10 +5,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.util.production.simple.Consumer;
 import net.lecousin.framework.concurrent.util.production.simple.Producer;
 import net.lecousin.framework.concurrent.util.production.simple.ProductTransformation;
@@ -39,7 +39,7 @@ public class TestProduction extends LCCoreAbstractTest {
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		jp.addToJoin(2);
 		jp.start();
-		writer.getOutput().listenInline(new Runnable() {
+		writer.getOutput().onDone(new Runnable() {
 			@Override
 			public void run() {
 				//System.out.println("Writer done");
@@ -49,7 +49,7 @@ public class TestProduction extends LCCoreAbstractTest {
 					jp.joined();
 			}
 		});
-		production.getSyncOnFinished().listenInline(new Runnable() {
+		production.getSyncOnFinished().onDone(new Runnable() {
 			@Override
 			public void run() {
 				//System.out.println("Production done");
@@ -137,7 +137,7 @@ public class TestProduction extends LCCoreAbstractTest {
 				if (i < 100)
 					Thread.sleep(rand.nextInt(300));
 			}
-			pool.onDone().listenInline(new Runnable() {
+			pool.onDone().onDone(new Runnable() {
 				@Override
 				public void run() {
 					io.endOfData();
@@ -155,23 +155,23 @@ public class TestProduction extends LCCoreAbstractTest {
 		private MyChecker checker;
 		private Random rand;
 		@Override
-		public AsyncWork<?, ? extends Exception> consume(ByteBuffer product) {
+		public AsyncSupplier<?, ? extends Exception> consume(ByteBuffer product) {
 			//System.out.println(product.remaining()+" bytes received");
 			try {
 				if (checker.read(product))
 					Thread.sleep(rand.nextInt(25));
-				return new AsyncWork<>(null,null);
+				return new AsyncSupplier<>(null,null);
 			} catch (Exception e) {
-				return new AsyncWork<>(null,e);
+				return new AsyncSupplier<>(null,e);
 			}
 		}
 		@Override
-		public AsyncWork<?, ? extends Exception> endOfProduction() {
+		public AsyncSupplier<?, ? extends Exception> endOfProduction() {
 			try {
 				checker.end();
-				return new AsyncWork<>(null,null);
+				return new AsyncSupplier<>(null,null);
 			} catch (Exception e) {
-				return new AsyncWork<>(null,e);
+				return new AsyncSupplier<>(null,e);
 			}
 		}
 		@Override
@@ -186,18 +186,18 @@ public class TestProduction extends LCCoreAbstractTest {
 	
 	@Test(timeout=60000)
 	public void testTransformation() throws Exception {
-		AsyncWork<List<Long>, Exception> result = new AsyncWork<>();
+		AsyncSupplier<List<Long>, Exception> result = new AsyncSupplier<>();
 		Consumer<Long> finalConsumer = new Consumer<Long>() {
 			private LinkedList<Long> list = new LinkedList<>();
 			@Override
-			public AsyncWork<?, ? extends Exception> consume(Long product) {
+			public AsyncSupplier<?, ? extends Exception> consume(Long product) {
 				list.add(product);
-				return new AsyncWork<>(null, null);
+				return new AsyncSupplier<>(null, null);
 			}
 			@Override
-			public AsyncWork<?, ? extends Exception> endOfProduction() {
+			public AsyncSupplier<?, ? extends Exception> endOfProduction() {
 				result.unblockSuccess(list);
-				return new AsyncWork<>(null, null);
+				return new AsyncSupplier<>(null, null);
 			}
 			@Override
 			public void cancel(CancelException event) {
@@ -210,8 +210,8 @@ public class TestProduction extends LCCoreAbstractTest {
 		};
 		ProductTransformation<Integer, Long> transform = new ProductTransformation<Integer, Long>(finalConsumer) {
 			@Override
-			protected AsyncWork<Long, Exception> process(Integer input) {
-				return new AsyncWork<>(Long.valueOf(input.longValue()), null);
+			protected AsyncSupplier<Long, Exception> process(Integer input) {
+				return new AsyncSupplier<>(Long.valueOf(input.longValue()), null);
 			}
 		};
 		Producer<Integer> producer = new Producer<Integer>() {
@@ -223,10 +223,10 @@ public class TestProduction extends LCCoreAbstractTest {
 				toProduce.add(Integer.valueOf(4444));
 			}
 			@Override
-			public AsyncWork<Integer, ? extends Exception> produce(Production<Integer> production) {
+			public AsyncSupplier<Integer, ? extends Exception> produce(Production<Integer> production) {
 				if (toProduce.isEmpty())
-					return new AsyncWork<>(null, null);
-				return new AsyncWork<>(toProduce.removeFirst(), null);
+					return new AsyncSupplier<>(null, null);
+				return new AsyncSupplier<>(toProduce.removeFirst(), null);
 			}
 			@Override
 			public void cancel(CancelException event) {

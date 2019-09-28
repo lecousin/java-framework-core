@@ -5,8 +5,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.util.CloseableListenable;
 
 /** Implementation of CacheManager that associate each cached data to a key.
@@ -16,14 +16,14 @@ import net.lecousin.framework.util.CloseableListenable;
 public class Cache<Key,Value> implements CacheManager {
 
 	/** Constructor. */
-	public Cache(String description, Listener<Value> freer) {
+	public Cache(String description, Consumer<Value> freer) {
 		this.description = description;
 		this.freer = freer;
 		MemoryManager.register(this);
 	}
 	
 	private String description;
-	private Listener<Value> freer;
+	private Consumer<Value> freer;
 	
 	private static class Data<Value> implements CachedData {
 		private ArrayList<CloseableListenable> users = new ArrayList<>();
@@ -53,9 +53,9 @@ public class Cache<Key,Value> implements CacheManager {
 		if (data == null) return null;
 		data.users.add(user);
 		if (user != null)
-			user.addCloseListener(new Listener<CloseableListenable>() {
+			user.addCloseListener(new Consumer<CloseableListenable>() {
 				@Override
-				public void fire(CloseableListenable event) {
+				public void accept(CloseableListenable event) {
 					event.removeCloseListener(this);
 					free(data.value, event);
 				}
@@ -103,7 +103,7 @@ public class Cache<Key,Value> implements CacheManager {
 				break;
 			}
 		map.remove(key);
-		if (freer != null) freer.fire(value);
+		if (freer != null) freer.accept(value);
 		return true;
 	}
 	
@@ -130,7 +130,7 @@ public class Cache<Key,Value> implements CacheManager {
 	/** Close this cache, and free any data it holds. */
 	public synchronized void close() {
 		for (Data<Value> d : map.values())
-			freer.fire(d.value);
+			freer.accept(d.value);
 		map.clear();
 		values.clear();
 		MemoryManager.unregister(this);

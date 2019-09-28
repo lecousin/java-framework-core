@@ -1,7 +1,8 @@
 package net.lecousin.framework.util;
 
+import java.util.function.Consumer;
+
 import net.lecousin.framework.event.Event;
-import net.lecousin.framework.event.Listener;
 
 /**
  * Closeable resource, with the possibility to add and remove listeners to be called when the resource is closed.
@@ -16,13 +17,13 @@ public interface CloseableListenable {
 	boolean isClosed();
 	
 	/** Add a listener to be called once this resource is closed. */
-	void addCloseListener(Listener<CloseableListenable> listener);
+	void addCloseListener(Consumer<CloseableListenable> listener);
 
 	/** Add a listener to be called once this resource is closed. */
 	void addCloseListener(Runnable listener);
 	
 	/** Remove a listener. */
-	void removeCloseListener(Listener<CloseableListenable> listener);
+	void removeCloseListener(Consumer<CloseableListenable> listener);
 	
 	/** Remove a listener. */
 	void removeCloseListener(Runnable listener);
@@ -42,7 +43,7 @@ public interface CloseableListenable {
 		}
 		
 		@Override
-		public void addCloseListener(Listener<CloseableListenable> listener) {
+		public void addCloseListener(Consumer<CloseableListenable> listener) {
 			event.addListener(listener);
 		}
 
@@ -52,7 +53,7 @@ public interface CloseableListenable {
 		}
 		
 		@Override
-		public void removeCloseListener(Listener<CloseableListenable> listener) {
+		public void removeCloseListener(Consumer<CloseableListenable> listener) {
 			event.removeListener(listener);
 		}
 

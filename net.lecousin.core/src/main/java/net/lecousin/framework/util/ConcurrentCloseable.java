@@ -3,32 +3,34 @@ package net.lecousin.framework.util;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.event.Event;
-import net.lecousin.framework.event.Listener;
 
-/** Implement most of the functionalities expected by an IConcurrentCloseable. */
-public abstract class ConcurrentCloseable implements IConcurrentCloseable {
+/** Implement most of the functionalities expected by an IConcurrentCloseable.
+ * @param <TError> type of error when closing.
+ */
+public abstract class ConcurrentCloseable<TError extends Exception> implements IConcurrentCloseable<TError> {
 
 	private boolean open = true;
-	private HashSet<ISynchronizationPoint<?>> pendingOperations = new HashSet<>(5);
-	private SynchronizationPoint<Exception> closing = null;
+	private HashSet<IAsync<?>> pendingOperations = new HashSet<>(5);
+	private Async<TError> closing = null;
 	private Event<CloseableListenable> closeEvent = null;
 	private int closeLocked = 0;
-	private SynchronizationPoint<Exception> waitForClose = null;
+	private Async<TError> waitForClose = null;
 
 	/** Return the priority. */
 	public abstract byte getPriority();
 	
-	protected abstract ISynchronizationPoint<?> closeUnderlyingResources();
+	protected abstract IAsync<TError> closeUnderlyingResources();
 	
-	protected abstract void closeResources(SynchronizationPoint<Exception> ondone);
+	protected abstract void closeResources(Async<TError> ondone);
 	
 	public boolean isClosing() {
 		return open && closing != null;
@@ -40,7 +42,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 	}
 
 	@Override
-	public void addCloseListener(Listener<CloseableListenable> listener) {
+	public void addCloseListener(Consumer<CloseableListenable> listener) {
 		synchronized (this) {
 			if (closing == null && open) {
 				if (closeEvent == null) closeEvent = new Event<>();
@@ -48,7 +50,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 				return;
 			}
 		}
-		listener.fire(this);
+		listener.accept(this);
 	}
 	
 	@Override
@@ -64,7 +66,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 	}
 
 	@Override
-	public void removeCloseListener(Listener<CloseableListenable> listener) {
+	public void removeCloseListener(Consumer<CloseableListenable> listener) {
 		synchronized (this) {
 			if (closeEvent == null) return;
 			closeEvent.removeListener(listener);
@@ -108,30 +110,30 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 	}
 	
 	@Override
-	public ISynchronizationPoint<Exception> closeAsync() {
+	public IAsync<TError> closeAsync() {
 		synchronized (this) {
 			if (closeLocked > 0) {
-				if (waitForClose == null) waitForClose = new SynchronizationPoint<>();
+				if (waitForClose == null) waitForClose = new Async<>();
 				return waitForClose;
 			}
 			if (closing != null) return closing;
-			closing = new SynchronizationPoint<>();
+			closing = new Async<>();
 		}
 		// from now, no more operation is accepted
 		byte prio = getPriority();
-		JoinPoint<Exception> jp = new JoinPoint<>();
-		List<ISynchronizationPoint<?>> pending;
+		JoinPoint<TError> jp = new JoinPoint<>();
+		List<IAsync<?>> pending;
 		synchronized (pendingOperations) {
 			pending = new ArrayList<>(pendingOperations);
 			pendingOperations.clear();
 		}
-		for (ISynchronizationPoint<?> op : pending)
+		for (IAsync<?> op : pending)
 			jp.addToJoinNoException(op);
-		ISynchronizationPoint<?> underlying = closeUnderlyingResources();
+		IAsync<TError> underlying = closeUnderlyingResources();
 		if (underlying != null)
 			jp.addToJoinNoException(underlying);
 		jp.start();
-		jp.listenAsync(new Task.Cpu.FromRunnable("Closing resources", prio, () -> {
+		jp.thenStart(new Task.Cpu.FromRunnable("Closing resources", prio, () -> {
 			synchronized (this) {
 				open = false;
 			}
@@ -139,24 +141,33 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 				closeEvent.fire(this);
 				closeEvent = null;
 			}
-			closeResources(closing);
+			Async<TError> closed = new Async<>();
+			closeResources(closed);
+			closed.onDone(() -> {
+				if (jp.hasError())
+					closing.error(jp.getError());
+				else if (jp.isCancelled())
+					closing.cancel(jp.getCancelEvent());
+				else
+					closing.unblock();
+			}, closing);
 		}), true);
 		jp.listenTime(60000, () -> {
 			StringBuilder s = new StringBuilder();
 			s.append("Closeable still waiting for pending operations: ").append(this);
-			for (ISynchronizationPoint<?> op : pending)
-				if (!op.isUnblocked()) {
+			for (IAsync<?> op : pending)
+				if (!op.isDone()) {
 					s.append("\r\n - ").append(op);
 					for (Object o : op.getAllListeners())
 						s.append("\r\n    - ").append(o);
 				}
-			if (underlying != null && !underlying.isUnblocked())
+			if (underlying != null && !underlying.isDone())
 				s.append("\r\n - closeUnderlyingResources");
 			LCCore.getApplication().getDefaultLogger().error(s.toString());
-			jp.error(new Exception("Closeable still waiting for pending operations after 1 minute, close forced"));
+			jp.cancel(new CancelException("Closeable still waiting for pending operations after 1 minute, close forced"));
 		});
 		if (waitForClose != null)
-			closing.listenInline(waitForClose);
+			closing.onDone(waitForClose);
 		return closing;
 	}
 	
@@ -164,8 +175,8 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 		return new CancelException("Resource closed");
 	}
 	
-	protected <T extends ISynchronizationPoint<?>> T operation(T op) {
-		if (op.isUnblocked()) return op;
+	protected <TE extends Exception, T extends IAsync<TE>> T operation(T op) {
+		if (op.isDone()) return op;
 		if (closing != null) {
 			op.cancel(createCancellation());
 			return op; 
@@ -178,7 +189,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 			op.cancel(createCancellation());
 			return op; 
 		}
-		op.listenInline(() -> {
+		op.onDone(() -> {
 			synchronized (pendingOperations) {
 				pendingOperations.remove(op);
 			}
@@ -186,7 +197,7 @@ public abstract class ConcurrentCloseable implements IConcurrentCloseable {
 		return op;
 	}
 	
-	protected <T extends Task<?,?>> T operation(T task) {
+	protected <TE extends Exception, TR, T extends Task<TR,TE>> T operation(T task) {
 		operation(task.getOutput());
 		return task;
 	}

@@ -1,6 +1,6 @@
 package net.lecousin.framework.util;
 
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 
 /**
  * Resource that can be closed asynchronously.
@@ -9,11 +9,11 @@ import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
 public interface AsyncCloseable<TError extends Exception> {
 	
 	/** Close asynchronously. */
-	ISynchronizationPoint<TError> closeAsync();
+	IAsync<TError> closeAsync();
 	
 	/** Close asynchronously this closeable once the given synchronization point is done. */
-	default void closeAfter(ISynchronizationPoint<?> sp) {
-		sp.listenInline(this::closeAsync);
+	default void closeAfter(IAsync<?> sp) {
+		sp.onDone(this::closeAsync);
 	}
 
 }

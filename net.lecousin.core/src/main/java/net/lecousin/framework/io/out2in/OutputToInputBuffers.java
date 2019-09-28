@@ -5,14 +5,14 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.LockPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.LockPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -25,7 +25,8 @@ import net.lecousin.framework.util.Pair;
  * Optionally a maximum number of pending buffers can be specified. In that case, a write operation can be blocked
  * if the maximum is reached, until a buffer is consumed.
  */
-public class OutputToInputBuffers extends ConcurrentCloseable implements IO.OutputToInput, IO.Writable, IO.Readable, IO.Readable.Buffered {
+public class OutputToInputBuffers extends ConcurrentCloseable<IOException>
+	implements IO.OutputToInput, IO.Writable, IO.Readable, IO.Readable.Buffered {
 
 	/** Constructor.
 	 * @param copyReceivedBuffers if true, the buffer receive through write operation are copied, so they can be reused by the calling process
@@ -53,12 +54,12 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	private LinkedList<ByteBuffer> buffers = new LinkedList<>();
 	private boolean eof = false;
 	private LockPoint<IOException> lock = new LockPoint<>();
-	private LinkedList<SynchronizationPoint<NoException>> lockMaxBuffers;
+	private LinkedList<Async<NoException>> lockMaxBuffers;
 	private byte priority;
-	private AsyncWork<?,?> lastWrite = null;
+	private AsyncSupplier<?,?> lastWrite = null;
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		eof = true;
 		lock.unlock();
 		if (maxPendingBuffers > 0)
@@ -68,7 +69,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		buffers = null;
 		ondone.unblock();
 	}
@@ -101,16 +102,16 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	
 	@Override
 	public void endOfData() {
-		AsyncWork<?,?> lw;
+		AsyncSupplier<?,?> lw;
 		synchronized (this) {
 			lw = lastWrite;
 		}
-		if (lw == null || lw.isUnblocked()) {
+		if (lw == null || lw.isDone()) {
 			eof = true;
 			lock.unlock();
 			return;
 		}
-		lw.listenInline(() -> {
+		lw.onDone(() -> {
 			eof = true;
 			lock.unlock();
 		});
@@ -133,19 +134,19 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartWriting() {
-		return new SynchronizationPoint<>(true);
+	public IAsync<IOException> canStartWriting() {
+		return new Async<>(true);
 	}
 	
 	@Override
 	public int writeSync(ByteBuffer buffer) {
 		if (maxPendingBuffers > 0) {
 			do {
-				SynchronizationPoint<NoException> sp = null;
+				Async<NoException> sp = null;
 				synchronized (this) {
 					if (isClosing() || isClosed()) return 0;
 					if (buffers.size() >= maxPendingBuffers) {
-						sp = new SynchronizationPoint<>();
+						sp = new Async<>();
 						lockMaxBuffers.addLast(sp);
 					}
 				}
@@ -171,20 +172,20 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		 Task.Cpu<Integer, IOException> task = new Task.Cpu<Integer, IOException>("OutputToInput.write", getPriority(), ondone) {
 			@Override
 			public Integer run() {
 				return Integer.valueOf(writeSync(buffer));
 			}
 		};
-		SynchronizationPoint<NoException> sp = null;
+		Async<NoException> sp = null;
 		synchronized (this) {
 			lastWrite = task.getOutput();
 			if (maxPendingBuffers > 0) {
-				if (isClosing() || isClosed()) return new AsyncWork<>(null, null, IO.cancelClosed());
+				if (isClosing() || isClosed()) return new AsyncSupplier<>(null, null, IO.cancelClosed());
 				if (buffers.size() >= maxPendingBuffers) {
-					sp = new SynchronizationPoint<>();
+					sp = new Async<>();
 					lockMaxBuffers.addLast(sp);
 				}
 			}
@@ -197,13 +198,13 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartReading() {
+	public IAsync<IOException> canStartReading() {
 		synchronized (this) {
-			if (!buffers.isEmpty()) return new SynchronizationPoint<>(true);
-			if (eof) return new SynchronizationPoint<>(true);
+			if (!buffers.isEmpty()) return new Async<>(true);
+			if (eof) return new Async<>(true);
 			if (lock.hasError()) return lock;
 		}
-		if (lock.isUnblocked()) lock.lock();
+		if (lock.isDone()) lock.lock();
 		return lock;
 	}
 	
@@ -235,7 +236,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 			b.limit(l);
 		}
 		if (b.remaining() == 0) {
-			SynchronizationPoint<NoException> sp = null;
+			Async<NoException> sp = null;
 			synchronized (this) {
 				buffers.removeFirst();
 				if (maxPendingBuffers > 0)
@@ -252,7 +253,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		int done = 0;
 		do {
 			ByteBuffer b = null;
@@ -260,22 +261,22 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				if (isClosing() || isClosed()) {
 					IOException e = new IOException("IO closed");
 					if (ondone != null) ondone.accept(new Pair<>(null, e));
-					return new AsyncWork<>(null, e);
+					return new AsyncSupplier<>(null, e);
 				}
 				if (!buffers.isEmpty())
 					b = buffers.get(0);
 				else if (eof) {
 					Integer r = Integer.valueOf(done > 0 ? done : -1);
 					if (ondone != null) ondone.accept(new Pair<>(r, null));
-					return new AsyncWork<>(r, null);
+					return new AsyncSupplier<>(r, null);
 				} else if (lock.hasError()) {
 					IOException e = new OutputToInputTransferException(lock.getError());
 					if (ondone != null) ondone.accept(new Pair<>(null, e));
-					return new AsyncWork<>(null, e);
+					return new AsyncSupplier<>(null, e);
 				} else /*if (!lock.isUnblocked())*/ {
 					if (done == 0)
 						return readFullyAsync(buffer, ondone);
-					AsyncWork<Integer, IOException> r = new AsyncWork<>();
+					AsyncSupplier<Integer, IOException> r = new AsyncSupplier<>();
 					int d = done;
 					readFullyAsync(buffer, res -> {
 						if (ondone != null) {
@@ -288,7 +289,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 								ondone.accept(res);
 							}
 						}
-					}).listenInline(nb -> {
+					}).onDone(nb -> {
 						int n = nb.intValue();
 						if (n < 0) n = 0;
 						n += d;
@@ -309,7 +310,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				done += len;
 			}
 			if (b.remaining() == 0) {
-				SynchronizationPoint<NoException> sp = null;
+				Async<NoException> sp = null;
 				synchronized (this) {
 					buffers.removeFirst();
 					if (maxPendingBuffers > 0)
@@ -320,7 +321,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 			if (!buffer.hasRemaining()) {
 				Integer r = Integer.valueOf(done);
 				if (ondone != null) ondone.accept(new Pair<>(r, null));
-				return new AsyncWork<>(r, null);
+				return new AsyncSupplier<>(r, null);
 			}
 		} while (true);
 	}
@@ -334,7 +335,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				b = buffers.get(0);
 			else if (eof)
 				return -1;
-			else if (!lock.isUnblocked())
+			else if (!lock.isDone())
 				return -2;
 			else if (lock.hasError())
 				throw new OutputToInputTransferException(lock.getError());
@@ -343,7 +344,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 		}
 		int res = b.get() & 0xFF;
 		if (b.remaining() == 0) {
-			SynchronizationPoint<NoException> sp = null;
+			Async<NoException> sp = null;
 			synchronized (this) {
 				buffers.removeFirst();
 				if (maxPendingBuffers > 0)
@@ -355,7 +356,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		Task<Integer, IOException> task = new Task.Cpu<Integer, IOException>("OutputToInput.read", getPriority(), ondone) {
 			@Override
 			public Integer run() throws IOException {
@@ -367,7 +368,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readFullyAsync(this, buffer, ondone));
 	}
 	
@@ -395,7 +396,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 				b.position(b.position() + (int)n);
 				return done + n;
 			}
-			SynchronizationPoint<NoException> sp = null;
+			Async<NoException> sp = null;
 			synchronized (this) {
 				buffers.removeFirst();
 				if (maxPendingBuffers > 0)
@@ -409,7 +410,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	}
 	
 	@Override
-	public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+	public AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		return operation(IOUtil.skipAsyncUsingSync(this, n, ondone));
 	}
 
@@ -431,7 +432,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 		} while (true);
 		int res = b.get() & 0xFF;
 		if (b.remaining() == 0) {
-			SynchronizationPoint<NoException> sp = null;
+			Async<NoException> sp = null;
 			synchronized (this) {
 				buffers.removeFirst();
 				if (maxPendingBuffers > 0)
@@ -467,7 +468,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 			b.get(buffer, offset, len);
 		}
 		if (b.remaining() == 0) {
-			SynchronizationPoint<NoException> sp = null;
+			Async<NoException> sp = null;
 			synchronized (this) {
 				buffers.removeFirst();
 				if (maxPendingBuffers > 0)
@@ -502,7 +503,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 		} while (true);
 		int nb = b.remaining();
 		if (nb <= skip) {
-			SynchronizationPoint<NoException> sp = null;
+			Async<NoException> sp = null;
 			synchronized (this) {
 				buffers.removeFirst();
 				if (maxPendingBuffers > 0)
@@ -517,13 +518,13 @@ public class OutputToInputBuffers extends ConcurrentCloseable implements IO.Outp
 	}
 
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
+	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>(
 			"Peek next buffer from OutputToInputBuffers", getPriority(), ondone
 		) {
 			@Override
 			public ByteBuffer run() throws IOException, CancelException {
-				SynchronizationPoint<NoException> sp = null;
+				Async<NoException> sp = null;
 				ByteBuffer b = null;
 				do {
 					synchronized (this) {

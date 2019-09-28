@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.ICharacterStream;
 
@@ -94,7 +94,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		char[] buf = new char[testBuf.length * 3 - testBuf.length / 10];
 		int pos = 0;
 		while (pos < nbBuf * testBuf.length) {
-			AsyncWork<Integer, IOException> read = s.readAsync(buf, 0, buf.length);
+			AsyncSupplier<Integer, IOException> read = s.readAsync(buf, 0, buf.length);
 			int nb = read.blockResult(0).intValue();
 			if (nb <= 0)
 				throw new AssertionError("End of stream reached after " + pos + " characters, expected was "
@@ -118,7 +118,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		char[] buf = new char[testBuf.length * 3 - testBuf.length / 10];
 		int pos = 0;
 		while (pos < nbBuf * testBuf.length) {
-			AsyncWork<Integer, IOException> read = s.readFullyAsync(buf, 0, buf.length);
+			AsyncSupplier<Integer, IOException> read = s.readFullyAsync(buf, 0, buf.length);
 			int nb = read.blockResult(0).intValue();
 			if (nb <= 0)
 				throw new AssertionError("End of stream reached after " + pos + " characters, expected was "

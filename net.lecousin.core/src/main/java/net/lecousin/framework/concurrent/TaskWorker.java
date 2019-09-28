@@ -2,8 +2,8 @@ package net.lecousin.framework.concurrent;
 
 import java.util.ArrayList;
 
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.DebugUtil;
 
@@ -58,7 +58,7 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 		// TODO ClassLoader initCL = thread.getContextClassLoader();
 		while (!stop) {
 			// check if we are supposed to pause
-			AsyncWork<TaskWorker,NoException> waitPause = manager.getPauseToDo();
+			AsyncSupplier<TaskWorker,NoException> waitPause = manager.getPauseToDo();
 			if (waitPause != null) {
 				//working = false;
 				synchronized (this) {
@@ -108,19 +108,19 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 	
 	@Override
 	@SuppressWarnings("squid:S2274") // wait without loop
-	public void blocked(ISynchronizationPoint<?> blockPoint, long blockTimeout) {
+	public void blocked(IAsync<?> blockPoint, long blockTimeout) {
 		long start = System.nanoTime();
 		manager.imBlocked(this);
 		long start2 = System.nanoTime();
 		synchronized (blockPoint) {
 			if (blockTimeout <= 0) {
-				while (!blockPoint.isUnblocked())
+				while (!blockPoint.isDone())
 					try { blockPoint.wait(0); }
 					catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 						break;
 					}
-			} else if (!blockPoint.isUnblocked()) {
+			} else if (!blockPoint.isDone()) {
 				try { blockPoint.wait(blockTimeout); }
 				catch (InterruptedException e) { Thread.currentThread().interrupt(); }
 			}

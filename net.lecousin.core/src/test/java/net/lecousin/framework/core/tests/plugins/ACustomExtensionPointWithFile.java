@@ -5,9 +5,9 @@ import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.plugins.CustomExtensionPoint;
@@ -28,15 +28,15 @@ public class ACustomExtensionPointWithFile implements CustomExtensionPoint {
 	public String pluginContent = null;
 	
 	@Override
-	public <T extends ClassLoader & ApplicationClassLoader> ISynchronizationPoint<Exception> loadPluginConfiguration(
-		IO.Readable io, T libraryClassLoader, ISynchronizationPoint<?>... startOn
+	public <T extends ClassLoader & ApplicationClassLoader> IAsync<Exception> loadPluginConfiguration(
+		IO.Readable io, T libraryClassLoader, IAsync<?>... startOn
 	) {
-		AsyncWork<UnprotectedStringBuffer, IOException> task = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL);
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		task.listenInlineSP(() -> {
+		AsyncSupplier<UnprotectedStringBuffer, IOException> task = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL);
+		Async<Exception> sp = new Async<>();
+		task.onDone(() -> {
 			pluginContent = task.getResult().asString();
 			sp.unblock();
-		}, sp);
+		}, sp, e -> e);
 		return sp;
 	}
 	

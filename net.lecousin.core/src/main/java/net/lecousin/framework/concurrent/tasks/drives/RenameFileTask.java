@@ -6,9 +6,9 @@ import java.io.IOException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IOUtil;
 
 /**
@@ -20,15 +20,15 @@ public class RenameFileTask extends Task.OnFile<Void,IOException> {
 	 * It may do a copy then a delete, or a simple rename, depending if the source and destination are
 	 * on the same drive or not.
 	 */
-	public static ISynchronizationPoint<IOException> rename(File source, File destination, byte priority) {
+	public static IAsync<IOException> rename(File source, File destination, byte priority) {
 		// TODO we should use the roots instead of drive
 		TaskManager t1 = Threading.getDrivesTaskManager().getTaskManager(source);
 		TaskManager t2 = Threading.getDrivesTaskManager().getTaskManager(destination);
 		if (t1 == t2)
 			return new RenameFileTask(t1, source, destination, priority).start().getOutput();
-		AsyncWork<Long, IOException> copy = IOUtil.copy(source, destination, priority, source.length(), null, 0, null);
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
-		copy.listenInline(() -> new RemoveFileTask(source, priority).start().getOutput().listenInline(result), result);
+		AsyncSupplier<Long, IOException> copy = IOUtil.copy(source, destination, priority, source.length(), null, 0, null);
+		Async<IOException> result = new Async<>();
+		copy.onDone(() -> new RemoveFileTask(source, priority).start().getOutput().onDone(result), result);
 		return result;
 	}
 

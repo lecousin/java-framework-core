@@ -5,16 +5,15 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListenerReady;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.mutable.MutableLong;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -23,7 +22,7 @@ import net.lecousin.framework.util.Pair;
 /**
  * Make several IOs as a single one.
  */
-public abstract class LinkedIO extends ConcurrentCloseable implements IO {
+public abstract class LinkedIO extends ConcurrentCloseable<IOException> implements IO {
 
 	protected LinkedIO(String description, IO[] ios) {
 		this.description = description;
@@ -72,15 +71,15 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 	}
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
-		JoinPoint<Exception> jp = new JoinPoint<>();
+	protected IAsync<IOException> closeUnderlyingResources() {
+		JoinPoint<IOException> jp = new JoinPoint<>();
 		for (IO io : ios) jp.addToJoin(io.closeAsync());
 		jp.start();
 		return jp;
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		ios = null;
 		sizes = null;
 		ondone.unblock();
@@ -102,7 +101,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		
 		@SuppressWarnings("rawtypes")
 		@Override
-		protected void nextIOAsync(Runnable ondone, ISynchronizationPoint<IOException> onerror, Consumer rp) {
+		protected void nextIOAsync(Runnable ondone, IAsync<IOException> onerror, Consumer rp) {
 			nextIOAsyncStream(ondone);
 		}
 		
@@ -113,22 +112,22 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		
 		@SuppressWarnings("rawtypes")
 		@Override
-		protected void previousIOAsync(Runnable ondone, ISynchronizationPoint<IOException> onerror, Consumer rp) {
+		protected void previousIOAsync(Runnable ondone, IAsync<IOException> onerror, Consumer rp) {
 			previousIOAsyncStream(ondone);
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> canStartReading() {
+		public IAsync<IOException> canStartReading() {
 			return super.canStartReading();
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 			return super.readAsync(buffer, ondone);
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		public AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 			return super.readFullyAsync(buffer, ondone);
 		}
 		
@@ -148,7 +147,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		}
 		
 		@Override
-		public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+		public AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 			return super.skipAsync(n, ondone);
 		}
 		
@@ -176,7 +175,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			}
 			
 			@Override
-			public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+			public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(
 				ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 			) {
 				return super.readFullySyncIfPossible(buffer, ondone);
@@ -193,7 +192,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			}
 			
 			@Override
-			public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
+			public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 				return super.readNextBufferAsync(ondone);
 			}
 			
@@ -211,7 +210,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				}
 				
 				@Override
-				public AsyncWork<Long, IOException> getSizeAsync() {
+				public AsyncSupplier<Long, IOException> getSizeAsync() {
 					return super.getSizeAsync();
 				}
 				
@@ -233,7 +232,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			}
 			
 			@Override
-			public AsyncWork<Long, IOException> getSizeAsync() {
+			public AsyncSupplier<Long, IOException> getSizeAsync() {
 				return super.getSizeAsync();
 			}
 
@@ -254,7 +253,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			
 			@SuppressWarnings("rawtypes")
 			@Override
-			protected void nextIOAsync(Runnable ondone, ISynchronizationPoint<IOException> onerror, Consumer rp) {
+			protected void nextIOAsync(Runnable ondone, IAsync<IOException> onerror, Consumer rp) {
 				nextIOAsyncSeekable(ondone, onerror, rp);
 			}
 			
@@ -265,7 +264,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			
 			@SuppressWarnings("rawtypes")
 			@Override
-			protected void previousIOAsync(Runnable ondone, ISynchronizationPoint<IOException> onerror, Consumer rp) {
+			protected void previousIOAsync(Runnable ondone, IAsync<IOException> onerror, Consumer rp) {
 				previousIOAsyncSeekable(ondone, onerror, rp);
 			}
 
@@ -280,7 +279,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			}
 
 			@Override
-			public AsyncWork<Long, IOException> seekAsync(
+			public AsyncSupplier<Long, IOException> seekAsync(
 				SeekType type, long move, Consumer<Pair<Long,IOException>> ondone
 			) {
 				return super.seekAsync(type, move, ondone);
@@ -292,7 +291,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			}
 
 			@Override
-			public AsyncWork<Integer, IOException> readAsync(
+			public AsyncSupplier<Integer, IOException> readAsync(
 				long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 			) {
 				return super.readAsync(pos, buffer, ondone);
@@ -304,7 +303,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			}
 
 			@Override
-			public AsyncWork<Integer, IOException> readFullyAsync(
+			public AsyncSupplier<Integer, IOException> readFullyAsync(
 				long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 			) {
 				return super.readFullyAsync(pos, buffer, ondone);
@@ -335,7 +334,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				}
 				
 				@Override
-				public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+				public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(
 					ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 				) {
 					return super.readFullySyncIfPossible(buffer, ondone);
@@ -352,7 +351,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				}
 				
 				@Override
-				public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(
+				public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(
 					Consumer<Pair<ByteBuffer, IOException>> ondone
 				) {
 					return super.readNextBufferAsync(ondone);
@@ -372,7 +371,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 					}
 					
 					@Override
-					public AsyncWork<Long, IOException> getSizeAsync() {
+					public AsyncSupplier<Long, IOException> getSizeAsync() {
 						return super.getSizeAsync();
 					}
 					
@@ -393,7 +392,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				}
 				
 				@Override
-				public AsyncWork<Long, IOException> getSizeAsync() {
+				public AsyncSupplier<Long, IOException> getSizeAsync() {
 					return super.getSizeAsync();
 				}
 				
@@ -415,7 +414,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> canStartWriting() {
+		public IAsync<IOException> canStartWriting() {
 			return super.canStartWriting();
 		}
 
@@ -430,14 +429,14 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> writeAsync(
+		public AsyncSupplier<Integer, IOException> writeAsync(
 			long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 		) {
 			return super.writeAsync(pos, buffer, ondone);
 		}
 
 		@Override
-		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+		public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 			return super.writeAsync(buffer, ondone);
 		}
 	}
@@ -448,10 +447,10 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 	protected abstract void previousIOSync() throws IOException;
 	
 	@SuppressWarnings("rawtypes")
-	protected abstract void nextIOAsync(Runnable ondone, ISynchronizationPoint<IOException> onerror, Consumer rp);
+	protected abstract void nextIOAsync(Runnable ondone, IAsync<IOException> onerror, Consumer rp);
 	
 	@SuppressWarnings("rawtypes")
-	protected abstract void previousIOAsync(Runnable ondone, ISynchronizationPoint<IOException> onerror, Consumer rp);
+	protected abstract void previousIOAsync(Runnable ondone, IAsync<IOException> onerror, Consumer rp);
 	
 	protected void nextIOSyncStream() {
 		ioIndex++;
@@ -489,11 +488,11 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	protected void nextIOAsyncSeekable(Runnable ondone, ISynchronizationPoint<IOException> onerror, Consumer rp) {
+	protected void nextIOAsyncSeekable(Runnable ondone, IAsync<IOException> onerror, Consumer rp) {
 		ioIndex++;
 		posInIO = 0;
-		AsyncWork<Long, IOException> seek = ((IO.Readable.Seekable)ios.get(ioIndex)).seekAsync(SeekType.FROM_BEGINNING, 0);
-		seek.listenInline(() -> {
+		AsyncSupplier<Long, IOException> seek = ((IO.Readable.Seekable)ios.get(ioIndex)).seekAsync(SeekType.FROM_BEGINNING, 0);
+		seek.onDone(() -> {
 			if (seek.hasError()) {
 				if (rp != null) rp.accept(new Pair<Object,IOException>(null, seek.getError()));
 				onerror.error(seek.getError());
@@ -505,11 +504,11 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	protected void previousIOAsyncSeekable(Runnable ondone, ISynchronizationPoint<IOException> onerror, Consumer rp) {
+	protected void previousIOAsyncSeekable(Runnable ondone, IAsync<IOException> onerror, Consumer rp) {
 		ioIndex--;
 		posInIO = sizes.get(ioIndex).longValue();
-		AsyncWork<Long, IOException> seek = ((IO.Readable.Seekable)ios.get(ioIndex)).seekAsync(SeekType.FROM_END, 0);
-		seek.listenInline(() -> {
+		AsyncSupplier<Long, IOException> seek = ((IO.Readable.Seekable)ios.get(ioIndex)).seekAsync(SeekType.FROM_END, 0);
+		seek.onDone(() -> {
 			if (seek.hasError()) {
 				if (rp != null) rp.accept(new Pair<Object,IOException>(null, seek.getError()));
 				onerror.error(seek.getError());
@@ -540,13 +539,13 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		return IOUtil.readFully((IO.Readable)this, buffer);
 	}
 	
-	protected AsyncWork<Integer, IOException> readFullySyncIfPossible(
+	protected AsyncSupplier<Integer, IOException> readFullySyncIfPossible(
 		ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 	) {
 		if (ioIndex == ios.size()) return IOUtil.success(Integer.valueOf(-1), ondone);
 		IO.Readable.Buffered io = (IO.Readable.Buffered)ios.get(ioIndex);
-		AsyncWork<Integer, IOException> r = io.readFullySyncIfPossible(buffer);
-		if (r.isUnblocked()) {
+		AsyncSupplier<Integer, IOException> r = io.readFullySyncIfPossible(buffer);
+		if (r.isDone()) {
 			if (!r.isSuccessful()) {
 				if (ondone != null && r.hasError()) ondone.accept(new Pair<>(null, r.getError()));
 				return r;
@@ -563,7 +562,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				if (ondone != null) ondone.accept(new Pair<>(r.getResult(), null));
 				return r;
 			}
-			AsyncWork<Integer, IOException> r2 = new AsyncWork<>();
+			AsyncSupplier<Integer, IOException> r2 = new AsyncSupplier<>();
 			readFullySyncIfPossible(buffer, res -> {
 				if (ondone == null) return;
 				if (res.getValue1() == null) ondone.accept(res);
@@ -573,7 +572,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 					else n = nb + n;
 					ondone.accept(new Pair<>(Integer.valueOf(n), null));
 				}
-			}).listenInline(nb2 -> {
+			}).onDone(nb2 -> {
 				int n = nb2.intValue();
 				if (n < 0) n = nb;
 				else n = nb + n;
@@ -581,8 +580,8 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			}, r2);
 			return r2;
 		}
-		AsyncWork<Integer, IOException> r2 = new AsyncWork<>();
-		r.listenInline(nb -> {
+		AsyncSupplier<Integer, IOException> r2 = new AsyncSupplier<>();
+		r.onDone(nb -> {
 			int n = nb.intValue();
 			if (n > 0) {
 				posInIO += n;
@@ -602,7 +601,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 						else n2 += n1;
 						ondone.accept(new Pair<>(Integer.valueOf(n2), null));
 					}
-				}).listenInline(nb2 -> {
+				}).onDone(nb2 -> {
 					int n1 = n;
 					if (n1 < 0) n1 = 0;
 					int n2 = nb2.intValue();
@@ -633,12 +632,12 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		return i;
 	}
 
-	protected AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	protected AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		if (ioIndex == ios.size()) return IOUtil.success(Integer.valueOf(-1), ondone);
-		AsyncWork<Integer, IOException> result = new AsyncWork<>();
+		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 		IO.Readable io = (IO.Readable)ios.get(ioIndex);
-		AsyncWork<Integer, IOException> read = io.readAsync(buffer);
-		operation(read).listenInline(new AsyncWorkListenerReady<Integer, IOException>((nb, that) -> {
+		AsyncSupplier<Integer, IOException> read = io.readAsync(buffer);
+		operation(read).listen(new IOUtil.RecursiveAsyncSupplierListener<Integer>((nb, that) -> {
 			if (nb.intValue() <= 0) {
 				if (sizes.get(ioIndex) == null)
 					sizes.set(ioIndex, Long.valueOf(posInIO));
@@ -648,7 +647,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 					IOUtil.success(Integer.valueOf(-1), result, ondone);
 					return;
 				}
-				nextIOAsync(() -> readAsync(buffer, ondone).listenInline(result), result, ondone);
+				nextIOAsync(() -> readAsync(buffer, ondone).forward(result), result, ondone);
 				return;
 			}
 			posInIO += nb.intValue();
@@ -659,16 +658,16 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		return result;
 	}
 
-	protected AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	protected AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return IOUtil.readFullyAsync((IO.Readable)this, buffer, ondone);
 	}
 	
-	protected AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
+	protected AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		if (ioIndex == ios.size()) return IOUtil.success(null, ondone);
 		IO.Readable.Buffered io = (IO.Readable.Buffered)ios.get(ioIndex);
-		AsyncWork<ByteBuffer, IOException> result = new AsyncWork<>();
-		AsyncWork<ByteBuffer, IOException> read = io.readNextBufferAsync();
-		operation(read).listenInline(new AsyncWorkListenerReady<ByteBuffer, IOException>((buf, that) -> {
+		AsyncSupplier<ByteBuffer, IOException> result = new AsyncSupplier<>();
+		AsyncSupplier<ByteBuffer, IOException> read = io.readNextBufferAsync();
+		operation(read).listen(new IOUtil.RecursiveAsyncSupplierListener<ByteBuffer>((buf, that) -> {
 			if (buf == null) {
 				if (sizes.get(ioIndex) == null)
 					sizes.set(ioIndex, Long.valueOf(posInIO));
@@ -678,7 +677,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 					IOUtil.success(null, result, ondone);
 					return;
 				}
-				nextIOAsync(() -> readNextBufferAsync(ondone).listenInline(result), result, ondone);
+				nextIOAsync(() -> readNextBufferAsync(ondone).forward(result), result, ondone);
 				return;
 			}
 			posInIO += buf.remaining();
@@ -730,15 +729,15 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		return nb + skipSync(n - nb);
 	}
 
-	protected AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+	protected AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		if (n == 0) return IOUtil.success(Long.valueOf(0), ondone);
 		if (n > 0) {
 			if (ioIndex == ios.size()) return IOUtil.success(Long.valueOf(0), ondone);
 			IO.Readable io = (IO.Readable)ios.get(ioIndex);
 			MutableLong done = new MutableLong(0);
-			AsyncWork<Long, IOException> skip = io.skipAsync(n);
-			AsyncWork<Long, IOException> result = new AsyncWork<>();
-			operation(skip).listenInline(new AsyncWorkListenerReady<Long, IOException>((nb, that) -> {
+			AsyncSupplier<Long, IOException> skip = io.skipAsync(n);
+			AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
+			operation(skip).listen(new IOUtil.RecursiveAsyncSupplierListener<Long>((nb, that) -> {
 				posInIO += nb.longValue();
 				pos += nb.intValue();
 				done.add(nb.longValue());
@@ -754,7 +753,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 					IOUtil.success(Long.valueOf(done.get()), result, ondone);
 					return;
 				}
-				nextIOAsync(() -> operation(((IO.Readable)ios.get(ioIndex)).skipAsync(n - done.get(), null)).listenInline(that),
+				nextIOAsync(() -> operation(((IO.Readable)ios.get(ioIndex)).skipAsync(n - done.get(), null)).listen(that),
 					result, ondone);
 			}, result, ondone));
 			return result;
@@ -762,15 +761,15 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		if (!(this instanceof IO.Readable.Seekable)) return IOUtil.success(Long.valueOf(0), ondone);
 		if (posInIO == 0) {
 			if (ioIndex == 0) return IOUtil.success(Long.valueOf(0), ondone);
-			AsyncWork<Long, IOException> result = new AsyncWork<>();
-			previousIOAsync(() -> skipAsync(n, ondone).listenInline(result), result, ondone);
+			AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
+			previousIOAsync(() -> skipAsync(n, ondone).forward(result), result, ondone);
 			return result;
 		}
 		IO.Readable io = (IO.Readable)ios.get(ioIndex);
-		AsyncWork<Long, IOException> skip = io.skipAsync(n);
+		AsyncSupplier<Long, IOException> skip = io.skipAsync(n);
 		MutableLong done = new MutableLong(0);
-		AsyncWork<Long, IOException> result = new AsyncWork<>();
-		operation(skip).listenInline(new AsyncWorkListener<Long, IOException>() {
+		AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
+		operation(skip).listen(new Listener<Long, IOException>() {
 			@Override
 			public void ready(Long nb) {
 				posInIO += nb.longValue();
@@ -784,9 +783,9 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 					IOUtil.success(Long.valueOf(done.get()), result, ondone);
 					return;
 				}
-				AsyncWorkListener<Long, IOException> l = this;
+				Listener<Long, IOException> l = this;
 				previousIOAsync(() ->
-					((IO.Readable)ios.get(ioIndex)).skipAsync(n - done.get(), null).listenInline(l),
+					((IO.Readable)ios.get(ioIndex)).skipAsync(n - done.get(), null).listen(l),
 				result, ondone);
 			}
 			
@@ -826,13 +825,13 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		return (int)skipSync(n);
 	}
 	
-	protected ISynchronizationPoint<IOException> canStartReading() {
-		if (ioIndex == ios.size()) return new SynchronizationPoint<>(true);
+	protected IAsync<IOException> canStartReading() {
+		if (ioIndex == ios.size()) return new Async<>(true);
 		return ((IO.Readable)ios.get(ioIndex)).canStartReading();
 	}
 	
-	protected ISynchronizationPoint<IOException> canStartWriting() {
-		if (ioIndex == ios.size()) return new SynchronizationPoint<>(true);
+	protected IAsync<IOException> canStartWriting() {
+		if (ioIndex == ios.size()) return new Async<>(true);
 		return ((IO.Writable)ios.get(ioIndex)).canStartWriting();
 	}
 
@@ -844,14 +843,14 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		return total;
 	}
 	
-	protected AsyncWork<Long, IOException> getSizeAsync() {
+	protected AsyncSupplier<Long, IOException> getSizeAsync() {
 		@SuppressWarnings("unchecked")
-		AsyncWork<Long, IOException>[] getSizes = new AsyncWork[ios.size()];
+		AsyncSupplier<Long, IOException>[] getSizes = new AsyncSupplier[ios.size()];
 		for (int i = 0; i < ios.size(); ++i)
 			getSizes[i] = ((IO.KnownSize)ios.get(i)).getSizeAsync();
-		JoinPoint<IOException> jp = JoinPoint.fromSynchronizationPointsSimilarError(getSizes);
-		AsyncWork<Long, IOException> result = new AsyncWork<>();
-		operation(jp).listenInline(
+		JoinPoint<IOException> jp = JoinPoint.fromSimilarError(getSizes);
+		AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
+		operation(jp).onDone(
 			() -> {
 				long total = 0;
 				for (int i = 0; i < getSizes.length; ++i)
@@ -915,7 +914,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		return pos;
 	}
 
-	protected AsyncWork<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
+	protected AsyncSupplier<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 		return operation(IOUtil.seekAsyncUsingSync((IO.Readable.Seekable)this, type, move, ondone).getOutput());
 	}
 
@@ -940,7 +939,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		return -1;
 	}
 
-	protected AsyncWork<Integer, IOException> readAsync(
+	protected AsyncSupplier<Integer, IOException> readAsync(
 		long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		long p = 0;
@@ -949,13 +948,13 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			Long s = sizes.get(i);
 			if (s == null) {
 				IO.Readable.Seekable io = (IO.Readable.Seekable)ios.get(i);
-				AsyncWork<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
-				if (!seek.isUnblocked()) {
-					AsyncWork<Integer, IOException> result = new AsyncWork<>();
+				AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
+				if (!seek.isDone()) {
+					AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 					int ii = i;
-					seek.listenAsync(new Task.Cpu.FromRunnable("LinkedIO.readAsync", getPriority(), () -> {
+					seek.thenStart(new Task.Cpu.FromRunnable("LinkedIO.readAsync", getPriority(), () -> {
 						sizes.set(ii, seek.getResult());
-						readAsync(pos, buffer, ondone).listenInline(result);
+						readAsync(pos, buffer, ondone).forward(result);
 					}), result);
 					return operation(result);
 				}
@@ -970,14 +969,14 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			i++;
 		}
 		if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(-1), null));
-		return new AsyncWork<>(Integer.valueOf(-1), null);
+		return new AsyncSupplier<>(Integer.valueOf(-1), null);
 	}
 
 	protected int readFullySync(long pos, ByteBuffer buffer) throws IOException {
 		return IOUtil.readFullySync((IO.Readable.Seekable)this, pos, buffer);
 	}
 
-	protected AsyncWork<Integer, IOException> readFullyAsync(
+	protected AsyncSupplier<Integer, IOException> readFullyAsync(
 		long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		return operation(IOUtil.readFullyAsync((IO.Readable.Seekable)this, pos, buffer, ondone));
@@ -1041,14 +1040,14 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		return done;
 	}
 
-	protected AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
-		AsyncWork<Integer, IOException> result = new AsyncWork<>();
+	protected AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 		writeAsync(buffer, 0, result, ondone);
 		return operation(result);
 	}
 	
 	private void writeAsync(
-		ByteBuffer buffer, int done, AsyncWork<Integer, IOException> result, Consumer<Pair<Integer, IOException>> ondone
+		ByteBuffer buffer, int done, AsyncSupplier<Integer, IOException> result, Consumer<Pair<Integer, IOException>> ondone
 	) {
 		if (ioIndex == ios.size()) {
 			IOUtil.success(Integer.valueOf(done), result, ondone);
@@ -1057,9 +1056,9 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		IO.Writable.Seekable io = (IO.Writable.Seekable)ios.get(ioIndex);
 		Long s = sizes.get(ioIndex);
 		if (s == null) {
-			AsyncWork<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
-			if (!seek.isUnblocked()) {
-				seek.listenAsync(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
+			AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
+			if (!seek.isDone()) {
+				seek.thenStart(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
 					if (seek.hasError())
 						IOUtil.error(seek.getError(), result, ondone);
 					else {
@@ -1080,11 +1079,11 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		int limit = buffer.limit();
 		if (buffer.remaining() > len)
 			buffer.limit(limit - (buffer.remaining() - len));
-		AsyncWork<Long, IOException> seek = io.seekAsync(SeekType.FROM_BEGINNING, posInIO);
-		if (seek.isUnblocked())
+		AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_BEGINNING, posInIO);
+		if (seek.isDone())
 			writeAsync(io, limit, buffer, done, result, ondone);
 		else
-			seek.listenInline(() -> {
+			seek.onDone(() -> {
 				if (seek.hasError())
 					IOUtil.error(seek.getError(), result, ondone);
 				else
@@ -1094,10 +1093,10 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 	
 	private void writeAsync(
 		IO.Writable.Seekable io, int limit, ByteBuffer buffer, int done,
-		AsyncWork<Integer, IOException> result, Consumer<Pair<Integer, IOException>> ondone
+		AsyncSupplier<Integer, IOException> result, Consumer<Pair<Integer, IOException>> ondone
 	) {
-		AsyncWork<Integer, IOException> write = io.writeAsync(buffer);
-		write.listenAsync(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
+		AsyncSupplier<Integer, IOException> write = io.writeAsync(buffer);
+		write.thenStart(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
 			buffer.limit(limit);
 			if (write.hasError()) {
 				IOUtil.error(write.getError(), result, ondone);
@@ -1114,20 +1113,20 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		}), true);
 	}
 
-	protected AsyncWork<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	protected AsyncSupplier<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		long p = 0;
 		int i = 0;
 		while (i < ios.size()) {
 			Long s = sizes.get(i);
 			if (s == null) {
 				IO.Writable.Seekable io = (IO.Writable.Seekable)ios.get(i);
-				AsyncWork<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
-				if (!seek.isUnblocked()) {
-					AsyncWork<Integer, IOException> result = new AsyncWork<>();
+				AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
+				if (!seek.isDone()) {
+					AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 					int ii = i;
-					seek.listenAsync(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
+					seek.thenStart(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
 						sizes.set(ii, seek.getResult());
-						writeAsync(pos, buffer, ondone).listenInline(result);
+						writeAsync(pos, buffer, ondone).forward(result);
 					}), result);
 					return result;
 				}
@@ -1135,7 +1134,7 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 				sizes.set(i, s);
 			}
 			if (p + s.longValue() > pos) {
-				AsyncWork<Integer, IOException> result = new AsyncWork<>();
+				AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 				writeAsync(i, p, pos, 0, buffer, result, ondone);
 				return result;
 			}
@@ -1143,19 +1142,19 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 			i++;
 		}
 		if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(-1), null));
-		return new AsyncWork<>(Integer.valueOf(-1), null);
+		return new AsyncSupplier<>(Integer.valueOf(-1), null);
 	}
 	
 	private void writeAsync(
-		int i, long p, long pos, int done, ByteBuffer buffer, AsyncWork<Integer, IOException> result,
+		int i, long p, long pos, int done, ByteBuffer buffer, AsyncSupplier<Integer, IOException> result,
 		Consumer<Pair<Integer, IOException>> ondone
 	) {
 		IO.Writable.Seekable io = (IO.Writable.Seekable)ios.get(i);
 		Long s = sizes.get(i);
 		if (s == null) {
-			AsyncWork<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
-			if (!seek.isUnblocked()) {
-				seek.listenAsync(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
+			AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
+			if (!seek.isDone()) {
+				seek.thenStart(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
 					sizes.set(i, seek.getResult());
 					writeAsync(i, p, pos, done, buffer, result, ondone);
 				}), result);
@@ -1168,9 +1167,9 @@ public abstract class LinkedIO extends ConcurrentCloseable implements IO {
 		int limit = buffer.limit();
 		if (buffer.remaining() > len)
 			buffer.limit(limit - (buffer.remaining() - len));
-		AsyncWork<Integer, IOException> write = io.writeAsync(pos - p, buffer);
+		AsyncSupplier<Integer, IOException> write = io.writeAsync(pos - p, buffer);
 		long ioSize = s.longValue();
-		write.listenInline(() -> {
+		write.onDone(() -> {
 			buffer.limit(limit);
 			if (write.hasError()) {
 				IOUtil.error(write.getError(), result, ondone);

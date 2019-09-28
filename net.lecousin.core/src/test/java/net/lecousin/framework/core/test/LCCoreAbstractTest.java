@@ -9,7 +9,7 @@ import net.lecousin.framework.application.Artifact;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.StandaloneLCCore;
 import net.lecousin.framework.application.Version;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.memory.MemoryManager;
@@ -20,7 +20,7 @@ public abstract class LCCoreAbstractTest {
 	public static synchronized void init() throws Exception {
 		if (LCCore.get() != null) return;
 		Application.start(new Artifact("net.lecousin.framework.test", "test", new Version(LCCoreVersion.VERSION)), true).blockThrow(0);
-		LCCore.getApplication().getLoggerFactory().getLogger(SynchronizationPoint.class).setLevel(Logger.Level.INFO);
+		LCCore.getApplication().getLoggerFactory().getLogger(Async.class).setLevel(Logger.Level.INFO);
 		StandaloneLCCore.setLogThreadingInterval(120000);
 		MemoryManager.logMemory(120000, Level.DEBUG);
 	}

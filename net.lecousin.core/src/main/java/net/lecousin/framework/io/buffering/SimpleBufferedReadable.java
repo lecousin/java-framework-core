@@ -4,12 +4,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -30,7 +30,7 @@ import net.lecousin.framework.util.Pair;
  *  <li>If the second buffer is not yet ready, the operation blocks until the second buffer is ready.</li>
  * </ul>
  */
-public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Readable.Buffered {
+public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> implements IO.Readable.Buffered {
 	
 	/** Constructor. */
 	public SimpleBufferedReadable(IO.Readable io, int bufferSize) {
@@ -47,7 +47,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	private ByteBuffer readBuffer;
 	private AtomicState state;
 	private ByteBuffer bb;
-	private AsyncWork<Integer,IOException> readTask;
+	private AsyncSupplier<Integer,IOException> readTask;
 	
 	private static class AtomicState {
 		private byte[] buffer;
@@ -56,9 +56,9 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartReading() {
-		ISynchronizationPoint<IOException> sp = readTask;
-		if (sp == null) sp = new SynchronizationPoint<>(true);
+	public IAsync<IOException> canStartReading() {
+		IAsync<IOException> sp = readTask;
+		if (sp == null) sp = new Async<>(true);
 		return sp;
 	}
 	
@@ -78,19 +78,19 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	public void setPriority(byte priority) { io.setPriority(priority); }
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
-		AsyncWork<Integer,IOException> currentRead = readTask;
-		if (currentRead != null && !currentRead.isUnblocked()) {
+	protected IAsync<IOException> closeUnderlyingResources() {
+		AsyncSupplier<Integer,IOException> currentRead = readTask;
+		if (currentRead != null && !currentRead.isDone()) {
 			currentRead.cancel(new CancelException("IO closed"));
-			SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-			currentRead.listenInline(() -> io.closeAsync().listenInline(sp));
+			Async<IOException> sp = new Async<>();
+			currentRead.onDone(() -> io.closeAsync().onDone(sp));
 			return sp;
 		}
 		return io.closeAsync();
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		readTask = null;
 		state.buffer = null;
 		bb = null;
@@ -100,8 +100,8 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	
 	/** Stop any pending read, and block until they are cancelled or done. */
 	public void stop() {
-		AsyncWork<Integer,IOException> currentRead = readTask;
-		if (currentRead != null && !currentRead.isUnblocked()) {
+		AsyncSupplier<Integer,IOException> currentRead = readTask;
+		if (currentRead != null && !currentRead.isDone()) {
 			currentRead.cancel(new CancelException("SimpleBufferedReadable.stop"));
 			currentRead.block(0);
 		}
@@ -109,7 +109,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	
 	@SuppressWarnings("squid:S2583") // false positive because concurrent operations
 	private void fill() throws IOException, CancelException {
-		AsyncWork<Integer,IOException> currentRead = readTask;
+		AsyncSupplier<Integer,IOException> currentRead = readTask;
 		if (currentRead == null)
 			return;
 		currentRead.block(0);
@@ -158,7 +158,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		AtomicState s = state;
 		if (s.pos == s.len) {
 			if (s.buffer == null) return IOUtil.success(Integer.valueOf(-1), ondone);
@@ -177,8 +177,8 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 		AtomicState s = state;
 		if (s.pos == s.len) {
 			if (s.buffer == null) return -1;
-			AsyncWork<Integer,IOException> currentRead = readTask;
-			if (currentRead != null && currentRead.isUnblocked())
+			AsyncSupplier<Integer,IOException> currentRead = readTask;
+			if (currentRead != null && currentRead.isDone())
 				try { fill(); }
 				catch (Exception t) { return -1; }
 			return -2;
@@ -187,7 +187,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	}
 
 	@Override
-	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone)).getOutput();
 	}
 
@@ -197,12 +197,12 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	}
 
 	@Override
-	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return IOUtil.readFullyAsync(this, buffer, ondone);
 	}
 
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
+	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		AtomicState s = state;
 		if (s.pos == s.len && s.buffer == null) return IOUtil.success(null, ondone);
 		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
@@ -241,7 +241,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 			state.pos += (int)n;
 			return n;
 		}
-		AsyncWork<Integer,IOException> currentRead = readTask;
+		AsyncSupplier<Integer,IOException> currentRead = readTask;
 		if (currentRead == null)
 			return 0;
 		currentRead.block(0);
@@ -269,14 +269,14 @@ public class SimpleBufferedReadable extends ConcurrentCloseable implements IO.Re
 	}
 
 	@Override
-	public AsyncWork<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+	public AsyncSupplier<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		if (state.buffer == null || n <= 0) return IOUtil.success(Long.valueOf(0), ondone);
 		if (n <= state.len - state.pos) {
 			state.pos += (int)n;
 			if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(n), null));
-			return new AsyncWork<>(Long.valueOf(n),null);
+			return new AsyncSupplier<>(Long.valueOf(n),null);
 		}
-		AsyncWork<Integer,IOException> currentRead = readTask;
+		AsyncSupplier<Integer,IOException> currentRead = readTask;
 		if (currentRead == null) return IOUtil.success(Long.valueOf(0), ondone);
 		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Skipping bytes", io.getPriority(), ondone) {
 			@Override

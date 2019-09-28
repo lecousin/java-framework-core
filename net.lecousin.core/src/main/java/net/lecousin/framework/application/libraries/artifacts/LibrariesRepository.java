@@ -3,7 +3,7 @@ package net.lecousin.framework.application.libraries.artifacts;
 import java.io.File;
 import java.io.IOException;
 
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 
 /**
  * Interface describing a library repository.
@@ -11,7 +11,7 @@ import net.lecousin.framework.concurrent.synch.AsyncWork;
 public interface LibrariesRepository {
 
 	/** Load a file. */
-	AsyncWork<File, IOException> loadFile(
+	AsyncSupplier<File, IOException> loadFile(
 		String groupId, String artifactId, String version, String classifier, String type, byte priority
 	);
 	

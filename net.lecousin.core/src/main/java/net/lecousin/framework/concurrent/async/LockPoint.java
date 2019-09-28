@@ -1,33 +1,31 @@
-package net.lecousin.framework.concurrent.synch;
+package net.lecousin.framework.concurrent.async;
 
 import java.util.ArrayList;
 import java.util.Collection;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.log.Logger;
 
 /**
- * A MutualExclusion must be unlocked by the same thread that locked it.
- * If the same thread is locking it several times, it must unlock it several times as well.<br/>
+ * A LockPoint is similar to a mutual exclusion, but can be locked and unlocked by any thread.<br/>
+ * For example, a first thread can lock it, and a second thread (after some processing is done) can unlock it.<br/>
+ * A LockPoint can also be seen as a SynchronizationPoint but <i>reusable</i>.<br/>
  * When a thread calls the lock method:<ul>
- * <li>if the mutual exclusion is not yet locked by another thread, it becomes locked and the calling thread can continue working,
+ * <li>if the lock point is not yet locked it becomes locked and the calling thread can continue working,
  * 		and must call the method unlock once done.</li>
- * <li>if the mutual exclusion is already locked by another thread, the calling thread is paused,
- * 		waiting for the mutual exclusion to be unlocked.</li>
+ * <li>if the lock point is already locked, the calling thread is paused, waiting for the lock point to be unlocked.</li>
  * </ul>
- * If several threads are waiting for the mutual exclusion to be unlocked:<ul>
+ * If several threads are waiting for the lock point to be unlocked:<ul>
  * <li>Only one is resume and obtain the lock, the others are still paused</li>
  * <li>The order the threads are resumed is undetermined, meaning it is not necessarily in the order they called the lock method</li> 
  * </ul>
  * @param <TError> type of exception it may raise
  */
-public class MutualExclusion<TError extends Exception> implements ISynchronizationPoint<TError> {
+public class LockPoint<TError extends Exception> implements IAsync<TError> {
 
-	private Thread lockingThread = null;
-	private int lockedTimes = 0;
+	private boolean locked = false;
 	private TError error = null;
 	private CancelException cancel = null;
 	private ArrayList<Runnable> listeners = null;
@@ -39,39 +37,29 @@ public class MutualExclusion<TError extends Exception> implements ISynchronizati
 			return;
 		if (error != null)
 			return;
-		Thread t = Thread.currentThread();
-		if (t == lockingThread) {
-			lockedTimes++;
-			return;
-		}
-		BlockedThreadHandler blockedHandler = null;
+		Thread t;
+		BlockedThreadHandler blockedHandler;
 		do {
 			synchronized (this) {
-				if (lockingThread == null) {
-					lockingThread = t;
-					lockedTimes = 1;
+				if (!locked) {
+					locked = true;
 					return;
 				}
-				if (blockedHandler == null)
-					blockedHandler = Threading.getBlockedThreadHandler(t);
-				if (blockedHandler == null) {
-					try { this.wait(0); }
-					catch (InterruptedException e) { /* ignore */ }
-					continue;
-				}
+				t = Thread.currentThread();
+				blockedHandler = Threading.getBlockedThreadHandler(t);
+				if (blockedHandler != null) break;
+				try { this.wait(0); }
+				catch (InterruptedException e) { /* continue anyway */ }
 			}
-			blockedHandler.blocked(this, 0);
 		} while (true);
+		blockedHandler.blocked(this, 0);
 	}
 	
 	/** Release the lock. */
 	public void unlock() {
 		ArrayList<Runnable> list;
-		Thread t = Thread.currentThread();
 		synchronized (this) {
-			if (t != lockingThread) return;
-			if (--lockedTimes > 0) return;
-			lockingThread = null;
+			locked = false;
 			list = listeners;
 			listeners = null;
 		}
@@ -85,14 +73,14 @@ public class MutualExclusion<TError extends Exception> implements ISynchronizati
 	}
 	
 	@Override
-	public boolean isUnblocked() {
-		return lockingThread == null;
+	public boolean isDone() {
+		return !locked;
 	}
 	
 	@Override
 	public void blockPause(long logAfter) {
 		synchronized (this) {
-			if (lockingThread == null) return;
+			if (!locked) return;
 			do {
 				long start = System.currentTimeMillis();
 				try { this.wait(logAfter + 1000); }
@@ -115,9 +103,9 @@ public class MutualExclusion<TError extends Exception> implements ISynchronizati
 	}
 
 	@Override
-	public void listenInline(Runnable r) {
+	public void onDone(Runnable r) {
 		synchronized (this) {
-			if (lockingThread == null) r.run();
+			if (!locked) r.run();
 			else {
 				if (listeners == null) listeners = new ArrayList<>();
 				listeners.add(r);
@@ -127,9 +115,9 @@ public class MutualExclusion<TError extends Exception> implements ISynchronizati
 	
 	@Override
 	public void block(long timeout) {
-		if (lockingThread == null) return;
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		listenInline(sp::unblock);
+		if (!locked) return;
+		Async<Exception> sp = new Async<>();
+		onDone(sp::unblock);
 		sp.block(timeout);
 	}
 

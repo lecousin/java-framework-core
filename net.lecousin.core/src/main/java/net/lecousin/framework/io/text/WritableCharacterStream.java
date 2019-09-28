@@ -8,14 +8,14 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
 
 /** Implement a non-buffered writable character stream using a writable IO. */
-public class WritableCharacterStream extends ConcurrentCloseable implements ICharacterStream.Writable {
+public class WritableCharacterStream extends ConcurrentCloseable<IOException> implements ICharacterStream.Writable {
 
 	/** Constructor. */
 	public WritableCharacterStream(IO.Writable output, Charset charset) {
@@ -32,12 +32,12 @@ public class WritableCharacterStream extends ConcurrentCloseable implements ICha
 	private CharsetEncoder encoder;
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		return output.closeAsync();
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		encoder = null;
 		output = null;
 		ondone.unblock();
@@ -71,8 +71,8 @@ public class WritableCharacterStream extends ConcurrentCloseable implements ICha
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> writeAsync(char[] c, int offset, int length) {
-		SynchronizationPoint<IOException> result = new SynchronizationPoint<>();
+	public IAsync<IOException> writeAsync(char[] c, int offset, int length) {
+		Async<IOException> result = new Async<>();
 		operation(new Task.Cpu<Void, NoException>("Encoding characters", getPriority()) {
 			@Override
 			public Void run() {
@@ -83,7 +83,7 @@ public class WritableCharacterStream extends ConcurrentCloseable implements ICha
 					result.error(e);
 					return null;
 				}
-				output.writeAsync(bb).listenInline(result);
+				output.writeAsync(bb).onDone(result);
 				return null;
 			}
 		}).start();

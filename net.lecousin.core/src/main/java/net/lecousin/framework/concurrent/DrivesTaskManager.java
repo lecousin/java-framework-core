@@ -6,9 +6,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.collections.map.MapUtil;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.util.Pair;
 
 /** Handle TaskManagers for a drives. */
@@ -99,10 +99,10 @@ public class DrivesTaskManager {
 	public static interface DrivesProvider {
 		/** Register listeners. */
 		void provide(
-			Listener<Pair<Object,List<File>>> onNewDrive,
-			Listener<Pair<Object,List<File>>> onDriveRemoved,
-			Listener<Pair<Object,File>> onNewPartition,
-			Listener<Pair<Object,File>> onPartitionRemoved
+			Consumer<Pair<Object,List<File>>> onNewDrive,
+			Consumer<Pair<Object,List<File>>> onDriveRemoved,
+			Consumer<Pair<Object,File>> onNewPartition,
+			Consumer<Pair<Object,File>> onPartitionRemoved
 		);
 	}
 	

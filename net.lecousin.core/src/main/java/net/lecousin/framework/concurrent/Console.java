@@ -5,7 +5,7 @@ import java.io.PrintStream;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
 
 /**
  * This class handles printing to the console in a separate thread,
@@ -81,7 +81,7 @@ public class Console implements Closeable {
 	private TurnArray<Object> stderr = new TurnArray<>(50);
 	private Thread thread;
 	private boolean stop = false;
-	private SynchronizationPoint<Exception> stopped = new SynchronizationPoint<>();
+	private Async<Exception> stopped = new Async<>();
 	private PrintStream out;
 	private PrintStream err;
 	

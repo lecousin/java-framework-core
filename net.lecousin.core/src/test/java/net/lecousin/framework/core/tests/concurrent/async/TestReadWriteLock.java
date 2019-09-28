@@ -1,7 +1,7 @@
-package net.lecousin.framework.core.tests.concurrent.synch;
+package net.lecousin.framework.core.tests.concurrent.async;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ReadWriteLockPoint;
+import net.lecousin.framework.concurrent.async.ReadWriteLockPoint;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
 import org.junit.Test;

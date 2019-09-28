@@ -17,8 +17,8 @@ import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.appenders.Appender;
 import net.lecousin.framework.log.appenders.ConsoleAppender;
@@ -82,9 +82,9 @@ public class LoggerFactory {
 	}
 	
 	/** Return a synchronization point that will be unblocked as soon as all pending logs have been written. */
-	public ISynchronizationPoint<Exception> flush() {
+	public IAsync<Exception> flush() {
 		JoinPoint<Exception> jp = new JoinPoint<>();
-		thread.flush().listenAsync(new Task.Cpu.FromRunnable("Flushing log appenders", Task.PRIORITY_IMPORTANT, () -> {
+		thread.flush().thenStart(new Task.Cpu.FromRunnable("Flushing log appenders", Task.PRIORITY_IMPORTANT, () -> {
 			for (Appender a : appenders.values())
 				jp.addToJoin(a.flush());
 			jp.start();

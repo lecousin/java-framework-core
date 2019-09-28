@@ -1,6 +1,6 @@
 package net.lecousin.framework.core.tests.progress;
 
-import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.progress.FakeWorkProgress;
 

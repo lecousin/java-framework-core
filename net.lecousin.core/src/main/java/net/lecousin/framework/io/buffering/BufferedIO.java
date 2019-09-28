@@ -18,11 +18,11 @@ import net.lecousin.framework.collections.sort.OldestList;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.ReadWriteLockPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.async.ReadWriteLockPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -57,7 +57,7 @@ import net.lecousin.framework.util.StringUtil;
  * Using a single MemoryManagement for all BufferedIOs allows to manage memory globally for the application, so
  * many BufferedIOs can be used together while controlling the memory usage, and giving priority to buffers recently used.
  */
-public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seekable, IO.Readable.Buffered, IO.KnownSize {
+public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.Readable.Seekable, IO.Readable.Buffered, IO.KnownSize {
 
 	/** Manages memory usage and delayed write operations of BufferedIO instances. */
 	public static class MemoryManagement implements IMemoryManageable {
@@ -153,7 +153,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 			}
 		}
 		
-		private ISynchronizationPoint<IOException> close(BufferedIO owner) {
+		private IAsync<IOException> close(BufferedIO owner) {
 			JoinPoint<IOException> jp = new JoinPoint<>();
 			synchronized (this) {
 				Buffer b = head;
@@ -171,7 +171,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 					else
 						b.next.previous = b.previous;
 					jp.addToJoin(b.loaded);
-					SynchronizationPoint<NoException> write = b.usage.startWriteAsync();
+					Async<NoException> write = b.usage.startWriteAsync();
 					if (write == null) {
 						if (b.lastWrite == 0) {
 							b.usage.endWrite();
@@ -179,7 +179,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 						} else {
 							jp.addToJoin(1);
 							Buffer bb = b;
-							b.owner.flush(b).listenInline(() -> {
+							b.owner.flush(b).onDone(() -> {
 								bb.usage.endWrite();
 								synchronized (MemoryManagement.this) {
 									usedMemory -= bb.data.length;
@@ -190,7 +190,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 					} else {
 						jp.addToJoin(1);
 						Buffer bb = b;
-						write.listenInline(() -> {
+						write.onDone(() -> {
 							if (bb.lastWrite == 0) {
 								bb.usage.endWrite();
 								synchronized (MemoryManagement.this) {
@@ -198,7 +198,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 								}
 								jp.joined();
 							} else {
-								bb.owner.flush(bb).listenInline(() -> {
+								bb.owner.flush(bb).onDone(() -> {
 									bb.usage.endWrite();
 									synchronized (MemoryManagement.this) {
 										usedMemory -= bb.data.length;
@@ -350,17 +350,17 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 			}
 			
 			private boolean flush(Buffer b) {
-				SynchronizationPoint<NoException> ready = b.usage.startWriteAsync();
+				Async<NoException> ready = b.usage.startWriteAsync();
 				if (ready != null) {
-					ready.listenInline(() -> b.usage.endWrite());
+					ready.onDone(() -> b.usage.endWrite());
 					return false;
 				}
 				if (b.lastWrite == 0) {
 					b.usage.endWrite();
 					return false;
 				}
-				ISynchronizationPoint<IOException> flushing = b.owner.flush(b);
-				flushing.listenInline(() -> {
+				IAsync<IOException> flushing = b.owner.flush(b);
+				flushing.onDone(() -> {
 					if (b.lastRead < b.lastWrite)
 						b.lastRead = b.lastWrite;
 					if (flushing.isSuccessful()) {
@@ -388,7 +388,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		private byte[] data;
 		private long lastRead = 0;
 		private long lastWrite = 0;
-		private SynchronizationPoint<IOException> loaded = new SynchronizationPoint<>();
+		private Async<IOException> loaded = new Async<>();
 		private ReadWriteLockPoint usage = new ReadWriteLockPoint();
 		private Buffer next;
 		private Buffer previous;
@@ -397,13 +397,13 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	private interface BufferTable {
 		Buffer needBufferSync(long index, boolean newAtTheEnd);
 		
-		AsyncWork<Buffer, NoException> needBufferAsync(long index, boolean newAtTheEnd);
+		AsyncSupplier<Buffer, NoException> needBufferAsync(long index, boolean newAtTheEnd);
 		
 		boolean remove(Buffer buffer, boolean force);
 		
 		void setSize(long nbBuffersBefore, long nbBuffersAfter);
 		
-		ISynchronizationPoint<IOException> flush();
+		IAsync<IOException> flush();
 	}
 	
 	private class ArrayBufferTable implements BufferTable {
@@ -456,7 +456,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		}
 		
 		@Override
-		public AsyncWork<Buffer, NoException> needBufferAsync(long index, boolean newAtTheEnd) {
+		public AsyncSupplier<Buffer, NoException> needBufferAsync(long index, boolean newAtTheEnd) {
 			int i = (int)index;
 			Buffer b;
 			boolean isNew;
@@ -485,20 +485,20 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 					b.loaded.unblock();
 				else
 					load(b);
-				return new AsyncWork<>(b, null);
+				return new AsyncSupplier<>(b, null);
 			}
-			SynchronizationPoint<NoException> sp = b.usage.startReadAsync();
-			if (sp == null || sp.isUnblocked()) {
+			Async<NoException> sp = b.usage.startReadAsync();
+			if (sp == null || sp.isDone()) {
 				synchronized (this) {
 					if (buffers[i] == b)
-						return new AsyncWork<>(b, null);
+						return new AsyncSupplier<>(b, null);
 				}
 				b.usage.endRead();
 				return needBufferAsync(index, newAtTheEnd);
 			}
-			AsyncWork<Buffer, NoException> result = new AsyncWork<>();
+			AsyncSupplier<Buffer, NoException> result = new AsyncSupplier<>();
 			Buffer bb = b;
-			sp.listenInline(() -> {
+			sp.onDone(() -> {
 				synchronized (this) {
 					if (buffers[i] == bb) {
 						result.unblockSuccess(bb);
@@ -506,7 +506,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 					}
 				}
 				bb.usage.endRead();
-				needBufferAsync(index, newAtTheEnd).listenInline(result);
+				needBufferAsync(index, newAtTheEnd).forward(result);
 			});
 			return result;
 		}
@@ -514,7 +514,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		@Override
 		public boolean remove(Buffer buffer, boolean force) {
 			do {
-				SynchronizationPoint<?> sp;
+				Async<?> sp;
 				synchronized (this) {
 					int i = (int)buffer.index;
 					if (buffers[i] != buffer)
@@ -523,7 +523,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 					if (sp == null) {
 						buffer.usage.endWrite();
 						sp = buffer.loaded;
-						if (sp.isUnblocked()) {
+						if (sp.isDone()) {
 							if (buffer.lastWrite > 0 && !force)
 								return false;
 							buffers[i] = null;
@@ -532,7 +532,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 						if (!force)
 							return false;
 					} else {
-						sp.listenInline(() -> buffer.usage.endWrite());
+						sp.onDone(() -> buffer.usage.endWrite());
 						if (!force)
 							return false;
 					}
@@ -573,7 +573,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> flush() {
+		public IAsync<IOException> flush() {
 			LinkedList<Buffer> toFlush = new LinkedList<>();
 			synchronized (this) {
 				for (Buffer b : buffers)
@@ -629,7 +629,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		}
 		
 		@Override
-		public AsyncWork<Buffer, NoException> needBufferAsync(long index, boolean newAtTheEnd) {
+		public AsyncSupplier<Buffer, NoException> needBufferAsync(long index, boolean newAtTheEnd) {
 			Buffer b;
 			boolean isNew;
 			synchronized (this) {
@@ -652,20 +652,20 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 					b.loaded.unblock();
 				else
 					load(b);
-				return new AsyncWork<>(b, null);
+				return new AsyncSupplier<>(b, null);
 			}
-			SynchronizationPoint<NoException> sp = b.usage.startReadAsync();
-			if (sp == null || sp.isUnblocked()) {
+			Async<NoException> sp = b.usage.startReadAsync();
+			if (sp == null || sp.isDone()) {
 				synchronized (this) {
 					if (map.get(index) == b)
-						return new AsyncWork<>(b, null);
+						return new AsyncSupplier<>(b, null);
 				}
 				b.usage.endRead();
 				return needBufferAsync(index, newAtTheEnd);
 			}
-			AsyncWork<Buffer, NoException> result = new AsyncWork<>();
+			AsyncSupplier<Buffer, NoException> result = new AsyncSupplier<>();
 			Buffer bb = b;
-			sp.listenInline(() -> {
+			sp.onDone(() -> {
 				synchronized (this) {
 					if (map.get(index) == bb) {
 						result.unblockSuccess(bb);
@@ -673,7 +673,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 					}
 				}
 				bb.usage.endRead();
-				needBufferAsync(index, newAtTheEnd).listenInline(result);
+				needBufferAsync(index, newAtTheEnd).forward(result);
 			});
 			return result;
 		}
@@ -681,7 +681,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		@Override
 		public boolean remove(Buffer buffer, boolean force) {
 			do {
-				SynchronizationPoint<?> sp;
+				Async<?> sp;
 				synchronized (this) {
 					if (map.get(buffer.index) != buffer)
 						return true;
@@ -689,7 +689,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 					if (sp == null) {
 						buffer.usage.endWrite();
 						sp = buffer.loaded;
-						if (sp.isUnblocked()) {
+						if (sp.isDone()) {
 							if (buffer.lastWrite > 0 && !force)
 								return false;
 							map.remove(buffer.index);
@@ -698,7 +698,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 						if (!force)
 							return false;
 					} else {
-						sp.listenInline(() -> buffer.usage.endWrite());
+						sp.onDone(() -> buffer.usage.endWrite());
 						if (!force)
 							return false;
 					}
@@ -737,7 +737,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> flush() {
+		public IAsync<IOException> flush() {
 			LinkedList<Buffer> toFlush = new LinkedList<>();
 			synchronized (this) {
 				for (Iterator<Buffer> it = map.values(); it.hasNext(); ) {
@@ -796,8 +796,8 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 			b.loaded.unblock();
 			return;
 		}
-		AsyncWork<Integer, IOException> read = io.readFullyAsync(pos, ByteBuffer.wrap(b.data, 0, len));
-		read.listenInline(nb -> {
+		AsyncSupplier<Integer, IOException> read = io.readFullyAsync(pos, ByteBuffer.wrap(b.data, 0, len));
+		read.onDone(nb -> {
 			if (nb.intValue() != len)
 				b.loaded.error(new IOException("Only " + nb + " bytes read at " + pos + " but expected was " + len));
 			else
@@ -823,16 +823,16 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		return firstBufferSize + (index - 1) * bufferSize;
 	}
 	
-	private ISynchronizationPoint<IOException> flush(Buffer b) {
+	private IAsync<IOException> flush(Buffer b) {
 		long pos = getBufferPosition(b.index);
 		int len = b.data.length;
 		if (pos + len > size) len = (int)(size - pos);
 		if (len == 0)
-			return new SynchronizationPoint<>(true);
+			return new Async<>(true);
 		return ((IO.Writable.Seekable)io).writeAsync(pos, ByteBuffer.wrap(b.data, 0, len));
 	}
 	
-	private ISynchronizationPoint<IOException> flush(LinkedList<Buffer> list, Predicate<Buffer> filter) {
+	private IAsync<IOException> flush(LinkedList<Buffer> list, Predicate<Buffer> filter) {
 		JoinPoint<IOException> jp = new JoinPoint<>();
 		jp.addToJoin(list.size());
 		flushNext(list, filter, jp, 0);
@@ -843,11 +843,11 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	private void flushNext(LinkedList<Buffer> list, Predicate<Buffer> filter, JoinPoint<IOException> jp, int recurs) {
 		if (list.isEmpty()) return;
 		Buffer b = list.removeFirst();
-		SynchronizationPoint<NoException> sp = b.usage.startWriteAsync();
+		Async<NoException> sp = b.usage.startWriteAsync();
 		if (sp == null)
 			doFlush(b, jp, list, filter, recurs);
 		else
-			sp.listenAsync(new Task.Cpu.FromRunnable("BufferedIO.flush", getPriority(), () -> doFlush(b, jp, list, filter, 0)), true);
+			sp.thenStart(new Task.Cpu.FromRunnable("BufferedIO.flush", getPriority(), () -> doFlush(b, jp, list, filter, 0)), true);
 	}
 	
 	private void doFlush(Buffer b, JoinPoint<IOException> jp, LinkedList<Buffer> list, Predicate<Buffer> filter, int recurs) {
@@ -857,8 +857,8 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 			flushNext(list, filter, jp, recurs + 1);
 			return;
 		}
-		ISynchronizationPoint<IOException> flush = flush(b);
-		flush.listenInline(() -> {
+		IAsync<IOException> flush = flush(b);
+		flush.onDone(() -> {
 			b.usage.endWrite();
 			if (flush.isSuccessful())
 				memory.flushed(b);
@@ -877,8 +877,8 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		operation(new Task.Cpu.FromRunnable("Pre-load next buffer in BufferedIO", io.getPriority(), () -> {
 			if (closing) return;
 			long bufferIndex = getBufferIndex(pos);
-			AsyncWork<Buffer, NoException> b = bufferTable.needBufferAsync(bufferIndex, false);
-			b.listenInline(() -> {
+			AsyncSupplier<Buffer, NoException> b = bufferTable.needBufferAsync(bufferIndex, false);
+			b.onDone(() -> {
 				b.getResult().lastRead = System.currentTimeMillis();
 				b.getResult().usage.endRead();
 			});
@@ -886,15 +886,15 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	}
 	
 	@Override
-	protected ISynchronizationPoint<Exception> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		closing = true;
-		SynchronizationPoint<Exception> sp = new SynchronizationPoint<>();
-		memory.close(this).listenInlineSP(() -> io.closeAsync().listenInline(sp), sp);
+		Async<IOException> sp = new Async<>();
+		memory.close(this).onDone(() -> io.closeAsync().onDone(sp), sp);
 		return sp;
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		io = null;
 		bufferTable = null;
 		memory = null;
@@ -932,8 +932,8 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	}
 	
 	@Override
-	public AsyncWork<Long, IOException> getSizeAsync() {
-		return new AsyncWork<>(Long.valueOf(size), null);
+	public AsyncSupplier<Long, IOException> getSizeAsync() {
+		return new AsyncSupplier<>(Long.valueOf(size), null);
 	}
 	
 	@Override
@@ -1075,27 +1075,27 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartReading() {
-		if (position == size) return new SynchronizationPoint<>(true);
-		if (closing) return new SynchronizationPoint<>(new ClosedChannelException());
+	public IAsync<IOException> canStartReading() {
+		if (position == size) return new Async<>(true);
+		if (closing) return new Async<>(new ClosedChannelException());
 		long bufferIndex = getBufferIndex(position);
-		AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
-		if (getBuffer.isUnblocked()) {
+		AsyncSupplier<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
+		if (getBuffer.isDone()) {
 			Buffer b = getBuffer.getResult();
 			b.usage.endRead();
 			return b.loaded;
 		}
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		getBuffer.listenInline(() -> {
+		Async<IOException> sp = new Async<>();
+		getBuffer.onDone(() -> {
 			Buffer b = getBuffer.getResult();
 			b.lastRead = System.currentTimeMillis();
-			b.loaded.listenInline(sp);
+			b.loaded.onDone(sp);
 			b.usage.endRead();
 		});
 		return sp;
 	}
 	
-	private static <T> boolean checkLoaded(Buffer b, AsyncWork<T, IOException> result, Consumer<Pair<T, IOException>> ondone) {
+	private static <T> boolean checkLoaded(Buffer b, AsyncSupplier<T, IOException> result, Consumer<Pair<T, IOException>> ondone) {
 		if (b.loaded.hasError()) {
 			IOUtil.error(b.loaded.getError(), result, ondone);
 			b.usage.endRead();
@@ -1114,9 +1114,9 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		if (closing) throw new ClosedChannelException();
 		if (position == size) return -1;
 		long bufferIndex = getBufferIndex(position);
-		AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
-		if (!getBuffer.isUnblocked()) {
-			getBuffer.listenInline(() -> {
+		AsyncSupplier<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
+		if (!getBuffer.isDone()) {
+			getBuffer.onDone(() -> {
 				Buffer b = getBuffer.getResult();
 				b.lastRead = System.currentTimeMillis();
 				b.usage.endRead();
@@ -1124,7 +1124,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 			return -2;
 		}
 		Buffer b = getBuffer.getResult();
-		if (!b.loaded.isUnblocked()) {
+		if (!b.loaded.isDone()) {
 			b.lastRead = System.currentTimeMillis();
 			b.usage.endRead();
 			return -2;
@@ -1147,23 +1147,23 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		if (closing) return IOUtil.error(new ClosedChannelException(), ondone);
 		if (pos >= size) return IOUtil.success(Integer.valueOf(-1), ondone);
 		long bufferIndex = getBufferIndex(pos);
-		AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
-		AsyncWork<Integer, IOException> result = new AsyncWork<>();
+		AsyncSupplier<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
+		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 		readAsync(pos, buffer, getBuffer, ondone, result);
 		return operation(result);
 	}
 	
 	private void readAsync(
-		long pos, ByteBuffer buffer, AsyncWork<Buffer, NoException> getBuffer,
-		Consumer<Pair<Integer, IOException>> ondone, AsyncWork<Integer, IOException> result
+		long pos, ByteBuffer buffer, AsyncSupplier<Buffer, NoException> getBuffer,
+		Consumer<Pair<Integer, IOException>> ondone, AsyncSupplier<Integer, IOException> result
 	) {
-		getBuffer.listenInline(() -> {
+		getBuffer.onDone(() -> {
 			Buffer b = getBuffer.getResult();
-			b.loaded.listenAsync(new Task.Cpu.FromRunnable("BufferedIO.readAsync", io.getPriority(), () -> {
+			b.loaded.thenStart(new Task.Cpu.FromRunnable("BufferedIO.readAsync", io.getPriority(), () -> {
 				if (!checkLoaded(b, result, ondone)) return;
 				int off = getBufferOffset(pos);
 				int len = buffer.remaining();
@@ -1187,7 +1187,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return readAsync(position, buffer, res -> {
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				position += res.getValue1().intValue();
@@ -1196,23 +1196,23 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	}
 	
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
+	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		if (closing) return IOUtil.error(new ClosedChannelException(), ondone);
 		if (position >= size) return IOUtil.success(null, ondone);
 		long bufferIndex = getBufferIndex(position);
-		AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
-		AsyncWork<ByteBuffer, IOException> result = new AsyncWork<>();
+		AsyncSupplier<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
+		AsyncSupplier<ByteBuffer, IOException> result = new AsyncSupplier<>();
 		readNextBufferAsync(getBuffer, ondone, result);
 		return operation(result);
 	}
 	
 	private void readNextBufferAsync(
-		AsyncWork<Buffer, NoException> getBuffer,
-		Consumer<Pair<ByteBuffer, IOException>> ondone, AsyncWork<ByteBuffer, IOException> result
+		AsyncSupplier<Buffer, NoException> getBuffer,
+		Consumer<Pair<ByteBuffer, IOException>> ondone, AsyncSupplier<ByteBuffer, IOException> result
 	) {
-		getBuffer.listenInline(() -> {
+		getBuffer.onDone(() -> {
 			Buffer b = getBuffer.getResult();
-			b.loaded.listenAsync(new Task.Cpu.FromRunnable("BufferedIO.readAsync", io.getPriority(), () -> {
+			b.loaded.thenStart(new Task.Cpu.FromRunnable("BufferedIO.readAsync", io.getPriority(), () -> {
 				if (!checkLoaded(b, result, ondone)) return;
 				long pos = position;
 				int off = getBufferOffset(pos);
@@ -1234,7 +1234,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return readFullySyncIfPossible(position, buffer, res -> {
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				position += res.getValue1().intValue();
@@ -1249,29 +1249,29 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
 	 * but support also to work asynchronously without blocking a thread.
 	 */
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(
+	public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(
 		long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 	) {
 		if (closing) return IOUtil.error(new ClosedChannelException(), ondone);
 		if (pos >= size) return IOUtil.success(Integer.valueOf(-1), ondone);
 		long bufferIndex = getBufferIndex(pos);
-		AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
-		if (!getBuffer.isUnblocked()) {
-			AsyncWork<Integer, IOException> result = new AsyncWork<>();
+		AsyncSupplier<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, false);
+		if (!getBuffer.isDone()) {
+			AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 			long p = pos;
-			getBuffer.listenInline(() -> {
-				readFullyAsync(p, buffer, ondone).listenInline(result);
+			getBuffer.onDone(() -> {
+				readFullyAsync(p, buffer, ondone).forward(result);
 				Buffer b = getBuffer.getResult();
 				b.usage.endRead();
 			});
 			return result;
 		}
 		Buffer b = getBuffer.getResult();
-		if (!b.loaded.isUnblocked()) {
-			AsyncWork<Integer, IOException> result = new AsyncWork<>();
+		if (!b.loaded.isDone()) {
+			AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 			long p = pos;
-			b.loaded.listenInline(() -> {
-				readFullyAsync(p, buffer, ondone).listenInline(result);
+			b.loaded.onDone(() -> {
+				readFullyAsync(p, buffer, ondone).forward(result);
 				b.usage.endRead();
 			});
 			return result;
@@ -1282,7 +1282,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 			return IOUtil.error(err, ondone);
 		}
 		if (b.loaded.isCancelled()) {
-			AsyncWork<Integer, IOException> result = new AsyncWork<>(null, null, b.loaded.getCancelEvent());
+			AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>(null, null, b.loaded.getCancelEvent());
 			b.usage.endRead();
 			return result;
 		}
@@ -1302,11 +1302,11 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 				preLoadBuffer(pos);
 			Integer nb = Integer.valueOf(len);
 			if (ondone != null) ondone.accept(new Pair<>(nb, null));
-			return new AsyncWork<>(nb, null);
+			return new AsyncSupplier<>(nb, null);
 		}
-		AsyncWork<Integer, IOException> result = new AsyncWork<>();
+		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 		int l = len;
-		readFullySyncIfPossible(pos, buffer, null).listenInline(
+		readFullySyncIfPossible(pos, buffer, null).onDone(
 			nb -> IOUtil.success(Integer.valueOf(nb.intValue() > 0 ? nb.intValue() + l : l), result, ondone),
 			error -> IOUtil.error(error, result, ondone),
 			result::cancel
@@ -1315,12 +1315,12 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return IOUtil.readFullyAsync(this, pos, buffer, ondone);
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return readFullyAsync(position, buffer, res -> {
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				position += res.getValue1().intValue();
@@ -1343,7 +1343,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	}
 	
 	@Override
-	public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
+	public AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 		return IOUtil.success(Long.valueOf(skipSync(n)), ondone);
 	}
 	
@@ -1368,7 +1368,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 	}
 	
 	@Override
-	public AsyncWork<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long, IOException>> ondone) {
+	public AsyncSupplier<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long, IOException>> ondone) {
 		return IOUtil.success(Long.valueOf(seekSync(type, move)), ondone);
 	}
 	
@@ -1470,39 +1470,40 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> canStartWriting() {
+		public IAsync<IOException> canStartWriting() {
 			return canStartReading();
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> writeAsync(
+		public AsyncSupplier<Integer, IOException> writeAsync(
 			long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
 		) {
 			if (closing) return IOUtil.error(new ClosedChannelException(), ondone);
 			if (pos > size) {
-				ISynchronizationPoint<IOException> resize = setSizeAsync(pos);
-				AsyncWork<Integer, IOException> result = new AsyncWork<>();
-				resize.listenInline(() -> {
+				IAsync<IOException> resize = setSizeAsync(pos);
+				AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
+				resize.onDone(() -> {
 					if (resize.hasError()) IOUtil.error(resize.getError(), result, ondone);
 					else
-						writeAsync(pos, buffer, ondone).listenInline(result);
+						writeAsync(pos, buffer, ondone).forward(result);
 				});
 				return result;
 			}
 			long bufferIndex = getBufferIndex(pos);
-			AsyncWork<Buffer, NoException> getBuffer = bufferTable.needBufferAsync(bufferIndex, pos == size && getBufferOffset(pos) == 0);
-			AsyncWork<Integer, IOException> result = new AsyncWork<>();
+			AsyncSupplier<Buffer, NoException> getBuffer =
+				bufferTable.needBufferAsync(bufferIndex, pos == size && getBufferOffset(pos) == 0);
+			AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 			writeAsync(pos, buffer, getBuffer, ondone, result, 0);
 			return operation(result);
 		}
 		
 		private void writeAsync(
-			long pos, ByteBuffer buffer, AsyncWork<Buffer, NoException> getBuffer,
-			Consumer<Pair<Integer, IOException>> ondone, AsyncWork<Integer, IOException> result, int done
+			long pos, ByteBuffer buffer, AsyncSupplier<Buffer, NoException> getBuffer,
+			Consumer<Pair<Integer, IOException>> ondone, AsyncSupplier<Integer, IOException> result, int done
 		) {
-			getBuffer.listenInline(() -> {
+			getBuffer.onDone(() -> {
 				Buffer b = getBuffer.getResult();
-				b.loaded.listenAsync(new Task.Cpu.FromRunnable("BufferedIO.writeAsync", io.getPriority(), () -> {
+				b.loaded.thenStart(new Task.Cpu.FromRunnable("BufferedIO.writeAsync", io.getPriority(), () -> {
 					if (!checkLoaded(b, result, ondone)) return;
 					int off = getBufferOffset(pos);
 					int len = buffer.remaining();
@@ -1517,7 +1518,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 						IOUtil.success(Integer.valueOf(len + done), result, ondone);
 					} else {
 						long bufferIndex = getBufferIndex(pos + len);
-						AsyncWork<Buffer, NoException> getNextBuffer = bufferTable.needBufferAsync(
+						AsyncSupplier<Buffer, NoException> getNextBuffer = bufferTable.needBufferAsync(
 							bufferIndex, pos + len == size && getBufferOffset(pos + len) == 0);
 						writeAsync(pos + len, buffer, getNextBuffer, ondone, result, done + len);
 					}
@@ -1526,7 +1527,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		}
 		
 		@Override
-		public AsyncWork<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+		public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 			return writeAsync(position, buffer, res -> {
 				if (res.getValue1() != null && res.getValue1().intValue() > 0)
 					position += res.getValue1().intValue();
@@ -1566,7 +1567,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> setSizeAsync(long newSize) {
+		public IAsync<IOException> setSizeAsync(long newSize) {
 			int nbBuffersBefore = size <= firstBufferSize ? 1 : (int)((size - firstBufferSize) / bufferSize) + 2;
 			int nbBuffersAfter = newSize <= firstBufferSize ? 1 : (int)((newSize - firstBufferSize) / bufferSize) + 2;
 			if (nbBuffersBefore == nbBuffersAfter) {
@@ -1584,8 +1585,8 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 				return ((IO.Resizable)io).setSizeAsync(newSize);
 			}
 			if (nbBuffersAfter > nbBuffersBefore) {
-				SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-				((IO.Resizable)io).setSizeAsync(newSize).listenAsync(
+				Async<IOException> sp = new Async<>();
+				((IO.Resizable)io).setSizeAsync(newSize).thenStart(
 				new Task.Cpu.FromRunnable("BufferedIO.setSizeAsync", io.getPriority(), () -> {
 					size = newSize;
 					bufferTable.setSize(nbBuffersBefore, nbBuffersAfter);
@@ -1594,10 +1595,10 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 				}), sp);
 				return sp;
 			}
-			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+			Async<IOException> sp = new Async<>();
 			new Task.Cpu.FromRunnable("BufferedIO.setSizeAsync", io.getPriority(), () -> {
 				bufferTable.setSize(nbBuffersBefore, nbBuffersAfter);
-				((IO.Resizable)io).setSizeAsync(newSize).listenInline(sp);
+				((IO.Resizable)io).setSizeAsync(newSize).onDone(sp);
 				size = newSize;
 				if (position > size) position = size;
 				sp.unblock();
@@ -1606,7 +1607,7 @@ public class BufferedIO extends ConcurrentCloseable implements IO.Readable.Seeka
 		}
 		
 		@Override
-		public ISynchronizationPoint<IOException> flush() {
+		public IAsync<IOException> flush() {
 			return bufferTable.flush();
 		}
 		

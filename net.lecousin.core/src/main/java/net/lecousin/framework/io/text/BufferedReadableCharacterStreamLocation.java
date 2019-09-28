@@ -4,15 +4,15 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.UnprotectedString;
 
 /** Buffered readable character stream that calculate the line number and position on the current line while reading. */
-public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable implements ICharacterStream.Readable.Buffered {
+public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable<IOException> implements ICharacterStream.Readable.Buffered {
 
 	/** Constructor. */
 	public BufferedReadableCharacterStreamLocation(ICharacterStream.Readable.Buffered stream) {
@@ -36,12 +36,12 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 	public int getPositionInLine() { return pos; }
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		return stream.closeAsync();
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		stream = null;
 		ondone.unblock();
 	}
@@ -117,10 +117,10 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(char[] buf, int offset, int length) {
-		AsyncWork<Integer, IOException> result = new AsyncWork<>();
-		AsyncWork<Integer, IOException> read = stream.readAsync(buf, offset, length);
-		read.listenAsync(operation(new Task.Cpu<Void, NoException>(
+	public AsyncSupplier<Integer, IOException> readAsync(char[] buf, int offset, int length) {
+		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
+		AsyncSupplier<Integer, IOException> read = stream.readAsync(buf, offset, length);
+		read.thenStart(operation(new Task.Cpu<Void, NoException>(
 			"Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority()
 		) {
 			@Override
@@ -148,10 +148,10 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 	}
 	
 	@Override
-	public AsyncWork<UnprotectedString, IOException> readNextBufferAsync() {
-		AsyncWork<UnprotectedString, IOException> result = new AsyncWork<>();
-		AsyncWork<UnprotectedString, IOException> read = stream.readNextBufferAsync();
-		read.listenAsync(
+	public AsyncSupplier<UnprotectedString, IOException> readNextBufferAsync() {
+		AsyncSupplier<UnprotectedString, IOException> result = new AsyncSupplier<>();
+		AsyncSupplier<UnprotectedString, IOException> read = stream.readNextBufferAsync();
+		read.thenStart(
 		new Task.Cpu.FromRunnable("Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority(), () -> {
 			UnprotectedString str = read.getResult();
 			if (str == null) {
@@ -180,7 +180,7 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartReading() {
+	public IAsync<IOException> canStartReading() {
 		return stream.canStartReading();
 	}
 }

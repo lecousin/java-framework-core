@@ -6,14 +6,14 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Consumer;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
-import net.lecousin.framework.event.Listener;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.mutable.MutableBoolean;
@@ -120,7 +120,7 @@ public abstract class TestIO extends LCCoreAbstractTest {
 		MutableBoolean closed = new MutableBoolean(false);
 		MutableBoolean closed2 = new MutableBoolean(false);
 		Runnable listener1 = () -> {};
-		Listener<CloseableListenable> listener2 = (toto) -> {};
+		Consumer<CloseableListenable> listener2 = (toto) -> {};
 		io.addCloseListener(() -> {
 			closed.set(true);
 		});
@@ -130,9 +130,9 @@ public abstract class TestIO extends LCCoreAbstractTest {
 		io.addCloseListener(listener1);
 		io.addCloseListener(listener2);
 		io.lockClose();
-		ISynchronizationPoint<Exception> close = io.closeAsync();
+		IAsync<IOException> close = io.closeAsync();
 		Assert.assertFalse(io.isClosed());
-		Assert.assertFalse(close.isUnblocked());
+		Assert.assertFalse(close.isDone());
 		Assert.assertFalse(closed.get());
 		Assert.assertFalse(closed2.get());
 		io.removeCloseListener(listener1);

@@ -14,9 +14,9 @@ import java.util.LinkedList;
 import java.util.List;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -73,39 +73,39 @@ public class XMLDeserializer extends AbstractDeserializer {
 	protected XMLStreamEventsAsync input;
 	
 	/** Deserialize from a file accessible from the classpath. */
-	public static <T> AsyncWork<T, SerializationException> deserializeResource(
+	public static <T> AsyncSupplier<T, SerializationException> deserializeResource(
 		String resourcePath, Class<T> type, List<SerializationRule> rules, byte priority
 	) {
 		IO.Readable io = LCCore.getApplication().getResource(resourcePath, priority);
-		if (io == null) return new AsyncWork<>(null, new SerializationException("Resource not found: " + resourcePath));
-		AsyncWork<T, SerializationException> result = deserialize(io, type, rules);
+		if (io == null) return new AsyncSupplier<>(null, new SerializationException("Resource not found: " + resourcePath));
+		AsyncSupplier<T, SerializationException> result = deserialize(io, type, rules);
 		io.closeAfter(result);
 		return result;
 	}
 	
 	/** Deserialize from a file. */
-	public static <T> AsyncWork<T, SerializationException> deserializeFile(
+	public static <T> AsyncSupplier<T, SerializationException> deserializeFile(
 		File file, Class<T> type, List<SerializationRule> rules, byte priority
 	) {
 		IO.Readable io = new FileIO.ReadOnly(file, priority);
-		AsyncWork<T, SerializationException> result = deserialize(io, type, rules);
+		AsyncSupplier<T, SerializationException> result = deserialize(io, type, rules);
 		io.closeAfter(result);
 		return result;
 	}
 	
 	/** Deserialize from a IO.Readable. */
 	@SuppressWarnings("unchecked")
-	public static <T> AsyncWork<T, SerializationException> deserialize(IO.Readable input, Class<T> type, List<SerializationRule> rules) {
+	public static <T> AsyncSupplier<T, SerializationException> deserialize(IO.Readable input, Class<T> type, List<SerializationRule> rules) {
 		XMLDeserializer deserializer = new XMLDeserializer(null, type.getSimpleName());
-		AsyncWork<Object, SerializationException> res = deserializer.deserialize(
+		AsyncSupplier<Object, SerializationException> res = deserializer.deserialize(
 			new TypeDefinition(type), input, rules == null ? new ArrayList<>(0) : rules
 		);
-		AsyncWork<T, SerializationException> result = new AsyncWork<>();
-		res.listenInline(obj -> result.unblockSuccess((T)obj), result);
+		AsyncSupplier<T, SerializationException> result = new AsyncSupplier<>();
+		res.onDone(obj -> result.unblockSuccess((T)obj), result);
 		return result;
 	}
 	
-	protected ISynchronizationPoint<Exception> createAndStartReader(IO.Readable input) {
+	protected IAsync<Exception> createAndStartReader(IO.Readable input) {
 		XMLStreamReaderAsync reader = new XMLStreamReaderAsync(input, forceEncoding, 8192, 4);
 		this.input = reader;
 		reader.setMaximumTextSize(maxTextSize);
@@ -121,24 +121,24 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> initializeDeserialization(IO.Readable input) {
-		ISynchronizationPoint<Exception> start = createAndStartReader(input);
-		if (start.isUnblocked()) {
-			if (start.hasError()) return new SynchronizationPoint<>(new SerializationException("Error reading XML", start.getError()));
+	protected IAsync<SerializationException> initializeDeserialization(IO.Readable input) {
+		IAsync<Exception> start = createAndStartReader(input);
+		if (start.isDone()) {
+			if (start.hasError()) return new Async<>(new SerializationException("Error reading XML", start.getError()));
 			if (this.expectedRootLocalName != null &&
 				!this.input.event.localName.equals(this.expectedRootLocalName))
-				return new SynchronizationPoint<>(new SerializationException(
+				return new Async<>(new SerializationException(
 					"Expected root XML element is " + this.expectedRootLocalName
 					+ ", found is " + this.input.event.localName.asString()));
 			if (this.expectedRootNamespaceURI != null &&
 				!this.input.getNamespaceURI(this.input.event.namespacePrefix).equals(this.expectedRootNamespaceURI))
-				return new SynchronizationPoint<>(new SerializationException("Expected root XML element namespace is "
+				return new Async<>(new SerializationException("Expected root XML element namespace is "
 					+ this.expectedRootNamespaceURI	+ ", found is "
 					+ this.input.getNamespaceURI(this.input.event.namespacePrefix)));
-			return new SynchronizationPoint<>(true);
+			return new Async<>(true);
 		}
-		SynchronizationPoint<SerializationException> sp = new SynchronizationPoint<>();
-		start.listenInline(() -> {
+		Async<SerializationException> sp = new Async<>();
+		start.onDone(() -> {
 			if (this.expectedRootLocalName != null &&
 				!this.input.event.localName.equals(this.expectedRootLocalName))
 				sp.error(new SerializationException("Expected root XML element is " + this.expectedRootLocalName
@@ -154,21 +154,21 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	@Override
-	protected ISynchronizationPoint<SerializationException> finalizeDeserialization() {
-		return new SynchronizationPoint<>(true);
+	protected IAsync<SerializationException> finalizeDeserialization() {
+		return new Async<>(true);
 	}
 	
 	@Override
-	protected AsyncWork<Boolean, SerializationException> deserializeBooleanValue(boolean nullable) {
+	protected AsyncSupplier<Boolean, SerializationException> deserializeBooleanValue(boolean nullable) {
 		XMLStreamEvents.Attribute a = input.getAttributeWithNamespaceURI(XMLUtil.XSI_NAMESPACE_URI, "nil");
 		if (a != null && a.value.equals("true")) {
 			if (nullable)
-				return new AsyncWork<>(null, null);
-			return new AsyncWork<>(null, new SerializationException("null value found but boolean expected"));
+				return new AsyncSupplier<>(null, null);
+			return new AsyncSupplier<>(null, new SerializationException("null value found but boolean expected"));
 		}
-		AsyncWork<UnprotectedStringBuffer, Exception> read = input.readInnerText();
-		AsyncWork<Boolean, SerializationException> result = new AsyncWork<>();
-		read.listenInline(text -> {
+		AsyncSupplier<UnprotectedStringBuffer, Exception> read = input.readInnerText();
+		AsyncSupplier<Boolean, SerializationException> result = new AsyncSupplier<>();
+		read.onDone(text -> {
 			text.toLowerCase();
 			if (text.equals("true") || text.equals("yes") || text.equals("1"))
 				result.unblockSuccess(Boolean.TRUE);
@@ -181,18 +181,18 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	@Override
-	protected AsyncWork<? extends Number, SerializationException> deserializeNumericValue(
+	protected AsyncSupplier<? extends Number, SerializationException> deserializeNumericValue(
 		Class<?> type, boolean nullable, Class<? extends IntegerUnit> targetUnit
 	) {
 		XMLStreamEvents.Attribute a = input.getAttributeWithNamespaceURI(XMLUtil.XSI_NAMESPACE_URI, "nil");
 		if (a != null && a.value.equals("true")) {
 			if (nullable)
-				return new AsyncWork<>(null, null);
-			return new AsyncWork<>(null, new SerializationException("null value found but number expected"));
+				return new AsyncSupplier<>(null, null);
+			return new AsyncSupplier<>(null, new SerializationException("null value found but number expected"));
 		}
-		AsyncWork<UnprotectedStringBuffer, Exception> read = input.readInnerText();
-		AsyncWork<Number, SerializationException> result = new AsyncWork<>();
-		read.listenInline(text -> {
+		AsyncSupplier<UnprotectedStringBuffer, Exception> read = input.readInnerText();
+		AsyncSupplier<Number, SerializationException> result = new AsyncSupplier<>();
+		read.onDone(text -> {
 			try {
 				if (targetUnit != null)
 					result.unblockSuccess(convertStringToInteger(type, text.asString(), targetUnit));
@@ -206,10 +206,10 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	@Override
-	protected AsyncWork<? extends CharSequence, SerializationException> deserializeStringValue() {
+	protected AsyncSupplier<? extends CharSequence, SerializationException> deserializeStringValue() {
 		XMLStreamEvents.Attribute a = input.getAttributeWithNamespaceURI(XMLUtil.XSI_NAMESPACE_URI, "nil");
 		if (a != null && a.value.equals("true"))
-			return new AsyncWork<>(null, null);
+			return new AsyncSupplier<>(null, null);
 		return input.readInnerText().convertError(err -> new SerializationException("Error reading XML", err));
 	}
 	
@@ -220,51 +220,51 @@ public class XMLDeserializer extends AbstractDeserializer {
 	private LinkedList<CollectionValueContext> colValueContext = new LinkedList<>();
 	
 	@Override
-	protected AsyncWork<Boolean, SerializationException> startCollectionValue() {
+	protected AsyncSupplier<Boolean, SerializationException> startCollectionValue() {
 		CollectionValueContext ctx = new CollectionValueContext();
 		ctx.parent = input.event.context.getFirst();
 		colValueContext.addFirst(ctx);
 		// there is no specific start for a collection value
-		return new AsyncWork<>(Boolean.TRUE, null);
+		return new AsyncSupplier<>(Boolean.TRUE, null);
 	}
 	
 	@Override
-	protected AsyncWork<Pair<Object, Boolean>, SerializationException> deserializeCollectionValueElement(
+	protected AsyncSupplier<Pair<Object, Boolean>, SerializationException> deserializeCollectionValueElement(
 		CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules
 	) {
 		CollectionValueContext ctx = colValueContext.getFirst();
-		AsyncWork<Boolean, Exception> read = input.nextInnerElement(ctx.parent, "element");
-		if (read.isUnblocked()) {
-			if (read.hasError()) return new AsyncWork<>(null, new SerializationException("Error reading XML", read.getError()));
+		AsyncSupplier<Boolean, Exception> read = input.nextInnerElement(ctx.parent, "element");
+		if (read.isDone()) {
+			if (read.hasError()) return new AsyncSupplier<>(null, new SerializationException("Error reading XML", read.getError()));
 			if (!read.getResult().booleanValue()) {
 				colValueContext.removeFirst();
-				return new AsyncWork<>(new Pair<>(null, Boolean.FALSE), null);
+				return new AsyncSupplier<>(new Pair<>(null, Boolean.FALSE), null);
 			}
-			AsyncWork<Object, SerializationException> element =
+			AsyncSupplier<Object, SerializationException> element =
 				deserializeValue(context, context.getElementType(), colPath + '[' + elementIndex + ']', rules);
-			if (element.isUnblocked()) {
-				if (element.hasError()) return new AsyncWork<>(null, element.getError());
-				return new AsyncWork<>(new Pair<>(element.getResult(), Boolean.TRUE), null);
+			if (element.isDone()) {
+				if (element.hasError()) return new AsyncSupplier<>(null, element.getError());
+				return new AsyncSupplier<>(new Pair<>(element.getResult(), Boolean.TRUE), null);
 			}
-			AsyncWork<Pair<Object, Boolean>, SerializationException> result = new AsyncWork<>();
-			element.listenInline(() -> result.unblockSuccess(new Pair<>(element.getResult(), Boolean.TRUE)), result);
+			AsyncSupplier<Pair<Object, Boolean>, SerializationException> result = new AsyncSupplier<>();
+			element.onDone(() -> result.unblockSuccess(new Pair<>(element.getResult(), Boolean.TRUE)), result);
 			return result;
 		}
-		AsyncWork<Pair<Object, Boolean>, SerializationException> result = new AsyncWork<>();
-		read.listenAsync(new DeserializationTask(() -> {
+		AsyncSupplier<Pair<Object, Boolean>, SerializationException> result = new AsyncSupplier<>();
+		read.thenStart(new DeserializationTask(() -> {
 			if (!read.getResult().booleanValue()) {
 				colValueContext.removeFirst();
 				result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
 				return;
 			}
-			AsyncWork<Object, SerializationException> element =
+			AsyncSupplier<Object, SerializationException> element =
 				deserializeValue(context, context.getElementType(), colPath + '[' + elementIndex + ']', rules);
-			if (element.isUnblocked()) {
+			if (element.isDone()) {
 				if (element.hasError()) result.error(element.getError());
 				else result.unblockSuccess(new Pair<>(element.getResult(), Boolean.TRUE));
 				return;
 			}
-			element.listenInline(() -> result.unblockSuccess(new Pair<>(element.getResult(), Boolean.TRUE)), result);
+			element.onDone(() -> result.unblockSuccess(new Pair<>(element.getResult(), Boolean.TRUE)), result);
 		}), result, err -> new SerializationException("Error reading XML", err));
 		return result;
 	}
@@ -282,17 +282,17 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	@Override
 	@SuppressWarnings("squid:S1643")
-	protected AsyncWork<Object, SerializationException> startObjectValue(
+	protected AsyncSupplier<Object, SerializationException> startObjectValue(
 		SerializationContext context, TypeDefinition type, List<SerializationRule> rules
 	) {
 		XMLStreamEvents.Attribute a = input.getAttributeWithNamespaceURI(XMLUtil.XSI_NAMESPACE_URI, "nil");
 		if (a != null && a.value.equals("true")) {
-			ISynchronizationPoint<Exception> close = input.closeElement();
-			if (close.isUnblocked())
-				return new AsyncWork<>(null,
+			IAsync<Exception> close = input.closeElement();
+			if (close.isDone())
+				return new AsyncSupplier<>(null,
 					close.hasError() ? new SerializationException("Error reading XML", close.getError()) : null);
-			AsyncWork<Object, SerializationException> res = new AsyncWork<>();
-			close.listenInline(() -> res.unblockSuccess(null), res, err -> new SerializationException("Error reading XML", err));
+			AsyncSupplier<Object, SerializationException> res = new AsyncSupplier<>();
+			close.onDone(() -> res.unblockSuccess(null), res, err -> new SerializationException("Error reading XML", err));
 			return res;
 		}
 		XMLObjectContext ctx = new XMLObjectContext();
@@ -307,19 +307,19 @@ public class XMLDeserializer extends AbstractDeserializer {
 			String className = a.value.asString();
 			try {
 				Class<?> cl = Class.forName(className);
-				return new AsyncWork<>(SerializationClass.instantiate(new TypeDefinition(cl), context, rules, true), null);
+				return new AsyncSupplier<>(SerializationClass.instantiate(new TypeDefinition(cl), context, rules, true), null);
 			} catch (SerializationException e) {
-				return new AsyncWork<>(null, e);
+				return new AsyncSupplier<>(null, e);
 			} catch (Exception e) {
-				return new AsyncWork<>(null, new SerializationException("Error instantiating type " + className, e));
+				return new AsyncSupplier<>(null, new SerializationException("Error instantiating type " + className, e));
 			}
 		}
 		try {
-			return new AsyncWork<>(SerializationClass.instantiate(type, context, rules, false), null);
+			return new AsyncSupplier<>(SerializationClass.instantiate(type, context, rules, false), null);
 		} catch (SerializationException e) {
-			return new AsyncWork<>(null, e);
+			return new AsyncSupplier<>(null, e);
 		} catch (Exception e) {
-			return new AsyncWork<>(null, new SerializationException("Error instantiating type " + type, e));
+			return new AsyncSupplier<>(null, new SerializationException("Error instantiating type " + type, e));
 		}
 	}
 	
@@ -340,27 +340,27 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	@Override
-	protected AsyncWork<String, SerializationException> deserializeObjectAttributeName(ObjectContext context) {
+	protected AsyncSupplier<String, SerializationException> deserializeObjectAttributeName(ObjectContext context) {
 		XMLObjectContext ctx = objects.getFirst();
 		// first get attributes on element
 		if (ctx.attributeIndex < ctx.attributes.size())
-			return new AsyncWork<>(ctx.attributes.get(ctx.attributeIndex).localName.asString(), null);
+			return new AsyncSupplier<>(ctx.attributes.get(ctx.attributeIndex).localName.asString(), null);
 		// then inner elements
 		if (ctx.endOfAttributes) {
 			try { endOfAttributes(ctx, context); }
-			catch (SerializationException e) { return new AsyncWork<>(null, e); }
+			catch (SerializationException e) { return new AsyncSupplier<>(null, e); }
 			objects.removeFirst();
-			return new AsyncWork<>(null, null);
+			return new AsyncSupplier<>(null, null);
 		}
-		AsyncWork<Boolean, Exception> next;
+		AsyncSupplier<Boolean, Exception> next;
 		if (ctx.onNextAttribute) {
-			next = new AsyncWork<>(Boolean.TRUE, null);
+			next = new AsyncSupplier<>(Boolean.TRUE, null);
 			ctx.onNextAttribute = false;
 		} else {
 			next = input.nextInnerElement(ctx.element);
 		}
-		AsyncWork<String, SerializationException> result = new AsyncWork<>();
-		next.listenInline(() -> {
+		AsyncSupplier<String, SerializationException> result = new AsyncSupplier<>();
+		next.onDone(() -> {
 			if (next.hasError()) {
 				if (next.getError() instanceof EOFException) {
 					objects.removeFirst();
@@ -411,25 +411,27 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	@Override
-	protected AsyncWork<Boolean, SerializationException> deserializeBooleanAttributeValue(AttributeContext context, boolean nullable) {
+	protected AsyncSupplier<Boolean, SerializationException> deserializeBooleanAttributeValue(AttributeContext context, boolean nullable) {
 		XMLObjectContext ctx = objects.getFirst();
 		if (ctx.attributeIndex < ctx.attributes.size()) {
 			// element attribute
 			XMLStreamEvents.Attribute attr = ctx.attributes.get(ctx.attributeIndex++);
 			attr.value.toLowerCase();
 			if (attr.value.equals("true") || attr.value.equals("yes") || attr.value.equals("1"))
-				return new AsyncWork<>(Boolean.TRUE, null);
+				return new AsyncSupplier<>(Boolean.TRUE, null);
 			else if (attr.value.equals("false") || attr.value.equals("no") || attr.value.equals("0"))
-				return new AsyncWork<>(Boolean.FALSE, null);
+				return new AsyncSupplier<>(Boolean.FALSE, null);
 			else
-				return new AsyncWork<>(null, new SerializationException("Invalid boolean value: " + attr.value.asString()));
+				return new AsyncSupplier<>(null, new SerializationException("Invalid boolean value: " + attr.value.asString()));
 		}
 		// inner element
 		return deserializeBooleanValue(nullable);
 	}
 	
 	@Override
-	protected AsyncWork<? extends Number, SerializationException> deserializeNumericAttributeValue(AttributeContext context, boolean nullable) {
+	protected AsyncSupplier<? extends Number, SerializationException> deserializeNumericAttributeValue(
+		AttributeContext context, boolean nullable
+	) {
 		XMLObjectContext ctx = objects.getFirst();
 		IntegerUnit.Unit unit = context.getAttribute().getAnnotation(false, IntegerUnit.Unit.class);
 		if (ctx.attributeIndex < ctx.attributes.size()) {
@@ -437,13 +439,13 @@ public class XMLDeserializer extends AbstractDeserializer {
 			XMLStreamEvents.Attribute attr = ctx.attributes.get(ctx.attributeIndex++);
 			if (unit != null) {
 				try {
-					return new AsyncWork<>(convertStringToInteger(context.getAttribute().getType().getBase(),
+					return new AsyncSupplier<>(convertStringToInteger(context.getAttribute().getType().getBase(),
 						attr.value.asString(), unit.value()), null);
 				} catch (Exception e) {
-					return new AsyncWork<>(null, new SerializationException("Error reading numeric value", e));
+					return new AsyncSupplier<>(null, new SerializationException("Error reading numeric value", e));
 				}
 			}
-			AsyncWork<Number, SerializationException> result = new AsyncWork<>();
+			AsyncSupplier<Number, SerializationException> result = new AsyncSupplier<>();
 			try {
 				BigDecimal n = new BigDecimal(attr.value.asString());
 				convertBigDecimalValue(n, context.getAttribute().getType().getBase(), result);
@@ -457,28 +459,28 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	@Override
-	protected AsyncWork<? extends CharSequence, SerializationException> deserializeStringAttributeValue(AttributeContext context) {
+	protected AsyncSupplier<? extends CharSequence, SerializationException> deserializeStringAttributeValue(AttributeContext context) {
 		XMLObjectContext ctx = objects.getFirst();
 		if (ctx.attributeIndex < ctx.attributes.size()) {
 			// element attribute
 			XMLStreamEvents.Attribute attr = ctx.attributes.get(ctx.attributeIndex++);
-			return new AsyncWork<>(attr.value, null);
+			return new AsyncSupplier<>(attr.value, null);
 		}
 		// inner element
 		return deserializeStringValue();
 	}
 	
 	@Override
-	protected AsyncWork<Pair<Object, Boolean>, SerializationException> deserializeCollectionAttributeValueElement(
+	protected AsyncSupplier<Pair<Object, Boolean>, SerializationException> deserializeCollectionAttributeValueElement(
 		CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules
 	) {
 		XMLObjectContext ctx = objects.getFirst();
 		Attribute colAttr = ((AttributeContext)context.getParent()).getAttribute();
-		AsyncWork<Pair<Object, Boolean>, SerializationException> result = new AsyncWork<>();
+		AsyncSupplier<Pair<Object, Boolean>, SerializationException> result = new AsyncSupplier<>();
 		if (elementIndex > 0) {
 			// we need to go to the next element
-			AsyncWork<Boolean, Exception> next = input.nextInnerElement(ctx.element);
-			if (next.isUnblocked()) {
+			AsyncSupplier<Boolean, Exception> next = input.nextInnerElement(ctx.element);
+			if (next.isDone()) {
 				if (next.hasError()) {
 					result.error(new SerializationException("Error reading XML", next.getError()));
 					return result;
@@ -494,7 +496,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 					return result;
 				}
 			} else {
-				next.listenAsync(new DeserializationTask(() -> {
+				next.thenStart(new DeserializationTask(() -> {
 					if (!next.getResult().booleanValue()) {
 						ctx.endOfAttributes = true;
 						result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
@@ -516,7 +518,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	private void readColElement(
-		CollectionContext context, String elementPath, List<SerializationRule> rules, AsyncWork<Pair<Object, Boolean>,
+		CollectionContext context, String elementPath, List<SerializationRule> rules, AsyncSupplier<Pair<Object, Boolean>,
 		SerializationException> result
 	) {
 		Attribute a = null;
@@ -529,7 +531,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 			c = c.getParent();
 		}
 		XMLCustomSerialization custom = a != null ? a.getAnnotation(false, XMLCustomSerialization.class) : null;
-		AsyncWork<?, SerializationException> value = null;
+		AsyncSupplier<?, SerializationException> value = null;
 		if (custom != null) {
 			try {
 				XMLCustomSerializer s = custom.value().newInstance();
@@ -542,30 +544,30 @@ public class XMLDeserializer extends AbstractDeserializer {
 		}
 		if (value == null)
 			value = deserializeValue(context, context.getElementType(), elementPath, rules);
-		if (value.isUnblocked()) {
+		if (value.isDone()) {
 			if (value.hasError()) result.error(value.getError());
 			else result.unblockSuccess(new Pair<>(value.getResult(), Boolean.TRUE));
 		} else {
-			value.listenInline(obj -> result.unblockSuccess(new Pair<>(obj, Boolean.TRUE)), result);
+			value.onDone(obj -> result.unblockSuccess(new Pair<>(obj, Boolean.TRUE)), result);
 		}
 	}
 
 	@Override
-	protected AsyncWork<IO.Readable, SerializationException> deserializeIOReadableValue(
+	protected AsyncSupplier<IO.Readable, SerializationException> deserializeIOReadableValue(
 		SerializationContext context, List<SerializationRule> rules
 	) {
 		XMLStreamEvents.Attribute a = input.getAttributeWithNamespaceURI(XMLUtil.XSI_NAMESPACE_URI, "nil");
 		if (a != null && a.value.equals("true"))
-			return new AsyncWork<>(null, null);
-		ISynchronizationPoint<Exception> next = input.next();
-		AsyncWork<IO.Readable, SerializationException> result = new AsyncWork<>();
-		next.listenAsync(new DeserializationTask(() -> {
+			return new AsyncSupplier<>(null, null);
+		IAsync<Exception> next = input.next();
+		AsyncSupplier<IO.Readable, SerializationException> result = new AsyncSupplier<>();
+		next.thenStart(new DeserializationTask(() -> {
 			if (Type.TEXT.equals(input.event.type)) {
 				// it may be a reference
 				String ref = input.event.text.asString();
 				for (StreamReferenceHandler h : streamReferenceHandlers)
 					if (h.isReference(ref)) {
-						h.getStreamFromReference(ref).listenInline(result);
+						h.getStreamFromReference(ref).forward(result);
 						return;
 					}
 			}
@@ -577,18 +579,18 @@ public class XMLDeserializer extends AbstractDeserializer {
 		return result;
 	}
 	
-	private void readNextBase64(Base64Decoder decoder, IOInMemoryOrFile io, AsyncWork<IO.Readable, SerializationException> result) {
-		ISynchronizationPoint<Exception> next = input.next();
-		if (next.isUnblocked()) {
+	private void readNextBase64(Base64Decoder decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result) {
+		IAsync<Exception> next = input.next();
+		if (next.isDone()) {
 			if (next.hasError()) result.error(new SerializationException("Error reading XML", next.getError()));
 			else readBase64(decoder, io, result);
 			return;
 		}
-		next.listenAsync(new DeserializationTask(() -> readBase64(decoder, io, result)), result,
+		next.thenStart(new DeserializationTask(() -> readBase64(decoder, io, result)), result,
 			e -> new SerializationException("Error reading XML", e));
 	}
 	
-	private void readBase64(Base64Decoder decoder, IOInMemoryOrFile io, AsyncWork<IO.Readable, SerializationException> result) {
+	private void readBase64(Base64Decoder decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result) {
 		if (Type.TEXT.equals(input.event.type)) {
 			input.event.text.trim();
 			if (input.event.text.length() == 0) {
@@ -600,13 +602,13 @@ public class XMLDeserializer extends AbstractDeserializer {
 			return;
 		}
 		if (Type.START_ELEMENT.equals(input.event.type)) {
-			input.closeElement().listenAsync(new DeserializationTask(() -> readNextBase64(decoder, io, result)), result,
+			input.closeElement().thenStart(new DeserializationTask(() -> readNextBase64(decoder, io, result)), result,
 				e -> new SerializationException("Error reading XML", e));
 			return;
 		}
 		if (Type.END_ELEMENT.equals(input.event.type)) {
-			decoder.flush().listenInline(() ->
-				io.seekAsync(SeekType.FROM_BEGINNING, 0).listenInline(
+			decoder.flush().onDone(() ->
+				io.seekAsync(SeekType.FROM_BEGINNING, 0).onDone(
 					() -> result.unblockSuccess(io), result, e -> new SerializationException("Error reading XML", e)), result,
 					e -> new SerializationException("Error reading XML", e));
 			return;
@@ -615,10 +617,10 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	private void decodeBase64(
-		Base64Decoder decoder, IOInMemoryOrFile io, AsyncWork<IO.Readable, SerializationException> result, CharBuffer[] buffers, int index
+		Base64Decoder decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result, CharBuffer[] buffers, int index
 	) {
-		ISynchronizationPoint<IOException> decode = decoder.decode(buffers[index]);
-		decode.listenAsync(new DeserializationTask(() -> {
+		IAsync<IOException> decode = decoder.decode(buffers[index]);
+		decode.thenStart(new DeserializationTask(() -> {
 			if (decode.hasError())
 				result.error(new SerializationException("Error decoding base 64", decode.getError()));
 			else if (index == buffers.length - 1)
@@ -629,14 +631,14 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 
 	@Override
-	protected AsyncWork<IO.Readable, SerializationException> deserializeIOReadableAttributeValue(
+	protected AsyncSupplier<IO.Readable, SerializationException> deserializeIOReadableAttributeValue(
 		AttributeContext context, List<SerializationRule> rules
 	) {
 		return deserializeIOReadableValue(context, rules);
 	}
 	
 	@Override
-	protected AsyncWork<?, SerializationException> deserializeObjectAttributeValue(
+	protected AsyncSupplier<?, SerializationException> deserializeObjectAttributeValue(
 		AttributeContext context, String path, List<SerializationRule> rules
 	) {
 		XMLCustomSerialization custom = context.getAttribute().getAnnotation(false, XMLCustomSerialization.class);
@@ -646,7 +648,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 				if (s.type().equals(context.getAttribute().getType()))
 					return s.deserialize(this, input, rules);
 			} catch (Exception e) {
-				return new AsyncWork<>(null, new SerializationException("Error instantiating custom type", e));
+				return new AsyncSupplier<>(null, new SerializationException("Error instantiating custom type", e));
 			}
 		}
 		return super.deserializeObjectAttributeValue(context, path, rules);

@@ -3,13 +3,13 @@ package net.lecousin.framework.io.text;
 import java.io.EOFException;
 import java.io.IOException;
 
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /** Allow to read a text file line by line. */
-public class TextLineStream extends ConcurrentCloseable {
+public class TextLineStream extends ConcurrentCloseable<IOException> {
 
 	/** Constructor. */
 	public TextLineStream(ICharacterStream.Readable.Buffered input) {
@@ -48,12 +48,12 @@ public class TextLineStream extends ConcurrentCloseable {
 	}
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		return input.closeAsync();
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		input = null;
 		ondone.unblock();
 	}

@@ -4,14 +4,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.AsyncWork.AsyncWorkListener;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -21,13 +21,13 @@ import net.lecousin.framework.util.ConcurrentCloseable;
  * It is buffered, so it implements ReadableByteStream to read forward.
  * A typical usage is when searching for a specific pattern starting from the end of an IO.
  */
-public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.ReadableByteStream {
+public class BufferedReverseIOReading extends ConcurrentCloseable<IOException> implements IO.ReadableByteStream {
 
 	/** Create an IO capable to read bytes backward from a Seekable. */
 	public <T extends IO.Readable.Seekable & IO.KnownSize> BufferedReverseIOReading(T io, int bufferSize) {
 		this.io = io;
 		buffer = new byte[bufferSize];
-		io.getSizeAsync().listenInline(new AsyncWorkListener<Long, IOException>() {
+		io.getSizeAsync().listen(new Listener<Long, IOException>() {
 			@Override
 			public void ready(Long result) {
 				operation(new Task.Cpu.FromRunnable("Read last buffer", io.getPriority(), () -> {
@@ -58,11 +58,11 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 	private int posInBuffer = 0;
 	private int minInBuffer = 0;
 	private int maxInBuffer = 0;
-	private SynchronizationPoint<IOException> canRead = new SynchronizationPoint<>();
-	private AsyncWork<Integer,IOException> currentRead = null;
+	private Async<IOException> canRead = new Async<>();
+	private AsyncSupplier<Integer,IOException> currentRead = null;
 	
 	@Override
-	public SynchronizationPoint<IOException> canStartReading() {
+	public Async<IOException> canStartReading() {
 		return canRead;
 	}
 	
@@ -95,7 +95,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 	public TaskManager getTaskManager() { return Threading.getCPUTaskManager(); }
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		synchronized (this) {
 			if (currentRead != null)
 				currentRead.unblockCancel(new CancelException("BufferedReverseIO stopped"));
@@ -104,10 +104,10 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		buffer = null;
 		io = null;
-		if (!canRead.isUnblocked())
+		if (!canRead.isDone())
 			canRead.cancel(new CancelException("IO Closed"));
 		ondone.unblock();
 	}
@@ -264,7 +264,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 		}
 		ByteBuffer buf = ByteBuffer.wrap(buffer, start, len);
 		currentRead = io.readFullyAsync(bufferPosInFile - len, buf);
-		currentRead.listenAsync(operation(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
+		currentRead.thenStart(operation(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
 			synchronized (BufferedReverseIOReading.this) {
 				if (!currentRead.isSuccessful()) {
 					error = currentRead.getError();
@@ -307,7 +307,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable implements IO.
 			len = (int)(fileSize - (bufferPosInFile + (maxInBuffer - minInBuffer)));
 		ByteBuffer buf = ByteBuffer.wrap(buffer, start, len);
 		currentRead = io.readFullyAsync(bufferPosInFile + (maxInBuffer - minInBuffer), buf);
-		currentRead.listenAsync(operation(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
+		currentRead.thenStart(operation(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
 			synchronized (BufferedReverseIOReading.this) {
 				if (!currentRead.isSuccessful()) {
 					error = currentRead.getError();

@@ -1,6 +1,6 @@
 package net.lecousin.framework.log.appenders;
 
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.log.LogPattern.Log;
 
 /** Log appender. */
@@ -19,6 +19,6 @@ public interface Appender {
 	boolean needsLocation();
 	
 	/** Ask to flush any pending log that this appender is still holding. */
-	ISynchronizationPoint<Exception> flush();
+	IAsync<?> flush();
 	
 }

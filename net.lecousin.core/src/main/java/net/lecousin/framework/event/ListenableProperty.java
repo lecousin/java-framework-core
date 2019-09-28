@@ -1,5 +1,7 @@
 package net.lecousin.framework.event;
 
+import java.util.function.Consumer;
+
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.util.ObjectUtil;
 
@@ -28,7 +30,7 @@ public class ListenableProperty<T> extends Mutable<T> implements Listenable<T> {
 	}
 	
 	@Override
-	public void addListener(Listener<T> listener) {
+	public void addListener(Consumer<T> listener) {
 		event.addListener(listener);
 	}
 	
@@ -38,7 +40,7 @@ public class ListenableProperty<T> extends Mutable<T> implements Listenable<T> {
 	}
 	
 	@Override
-	public void removeListener(Listener<T> listener) {
+	public void removeListener(Consumer<T> listener) {
 		event.removeListener(listener);
 	}
 	

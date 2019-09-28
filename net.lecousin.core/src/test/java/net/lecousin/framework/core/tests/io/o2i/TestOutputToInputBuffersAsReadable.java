@@ -29,7 +29,7 @@ public class TestOutputToInputBuffersAsReadable extends TestReadable {
 	@Override
 	protected OutputToInputBuffers createReadableFromFile(FileIO.ReadOnly file, long fileSize) {
 		OutputToInputBuffers o2i = new OutputToInputBuffers(true, 1, Task.PRIORITY_NORMAL);
-		IOUtil.copy(file, o2i, fileSize, false, null, 0).listenInline(
+		IOUtil.copy(file, o2i, fileSize, false, null, 0).onDone(
 			() -> {
 				o2i.endOfData();
 				file.closeAsync();

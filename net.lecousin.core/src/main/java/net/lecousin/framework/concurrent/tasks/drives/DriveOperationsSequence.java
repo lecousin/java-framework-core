@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -23,13 +23,13 @@ public class DriveOperationsSequence extends Task<Void,IOException> {
 	public DriveOperationsSequence(TaskManager manager, String description, byte priority, boolean autoStart) {
 		super(manager, description, priority);
 		this.autoStart = autoStart;
-		if (autoStart) sp = new SynchronizationPoint<>();
+		if (autoStart) sp = new Async<>();
 	}
 	
 	private boolean autoStart;
 	private TurnArray<Operation> operations = new TurnArray<>(10);
 	private boolean waiting = false;
-	private SynchronizationPoint<NoException> sp;
+	private Async<NoException> sp;
 	private boolean end = false;
 	
 	/** Append an operation. */

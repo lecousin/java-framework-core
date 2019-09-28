@@ -1,4 +1,4 @@
-package net.lecousin.framework.concurrent.synch;
+package net.lecousin.framework.concurrent.async;
 
 import java.util.LinkedList;
 
@@ -16,14 +16,14 @@ public class ReadWriteLockPoint {
 
 	private int readers = 0;
 	private boolean writer = false;
-	private SynchronizationPoint<NoException> readerWaiting = null;
-	private LinkedList<SynchronizationPoint<NoException>> writersWaiting = null;
+	private Async<NoException> readerWaiting = null;
+	private LinkedList<Async<NoException>> writersWaiting = null;
 	
 	/** To call when a thread wants to enter read mode.
 	 * If the lock point is used in write mode, this method will block until it is released.
 	 */
 	public void startRead() {
-		SynchronizationPoint<NoException> sp;
+		Async<NoException> sp;
 		synchronized (this) {
 			if (!writer) {
 				// nobody is writing, we can read
@@ -32,7 +32,7 @@ public class ReadWriteLockPoint {
 			}
 			// if someone is writing, we need to wait
 			if (readerWaiting == null)
-				readerWaiting = new SynchronizationPoint<>();
+				readerWaiting = new Async<>();
 			sp = readerWaiting;
 			readers++;
 		}
@@ -43,24 +43,24 @@ public class ReadWriteLockPoint {
 	 * If read can start immediately, this method returns null.
 	 * If the lock point is used in write mode, this method will return a SynchronizationPoint unblocked when read can start.
 	 */
-	public SynchronizationPoint<NoException> startReadAsync() {
+	public Async<NoException> startReadAsync() {
 		return startReadAsync(true);
 	}
 
 	/** To call when a thread wants to enter read mode.
 	 * If the lock point is used in write mode, this method will return a SynchronizationPoint unblocked when read can start.
 	 */
-	public SynchronizationPoint<NoException> startReadAsync(boolean returnNullIfReady) {
-		SynchronizationPoint<NoException> sp;
+	public Async<NoException> startReadAsync(boolean returnNullIfReady) {
+		Async<NoException> sp;
 		synchronized (this) {
 			if (!writer) {
 				// nobody is writing, we can read
 				readers++;
-				return returnNullIfReady ? null : new SynchronizationPoint<>(true);
+				return returnNullIfReady ? null : new Async<>(true);
 			}
 			// if someone is writing, we need to wait
 			if (readerWaiting == null)
-				readerWaiting = new SynchronizationPoint<>();
+				readerWaiting = new Async<>();
 			sp = readerWaiting;
 			readers++;
 		}
@@ -69,7 +69,7 @@ public class ReadWriteLockPoint {
 	
 	/** To call when the thread leaves the read mode and release this lock point. */
 	public void endRead() {
-		SynchronizationPoint<NoException> sp;
+		Async<NoException> sp;
 		synchronized (this) {
 			// if others are still reading, nothing to do
 			if (--readers > 0) return;
@@ -86,7 +86,7 @@ public class ReadWriteLockPoint {
 	 * If the lock point is used in read mode, this method will block until it is released.
 	 */
 	public void startWrite() {
-		SynchronizationPoint<NoException> sp;
+		Async<NoException> sp;
 		synchronized (this) {
 			// if nobody is using the resource, we can start writing
 			if (readers == 0 && !writer) {
@@ -94,7 +94,7 @@ public class ReadWriteLockPoint {
 				return;
 			}
 			// someone is doing something, we need to block
-			sp = new SynchronizationPoint<>();
+			sp = new Async<>();
 			if (writersWaiting == null) writersWaiting = new LinkedList<>();
 			writersWaiting.add(sp);
 		}
@@ -105,7 +105,7 @@ public class ReadWriteLockPoint {
 	 * If write can start immediately, this method returns null.
 	 * If the lock point is used in read mode, this method will return a SynchronizationPoint unblocked when write can start.
 	 */
-	public SynchronizationPoint<NoException> startWriteAsync() {
+	public Async<NoException> startWriteAsync() {
 		return startWriteAsync(true);
 	}
 	
@@ -113,16 +113,16 @@ public class ReadWriteLockPoint {
 	 * If write can start immediately, this method returns null.
 	 * If the lock point is used in read mode, this method will return a SynchronizationPoint unblocked when write can start.
 	 */
-	public SynchronizationPoint<NoException> startWriteAsync(boolean returnNullIfReady) {
-		SynchronizationPoint<NoException> sp;
+	public Async<NoException> startWriteAsync(boolean returnNullIfReady) {
+		Async<NoException> sp;
 		synchronized (this) {
 			// if nobody is using the resource, we can start writing
 			if (readers == 0 && !writer) {
 				writer = true;
-				return returnNullIfReady ? null : new SynchronizationPoint<>(true);
+				return returnNullIfReady ? null : new Async<>(true);
 			}
 			// someone is doing something, we need to block
-			sp = new SynchronizationPoint<>();
+			sp = new Async<>();
 			if (writersWaiting == null) writersWaiting = new LinkedList<>();
 			writersWaiting.add(sp);
 		}
@@ -131,7 +131,7 @@ public class ReadWriteLockPoint {
 
 	/** To call when the thread leaves the write mode and release this lock point. */
 	public void endWrite() {
-		SynchronizationPoint<NoException> sp;
+		Async<NoException> sp;
 		synchronized (this) {
 			if (readerWaiting != null) {
 				// some readers are waiting, we unblock them

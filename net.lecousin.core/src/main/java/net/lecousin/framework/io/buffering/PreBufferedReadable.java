@@ -6,14 +6,14 @@ import java.nio.channels.ClosedChannelException;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -30,7 +30,7 @@ import net.lecousin.framework.util.Pair;
  * The goal of this implementation is to fill buffers while data is computed, reducing the time waiting for
  * read operations (ideally not blocking if buffers are filled fats enough compare to the data computation).
  */
-public class PreBufferedReadable extends ConcurrentCloseable implements IO.Readable.Buffered {
+public class PreBufferedReadable extends ConcurrentCloseable<IOException> implements IO.Readable.Buffered {
 
 	/** Constructor. */
 	public PreBufferedReadable(
@@ -39,7 +39,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		this.src = src;
 		this.priority = firstBufferPriority;
 		if (src instanceof IO.KnownSize) {
-			AsyncWork<Long,IOException> getSize = ((IO.KnownSize)src).getSizeAsync();
+			AsyncSupplier<Long,IOException> getSize = ((IO.KnownSize)src).getSizeAsync();
 			Task<Void,NoException> start = new Task.Cpu<Void,NoException>(
 				"Start PreBufferedReadable after size is known", firstBufferPriority
 			) {
@@ -129,18 +129,18 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	private boolean stopReading = false;
 	private ByteBuffer current = null;
 	private boolean currentIsFirst = true;
-	private SynchronizationPoint<NoException> dataReady = null;
+	private Async<NoException> dataReady = null;
 	private TurnArray<ByteBuffer> buffersReady;
 	private TurnArray<ByteBuffer> reusableBuffers;
-	private AsyncWork<?,?> nextReadTask = null;
+	private AsyncSupplier<?,?> nextReadTask = null;
 	
 	@Override
 	public String getSourceDescription() { return src != null ? src.getSourceDescription() : "closed"; }
 	
 	/** Return the next synchronization point that will be unblocked once data is ready to be read. */
-	public SynchronizationPoint<IOException> getDataReadySynchronization() {
+	public Async<IOException> getDataReadySynchronization() {
 		synchronized (this) {
-			SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
+			Async<IOException> sp = new Async<>();
 			if (error != null) {
 				sp.error(error);
 				return sp;
@@ -153,8 +153,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				return sp;
 			}
 			if (dataReady == null)
-				dataReady = new SynchronizationPoint<>();
-			dataReady.listenInline(() -> {
+				dataReady = new Async<>();
+			dataReady.onDone(() -> {
 				if (error != null)
 					sp.error(error);
 				else
@@ -165,7 +165,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 	
 	@Override
-	public ISynchronizationPoint<IOException> canStartReading() {
+	public IAsync<IOException> canStartReading() {
 		return getDataReadySynchronization();
 	}
 	
@@ -181,15 +181,15 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
-		AsyncWork<?,?> nextRead;
+	protected IAsync<IOException> closeUnderlyingResources() {
+		AsyncSupplier<?,?> nextRead;
 		synchronized (this) {
 			nextRead = nextReadTask;
 		}
-		if (nextRead != null && !nextRead.isUnblocked())
+		if (nextRead != null && !nextRead.isDone())
 			nextRead.cancel(IO.cancelClosed());
 		while (dataReady != null) {
-			SynchronizationPoint<NoException> dr;
+			Async<NoException> dr;
 			synchronized (this) {
 				dr = dataReady;
 				dataReady = null;
@@ -201,8 +201,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
-		SynchronizationPoint<NoException> dr = null;
+	protected void closeResources(Async<IOException> ondone) {
+		Async<NoException> dr = null;
 		synchronized (this) {
 			endReached = true;
 			if (dataReady != null) {
@@ -249,7 +249,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		src.setPriority(firstBufferPriority);
 		JoinPoint<NoException> jpNextRead = new JoinPoint<>();
 		jpNextRead.addToJoin(1);
-		AsyncWork<Integer,IOException> firstReadTask;
+		AsyncSupplier<Integer,IOException> firstReadTask;
 		if (nextBuffer > 0)
 			firstReadTask = operation(src.readAsync(buffer));
 		else
@@ -262,7 +262,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		}
 		
 		boolean singleRead = nextBuffer <= 0;
-		firstReadTask.listenInline(() -> {
+		firstReadTask.onDone(() -> {
 			if (buffersReady == null) {
 				jpNextRead.joined();
 				return;
@@ -271,7 +271,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			synchronized (PreBufferedReadable.this) {
 				if (firstReadTask.isCancelled()) {
 					if (dataReady != null) {
-						SynchronizationPoint<NoException> dr = dataReady;
+						Async<NoException> dr = dataReady;
 						dataReady = null;
 						dr.unblock();
 					}
@@ -285,7 +285,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 					if (e instanceof IOException) error = (IOException)e;
 					else error = new IOException("Read failed", e);
 					if (dataReady != null) {
-						SynchronizationPoint<NoException> dr = dataReady;
+						Async<NoException> dr = dataReady;
 						dataReady = null;
 						dr.unblock();
 					}
@@ -301,7 +301,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 						error = new IOException("Unexpected end after " + read + " bytes read, known size is " + size);
 					}
 					if (dataReady != null) {
-						SynchronizationPoint<NoException> dr = dataReady;
+						Async<NoException> dr = dataReady;
 						dataReady = null;
 						dr.unblock();
 					}
@@ -340,7 +340,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			operation(prepare).start();
 			operation(firstNextReadTask.getOutput());
 			jpNextRead.start();
-			jpNextRead.listenAsync(firstNextReadTask, true);
+			jpNextRead.thenStart(firstNextReadTask, true);
 		}
 	}
 	
@@ -351,7 +351,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		
 		@Override
 		public Void run() {
-			SynchronizationPoint<NoException> dr = null;
+			Async<NoException> dr = null;
 			synchronized (PreBufferedReadable.this) {
 				nextReadTask = null;
 				if (error == null && !endReached && !stopReading && !isClosing() && !isClosed())
@@ -369,13 +369,13 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	@Override
 	public int readSync(ByteBuffer buffer) throws IOException {
 		do {
-			SynchronizationPoint<NoException> sp;
+			Async<NoException> sp;
 			synchronized (this) {
 				if (error != null) throw error;
 				if (current != null) break;
 				if (endReached) return -1;
 				if (isClosing() || isClosed()) return -1;
-				if (dataReady == null) dataReady = new SynchronizationPoint<>();
+				if (dataReady == null) dataReady = new Async<>();
 				sp = dataReady;
 			}
 			sp.block(0);
@@ -405,8 +405,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			} else {
 				if (endReached) return -1;
 				if (isClosing() || isClosed()) return -1;
-				if (dataReady == null) dataReady = new SynchronizationPoint<>();
-				if (!dataReady.isUnblocked())
+				if (dataReady == null) dataReady = new Async<>();
+				if (!dataReady.isDone())
 					return -2;
 			}
 		}
@@ -417,14 +417,14 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 
 	@Override
-	public AsyncWork<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		SynchronizationPoint<NoException> sp = null;
+	public AsyncSupplier<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		Async<NoException> sp = null;
 		synchronized (this) {
 			if (error != null) return IOUtil.error(error, ondone);
 			if (current == null) {
 				if (endReached) return IOUtil.success(Integer.valueOf(-1), ondone);
-				if (isClosing() || isClosed()) return new AsyncWork<>(null, null, IO.cancelClosed());
-				if (dataReady == null) dataReady = new SynchronizationPoint<>();
+				if (isClosing() || isClosed()) return new AsyncSupplier<>(null, null, IO.cancelClosed());
+				if (dataReady == null) dataReady = new Async<>();
 				sp = dataReady;
 			}
 		}
@@ -474,7 +474,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 	
 	@Override
-	public AsyncWork<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(IOUtil.readFullyAsync(this, buffer, ondone));
 	}
 	
@@ -482,7 +482,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	public long skipSync(long n) throws IOException {
 		long skipped = 0;
 		do {
-			SynchronizationPoint<NoException> sp = null;
+			Async<NoException> sp = null;
 			long remaining = -1;
 			synchronized (this) {
 				if (error != null) throw error;
@@ -528,7 +528,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 						return skipped;
 					}
 					if (isClosing() || isClosed()) return skipped;
-					if (dataReady == null) dataReady = new SynchronizationPoint<>();
+					if (dataReady == null) dataReady = new Async<>();
 					sp = dataReady;
 				}
 			}
@@ -547,7 +547,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 	
 	@Override
-	public AsyncWork<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+	public AsyncSupplier<Long,IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		synchronized (this) {
 			if (error != null) return IOUtil.error(error, ondone);
 			if (n <= 0) return IOUtil.success(Long.valueOf(0), ondone);
@@ -585,7 +585,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	@SuppressWarnings("squid:S1696") // NullPointerException
 	private void nextRead() {
 		if (isClosing() || isClosed()) {
-			SynchronizationPoint<NoException> dr;
+			Async<NoException> dr;
 			synchronized (this) {
 				dr = dataReady;
 				dataReady = null;
@@ -597,7 +597,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		ByteBuffer buffer = reusableBuffers.removeFirst();
 		buffer.clear();
 		nextReadTask = operation(src.readFullyAsync(buffer));
-		nextReadTask.listenInline(() -> {
+		nextReadTask.onDone(() -> {
 			if (nextReadTask == null) return; // case we have been closed
 			Throwable e;
 			try { e = nextReadTask.getError(); }
@@ -608,7 +608,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				nextReadTask = null;
 				synchronized (PreBufferedReadable.this) {
 					if (dataReady != null) {
-						SynchronizationPoint<NoException> dr = dataReady;
+						Async<NoException> dr = dataReady;
 						dataReady = null;
 						dr.unblock();
 					}
@@ -618,7 +618,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			int nb;
 			try { nb = ((Integer)nextReadTask.getResult()).intValue(); }
 			catch (NullPointerException ex) { nb = 0; /* we are closed */ }
-			SynchronizationPoint<NoException> sp = null;
+			Async<NoException> sp = null;
 			synchronized (PreBufferedReadable.this) {
 				nextReadTask = null;
 				if (buffersReady == null) return; // closed
@@ -650,7 +650,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	@Override
 	public int read() throws IOException {
 		do {
-			SynchronizationPoint<NoException> sp;
+			Async<NoException> sp;
 			synchronized (this) {
 				if (error != null) throw error;
 				if (current != null) {
@@ -660,7 +660,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				}
 				if (endReached) return -1;
 				if (isClosing() || isClosed()) return -1;
-				if (dataReady == null) dataReady = new SynchronizationPoint<>();
+				if (dataReady == null) dataReady = new Async<>();
 				sp = dataReady;
 			}
 			sp.block(0);
@@ -674,7 +674,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	@Override
 	public int read(byte[] buffer, int offset, int len) throws IOException {
 		do {
-			SynchronizationPoint<NoException> sp;
+			Async<NoException> sp;
 			synchronized (this) {
 				if (error != null) throw error;
 				if (current != null) {
@@ -684,7 +684,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				}
 				if (endReached) return -1;
 				if (isClosing() || isClosed()) return -1;
-				if (dataReady == null) dataReady = new SynchronizationPoint<>();
+				if (dataReady == null) dataReady = new Async<>();
 				sp = dataReady;
 			}
 			sp.block(0);
@@ -702,7 +702,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	@Override
 	public int readFully(byte[] buffer) throws IOException {
 		do {
-			SynchronizationPoint<NoException> sp;
+			Async<NoException> sp;
 			synchronized (this) {
 				if (error != null) throw error;
 				if (current != null) {
@@ -712,7 +712,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				}
 				if (endReached) return -1;
 				if (isClosing() || isClosed()) return -1;
-				if (dataReady == null) dataReady = new SynchronizationPoint<>();
+				if (dataReady == null) dataReady = new Async<>();
 				sp = dataReady;
 			}
 			sp.block(0);
@@ -734,11 +734,11 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return readFullySyncIfPossible(buffer, 0, ondone);
 	}
 	
-	private AsyncWork<Integer, IOException> readFullySyncIfPossible(
+	private AsyncSupplier<Integer, IOException> readFullySyncIfPossible(
 		ByteBuffer buffer, int alreadyDone, Consumer<Pair<Integer, IOException>> ondone
 	) {
 		boolean ok = true;
@@ -758,14 +758,14 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 		if (!ok) {
 			if (alreadyDone == 0)
 				return readFullyAsync(buffer, ondone);
-			AsyncWork<Integer, IOException> res = new AsyncWork<>();
+			AsyncSupplier<Integer, IOException> res = new AsyncSupplier<>();
 			readFullyAsync(buffer, r -> {
 				if (ondone != null) {
 					if (r.getValue1() != null) ondone.accept(
 						new Pair<>(Integer.valueOf(r.getValue1().intValue() + alreadyDone), null));
 					else ondone.accept(r);
 				}
-			}).listenInline(nb -> res.unblockSuccess(Integer.valueOf(alreadyDone + nb.intValue())), res);
+			}).onDone(nb -> res.unblockSuccess(Integer.valueOf(alreadyDone + nb.intValue())), res);
 			return res;
 		}
 		int len = buffer.remaining();
@@ -776,7 +776,7 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 			current.limit(l);
 			Integer r = Integer.valueOf(alreadyDone + len);
 			if (ondone != null) ondone.accept(new Pair<>(r, null));
-			return new AsyncWork<>(r, null);
+			return new AsyncSupplier<>(r, null);
 		}
 		len = current.remaining();
 		buffer.put(current);
@@ -785,8 +785,8 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 	}
 
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
-		SynchronizationPoint<NoException> sp;
+	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
+		Async<NoException> sp;
 		synchronized (this) {
 			if (error != null) return IOUtil.error(error, ondone);
 			if (current != null) {
@@ -808,12 +808,12 @@ public class PreBufferedReadable extends ConcurrentCloseable implements IO.Reada
 				return task.getOutput();
 			}
 			if (endReached) return IOUtil.success(null, ondone);
-			if (isClosing() || isClosed()) return new AsyncWork<>(null, null, IO.cancelClosed());
-			if (dataReady == null) dataReady = new SynchronizationPoint<>();
+			if (isClosing() || isClosed()) return new AsyncSupplier<>(null, null, IO.cancelClosed());
+			if (dataReady == null) dataReady = new Async<>();
 			sp = dataReady;
 		}
-		AsyncWork<ByteBuffer, IOException> result = new AsyncWork<>();
-		sp.listenInline(() -> readNextBufferAsync(ondone).listenInline(result));
+		AsyncSupplier<ByteBuffer, IOException> result = new AsyncSupplier<>();
+		sp.onDone(() -> readNextBufferAsync(ondone).forward(result));
 		return operation(result);
 	}
 

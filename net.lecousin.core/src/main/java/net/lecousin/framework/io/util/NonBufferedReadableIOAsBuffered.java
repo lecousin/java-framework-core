@@ -6,9 +6,9 @@ import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -21,7 +21,7 @@ import net.lecousin.framework.util.Pair;
  * This must be used only in case a Buffered implementation cannot be used, and the number of read
  * operations are very limited.
  */
-public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable implements IO.Readable.Buffered {
+public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable<IOException> implements IO.Readable.Buffered {
 
 	/** Constructor. */
 	public NonBufferedReadableIOAsBuffered(IO.Readable io) {
@@ -31,12 +31,12 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	private IO.Readable io;
 	
 	@Override
-	protected ISynchronizationPoint<?> closeUnderlyingResources() {
+	protected IAsync<IOException> closeUnderlyingResources() {
 		return io.closeAsync();
 	}
 	
 	@Override
-	protected void closeResources(SynchronizationPoint<Exception> ondone) {
+	protected void closeResources(Async<IOException> ondone) {
 		io = null;
 		ondone.unblock();
 	}
@@ -77,7 +77,7 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readAsync(buffer, ondone);
 	}
 
@@ -87,12 +87,12 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	}
 
 	@Override
-	public AsyncWork<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return io.readFullyAsync(buffer, ondone);
 	}
 	
 	@Override
-	public AsyncWork<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+	public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return io.readAsync(buffer, ondone);
 	}
 
@@ -102,7 +102,7 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	}
 
 	@Override
-	public AsyncWork<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
+	public AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long,IOException>> ondone) {
 		return io.skipAsync(n, ondone);
 	}
 
@@ -123,8 +123,8 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	}
 
 	@Override
-	public ISynchronizationPoint<IOException> canStartReading() {
-		return new SynchronizationPoint<>(true);
+	public IAsync<IOException> canStartReading() {
+		return new Async<>(true);
 	}
 
 	@Override
@@ -138,14 +138,14 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable impleme
 	}
 
 	@Override
-	public AsyncWork<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
-		AsyncWork<ByteBuffer, IOException> result = new AsyncWork<>();
+	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
+		AsyncSupplier<ByteBuffer, IOException> result = new AsyncSupplier<>();
 		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Read next buffer", getPriority()) {
 			@Override
 			public Void run() {
 				ByteBuffer buf = ByteBuffer.allocate(4096);
-				AsyncWork<Integer, IOException> read = readAsync(buf);
-				read.listenInline(() -> {
+				AsyncSupplier<Integer, IOException> read = readAsync(buf);
+				read.onDone(() -> {
 					if (read.hasError()) {
 						if (ondone != null) ondone.accept(new Pair<>(null, read.getError()));
 						result.unblockError(read.getError());

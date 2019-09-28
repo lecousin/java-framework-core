@@ -3,7 +3,7 @@ package net.lecousin.framework.application.libraries.artifacts;
 import net.lecousin.framework.application.VersionSpecification;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.application.libraries.LibraryManagementException;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.progress.WorkProgress;
 
@@ -13,7 +13,7 @@ import net.lecousin.framework.progress.WorkProgress;
 public interface ArtifactsLibrariesManager extends LibrariesManager {
 
 	/** Load a new library. */
-	AsyncWork<LoadedLibrary, LibraryManagementException> loadNewLibrary(
+	AsyncSupplier<LoadedLibrary, LibraryManagementException> loadNewLibrary(
 		String groupId, String artifactId, VersionSpecification version, boolean optional,
 		byte priority, WorkProgress progress, long work);
 

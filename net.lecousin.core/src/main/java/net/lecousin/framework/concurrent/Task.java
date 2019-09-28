@@ -7,9 +7,10 @@ import java.util.function.Consumer;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.util.Pair;
@@ -227,7 +228,7 @@ public abstract class Task<T,TError extends Exception> {
 		this.description = description;
 		this.priority = priority;
 		this.ondone = ondone;
-		result.listenInline(() -> {
+		result.onDone(() -> {
 			if (app.isDebugMode() && Threading.traceTaskDone)
 				Threading.logger.info("Task done: " + description);
 			if (result.isCancelled() && status < STATUS_RUNNING) {
@@ -276,7 +277,7 @@ public abstract class Task<T,TError extends Exception> {
 	long nextExecution;
 	
 	// hold synchronization points
-	private List<ISynchronizationPoint<?>> holdSP = null;
+	private List<IAsync<?>> holdSP = null;
 	
 	public final byte getStatus() { return status; }
 	
@@ -350,7 +351,7 @@ public abstract class Task<T,TError extends Exception> {
 			return;
 		}
 		status = STATUS_EXECUTED;
-		taskJoin.listenInline(() -> {
+		taskJoin.onDone(() -> {
 			status = STATUS_DONE;
 			if (taskJoin.isCancelled()) {
 				cancelling = taskJoin.getCancelEvent();
@@ -391,8 +392,8 @@ public abstract class Task<T,TError extends Exception> {
 	
 	private void checkSP() {
 		if (holdSP == null) return;
-		for (ISynchronizationPoint<?> sp : holdSP)
-			if (!sp.isUnblocked())
+		for (IAsync<?> sp : holdSP)
+			if (!sp.isDone())
 				sp.cancel(new CancelException("Task " + description + " done without unblock this synchronization point"));
 		holdSP = null;
 	}
@@ -464,7 +465,7 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	public final boolean isDone() {
-		return status == STATUS_DONE && result.isUnblocked();
+		return status == STATUS_DONE && result.isDone();
 	}
 	
 	public final boolean isSuccessful() {
@@ -516,10 +517,10 @@ public abstract class Task<T,TError extends Exception> {
 	/** Ensure that when this task will be done, successfully or not, the given synchronization point
 	 * are unblocked. If some are not, they are cancelled upon task completion.
 	 */
-	public final Task<T,TError> ensureUnblocked(ISynchronizationPoint<?>... sp) {
+	public final Task<T,TError> ensureUnblocked(IAsync<?>... sp) {
 		if (status == STATUS_DONE) {
 			for (int i = 0; i < sp.length; ++i)
-				if (!sp[i].isUnblocked())
+				if (!sp[i].isDone())
 					sp[i].cancel(new CancelException("Task " + description + " done without unblock this synchronization point"));
 			return this;
 		}
@@ -582,10 +583,10 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Start this task once the given synchronization point is unblocked. */
-	public final void startOn(ISynchronizationPoint<? extends Exception> sp, boolean evenOnErrorOrCancel) {
+	public final void startOn(IAsync<? extends Exception> sp, boolean evenOnErrorOrCancel) {
 		if (app.isDebugMode() && Threading.traceTasksNotDone)
 			ThreadingDebugHelper.waitingFor(this, sp);
-		sp.listenInline(() -> {
+		sp.onDone(() -> {
 			if (evenOnErrorOrCancel) {
 				start();
 				return;
@@ -607,15 +608,15 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Start this task once all the given synchronization points are unblocked. */
-	public final void startOn(boolean evenOnErrorOrCancel, ISynchronizationPoint<?>... list) {
+	public final void startOn(boolean evenOnErrorOrCancel, IAsync<?>... list) {
 		if (app.isDebugMode() && Threading.traceTasksNotDone)
 			ThreadingDebugHelper.waitingFor(this, list);
 		JoinPoint<Exception> jp = new JoinPoint<>();
-		for (ISynchronizationPoint<? extends Exception> sp : list)
+		for (IAsync<? extends Exception> sp : list)
 			if (sp != null)
 				jp.addToJoin(sp);
 		jp.start();
-		jp.listenInline(() -> {
+		jp.onDone(() -> {
 			if (evenOnErrorOrCancel) {
 				start();
 				return;
@@ -662,7 +663,7 @@ public abstract class Task<T,TError extends Exception> {
 			todo.cancel(result.getCancelEvent());
 		} else if (result.hasError()) {
 			todo.cancel(new CancelException(result.getError()));
-		} else if (result.isUnblocked()) {
+		} else if (result.isDone()) {
 			todo.start();
 		} else {
 			todo.startOn(result, evenIfErrorOrCancel);
@@ -675,7 +676,7 @@ public abstract class Task<T,TError extends Exception> {
 	}
 	
 	/** Synchronization point holding the result or error of this task. */
-	public final class Output extends AsyncWork<T, TError> {
+	public final class Output extends AsyncSupplier<T, TError> {
 		private Output() {}
 		
 		public Task<T,TError> getTask() {

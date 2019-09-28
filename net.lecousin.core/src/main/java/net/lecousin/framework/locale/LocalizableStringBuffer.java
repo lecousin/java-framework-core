@@ -5,8 +5,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -30,19 +30,19 @@ public class LocalizableStringBuffer implements ILocalizableString {
 	}
 	
 	@Override
-	public AsyncWork<String, NoException> localize(String[] languageTag) {
+	public AsyncSupplier<String, NoException> localize(String[] languageTag) {
 		JoinPoint<NoException> jp = new JoinPoint<>();
-		List<AsyncWork<String, NoException>> localizations = new LinkedList<>();
+		List<AsyncSupplier<String, NoException>> localizations = new LinkedList<>();
 		for (Serializable o : this.list)
 			if (o instanceof ILocalizableString) {
-				AsyncWork<String, NoException> l = ((ILocalizableString)o).localize(languageTag);
+				AsyncSupplier<String, NoException> l = ((ILocalizableString)o).localize(languageTag);
 				jp.addToJoin(l);
 				localizations.add(l);
 			}
-		AsyncWork<String, NoException> result = new AsyncWork<>();
+		AsyncSupplier<String, NoException> result = new AsyncSupplier<>();
 		jp.start();
-		jp.listenInline(() -> {
-			Iterator<AsyncWork<String, NoException>> it = localizations.iterator();
+		jp.onDone(() -> {
+			Iterator<AsyncSupplier<String, NoException>> it = localizations.iterator();
 			StringBuilder s = new StringBuilder();
 			for (Serializable o : LocalizableStringBuffer.this.list) {
 				if (o instanceof String)

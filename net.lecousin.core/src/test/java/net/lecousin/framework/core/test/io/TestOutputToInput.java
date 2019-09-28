@@ -5,9 +5,9 @@ import java.nio.ByteBuffer;
 
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.synch.AsyncWork;
-import net.lecousin.framework.concurrent.synch.ISynchronizationPoint;
-import net.lecousin.framework.concurrent.synch.SynchronizationPoint;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.mutable.Mutable;
@@ -81,7 +81,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 	@Test(timeout=120000)
 	public void testWriteAsyncReadHalfAsync() throws Exception {
 		IO.OutputToInput o2i = createOutputToInput();
-		SynchronizationPoint<IOException> spWrite = new SynchronizationPoint<>();
+		Async<IOException> spWrite = new Async<>();
 		new Task.Cpu<Void, NoException>("Launch write async to OutputToInput", Task.PRIORITY_IMPORTANT) {
 			@Override
 			public Void run() {
@@ -91,9 +91,9 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 					return null;
 				}
 				Mutable<ByteBuffer> buf = new Mutable<>(ByteBuffer.wrap(testBuf));
-				Mutable<AsyncWork<Integer, IOException>> write = new Mutable<>(o2i.writeAsync(buf.get()));
+				Mutable<AsyncSupplier<Integer, IOException>> write = new Mutable<>(o2i.writeAsync(buf.get()));
 				MutableInteger nbWrite = new MutableInteger(1);
-				write.get().listenInline(new Runnable() {
+				write.get().onDone(new Runnable() {
 					@Override
 					public void run() {
 						do {
@@ -107,19 +107,19 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 							buf.set(ByteBuffer.wrap(testBuf));
 							write.set(o2i.writeAsync(buf.get()));
 							nbWrite.inc();
-						} while (write.get().isUnblocked());
-						write.get().listenInline(this);
+						} while (write.get().isDone());
+						write.get().onDone(this);
 					}
 				});
 				return null;
 			}
 		}.start();
-		SynchronizationPoint<IOException> spRead = new SynchronizationPoint<>();
+		Async<IOException> spRead = new Async<>();
 		new Task.Cpu<Void, NoException>("Launch read half async on OutputToInput", Task.PRIORITY_IMPORTANT) {
 			@Override
 			public Void run() {
 				MutableInteger nbRead = new MutableInteger(0);
-				Mutable<AsyncWork<Integer, IOException>> read = new Mutable<>(null);
+				Mutable<AsyncSupplier<Integer, IOException>> read = new Mutable<>(null);
 				byte[] buffer = new byte[testBuf.length];
 				Runnable onRead = new Runnable() {
 					@Override
@@ -155,8 +155,8 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 							if ((nbRead.get() % 2) != 0 && (testBuf.length % 2) != 0) len++;
 							read.set(o2i.readFullyAsync(ByteBuffer.wrap(buffer, 0, len)));
 							nbRead.inc();
-						} while (read.get().isUnblocked());
-						read.get().listenInline(this);
+						} while (read.get().isDone());
+						read.get().onDone(this);
 					}
 				};
 				onRead.run();
@@ -192,12 +192,12 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		writeBg(o2i, nbBuf, testBuf);
 		byte[] buf = new byte[testBuf.length];
 		MutableInteger i = new MutableInteger(0);
-		SynchronizationPoint<IOException> sp = new SynchronizationPoint<>();
-		AsyncWork<Long, IOException> op = o2i.skipAsync(testBuf.length);
-		op.listenInline(new Runnable() {
+		Async<IOException> sp = new Async<>();
+		AsyncSupplier<Long, IOException> op = o2i.skipAsync(testBuf.length);
+		op.onDone(new Runnable() {
 			@Override
 			public void run() {
-				ISynchronizationPoint<IOException> op;
+				IAsync<IOException> op;
 				do {
 					if (nbBuf == 0) {
 						sp.unblock();
@@ -220,15 +220,15 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 						op = o2i.readFullyAsync(ByteBuffer.wrap(buf));
 					}
 				} while (op.isSuccessful());
-				op.listenInline(this, sp);
+				op.onDone(this, sp);
 			}
 		}, sp);
 		sp.blockThrow(0);
 		o2i.close();
 	}
 	
-	public static SynchronizationPoint<IOException> writeBg(IO.OutputToInput o2i, int nbBuf, byte[] testBuf) {
-		SynchronizationPoint<IOException> spWrite = new SynchronizationPoint<>();
+	public static Async<IOException> writeBg(IO.OutputToInput o2i, int nbBuf, byte[] testBuf) {
+		Async<IOException> spWrite = new Async<>();
 		new Task.Cpu<Void, NoException>("Launch write async to OutputToInput", Task.PRIORITY_IMPORTANT) {
 			@Override
 			public Void run() {
@@ -237,9 +237,9 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 					spWrite.unblock();
 					return null;
 				}
-				Mutable<AsyncWork<Integer, IOException>> write = new Mutable<>(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
+				Mutable<AsyncSupplier<Integer, IOException>> write = new Mutable<>(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
 				MutableInteger nbWrite = new MutableInteger(1);
-				write.get().listenInline(new Runnable() {
+				write.get().onDone(new Runnable() {
 					@Override
 					public void run() {
 						do {
@@ -252,8 +252,8 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 							}
 							write.set(o2i.writeAsync(ByteBuffer.wrap(testBuf)));
 							nbWrite.inc();
-						} while (write.get().isUnblocked());
-						write.get().listenInline(this);
+						} while (write.get().isDone());
+						write.get().onDone(this);
 					}
 				});
 				return null;

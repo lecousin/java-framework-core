@@ -3,8 +3,8 @@ package net.lecousin.framework.progress;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.synch.JoinPoint;
+import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.JoinPoint;
 
 /** Implementation of WorkProgress, composed of sub-WorkProgress. */
 public class MultiTaskProgress extends WorkProgressImpl implements WorkProgress.MultiTask {
@@ -44,7 +44,7 @@ public class MultiTaskProgress extends WorkProgressImpl implements WorkProgress.
 	public void removeTask(SubTask subTask) {
 		synchronized (tasks) {
 			tasks.remove(subTask);
-			if (jp != null && !subTask.getProgress().getSynch().isUnblocked())
+			if (jp != null && !subTask.getProgress().getSynch().isDone())
 				subTask.getProgress().getSynch().cancel(new CancelException("Sub-task removed"));
 		}
 	}
@@ -63,7 +63,7 @@ public class MultiTaskProgress extends WorkProgressImpl implements WorkProgress.
 			jp = new JoinPoint<>();
 			for (SubTask task : tasks) jp.addToJoinDoNotCancel(task.getProgress().getSynch());
 		}
-		jp.listenInline(() -> {
+		jp.onDone(() -> {
 			if (jp.hasError()) error(jp.getError());
 			else done();
 		});
