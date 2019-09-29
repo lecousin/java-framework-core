@@ -31,7 +31,6 @@ public class LocaleExtensionPoint implements CustomExtensionPoint {
 	) {
 		Async<Exception> sp = new Async<>();
 		Task<Void,Exception> task = new Task.Cpu<Void,Exception>("Loading locale file", Task.PRIORITY_NORMAL) {
-			@SuppressWarnings("resource")
 			@Override
 			public Void run() {
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);

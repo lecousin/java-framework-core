@@ -1,4 +1,4 @@
-package net.lecousin.framework.application.libraries.artifacts.maven;
+package net.lecousin.core.loaders.maven;
 
 import java.io.File;
 import java.net.URI;

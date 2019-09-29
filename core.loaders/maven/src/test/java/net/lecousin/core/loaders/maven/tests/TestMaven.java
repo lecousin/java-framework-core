@@ -1,4 +1,4 @@
-package net.lecousin.framework.core.tests.application;
+package net.lecousin.core.loaders.maven.tests;
 
 import java.io.File;
 import java.io.InputStream;
@@ -8,12 +8,12 @@ import java.util.zip.ZipFile;
 import org.junit.Assert;
 import org.junit.Test;
 
+import net.lecousin.core.loaders.maven.MavenLocalRepository;
+import net.lecousin.core.loaders.maven.MavenPOM;
+import net.lecousin.core.loaders.maven.MavenPOMLoader;
+import net.lecousin.core.loaders.maven.MavenRemoteRepository;
+import net.lecousin.core.loaders.maven.MavenSettings;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor.Dependency;
-import net.lecousin.framework.application.libraries.artifacts.maven.MavenLocalRepository;
-import net.lecousin.framework.application.libraries.artifacts.maven.MavenPOM;
-import net.lecousin.framework.application.libraries.artifacts.maven.MavenPOMLoader;
-import net.lecousin.framework.application.libraries.artifacts.maven.MavenRemoteRepository;
-import net.lecousin.framework.application.libraries.artifacts.maven.MavenSettings;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.util.SystemEnvironment;

@@ -88,6 +88,12 @@ public final class CollectionsUtil {
 			col.add(e.nextElement());
 	}
 	
+	/** Add all elements of the given iterator into the given collection. */
+	public static <T> void addAll(Collection<T> col, Iterator<T> it) {
+		while (it.hasNext())
+			col.add(it.next());
+	}
+	
 	/** Convert a list of Input into a list of Output using the given mapper. */
 	public static <Input, Output> List<Output> map(List<Input> inputs, Function<Input, Output> mapper) {
 		ArrayList<Output> outputs = new ArrayList<>(inputs.size());
