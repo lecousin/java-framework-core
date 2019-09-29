@@ -20,19 +20,16 @@
   <properties>
   	<sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
   	<sonar.test.exclusions>**/src/test/**/*</sonar.test.exclusions>
-  	<sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
-  	<sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
-  	<sonar.jacoco.reportPath>${session.executionRootDirectory}/target/jacoco.exec</sonar.jacoco.reportPath>
   	<sonar.coverage.exclusions>
   		**/application/launcher/*,
-  		**/maven/Launcher*,
-		**/net/lecousin/framework/application/libraries/classloader/*,
+		**/application/libraries/classloader/*,
 		**/ApplicationBootstrap*.*,
 		**/SplashScreen*.*,
 		**/ThreadingDebugHelper*.*,
 		**/TaskMonitoring*.*,
 		**/DebugUtil*.*,
-		**/SystemEnvironment.*
+		**/SystemEnvironment.*,
+  		**/maven/Launcher*
   	</sonar.coverage.exclusions>
   	<sonar.cpd.exclusions>
   		**/framework/collections/sort/RedBlackTree*.*,
@@ -65,21 +62,34 @@
   		<plugin>
 			<groupId>org.jacoco</groupId>
 			<artifactId>jacoco-maven-plugin</artifactId>
-			<configuration>
-				<destFile>${sonar.jacoco.reportPath}</destFile>
-        		<append>true</append>
-				<excludes>
-					<exclude>**/application/launcher/*</exclude>
-					<exclude>net/lecousin/framework/application/libraries/classloader/*</exclude>
-					<exclude>**/ApplicationBootstrap*.*</exclude>
-					<exclude>**/SplashScreen*.*</exclude>
-					<exclude>**/ThreadingDebugHelper*.*</exclude>
-					<exclude>**/TaskMonitoring*.*</exclude>
-					<exclude>**/DebugUtil*.*</exclude>
-					<exclude>**/SystemEnvironment.*</exclude>
-					<exclude>**/maven/Launcher*</exclude>
-				</excludes>
-			</configuration>
+			<executions>
+				<execution>
+					<id>prepare-agent</id>
+					<goals>
+						<goal>prepare-agent</goal>
+					</goals>
+					<configuration>
+						<excludes>
+							<exclude>**/application/launcher/*</exclude>
+							<exclude>**/application/libraries/classloader/*</exclude>
+							<exclude>**/ApplicationBootstrap*.*</exclude>
+							<exclude>**/SplashScreen*.*</exclude>
+							<exclude>**/ThreadingDebugHelper*.*</exclude>
+							<exclude>**/TaskMonitoring*.*</exclude>
+							<exclude>**/DebugUtil*.*</exclude>
+							<exclude>**/SystemEnvironment.*</exclude>
+							<exclude>**/maven/Launcher*</exclude>
+						</excludes>
+					</configuration>
+				</execution>
+				<execution>
+					<id>report-aggregate</id>
+					<phase>verify</phase>
+					<goals>
+						<goals>report-aggregate</goals>
+					</goals>
+				</execution>
+			</executions>
   		</plugin>
   	</plugins>
   </build>
