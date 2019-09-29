@@ -149,7 +149,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 			IOUtil.copy(
 				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-output-dir.pom.xml"))).provideIOReadable(Task.PRIORITY_NORMAL),
 				out,
-				-1, true, null, 0);
+				-1, true, null, 0).blockThrow(15000);
 			
 			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-output-dir.pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
 			MavenPOM pom = load.blockResult(30000);

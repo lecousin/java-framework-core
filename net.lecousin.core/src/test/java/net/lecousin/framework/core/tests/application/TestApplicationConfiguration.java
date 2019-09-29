@@ -37,7 +37,7 @@ public class TestApplicationConfiguration extends LCCoreAbstractTest {
 		IOUtil.copy(
 			new IOFromInputStream(input, "lc-project.xml", Threading.getUnmanagedTaskManager(), Task.PRIORITY_NORMAL),
 			new FileIO.WriteOnly(tmp, Task.PRIORITY_NORMAL),
-			-1, true, null, 0);
+			-1, true, null, 0).blockThrow(15000);
 		try {
 			ApplicationConfiguration cfg = ApplicationConfiguration.load(tmp);
 			Assert.assertEquals("This is a test", cfg.getName());
