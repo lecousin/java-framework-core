@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import net.lecousin.framework.application.Version;
@@ -853,6 +852,67 @@ public class MavenPOM implements LibraryDescriptor {
 
 		}
 		
+		private boolean checkProfile(Profile profile, Map<String, String> finalProperties) {
+			if (profile.activationOS != null && !checkProfileOS(profile.activationOS))
+				return false;
+			if (profile.activationPropertyName != null && !checkProfileProperties(profile, finalProperties))
+				return false;
+			if (profile.activationMissingFile != null) {
+				// TODO
+			}
+			if (profile.activationFileExists != null) {
+				// TODO
+			}
+			if (profile.jdk != null) {
+				// TODO
+			}
+			return true;
+		}
+		
+		private boolean checkProfileOS(ActivationOS os) {
+			if (os.family != null) {
+				OSFamily family = SystemEnvironment.getOSFamily();
+				if (family == null)
+					return false;
+				if (!checkProfileCondition(os.family.toLowerCase(), family.getName()))
+					return false;
+			}
+			return
+				checkProfileCondition(os.name, System.getProperty("os.name")) &&
+				checkProfileCondition(os.arch, System.getProperty("os.arch")) &&
+				checkProfileCondition(os.version, System.getProperty("os.version"));
+		}
+		
+		private boolean checkProfileProperties(Profile profile, Map<String, String> finalProperties) {
+			if (profile.activationPropertyValue == null) {
+				String s = profile.activationPropertyName;
+				boolean presentExpected = !s.startsWith("!");
+				if (!presentExpected) s = s.substring(1);
+				if (presentExpected != properties.containsKey(s) &&
+					presentExpected != finalProperties.containsKey(s))
+					return false;
+			} else {
+				String p1 = properties.get(profile.activationPropertyName);
+				String p2 = finalProperties.get(profile.activationPropertyName);
+				String value = profile.activationPropertyName;
+				boolean presentExpected = !value.startsWith("!");
+				if (!presentExpected) value = value.substring(1);
+				if (p1 == null || presentExpected != p1.equals(value)) {
+					if (p2 == null) return false;
+					if (presentExpected != p2.equals(value)) return false;
+				}
+			}
+			return true;
+		}
+		
+		private boolean checkProfileCondition(String condition, String value) {
+			if (condition == null)
+				return true;
+			if (condition.startsWith("!"))
+				return !checkProfileCondition(condition.substring(1), value);
+			return value != null && value.equalsIgnoreCase(condition);
+		}
+		
 		private void addProfile(Profile profile) {
 			if (profile.build.outputDirectory != null)
 				build.outputDirectory = profile.build.outputDirectory;
@@ -940,84 +1000,6 @@ public class MavenPOM implements LibraryDescriptor {
 			}
 			return System.getProperty(name);
 		}
-	}
-	
-	private boolean checkProfile(Profile profile, Map<String, String> finalProperties) {
-		if (profile.activationOS != null) {
-			if (profile.activationOS.name != null) {
-				String name = System.getProperty("os.name").toLowerCase(Locale.US);
-				String s = profile.activationOS.name.toLowerCase();
-				if (s.startsWith("!")) {
-					if (name.equals(s.substring(1)))
-						return false;
-				} else if (!name.equals(s)) {
-					return false;
-				}
-			}
-			if (profile.activationOS.arch != null) {
-				String arch = System.getProperty("os.arch").toLowerCase(Locale.US);
-				String s = profile.activationOS.arch.toLowerCase();
-				if (s.startsWith("!")) {
-					if (arch.equals(s.substring(1)))
-						return false;
-				} else if (!arch.equals(s)) {
-					return false;
-				}
-			}
-			if (profile.activationOS.family != null) {
-				OSFamily family = SystemEnvironment.getOSFamily();
-				if (family == null)
-					return false;
-				String fam = family.getName();
-				String s = profile.activationOS.family.toLowerCase();
-				if (s.startsWith("!")) {
-					if (fam.equals(s.substring(1)))
-						return false;
-				} else if (!fam.equals(s)) {
-					return false;
-				}
-			}
-			if (profile.activationOS.version != null) {
-				String ver = System.getProperty("os.version").toLowerCase(Locale.US);
-				String s = profile.activationOS.version.toLowerCase();
-				if (s.startsWith("!")) {
-					if (ver.equals(s.substring(1)))
-						return false;
-				} else if (!ver.equals(s)) {
-					return false;
-				}
-			}
-		}
-		if (profile.activationPropertyName != null) {
-			if (profile.activationPropertyValue == null) {
-				String s = profile.activationPropertyName;
-				boolean presentExpected = !s.startsWith("!");
-				if (!presentExpected) s = s.substring(1);
-				if (presentExpected != properties.containsKey(s) &&
-					presentExpected != finalProperties.containsKey(s))
-					return false;
-			} else {
-				String p1 = properties.get(profile.activationPropertyName);
-				String p2 = finalProperties.get(profile.activationPropertyName);
-				String value = profile.activationPropertyName;
-				boolean presentExpected = !value.startsWith("!");
-				if (!presentExpected) value = value.substring(1);
-				if (p1 == null || presentExpected != p1.equals(value)) {
-					if (p2 == null) return false;
-					if (presentExpected != p2.equals(value)) return false;
-				}
-			}
-		}
-		if (profile.activationMissingFile != null) {
-			// TODO
-		}
-		if (profile.activationFileExists != null) {
-			// TODO
-		}
-		if (profile.jdk != null) {
-			// TODO
-		}
-		return true;
 	}
 
 	/** Parse a version specification in POM format. */

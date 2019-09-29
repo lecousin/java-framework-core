@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.log.Logger;
 
@@ -65,7 +66,25 @@ public interface IAsync<TError extends Exception> extends Cancellable {
 	}
 
 	/** Really block, using wait method (used by threading system to know when a thread can be resumed). */
-	void blockPause(long logWarningAfterMillis);
+	default void blockPause(long logWarningAfterMillis) {
+		synchronized (this) {
+			while (blockPauseCondition()) {
+				long start = System.currentTimeMillis();
+				try { this.wait(logWarningAfterMillis + 1000); }
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
+				}
+				if (System.currentTimeMillis() - start <= logWarningAfterMillis)
+					continue;
+				Logger logger = LCCore.get().getThreadingLogger();
+				logger.warn("Still blocked after " + (logWarningAfterMillis / 1000) + "s.", new Exception(""));
+			}
+		}
+	}
+	
+	/** Return true if blockPause should still block. */
+	boolean blockPauseCondition();
 
 	/** Call the given listener, only when done without error or cancellation. */
 	default void onSuccess(Runnable listener) {

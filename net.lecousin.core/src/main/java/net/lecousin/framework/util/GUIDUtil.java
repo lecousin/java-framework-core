@@ -33,28 +33,22 @@ public final class GUIDUtil {
 	public static String toString(byte[] guid) {
 		StringBuilder s = new StringBuilder();
 		s.append('{');
-		s.append(StringUtil.encodeHexa(guid[3]));
-		s.append(StringUtil.encodeHexa(guid[2]));
-		s.append(StringUtil.encodeHexa(guid[1]));
-		s.append(StringUtil.encodeHexa(guid[0]));
+		hexa(s, guid[3], guid[2], guid[1], guid[0]);
 		s.append('-');
-		s.append(StringUtil.encodeHexa(guid[5]));
-		s.append(StringUtil.encodeHexa(guid[4]));
+		hexa(s, guid[5], guid[4]);
 		s.append('-');
-		s.append(StringUtil.encodeHexa(guid[7]));
-		s.append(StringUtil.encodeHexa(guid[6]));
+		hexa(s, guid[7], guid[6]);
 		s.append('-');
-		s.append(StringUtil.encodeHexa(guid[8]));
-		s.append(StringUtil.encodeHexa(guid[9]));
+		hexa(s, guid[8], guid[9]);
 		s.append('-');
-		s.append(StringUtil.encodeHexa(guid[10]));
-		s.append(StringUtil.encodeHexa(guid[11]));
-		s.append(StringUtil.encodeHexa(guid[12]));
-		s.append(StringUtil.encodeHexa(guid[13]));
-		s.append(StringUtil.encodeHexa(guid[14]));
-		s.append(StringUtil.encodeHexa(guid[15]));
+		hexa(s, guid[10], guid[11], guid[12], guid[13], guid[14], guid[15]);
 		s.append('}');
 		return s.toString();
+	}
+	
+	private static void hexa(StringBuilder s, byte... bytes) {
+		for (int i = 0; i < bytes.length; ++i)
+			s.append(StringUtil.encodeHexa(bytes[i]));
 	}
 	
 }

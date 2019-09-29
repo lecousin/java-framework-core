@@ -1,12 +1,9 @@
 package net.lecousin.framework.concurrent.async;
 
 import java.util.ArrayList;
-import java.util.Collection;
 
-import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.log.Logger;
 
 /**
  * A MutualExclusion must be unlocked by the same thread that locked it.
@@ -23,13 +20,10 @@ import net.lecousin.framework.log.Logger;
  * </ul>
  * @param <TError> type of exception it may raise
  */
-public class MutualExclusion<TError extends Exception> implements IAsync<TError> {
+public class MutualExclusion<TError extends Exception> extends AbstractLock<TError> {
 
 	private Thread lockingThread = null;
 	private int lockedTimes = 0;
-	private TError error = null;
-	private CancelException cancel = null;
-	private ArrayList<Runnable> listeners = null;
 	
 	/** Request the lock. If it is already locked this method will block until it become unblocked and the lock has been obtained. */
 	@SuppressWarnings("squid:S2142") // InterruptedException
@@ -64,6 +58,7 @@ public class MutualExclusion<TError extends Exception> implements IAsync<TError>
 	}
 	
 	/** Release the lock. */
+	@Override
 	public void unlock() {
 		ArrayList<Runnable> list;
 		Thread t = Thread.currentThread();
@@ -89,30 +84,10 @@ public class MutualExclusion<TError extends Exception> implements IAsync<TError>
 	}
 	
 	@Override
-	public void blockPause(long logAfter) {
-		synchronized (this) {
-			if (lockingThread == null) return;
-			do {
-				long start = System.currentTimeMillis();
-				try { this.wait(logAfter + 1000); }
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					return;
-				}
-				if (System.currentTimeMillis() - start <= logAfter)
-					break;
-				Logger logger = LCCore.get().getThreadingLogger();
-				logger.warn("Still blocked after " + (logAfter / 1000) + "s.", new Exception(""));
-			} while (true);
-		}
+	public boolean blockPauseCondition() {
+		return lockingThread != null;
 	}
 	
-	@Override
-	public Collection<?> getAllListeners() {
-		if (listeners == null) return new ArrayList<>(0);
-		return new ArrayList<>(listeners);
-	}
-
 	@Override
 	public void onDone(Runnable r) {
 		synchronized (this) {
@@ -132,34 +107,4 @@ public class MutualExclusion<TError extends Exception> implements IAsync<TError>
 		sp.block(timeout);
 	}
 
-	@Override
-	public boolean isCancelled() { return cancel != null; }
-	
-	@Override
-	public void cancel(CancelException reason) {
-		cancel = reason;
-		unlock();
-	}
-
-	@Override
-	public CancelException getCancelEvent() {
-		return cancel;
-	}
-
-	@Override
-	public boolean hasError() {
-		return error != null;
-	}
-
-	@Override
-	public TError getError() {
-		return error;
-	}
-
-	@Override
-	public void error(TError error) {
-		this.error = error;
-		unlock();
-	}
-	
 }

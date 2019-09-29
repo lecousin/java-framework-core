@@ -21,7 +21,6 @@ import net.lecousin.framework.collections.Tree;
 import net.lecousin.framework.collections.Tree.Node;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 
 /**
@@ -144,16 +143,20 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 				"Artifact not found: " + Artifact.toString(groupId, artifactId, version.toString())));
 			return;
 		}
+		
+		boolean debug = logger.debug();
+		
 		MavenRepository repo = repos.get(repoIndex);
-		if (logger.debug()) logger.debug(
-			"Search Maven artifact " + groupId + ':' + artifactId + ':' + version.toString() + " in " + repo.toString());
-		AsyncSupplier<List<String>, NoException> getVersions = repo.getAvailableVersions(groupId, artifactId, priority);
-		getVersions.thenStart(new Task.Cpu.FromRunnable("Search artifact", priority, () -> {
-			List<String> versions = getVersions.getResult();
+		if (debug)
+			logger.debug("Search Maven artifact " + Artifact.toString(groupId, artifactId, version.toString())
+				+ " in " + repo.toString());
+		
+		repo.getAvailableVersions(groupId, artifactId, priority)		
+		.thenStart(new Task.Cpu.Parameter.FromConsumer<List<String>>("Search artifact", priority, versions -> {
 			if (versions == null || versions.isEmpty()) {
-				if (logger.debug()) logger.debug(
-					"No version found for artifact " + groupId + ':' + artifactId + ':' + version.toString()
-					+ " in " + repo.toString());
+				if (debug)
+					logger.debug("No version found for artifact " + Artifact.toString(groupId, artifactId, version.toString())
+						+ " in " + repo.toString());
 				loadFromRepository(groupId, artifactId, version, priority, repos, repoIndex + 1, artifact, result);
 				return;
 			}
@@ -161,43 +164,33 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 			Version bestVersion = null;
 			for (String s : versions) {
 				Version v = new Version(s);
-				if (!version.isMatching(v)) {
-					//if (logger.debug()) logger.debug(
-					//"Version " + s + " is not matching for artifact " + groupId + ':' + artifactId + ':'
-					//+ version.toString() + " in " + repo.toString());
-					continue;
+				if (version.isMatching(v) &&
+					(bestVersion == null || version.compare(bestVersion, v) <= 0)) {
+					bestVersion = v;
+					bestVersionString = s;
 				}
-				if (bestVersion != null && version.compare(bestVersion, v) > 0) {
-					//if (logger.debug()) logger.debug(
-					//"Version " + s + " is ignored for artifact " + groupId + ':' + artifactId + ':'
-					//+ version.toString() + " in " + repo.toString());
-					continue;
-				}
-				bestVersion = v;
-				bestVersionString = s;
-				//if (logger.debug()) logger.debug(
-				//"Version " + s + " is eligible for artifact " + groupId + ':' + artifactId + ':'
-				//+ version.toString() + " in " + repo.toString());
 			}
 			if (bestVersion == null) {
 				loadFromRepository(groupId, artifactId, version, priority, repos, repoIndex + 1, artifact, result);
 				return;
 			}
-			if (logger.debug()) logger.debug(
-				"Version " + bestVersionString + " found for artifact " + groupId + ':' + artifactId + ':'
-				+ version.toString() + " in " + repo.toString());
+			if (debug)
+				logger.debug("Version " + bestVersionString + " found for artifact "
+					+ Artifact.toString(groupId, artifactId, version.toString()) + " in " + repo.toString());
+			
 			artifact.put(bestVersion, result);
 			AsyncSupplier<MavenPOM, LibraryManagementException> load = repo.load(groupId, artifactId, bestVersionString, this, priority);
 			load.onDone(() -> {
-				if (load.getResult() != null) {
-					if (logger.debug()) logger.debug(
-						"Maven artifact " + groupId + ':' + artifactId + ':' + load.getResult().getVersionString()
-						+ " found in " + repo.toString());
-					result.unblockSuccess(load.getResult());
+				if (load.getResult() == null) {
+					result.error(new LibraryManagementException(
+						"Artifact not found: " + Artifact.toString(groupId, artifactId, version.toString())));
 					return;
 				}
-				result.error(new LibraryManagementException(
-					"Artifact not found: " + Artifact.toString(groupId, artifactId, version.toString())));
+				if (debug)
+					logger.debug("Maven artifact "
+						+ Artifact.toString(groupId, artifactId, load.getResult().getVersionString())
+						+ " found in " + repo.toString());
+				result.unblockSuccess(load.getResult());
 			});
 		}), true);
 	}

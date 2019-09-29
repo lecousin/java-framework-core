@@ -85,11 +85,9 @@ public class BroadcastIO extends ConcurrentCloseable<IOException> implements IO.
 		return jp;
 	}
 	
-	@Override
-	public int writeSync(ByteBuffer buffer) throws IOException {
+	private JoinPoint<IOException> write(ByteBuffer buffer, int nb) {
 		JoinPoint<IOException> jp = new JoinPoint<>();
 		jp.addToJoin(ios.length);
-		int nb = buffer.remaining();
 		for (int i = 0; i < ios.length; ++i) {
 			ios[i].writeAsync(
 				i == ios.length - 1 ? buffer : buffer.duplicate()
@@ -116,7 +114,13 @@ public class BroadcastIO extends ConcurrentCloseable<IOException> implements IO.
 			});
 		}
 		jp.start();
-		jp.blockException(0);
+		return jp;
+	}
+	
+	@Override
+	public int writeSync(ByteBuffer buffer) throws IOException {
+		int nb = buffer.remaining();
+		write(buffer, nb).blockException(0);
 		return nb;
 	}
 	
@@ -124,36 +128,8 @@ public class BroadcastIO extends ConcurrentCloseable<IOException> implements IO.
 	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 		new Task.Cpu.FromRunnable("BroadcastIO.writeAsync", priority, () -> {
-			JoinPoint<IOException> jp = new JoinPoint<>();
-			jp.addToJoin(ios.length);
 			int nb = buffer.remaining();
-			for (int i = 0; i < ios.length; ++i) {
-				ios[i].writeAsync(
-					i == ios.length - 1 ? buffer : buffer.duplicate()
-				).listen(new Listener<Integer, IOException>() {
-					
-					@Override
-					public void ready(Integer result) {
-						if (result.intValue() != nb)
-							jp.error(new IOException("Only " + result.intValue()
-								+ " byte(s) written instead of " + nb));
-						else
-							jp.joined();
-					}
-					
-					@Override
-					public void error(IOException error) {
-						jp.error(error);
-					}
-					
-					@Override
-					public void cancelled(CancelException event) {
-						jp.cancel(event);
-					}
-				});
-			}
-			jp.start();
-			jp.onDone(() -> result.unblockSuccess(Integer.valueOf(nb)), result);
+			write(buffer, nb).onDone(() -> result.unblockSuccess(Integer.valueOf(nb)), result);
 		}).start();
 		return result;
 	}

@@ -11,6 +11,7 @@ import java.util.function.Function;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.log.Logger;
 
@@ -216,6 +217,25 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 		return a;
 	}
 	
+	/** Start the given task when this asynchronous unit is unblocked. */
+	public <T2> AsyncSupplier<T2, TError> thenStart(Task.Parameter<T, T2, TError> task, boolean evenIfErrorOrCancel) {
+		if (evenIfErrorOrCancel)
+			onDone(() -> {
+				task.setParameter(getResult());
+				task.start();
+			});
+		else
+			onDone(
+				res -> {
+					task.setParameter(res);
+					task.start();
+				},
+				task::setError,
+				task::cancel
+			);
+		return task.getOutput();
+	}
+	
 	/** Unblock this AsyncSupplier with the given result. */
 	public final void unblockSuccess(T result) {
 		ArrayList<Listener<T,TError>> listeners;
@@ -411,21 +431,8 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 	}
 	
 	@Override
-	public final void blockPause(long logAfter) {
-		synchronized (this) {
-			while (!unblocked || listenersInline != null) {
-				long start = System.currentTimeMillis();
-				try { this.wait(logAfter + 1000); }
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					return;
-				}
-				if (System.currentTimeMillis() - start <= logAfter)
-					continue;
-				Logger logger = LCCore.get().getThreadingLogger();
-				logger.warn("Still blocked after " + (logAfter / 1000) + "s.", new Exception(""));
-			}
-		}
+	public boolean blockPauseCondition() {
+		return !unblocked || listenersInline != null;
 	}
 
 	@Override

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
@@ -78,6 +79,48 @@ public abstract class Task<T,TError extends Exception> {
 			/** Constructor. */
 			public Parameter(String description, byte priority) {
 				super(Threading.getCPUTaskManager(), description, priority);
+			}
+			
+			/** CPU task with parameter from a Runnable.
+			 * @param <TParam> type of parameter
+			 */
+			public static class FromConsumer<TParam> extends Task.Cpu.Parameter<TParam, Void, NoException> {
+				
+				/** Constructor. */
+				public FromConsumer(String description, byte priority, Consumer<TParam> consumer) {
+					super(description, priority);
+					this.consumer = consumer;
+				}
+				
+				private Consumer<TParam> consumer;
+				
+				@Override
+				public Void run() throws NoException, CancelException {
+					consumer.accept(getParameter());
+					return null;
+				}
+				
+			}
+			
+			/** CPU task with parameter from a Function.
+			 * @param <TParam> type of parameter
+			 * @param <TResult> type of result
+			 */
+			public static class FromFunction<TParam, TResult> extends Task.Cpu.Parameter<TParam, TResult, NoException> {
+				
+				/** Constructor. */
+				public FromFunction(String description, byte priority, Function<TParam, TResult> fct) {
+					super(description, priority);
+					this.fct = fct;
+				}
+				
+				private Function<TParam, TResult> fct;
+				
+				@Override
+				public TResult run() throws NoException, CancelException {
+					return fct.apply(getParameter());
+				}
+				
 			}
 		}
 		
@@ -462,6 +505,12 @@ public abstract class Task<T,TError extends Exception> {
 			}
 		}
 		return false;
+	}
+	
+	/** Set this task's error (MUST NOT be started). */
+	public final void setError(TError error) {
+		status = STATUS_DONE;
+		result.unblockError(error);
 	}
 	
 	public final boolean isDone() {

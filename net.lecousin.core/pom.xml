@@ -134,22 +134,6 @@
 					</properties>
 				</configuration>
 			</plugin>
-			<plugin>
-				<groupId>org.jacoco</groupId>
-  				<artifactId>jacoco-maven-plugin</artifactId>
-				<configuration>
-					<excludes>
-						<exclude>**/application/launcher/*</exclude>
-						<exclude>net/lecousin/framework/application/libraries/classloader/*</exclude>
-						<exclude>**/ApplicationBootstrap*.*</exclude>
-						<exclude>**/SplashScreen*.*</exclude>
-						<exclude>**/ThreadingDebugHelper*.*</exclude>
-						<exclude>**/TaskMonitoring*.*</exclude>
-						<exclude>**/DebugUtil*.*</exclude>
-						<exclude>**/SystemEnvironment.*</exclude>
-					</excludes>
-				</configuration>
-			</plugin>
 		</plugins>
 		<pluginManagement>
 			<plugins>

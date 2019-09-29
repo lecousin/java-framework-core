@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectX xmlns="http://lecousin.net/project-descriptor/0.1.0">
+	<application>
+		<name>This is a test</name>
+		<class>mypackage.App</class>
+		<splash>mylogo.jpg</splash>
+		<properties>
+			<hello>World</hello>
+			<bonjour>Le Monde</bonjour>
+		</properties>
+	</application>
+</projectX>

@@ -78,6 +78,8 @@ public class ApplicationConfiguration {
 			xml.next();
 			if (xml.getEventType() == XMLStreamConstants.START_ELEMENT)
 				return true;
+			if (xml.getEventType() == XMLStreamConstants.END_ELEMENT)
+				return false;
 		}
 		return false;
 	}

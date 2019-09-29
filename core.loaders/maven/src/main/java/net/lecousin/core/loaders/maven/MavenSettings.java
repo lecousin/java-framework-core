@@ -47,32 +47,36 @@ public class MavenSettings {
 			if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
 				if (!"settings".equals(xml.getLocalName()))
 					throw new LibraryManagementException("Root element of a Maven settings.xml file must be <settings>");
-				MavenSettings settings = new MavenSettings();
-				while (xml.hasNext()) {
-					xml.next();
-					if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
-						if ("localRepository".equals(xml.getLocalName())) {
-							settings.localRepository = xml.getElementText().trim();
-						} else if ("activeProfiles".equals(xml.getLocalName())) {
-							while (xml.hasNext()) {
-								xml.next();
-								if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
-									if ("activeProfile".equals(xml.getLocalName()))
-										settings.activeProfiles.add(xml.getElementText().trim());
-								} else if (xml.getEventType() == XMLStreamConstants.END_ELEMENT) {
-									break;
-								}
-							}
-						}
-					} else if (xml.getEventType() == XMLStreamConstants.END_ELEMENT) {
-						break;
-					}
-				}
-				settings.activeProfiles.trimToSize();
-				return settings;
+				return readSettings(xml);
 			}
 		}
 		return new MavenSettings();
+	}
+	
+	private static MavenSettings readSettings(XMLStreamReader xml) throws XMLStreamException {
+		MavenSettings settings = new MavenSettings();
+		while (xml.hasNext()) {
+			xml.next();
+			if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
+				if ("localRepository".equals(xml.getLocalName())) {
+					settings.localRepository = xml.getElementText().trim();
+				} else if ("activeProfiles".equals(xml.getLocalName())) {
+					while (xml.hasNext()) {
+						xml.next();
+						if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
+							if ("activeProfile".equals(xml.getLocalName()))
+								settings.activeProfiles.add(xml.getElementText().trim());
+						} else if (xml.getEventType() == XMLStreamConstants.END_ELEMENT) {
+							break;
+						}
+					}
+				}
+			} else if (xml.getEventType() == XMLStreamConstants.END_ELEMENT) {
+				break;
+			}
+		}
+		settings.activeProfiles.trimToSize();
+		return settings;
 	}
 	
 }

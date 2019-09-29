@@ -18,9 +18,14 @@
   </modules>
   
   <properties>
+  	<sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
   	<sonar.test.exclusions>**/src/test/**/*</sonar.test.exclusions>
+  	<sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
+  	<sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
+  	<sonar.jacoco.reportPath>${session.executionRootDirectory}/target/jacoco.exec</sonar.jacoco.reportPath>
   	<sonar.coverage.exclusions>
   		**/application/launcher/*,
+  		**/maven/Launcher*,
 		**/net/lecousin/framework/application/libraries/classloader/*,
 		**/ApplicationBootstrap*.*,
 		**/SplashScreen*.*,
@@ -54,5 +59,29 @@
     	<name>Guillaume Le Cousin</name>
     </developer>
   </developers>
+  
+  <build>
+  	<plugins>
+  		<plugin>
+			<groupId>org.jacoco</groupId>
+			<artifactId>jacoco-maven-plugin</artifactId>
+			<configuration>
+				<destFile>${sonar.jacoco.reportPath}</destFile>
+        		<append>true</append>
+				<excludes>
+					<exclude>**/application/launcher/*</exclude>
+					<exclude>net/lecousin/framework/application/libraries/classloader/*</exclude>
+					<exclude>**/ApplicationBootstrap*.*</exclude>
+					<exclude>**/SplashScreen*.*</exclude>
+					<exclude>**/ThreadingDebugHelper*.*</exclude>
+					<exclude>**/TaskMonitoring*.*</exclude>
+					<exclude>**/DebugUtil*.*</exclude>
+					<exclude>**/SystemEnvironment.*</exclude>
+					<exclude>**/maven/Launcher*</exclude>
+				</excludes>
+			</configuration>
+  		</plugin>
+  	</plugins>
+  </build>
 
 </project>

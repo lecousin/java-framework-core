@@ -156,21 +156,8 @@ public class Async<TError extends Exception> implements IAsync<TError>, Future<V
 	}
 	
 	@Override
-	public final void blockPause(long logAfter) {
-		synchronized (this) {
-			while (!unblocked || listenersInline != null) {
-				long start = System.currentTimeMillis();
-				try { this.wait(logAfter + 1000); }
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					return;
-				}
-				if (System.currentTimeMillis() - start <= logAfter)
-					continue;
-				Logger logger = LCCore.get().getThreadingLogger();
-				logger.warn("Still blocked after " + (logAfter / 1000) + "s.", new Exception(""));
-			}
-		}
+	public boolean blockPauseCondition() {
+		return !unblocked || listenersInline != null;
 	}
 	
 	@Override

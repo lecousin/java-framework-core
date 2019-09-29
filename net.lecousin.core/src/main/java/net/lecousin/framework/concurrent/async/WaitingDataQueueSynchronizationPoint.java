@@ -1,13 +1,10 @@
 package net.lecousin.framework.concurrent.async;
 
 import java.util.ArrayList;
-import java.util.Collection;
 
-import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.log.Logger;
 
 /**
  * Like a SynchronizationPoint, but with a queue of waiting data.
@@ -20,13 +17,10 @@ import net.lecousin.framework.log.Logger;
  * @param <DataType> type of data in the queue
  * @param <TError> type of error
  */
-public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Exception> implements IAsync<TError> {
+public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Exception> extends AbstractLock<TError> {
 
 	private TurnArray<DataType> waitingData = new TurnArray<>();
-	private TError error = null;
-	private CancelException cancel = null;
 	private boolean end = false;
-	private ArrayList<Runnable> listeners = null;
 
 	/** To call when data is needed.
 	 * @return the next data, or null if no more data will be available
@@ -99,12 +93,6 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	}
 	
 	@Override
-	public Collection<?> getAllListeners() {
-		if (listeners == null) return new ArrayList<>(0);
-		return new ArrayList<>(listeners);
-	}
-	
-	@Override
 	public boolean isDone() {
 		return !waitingData.isEmpty() || cancel != null || error != null || end;
 	}
@@ -135,25 +123,8 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	}
 	
 	@Override
-	public void blockPause(long logAfter) {
-		synchronized (this) {
-			if (cancel != null) return;
-			if (error != null) return;
-			if (!waitingData.isEmpty()) return;
-			if (end) return;
-			do {
-				long start = System.currentTimeMillis();
-				try { this.wait(logAfter + 1000); }
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					return;
-				}
-				if (System.currentTimeMillis() - start <= logAfter)
-					break;
-				Logger logger = LCCore.get().getThreadingLogger();
-				logger.warn("Still blocked after " + (logAfter / 1000) + "s.", new Exception(""));
-			} while (true);
-		}
+	public boolean blockPauseCondition() {
+		return cancel == null && error == null && !end && waitingData.isEmpty();
 	}
 	
 	@Override
@@ -169,13 +140,7 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	}
 
 	@Override
-	public boolean isCancelled() {
-		return cancel != null;
-	}
-
-	@Override
-	public void cancel(CancelException reason) {
-		cancel = reason;
+	protected void unlock() {
 		ArrayList<Runnable> list;
 		synchronized (this) {
 			this.notify();
@@ -187,33 +152,4 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 		}
 	}
 
-	@Override
-	public CancelException getCancelEvent() {
-		return cancel;
-	}
-
-	@Override
-	public boolean hasError() {
-		return error != null;
-	}
-
-	@Override
-	public TError getError() {
-		return error;
-	}
-
-	@Override
-	public void error(TError error) {
-		this.error = error;
-		ArrayList<Runnable> list;
-		synchronized (this) {
-			this.notify();
-			list = listeners;
-			listeners = null;
-		}
-		if (list != null) {
-			for (Runnable listener : list) listener.run();
-		}
-	}
-	
 }
