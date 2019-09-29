@@ -192,7 +192,7 @@ public class TestMaven extends LCCoreAbstractTest {
 	
 	@Test
 	public void testSettings() throws Exception {
-		InputStream in = getClass().getClassLoader().getResourceAsStream("app/maven/settings.xml");
+		InputStream in = getClass().getClassLoader().getResourceAsStream("test-maven/settings.xml");
 		MavenSettings settings = MavenSettings.load(in);
 		in.close();
 		Assert.assertEquals("/test/maven/local/repo", settings.getLocalRepository());
