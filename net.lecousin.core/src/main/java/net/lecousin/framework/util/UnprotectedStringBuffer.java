@@ -272,8 +272,7 @@ public class UnprotectedStringBuffer implements IString {
 	@Override
 	public int indexOf(CharSequence s, int start) {
 		int sl = s.length();
-		if (sl == 0) return -1;
-		if (strings == null) return -1;
+		if (sl == 0 || strings == null) return -1;
 		char first = s.charAt(0);
 		int pos = 0;
 		for (int i = 0; i <= lastUsed; ++i) {
@@ -283,24 +282,21 @@ public class UnprotectedStringBuffer implements IString {
 				continue;
 			}
 			for (int j = pos < start ? start - pos : 0; j < l; ++j) {
-				if (strings[i].charAt(j) == first) {
-					int jj = j;
-					int ii = i;
-					int ll = l;
-					int k;
-					for (k = 1; k < sl; ++k) {
-						jj++;
-						if (jj == ll) {
-							ii++;
-							if (ii == lastUsed + 1) return -1;
-							jj = 0;
-							ll = strings[ii].length();
-						}
-						if (strings[ii].charAt(jj) != s.charAt(k))
-							break;
+				if (strings[i].charAt(j) != first) continue;
+				int jj = j;
+				int ii = i;
+				int ll = l;
+				int k;
+				for (k = 1; k < sl; ++k) {
+					if (++jj == ll) {
+						if (++ii == lastUsed + 1) return -1;
+						jj = 0;
+						ll = strings[ii].length();
 					}
-					if (k == sl) return pos + j;
+					if (strings[ii].charAt(jj) != s.charAt(k))
+						break;
 				}
+				if (k == sl) return pos + j;
 			}
 			pos += l;
 		}
@@ -893,11 +889,9 @@ public class UnprotectedStringBuffer implements IString {
 		return new WCS();
 	}
 	
-	/** CharacterStream implementation. */
-	protected class CS extends ConcurrentCloseable<IOException> implements ICharacterStream.Readable.Buffered {
-		private int buffer = 0;
-		private int bufferIndex = 0;
-		private byte priority = Task.PRIORITY_NORMAL;
+	/** Base class for CharacterStream implementations. */
+	protected abstract class AbstractCS extends ConcurrentCloseable<IOException> implements ICharacterStream {
+		protected byte priority = Task.PRIORITY_NORMAL;
 		
 		@Override
 		protected IAsync<IOException> closeUnderlyingResources() {
@@ -907,6 +901,16 @@ public class UnprotectedStringBuffer implements IString {
 		@Override
 		protected void closeResources(Async<IOException> ondone) {
 			ondone.unblock();
+		}
+
+		@Override
+		public byte getPriority() {
+			return priority;
+		}
+		
+		@Override
+		public void setPriority(byte priority) {
+			this.priority = priority;
 		}
 		
 		@Override
@@ -918,6 +922,13 @@ public class UnprotectedStringBuffer implements IString {
 		public Charset getEncoding() {
 			return StandardCharsets.UTF_16;
 		}
+
+	}
+	
+	/** CharacterStream implementation. */
+	protected class CS extends AbstractCS implements ICharacterStream.Readable.Buffered {
+		private int buffer = 0;
+		private int bufferIndex = 0;
 		
 		@Override
 		public char read() throws EOFException {
@@ -988,16 +999,6 @@ public class UnprotectedStringBuffer implements IString {
 		}
 		
 		@Override
-		public byte getPriority() {
-			return priority;
-		}
-		
-		@Override
-		public void setPriority(byte priority) {
-			this.priority = priority;
-		}
-		
-		@Override
 		public void back(char c) {
 			if (strings == null) {
 				append(c);
@@ -1028,8 +1029,7 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	/** CharacterStream implementation. */
-	protected class WCS extends ConcurrentCloseable<IOException> implements ICharacterStream.Writable.Buffered {
-		private byte priority = Task.PRIORITY_NORMAL;
+	protected class WCS extends AbstractCS implements ICharacterStream.Writable.Buffered {
 
 		@Override
 		public void writeSync(char[] c, int offset, int length) {
@@ -1061,36 +1061,6 @@ public class UnprotectedStringBuffer implements IString {
 		@Override
 		public IAsync<IOException> flush() {
 			return new Async<>(true);
-		}
-
-		@Override
-		public byte getPriority() {
-			return priority;
-		}
-		
-		@Override
-		public void setPriority(byte priority) {
-			this.priority = priority;
-		}
-
-		@Override
-		protected IAsync<IOException> closeUnderlyingResources() {
-			return null;
-		}
-		
-		@Override
-		protected void closeResources(Async<IOException> ondone) {
-			ondone.unblock();
-		}
-		
-		@Override
-		public String getDescription() {
-			return "UnprotectedStringBuffer";
-		}
-		
-		@Override
-		public Charset getEncoding() {
-			return StandardCharsets.UTF_16;
 		}
 
 	}

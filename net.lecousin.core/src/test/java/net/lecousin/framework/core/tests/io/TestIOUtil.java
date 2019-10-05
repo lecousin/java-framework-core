@@ -1,8 +1,10 @@
 package net.lecousin.framework.core.tests.io;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -10,14 +12,17 @@ import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.FileIO;
+import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.IOFromOutputStream;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.TemporaryFiles;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
+import net.lecousin.framework.io.buffering.ByteBuffersIO;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
 import net.lecousin.framework.progress.FakeWorkProgress;
 
@@ -164,5 +169,24 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		for (int i = 0; i < b.length; ++i)
 			Assert.assertEquals((byte)(i % 167), b[i]);
 		f.delete();
+	}
+	
+	@Test(timeout=120000)
+	public void testReadFullyUnknownSize() throws Exception {
+		ByteArrayInputStream in = new ByteArrayInputStream(new byte[] {0, 1, 2, 3, 4, 5, 6, 7});
+		AsyncSupplier<byte[], IOException> result = new AsyncSupplier<>();
+		IOUtil.readFully(new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.PRIORITY_NORMAL), result);
+		byte[] res = result.blockResult(15000);
+		Assert.assertEquals(8, res.length);
+	}
+	
+	@Test(timeout=120000)
+	public void testReadFullyAsync() throws Exception {
+		ByteArrayInputStream in = new ByteArrayInputStream(new byte[] {0, 1, 2, 3, 4, 5, 6, 7});
+		IO.Readable io = new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.PRIORITY_NORMAL);
+		AsyncSupplier<ByteBuffersIO, IOException> result = IOUtil.readFullyAsync(io, 2);
+		ByteBuffersIO bbio = result.blockResult(30000);
+		Assert.assertEquals(8, bbio.getSizeSync());
+		bbio.close();
 	}
 }

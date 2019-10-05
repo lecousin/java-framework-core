@@ -11,6 +11,7 @@ import net.lecousin.core.loaders.maven.MavenPOM;
 import net.lecousin.core.loaders.maven.MavenPOMLoader;
 import net.lecousin.core.loaders.maven.MavenSettings;
 import net.lecousin.framework.application.libraries.LibraryManagementException;
+import net.lecousin.framework.application.libraries.artifacts.LibrariesRepository;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
@@ -165,6 +166,29 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 	}
 	
 	@Test(timeout=120000)
+	public void testPOMWithRepositories() throws Exception {
+		File outFile = new File("./test-repositories.pom.xml");
+		outFile.createNewFile();
+		outFile.deleteOnExit();
+		try {
+			new File("./target/test-out").mkdir();
+			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.PRIORITY_NORMAL);
+			IOUtil.copy(
+				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-repositories.pom.xml"))).provideIOReadable(Task.PRIORITY_NORMAL),
+				out,
+				-1, true, null, 0).blockThrow(15000);
+			
+			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-repositories.pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+			MavenPOM pom = load.blockResult(30000);
+			
+			List<LibrariesRepository> repos = pom.getDependenciesAdditionalRepositories();
+			Assert.assertEquals(2, repos.size());
+		} finally {
+			outFile.delete();
+		}
+	}
+	
+	@Test(timeout=120000)
 	public void testLoadFile() throws Exception {
 		Assert.assertNotNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, null));
 		Assert.assertNotNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));
@@ -183,6 +207,30 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 
 		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "test-jar"));
 		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "test-jar", Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "t", "test-jar"));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "test-jar", Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "ejb-client"));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "ejb-client", Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "t", "ejb-client"));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "ejb-client", Task.PRIORITY_NORMAL).blockResult(30000));
+
+		repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "java-source");
+		repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "java-source", Task.PRIORITY_NORMAL).blockResult(30000);
+
+		repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "t", "java-source");
+		repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "java-source", Task.PRIORITY_NORMAL).blockResult(30000);
+
+		repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "javadoc");
+		repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "javadoc", Task.PRIORITY_NORMAL).blockResult(30000);
+
+		repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "t", "javadoc");
+		repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "javadoc", Task.PRIORITY_NORMAL).blockResult(30000);
+
+		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "", "unknown"));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "", "unknown", Task.PRIORITY_NORMAL).blockResult(30000));
 	}
 	
 }

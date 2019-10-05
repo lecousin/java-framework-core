@@ -1,6 +1,7 @@
 package net.lecousin.framework.io.encoding;
 
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 
@@ -32,22 +33,8 @@ public class Base64Decoder {
 				if (nbPrev > 0) {
 					while (nbPrev < 4 && buffer.hasRemaining())
 						previous[nbPrev++] = buffer.get();
-					if (nbPrev < 4) {
-						result.unblock();
+					if (doDecodeWithPrevious(buffer, result))
 						return null;
-					}
-					byte[] out = new byte[3];
-					try { Base64.decode4BytesBase64(previous, out); }
-					catch (IOException e) {
-						result.error(e);
-						return null;
-					}
-					nbPrev = 0;
-					if (!buffer.hasRemaining()) {
-						write(out, result);
-						return null;
-					}
-					write(out, null);
 				}
 				byte[] out;
 				try { out = Base64.decode(buffer); }
@@ -73,22 +60,8 @@ public class Base64Decoder {
 				if (nbPrev > 0) {
 					while (nbPrev < 4 && buffer.hasRemaining())
 						previous[nbPrev++] = (byte)buffer.get();
-					if (nbPrev < 4) {
-						result.unblock();
+					if (doDecodeWithPrevious(buffer, result))
 						return null;
-					}
-					byte[] out = new byte[3];
-					try { Base64.decode4BytesBase64(previous, out); }
-					catch (IOException e) {
-						result.error(e);
-						return null;
-					}
-					nbPrev = 0;
-					if (!buffer.hasRemaining()) {
-						write(out, result);
-						return null;
-					}
-					write(out, null);
 				}
 				byte[] out;
 				try { out = Base64.decode(buffer); }
@@ -103,6 +76,26 @@ public class Base64Decoder {
 			}
 		}.start();
 		return result;
+	}
+	
+	private boolean doDecodeWithPrevious(Buffer buffer, Async<IOException> result) {
+		if (nbPrev < 4) {
+			result.unblock();
+			return true;
+		}
+		byte[] out = new byte[3];
+		try { Base64.decode4BytesBase64(previous, out); }
+		catch (IOException e) {
+			result.error(e);
+			return true;
+		}
+		nbPrev = 0;
+		if (!buffer.hasRemaining()) {
+			write(out, result);
+			return true;
+		}
+		write(out, null);
+		return false;
 	}
 	
 	/** Decode any pending bytes, then return a synchronization point that will be unblocked once

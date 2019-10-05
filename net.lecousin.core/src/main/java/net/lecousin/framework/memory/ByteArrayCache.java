@@ -88,7 +88,6 @@ public class ByteArrayCache implements IMemoryManageable {
 	private int totalSize = 0;
 	
 	private ByteArrayCache() {
-		// TODO background task in addition to the memory manager ?
 		MemoryManager.register(this);
 	}
 	
@@ -159,13 +158,13 @@ public class ByteArrayCache implements IMemoryManageable {
 		switch (level) {
 		default:
 		case EXPIRED_ONLY:
-			freeMemory(now - timeBeforeToRemove, 1);
+			freeMemory(now - timeBeforeToRemove, 2);
 			break;
 		case LOW:
-			freeMemory(now - timeBeforeToRemove / 2, 2);
+			freeMemory(now - timeBeforeToRemove / 2, 4);
 			break;
 		case MEDIUM:
-			freeMemory(now - timeBeforeToRemove / 3, 5);
+			freeMemory(now - timeBeforeToRemove / 3, 10);
 			break;
 		case URGENT:
 			synchronized (arraysBySize) {

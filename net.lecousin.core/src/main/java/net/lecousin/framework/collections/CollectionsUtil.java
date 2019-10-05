@@ -94,6 +94,14 @@ public final class CollectionsUtil {
 			col.add(it.next());
 	}
 	
+	/** Return true if the collection contains the instance. */
+	public static boolean containsInstance(Collection<?> col, Object instance) {
+		for (Object o : col)
+			if (o == instance)
+				return true;
+		return false;
+	}
+	
 	/** Convert a list of Input into a list of Output using the given mapper. */
 	public static <Input, Output> List<Output> map(List<Input> inputs, Function<Input, Output> mapper) {
 		ArrayList<Output> outputs = new ArrayList<>(inputs.size());

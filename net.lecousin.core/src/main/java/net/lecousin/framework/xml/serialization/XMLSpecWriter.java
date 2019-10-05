@@ -88,6 +88,30 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	private static Function<IOException, SerializationException> ioErrorConverter =
 		e -> new SerializationException("Error writing XSD", e);
 
+	private static final String TYPE = "type";
+	private static final String TYPE_BOOLEAN = "xsd:boolean";
+	private static final String TYPE_BYTE = "xsd:byte";
+	private static final String TYPE_INT = "xsd:int";
+	private static final String TYPE_INTEGER = "xsd:integer";
+	private static final String TYPE_LONG = "xsd:long";
+	private static final String TYPE_FLOAT = "xsd:float";
+	private static final String TYPE_DOUBLE = "xsd:double";
+	private static final String TYPE_DECIMAL = "xsd:decimal";
+	private static final String TYPE_STRING = "xsd:string";
+	
+	private static final String NILLABLE = "nillable";
+	private static final String TRUE = "true";
+	private static final String USE = "use";
+	private static final String OPTIONAL = "optional";
+	
+	private static final String MIN_OCCURS = "minOccurs";
+	private static final String MAX_OCCURS = "maxOccurs";
+	private static final String UNBOUNDED = "unbounded";
+	
+	private static final String COMPLEX_TYPE = "complexType";
+	private static final String SEQUENCE = "sequence";
+	private static final String ELEMENT = "element";
+	private static final String ATTRIBUTE = "attribute";
 	
 	@Override
 	protected IAsync<SerializationException> initializeSpecWriter(IO.Writable output) {
@@ -104,7 +128,7 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 		this.output.start(XMLUtil.XSD_NAMESPACE_URI, "schema", namespaces);
 		if (rootNamespaceURI != null)
 			this.output.addAttribute("targetNamespace", rootNamespaceURI);
-		this.output.openElement(XMLUtil.XSD_NAMESPACE_URI, "element", null);
+		this.output.openElement(XMLUtil.XSD_NAMESPACE_URI, ELEMENT, null);
 		return new Async<>(this.output.addAttribute("name", rootLocalName), ioErrorConverter);
 	}
 	
@@ -117,16 +141,16 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	
 	@Override
 	protected IAsync<SerializationException> specifyBooleanValue(SerializationContext context, boolean nullable) {
-		output.addAttribute("type", "xsd:boolean");
+		output.addAttribute(TYPE, TYPE_BOOLEAN);
 		if (nullable) {
 			if (context instanceof AttributeContext)
-				output.addAttribute("use", "optional");
+				output.addAttribute(USE, OPTIONAL);
 			else
-				output.addAttribute("nillable", "true");
+				output.addAttribute(NILLABLE, TRUE);
 		}
 		if (context instanceof CollectionContext) {
-			output.addAttribute("minOccurs", "0");
-			output.addAttribute("maxOccurs", "unbounded");
+			output.addAttribute(MIN_OCCURS, "0");
+			output.addAttribute(MAX_OCCURS, UNBOUNDED);
 		}
 		return new Async<>(output.closeElement(), ioErrorConverter);
 	}
@@ -137,37 +161,37 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	) {
 		if (byte.class.equals(type) ||
 			Byte.class.equals(type))
-			output.addAttribute("type", "xsd:byte");
+			output.addAttribute(TYPE, TYPE_BYTE);
 		else if (int.class.equals(type) ||
 			Integer.class.equals(type))
-			output.addAttribute("type", "xsd:int");
+			output.addAttribute(TYPE, TYPE_INT);
 		else if (long.class.equals(type) ||
 			Long.class.equals(type))
-			output.addAttribute("type", "xsd:long");
+			output.addAttribute(TYPE, TYPE_LONG);
 		else if (short.class.equals(type) ||
 			Short.class.equals(type) ||
 			BigInteger.class.equals(type)
 		)
-			output.addAttribute("type", "xsd:integer");
+			output.addAttribute(TYPE, TYPE_INTEGER);
 		else if (float.class.equals(type) ||
 				Float.class.equals(type))
-			output.addAttribute("type", "xsd:float");
+			output.addAttribute(TYPE, TYPE_FLOAT);
 		else if (double.class.equals(type) ||
 				Double.class.equals(type))
-			output.addAttribute("type", "xsd:double");
+			output.addAttribute(TYPE, TYPE_DOUBLE);
 		else
-			output.addAttribute("type", "xsd:decimal");
+			output.addAttribute(TYPE, TYPE_DECIMAL);
 		
 		if (nullable) {
 			if (context instanceof AttributeContext)
-				output.addAttribute("use", "optional");
+				output.addAttribute(USE, OPTIONAL);
 			else
-				output.addAttribute("nillable", "true");
+				output.addAttribute(NILLABLE, TRUE);
 		}
 
 		if (context instanceof CollectionContext) {
-			output.addAttribute("minOccurs", "0");
-			output.addAttribute("maxOccurs", "unbounded");
+			output.addAttribute(MIN_OCCURS, "0");
+			output.addAttribute(MAX_OCCURS, UNBOUNDED);
 		}
 		// TODO min, max ? defining a type ??
 		return new Async<>(output.closeElement(), ioErrorConverter);
@@ -175,14 +199,14 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	
 	@Override
 	protected IAsync<SerializationException> specifyStringValue(SerializationContext context, TypeDefinition type) {
-		output.addAttribute("type", "xsd:string");
+		output.addAttribute(TYPE, TYPE_STRING);
 		if (context instanceof AttributeContext)
-			output.addAttribute("use", "optional");
+			output.addAttribute(USE, OPTIONAL);
 		else
-			output.addAttribute("nillable", "true");
+			output.addAttribute(NILLABLE, TRUE);
 		if (context instanceof CollectionContext) {
-			output.addAttribute("minOccurs", "0");
-			output.addAttribute("maxOccurs", "unbounded");
+			output.addAttribute(MIN_OCCURS, "0");
+			output.addAttribute(MAX_OCCURS, UNBOUNDED);
 		}
 		// TODO restrictions ?
 		return new Async<>(output.closeElement(), ioErrorConverter);
@@ -192,17 +216,17 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	protected IAsync<SerializationException> specifyCharacterValue(SerializationContext context, boolean nullable) {
 		if (nullable) {
 			if (context instanceof AttributeContext)
-				output.addAttribute("use", "optional");
+				output.addAttribute(USE, OPTIONAL);
 			else
-				output.addAttribute("nillable", "true");
+				output.addAttribute(NILLABLE, TRUE);
 		}
 		if (context instanceof CollectionContext) {
-			output.addAttribute("minOccurs", "0");
-			output.addAttribute("maxOccurs", "unbounded");
+			output.addAttribute(MIN_OCCURS, "0");
+			output.addAttribute(MAX_OCCURS, UNBOUNDED);
 		}
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "simpleType", null);
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "restriction", null);
-		output.addAttribute("base", "xsd:string");
+		output.addAttribute("base", TYPE_STRING);
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "length", null);
 		output.addAttribute("value", "1");
 		output.closeElement(); // length
@@ -214,16 +238,16 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	@Override
 	protected IAsync<SerializationException> specifyEnumValue(SerializationContext context, TypeDefinition type) {
 		if (context instanceof AttributeContext)
-			output.addAttribute("use", "optional");
+			output.addAttribute(USE, OPTIONAL);
 		else
-			output.addAttribute("nillable", "true");
+			output.addAttribute(NILLABLE, TRUE);
 		if (context instanceof CollectionContext) {
-			output.addAttribute("minOccurs", "0");
-			output.addAttribute("maxOccurs", "unbounded");
+			output.addAttribute(MIN_OCCURS, "0");
+			output.addAttribute(MAX_OCCURS, UNBOUNDED);
 		}
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "simpleType", null);
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "restriction", null);
-		output.addAttribute("base", "xsd:string");
+		output.addAttribute("base", TYPE_STRING);
 		try {
 			Enum<?>[] values = (Enum<?>[])type.getBase().getMethod("values").invoke(null);
 			for (int i = 0; i < values.length; ++i) {
@@ -243,16 +267,16 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	protected IAsync<SerializationException> specifyCollectionValue(CollectionContext context, List<SerializationRule> rules) {
 		if (context.getParent() instanceof AttributeContext)
 			return specifyValue(context, context.getElementType(), rules);
-		output.addAttribute("nillable", "true");
+		output.addAttribute(NILLABLE, TRUE);
 		if (context.getParent() instanceof CollectionContext) {
-			output.addAttribute("minOccurs", "0");
-			output.addAttribute("maxOccurs", "unbounded");
+			output.addAttribute(MIN_OCCURS, "0");
+			output.addAttribute(MAX_OCCURS, UNBOUNDED);
 		}
 		output.endOfAttributes();
-		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "complexType", null);
-		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "sequence", null);
-		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "element", null);
-		output.addAttribute("name", "element");
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, COMPLEX_TYPE, null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, SEQUENCE, null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, ELEMENT, null);
+		output.addAttribute("name", ELEMENT);
 		IAsync<SerializationException> val = specifyValue(context, context.getElementType(), rules);
 		if (val.isDone()) {
 			if (val.hasError()) return val;
@@ -271,8 +295,8 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	
 	@Override
 	protected IAsync<SerializationException> specifyIOReadableValue(SerializationContext context, List<SerializationRule> rules) {
-		output.addAttribute("type", "xsd:base64Binary");
-		output.addAttribute("nillable", "true");
+		output.addAttribute(TYPE, "xsd:base64Binary");
+		output.addAttribute(NILLABLE, TRUE);
 		return new Async<>(output.closeElement(), ioErrorConverter);
 	}
 	
@@ -290,14 +314,14 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	@Override
 	protected IAsync<SerializationException> specifyAnyValue(SerializationContext context) {
 		if (context instanceof CollectionContext) {
-			output.addAttribute("minOccurs", "0");
-			output.addAttribute("maxOccurs", "unbounded");
+			output.addAttribute(MIN_OCCURS, "0");
+			output.addAttribute(MAX_OCCURS, UNBOUNDED);
 		}
 		output.endOfAttributes();
-		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "complexType", null);
-		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "sequence", null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, COMPLEX_TYPE, null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, SEQUENCE, null);
 		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "any", null);
-		output.addAttribute("minOccurs", "0");
+		output.addAttribute(MIN_OCCURS, "0");
 		output.closeElement();
 		output.closeElement();
 		output.closeElement();
@@ -307,12 +331,12 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	@Override
 	protected IAsync<SerializationException> specifyTypedValue(ObjectContext context, List<SerializationRule> rules) {
 		if (context.getParent() instanceof CollectionContext) {
-			output.addAttribute("minOccurs", "0");
-			output.addAttribute("maxOccurs", "unbounded");
+			output.addAttribute(MIN_OCCURS, "0");
+			output.addAttribute(MAX_OCCURS, UNBOUNDED);
 		}
-		output.addAttribute("nillable", "true");
+		output.addAttribute(NILLABLE, TRUE);
 		output.endOfAttributes();
-		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "complexType", null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, COMPLEX_TYPE, null);
 		TypeContext ctx = new TypeContext();
 		typesContext.addFirst(ctx);
 		IAsync<SerializationException> type = specifyTypeContent(context, rules);
@@ -334,24 +358,21 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 	}
 
 	protected static final boolean isAttribute(Class<?> c) {
-		if (c.isPrimitive()) return true;
-		if (Boolean.class.equals(c)) return true;
-		if (Number.class.isAssignableFrom(c)) return true;
-		if (CharSequence.class.isAssignableFrom(c)) return true;
-		if (Character.class.equals(c)) return true;
-		if (c.isEnum()) return true;
-		return false;
+		return
+			c.isPrimitive() ||
+			Boolean.class.equals(c) ||
+			Number.class.isAssignableFrom(c) ||
+			CharSequence.class.isAssignableFrom(c) ||
+			Character.class.equals(c) ||
+			c.isEnum();
 	}
 	
-	protected static final Comparator<Attribute> attributesComparator = new Comparator<Attribute>() {
-		@Override
-		public int compare(Attribute o1, Attribute o2) {
-			Class<?> c = o1.getType().getBase();
-			if (isAttribute(c)) return 1;
-			c = o2.getType().getBase();
-			if (isAttribute(c)) return -1;
-			return 0;
-		}
+	protected static final Comparator<Attribute> attributesComparator = (o1, o2) -> {
+		Class<?> c = o1.getType().getBase();
+		if (isAttribute(c)) return 1;
+		c = o2.getType().getBase();
+		if (isAttribute(c)) return -1;
+		return 0;
 	};
 	
 	@Override
@@ -370,15 +391,15 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 				output.closeElement();
 				ctx.sequenceStarted = false;
 			}
-			output.openElement(XMLUtil.XSD_NAMESPACE_URI, "attribute", null);
+			output.openElement(XMLUtil.XSD_NAMESPACE_URI, ATTRIBUTE, null);
 			output.addAttribute("name", a.getName());
 			return specifyValue(context, a.getType(), rules);
 		}
 		if (!ctx.sequenceStarted) {
-			output.openElement(XMLUtil.XSD_NAMESPACE_URI, "sequence", null);
+			output.openElement(XMLUtil.XSD_NAMESPACE_URI, SEQUENCE, null);
 			ctx.sequenceStarted = true;
 		}
-		output.openElement(XMLUtil.XSD_NAMESPACE_URI, "element", null);
+		output.openElement(XMLUtil.XSD_NAMESPACE_URI, ELEMENT, null);
 		output.addAttribute("name", a.getName());
 		return specifyValue(context, a.getType(), rules);
 	}

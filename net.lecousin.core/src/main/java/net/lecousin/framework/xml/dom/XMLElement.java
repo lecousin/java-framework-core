@@ -423,10 +423,9 @@ public class XMLElement extends XMLNode implements Element {
 	public String lookupPrefix(String namespaceURI) {
 		if (prefixToURI != null)
 			for (Map.Entry<String, String> e : prefixToURI.entrySet())
-				if (e.getValue().equals(namespaceURI)) {
-					if (e.getKey().length() > 0)
+				if (e.getValue().equals(namespaceURI) &&
+					e.getKey().length() > 0)
 						return e.getKey();
-				}
 		if (parent == null)
 			return null;
 		return parent.lookupPrefix(namespaceURI);
@@ -509,9 +508,8 @@ public class XMLElement extends XMLNode implements Element {
 		StringBuilder s = new StringBuilder();
 		for (XMLNode child : children) {
 			if (child instanceof XMLComment) continue;
-			if (child instanceof XMLText) {
-				if (((XMLText)child).isElementContentWhitespace()) continue;
-			}
+			if (child instanceof XMLText &&
+				((XMLText)child).isElementContentWhitespace()) continue;
 			s.append(child.getTextContent());
 		}
 		return s.toString();
@@ -539,7 +537,7 @@ public class XMLElement extends XMLNode implements Element {
 
 	
 	/** Create an Element from a XMLStreamEvents. */
-	public static XMLElement create(XMLDocument doc, XMLStreamEventsSync stream) throws XMLException, IOException, IllegalStateException {
+	public static XMLElement create(XMLDocument doc, XMLStreamEventsSync stream) throws XMLException, IOException {
 		if (!Event.Type.START_ELEMENT.equals(stream.event.type))
 			throw new IllegalStateException("Method XMLElement.create must be called with a stream being on a START_ELEMENT event");
 		XMLElement element = new XMLElement(doc, stream.event.context.getFirst());
@@ -551,7 +549,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 	
 	/** Create an Element from a XMLStreamEvents. */
-	public static AsyncSupplier<XMLElement, Exception> create(XMLDocument doc, XMLStreamEventsAsync stream) throws IllegalStateException {
+	public static AsyncSupplier<XMLElement, Exception> create(XMLDocument doc, XMLStreamEventsAsync stream) {
 		if (!Event.Type.START_ELEMENT.equals(stream.event.type))
 			throw new IllegalStateException("Method XMLElement.create must be called with a stream being on a START_ELEMENT event");
 		XMLElement element = new XMLElement(doc, stream.event.context.getFirst());
@@ -565,7 +563,7 @@ public class XMLElement extends XMLNode implements Element {
 			else result.unblockSuccess(element);
 			return result;
 		}
-		parse.onDone(() -> { result.unblockSuccess(element); }, result);
+		parse.onDone(() -> result.unblockSuccess(element), result);
 		return result;
 	}
 	

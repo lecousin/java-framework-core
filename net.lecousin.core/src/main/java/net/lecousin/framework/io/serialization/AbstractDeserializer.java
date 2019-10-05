@@ -445,14 +445,13 @@ public abstract class AbstractDeserializer implements Deserializer {
 					return;
 				}
 				Object element = p.getValue1();
-				if (element != null) {
-					if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
-						!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-						result.error(new SerializationException("Invalid collection element type "
-								+ element.getClass().getName()
-								+ ", expected is " + context.getElementType().getBase().getName()));
-							return;
-					}
+				if (element != null &&
+					Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
+					!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+					result.error(new SerializationException("Invalid collection element type "
+							+ element.getClass().getName()
+							+ ", expected is " + context.getElementType().getBase().getName()));
+						return;
 				}
 				((Collection)context.getCollection()).add(element);
 				elementIndex++;
@@ -471,14 +470,13 @@ public abstract class AbstractDeserializer implements Deserializer {
 				}
 				new DeserializationTask(() -> {
 					Object element = p.getValue1();
-					if (element != null) {
-						if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
-							!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-							result.error(new SerializationException("Invalid collection element type "
-									+ element.getClass().getName()
-									+ ", expected is " + context.getElementType().getBase().getName()));
-								return;
-						}
+					if (element != null &&
+						Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
+						!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+						result.error(new SerializationException("Invalid collection element type "
+								+ element.getClass().getName()
+								+ ", expected is " + context.getElementType().getBase().getName()));
+							return;
 					}
 					((Collection)context.getCollection()).add(element);
 					deserializeNextCollectionValueElement(context, currentIndex + 1, colPath, rules, result);
@@ -526,14 +524,15 @@ public abstract class AbstractDeserializer implements Deserializer {
 		}
 		CollectionContext ctx = new CollectionContext(context, col, colType, elementType);
 		AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
-		start.thenDoOrStart(r -> {
-			deserializeNextCollectionAttributeValueElement(ctx, 0, path, rules, result);
-		}, taskDescription, priority, result);
+		start.thenDoOrStart(r -> deserializeNextCollectionAttributeValueElement(ctx, 0, path, rules, result),
+			taskDescription, priority, result);
 		return result;
 	}
 	
 	/** Return true if the start has been found, false if null has been found, or an error. */
-	protected AsyncSupplier<Boolean, SerializationException> startCollectionAttributeValue(@SuppressWarnings("unused") AttributeContext context) {
+	protected AsyncSupplier<Boolean, SerializationException> startCollectionAttributeValue(
+		@SuppressWarnings({"unused","squid:S1172"}) AttributeContext context
+	) {
 		return startCollectionValue();
 	}
 
@@ -586,14 +585,13 @@ public abstract class AbstractDeserializer implements Deserializer {
 				}
 				new DeserializationTask(() -> {
 					Object element = p.getValue1();
-					if (element != null) {
-						if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
-							!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-							result.error(new SerializationException("Invalid collection element type "
-									+ element.getClass().getName()
-									+ ", expected is " + context.getElementType().getBase().getName()));
-								return;
-						}
+					if (element != null &&
+						Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
+						!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+						result.error(new SerializationException("Invalid collection element type "
+								+ element.getClass().getName()
+								+ ", expected is " + context.getElementType().getBase().getName()));
+							return;
 					}
 					((Collection)context.getCollection()).add(element);
 					deserializeNextCollectionAttributeValueElement(context, currentIndex + 1, colPath, rules, result);
@@ -729,9 +727,8 @@ public abstract class AbstractDeserializer implements Deserializer {
 	) {
 		AsyncSupplier<IO.Readable, SerializationException> io = deserializeIOReadableValue(context, rules);
 		AsyncSupplier<InputStream, SerializationException> result = new AsyncSupplier<>();
-		io.thenDoOrStart(ior -> {
-			result.unblockSuccess(ior != null ? IOAsInputStream.get(ior, false) : null);
-		}, taskDescription, priority, result);
+		io.thenDoOrStart(ior -> result.unblockSuccess(ior != null ? IOAsInputStream.get(ior, false) : null),
+			taskDescription, priority, result);
 		return result;
 	}
 	
@@ -740,9 +737,8 @@ public abstract class AbstractDeserializer implements Deserializer {
 	) {
 		AsyncSupplier<IO.Readable, SerializationException> io = deserializeIOReadableAttributeValue(context, rules);
 		AsyncSupplier<InputStream, SerializationException> result = new AsyncSupplier<>();
-		io.thenDoOrStart(ior -> {
-			result.unblockSuccess(ior != null ? IOAsInputStream.get(ior, false) : null);
-		}, taskDescription, priority, result);
+		io.thenDoOrStart(ior -> result.unblockSuccess(ior != null ? IOAsInputStream.get(ior, false) : null),
+			taskDescription, priority, result);
 		return result;
 	}
 	

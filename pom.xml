@@ -38,6 +38,8 @@
   		**/framework/io/FileIO.*,
   		**/framework/io/FragmentedSubIO.*,
   		**/framework/io/LinkedIO.*,
+  		**/framework/io/util/DataUtil.*,
+  		**/framework/math/FragmentedRange*.*,
   		**/framework/xml/XMLStreamReader.*
   	</sonar.cpd.exclusions>
   </properties>

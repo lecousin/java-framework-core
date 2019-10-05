@@ -3,6 +3,7 @@ package net.lecousin.framework.xml;
 import java.util.HashMap;
 import java.util.Map;
 
+import net.lecousin.framework.collections.CollectionsUtil;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
@@ -57,19 +58,11 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 	
 	/** Go to the next inner element. The result is false if the parent element has been closed. */
 	public AsyncSupplier<Boolean, Exception> nextInnerElement(ElementContext parent) {
-		if (event.context.isEmpty())
+		if (event.context.isEmpty() ||
+			(Type.START_ELEMENT.equals(event.type) && event.context.getFirst() == parent && event.isClosed) ||
+			(Type.END_ELEMENT.equals(event.type) && event.context.getFirst() == parent))
 			return new AsyncSupplier<>(Boolean.FALSE, null);
-		if (Type.START_ELEMENT.equals(event.type) && event.context.getFirst() == parent && event.isClosed)
-			return new AsyncSupplier<>(Boolean.FALSE, null);
-		if (Type.END_ELEMENT.equals(event.type) && event.context.getFirst() == parent)
-			return new AsyncSupplier<>(Boolean.FALSE, null);
-		boolean parentPresent = false;
-		for (ElementContext ctx : event.context)
-			if (ctx == parent) {
-				parentPresent = true;
-				break;
-			}
-		if (!parentPresent)
+		if (!CollectionsUtil.containsInstance(event.context, parent))
 			return new AsyncSupplier<>(null, new Exception("Invalid context: parent element "
 				+ parent.localName + " is not in the current context"));
 		IAsync<Exception> next = next();
@@ -155,26 +148,22 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				if (!check(next, result)) return;
 				if (Type.COMMENT.equals(event.type)) {
 					next = next();
-					continue;
-				}
-				if (Type.TEXT.equals(event.type)) {
+				} else if (Type.TEXT.equals(event.type)) {
 					innerText.append(event.text);
 					next = next();
-					continue;
-				}
-				if (Type.START_ELEMENT.equals(event.type)) {
+				} else if (Type.START_ELEMENT.equals(event.type)) {
 					if (event.isClosed) {
 						next = next();
-						continue;
+					} else {
+						closeElement().thenStart(new ParsingTask(() -> readInnerText(innerText, result)), result);
+						return;
 					}
-					closeElement().thenStart(new ParsingTask(() -> readInnerText(innerText, result)), result);
-					return;
-				}
-				if (Type.END_ELEMENT.equals(event.type)) {
+				} else if (Type.END_ELEMENT.equals(event.type)) {
 					result.unblockSuccess(innerText);
 					return;
+				} else {
+					next = next();
 				}
-				next = next();
 				continue;
 			}
 			break;
@@ -190,18 +179,14 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 			}
 			if (Type.COMMENT.equals(event.type)) {
 				new ParsingTask(() -> readInnerText(innerText, result)).start();
-				return;
-			}
-			if (Type.TEXT.equals(event.type)) {
+			} else if (Type.TEXT.equals(event.type)) {
 				innerText.append(event.text);
 				new ParsingTask(() -> readInnerText(innerText, result)).start();
-				return;
-			}
-			if (Type.END_ELEMENT.equals(event.type)) {
+			} else if (Type.END_ELEMENT.equals(event.type)) {
 				result.unblockSuccess(innerText);
-				return;
+			} else {
+				new ParsingTask(() -> readInnerText(innerText, result)).start();
 			}
-			new ParsingTask(() -> readInnerText(innerText, result)).start();
 		}, result);
 	}
 	

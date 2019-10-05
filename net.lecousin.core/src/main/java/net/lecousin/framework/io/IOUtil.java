@@ -101,23 +101,13 @@ public final class IOUtil {
 	/** Read fully into a byte[], and unblock the given result upon completion. */
 	public static <T extends IO.Readable & IO.KnownSize> void readFullyKnownSize(T io, AsyncSupplier<byte[], IOException> result) {
 		AsyncSupplier<Long, IOException> getSize = io.getSizeAsync();
-		Runnable launchRead = () -> {
-			if (getSize.hasError()) result.error(getSize.getError());
-			else if (getSize.isCancelled()) result.cancel(getSize.getCancelEvent());
-			else {
-				long size = getSize.getResult().longValue();
-				if (size > Integer.MAX_VALUE) {
-					result.error(new IOException("IO too large to be read into memory"));
-					return;
-				}
-				readFullyKnownSize(io, (int)size, result);
+		getSize.thenDoOrStart(size -> {
+			if (size.longValue() > Integer.MAX_VALUE) {
+				result.error(new IOException("IO too large to be read into memory"));
+				return;
 			}
-		};
-		if (getSize.isDone()) {
-			launchRead.run();
-			return;
-		}
-		getSize.thenStart(new Task.Cpu.FromRunnable("readFully", io.getPriority(), launchRead), true);
+			readFullyKnownSize(io, size.intValue(), result);
+		}, "readFully", io.getPriority(), result);
 	}
 
 	/** Read fully into a byte[], and unblock the given result upon completion. */

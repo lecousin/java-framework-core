@@ -242,9 +242,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 			consumer.accept(getResult());
 			return true;
 		}
-		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, () -> {
-			consumer.accept(getResult());
-		}), true);
+		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, () -> consumer.accept(getResult())), true);
 		return false;
 	}
 	
@@ -255,9 +253,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 				consumer.accept(getResult());
 			return true;
 		}
-		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, () -> {
-			consumer.accept(getResult());
-		}), onErrorOrCancel);
+		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, () -> consumer.accept(getResult())), onErrorOrCancel);
 		return false;
 	}
 	

@@ -34,6 +34,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		super.basicTests(io);
 		((IO.OutputToInput)io).canStartWriting();
 		((IO.OutputToInput)io).canStartReading();
+		((IO.OutputToInput)io).getAvailableDataSize();
 	}
 
 	@SuppressWarnings("resource")
