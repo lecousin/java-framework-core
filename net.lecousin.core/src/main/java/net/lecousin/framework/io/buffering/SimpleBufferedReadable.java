@@ -173,13 +173,14 @@ public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> imp
 	}
 	
 	@Override
-	public int readAsync() {
+	public int readAsync() throws IOException {
 		AtomicState s = state;
 		if (s.pos == s.len) {
 			if (s.buffer == null) return -1;
 			AsyncSupplier<Integer,IOException> currentRead = readTask;
 			if (currentRead != null && currentRead.isDone())
 				try { fill(); }
+				catch (IOException e) { throw e; }
 				catch (Exception t) { return -1; }
 			return -2;
 		}

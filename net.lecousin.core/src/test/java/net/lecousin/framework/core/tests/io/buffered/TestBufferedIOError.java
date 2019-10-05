@@ -10,17 +10,17 @@ public class TestBufferedIOError extends TestIOError {
 
 	@Override
 	protected Readable getReadable(IOError1 io) throws Exception {
-		return new BufferedIO(io, 512, 512, true);
+		return new BufferedIO(io, 2048, 512, 512, true);
 	}
 
 	@Override
 	protected Buffered getReadableBuffered(IOError1 io) throws Exception {
-		return new BufferedIO(io, 512, 512, true);
+		return new BufferedIO(io, 2048, 512, 512, true);
 	}
 
 	@Override
 	protected Seekable getReadableSeekable(IOError1 io) throws Exception {
-		return new BufferedIO(io, 512, 512, true);
+		return new BufferedIO(io, 2048, 512, 512, true);
 	}
 
 }

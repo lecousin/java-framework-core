@@ -1304,8 +1304,8 @@ public final class IOUtil {
 		
 		@Override
 		public void error(IOException error) {
-			if (onErrorOrCancel != null) onErrorOrCancel.error(error);
 			if (onDone != null) onDone.accept(new Pair<>(null, error));
+			if (onErrorOrCancel != null) onErrorOrCancel.error(error);
 		}
 		
 		@Override
