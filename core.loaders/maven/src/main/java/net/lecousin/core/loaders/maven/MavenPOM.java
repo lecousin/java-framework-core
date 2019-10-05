@@ -337,6 +337,40 @@ public class MavenPOM implements LibraryDescriptor {
 		list.addAll(dependencies);
 		return list;
 	}
+	
+	/** Return the file name for an artifact. */
+	public static String getFilename(String artifactId, String version, String classifier, String type) {
+		String cl = classifier == null || classifier.isEmpty() ? null : classifier;
+		String extension = "jar";
+		if (type != null) {
+			switch (type) {
+			case "test-jar":
+				if (cl == null) cl = "tests";
+				break;
+			case "maven-plugin":
+			case "ejb":
+				break; // extension .jar
+			case "ejb-client":
+				if (cl == null) cl = "client";
+				break;
+			case "java-source":
+				if (cl == null) cl = "sources";
+				break;
+			case "javadoc":
+				if (cl == null) cl = "javadoc";
+				break;
+			default:
+				extension = type;
+				break;
+			}
+		}
+		StringBuilder name = new StringBuilder(100);
+		name.append(artifactId).append('-').append(version);
+		if (cl != null)
+			name.append('-').append(cl);
+		name.append('.').append(extension);
+		return name.toString();
+	}
 
 	private class Reader extends Task.Cpu<Void, LibraryManagementException> {
 		private Reader(AsyncSupplier<XMLStreamReader, Exception> startXMLReader, byte priority,

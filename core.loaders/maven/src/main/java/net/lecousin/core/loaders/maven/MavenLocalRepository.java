@@ -70,26 +70,20 @@ public class MavenLocalRepository implements MavenRepository {
 			@Override
 			public Void run() {
 				File d = new File(dir, groupId.replace('.', '/'));
-				if (!d.exists()) {
-					result.unblockSuccess(null);
-					return null;
+				if (d.exists()) {
+					d = new File(d, artifactId);
+					if (d.exists()) {
+						d = new File(d, version);
+						if (d.exists()) {
+							File pom = new File(d, artifactId + '-' + version + ".pom");
+							if (pom.exists()) {
+								pomLoader.loadPOM(pom.toURI(), true, priority).forward(result);
+								return null;
+							}
+						}
+					}
 				}
-				d = new File(d, artifactId);
-				if (!d.exists()) {
-					result.unblockSuccess(null);
-					return null;
-				}
-				d = new File(d, version);
-				if (!d.exists()) {
-					result.unblockSuccess(null);
-					return null;
-				}
-				File pom = new File(d, artifactId + '-' + version + ".pom");
-				if (!pom.exists()) {
-					result.unblockSuccess(null);
-					return null;
-				}
-				pomLoader.loadPOM(pom.toURI(), true, priority).forward(result);
+				result.unblockSuccess(null);
 				return null;
 			}
 		};
@@ -105,15 +99,7 @@ public class MavenLocalRepository implements MavenRepository {
 		if (!d.exists()) return null;
 		d = new File(d, version);
 		if (!d.exists()) return null;
-		StringBuilder name = new StringBuilder(100);
-		name.append(artifactId).append('-').append(version);
-		if (classifier != null && !classifier.isEmpty())
-			name.append('-').append(classifier);
-		if (type != null)
-			name.append('.').append(type);
-		else
-			name.append(".jar");
-		File file = new File(d, name.toString());
+		File file = new File(d, MavenPOM.getFilename(artifactId, version, classifier, type));
 		if (!file.exists()) return null;
 		return file;
 	}

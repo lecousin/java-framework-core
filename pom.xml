@@ -56,42 +56,5 @@
     	<name>Guillaume Le Cousin</name>
     </developer>
   </developers>
-  
-  <build>
-  	<plugins>
-  		<plugin>
-			<groupId>org.jacoco</groupId>
-			<artifactId>jacoco-maven-plugin</artifactId>
-			<configuration>
-				<excludes>
-					<exclude>**/application/launcher/*</exclude>
-					<exclude>**/application/libraries/classloader/*</exclude>
-					<exclude>**/ApplicationBootstrap*.*</exclude>
-					<exclude>**/SplashScreen*.*</exclude>
-					<exclude>**/ThreadingDebugHelper*.*</exclude>
-					<exclude>**/TaskMonitoring*.*</exclude>
-					<exclude>**/DebugUtil*.*</exclude>
-					<exclude>**/SystemEnvironment.*</exclude>
-					<exclude>**/maven/Launcher*</exclude>
-				</excludes>
-			</configuration>
-			<executions>
-				<execution>
-					<id>prepare-agent</id>
-					<goals>
-						<goal>prepare-agent</goal>
-					</goals>
-				</execution>
-				<execution>
-					<id>report-aggregate</id>
-					<phase>verify</phase>
-					<goals>
-						<goal>report-aggregate</goal>
-					</goals>
-				</execution>
-			</executions>
-  		</plugin>
-  	</plugins>
-  </build>
 
 </project>

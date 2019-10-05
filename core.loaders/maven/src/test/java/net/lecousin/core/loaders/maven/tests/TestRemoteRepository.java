@@ -126,6 +126,21 @@ public class TestRemoteRepository extends LCCoreAbstractTest {
 		pom.getDirectory();
 		
 		repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2", false, true);
+		
+		repo = new MavenRemoteRepository("http://www.google.com/", true, false);
+		try {
+			pom = repo.load("junit", "junit", junit.runner.Version.id(), pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
+			if (pom != null)
+				throw new AssertionError("should fail");
+		} catch (Exception e) {
+			// ok
+		}
+		try {
+			if (repo.getAvailableVersions("junit", "junit", Task.PRIORITY_NORMAL).blockResult(0) != null)
+				throw new AssertionError("should fail");
+		} catch (Exception e) {
+			// ok
+		}
 	}
 	
 }

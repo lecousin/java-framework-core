@@ -28,6 +28,7 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.memory.IMemoryManageable;
 import net.lecousin.framework.memory.MemoryManager;
+import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.StringUtil;
@@ -413,11 +414,8 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		
 		private Buffer[] buffers;
 		
-		@Override
-		public Buffer needBufferSync(long index, boolean newAtTheEnd) {
-			int i = (int)index;
+		private Buffer initNeedBuffer(int i, boolean newAtTheEnd, MutableBoolean isNew) {
 			Buffer b;
-			boolean isNew;
 			synchronized (this) {
 				if (newAtTheEnd && i == buffers.length) {
 					Buffer[] newArray = new Buffer[i + 1];
@@ -427,24 +425,32 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 				if ((b = buffers[i]) == null) {
 					b = new Buffer();
 					b.owner = BufferedIO.this;
-					b.index = index;
-					b.data = new byte[index == 0 ? firstBufferSize : bufferSize];
+					b.index = i;
+					b.data = new byte[i == 0 ? firstBufferSize : bufferSize];
 					buffers[i] = b;
-					isNew = true;
+					isNew.set(true);
 					b.usage.startRead();
 				} else {
-					isNew = false;
 					b.lastRead = System.currentTimeMillis();
 				}
 			}
-			if (isNew) {
+			if (isNew.get()) {
 				memory.newBuffer(b);
 				if (newAtTheEnd)
 					b.loaded.unblock();
 				else
 					load(b);
-				return b;
 			}
+			return b;
+		}
+		
+		@Override
+		public Buffer needBufferSync(long index, boolean newAtTheEnd) {
+			int i = (int)index;
+			MutableBoolean isNew = new MutableBoolean(false);
+			Buffer b = initNeedBuffer(i, newAtTheEnd, isNew);
+			if (isNew.get())
+				return b;
 			b.usage.startRead();
 			// in case it was been removed while not in the synchronized section, we need to check it is still the correct buffer
 			synchronized (this) {
@@ -458,35 +464,10 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		@Override
 		public AsyncSupplier<Buffer, NoException> needBufferAsync(long index, boolean newAtTheEnd) {
 			int i = (int)index;
-			Buffer b;
-			boolean isNew;
-			synchronized (this) {
-				if (newAtTheEnd && i == buffers.length) {
-					Buffer[] newArray = new Buffer[i + 1];
-					System.arraycopy(buffers, 0, newArray, 0, buffers.length);
-					buffers = newArray;
-				}
-				if ((b = buffers[i]) == null) {
-					b = new Buffer();
-					b.owner = BufferedIO.this;
-					b.index = index;
-					b.data = new byte[index == 0 ? firstBufferSize : bufferSize];
-					buffers[i] = b;
-					isNew = true;
-					b.usage.startRead();
-				} else {
-					isNew = false;
-					b.lastRead = System.currentTimeMillis();
-				}
-			}
-			if (isNew) {
-				memory.newBuffer(b);
-				if (newAtTheEnd)
-					b.loaded.unblock();
-				else
-					load(b);
+			MutableBoolean isNew = new MutableBoolean(false);
+			Buffer b = initNeedBuffer(i, newAtTheEnd, isNew);
+			if (isNew.get())
 				return new AsyncSupplier<>(b, null);
-			}
 			Async<NoException> sp = b.usage.startReadAsync();
 			if (sp == null || sp.isDone()) {
 				synchronized (this) {
@@ -497,15 +478,14 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 				return needBufferAsync(index, newAtTheEnd);
 			}
 			AsyncSupplier<Buffer, NoException> result = new AsyncSupplier<>();
-			Buffer bb = b;
 			sp.onDone(() -> {
 				synchronized (this) {
-					if (buffers[i] == bb) {
-						result.unblockSuccess(bb);
+					if (buffers[i] == b) {
+						result.unblockSuccess(b);
 						return;
 					}
 				}
-				bb.usage.endRead();
+				b.usage.endRead();
 				needBufferAsync(index, newAtTheEnd).forward(result);
 			});
 			return result;
@@ -592,10 +572,8 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	private class MapBufferTable implements BufferTable {
 		private LongMap<Buffer> map = new LongMapRBT<>(2500);
 
-		@Override
-		public Buffer needBufferSync(long index, boolean newAtTheEnd) {
+		private Buffer initNeedBuffer(long index, boolean newAtTheEnd, MutableBoolean isNew) {
 			Buffer b;
-			boolean isNew;
 			synchronized (this) {
 				if ((b = map.get(index)) == null) {
 					b = new Buffer();
@@ -603,21 +581,28 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 					b.index = index;
 					b.data = new byte[index == 0 ? firstBufferSize : bufferSize];
 					map.put(index, b);
-					isNew = true;
+					isNew.set(true);
 					b.usage.startRead();
 				} else {
-					isNew = false;
 					b.lastRead = System.currentTimeMillis();
 				}
 			}
-			if (isNew) {
+			if (isNew.get()) {
 				memory.newBuffer(b);
 				if (newAtTheEnd)
 					b.loaded.unblock();
 				else
 					load(b);
-				return b;
 			}
+			return b;
+		}
+		
+		@Override
+		public Buffer needBufferSync(long index, boolean newAtTheEnd) {
+			MutableBoolean isNew = new MutableBoolean(false);
+			Buffer b = initNeedBuffer(index, newAtTheEnd, isNew);
+			if (isNew.get())
+				return b;
 			b.usage.startRead();
 			// in case it was been removed while not in the synchronized section, we need to check it is still the correct buffer
 			synchronized (this) {
@@ -630,30 +615,10 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		
 		@Override
 		public AsyncSupplier<Buffer, NoException> needBufferAsync(long index, boolean newAtTheEnd) {
-			Buffer b;
-			boolean isNew;
-			synchronized (this) {
-				if ((b = map.get(index)) == null) {
-					b = new Buffer();
-					b.owner = BufferedIO.this;
-					b.index = index;
-					b.data = new byte[index == 0 ? firstBufferSize : bufferSize];
-					map.put(index, b);
-					isNew = true;
-					b.usage.startRead();
-				} else {
-					isNew = false;
-					b.lastRead = System.currentTimeMillis();
-				}
-			}
-			if (isNew) {
-				memory.newBuffer(b);
-				if (newAtTheEnd)
-					b.loaded.unblock();
-				else
-					load(b);
+			MutableBoolean isNew = new MutableBoolean(false);
+			Buffer b = initNeedBuffer(index, newAtTheEnd, isNew);
+			if (isNew.get())
 				return new AsyncSupplier<>(b, null);
-			}
 			Async<NoException> sp = b.usage.startReadAsync();
 			if (sp == null || sp.isDone()) {
 				synchronized (this) {
@@ -664,15 +629,14 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 				return needBufferAsync(index, newAtTheEnd);
 			}
 			AsyncSupplier<Buffer, NoException> result = new AsyncSupplier<>();
-			Buffer bb = b;
 			sp.onDone(() -> {
 				synchronized (this) {
-					if (map.get(index) == bb) {
-						result.unblockSuccess(bb);
+					if (map.get(index) == b) {
+						result.unblockSuccess(b);
 						return;
 					}
 				}
-				bb.usage.endRead();
+				b.usage.endRead();
 				needBufferAsync(index, newAtTheEnd).forward(result);
 			});
 			return result;

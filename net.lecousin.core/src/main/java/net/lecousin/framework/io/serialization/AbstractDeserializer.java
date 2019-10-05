@@ -79,10 +79,12 @@ public abstract class AbstractDeserializer implements Deserializer {
 		return AttributeAnnotationToRuleOnAttribute.addRules(a, true, currentList);
 	}
 	
+	protected final String taskDescription = "Deserialization using " + AbstractDeserializer.this.getClass().getName();
+	
 	/** Shortcut to easily create a Task. */
 	protected class DeserializationTask extends Task.Cpu<Void, NoException> {
 		public DeserializationTask(Runnable run) {
-			super("Deserialization using " + AbstractDeserializer.this.getClass().getName(), priority);
+			super(taskDescription, priority);
 			this.run = run;
 		}
 		
@@ -113,25 +115,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 		
 		AsyncSupplier<?, SerializationException> value = deserializeValueType(context, newType, path, rules);
 		AsyncSupplier<T, SerializationException> result = new AsyncSupplier<>();
-		if (value.isDone()) {
-			if (value.hasError()) result.error(value.getError());
-			else {
-				Object o = value.getResult();
-				ListIterator<TypeDefinition> itType = rulesTypes.listIterator(rules.size());
-				ListIterator<SerializationRule> itRule = rules.listIterator(rules.size());
-				while (itRule.hasPrevious())
-					try { o = itRule.previous().getDeserializationValue(o, itType.previous(), context); }
-					catch (SerializationException e) {
-						result.error(e);
-						return result;
-					}
-				result.unblockSuccess((T)o);
-			}
-			return result;
-		}
 		List<SerializationRule> rul = rules;
-		value.thenStart(new DeserializationTask(() -> {
-			Object o = value.getResult();
+		value.thenDoOrStart(val -> {
+			Object o = val;
 			ListIterator<TypeDefinition> itType = rulesTypes.listIterator(rul.size());
 			ListIterator<SerializationRule> itRule = rul.listIterator(rul.size());
 			while (itRule.hasPrevious())
@@ -141,7 +127,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 					return;
 				}
 			result.unblockSuccess((T)o);
-		}), result);
+		}, taskDescription, priority, result);
 		return result;
 	}
 
@@ -428,18 +414,8 @@ public abstract class AbstractDeserializer implements Deserializer {
 			elementType = type.getParameters().get(0);
 		}
 		CollectionContext ctx = new CollectionContext(context, col, type, elementType);
-		if (start.isDone()) {
-			if (start.hasError()) return new AsyncSupplier<>(null, start.getError());
-			deserializeNextCollectionValueElement(ctx, 0, path, rules, result);
-		} else {
-			start.thenStart(new DeserializationTask(() -> {
-				try {
-					deserializeNextCollectionValueElement(ctx, 0, path, rules, result);
-				} catch (Exception e) {
-					result.error(new SerializationException("Error deserializing collection", e));
-				}
-			}), result);
-		}
+		start.thenDoOrStart(res -> deserializeNextCollectionValueElement(ctx, 0, path, rules, result),
+			taskDescription, priority, result);
 		return result;
 	}
 	
@@ -550,18 +526,9 @@ public abstract class AbstractDeserializer implements Deserializer {
 		}
 		CollectionContext ctx = new CollectionContext(context, col, colType, elementType);
 		AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
-		if (start.isDone()) {
-			if (start.hasError()) return new AsyncSupplier<>(null, start.getError());
+		start.thenDoOrStart(r -> {
 			deserializeNextCollectionAttributeValueElement(ctx, 0, path, rules, result);
-		} else {
-			start.thenStart(new DeserializationTask(() -> {
-				try {
-					deserializeNextCollectionAttributeValueElement(ctx, 0, path, rules, result);
-				} catch (Exception e) {
-					result.error(new SerializationException("Error deserializing collection", e));
-				}
-			}), result);
-		}
+		}, taskDescription, priority, result);
 		return result;
 	}
 	
@@ -708,23 +675,13 @@ public abstract class AbstractDeserializer implements Deserializer {
 		type = new TypeDefinition(ArrayList.class, type);
 		AsyncSupplier<Object, SerializationException> value = deserializeValueType(context, type, path, rules);
 		AsyncSupplier<Map<?,?>, SerializationException> result = new AsyncSupplier<>();
-		if (value.isDone()) {
-			if (value.hasError()) result.error(value.getError());
-			else
-				try {
-					result.unblockSuccess(getMap((ArrayList<MapEntry>)value.getResult(), typeDef, context, rules));
-				} catch (SerializationException e) {
-					result.error(e);
-				}
-			return result;
-		}
-		value.thenStart(new DeserializationTask(() -> {
+		value.thenDoOrStart(val -> {
 			try {
-				result.unblockSuccess(getMap((ArrayList<MapEntry>)value.getResult(), typeDef, context, rules));
+				result.unblockSuccess(getMap((ArrayList<MapEntry>)val, typeDef, context, rules));
 			} catch (SerializationException e) {
 				result.error(e);
 			}
-		}), result);
+		}, taskDescription, priority, result);
 		return result;
 	}
 	
@@ -739,25 +696,13 @@ public abstract class AbstractDeserializer implements Deserializer {
 		AttributeContext ctx = new AttributeContext(context.getParent(), fakeAttribute);
 		AsyncSupplier<Object, SerializationException> value = deserializeCollectionAttributeValue(ctx, path, rules);
 		AsyncSupplier<Map<?,?>, SerializationException> result = new AsyncSupplier<>();
-		if (value.isDone()) {
-			if (value.hasError()) result.error(value.getError());
-			else 
-				try {
-					result.unblockSuccess(
-						getMap((ArrayList<MapEntry>)value.getResult(), context.getAttribute().getType(), context, rules));
-				} catch (SerializationException e) {
-					result.error(e);
-				}
-			return result;
-		}
-		value.thenStart(new DeserializationTask(() -> {
+		value.thenDoOrStart(val -> {
 			try {
-				result.unblockSuccess(
-					getMap((ArrayList<MapEntry>)value.getResult(), context.getAttribute().getType(), context, rules));
+				result.unblockSuccess(getMap((ArrayList<MapEntry>)val, context.getAttribute().getType(), context, rules));
 			} catch (SerializationException e) {
 				result.error(e);
 			}
-		}), result);
+		}, taskDescription, priority, result);
 		return result;
 	}
 	
@@ -783,21 +728,10 @@ public abstract class AbstractDeserializer implements Deserializer {
 		SerializationContext context, List<SerializationRule> rules
 	) {
 		AsyncSupplier<IO.Readable, SerializationException> io = deserializeIOReadableValue(context, rules);
-		if (io.isDone()) {
-			if (io.hasError()) return new AsyncSupplier<>(null, io.getError());
-			if (io.getResult() == null) return new AsyncSupplier<>(null, null);
-			return new AsyncSupplier<>(IOAsInputStream.get(io.getResult(), false), null);
-		}
 		AsyncSupplier<InputStream, SerializationException> result = new AsyncSupplier<>();
-		io.onDone(
-			inputStream -> {
-				if (inputStream == null)
-					result.unblockSuccess(null);
-				else
-					result.unblockSuccess(IOAsInputStream.get(inputStream, false));
-			},
-			result
-		);
+		io.thenDoOrStart(ior -> {
+			result.unblockSuccess(ior != null ? IOAsInputStream.get(ior, false) : null);
+		}, taskDescription, priority, result);
 		return result;
 	}
 	
@@ -805,21 +739,10 @@ public abstract class AbstractDeserializer implements Deserializer {
 		AttributeContext context, List<SerializationRule> rules
 	) {
 		AsyncSupplier<IO.Readable, SerializationException> io = deserializeIOReadableAttributeValue(context, rules);
-		if (io.isDone()) {
-			if (io.hasError()) return new AsyncSupplier<>(null, io.getError());
-			if (io.getResult() == null) return new AsyncSupplier<>(null, null);
-			return new AsyncSupplier<>(IOAsInputStream.get(io.getResult(), false), null);
-		}
 		AsyncSupplier<InputStream, SerializationException> result = new AsyncSupplier<>();
-		io.onDone(
-			inputStream -> {
-				if (inputStream == null)
-					result.unblockSuccess(null);
-				else
-					result.unblockSuccess(IOAsInputStream.get(inputStream, false));
-			},
-			result
-		);
+		io.thenDoOrStart(ior -> {
+			result.unblockSuccess(ior != null ? IOAsInputStream.get(ior, false) : null);
+		}, taskDescription, priority, result);
 		return result;
 	}
 	
@@ -847,21 +770,12 @@ public abstract class AbstractDeserializer implements Deserializer {
 		AsyncSupplier<byte[], IOException> res = new AsyncSupplier<>();
 		AsyncSupplier<byte[], SerializationException> result = new AsyncSupplier<>();
 		res.forward(result, ioe -> new SerializationException("Error deserializing byte array", ioe));
-		if (io.isDone()) {
-			if (io.hasError()) return new AsyncSupplier<>(null, io.getError());
-			if (io.getResult() == null) return new AsyncSupplier<>(null, null);
-			IOUtil.readFully(io.getResult(), res);
-			return result;
-		}
-		io.onDone(
-			r -> {
-				if (r == null)
-					result.unblockSuccess(null);
-				else
-					IOUtil.readFully(r, res);
-			},
-			result
-		);
+		io.thenDoOrStart(ior -> {
+			if (ior == null)
+				result.unblockSuccess(null);
+			else
+				IOUtil.readFully(ior, res);
+		}, taskDescription, priority, result);
 		return result;
 	}
 	
@@ -872,21 +786,12 @@ public abstract class AbstractDeserializer implements Deserializer {
 		AsyncSupplier<byte[], IOException> res = new AsyncSupplier<>();
 		AsyncSupplier<byte[], SerializationException> result = new AsyncSupplier<>();
 		res.forward(result, ioe -> new SerializationException("Error deserializing byte array", ioe));
-		if (io.isDone()) {
-			if (io.hasError()) return new AsyncSupplier<>(null, io.getError());
-			if (io.getResult() == null) return new AsyncSupplier<>(null, null);
-			IOUtil.readFully(io.getResult(), res);
-			return result;
-		}
-		io.onDone(
-			r -> {
-				if (r == null)
-					result.unblockSuccess(null);
-				else
-					IOUtil.readFully(r, res);
-			},
-			result
-		);
+		io.thenDoOrStart(ior -> {
+			if (ior == null)
+				result.unblockSuccess(null);
+			else
+				IOUtil.readFully(ior, res);
+		}, taskDescription, priority, result);
 		return result;
 	}
 	
@@ -897,23 +802,13 @@ public abstract class AbstractDeserializer implements Deserializer {
 		SerializationContext context, TypeDefinition type, String path, List<SerializationRule> rules
 	) {
 		AsyncSupplier<Object, SerializationException> start = startObjectValue(context, type, rules);
-		if (start.isDone()) {
-			if (start.hasError()) return (AsyncSupplier<T, SerializationException>)start;
-			Object instance = start.getResult();
-			if (instance == null) return (AsyncSupplier<T, SerializationException>)start;
-			AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
-			deserializeObjectAttributes(context, instance, type, path, rules, result);
-			return (AsyncSupplier<T, SerializationException>)result;
-		}
 		AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
-		start.onDone(
-			instance -> {
-				if (instance == null) result.unblockSuccess(null);
-				else new DeserializationTask(() ->
-					deserializeObjectAttributes(context, instance, type, path, rules, result)
-				).start();
-			}, result
-		);
+		start.thenDoOrStart(instance -> {
+			if (instance == null)
+				result.unblockSuccess(null);
+			else
+				deserializeObjectAttributes(context, instance, type, path, rules, result);
+		}, taskDescription, priority, result);
 		return (AsyncSupplier<T, SerializationException>)result;
 	}
 
@@ -1029,29 +924,16 @@ public abstract class AbstractDeserializer implements Deserializer {
 	) {
 		AttributeContext ctx = new AttributeContext(context, a);
 		AsyncSupplier<?, SerializationException> value = deserializeObjectAttributeValue(ctx, path, rules);
-		if (value.isDone()) {
-			if (value.hasError())
-				return value;
-			Object val = value.getResult();
+		Async<SerializationException> sp = new Async<>();
+		value.thenDoOrStart(val -> {
 			if (!a.ignore())
 				try { a.setValue(context.getInstance(), val); }
 				catch (SerializationException e) {
-					return new Async<>(e);
+					sp.error(e);
+					return;
 				}
-			return value;
-		}
-		Async<SerializationException> sp = new Async<>();
-		value.onDone(
-			val -> new DeserializationTask(() -> {
-				if (!a.ignore())
-					try { a.setValue(context.getInstance(), val); }
-					catch (SerializationException e) {
-						sp.error(e);
-						return;
-					}
-				sp.unblock();
-			}).start(), sp
-		);
+			sp.unblock();
+		}, taskDescription, priority, sp);
 		return sp;
 	}
 

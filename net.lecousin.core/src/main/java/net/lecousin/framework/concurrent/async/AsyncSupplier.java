@@ -236,6 +236,31 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 		return task.getOutput();
 	}
 	
+	/** Call consumer immediately (in current thread) if done, or start a CPU task on done. */
+	public boolean thenDoOrStart(Consumer<T> consumer, String taskDescription, byte taskPriority) {
+		if (isDone()) {
+			consumer.accept(getResult());
+			return true;
+		}
+		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, () -> {
+			consumer.accept(getResult());
+		}), true);
+		return false;
+	}
+	
+	/** Call consumer immediately (in current thread) if done, or start a CPU task on done. */
+	public boolean thenDoOrStart(Consumer<T> consumer, String taskDescription, byte taskPriority, IAsync<TError> onErrorOrCancel) {
+		if (isDone()) {
+			if (!forwardIfNotSuccessful(onErrorOrCancel))
+				consumer.accept(getResult());
+			return true;
+		}
+		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, () -> {
+			consumer.accept(getResult());
+		}), onErrorOrCancel);
+		return false;
+	}
+	
 	/** Unblock this AsyncSupplier with the given result. */
 	public final void unblockSuccess(T result) {
 		ArrayList<Listener<T,TError>> listeners;

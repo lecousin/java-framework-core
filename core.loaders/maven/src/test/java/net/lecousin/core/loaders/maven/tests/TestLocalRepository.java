@@ -59,6 +59,8 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		Assert.assertFalse(repo.isSame(repoDir.toURI().toURL().toString(), true, false));
 		Assert.assertFalse(repo.isSame(repoDir.toURI().toURL().toString(), false, true));
 		Assert.assertFalse(repo.isSame("file://hello/world", true, true));
+		Assert.assertFalse(repo.isSame("http://hello/world", true, true));
+		Assert.assertFalse(repo.isSame(repoDir.getParentFile().toURI().toURL().toString(), true, true));
 	}
 	
 	@Test(timeout=120000)
@@ -160,6 +162,27 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		} finally {
 			outFile.delete();
 		}
+	}
+	
+	@Test(timeout=120000)
+	public void testLoadFile() throws Exception {
+		Assert.assertNotNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, null));
+		Assert.assertNotNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junitXX", "junit", junit.runner.Version.id(), null, null));
+		Assert.assertNull(repo.loadFile("junitXX", "junit", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junit", "junitXX", junit.runner.Version.id(), null, null));
+		Assert.assertNull(repo.loadFile("junit", "junitXX", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junit", "junit", "XX", null, null));
+		Assert.assertNull(repo.loadFile("junit", "junit", "XX", null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "XX", null));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "XX", null, Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "test-jar"));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "test-jar", Task.PRIORITY_NORMAL).blockResult(30000));
 	}
 	
 }
