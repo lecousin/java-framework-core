@@ -470,7 +470,7 @@ public final class IOUtil {
 				else break;
 			} while (true);
 			next.listen(that);
-		}, result, null));
+		}, result, ondone));
 		return result;
 	}
 	
@@ -1283,28 +1283,30 @@ public final class IOUtil {
 		}
 
 		/** Constructor. */
-		public RecursiveAsyncSupplierListener(
+		public <T2> RecursiveAsyncSupplierListener(
 			OnSuccess<T> onSuccess,
 			IAsync<IOException> onErrorOrCancel,
-			Consumer<Pair<T, IOException>> onDone
+			Consumer<Pair<T2, IOException>> ondone
 		) {
 			this.onSuccess = onSuccess;
 			this.onErrorOrCancel = onErrorOrCancel;
-			this.onDone = onDone;
+			this.ondone = ondone;
 		}
 		
 		private OnSuccess<T> onSuccess;
 		private IAsync<IOException> onErrorOrCancel;
-		private Consumer<Pair<T, IOException>> onDone;
+		@SuppressWarnings("rawtypes")
+		private Consumer ondone;
 		
 		@Override
 		public void ready(T result) {
 			onSuccess.accept(result, this);
 		}
 		
+		@SuppressWarnings("unchecked")
 		@Override
 		public void error(IOException error) {
-			if (onDone != null) onDone.accept(new Pair<>(null, error));
+			if (ondone != null) ondone.accept(new Pair<>(null, error));
 			if (onErrorOrCancel != null) onErrorOrCancel.error(error);
 		}
 		

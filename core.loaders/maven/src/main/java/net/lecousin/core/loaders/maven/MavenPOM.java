@@ -1073,4 +1073,9 @@ public class MavenPOM implements LibraryDescriptor {
 		return new VersionSpecification.RangeWithRecommended(new VersionRange(v, null, false), v);
 	}
 	
+	@Override
+	public String toString() {
+		return getGroupId() + ':' + getArtifactId() + ':' + getVersionString();
+	}
+	
 }

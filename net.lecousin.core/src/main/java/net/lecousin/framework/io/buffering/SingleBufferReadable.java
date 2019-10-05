@@ -135,9 +135,10 @@ public class SingleBufferReadable extends ConcurrentCloseable<IOException> imple
 	}
 	
 	@Override
-	public int readAsync() {
+	public int readAsync() throws IOException {
 		AtomicState s = state;
 		if (s.pos == s.len) {
+			if (reading.hasError()) throw reading.getError();
 			if (s.eof) return -1;
 			return -2;
 		}

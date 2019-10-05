@@ -223,11 +223,14 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		
 		List<LibraryDescriptor> addPlugins = new LinkedList<>();
 		for (Triple<String, String, String> t : loadPlugins) {
+			app.getDefaultLogger().debug("Searching projects matching " + t.getValue1() + ':' + t.getValue2() + ':' + t.getValue3());
 			for (LibraryDescriptor lib : devProjects.getResult()) {
 				if (lib.getGroupId().equals(t.getValue1()) &&
-					t.getValue2() != null && !lib.getArtifactId().equals(t.getValue2()) &&
-					t.getValue3() != null && !lib.getVersionString().equals(t.getValue3()))
+					(t.getValue2() == null || lib.getArtifactId().equals(t.getValue2())) &&
+					(t.getValue3() == null || lib.getVersionString().equals(t.getValue3()))) {
 					addPlugins.add(lib);
+					app.getDefaultLogger().debug("Plug-in to load: " + lib.toString());
+				}
 			}
 		}
 		

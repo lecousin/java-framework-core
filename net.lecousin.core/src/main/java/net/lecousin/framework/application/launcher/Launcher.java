@@ -355,6 +355,9 @@ public class Launcher {
 		if (!checkCommandLineContext(cmdContext, services))
 			return;
 		
+		for (LauncherService service : services)
+			System.out.println("Activated launcher service: " + service.getClass().getSimpleName());
+		
 		// search configuration file
 		File cfgFile = getConfigurationFile(cmdContext);
 		if (cfgFile == null) return;

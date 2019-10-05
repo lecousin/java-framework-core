@@ -40,7 +40,6 @@ public interface LibraryDescriptor {
 	/** Return a directory or a JAR file containing the classes to be loaded. */
 	AsyncSupplier<File, NoException> getClasses();
 	
-	
 	/** Describes a dependency of a library to another. */
 	public interface Dependency {
 		/** Dependency group id. */

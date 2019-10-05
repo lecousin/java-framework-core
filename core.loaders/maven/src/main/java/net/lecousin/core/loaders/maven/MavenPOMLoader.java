@@ -49,11 +49,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 	public synchronized AsyncSupplier<MavenPOM, LibraryManagementException> loadPOM(URI pomFile, boolean fromRepository, byte priority) {
 		if (logger == null)
 			logger = LCCore.getApplication().getLoggerFactory().getLogger(MavenPOMLoader.class);
-		/*
-		try { pomFile = pomFile.getCanonicalFile(); }
-		catch (IOException e) {
-			return new AsyncWork<>(null, e);
-		}*/
+		pomFile = pomFile.normalize();
 		AsyncSupplier<MavenPOM, LibraryManagementException> result = loadingByLocation.get(pomFile);
 		if (result != null)
 			return result;
@@ -64,7 +60,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 		AsyncSupplier<MavenPOM, LibraryManagementException> res = result;
 		loadPOM.onDone(() -> {
 			if (loadPOM.hasError()) {
-				if (logger.error()) logger.error("Unable to load POM " + pomFile.toString(), loadPOM.getError());
+				if (logger.error()) logger.error("Unable to load POM file", loadPOM.getError());
 				res.error(loadPOM.getError());
 				return;
 			}
