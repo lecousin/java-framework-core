@@ -168,6 +168,8 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 				throw new AssertionError("Invalid byte " + b + " read at " + (i * testBuf.length + j)
 					+ ", expected was " + testBuf[j]);
 		}
+		Assert.assertEquals(-1, ioBuf.read());
+		Assert.assertEquals(0, ioBuf.skip(1));
 		ioBuf.close();
 	}
 	

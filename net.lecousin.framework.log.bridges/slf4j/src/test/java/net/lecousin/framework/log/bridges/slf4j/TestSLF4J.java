@@ -5,6 +5,9 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.impl.StaticLoggerBinder;
+import org.slf4j.impl.StaticMDCBinder;
+import org.slf4j.impl.StaticMarkerBinder;
 
 public class TestSLF4J extends LCCoreAbstractTest {
 
@@ -46,6 +49,25 @@ public class TestSLF4J extends LCCoreAbstractTest {
 		l.error("test", o1, o2);
 		l.error("test", o1, o2, o3);
 		l.error("test", new Exception());
+		
+		((LCLoggerFactory)LoggerFactory.getILoggerFactory()).reset();
+	}
+	
+	@Test(timeout=30000)
+	public void testMarkerBinder() {
+		StaticMarkerBinder.getSingleton().getMarkerFactory();
+		StaticMarkerBinder.getSingleton().getMarkerFactoryClassStr();
+	}
+	
+	@Test(timeout=30000)
+	public void testMDCBinder() {
+		StaticMDCBinder.getSingleton().getMDCA();
+		StaticMDCBinder.getSingleton().getMDCAdapterClassStr();
+	}
+	
+	@Test(timeout=30000)
+	public void testLoggerBinder() {
+		StaticLoggerBinder.getSingleton().getLoggerFactoryClassStr();
 	}
 	
 }

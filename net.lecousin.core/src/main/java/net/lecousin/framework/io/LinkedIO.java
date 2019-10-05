@@ -958,6 +958,8 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 					}), result);
 					return operation(result);
 				}
+				if (seek.hasError())
+					return IOUtil.error(seek.getError(), ondone);
 				s = seek.getResult();
 				sizes.set(i, s);
 			}

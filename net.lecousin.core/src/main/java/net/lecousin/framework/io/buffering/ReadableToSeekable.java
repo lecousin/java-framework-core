@@ -278,13 +278,35 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 	
 	@Override
 	public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
-		if (knownSize >= 0 && pos >= knownSize)
-			return IOUtil.success(Integer.valueOf(-1), ondone);
+		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
+		readFullySyncIfPossible(buffer, 0, result, ondone);
+		return result;
+	}
+	
+	private void readFullySyncIfPossible(
+		ByteBuffer buffer, int done, AsyncSupplier<Integer, IOException> result, Consumer<Pair<Integer, IOException>> ondone
+	) {
+		if (knownSize >= 0 && pos >= knownSize) {
+			IOUtil.success(Integer.valueOf(done > 0 ? done : -1), result, ondone);
+			return;
+		}
 		if (pos >= ioPos) {
 			bufferizeTo(pos);
-			return readFullyAsync(buffer, ondone);
+			if (done == 0) {
+				readFullyAsync(buffer, ondone).forward(result);
+				return;
+			}
+			readFullyAsync(buffer).onDone(read -> IOUtil.success(Integer.valueOf(done + read.intValue()), result, ondone), result);
+			return;
 		}
-		return buffered.readFullySyncIfPossible(pos, buffer, ondone);
+		AsyncSupplier<Integer, IOException> read = buffered.readFullySyncIfPossible(pos, buffer, null);
+		read.onDone(nb -> {
+			pos += nb.intValue();
+			if (!buffer.hasRemaining())
+				IOUtil.success(Integer.valueOf(done + nb.intValue()), result, ondone);
+			else
+				readFullySyncIfPossible(buffer, done + nb.intValue(), result, ondone);
+		}, result);
 	}
 	
 	@Override
@@ -300,7 +322,9 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 	public int readAsync() throws IOException {
 		if (knownSize >= 0 && pos >= knownSize) return -1;
 		if (pos >= ioPos) {
-			bufferizeTo(pos);
+			AsyncSupplier<Boolean, IOException> b = bufferizeTo(pos);
+			if (b != null && b.hasError())
+				throw b.getError();
 			return -2;
 		}
 		byte[] b = new byte[1];

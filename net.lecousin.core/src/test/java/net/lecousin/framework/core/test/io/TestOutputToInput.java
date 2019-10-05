@@ -36,6 +36,37 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		((IO.OutputToInput)io).canStartReading();
 		((IO.OutputToInput)io).getAvailableDataSize();
 	}
+	
+	@Test(timeout=15000)
+	public void testError() throws Exception {
+		IO.OutputToInput o2i = createOutputToInput();
+		IOException err = new IOException();
+		o2i.signalErrorBeforeEndOfData(err);
+		try {
+			o2i.readSync(ByteBuffer.allocate(10));
+			throw new AssertionError("should throw an exception");
+		} catch (Exception e) {
+			//ok
+		}
+		try {
+			o2i.readAsync(ByteBuffer.allocate(10)).blockResult(5000);
+			throw new AssertionError("should throw an exception");
+		} catch (Exception e) {
+			//ok
+		}
+		try {
+			o2i.skipSync(1024);
+			throw new AssertionError("should throw an exception");
+		} catch (Exception e) {
+			//ok
+		}
+		try {
+			o2i.skipAsync(1024).blockResult(5000);
+			throw new AssertionError("should throw an exception");
+		} catch (Exception e) {
+			//ok
+		}
+	}
 
 	@SuppressWarnings("resource")
 	@Test(timeout=120000)

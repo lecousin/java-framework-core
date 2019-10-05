@@ -5,13 +5,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.FileIO.ReadOnly;
 import net.lecousin.framework.io.IO;
@@ -20,6 +16,9 @@ import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.Pair;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public abstract class TestReadableBuffered extends TestReadableByteStream {
 	
@@ -166,7 +165,6 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 
 	@Test(timeout=120000)
 	public void testReadableBufferedReadFullySyncIfPossible() throws Exception {
-		Assume.assumeTrue(nbBuf > 0);
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
 		byte[] buf = new byte[testBuf.length];
 		Async<Exception> sp = new Async<>();
@@ -183,10 +181,6 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 			ondoneCalled.set(true);
 		};
 		do {
-			if (index == nbBuf) {
-				sp.unblock();
-				return;
-			}
 			ondoneCalled.set(false);
 			AsyncSupplier<Integer, IOException> r = io.readFullySyncIfPossible(ByteBuffer.wrap(buf), ondone);
 			if (r.isDone()) {
@@ -196,6 +190,22 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 				}
 				if (!ondoneCalled.get()) {
 					sp.error(new Exception("ondone not called"));
+					return;
+				}
+				if (index == nbBuf) {
+					if (r.getResult().intValue() > 0)
+						sp.error(new Exception(r.getResult().intValue() + " byte(s) read after the end"));
+					else {
+						try {
+							AsyncSupplier<Integer, IOException> r2 = io.readFullySyncIfPossible(ByteBuffer.wrap(buf));
+							if (r2.blockResult(10000).intValue() > 0)
+								sp.error(new Exception("byte(s) read after the end"));
+							else
+								sp.unblock();
+						} catch (Exception e) {
+							sp.error(e);
+						}
+					}
 					return;
 				}
 				if (r.getResult().intValue() != buf.length) {
@@ -215,6 +225,22 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 			r.thenStart(new Task.Cpu.FromRunnable("Test readFullySyncIfPossible", Task.PRIORITY_NORMAL, () -> {
 				if (!ondoneCalled.get()) {
 					sp.error(new Exception("ondone not called"));
+					return;
+				}
+				if (i == nbBuf) {
+					if (r.getResult().intValue() > 0)
+						sp.error(new Exception(r.getResult().intValue() + " byte(s) read after the end"));
+					else {
+						try {
+							AsyncSupplier<Integer, IOException> r2 = io.readFullySyncIfPossible(ByteBuffer.wrap(buf));
+							if (r2.blockResult(10000).intValue() > 0)
+								sp.error(new Exception("byte(s) read after the end"));
+							else
+								sp.unblock();
+						} catch (Exception e) {
+							sp.error(e);
+						}
+					}
 					return;
 				}
 				if (r.getResult().intValue() != buf.length) {

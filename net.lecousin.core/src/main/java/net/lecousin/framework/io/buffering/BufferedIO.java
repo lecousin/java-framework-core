@@ -1208,7 +1208,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	
 	/** While readAsync methods are supposed to do the job in a separate thread, this method
 	 * fills the given buffer synchronously if enough data is already buffered, else it finishes asynchronously.
-	 * The caller can check the returned AsyncWork by calling its method isUnblocked to know if the
+	 * The caller can check the returned AsyncSupplier by calling its method isDone to know if the
 	 * read has been performed synchronously.
 	 * This method may be useful for processes that hope to work synchronously because this IO is buffered,
 	 * but support also to work asynchronously without blocking a thread.

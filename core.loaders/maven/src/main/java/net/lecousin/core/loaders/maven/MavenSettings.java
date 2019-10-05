@@ -70,6 +70,8 @@ public class MavenSettings {
 							break;
 						}
 					}
+				} else {
+					skipElement(xml);
 				}
 			} else if (xml.getEventType() == XMLStreamConstants.END_ELEMENT) {
 				break;
@@ -77,6 +79,17 @@ public class MavenSettings {
 		}
 		settings.activeProfiles.trimToSize();
 		return settings;
+	}
+	
+	private static void skipElement(XMLStreamReader xml) throws XMLStreamException {
+		while (xml.hasNext()) {
+			xml.next();
+			if (xml.getEventType() == XMLStreamConstants.START_ELEMENT) {
+				skipElement(xml);
+			} else if (xml.getEventType() == XMLStreamConstants.END_ELEMENT) {
+				break;
+			}
+		}
 	}
 	
 }

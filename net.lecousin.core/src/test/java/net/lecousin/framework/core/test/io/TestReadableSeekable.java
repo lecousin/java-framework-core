@@ -403,7 +403,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		
 		MutableBoolean onDoneBefore = new MutableBoolean(false);
 		Consumer<Pair<Long,IOException>> ondone;
-		if ((expectedPosition % 3) == 0) {
+		if ((expectedPosition % 3) == 0 && size > 0) {
 			onDoneBefore.set(true);
 			ondone = null;
 		} else {
@@ -675,12 +675,17 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 				checkBuffer(b, 0, nb, pos);
 			}
 			pos += nb;
-			skipped = io.skipAsync(-testBuf.length / 3);
+			MutableBoolean onDoneCalled = new MutableBoolean(false);
+			Consumer<Pair<Long, IOException>> ondone = p -> {
+				onDoneCalled.set(true);
+			};
+			skipped = io.skipAsync(-testBuf.length / 3, ondone);
 			skipped.blockThrow(0);
 			if (skipped.getResult().longValue() != -testBuf.length / 3) {
 				if (pos + skipped.getResult().longValue() != 0)
 					throw new AssertionError(skipped.getResult().longValue() + " byte(s) skipped at " + pos);
 			}
+			Assert.assertTrue(onDoneCalled.get());
 			boolean isEnd = pos == size;
 			pos += skipped.getResult().longValue();
 			if (isEnd) break;
@@ -691,6 +696,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		Assert.assertEquals(0,  io.getPosition());
 		Assert.assertEquals(testBuf.length * nbBuf, io.skipAsync(testBuf.length * nbBuf + 200).blockResult(0).longValue());
 		Assert.assertEquals(testBuf.length * nbBuf,  io.getPosition());
+		MutableBoolean onDoneCalled = new MutableBoolean(false);
+		Consumer<Pair<Long, IOException>> ondone = p -> {
+			onDoneCalled.set(true);
+		};
+		Assert.assertEquals(0L, io.skipAsync(10, ondone).blockResult(10000).longValue());
+		Assert.assertTrue(onDoneCalled.get());
 		io.close();
 	}
 	

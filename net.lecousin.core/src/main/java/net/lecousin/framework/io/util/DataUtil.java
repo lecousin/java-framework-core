@@ -86,6 +86,24 @@ public final class DataUtil {
 	}
 	
 	/** little-endian or intel format. */
+	public static int readUnsignedInteger24BitsLittleEndian(byte[] buffer, int offset) {
+		int value;
+		value = (buffer[offset] & 0xFF);
+		value |= (buffer[offset + 1] & 0xFF) << 8;
+		value |= (buffer[offset + 2] & 0xFF) << 16;
+		return value;
+	}
+	
+	/** big-endian or motorola format. */
+	public static int readUnsignedInteger24BitsBigEndian(byte[] buffer, int offset) {
+		int value;
+		value = (buffer[offset + 2] & 0xFF);
+		value |= (buffer[offset + 1] & 0xFF) << 8;
+		value |= (buffer[offset] & 0xFF) << 16;
+		return value;
+	}
+	
+	/** little-endian or intel format. */
 	public static short readShortLittleEndian(byte[] buffer, int offset) {
 		return (short)((buffer[offset] & 0xFF) | ((buffer[offset + 1] & 0xFF) << 8));
 	}
@@ -112,6 +130,15 @@ public final class DataUtil {
 		long value;
 		value = ((long)(buf.get() & 0xFF)) << 24;
 		value |= (buf.get() & 0xFF) << 16;
+		value |= (buf.get() & 0xFF) << 8;
+		value |= (buf.get() & 0xFF);
+		return value;
+	}
+	
+	/** big-endian or motorola format. */
+	public static int readUnsignedInteger24BitsBigEndian(ByteBuffer buf) {
+		int value;
+		value = (buf.get() & 0xFF) << 16;
 		value |= (buf.get() & 0xFF) << 8;
 		value |= (buf.get() & 0xFF);
 		return value;
@@ -230,6 +257,33 @@ public final class DataUtil {
 		if (i < 0) throw new EOFException();
 		value |= i << 16;
 		i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= i << 8;
+		i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= i;
+		return value;
+	}
+
+	/** little-endian or intel format. */
+	public static int readUnsignedInteger24BitsLittleEndian(IO.ReadableByteStream io) throws IOException {
+		int value = io.read();
+		if (value < 0) throw new EOFException();
+		int i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= i << 8;
+		i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= i << 16;
+		return value;
+	}
+
+	/** big-endian or motorola format. */
+	public static int readUnsignedInteger24BitsBigEndian(IO.ReadableByteStream io) throws IOException {
+		int value = io.read();
+		if (value < 0) throw new EOFException();
+		value <<= 16;
+		int i = io.read();
 		if (i < 0) throw new EOFException();
 		value |= i << 8;
 		i = io.read();
@@ -399,6 +453,33 @@ public final class DataUtil {
 		value |= i;
 		return value;
 	}
+
+	/** little-endian or intel format. */
+	public static int readUnsignedInteger24BitsLittleEndian(InputStream io) throws IOException {
+		int value = io.read();
+		if (value < 0) throw new EOFException();
+		int i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= i << 8;
+		i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= i << 16;
+		return value;
+	}
+
+	/** big-endian or motorola format. */
+	public static int readUnsignedInteger24BitsBigEndian(InputStream io) throws IOException {
+		int value = io.read();
+		if (value < 0) throw new EOFException();
+		value <<= 16;
+		int i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= i << 8;
+		i = io.read();
+		if (i < 0) throw new EOFException();
+		value |= i;
+		return value;
+	}
 	
 	/** little-endian or intel format. */
 	public static long readLongLittleEndian(InputStream io) throws IOException {
@@ -517,6 +598,20 @@ public final class DataUtil {
 		buffer[offset] = (byte)(value & 0xFF);
 	}
 
+	/** little-endian or intel format. */
+	public static void writeUnsignedInteger24BitsLittleEndian(byte[] buffer, int offset, int value) {
+		buffer[offset++] = (byte)(value & 0xFF);
+		buffer[offset++] = (byte)((value >> 8) & 0xFF);
+		buffer[offset] = (byte)((value >> 16) & 0xFF);
+	}
+
+	/** big-endian or motorola format. */
+	public static void writeUnsignedInteger24BitsBigEndian(byte[] buffer, int offset, int value) {
+		buffer[offset++] = (byte)((value >> 16) & 0xFF);
+		buffer[offset++] = (byte)((value >> 8) & 0xFF);
+		buffer[offset] = (byte)(value & 0xFF);
+	}
+
 	/** big-endian or motorola format. */
 	public static void writeLongBigEndian(byte[] buffer, int offset, long value) {
 		buffer[offset++] = (byte)((value >> 56) & 0xFF);
@@ -600,14 +695,14 @@ public final class DataUtil {
 	}
 
 	/** little-endian or intel format. */
-	public static void writeUnsigned24BitsIntegerLittleEndian(IO.WritableByteStream io, long value) throws IOException {
+	public static void writeUnsignedInteger24BitsLittleEndian(IO.WritableByteStream io, int value) throws IOException {
 		io.write((byte)(value & 0xFF));
 		io.write((byte)((value >> 8) & 0xFF));
 		io.write((byte)((value >> 16) & 0xFF));
 	}
 
 	/** big-endian or motorola format. */
-	public static void writeUnsigned24BitsIntegerBigEndian(IO.WritableByteStream io, long value) throws IOException {
+	public static void writeUnsignedInteger24BitsBigEndian(IO.WritableByteStream io, int value) throws IOException {
 		io.write((byte)((value >> 16) & 0xFF));
 		io.write((byte)((value >> 8) & 0xFF));
 		io.write((byte)(value & 0xFF));
@@ -690,6 +785,20 @@ public final class DataUtil {
 	/** big-endian or motorola format. */
 	public static void writeUnsignedIntegerBigEndian(ByteBuffer io, long value) {
 		io.put((byte)((value >> 24) & 0xFF));
+		io.put((byte)((value >> 16) & 0xFF));
+		io.put((byte)((value >> 8) & 0xFF));
+		io.put((byte)(value & 0xFF));
+	}
+
+	/** little-endian or intel format. */
+	public static void writeUnsignedInteger24BitsLittleEndian(ByteBuffer io, int value) {
+		io.put((byte)(value & 0xFF));
+		io.put((byte)((value >> 8) & 0xFF));
+		io.put((byte)((value >> 16) & 0xFF));
+	}
+
+	/** big-endian or motorola format. */
+	public static void writeUnsignedInteger24BitsBigEndian(ByteBuffer io, int value) {
 		io.put((byte)((value >> 16) & 0xFF));
 		io.put((byte)((value >> 8) & 0xFF));
 		io.put((byte)(value & 0xFF));
