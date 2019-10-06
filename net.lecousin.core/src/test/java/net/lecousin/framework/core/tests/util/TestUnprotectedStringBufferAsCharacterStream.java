@@ -4,6 +4,7 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 
+import org.junit.Assume;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -38,4 +39,9 @@ public class TestUnprotectedStringBufferAsCharacterStream extends TestCharacterS
 		return s.asCharacterStream();
 	}
 	
+	@Override
+	public void testIOError() throws Exception {
+		Assume.assumeFalse(true);
+	}
+
 }
