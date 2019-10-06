@@ -26,6 +26,34 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		return openFile();
 	}
 
+
+	@Test(timeout=15000)
+	public void testIOError() throws Exception {
+		ICharacterStream.Readable.Buffered s = openStream(new TestIOError.IOError1());
+		try {
+			s.read();
+			throw new AssertionError();
+		} catch (IOException e) {
+			// ok
+		}
+		try {
+			if (s.readAsync() == -2) {
+				s.canStartReading().block(10000);
+				s.readAsync();
+			}
+			throw new AssertionError();
+		} catch (IOException e) {
+			// ok
+		}
+		try {
+			s.readNextBufferAsync().blockResult(10000);
+			throw new AssertionError();
+		} catch (IOException e) {
+			// ok
+		}
+		s.close();
+	}
+	
 	@Test(timeout=120000)
 	public void testCharByChar() throws Exception {
 		ICharacterStream.Readable.Buffered s = openStream(openFile());

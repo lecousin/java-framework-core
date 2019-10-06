@@ -168,4 +168,27 @@ public abstract class TestQueueFIFO extends TestCollection {
 			Assert.assertTrue("Element at index " + i + " should be " + values[i] + " found is " + a[i], ((Long)a[i]).longValue() == values[i]);
 		}
 	}
+	
+	protected static <T> void checkQueue(Queue<T> col, @SuppressWarnings("unchecked") T... values) {
+		Assert.assertEquals(values.length, col.size());
+		Assert.assertFalse(col.isEmpty());
+		Assert.assertEquals(col.peek(), values[0]);
+		for (int i = 0; i < values.length; ++i)
+			Assert.assertTrue("Contains " + values[i] + " return false, elements are " + Arrays.toString(values), col.contains(values[i]));
+		Assert.assertFalse(col.contains(new Object()));
+		Assert.assertTrue(col.contains(values[0]));
+		Assert.assertTrue(col.contains(values[values.length - 1]));
+		Iterator<T> it = col.iterator();
+		for (int i = 0; i < values.length; ++i) {
+			Assert.assertTrue(it.hasNext());
+			Assert.assertEquals(it.next(), values[i]);
+		}
+		Assert.assertFalse(it.hasNext());
+		assertException(() -> { it.next(); }, NoSuchElementException.class);
+		Object[] a = col.toArray();
+		Assert.assertTrue(a.length == values.length);
+		for (int i = 0; i < values.length; ++i) {
+			Assert.assertTrue("Element at index " + i + " should be " + values[i] + " found is " + a[i], a[i] == values[i]);
+		}
+	}
 }

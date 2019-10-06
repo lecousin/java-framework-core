@@ -14,6 +14,7 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.core.test.io.TestIOError;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -178,6 +179,12 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		IOUtil.readFully(new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.PRIORITY_NORMAL), result);
 		byte[] res = result.blockResult(15000);
 		Assert.assertEquals(8, res.length);
+		
+		// error
+		result = new AsyncSupplier<>();
+		IOUtil.readFully(new TestIOError.IOError1(), result);
+		result.block(15000);
+		Assert.assertNotNull(result.getError());
 	}
 	
 	@Test(timeout=120000)
@@ -189,4 +196,15 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(8, bbio.getSizeSync());
 		bbio.close();
 	}
+	
+	@Test(timeout=120000)
+	public void testErrors() throws Exception {
+		TestIOError.IOError1 io = new TestIOError.IOError1();
+		AsyncSupplier<byte[], IOException> resultB;
+		
+		resultB = new AsyncSupplier<>();
+		IOUtil.readFullyKnownSize(io, 4096, resultB);
+		resultB.block(15000);
+		Assert.assertNotNull(resultB.getError());
+	}	
 }

@@ -17,15 +17,14 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.function.Supplier;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.core.test.io.TestIOError;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -58,11 +57,29 @@ import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 public abstract class TestSerialization extends LCCoreAbstractTest {
 
 	protected abstract Serializer createSerializer();
 	protected abstract Deserializer createDeserializer();
 	protected abstract SerializationSpecWriter createSpecWriter();
+	
+	@Test(timeout=30000)
+	public void testBasics() {
+		Deserializer des = createDeserializer();
+		des.setMaximumTextSize(1);
+		Assert.assertEquals(1, des.getMaximumTextSize());
+	}
+	
+	@Test(timeout=30000)
+	public void testError() {
+		Deserializer des = createDeserializer();
+		AsyncSupplier<?, SerializationException> res = des.deserialize(new TypeDefinition(String.class), new TestIOError.IOError1(), new ArrayList<>(0));
+		res.block(15000);
+		Assert.assertNotNull(res.getError());
+	}
 	
 	@SuppressWarnings("resource")
 	private void testPrimitive(Object value, Class<?> type) throws Exception {
@@ -363,6 +380,24 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		t.testBooleans = Arrays.asList(createBooleans(), new TestBooleans(), null);
 		t.testNumbers = Arrays.asList(createNumbers(), new TestNumbers(), null, createNumbers());
 		test(t, TestLists.class);
+		
+		t = new TestLists();
+		t.booleans = new LinkedList<>();
+		t.integers = new LinkedList<>();
+		t.floats = new LinkedList<>();
+		t.strings = new LinkedList<>();
+		t.characters = new LinkedList<>();
+		t.testBooleans = new LinkedList<>();
+		Random rand = new Random();
+		for (int i = 0; i < 1000; ++i) {
+			t.booleans.add(Boolean.valueOf(rand.nextBoolean()));
+			t.integers.add(Integer.valueOf(rand.nextInt()));
+			t.floats.add(Float.valueOf(rand.nextFloat()));
+			t.strings.add("test" + rand.nextInt());
+			t.characters.add(Character.valueOf((char)('a' + rand.nextInt(10))));
+			t.testBooleans.add(createBooleans());
+		}
+		test(t, TestLists.class);
 	}
 	
 	public static class TestArrays {
@@ -399,6 +434,13 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		t.testNumbers = new TestNumbers[] { createNumbers(), new TestNumbers() };
 		test(t, TestArrays.class);
 		test(new int[] { 11, 33, 55, 77, 99 }, int[].class);
+		test(new byte[] { 11, 33, 55, 77, 99 }, byte[].class);
+		
+		Random rand = new Random();
+		int[] integers = new int[1000];
+		for (int i = 0; i < integers.length; ++i)
+			integers[i] = rand.nextInt();
+		test(integers, int[].class);
 	}
 	
 	public static class TestListOfList {
@@ -468,9 +510,41 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	public static class IntegerUnitAsString {
 		public String value;
 	}
+	public static class IntegerUnitAsByte {
+		@Unit(TimeUnit.Hour.class)
+		public Byte value;
+	}
+	public static class IntegerUnitAsByte2 {
+		@Unit(TimeUnit.Hour.class)
+		public byte value;
+	}
+	public static class IntegerUnitAsInt {
+		@Unit(TimeUnit.Hour.class)
+		public Integer value;
+	}
+	public static class IntegerUnitAsInt2 {
+		@Unit(TimeUnit.Hour.class)
+		public int value;
+	}
+	public static class IntegerUnitAsShort {
+		@Unit(TimeUnit.Hour.class)
+		public Short value;
+	}
+	public static class IntegerUnitAsShort2 {
+		@Unit(TimeUnit.Hour.class)
+		public short value;
+	}
 	public static class IntegerUnitAsLong {
 		@Unit(TimeUnit.Hour.class)
 		public Long value;
+	}
+	public static class IntegerUnitAsLong2 {
+		@Unit(TimeUnit.Hour.class)
+		public long value;
+	}
+	public static class IntegerUnitAsBigInteger {
+		@Unit(TimeUnit.Hour.class)
+		public BigInteger value;
 	}
 	
 	@Test(timeout=120000)
@@ -478,6 +552,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testIntegerUnit("3 days", Long.valueOf(3L * 24));
 		testIntegerUnit("6h", Long.valueOf(6L));
 		testIntegerUnit("16 hours", Long.valueOf(16L));
+		testIntegerUnit("31", Long.valueOf(31L));
 	}
 
 	@SuppressWarnings("resource")
@@ -490,8 +565,38 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		io = serializeInMemory(s, new TypeDefinition(IntegerUnitAsString.class));
 		io.lockClose();
 		print(io, s);
+		
 		l = deserialize(io, new TypeDefinition(IntegerUnitAsLong.class));
-		Assert.assertEquals(val, l.value);
+		Assert.assertEquals(val.longValue(), l.value.longValue());
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		IntegerUnitAsLong2 l2 = deserialize(io, new TypeDefinition(IntegerUnitAsLong2.class));
+		Assert.assertEquals(val.longValue(), l2.value);
+		
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		IntegerUnitAsByte b = deserialize(io, new TypeDefinition(IntegerUnitAsByte.class));
+		Assert.assertEquals(val.byteValue(), b.value.byteValue());
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		IntegerUnitAsByte2 b2 = deserialize(io, new TypeDefinition(IntegerUnitAsByte2.class));
+		Assert.assertEquals(val.byteValue(), b2.value);
+		
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		IntegerUnitAsShort us = deserialize(io, new TypeDefinition(IntegerUnitAsShort.class));
+		Assert.assertEquals(val.shortValue(), us.value.shortValue());
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		IntegerUnitAsShort2 us2 = deserialize(io, new TypeDefinition(IntegerUnitAsShort2.class));
+		Assert.assertEquals(val.shortValue(), us2.value);
+		
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		IntegerUnitAsInt ui = deserialize(io, new TypeDefinition(IntegerUnitAsInt.class));
+		Assert.assertEquals(val.intValue(), ui.value.intValue());
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		IntegerUnitAsInt2 ui2 = deserialize(io, new TypeDefinition(IntegerUnitAsInt2.class));
+		Assert.assertEquals(val.intValue(), ui2.value);
+		
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		IntegerUnitAsBigInteger bi = deserialize(io, new TypeDefinition(IntegerUnitAsBigInteger.class));
+		Assert.assertEquals(val.longValue(), bi.value.longValue());
+		
 		testSpec(IntegerUnitAsString.class, io);
 		io.unlockClose();
 	}
@@ -990,10 +1095,10 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	
 	protected void checkValue(Object expected, Object found) throws Exception {
 		if (expected == null) {
-			Assert.assertTrue(found == null);
+			Assert.assertTrue("found is not null but expected is null", found == null);
 			return;
 		}
-		Assert.assertFalse(found == null);
+		Assert.assertFalse("found is null but expected is not null", found == null);
 		Class<?> type = expected.getClass();
 		if (type.isArray()) {
 			checkArray(expected, found);
@@ -1048,7 +1153,11 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 			Object o2;
 			if (getter2 != null) o2 = getter2.invoke(found);
 			else o2 = f.get(found);
-			checkValue(o1, o2);
+			try {
+				checkValue(o1, o2);
+			} catch (Throwable e) {
+				throw new Exception("Error in field " + f.getName() + " of object " + found.getClass().getName(), e);
+			}
 		}
 	}
 	

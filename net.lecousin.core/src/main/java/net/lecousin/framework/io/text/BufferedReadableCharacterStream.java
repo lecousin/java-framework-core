@@ -443,6 +443,8 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 			}
 			if (full && !endReached) bufferize();
 			if (chars == null) {
+				if (sp.forwardIfNotSuccessful(result))
+					return false;
 				int don = done;
 				readAsync(buf, offset + done, length - done).onDone(
 					nb -> result.unblockSuccess(Integer.valueOf(don + nb.intValue())),

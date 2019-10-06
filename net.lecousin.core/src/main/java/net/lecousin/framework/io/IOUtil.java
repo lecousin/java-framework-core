@@ -92,9 +92,7 @@ public final class IOUtil {
 		}
 		AsyncSupplier<ByteBuffersIO, IOException> read = readFullyAsync(io, 65536);
 		read.thenStart(new Task.Cpu.FromRunnable("readFully: convert ByteArraysIO into byte[]", io.getPriority(), () -> {
-			if (read.hasError()) result.error(read.getError());
-			else if (read.isCancelled()) result.cancel(read.getCancelEvent());
-			else result.unblockSuccess(read.getResult().createSingleByteArray());
+			result.unblockSuccess(read.getResult().createSingleByteArray());
 		}), result);
 	}
 	

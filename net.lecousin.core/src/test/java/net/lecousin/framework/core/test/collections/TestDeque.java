@@ -177,4 +177,20 @@ public abstract class TestDeque extends TestQueueFIFO {
 		assertException(() -> { it.next(); }, NoSuchElementException.class);
 	}
 	
+	protected static <T> void checkDeque(Deque<T> c, @SuppressWarnings("unchecked") T... values) {
+		checkQueue(c, values);
+		Assert.assertTrue(c.getFirst() == values[0]);
+		Assert.assertTrue(c.peek() == values[0]);
+		Assert.assertTrue(c.peekFirst() == values[0]);
+		Assert.assertTrue(c.getLast() == values[values.length - 1]);
+		Assert.assertTrue(c.peekLast() == values[values.length - 1]);
+		Iterator<T> it = c.descendingIterator();
+		for (int i = values.length - 1; i >= 0; --i) {
+			Assert.assertTrue(it.hasNext());
+			Assert.assertEquals(it.next(), values[i]);
+		}
+		Assert.assertFalse(it.hasNext());
+		assertException(() -> { it.next(); }, NoSuchElementException.class);
+	}
+	
 }

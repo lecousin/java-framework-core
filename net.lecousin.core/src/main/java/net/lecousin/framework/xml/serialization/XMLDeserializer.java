@@ -116,27 +116,15 @@ public class XMLDeserializer extends AbstractDeserializer {
 	@Override
 	public void setMaximumTextSize(int max) {
 		super.setMaximumTextSize(max);
-		this.input.setMaximumTextSize(maxTextSize);
-		this.input.setMaximumCDataSize(maxTextSize);
+		if (this.input != null) {
+			this.input.setMaximumTextSize(maxTextSize);
+			this.input.setMaximumCDataSize(maxTextSize);
+		}
 	}
 	
 	@Override
 	protected IAsync<SerializationException> initializeDeserialization(IO.Readable input) {
 		IAsync<Exception> start = createAndStartReader(input);
-		if (start.isDone()) {
-			if (start.hasError()) return new Async<>(new SerializationException("Error reading XML", start.getError()));
-			if (this.expectedRootLocalName != null &&
-				!this.input.event.localName.equals(this.expectedRootLocalName))
-				return new Async<>(new SerializationException(
-					"Expected root XML element is " + this.expectedRootLocalName
-					+ ", found is " + this.input.event.localName.asString()));
-			if (this.expectedRootNamespaceURI != null &&
-				!this.input.getNamespaceURI(this.input.event.namespacePrefix).equals(this.expectedRootNamespaceURI))
-				return new Async<>(new SerializationException("Expected root XML element namespace is "
-					+ this.expectedRootNamespaceURI	+ ", found is "
-					+ this.input.getNamespaceURI(this.input.event.namespacePrefix)));
-			return new Async<>(true);
-		}
 		Async<SerializationException> sp = new Async<>();
 		start.onDone(() -> {
 			if (this.expectedRootLocalName != null &&
@@ -221,10 +209,14 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	@Override
 	protected AsyncSupplier<Boolean, SerializationException> startCollectionValue() {
+		// we need to check is the collection is null
+		XMLStreamEvents.Attribute a = input.getAttributeWithNamespaceURI(XMLUtil.XSI_NAMESPACE_URI, "nil");
+		if (a != null && a.value.equals("true"))
+			return new AsyncSupplier<>(Boolean.FALSE, null);
+			
 		CollectionValueContext ctx = new CollectionValueContext();
 		ctx.parent = input.event.context.getFirst();
 		colValueContext.addFirst(ctx);
-		// there is no specific start for a collection value
 		return new AsyncSupplier<>(Boolean.TRUE, null);
 	}
 	

@@ -43,6 +43,36 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		s.setPriority(Task.PRIORITY_IMPORTANT);
 		s.close();
 	}
+
+	@Test(timeout=15000)
+	public void testIOError() throws Exception {
+		ICharacterStream.Readable s = openStream(new TestIOError.IOError1());
+		try {
+			s.readSync(new char[10], 0, 10);
+			throw new AssertionError();
+		} catch (IOException e) {
+			// ok
+		}
+		try {
+			s.readAsync(new char[10], 0, 10).blockResult(10000);
+			throw new AssertionError();
+		} catch (IOException e) {
+			// ok
+		}
+		try {
+			s.readFullySync(new char[10], 0, 10);
+			throw new AssertionError();
+		} catch (IOException e) {
+			// ok
+		}
+		try {
+			s.readFullyAsync(new char[10], 0, 10).blockResult(10000);
+			throw new AssertionError();
+		} catch (IOException e) {
+			// ok
+		}
+		s.close();
+	}
 	
 	@SuppressWarnings({ "resource" })
 	@Test(timeout=120000)

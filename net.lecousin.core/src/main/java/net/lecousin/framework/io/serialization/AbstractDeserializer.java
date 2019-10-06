@@ -414,8 +414,12 @@ public abstract class AbstractDeserializer implements Deserializer {
 			elementType = type.getParameters().get(0);
 		}
 		CollectionContext ctx = new CollectionContext(context, col, type, elementType);
-		start.thenDoOrStart(res -> deserializeNextCollectionValueElement(ctx, 0, path, rules, result),
-			taskDescription, priority, result);
+		start.thenDoOrStart(res -> {
+			if (!res.booleanValue())
+				result.unblockSuccess(null);
+			else
+				deserializeNextCollectionValueElement(ctx, 0, path, rules, result); 
+		}, taskDescription, priority, result);
 		return result;
 	}
 	
@@ -524,8 +528,12 @@ public abstract class AbstractDeserializer implements Deserializer {
 		}
 		CollectionContext ctx = new CollectionContext(context, col, colType, elementType);
 		AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
-		start.thenDoOrStart(r -> deserializeNextCollectionAttributeValueElement(ctx, 0, path, rules, result),
-			taskDescription, priority, result);
+		start.thenDoOrStart(r -> {
+			if (!r.booleanValue())
+				result.unblockSuccess(null);
+			else
+				deserializeNextCollectionAttributeValueElement(ctx, 0, path, rules, result);
+		}, taskDescription, priority, result);
 		return result;
 	}
 	

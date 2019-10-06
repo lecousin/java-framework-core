@@ -32,76 +32,64 @@ public class RemoveDirectoryContentTask extends Task.OnFile<Long,IOException> {
 	}
 
 	static long removeDirectoryContent(File dir, WorkProgress progress, long work, boolean calculateSize) throws IOException {
-		if (!dir.exists()) {
-			if (progress != null) progress.progress(work);
-			return 0;
-		}
-		File[] files = dir.listFiles();
-		if (files == null) {
-			if (progress != null) progress.progress(work);
-			throw new AccessDeniedException(dir.getAbsolutePath());
-		}
-		int nb = files.length;
-		long size = 0;
-		for (File f : files) {
-			long step = work / nb--;
-			work -= step;
-			if (f.isDirectory()) {
-				try { size += deleteDirectory(f, progress, step, calculateSize); }
-				catch (IOException e) {
-					if (progress != null) progress.progress(work);
-					throw e;
+		try {
+			if (!dir.exists())
+				return 0;
+			File[] files = dir.listFiles();
+			if (files == null)
+				throw new AccessDeniedException(dir.getAbsolutePath());
+			int nb = files.length;
+			long size = 0;
+			for (File f : files) {
+				long step = work / nb--;
+				work -= step;
+				if (f.isDirectory()) {
+					size += deleteDirectory(f, progress, step, calculateSize);
+				} else {
+					if (calculateSize) size += f.length();
+					if (!f.delete()) {
+						if (progress != null) progress.progress(step);
+						throw new IOException("Unable to delete file " + f.getAbsolutePath());
+					}
+					if (progress != null) progress.progress(step);
 				}
-			} else {
-				if (calculateSize) size += f.length();
-				if (!f.delete()) {
-					if (progress != null) progress.progress(work + step);
-					throw new IOException("Unable to delete file " + f.getAbsolutePath());
-				}
-				if (progress != null) progress.progress(step);
 			}
+			return size;
+		} finally {
+			if (progress != null && work > 0) progress.progress(work);
 		}
-		if (progress != null && work > 0) progress.progress(work);
-		return size;
 	}
 	
 	/** Remove a directory with all its content. This must be called in a task OnFile. */
 	public static long deleteDirectory(File dir, WorkProgress progress, long work, boolean calculateSize) throws IOException {
-		if (!dir.exists()) {
-			if (progress != null) progress.progress(work);
-			return 0;
-		}
-		File[] files = dir.listFiles();
-		if (files == null) {
-			if (progress != null) progress.progress(work);
-			throw new AccessDeniedException(dir.getAbsolutePath());
-		}
-		long size = 0;
-		int nb = 1 + files.length;
-		for (File f : files) {
-			long step = work / nb--;
-			work -= step;
-			if (f.isDirectory())
-				try { size += deleteDirectory(f, progress, step, calculateSize); }
-				catch (IOException e) {
-					if (progress != null)progress.progress(work);
-					throw e;
+		try {
+			if (!dir.exists())
+				return 0;
+			File[] files = dir.listFiles();
+			if (files == null)
+				throw new AccessDeniedException(dir.getAbsolutePath());
+			long size = 0;
+			int nb = 1 + files.length;
+			for (File f : files) {
+				long step = work / nb--;
+				work -= step;
+				if (f.isDirectory())
+					size += deleteDirectory(f, progress, step, calculateSize);
+				else {
+					if (calculateSize) size += f.length();
+					if (!f.delete() && f.exists()) {
+						if (progress != null) progress.progress(step);
+						throw new IOException("Unable to delete file " + f.getAbsolutePath());
+					}
+					if (progress != null && step > 0) progress.progress(step);
 				}
-			else {
-				if (calculateSize) size += f.length();
-				if (!f.delete() && f.exists()) {
-					if (progress != null) progress.progress(work + step);
-					throw new IOException("Unable to delete file " + f.getAbsolutePath());
-				}
-				if (progress != null && step > 0) progress.progress(step);
 			}
+			if (!dir.delete() && dir.exists())
+				throw new IOException("Unable to delete directory " + dir.getAbsolutePath());
+			return size;
+		} finally {
+			if (progress != null && work > 0)progress.progress(work);
 		}
-		if (!dir.delete() && dir.exists()) {
-			if (progress != null && work > 0) progress.progress(work);
-			throw new IOException("Unable to delete directory " + dir.getAbsolutePath());
-		}
-		if (progress != null && work > 0)progress.progress(work);
-		return size;
 	}
 	
 }

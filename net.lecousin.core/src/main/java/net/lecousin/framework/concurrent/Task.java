@@ -20,6 +20,7 @@ import net.lecousin.framework.util.Pair;
  * @param <T> type of result
  * @param <TError> type of error
  */
+@SuppressWarnings("squid:S1192") // string Task appears several times
 public abstract class Task<T,TError extends Exception> {
 
 	public static final byte PRIORITY_TOP = 0;

@@ -561,6 +561,10 @@ public class TurnArray<T> implements Deque<T> {
 	
 	@SuppressWarnings("squid:S3776") // complexity: to keep performance we do not split into methods
 	private void removeAt(int index) {
+		if (index == start) {
+			removeFirst();
+			return;
+		}
 		try {
 			if (index >= start) {
 				if (end == -1) {
