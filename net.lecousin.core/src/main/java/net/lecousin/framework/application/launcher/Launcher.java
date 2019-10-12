@@ -390,7 +390,7 @@ public class Launcher {
 		// start dynamic libraries manager
 		DynamicLibrariesManager librariesManager =
 			new DynamicLibrariesManager(searchProjectsPaths, splash, cmdContext.loaders, appDir, cfg, addPlugins);
-		
+
 		// start application framework
 		if (!startApplication(cmdContext, cfg, debugMode, librariesManager))
 			return;

@@ -91,9 +91,9 @@ public final class IOUtil {
 			return;
 		}
 		AsyncSupplier<ByteBuffersIO, IOException> read = readFullyAsync(io, 65536);
-		read.thenStart(new Task.Cpu.FromRunnable("readFully: convert ByteArraysIO into byte[]", io.getPriority(), () -> {
-			result.unblockSuccess(read.getResult().createSingleByteArray());
-		}), result);
+		read.thenStart(new Task.Cpu.FromRunnable("readFully: convert ByteArraysIO into byte[]", io.getPriority(), () ->
+			result.unblockSuccess(read.getResult().createSingleByteArray())
+		), result);
 	}
 	
 	/** Read fully into a byte[], and unblock the given result upon completion. */

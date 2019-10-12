@@ -280,6 +280,23 @@ public class TestAsync extends LCCoreAbstractTest {
 		try { Thread.sleep(100); } catch (InterruptedException e) {}
 		spbp2.unblock();
 		spbp2.blockPause(1);
+		
+		sp = new Async<>();
+		ok.set(0);
+		sp.onError(e -> {});
+		sp.onErrorOrCancel(() -> ok.set(51));
+		for (Object o : sp.getAllListeners())
+			o.toString();
+		Assert.assertEquals(0, ok.get());
+		sp.error(new Exception());
+		Assert.assertEquals(51, ok.get());
+
+		sp = new Async<>();
+		ok.set(0);
+		sp.onErrorOrCancel(() -> ok.set(51));
+		Assert.assertEquals(0, ok.get());
+		sp.unblock();
+		Assert.assertEquals(0, ok.get());
 	}
 	
 	@Test(timeout=30000)

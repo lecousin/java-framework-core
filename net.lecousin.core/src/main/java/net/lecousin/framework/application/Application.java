@@ -318,7 +318,7 @@ public final class Application {
 		
 		// init logging
 		app.loggerFactory = new LoggerFactory(app, defaultLogAppender);
-		
+
 		// init LCCore with this application
 		LCCore.start(app);
 

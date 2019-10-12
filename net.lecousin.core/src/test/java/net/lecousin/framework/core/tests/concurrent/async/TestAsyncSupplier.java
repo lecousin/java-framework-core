@@ -5,11 +5,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
 import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.mutable.Mutable;
@@ -21,7 +23,7 @@ import org.junit.Test;
 public class TestAsyncSupplier extends LCCoreAbstractTest {
 
 	@Test(timeout=30000)
-	public void testStatus() {
+	public void testStatus() throws NoException, CancelException {
 		Exception error = new Exception("test");
 		CancelException cancel = new CancelException("test");
 		AsyncSupplier<Integer, Exception> blocked = new AsyncSupplier<>();
@@ -59,6 +61,8 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 		});
 		if (result.get() != null)
 			throw result.get();
+		ok.listen(Listener.from((Consumer<Integer>)null, null, null));
+		ok.listen(Listener.from((Runnable)null, null, null));
 		
 		result.set(new AssertionError("Listener not called"));
 		failed.listen(new Listener<Integer, Exception>() {
@@ -294,6 +298,40 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 			aw2.cancel(new CancelException("test"));
 		} finally {
 		}
+		
+		aw = new AsyncSupplier<>();
+		aw.listen(Listener.from((Consumer<Integer>)null, null, null));
+		aw.listen(Listener.from((Runnable)null, null, null));
+		aw.listen(Listener.from(() -> {}, null, null));
+		for (Object o : aw.getAllListeners())
+			o.toString();
+		
+		Task.Parameter<Integer, Long, NoException> converter = new Task.Cpu.Parameter.FromFunction<Integer, Long>(
+			"converter", Task.PRIORITY_NORMAL,
+			i -> Long.valueOf(i.longValue())
+		);
+		AsyncSupplier<Integer, NoException> awi = new AsyncSupplier<>();
+		AsyncSupplier<Long, NoException> awl = awi.thenStart(converter, true);
+		awi.unblockSuccess(Integer.valueOf(51));
+		Assert.assertEquals(51L, awl.blockResult(5000).longValue());
+		awi = new AsyncSupplier<>();
+		awl = awi.thenStart(converter, false);
+		awi.unblockSuccess(Integer.valueOf(51));
+		Assert.assertEquals(51L, awl.blockResult(5000).longValue());
+		
+		awi = new AsyncSupplier<>();
+		okResult.set(0);
+		awi.thenDoOrStart(i -> okResult.set(i.intValue()), "test", Task.PRIORITY_NORMAL);
+		Assert.assertEquals(0, okResult.get());
+		awi.unblockSuccess(Integer.valueOf(51));
+		while (okResult.get() != 51);
+
+		awi = new AsyncSupplier<>();
+		okResult.set(0);
+		awi.unblockSuccess(Integer.valueOf(51));
+		awi.thenDoOrStart(i -> okResult.set(i.intValue()), "test", Task.PRIORITY_NORMAL);
+		Assert.assertEquals(51, okResult.get());
+		
 		
 		Logger log = LCCore.get().getApplication().getLoggerFactory().getLogger(Async.class);
 		log.setLevel(Level.INFO);

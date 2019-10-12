@@ -140,6 +140,7 @@
 				<configuration>
 					<excludes>
 						<exclude>**/application/launcher/*</exclude>
+						<exclude>**/application/libraries/artifacts/*</exclude>
 						<exclude>**/application/libraries/classloader/*</exclude>
 						<exclude>**/ApplicationBootstrap*.*</exclude>
 						<exclude>**/SplashScreen*.*</exclude>

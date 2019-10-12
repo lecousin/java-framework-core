@@ -101,7 +101,7 @@ public class SplashScreen implements WorkProgress {
 		@Override
 		@SuppressWarnings("squid:AssignmentInSubExpressionCheck") // it makes the code clearer
 		public void run() {
-			synchronized (this) {
+			synchronized (SplashScreen.this) {
 				win = new JWindow();
 				win.setAlwaysOnTop(true);
 				win.getRootPane().setBorder(new LineBorder(Color.BLACK));
@@ -151,9 +151,9 @@ public class SplashScreen implements WorkProgress {
 			}
 			if (logoContainer.getComponentCount() == 0 || isCustomLogo)
 				loadPoweredBy();
-			synchronized (this) {
+			synchronized (SplashScreen.this) {
 				ready = true;
-				this.notifyAll();
+				SplashScreen.this.notifyAll();
 			}
 			update();
 			if (devMode) {
@@ -184,7 +184,7 @@ public class SplashScreen implements WorkProgress {
 				// ignore, no logo
 			}
 			if (pos == size) {
-				synchronized (this) {
+				synchronized (SplashScreen.this) {
 					if (win != null)
 						poweredBy = new ImageIcon(buffer);
 				}
@@ -424,7 +424,7 @@ public class SplashScreen implements WorkProgress {
 			progressText.setText(text);
 			progressSubText.setText(subText);
 		}
-		progressBar.setValue((int)(50 + (10000 * worked / amount)));
+		progressBar.setValue((int)(50 + (10000L * worked / amount)));
 		bottom.invalidate();
 		if (!eventInterrupted)
 			synchronized (this) {

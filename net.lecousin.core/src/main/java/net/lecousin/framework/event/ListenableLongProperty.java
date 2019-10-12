@@ -52,6 +52,7 @@ public class ListenableLongProperty implements Listenable<Long> {
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S4276") // cannot use LongConsumer because we inherit this method
 	public void addListener(Consumer<Long> listener) {
 		event.addListener(listener);
 	}
@@ -62,6 +63,7 @@ public class ListenableLongProperty implements Listenable<Long> {
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S4276") // cannot use LongConsumer because we inherit this method
 	public void removeListener(Consumer<Long> listener) {
 		event.removeListener(listener);
 	}

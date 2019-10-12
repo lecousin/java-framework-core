@@ -18,7 +18,6 @@ import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
@@ -82,9 +81,8 @@ public class LocalizedProperties implements IMemoryManageable {
 				ns.loading = sp;
 				namespaces.put(namespace, ns);
 			} else {
-				ns.loading.cancel(new CancelException("Namespace overriden"));
-				ns.loading = sp;
-				ns.languages = null;
+				sp.error(new IOException("Namespace already registered: " + namespace));
+				return sp;
 			}
 		}
 		ns.classLoader = classLoader;

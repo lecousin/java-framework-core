@@ -74,7 +74,6 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 		@Override
 		public long skipSync(long n) throws IOException {
 			if (n <= 0) return 0;
-			if (pos + n < 0) n = -pos;
 			if (pos + n > size) n = size - pos;
 			long nb = ((IO.Readable)io).skipSync(n);
 			pos += nb;
@@ -87,7 +86,6 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 				if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(0), null));
 				return new AsyncSupplier<>(Long.valueOf(0), null);
 			}
-			if (pos + n < 0) n = -pos;
 			if (pos + n > size) n = size - pos;
 			return ((IO.Readable)io).skipAsync(n, result -> {
 				if (result.getValue1() != null)

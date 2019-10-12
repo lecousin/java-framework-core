@@ -1,5 +1,7 @@
 package net.lecousin.framework.core.tests.locale;
 
+import java.io.Serializable;
+
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.locale.LocalizableString;
 
@@ -16,6 +18,12 @@ public class TestLocalizableString extends LCCoreAbstractTest {
 		Assert.assertFalse(new LocalizableString("b", "file").equals(new Object()));
 		Assert.assertFalse(new LocalizableString("b", "file").equals(new LocalizableString("b2", "file")));
 		Assert.assertFalse(new LocalizableString("b", "file").equals(new LocalizableString("b", "file2")));
+		Assert.assertFalse(new LocalizableString("b", "file").equals(new LocalizableString("b", "file", new Serializable[] { "hello" })));
+		
+		LocalizableString s = new LocalizableString("b", "file");
+		Assert.assertEquals("b", s.getNamespace());
+		Assert.assertEquals("file", s.getString());
+		Assert.assertEquals(0, s.getValues().length);
 	}
 	
 }
