@@ -16,8 +16,19 @@ is recommended for better performances on disk operations (detection of physical
 ![build status](https://ci.appveyor.com/api/projects/status/github/lecousin/java-framework-core?branch=master&svg=true "Build Status")
 [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/master)
 
+
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=master&metric=alert_status)](https://sonarcloud.io/dashboard?branch=master&id=lecousin_java-framework-core)
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=master&metric=bugs)](https://sonarcloud.io/dashboard?branch=master&id=lecousin_java-framework-core)
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=master&metric=code_smells)](https://sonarcloud.io/dashboard?branch=master&id=lecousin_java-framework-core)
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=master&metric=reliability_rating)](https://sonarcloud.io/dashboard?branch=master&id=lecousin_java-framework-core)
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=master&metric=vulnerabilities)](https://sonarcloud.io/dashboard?branch=master&id=lecousin_java-framework-core)
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=master&metric=coverage)](https://sonarcloud.io/dashboard?branch=master&id=lecousin_java-framework-core)
+
  - core [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
  [![Javadoc](https://img.shields.io/badge/javadoc-0.15.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.15.0)
+ 
+ - core.loaders.maven [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.loaders.maven.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core.loaders.maven%22)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.15.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core.loaders.maven/0.15.0)
  
  - core.javaee [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.javaee.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core.javaee%22)
  [![Javadoc](https://img.shields.io/badge/javadoc-0.15.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core.javaee/0.15.0)
@@ -33,6 +44,14 @@ is recommended for better performances on disk operations (detection of physical
 ![build status](https://travis-ci.org/lecousin/java-framework-core.svg?branch=dev "Build Status")
 ![build status](https://ci.appveyor.com/api/projects/status/github/lecousin/java-framework-core?branch=dev&svg=true "Build Status")
 [![Codecov](https://codecov.io/gh/lecousin/java-framework-core/branch/dev/graph/badge.svg)](https://codecov.io/gh/lecousin/java-framework-core/branch/dev)
+
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=dev&metric=alert_status)](https://sonarcloud.io/dashboard?branch=dev&id=lecousin_java-framework-core)
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=dev&metric=bugs)](https://sonarcloud.io/dashboard?branch=dev&id=lecousin_java-framework-core)
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=dev&metric=code_smells)](https://sonarcloud.io/dashboard?branch=dev&id=lecousin_java-framework-core)
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=dev&metric=reliability_rating)](https://sonarcloud.io/dashboard?branch=dev&id=lecousin_java-framework-core)
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=dev&metric=vulnerabilities)](https://sonarcloud.io/dashboard?branch=dev&id=lecousin_java-framework-core)
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=dev&metric=coverage)](https://sonarcloud.io/dashboard?branch=dev&id=lecousin_java-framework-core)
+
 
 ## Multi-threading
 
