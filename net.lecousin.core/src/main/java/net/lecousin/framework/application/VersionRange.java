@@ -1,7 +1,5 @@
 package net.lecousin.framework.application;
 
-import java.util.ArrayList;
-
 /**
  * A VersionRange is defined by a minimum version (may be null), and a maximum version (may be null).
  * The maximum version, if specified, may be included or excluded.
@@ -55,35 +53,6 @@ public class VersionRange {
 			}
 		}
 		return s.toString();
-	}
-	
-	/** Parse a string into a list of version numbers (separated by a dot in the string).
-	 * It stops at the first non numeric character which is not a dot. */
-	public static int[] parse(String s) {
-		ArrayList<Integer> n = new ArrayList<>();
-		int val = 0;
-		boolean hasChar = false;
-		int i;
-		for (i = 0; i < s.length(); ++i) {
-			char c = s.charAt(i);
-			if (c >= '0' && c <= '9') {
-				val = val * 10 + (c - '0');
-				hasChar = true;
-			} else if (c == '.') {
-				n.add(Integer.valueOf(val));
-				val = 0;
-				hasChar = false;
-			} else {
-				if (hasChar)
-					n.add(Integer.valueOf(val));
-				break;
-			}
-		}
-		if (i == s.length()) n.add(Integer.valueOf(val));
-		int[] numbers = new int[n.size()];
-		for (i = 0; i < n.size(); ++i)
-			numbers[i] = n.get(i).intValue();
-		return numbers;
 	}
 	
 }

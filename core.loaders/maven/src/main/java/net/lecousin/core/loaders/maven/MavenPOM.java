@@ -27,6 +27,7 @@ import net.lecousin.framework.io.buffering.ByteArrayIO;
 import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.io.provider.IOProviderFromURI;
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.Runnables;
 import net.lecousin.framework.util.SystemEnvironment;
 import net.lecousin.framework.util.SystemEnvironment.OSFamily;
 import net.lecousin.framework.xml.XMLException;
@@ -452,15 +453,29 @@ public class MavenPOM implements LibraryDescriptor {
 			}
 		}
 		
-		private void readParent(XMLStreamReader xml) throws MavenPOMException, XMLException, IOException {
+		private void readInnerElements(XMLStreamReader xml, Runnables.Throws<Exception> onInnerElement)
+		throws MavenPOMException, XMLException, IOException {
 			if (xml.event.isClosed) return;
 			ElementContext ctx = xml.event.context.getFirst();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new MavenPOMException(pomFile, "Invalid POM: missing closing parent tag");
-					break;
+						throw new MavenPOMException(pomFile, "Invalid POM: missing closing tag for " + ctx.text.toString());
+					return;
 				}
+				try {
+					onInnerElement.run();
+				} catch (MavenPOMException | XMLException | IOException e) {
+					throw e;
+				} catch (Exception e) {
+					throw new MavenPOMException("Error reading " + ctx.text.toString(), e);
+				}
+			} while (true);
+			
+		}
+		
+		private void readParent(XMLStreamReader xml) throws MavenPOMException, XMLException, IOException {
+			readInnerElements(xml, () -> {
 				if (xml.event.text.equals(ELEMENT_ARTIFACT_ID))
 					parentArtifactId = xml.readInnerText().trim().asString();
 				else if (xml.event.text.equals(ELEMENT_GROUP_ID))
@@ -471,157 +486,108 @@ public class MavenPOM implements LibraryDescriptor {
 					parentRelativePath = xml.readInnerText().trim().asString();
 				else
 					xml.closeElement();
-			} while (true);
+			});
 		}
 
 		private void readBuild(XMLStreamReader xml, Build build) throws MavenPOMException, XMLException, IOException {
-			if (xml.event.isClosed) return;
-			ElementContext ctx = xml.event.context.getFirst();
-			do {
-				if (!xml.nextInnerElement(ctx)) {
-					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new MavenPOMException(pomFile, "Invalid POM: missing closing build tag");
-					break;
-				}
+			readInnerElements(xml, () -> {
 				if (xml.event.text.equals("outputDirectory"))
 					build.outputDirectory = xml.readInnerText().trim().asString();
 				else
 					xml.closeElement();
-			} while (true);
+			});
 		}
 
 		private void readProperties(XMLStreamReader xml, Map<String, String> properties) throws MavenPOMException, XMLException, IOException {
-			if (xml.event.isClosed) return;
-			ElementContext ctx = xml.event.context.getFirst();
-			do {
-				if (!xml.nextInnerElement(ctx)) {
-					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new MavenPOMException(pomFile, "Invalid POM: missing closing properties tag");
-					break;
-				}
-				properties.put(xml.event.text.asString(), xml.readInnerText().asString());
-			} while (true);
+			readInnerElements(xml, () -> properties.put(xml.event.text.asString(), xml.readInnerText().asString()));
 		}
 
 		private void readDependencyManagement(XMLStreamReader xml, List<Dependency> dependencyManagement)
 		throws MavenPOMException, XMLException, IOException {
-			if (xml.event.isClosed) return;
-			ElementContext ctx = xml.event.context.getFirst();
-			do {
-				if (!xml.nextInnerElement(ctx)) {
-					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new MavenPOMException(pomFile, "Invalid POM: missing closing dependencyManagement tag");
-					break;
-				}
-				if (!xml.event.text.equals(ELEMENT_DEPENDENCIES)) {
+			readInnerElements(xml, () -> {
+				if (xml.event.text.equals(ELEMENT_DEPENDENCIES))
+					readDependencies(xml, dependencyManagement);
+				else
 					xml.closeElement();
-					continue;
-				}
-				readDependencies(xml, dependencyManagement);
-			} while (true);
+			});
 		}
 
 		private void readDependencies(XMLStreamReader xml, List<Dependency> dependencies)
 		throws MavenPOMException, XMLException, IOException {
-			if (xml.event.isClosed) return;
-			ElementContext ctx = xml.event.context.getFirst();
-			do {
-				if (!xml.nextInnerElement(ctx)) {
-					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new MavenPOMException(pomFile, "Invalid POM: missing closing dependencies tag");
-					break;
-				}
-				if (!xml.event.text.equals("dependency")) {
+			readInnerElements(xml, () -> {
+				if (xml.event.text.equals("dependency"))
+					readDependency(xml, dependencies);
+				else
 					xml.closeElement();
-					continue;
-				}
-				Dependency dep = new Dependency();
-				ElementContext depCtx = xml.event.context.getFirst();
-				while (xml.nextInnerElement(depCtx)) {
-					if (xml.event.text.equals(ELEMENT_GROUP_ID))
-						dep.groupId = xml.readInnerText().trim().asString();
-					else if (xml.event.text.equals(ELEMENT_ARTIFACT_ID))
-						dep.artifactId = xml.readInnerText().trim().asString();
-					else if (xml.event.text.equals(ELEMENT_VERSION))
-						dep.version = xml.readInnerText().trim().asString();
-					else if (xml.event.text.equals("type"))
-						dep.type = xml.readInnerText().trim().asString();
-					else if (xml.event.text.equals("classifier"))
-						dep.classifier = xml.readInnerText().trim().asString();
-					else if (xml.event.text.equals("scope"))
-						dep.scope = xml.readInnerText().trim().asString();
-					else if (xml.event.text.equals("systemPath"))
-						dep.systemPath = xml.readInnerText().trim().asString();
-					else if (xml.event.text.equals("optional"))
-						dep.optional = xml.readInnerText().trim().equals("true");
-					else if (xml.event.text.equals("exclusions"))
-						readExclusions(xml, dep.exclusions);
-					else
-						xml.closeElement();
-				}
-				dependencies.add(dep);
-			} while (true);
+			});
+		}
+		
+		private void readDependency(XMLStreamReader xml, List<Dependency> dependencies)
+		throws MavenPOMException, XMLException, IOException {
+			Dependency dep = new Dependency();
+			readInnerElements(xml, () -> {
+				if (xml.event.text.equals(ELEMENT_GROUP_ID))
+					dep.groupId = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals(ELEMENT_ARTIFACT_ID))
+					dep.artifactId = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals(ELEMENT_VERSION))
+					dep.version = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals("type"))
+					dep.type = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals("classifier"))
+					dep.classifier = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals("scope"))
+					dep.scope = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals("systemPath"))
+					dep.systemPath = xml.readInnerText().trim().asString();
+				else if (xml.event.text.equals("optional"))
+					dep.optional = xml.readInnerText().trim().equals("true");
+				else if (xml.event.text.equals("exclusions"))
+					readExclusions(xml, dep.exclusions);
+				else
+					xml.closeElement();
+			});
+			dependencies.add(dep);
 		}
 
 		private void readExclusions(XMLStreamReader xml, List<Pair<String, String>> exclusions)
 		throws MavenPOMException, XMLException, IOException {
-			if (xml.event.isClosed) return;
-			ElementContext ctx = xml.event.context.getFirst();
-			do {
-				if (!xml.nextInnerElement(ctx)) {
-					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new MavenPOMException(pomFile, "Invalid POM: missing closing exclusions tag");
-					break;
-				}
-				if (!xml.event.text.equals("exclusion")) {
+			readInnerElements(xml, () -> {
+				if (xml.event.text.equals("exclusion")) {
+					Pair<String, String> e = new Pair<>(null, null);
+					ElementContext excluCtx = xml.event.context.getFirst();
+					while (xml.nextInnerElement(excluCtx)) {
+						if (xml.event.text.equals(ELEMENT_GROUP_ID))
+							e.setValue1(xml.readInnerText().trim().asString());
+						else if (xml.event.text.equals(ELEMENT_ARTIFACT_ID))
+							e.setValue2(xml.readInnerText().trim().asString());
+						else
+							xml.closeElement();
+					}
+					if (e.getValue1().equals("*")) e.setValue1(null);
+					if (e.getValue2().equals("*")) e.setValue2(null);
+					exclusions.add(e);
+				} else {
 					xml.closeElement();
-					continue;
 				}
-				Pair<String, String> e = new Pair<>(null, null);
-				ElementContext excluCtx = xml.event.context.getFirst();
-				while (xml.nextInnerElement(excluCtx)) {
-					if (xml.event.text.equals(ELEMENT_GROUP_ID))
-						e.setValue1(xml.readInnerText().trim().asString());
-					else if (xml.event.text.equals(ELEMENT_ARTIFACT_ID))
-						e.setValue2(xml.readInnerText().trim().asString());
-					else
-						xml.closeElement();
-				}
-				if (e.getValue1().equals("*")) e.setValue1(null);
-				if (e.getValue2().equals("*")) e.setValue2(null);
-				exclusions.add(e);
-			} while (true);
+			});
 		}
 		
 		private void readProfiles(XMLStreamReader xml) throws MavenPOMException, XMLException, IOException {
-			if (xml.event.isClosed) return;
-			ElementContext ctx = xml.event.context.getFirst();
-			do {
-				if (!xml.nextInnerElement(ctx)) {
-					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new MavenPOMException(pomFile, "Invalid POM: missing closing profiles tag");
-					break;
-				}
-				if (!xml.event.text.equals("profile")) {
+			readInnerElements(xml, () -> {
+				if (xml.event.text.equals("profile")) {
+					Profile profile = readProfile(xml);
+					if (profile != null)
+						profiles.add(profile);
+				} else {
 					xml.closeElement();
-					continue;
 				}
-				Profile profile = readProfile(xml);
-				if (profile == null) continue;
-				profiles.add(profile);
-			} while (true);
+			});
 		}
 
 		private Profile readProfile(XMLStreamReader xml) throws MavenPOMException, XMLException, IOException {
-			if (xml.event.isClosed) return null;
 			Profile profile = new Profile();
-			ElementContext ctx = xml.event.context.getFirst();
-			do {
-				if (!xml.nextInnerElement(ctx)) {
-					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new MavenPOMException(pomFile, "Invalid POM: missing closing profile tag");
-					break;
-				}
+			readInnerElements(xml, () -> {
 				if (xml.event.text.equals("activation"))
 					readProfileActivation(xml, profile);
 				else if (xml.event.text.equals("build"))
@@ -636,13 +602,12 @@ public class MavenPOM implements LibraryDescriptor {
 					readRepositories(xml, profile.repositories);
 				else
 					xml.closeElement();
-			} while (true);
+			});
 			return profile;
 		}
 		
-		private void readProfileActivation(XMLStreamReader xml, Profile profile) throws XMLException, IOException {
-			ElementContext ctxActivation = xml.event.context.getFirst();
-			while (xml.nextInnerElement(ctxActivation)) {
+		private void readProfileActivation(XMLStreamReader xml, Profile profile) throws XMLException, IOException, MavenPOMException {
+			readInnerElements(xml, () -> {
 				if (xml.event.text.equals("activeByDefault"))
 					readProfileActivationActiveByDefault(xml, profile);
 				else if (xml.event.text.equals("jdk"))
@@ -655,7 +620,7 @@ public class MavenPOM implements LibraryDescriptor {
 					readProfileActivationFile(xml, profile);
 				else
 					xml.closeElement();
-			}
+			});
 		}
 		
 		private void readProfileActivationActiveByDefault(XMLStreamReader xml, Profile profile) throws XMLException, IOException {
@@ -663,10 +628,9 @@ public class MavenPOM implements LibraryDescriptor {
 				profile.activeByDefault = true;
 		}
 		
-		private void readProfileActivationOS(XMLStreamReader xml, Profile profile) throws XMLException, IOException {
+		private void readProfileActivationOS(XMLStreamReader xml, Profile profile) throws XMLException, IOException, MavenPOMException {
 			profile.activationOS = new ActivationOS();
-			ElementContext ctxOS = xml.event.context.getFirst();
-			while (xml.nextInnerElement(ctxOS)) {
+			readInnerElements(xml, () -> {
 				if (xml.event.text.equals("name"))
 					profile.activationOS.name = xml.readInnerText().trim().asString();
 				else if (xml.event.text.equals("family"))
@@ -677,51 +641,42 @@ public class MavenPOM implements LibraryDescriptor {
 					profile.activationOS.version = xml.readInnerText().trim().asString();
 				else
 					xml.closeElement();
-			}
+			});
 		}
 		
-		private void readProfileActivationProperty(XMLStreamReader xml, Profile profile) throws XMLException, IOException {
-			ElementContext ctxProperty = xml.event.context.getFirst();
-			while (xml.nextInnerElement(ctxProperty)) {
+		private void readProfileActivationProperty(XMLStreamReader xml, Profile profile) throws XMLException, IOException, MavenPOMException {
+			readInnerElements(xml, () -> {
 				if (xml.event.text.equals("name"))
 					profile.activationPropertyName = xml.readInnerText().trim().asString();
 				else if (xml.event.text.equals("value"))
 					profile.activationPropertyValue = xml.readInnerText().trim().asString();
 				else
 					xml.closeElement();
-			}
+			});
 		}
 		
-		private void readProfileActivationFile(XMLStreamReader xml, Profile profile) throws XMLException, IOException {
-			ElementContext ctxFile = xml.event.context.getFirst();
-			while (xml.nextInnerElement(ctxFile)) {
+		private void readProfileActivationFile(XMLStreamReader xml, Profile profile) throws XMLException, IOException, MavenPOMException {
+			readInnerElements(xml, () -> {
 				if (xml.event.text.equals("missing"))
 					profile.activationMissingFile = xml.readInnerText().trim().asString();
 				else if (xml.event.text.equals("exists"))
 					profile.activationFileExists = xml.readInnerText().trim().asString();
 				else
 					xml.closeElement();
-			}
+			});
 		}
 
 		private void readRepositories(XMLStreamReader xml, List<Repository> repositories)
 		throws MavenPOMException, XMLException, IOException {
-			if (xml.event.isClosed) return;
-			ElementContext ctx = xml.event.context.getFirst();
-			do {
-				if (!xml.nextInnerElement(ctx)) {
-					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new MavenPOMException(pomFile, "Invalid POM: missing closing repositories tag");
-					break;
-				}
-				if (!xml.event.text.equals("repository")) {
+			readInnerElements(xml, () -> {
+				if (xml.event.text.equals("repository")) {
+					Repository repo = readRepository(xml);
+					if (repo != null)
+						repositories.add(repo);
+				} else {
 					xml.closeElement();
-					continue;
 				}
-				Repository repo = readRepository(xml);
-				if (repo != null)
-					repositories.add(repo);
-			} while (true);
+			});
 		}
 		
 		private Repository readRepository(XMLStreamReader xml) throws MavenPOMException, XMLException, IOException {

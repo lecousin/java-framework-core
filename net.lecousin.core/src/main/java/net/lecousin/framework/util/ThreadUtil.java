@@ -7,7 +7,9 @@ public final class ThreadUtil {
 		// no instance
 	}
 	
-	/** Call the wait method on the given lock and return false in case it has been interrupted. */
+	/** Call the wait method on the given lock and return false in case it has been interrupted
+	 * MUST be called in a synchronized block and in a loop to check condition. */
+	@SuppressWarnings({"squid:S2274", "squid:S2273"})
 	public static boolean wait(Object lock, long timeout) {
 		try {
 			lock.wait(timeout);

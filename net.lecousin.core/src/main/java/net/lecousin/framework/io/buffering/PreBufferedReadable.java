@@ -134,6 +134,14 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 	private TurnArray<ByteBuffer> reusableBuffers;
 	private AsyncSupplier<?,?> nextReadTask = null;
 	
+	private static class UnexpectedEnd extends IOException {
+		private static final long serialVersionUID = 1L;
+
+		public UnexpectedEnd(PreBufferedReadable io) {
+			super("Unexpected end after " + io.read + " bytes read, known size is " + io.size);
+		}
+	}
+	
 	@Override
 	public String getSourceDescription() { return src != null ? src.getSourceDescription() : "closed"; }
 	
@@ -298,7 +306,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 					if (size > 0 && read == size) 
 						endReached = true;
 					if (endReached && size > 0 && read < size) {
-						error = new IOException("Unexpected end after " + read + " bytes read, known size is " + size);
+						error = new UnexpectedEnd(this);
 					}
 					if (dataReady != null) {
 						Async<NoException> dr = dataReady;
@@ -507,8 +515,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 						// we reach the end
 						endReached = true;
 						if (size > 0 && read < size)
-							error = new IOException("Unexpected end after " + read
-								+ " bytes read, known size is " + size);
+							error = new UnexpectedEnd(this);
 						if (dataReady != null) dataReady.unblock();
 						return skipped;
 					}
@@ -635,8 +642,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 						nextRead();
 				}
 				if (endReached && size > 0 && read < size && buffersReady != null && !isClosing() && !isClosed())
-					error = new IOException("Unexpected end after " + read
-						+ " bytes read, known size is " + size + " in " + getSourceDescription());
+					error = new UnexpectedEnd(this);
 				if (dataReady != null) {
 					sp = dataReady;
 					dataReady = null;
@@ -748,9 +754,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 				if (!current.hasRemaining() && endReached)
 					return IOUtil.success(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1), ondone);
 			} else {
-				if (endReached)
-					return IOUtil.success(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1), ondone);
-				if (isClosing() || isClosed())
+				if (endReached || isClosing() || isClosed())
 					return IOUtil.success(Integer.valueOf(alreadyDone > 0 ? alreadyDone : -1), ondone);
 				ok = false;
 			}

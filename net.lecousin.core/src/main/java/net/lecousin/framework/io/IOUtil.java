@@ -1258,7 +1258,7 @@ public final class IOUtil {
 			onErrorOrCancel::cancel
 		);
 	}
-
+	
 	/** Create a consumer that call forward the error to the given sync and call onDone. */ 
 	public static <T> Consumer<IOException> errorConsumer(IAsync<IOException> async, Consumer<Pair<T, IOException>> ondone) {
 		return error -> {

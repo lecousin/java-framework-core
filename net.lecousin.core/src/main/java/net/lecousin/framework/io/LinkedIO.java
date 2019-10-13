@@ -45,6 +45,8 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 	protected long pos = 0;
 	protected long posInIO = 0;
 	
+	private static final String WRITE_ASYNC_TASK_DESCRIPTION = "LinkedIO.writeAsync";
+	
 	@Override
 	public byte getPriority() {
 		return ios.isEmpty() ? Task.PRIORITY_NORMAL : ios.get(0).getPriority();
@@ -562,26 +564,10 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 				if (ondone != null) ondone.accept(new Pair<>(r.getResult(), null));
 				return r;
 			}
-			AsyncSupplier<Integer, IOException> r2 = new AsyncSupplier<>();
-			readFullySyncIfPossible(buffer, res -> {
-				if (ondone == null) return;
-				if (res.getValue1() == null) ondone.accept(res);
-				else {
-					int n = res.getValue1().intValue();
-					if (n < 0) n = nb;
-					else n = nb + n;
-					ondone.accept(new Pair<>(Integer.valueOf(n), null));
-				}
-			}).onDone(nb2 -> {
-				int n = nb2.intValue();
-				if (n < 0) n = nb;
-				else n = nb + n;
-				r2.unblockSuccess(Integer.valueOf(n));
-			}, r2);
-			return r2;
+			return continueSyncIfPossible(nb, buffer, ondone);
 		}
 		AsyncSupplier<Integer, IOException> r2 = new AsyncSupplier<>();
-		r.onDone(nb -> {
+		IOUtil.listenOnDone(r, nb -> {
 			int n = nb.intValue();
 			if (n > 0) {
 				posInIO += n;
@@ -590,28 +576,59 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 			if (!buffer.hasRemaining()) {
 				IOUtil.success(nb, r2, ondone);
 			} else {
-				readFullyAsync(buffer, res -> {
-					if (ondone == null) return;
-					if (res.getValue1() == null) ondone.accept(res);
-					else {
-						int n1 = n;
-						if (n1 < 0) n1 = 0;
-						int n2 = res.getValue1().intValue();
-						if (n2 < 0) n2 = n1;
-						else n2 += n1;
-						ondone.accept(new Pair<>(Integer.valueOf(n2), null));
-					}
-				}).onDone(nb2 -> {
-					int n1 = n;
-					if (n1 < 0) n1 = 0;
-					int n2 = nb2.intValue();
-					if (n2 < 0) n2 = n1;
-					else n2 += n1;
-					r2.unblockSuccess(Integer.valueOf(n2));
-				}, r2);
+				continueReadAsync(n, buffer, r2, ondone);
 			}
-		}, r2);
+		}, r2, ondone);
 		return r2;
+	}
+	
+	private AsyncSupplier<Integer, IOException> continueSyncIfPossible(
+		int nbDone,
+		ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone
+	) {
+		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
+		readFullySyncIfPossible(buffer, res -> {
+			if (ondone == null) return;
+			if (res.getValue1() == null) ondone.accept(res);
+			else {
+				int n = res.getValue1().intValue();
+				if (n < 0) n = nbDone;
+				else n = nbDone + n;
+				ondone.accept(new Pair<>(Integer.valueOf(n), null));
+			}
+		}).onDone(nb2 -> {
+			int n = nb2.intValue();
+			if (n < 0) n = nbDone;
+			else n = nbDone + n;
+			result.unblockSuccess(Integer.valueOf(n));
+		}, result);
+		return result;
+	}
+	
+	private void continueReadAsync(
+		int nbDone, ByteBuffer buffer,
+		AsyncSupplier<Integer, IOException> result, Consumer<Pair<Integer, IOException>> ondone
+	) {
+		readFullyAsync(buffer, res -> {
+			if (ondone == null) return;
+			if (res.getValue1() == null) ondone.accept(res);
+			else {
+				int n1 = nbDone;
+				if (n1 < 0) n1 = 0;
+				int n2 = res.getValue1().intValue();
+				if (n2 < 0) n2 = n1;
+				else n2 += n1;
+				ondone.accept(new Pair<>(Integer.valueOf(n2), null));
+			}
+		}).onDone(nb2 -> {
+			int n1 = nbDone;
+			if (n1 < 0) n1 = 0;
+			int n2 = nb2.intValue();
+			if (n2 < 0) n2 = n1;
+			else n2 += n1;
+			result.unblockSuccess(Integer.valueOf(n2));
+		}, result);
+
 	}
 	
 	protected int readAsync() throws IOException {
@@ -1060,7 +1077,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 		if (s == null) {
 			AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
 			if (!seek.isDone()) {
-				seek.thenStart(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
+				seek.thenStart(new Task.Cpu.FromRunnable(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
 					if (seek.hasError())
 						IOUtil.error(seek.getError(), result, ondone);
 					else {
@@ -1098,7 +1115,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 		AsyncSupplier<Integer, IOException> result, Consumer<Pair<Integer, IOException>> ondone
 	) {
 		AsyncSupplier<Integer, IOException> write = io.writeAsync(buffer);
-		write.thenStart(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
+		write.thenStart(new Task.Cpu.FromRunnable(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
 			buffer.limit(limit);
 			if (write.hasError()) {
 				IOUtil.error(write.getError(), result, ondone);
@@ -1126,7 +1143,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 				if (!seek.isDone()) {
 					AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 					int ii = i;
-					seek.thenStart(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
+					seek.thenStart(new Task.Cpu.FromRunnable(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
 						sizes.set(ii, seek.getResult());
 						writeAsync(pos, buffer, ondone).forward(result);
 					}), result);
@@ -1156,7 +1173,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 		if (s == null) {
 			AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
 			if (!seek.isDone()) {
-				seek.thenStart(new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () -> {
+				seek.thenStart(new Task.Cpu.FromRunnable(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
 					sizes.set(i, seek.getResult());
 					writeAsync(i, p, pos, done, buffer, result, ondone);
 				}), result);
@@ -1182,7 +1199,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 				IOUtil.success(Integer.valueOf(done + nb), result, ondone);
 				return;
 			}
-			new Task.Cpu.FromRunnable("LinkedIO.writeAsync", getPriority(), () ->
+			new Task.Cpu.FromRunnable(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () ->
 				writeAsync(i + 1, p + ioSize, p + ioSize, done + nb, buffer, result, ondone)
 			).start();
 		});

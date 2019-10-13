@@ -81,8 +81,6 @@ public class MavenRemoteRepository implements MavenRepository {
 	@Override
 	public AsyncSupplier<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, byte priority) {
 		String path = groupId.replace('.', '/') + '/' + artifactId + "/maven-metadata.xml";
-		if (logger.info())
-			logger.info("Downloading " + url + path);
 		IO.Readable io = download(path, priority);
 		if (io == null) return new AsyncSupplier<>(null, null);
 		IO.Readable.Buffered bio;

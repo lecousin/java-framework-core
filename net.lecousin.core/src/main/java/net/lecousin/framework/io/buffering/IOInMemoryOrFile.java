@@ -96,6 +96,7 @@ public class IOInMemoryOrFile extends ConcurrentCloseable<IOException>
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S4042") // use of File.delete
 	protected IAsync<IOException> closeUnderlyingResources() {
 		if (file != null) {
 			Async<IOException> sp = new Async<>();
@@ -317,6 +318,7 @@ public class IOInMemoryOrFile extends ConcurrentCloseable<IOException>
 	}
 
 	@Override
+	@SuppressWarnings("squid:S4042") // use of File.delete
 	public void setSizeSync(long newSize) throws IOException {
 		if (newSize == size) return;
 		if (newSize < size) {
@@ -364,50 +366,56 @@ public class IOInMemoryOrFile extends ConcurrentCloseable<IOException>
 	@Override
 	public AsyncSupplier<Void, IOException> setSizeAsync(long newSize) {
 		if (newSize == size) return new AsyncSupplier<>(null, null);
-		if (newSize < size) {
-			// shrink
-			if (newSize <= maxSizeInMemory) {
-				// only memory remaining
-				if (file != null) {
-					File f = file.getFile();
-					file.closeAsync().onDone(() -> {
-						if (!f.delete())
-							LCCore.getApplication().getDefaultLogger()
-								.warn("Unable to remove temporary file " + f.getAbsolutePath());
-					});
-					file = null;
-				}
-				Task.Cpu<Void, IOException> task = new Task.Cpu<Void, IOException>(
-					"Shrink memory of IOInMemoryOrFile", getPriority()
-				) {
-					@Override
-					public Void run() {
-						int nbBuf = (int)(newSize / BUFFER_SIZE);
-						if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
-						if (memory.length > nbBuf) {
-							byte[][] newMem = new byte[nbBuf][];
-							System.arraycopy(memory, 0, newMem, 0, nbBuf);
-							memory = newMem;
-						}
-						size = newSize;
-						if (pos > size) pos = size;
-						return null;
-					}
-				};
-				operation(task);
-				task.start();
-				return task.getOutput();
+		if (newSize < size)
+			return shrinkSizeAsync(newSize);
+		return enlargeSizeAsync(newSize);
+	}
+	
+	@SuppressWarnings("squid:S4042") // use of File.delete
+	private AsyncSupplier<Void, IOException> shrinkSizeAsync(long newSize) {
+		if (newSize <= maxSizeInMemory) {
+			// only memory remaining
+			if (file != null) {
+				File f = file.getFile();
+				file.closeAsync().onDone(() -> {
+					if (!f.delete())
+						LCCore.getApplication().getDefaultLogger()
+							.warn("Unable to remove temporary file " + f.getAbsolutePath());
+				});
+				file = null;
 			}
-			AsyncSupplier<Void, IOException> result = new AsyncSupplier<>();
-			AsyncSupplier<Void, IOException> resize = operation(file.setSizeAsync(newSize - maxSizeInMemory));
-			resize.onDone(() -> {
-				size = newSize;
-				if (pos > size) pos = size;
-				result.unblockSuccess(null);
-			}, result);
-			return result;
+			Task.Cpu<Void, IOException> task = new Task.Cpu<Void, IOException>(
+				"Shrink memory of IOInMemoryOrFile", getPriority()
+			) {
+				@Override
+				public Void run() {
+					int nbBuf = (int)(newSize / BUFFER_SIZE);
+					if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
+					if (memory.length > nbBuf) {
+						byte[][] newMem = new byte[nbBuf][];
+						System.arraycopy(memory, 0, newMem, 0, nbBuf);
+						memory = newMem;
+					}
+					size = newSize;
+					if (pos > size) pos = size;
+					return null;
+				}
+			};
+			operation(task);
+			task.start();
+			return task.getOutput();
 		}
-		// enlarge
+		AsyncSupplier<Void, IOException> result = new AsyncSupplier<>();
+		AsyncSupplier<Void, IOException> resize = operation(file.setSizeAsync(newSize - maxSizeInMemory));
+		resize.onDone(() -> {
+			size = newSize;
+			if (pos > size) pos = size;
+			result.unblockSuccess(null);
+		}, result);
+		return result;
+	}
+	
+	private AsyncSupplier<Void, IOException> enlargeSizeAsync(long newSize) {
 		AsyncSupplier<Void, IOException> taskMemory = null;
 		if (size < maxSizeInMemory) {
 			// we need to enlarge memory

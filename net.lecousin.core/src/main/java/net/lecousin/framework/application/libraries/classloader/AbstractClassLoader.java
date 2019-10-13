@@ -164,28 +164,27 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 		}
 	}
 	
+	private Pair<Object, AbstractClassLoader> getPointer(String path) {
+		Object pointer = getResourcePointer(path);
+		if (pointer != null)
+			return new Pair<>(pointer, this);
+		if (subLoaders != null)
+			for (AbstractClassLoader sub : subLoaders) {
+				pointer = sub.getResourcePointer(path);
+				if (pointer != null)
+					return new Pair<>(pointer, sub);
+			}
+		return null;
+	}
+	
 	@Override
 	public final IOProvider.Readable get(String path) {
-		Object pointer = getResourcePointer(path);
-		AbstractClassLoader cl = this;
-		if (pointer == null) {
-			if (subLoaders != null)
-				for (AbstractClassLoader sub : subLoaders) {
-					pointer = sub.getResourcePointer(path);
-					if (pointer != null) {
-						cl = sub;
-						break;
-					}
-				}
-			if (pointer == null)
-				return null;
-		}
-		Object ptr = pointer;
-		AbstractClassLoader owner = cl;
+		Pair<Object, AbstractClassLoader> pointer = getPointer(path);
+		if (pointer == null) return null;
 		return new IOProvider.Readable() {
 			@Override
 			public IO.Readable provideIOReadable(byte priority) throws IOException {
-				return owner.openResourcePointer(ptr, priority);
+				return pointer.getValue2().openResourcePointer(pointer.getValue1(), priority);
 			}
 
 			@Override
@@ -197,21 +196,9 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	
 	/** Open a resource. */
 	public final IO.Readable open(String path, byte priority) throws IOException {
-		Object pointer = getResourcePointer(path);
-		AbstractClassLoader cl = this;
-		if (pointer == null) {
-			if (subLoaders != null)
-				for (AbstractClassLoader sub : subLoaders) {
-					pointer = sub.getResourcePointer(path);
-					if (pointer != null) {
-						cl = sub;
-						break;
-					}
-				}
-			if (pointer == null)
-				throw new FileNotFoundException(path);
-		}
-		return cl.openResourcePointer(pointer, priority);
+		Pair<Object, AbstractClassLoader> pointer = getPointer(path);
+		if (pointer == null) throw new FileNotFoundException(path);
+		return pointer.getValue2().openResourcePointer(pointer.getValue1(), priority);
 	}
 
 	/** Search for a resource. */
