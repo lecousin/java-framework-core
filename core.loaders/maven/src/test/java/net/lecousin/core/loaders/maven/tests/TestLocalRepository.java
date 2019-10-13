@@ -3,16 +3,25 @@ package net.lecousin.core.loaders.maven.tests;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipFile;
 
 import net.lecousin.core.loaders.maven.MavenLocalRepository;
 import net.lecousin.core.loaders.maven.MavenPOM;
 import net.lecousin.core.loaders.maven.MavenPOMLoader;
 import net.lecousin.core.loaders.maven.MavenSettings;
+import net.lecousin.framework.application.Version;
+import net.lecousin.framework.application.VersionSpecification.SingleVersion;
 import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.application.libraries.artifacts.LibrariesRepository;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor;
+import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptorLoader.DependencyNode;
+import net.lecousin.framework.collections.Tree;
+import net.lecousin.framework.collections.Tree.Node;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -49,6 +58,42 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		repoDir = new File(localRepo);
 		repo = new MavenLocalRepository(repoDir, true, true);
 		pomLoader.addRepository(repo);
+	}
+	
+	@Test(timeout=60000)
+	public void testPOMLoader() throws Exception {
+		Assert.assertTrue(pomLoader.detect(new File(".")));
+		
+		try {
+			pomLoader.loadLibrary("does", "not", new SingleVersion(new Version("1")), Task.PRIORITY_NORMAL, new ArrayList<>(0)).blockResult(15000);
+			throw new AssertionError("Error expected");
+		} catch (LibraryManagementException e) {
+			// ok
+		}
+		
+		Map<Version, List<Node<DependencyNode>>> artifactVersions = new HashMap<>();
+		Tree.WithParent<DependencyNode> tree = new Tree.WithParent<>(null);
+		List<Node<DependencyNode>> list = new LinkedList<>();
+		Node<DependencyNode> node = tree.add(new DependencyNode(new TestDependency("g1", "a1", new SingleVersion(new Version("1")), null, false, null, null)));
+		node = node.getSubNodes().add(new DependencyNode(new TestDependency("g2", "a2", new SingleVersion(new Version("1")), null, false, null, null)));
+		node = node.getSubNodes().add(new DependencyNode(new TestDependency("g3", "a3", new SingleVersion(new Version("1")), null, false, null, null)));
+		list.add(node);
+		node = node.getSubNodes().add(new DependencyNode(new TestDependency("g4", "a4", new SingleVersion(new Version("1")), null, false, null, null)));
+		
+		node = tree.add(new DependencyNode(new TestDependency("g5", "a5", new SingleVersion(new Version("1")), null, false, null, null)));
+		node = node.getSubNodes().add(new DependencyNode(new TestDependency("g6", "a6", new SingleVersion(new Version("1")), null, false, null, null)));
+		node = node.getSubNodes().add(new DependencyNode(new TestDependency("g3", "a3", new SingleVersion(new Version("1")), null, false, null, null)));
+		list.add(node);
+		
+		artifactVersions.put(new Version("1"), list);
+		
+		list = new LinkedList<>();
+		node = tree.add(new DependencyNode(new TestDependency("g7", "a7", new SingleVersion(new Version("1")), null, false, null, null)));
+		node = node.getSubNodes().add(new DependencyNode(new TestDependency("g3", "a3", new SingleVersion(new Version("1.1")), null, false, null, null)));
+		list.add(node);
+		artifactVersions.put(new Version("1.1"), list);
+		
+		Assert.assertEquals("1.1", pomLoader.resolveVersionConflict("g3", "a3", artifactVersions).toString());
 	}
 	
 	@Test(timeout=120000)

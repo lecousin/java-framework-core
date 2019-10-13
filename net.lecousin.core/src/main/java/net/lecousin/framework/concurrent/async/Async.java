@@ -13,6 +13,7 @@ import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.ThreadingDebugHelper;
 import net.lecousin.framework.log.Logger;
+import net.lecousin.framework.util.ThreadUtil;
 
 /**
  * Simplest implementation of a synchronization point.
@@ -137,17 +138,9 @@ public class Async<TError extends Exception> implements IAsync<TError>, Future<V
 			if (blockedHandler == null) {
 				if (timeout <= 0) {
 					while (!unblocked || listenersInline != null)
-						try { this.wait(0); }
-						catch (InterruptedException e) {
-							Thread.currentThread().interrupt();
-							return;
-						}
+						if (!ThreadUtil.wait(this, 0)) return;
 				} else {
-					try { this.wait(timeout); }
-					catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						return;
-					}
+					if (!ThreadUtil.wait(this, timeout)) return;
 				}
 			}
 		}

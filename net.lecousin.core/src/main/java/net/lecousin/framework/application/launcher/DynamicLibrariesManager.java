@@ -59,6 +59,7 @@ import net.lecousin.framework.plugins.ExtensionPoints;
 import net.lecousin.framework.progress.FakeWorkProgress;
 import net.lecousin.framework.progress.WorkProgress;
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.ThreadUtil;
 import net.lecousin.framework.util.Triple;
 
 /**
@@ -141,11 +142,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 				if (splash == null) return null;
 				synchronized (splash) {
 					while (!splash.isReady())
-						try { splash.wait(); }
-						catch (InterruptedException e) {
-							Thread.currentThread().interrupt();
-							return null;
-						}
+						if (!ThreadUtil.wait(splash, 0)) return null;
 				}
 				splash.setLogo(img, true);
 				return null;

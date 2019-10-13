@@ -15,6 +15,7 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.ThreadUtil;
 
 /**
  * Read an IO.Readable into 2 buffers, then those buffers can be read when ready.
@@ -122,13 +123,8 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 	
 	private void waitRead2() {
 		synchronized (buf1) {
-			while (read2 == null) {
-				try { buf1.wait(); }
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					break;
-				}
-			}
+			while (read2 == null)
+				if (!ThreadUtil.wait(buf1, 0)) break;
 		}
 	}
 	

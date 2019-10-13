@@ -21,6 +21,11 @@ public class TestClassPath extends LCCoreAbstractTest {
 	@Test(timeout=60000)
 	public void testScanLibraries() {
 		LCCore.getApplication().getLibrariesManager().scanLibraries("net.lecousin", true, pkg -> true, cl -> true, cl -> {});
+		LCCore.getApplication().getLibrariesManager().scanLibraries("org.junit", true, pkg -> true, cl -> true, cl -> {});
+		LCCore.getApplication().getLibrariesManager().scanLibraries("org", false, null, cl -> false, cl -> {});
+		LCCore.getApplication().getLibrariesManager().scanLibraries("org.junit", false, null, cl -> false, cl -> {});
+		LCCore.getApplication().getLibrariesManager().scanLibraries("org.junit", true, null, cl -> false, cl -> {});
+		LCCore.getApplication().getLibrariesManager().scanLibraries("org.junit", true, pkg -> false, cl -> false, cl -> {});
 	}
 	
 }

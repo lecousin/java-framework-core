@@ -21,6 +21,7 @@ import net.lecousin.framework.memory.MemoryManager;
 import net.lecousin.framework.util.AsyncCloseable;
 import net.lecousin.framework.util.DebugUtil;
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.ThreadUtil;
 
 /**
  * LC Core Environment for a standalone application. This is the default implementation.
@@ -111,11 +112,8 @@ public class StandaloneLCCore implements LCCore.Environment {
 				public void run() {
 					do {
 						synchronized (lock) {
-							try { lock.wait(logThreadingInterval); }
-							catch (InterruptedException e) {
-								Thread.currentThread().interrupt();
+							if (!ThreadUtil.wait(lock, logThreadingInterval))
 								return;
-							}
 						}
 						if (closed) return;
 						logger.debug("\n" + Threading.debug());
@@ -218,8 +216,7 @@ public class StandaloneLCCore implements LCCore.Environment {
 				}
 			}
 			if (closingResources.isEmpty()) break;
-			try { Thread.sleep(100); }
-			catch (InterruptedException e) { break; }
+			if (!ThreadUtil.sleep(100)) break;
 			if (System.currentTimeMillis() - start > 15000) {
 				System.out.println("Ressources are still closing, but we don't wait more than 15 seconds.");
 				break;
@@ -254,8 +251,7 @@ public class StandaloneLCCore implements LCCore.Environment {
 			if ((count % 10) == 0) {
 				System.out.println("Waiting for threads to stop");
 			}
-			try { Thread.sleep(100); }
-			catch (InterruptedException e) { break; }
+			if (!ThreadUtil.sleep(100)) break;
 			count++;
 		} while (count < 50);
 

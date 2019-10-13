@@ -1,12 +1,18 @@
 package net.lecousin.core.loaders.maven.tests;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipFile;
 
 import net.lecousin.core.loaders.maven.MavenPOM;
 import net.lecousin.core.loaders.maven.MavenPOMLoader;
 import net.lecousin.core.loaders.maven.MavenRemoteRepository;
+import net.lecousin.framework.application.Version;
+import net.lecousin.framework.application.VersionRange;
+import net.lecousin.framework.application.VersionSpecification.Range;
+import net.lecousin.framework.application.VersionSpecification.RangeWithRecommended;
+import net.lecousin.framework.application.VersionSpecification.SingleVersion;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor.Dependency;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -143,4 +149,48 @@ public class TestRemoteRepository extends LCCoreAbstractTest {
 		}
 	}
 	
+	@Test(timeout=120000)
+	public void testLoadDifferentVersions() throws Exception {
+		MavenRemoteRepository repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2/", true, false);
+		MavenPOMLoader pomLoader = new MavenPOMLoader();
+		pomLoader.addRepository(repo);
+		
+		MavenPOM pom;
+		pom = pomLoader.loadLibrary("net.lecousin", "parent-pom", new SingleVersion(new Version("0.1")), Task.PRIORITY_NORMAL, new ArrayList<>(0)).blockResult(30000);
+		Assert.assertEquals("0.1", pom.getVersionString());
+		pom = pomLoader.loadLibrary("net.lecousin", "parent-pom", new SingleVersion(new Version("0.2")), Task.PRIORITY_NORMAL, new ArrayList<>(0)).blockResult(30000);
+		Assert.assertEquals("0.2", pom.getVersionString());
+		pom = pomLoader.loadLibrary("net.lecousin", "parent-pom", new SingleVersion(new Version("0.3")), Task.PRIORITY_NORMAL, new ArrayList<>(0)).blockResult(30000);
+		Assert.assertEquals("0.3", pom.getVersionString());
+		pom = pomLoader.loadLibrary("net.lecousin", "parent-pom", new Range(new VersionRange(new Version("0.5"), new Version("0.7"), true)), Task.PRIORITY_NORMAL, new ArrayList<>(0)).blockResult(30000);
+		Assert.assertEquals("0.7", pom.getVersionString());
+		pom = pomLoader.loadLibrary("net.lecousin", "parent-pom", new Range(new VersionRange(new Version("0.2"), new Version("0.4"), true)), Task.PRIORITY_NORMAL, new ArrayList<>(0)).blockResult(30000);
+		Assert.assertEquals("0.3", pom.getVersionString());
+		pom = pomLoader.loadLibrary("net.lecousin", "parent-pom", new RangeWithRecommended(new VersionRange(new Version("0.1"), new Version("0.5"), true), new Version("0.4")), Task.PRIORITY_NORMAL, new ArrayList<>(0)).blockResult(30000);
+		Assert.assertEquals("0.3", pom.getVersionString());
+	}
+	
+	@Test(timeout=120000)
+	public void testLoadFile() throws Exception {
+		MavenRemoteRepository repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2/", true, false);
+		
+		Assert.assertNotNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, null));
+		Assert.assertNotNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junitXX", "junit", junit.runner.Version.id(), null, null));
+		Assert.assertNull(repo.loadFile("junitXX", "junit", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junit", "junitXX", junit.runner.Version.id(), null, null));
+		Assert.assertNull(repo.loadFile("junit", "junitXX", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junit", "junit", "XX", null, null));
+		Assert.assertNull(repo.loadFile("junit", "junit", "XX", null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "XX", null));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "XX", null, Task.PRIORITY_NORMAL).blockResult(30000));
+
+		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "test-jar"));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "test-jar", Task.PRIORITY_NORMAL).blockResult(30000));
+	}
+
 }

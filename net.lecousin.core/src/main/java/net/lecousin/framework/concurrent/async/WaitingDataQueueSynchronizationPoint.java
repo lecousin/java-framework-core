@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.util.ThreadUtil;
 
 /**
  * Like a SynchronizationPoint, but with a queue of waiting data.
@@ -41,13 +42,8 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 					return null;
 				t = Thread.currentThread();
 				blockedHandler = Threading.getBlockedThreadHandler(t);
-				if (blockedHandler == null) {
-					try { this.wait(timeout); }
-					catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						return null;
-					}
-				}
+				if (blockedHandler == null && !ThreadUtil.wait(this, timeout))
+					return null;
 			}
 			if (blockedHandler != null)
 				blockedHandler.blocked(this, timeout);
@@ -110,12 +106,8 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 				if (end) return;
 				t = Thread.currentThread();
 				blockedHandler = Threading.getBlockedThreadHandler(t);
-				if (blockedHandler == null)
-					try { this.wait(timeout); }
-					catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						return;
-					}
+				if (blockedHandler == null && !ThreadUtil.wait(this, timeout))
+					return;
 			}
 			if (blockedHandler != null)
 				blockedHandler.blocked(this, timeout);

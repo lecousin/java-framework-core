@@ -24,6 +24,7 @@ import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.event.AsyncEvent;
 import net.lecousin.framework.progress.WorkProgress;
+import net.lecousin.framework.util.ThreadUtil;
 
 /**
  * Splash screen that may be used while loading an application.
@@ -158,13 +159,9 @@ public class SplashScreen implements WorkProgress {
 			update();
 			if (devMode) {
 				// in development mode, hide it after maximum of 20 seconds to do not block debug screen
-				for (int i = 0; i < 20 && win != null && (LCCore.get() == null || !LCCore.get().isStopping()); ++i) {
-					try { Thread.sleep(1000); }
-					catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
+				for (int i = 0; i < 20 && win != null && (LCCore.get() == null || !LCCore.get().isStopping()); ++i)
+					if (!ThreadUtil.sleep(1000))
 						break;
-					}
-				}
 				close();
 			}
 			thread = null;

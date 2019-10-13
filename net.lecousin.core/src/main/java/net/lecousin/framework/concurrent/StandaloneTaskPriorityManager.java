@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import net.lecousin.framework.collections.TurnArray;
+import net.lecousin.framework.util.ThreadUtil;
 
 /** Simple implementation of TaskPriorityManager for a single application, only using the priority of tasks. */
 public class StandaloneTaskPriorityManager implements TaskPriorityManager {
@@ -59,8 +60,7 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 			if (nextPriority == Task.NB_PRIORITES) {
 				if (lastIdle < 0)
 					lastIdle = System.currentTimeMillis();
-				try { this.wait(); }
-				catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+				ThreadUtil.wait(this, 0);
 				return null;
 			}
 			if (nextPriority == Task.PRIORITY_BACKGROUND) {
@@ -70,8 +70,7 @@ public class StandaloneTaskPriorityManager implements TaskPriorityManager {
 				long wait = lastIdle + 1000 - System.currentTimeMillis();
 				if (wait > 50) {
 					if (!taskManager.isStopping() && taskManager.getTransferTarget() == null) {
-						try { this.wait(wait); }
-						catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+						ThreadUtil.wait(this, wait);
 						return null;
 					}
 					return null;

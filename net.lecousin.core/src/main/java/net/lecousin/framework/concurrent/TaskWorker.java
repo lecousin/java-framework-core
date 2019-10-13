@@ -6,6 +6,7 @@ import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.DebugUtil;
+import net.lecousin.framework.util.ThreadUtil;
 
 @SuppressWarnings("squid:S106") // print to console
 class TaskWorker implements Runnable, BlockedThreadHandler {
@@ -115,14 +116,9 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 		synchronized (blockPoint) {
 			if (blockTimeout <= 0) {
 				while (!blockPoint.isDone())
-					try { blockPoint.wait(0); }
-					catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						break;
-					}
+					if (!ThreadUtil.wait(blockPoint, 0)) break;
 			} else if (!blockPoint.isDone()) {
-				try { blockPoint.wait(blockTimeout); }
-				catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+				ThreadUtil.wait(blockPoint, blockTimeout);
 			}
 		}
 		blockedTime += System.nanoTime() - start2;

@@ -8,6 +8,7 @@ import java.util.function.Supplier;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.log.Logger;
+import net.lecousin.framework.util.ThreadUtil;
 
 /**
  * Base interface for an asynchronous unit.<br/>
@@ -70,11 +71,7 @@ public interface IAsync<TError extends Exception> extends Cancellable {
 		synchronized (this) {
 			while (blockPauseCondition()) {
 				long start = System.currentTimeMillis();
-				try { this.wait(logWarningAfterMillis + 1000); }
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					return;
-				}
+				if (!ThreadUtil.wait(this, logWarningAfterMillis + 1000)) return;
 				if (System.currentTimeMillis() - start <= logWarningAfterMillis)
 					continue;
 				Logger logger = LCCore.get().getThreadingLogger();

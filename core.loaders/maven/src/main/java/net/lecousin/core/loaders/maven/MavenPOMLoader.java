@@ -225,7 +225,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 	@Override
 	public Version resolveVersionConflict(String groupId, String artifactId, Map<Version, List<Node<DependencyNode>>> artifactVersions) {
 		// maven resolution is
-		//  1- the nearest of the root (lower depth)
+		//  1- the nearest of the root (lowest depth)
 		//  2- the order of declaration
 		Version bestVersion = null;
 		int bestDepth = -1;

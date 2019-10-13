@@ -40,6 +40,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(1, ok.get());
 		Assert.assertEquals(0, error.get());
 		Assert.assertEquals(0, cancel.get());
+		for (Object o : sp.getAllListeners()) o.toString();
 
 		sp = new Async<>();
 		sp.onDone(onOk, onError, onCancel);
@@ -197,11 +198,24 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(5, cancel.get());
 		
 		sp = new Async<>();
+		sp2 = new Async<>();
+		sp.onDone(sp2, e -> e);
+		sp.cancel(new CancelException("test"));
+		Assert.assertTrue(sp2.isCancelled());
+		
+		sp = new Async<>();
+		sp2 = new Async<>();
+		sp.onDone(sp2, e -> e);
+		sp.error(new Exception("test"));
+		Assert.assertTrue(sp2.hasError());
+		
+		sp = new Async<>();
 		sp.onSuccess(onOk);
 		sp.onError(onError);
 		sp.onCancel(onCancel);
 		sp.unblock();
 		Assert.assertEquals(9, ok.get());
+		for (Object o : sp.getAllListeners()) o.toString();
 		
 		sp = new Async<>();
 		sp.onSuccess(onOk);
@@ -297,6 +311,13 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, ok.get());
 		sp.unblock();
 		Assert.assertEquals(0, ok.get());
+		
+		sp = new Async<>();
+		AsyncSupplier<Integer, Exception> as = new AsyncSupplier<>();
+		sp.onDone(as, () -> Integer.valueOf(567));
+		sp.unblock();
+		Assert.assertTrue(as.isDone());
+		Assert.assertEquals(567, as.getResult().intValue());
 	}
 	
 	@Test(timeout=30000)

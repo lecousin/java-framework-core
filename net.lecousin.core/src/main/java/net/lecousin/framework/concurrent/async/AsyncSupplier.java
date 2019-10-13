@@ -14,6 +14,7 @@ import net.lecousin.framework.concurrent.BlockedThreadHandler;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.log.Logger;
+import net.lecousin.framework.util.ThreadUtil;
 
 /**
  * Same as a SynchronizationPoint, except that it contains a result.
@@ -403,17 +404,9 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 			if (blockedHandler == null) {
 				if (timeout <= 0) {
 					while (!unblocked || listenersInline != null)
-						try { this.wait(0); }
-						catch (InterruptedException e) {
-							Thread.currentThread().interrupt();
-							return;
-						}
+						if (!ThreadUtil.wait(this, 0)) return;
 				} else {
-					try { this.wait(timeout); }
-					catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						return;
-					}
+					if (!ThreadUtil.wait(this, timeout)) return;
 				}
 			}
 		}
@@ -438,11 +431,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 			blockedHandler = Threading.getBlockedThreadHandler(t);
 			if (blockedHandler == null)
 				while (!unblocked || listenersInline != null)
-					try { this.wait(timeout < 0 ? 0 : timeout); }
-					catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						return null;
-					}
+					if (!ThreadUtil.wait(this, timeout < 0 ? 0 : timeout)) return null;
 		}
 		if (blockedHandler != null)
 			blockedHandler.blocked(this, timeout);

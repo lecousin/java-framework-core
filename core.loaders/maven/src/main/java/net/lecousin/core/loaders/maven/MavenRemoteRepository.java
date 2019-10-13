@@ -11,7 +11,10 @@ import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.io.TemporaryFiles;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
 import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.io.provider.IOProviderFromURI;
@@ -58,22 +61,30 @@ public class MavenRemoteRepository implements MavenRepository {
 			url.equals(this.url);
 	}
 	
-	@Override
-	public AsyncSupplier<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, byte priority) {
-		String path = groupId.replace('.', '/') + '/' + artifactId + "/maven-metadata.xml";
+	private IO.Readable download(String path, byte priority) {
 		if (logger.info())
 			logger.info("Downloading " + url + path);
 		IO.Readable io;
 		try {
 			IOProvider p = IOProviderFromURI.getInstance().get(new URI(url + path));
 			if (!(p instanceof IOProvider.Readable))
-				return new AsyncSupplier<>(null, null);
+				return null;
 			io = ((IOProvider.Readable)p).provideIOReadable(priority);
 		} catch (Exception e) {
 			if (logger.error())
 				logger.error("Unable to get IOProvider for " + url + path, e);
-			return new AsyncSupplier<>(null, null);
+			return null;
 		}
+		return io;
+	}
+	
+	@Override
+	public AsyncSupplier<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, byte priority) {
+		String path = groupId.replace('.', '/') + '/' + artifactId + "/maven-metadata.xml";
+		if (logger.info())
+			logger.info("Downloading " + url + path);
+		IO.Readable io = download(path, priority);
+		if (io == null) return new AsyncSupplier<>(null, null);
 		IO.Readable.Buffered bio;
 		if (io instanceof IO.Readable.Buffered)
 			bio = (IO.Readable.Buffered)io;
@@ -127,15 +138,29 @@ public class MavenRemoteRepository implements MavenRepository {
 
 	@Override
 	public File loadFileSync(String groupId, String artifactId, String version, String classifier, String type) {
-		return null;
+		try {
+			return loadFile(groupId, artifactId, version, classifier, type, Task.PRIORITY_IMPORTANT).blockResult(0);
+		} catch (Exception e) {
+			return null;
+		}
 	}
 	
 	@Override
 	public AsyncSupplier<File, IOException> loadFile(
 		String groupId, String artifactId, String version, String classifier, String type, byte priority
 	) {
-		// TODO
-		return new AsyncSupplier<>(null, null);
+		String path = groupId.replace('.', '/') + '/' + artifactId + '/' + version
+			+ '/' + MavenPOM.getFilename(artifactId, version, classifier, type);
+		IO.Readable io = download(path, priority);
+		if (io == null) return new AsyncSupplier<>(null, null);
+		AsyncSupplier<File, IOException> file = TemporaryFiles.get().createFileAsync("remote-maven", ".downloaded");
+		AsyncSupplier<File, IOException> result = new AsyncSupplier<>();
+		file.thenDoOrStart(f -> {
+			FileIO.WriteOnly out = new FileIO.WriteOnly(f, priority);
+			IOUtil.copy(io, out, -1, true, null, 0).onDone(() -> result.unblockSuccess(f), result);
+		}, "Download file from maven", priority, result);
+		result.onErrorOrCancel(io::closeAsync);
+		return result;
 	}
 
 	
