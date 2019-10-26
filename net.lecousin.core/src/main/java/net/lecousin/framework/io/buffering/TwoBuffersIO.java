@@ -517,11 +517,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 	@SuppressWarnings("squid:S3776") // complexity
 	public ByteBuffer readNextBuffer() throws IOException {
 		if (nb1 < 0) {
-			if (!read1.isDone()) read1.block(0);
-			if (read1.hasError()) throw read1.getError();
-			if (read1.isCancelled()) throw IO.errorCancelled(read1.getCancelEvent());
-			nb1 = read1.getResult().intValue();
-			if (nb1 < 0) nb1 = 0;
+			needRead1();
 			if (nb1 == 0) return null;
 		}
 		if (pos < nb1) {
@@ -533,14 +529,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 		}
 		if (buf2 == null) return null;
 		if (nb2 < 0) {
-			if (!read1.isDone()) read1.block(0);
-			if (read1.hasError()) throw read1.getError();
-			if (read1.isCancelled()) throw IO.errorCancelled(read1.getCancelEvent());
-			if (read2 == null) waitRead2();
-			if (read2.hasError()) throw read2.getError();
-			if (read2.isCancelled()) throw IO.errorCancelled(read2.getCancelEvent());
-			nb2 = read2.getResult().intValue();
-			if (nb2 < 0) nb2 = 0;
+			needRead2();
 			if (nb2 == 0)
 				return null;
 		}

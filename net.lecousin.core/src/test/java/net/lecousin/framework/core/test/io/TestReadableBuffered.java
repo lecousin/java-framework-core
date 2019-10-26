@@ -27,7 +27,18 @@ import org.junit.Test;
 public abstract class TestReadableBuffered extends TestReadableByteStream {
 	
 	public static synchronized List<Object[]> generateTestCases(boolean faster) {
-		return addBufferingSize(TestIO.UsingGeneratedTestFiles.generateTestCases(faster));
+		List<Object[]> cases = TestIO.UsingGeneratedTestFiles.generateTestCases(faster);
+		ArrayList<Object[]> result = new ArrayList<>(cases.size() * testBufferingSize.length);
+		for (int i = 0; i < testBufferingSize.length; ++i) {
+			List<Object[]> list = faster || testBufferingSize[i] > 512 ? cases : TestIO.UsingGeneratedTestFiles.generateTestCases(true);
+			for (Object[] params : list) {
+				Object[] newParams = new Object[params.length + 1];
+				System.arraycopy(params, 0, newParams, 0, params.length);
+				newParams[params.length] = Integer.valueOf(testBufferingSize[i]);
+				result.add(newParams);
+			}
+		}
+		return result;
 	}
 	
 	public static List<Object[]> addBufferingSize(Collection<Object[]> cases) {
@@ -63,7 +74,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		return createReadableBufferedFromFile(file, fileSize, bufferingSize);
 	}
 	
-	@Test(timeout=120000)
+	@Test(timeout=240000)
 	public void testReadableBufferedByteByByteAsync() throws Exception {
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
 		MutableInteger i = new MutableInteger(0);
@@ -197,7 +208,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		io.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test(timeout=240000)
 	public void testReadableBufferedNextBuffer() throws Exception {
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
 		LinkedList<ByteBuffer> buffers = new LinkedList<>();
@@ -205,7 +216,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 			ByteBuffer buf = io.readNextBuffer();
 			if (buf == null) break;
 			buffers.add(buf);
-		} while (true);
+		} while (buffers.size() < nbBuf * testBuf.length);
 		io.close();
 		int pos = 0;
 		do {

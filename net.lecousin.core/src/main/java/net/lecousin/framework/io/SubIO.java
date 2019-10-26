@@ -292,7 +292,7 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 				public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(
 					Consumer<Pair<ByteBuffer, IOException>> ondone
 				) {
-					if (pos == size) {
+					if (pos >= size) {
 						if (ondone != null) ondone.accept(new Pair<>(null, null));
 						return new AsyncSupplier<>(null, null);
 					}
@@ -326,7 +326,7 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 				
 				@Override
 				public ByteBuffer readNextBuffer() throws IOException {
-					if (pos == size) return null;
+					if (pos >= size) return null;
 					int len = 16384;
 					if (len > size - pos) len = (int)(size - pos);
 					ByteBuffer buf = ByteBuffer.allocate(len);

@@ -212,6 +212,7 @@ public class ByteArrayIO extends ConcurrentCloseable<IOException>
 	
 	@Override
 	public ByteBuffer readNextBuffer() throws IOException {
+		if (pos == size) return null;
 		ByteBuffer buf = ByteBuffer.allocate(size - pos);
 		buf.put(array, pos, size - pos);
 		pos = size;

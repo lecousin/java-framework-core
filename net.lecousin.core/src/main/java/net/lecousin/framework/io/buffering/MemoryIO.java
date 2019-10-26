@@ -307,16 +307,19 @@ public class MemoryIO extends ConcurrentCloseable<IOException>
 		return IOUtil.success(Long.valueOf(skipSync(n)), ondone);
 	}
 	
+	private void increaseBuffers(int min) {
+		// need to resize
+		byte[][] b = new byte[min > buffers.length * 2 ? min + 10 : buffers.length * 2][];
+		System.arraycopy(buffers, 0, b, 0, buffers.length);
+		buffers = b;
+	}
+	
 	@Override
 	public void write(byte byt) {
 		int index = pos / bufferSize;
 		int bufferPos = pos % bufferSize;
-		if (index >= buffers.length) {
-			// need to resize
-			byte[][] b = new byte[index + 10][];
-			System.arraycopy(buffers, 0, b, 0, buffers.length);
-			buffers = b;
-		}
+		if (index >= buffers.length)
+			increaseBuffers(index);
 		if (buffers[index] == null) {
 			// need to allocate
 			for (int i = index; i >= 0; --i)
@@ -334,12 +337,8 @@ public class MemoryIO extends ConcurrentCloseable<IOException>
 		while (length > 0) {
 			int index = pos / bufferSize;
 			int bufferPos = pos % bufferSize;
-			if (index >= buffers.length) {
-				// need to resize
-				byte[][] b = new byte[index + 10][];
-				System.arraycopy(buffers, 0, b, 0, buffers.length);
-				buffers = b;
-			}
+			if (index >= buffers.length)
+				increaseBuffers(index);
 			if (buffers[index] == null) {
 				// need to allocate
 				for (int i = index; i >= 0; --i)
@@ -372,12 +371,8 @@ public class MemoryIO extends ConcurrentCloseable<IOException>
 		while (buffer.remaining() > 0) {
 			int index = p / bufferSize;
 			int bufferPos = p % bufferSize;
-			if (index >= buffers.length) {
-				// need to resize
-				byte[][] b = new byte[index + 10][];
-				System.arraycopy(buffers, 0, b, 0, buffers.length);
-				buffers = b;
-			}
+			if (index >= buffers.length)
+				increaseBuffers(index);
 			if (buffers[index] == null) {
 				// need to allocate
 				for (int i = index; i >= 0; --i)
@@ -412,12 +407,8 @@ public class MemoryIO extends ConcurrentCloseable<IOException>
 		if (newSize > size) {
 			size = (int)newSize;
 			int index = size / bufferSize;
-			if (index >= buffers.length) {
-				// need to resize
-				byte[][] b = new byte[index + 10][];
-				System.arraycopy(buffers, 0, b, 0, buffers.length);
-				buffers = b;
-			}
+			if (index >= buffers.length)
+				increaseBuffers(index);
 			for (int i = index; i >= 0; --i)
 				if (buffers[i] == null)
 					buffers[i] = new byte[bufferSize];

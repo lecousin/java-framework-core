@@ -17,6 +17,7 @@ import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.memory.IMemoryManageable.FreeMemoryLevel;
+import net.lecousin.framework.mutable.MutableLong;
 import net.lecousin.framework.util.StringUtil;
 
 /**
@@ -49,13 +50,15 @@ public class MemoryManager {
 		// listen to garbage collection
 		for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
 			logger.debug("Garbage collector: " + gc.getName());
+			MutableLong lastHeavyGCAlert = new MutableLong(0);
 			((NotificationEmitter)gc).addNotificationListener((notification, handback) -> {
 				long now = System.currentTimeMillis();
 				if (now - gcForced < 100)
 					return;
 				//lastGcForcedFailed = false;
-				if (now - lastGC[4] < 60000) {
+				if (now - lastGC[4] < 60000 && now - lastHeavyGCAlert.get() > 30000) {
 					logger.debug("5 garbage collections in less than 1 minute");
+					lastHeavyGCAlert.set(now);
 				}
 				System.arraycopy(lastGC, 0, lastGC, 1, 9);
 				System.arraycopy(lastGCAllocatedMemory, 0, lastGCAllocatedMemory, 1, 9);

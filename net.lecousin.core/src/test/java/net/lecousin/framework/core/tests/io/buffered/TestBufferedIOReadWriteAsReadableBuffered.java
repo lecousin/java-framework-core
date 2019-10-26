@@ -25,7 +25,6 @@ public class TestBufferedIOReadWriteAsReadableBuffered extends TestReadableBuffe
 		super(testFile, testBuf, nbBuf, bufferingSize);
 	}
 	
-	@SuppressWarnings("resource")
 	@Override
 	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception {
 		File f = file.getFile();
