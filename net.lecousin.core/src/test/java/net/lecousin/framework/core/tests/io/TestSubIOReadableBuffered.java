@@ -28,8 +28,10 @@ public class TestSubIOReadableBuffered extends TestReadableBuffered {
 			if (nbBuf < 80) continue;
 			if (nbBuf <= 100)
 				list.add(createParams(params, 60, 15));
-			else if (nbBuf <= 1000)
+			else if (nbBuf <= 10000)
 				list.add(createParams(params, 700, 50));
+			else if (nbBuf <= 25000)
+				list.add(createParams(params, 10000, 5000));
 			else if (nbBuf <= 60000)
 				list.add(createParams(params, 40000, 5000));
 			else if (nbBuf <= 100000)
