@@ -30,7 +30,15 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		List<Object[]> cases = TestIO.UsingGeneratedTestFiles.generateTestCases(faster);
 		ArrayList<Object[]> result = new ArrayList<>(cases.size() * testBufferingSize.length);
 		for (int i = 0; i < testBufferingSize.length; ++i) {
-			List<Object[]> list = faster || testBufferingSize[i] > 512 ? cases : TestIO.UsingGeneratedTestFiles.generateTestCases(true);
+			List<Object[]> list;
+			if (testBufferingSize[i] >= 64)
+				list = cases;
+			else {
+				list = TestIO.UsingGeneratedTestFiles.generateTestCases(true);
+				for (Object[] params : list)
+					if (((Integer)params[2]).intValue() > 20000)
+						params[2] = Integer.valueOf(((Integer)params[2]).intValue() / 3);
+			}
 			for (Object[] params : list) {
 				Object[] newParams = new Object[params.length + 1];
 				System.arraycopy(params, 0, newParams, 0, params.length);
