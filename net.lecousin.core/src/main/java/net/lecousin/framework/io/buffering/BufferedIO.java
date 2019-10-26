@@ -20,6 +20,7 @@ import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.async.ReadWriteLockPoint;
@@ -1176,7 +1177,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	) {
 		getBuffer.onDone(() -> {
 			Buffer b = getBuffer.getResult();
-			b.loaded.thenStart(new Task.Cpu.FromRunnable("BufferedIO.readAsync", io.getPriority(), () -> {
+			b.loaded.thenStart(new Task.Cpu.FromRunnable("BufferedIO.readNextBufferAsync", io.getPriority(), () -> {
 				if (!checkLoaded(b, result, ondone)) return;
 				long pos = position;
 				int off = getBufferOffset(pos);
@@ -1195,6 +1196,33 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 				result.unblockSuccess(res);
 			}), true);
 		});
+	}
+	
+	@Override
+	public ByteBuffer readNextBuffer() throws IOException {
+		if (closing) throw new ClosedChannelException();
+		if (position >= size) return null;
+		long bufferIndex = getBufferIndex(position);
+		Buffer b = bufferTable.needBufferSync(bufferIndex, false);
+		try {
+			b.loaded.blockThrow(0);
+		} catch (CancelException e) {
+			throw IO.errorCancelled(e);
+		}
+		long pos = position;
+		int off = getBufferOffset(pos);
+		int len = b.data.length - off;
+		if (pos + len > size) len = (int)(size - pos);
+		byte[] bb = new byte[len];
+		System.arraycopy(b.data, off, bb, 0, len);
+		ByteBuffer res = ByteBuffer.wrap(bb);
+		pos += len;
+		position = pos;
+		b.lastRead = System.currentTimeMillis();
+		b.usage.endRead();
+		if (preLoadNextBuffer && pos < size && getBufferIndex(pos) != b.index)
+			preLoadBuffer(pos);
+		return res;
 	}
 
 	@Override

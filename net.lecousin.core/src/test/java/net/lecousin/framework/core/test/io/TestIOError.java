@@ -86,6 +86,11 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 			return IOUtil.error(error, ondone);
 		}
+		
+		@Override
+		public ByteBuffer readNextBuffer() throws IOException {
+			throw error;
+		}
 
 		@Override
 		public int readAsync() throws IOException {
@@ -355,6 +360,13 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		} catch (IOException e) { /* ok */ }
 		Assert.assertTrue(called.get());
 		called.set(false);
+		io.close();
+
+		io = getReadableBuffered(new IOError1());
+		try {
+			io.readNextBuffer();
+			throw new AssertionError();
+		} catch (IOException e) { /* ok */ }
 		io.close();
 	}
 	

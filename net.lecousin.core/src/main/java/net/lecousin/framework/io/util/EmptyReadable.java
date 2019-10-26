@@ -155,6 +155,11 @@ public class EmptyReadable extends ConcurrentCloseable<IOException> implements I
 			ondone.accept(new Pair<>(null, null));
 		return new AsyncSupplier<>(null, null);
 	}
+	
+	@Override
+	public ByteBuffer readNextBuffer() throws IOException {
+		return null;
+	}
 
 	@Override
 	public long getSizeSync() {

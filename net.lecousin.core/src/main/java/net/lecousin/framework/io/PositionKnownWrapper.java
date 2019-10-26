@@ -28,6 +28,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	protected ListenableLongProperty position;
 	
 	/** Register a listener to be called when position is changing. */
+	@SuppressWarnings("squid:S4276")
 	public void addPositionChangedListener(Consumer<Long> listener) {
 		position.addListener(listener);
 	}
@@ -38,6 +39,7 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	}
 
 	/** Remove the given listener. */
+	@SuppressWarnings("squid:S4276")
 	public void removePositionChangedListener(Consumer<Long> listener) {
 		position.removeListener(listener);
 	}
@@ -179,6 +181,11 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 			@Override
 			public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 				return super.readNextBufferAsync(ondone);
+			}
+			
+			@Override
+			public ByteBuffer readNextBuffer() throws IOException {
+				return super.readNextBuffer();
 			}
 
 			@Override
@@ -322,6 +329,13 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 			if (ondone != null)
 				ondone.accept(result);
 		});
+	}
+	
+	protected ByteBuffer readNextBuffer() throws IOException {
+		ByteBuffer buf = ((IO.Readable.Buffered)io).readNextBuffer();
+		if (buf != null)
+			position.add(buf.remaining());
+		return buf;
 	}
 	
 	protected AsyncSupplier<Integer, IOException> readFullySyncIfPossible(

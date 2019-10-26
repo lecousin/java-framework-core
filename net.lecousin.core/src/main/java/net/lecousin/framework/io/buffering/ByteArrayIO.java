@@ -203,20 +203,20 @@ public class ByteArrayIO extends ConcurrentCloseable<IOException>
 	@Override
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		if (pos == size) return IOUtil.success(null, ondone);
-		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>(
-			"Read remaining bytes from ByteArrayIO", getPriority(), ondone
-		) {
-			@Override
-			public ByteBuffer run() {
-				ByteBuffer buf = ByteBuffer.allocate(size - pos);
-				buf.put(array, pos, size - pos);
-				pos = size;
-				buf.flip();
-				return buf;
-			}
-		};
+		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu.FromSupplierThrows<>(
+			"Read remaining bytes from ByteArrayIO", getPriority(), ondone, this::readNextBuffer
+		);
 		operation(task.start());
 		return operation(task.getOutput());
+	}
+	
+	@Override
+	public ByteBuffer readNextBuffer() throws IOException {
+		ByteBuffer buf = ByteBuffer.allocate(size - pos);
+		buf.put(array, pos, size - pos);
+		pos = size;
+		buf.flip();
+		return buf;
 	}
 	
 	/** Convert the content of the buffer into a String encoded with the given charset. */

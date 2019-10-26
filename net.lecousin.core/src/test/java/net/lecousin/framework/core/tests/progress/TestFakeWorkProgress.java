@@ -27,6 +27,8 @@ public class TestFakeWorkProgress extends LCCoreAbstractTest {
 		p.setSubText("");
 		p.listen(() -> {});
 		p.unlisten(() -> {});
+		p.interruptEvents();
+		p.resumeEvents(true);
 	}
 	
 }

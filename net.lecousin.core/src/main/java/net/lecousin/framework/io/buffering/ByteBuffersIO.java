@@ -176,21 +176,22 @@ public class ByteBuffersIO extends ConcurrentCloseable<IOException> implements I
 	
 	@Override
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
-		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
-			@Override
-			public ByteBuffer run() {
-				if (bufferIndex == buffers.size()) return null;
-				Triple<byte[],Integer,Integer> b = buffers.get(bufferIndex);
-				int len = b.getValue3().intValue() - bufferPos;
-				ByteBuffer buf = ByteBuffer.wrap(b.getValue1(), b.getValue2().intValue() + bufferPos, len);
-				pos += len;
-				bufferIndex++;
-				bufferPos = 0;
-				return buf;
-			}
-		};
+		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu.FromSupplierThrows<>(
+			"Read next buffer", getPriority(), ondone, this::readNextBuffer);
 		task.start();
 		return operation(task.getOutput());
+	}
+	
+	@Override
+	public ByteBuffer readNextBuffer() throws IOException {
+		if (bufferIndex == buffers.size()) return null;
+		Triple<byte[],Integer,Integer> b = buffers.get(bufferIndex);
+		int len = b.getValue3().intValue() - bufferPos;
+		ByteBuffer buf = ByteBuffer.wrap(b.getValue1(), b.getValue2().intValue() + bufferPos, len);
+		pos += len;
+		bufferIndex++;
+		bufferPos = 0;
+		return buf;
 	}
 
 	@Override

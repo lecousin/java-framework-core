@@ -15,6 +15,18 @@ public interface Runnables {
 	}
 	
 	/**
+	 * Same as Supplier but that throws an exception.
+	 * @param <T> type of data returned
+	 * @param <TError> type of the exception
+	 */
+	public interface SupplierThrows<T, TError extends Exception> {
+
+		/** Called to execute the runnable. */
+		T get() throws TError;
+		
+	}
+	
+	/**
 	 * A simple abstract class that implements Runnable and holds an object given in the constructor.
 	 * @param <T> type of object to hold
 	 */

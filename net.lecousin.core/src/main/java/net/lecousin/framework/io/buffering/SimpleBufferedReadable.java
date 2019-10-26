@@ -231,6 +231,27 @@ public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> imp
 	}
 	
 	@Override
+	public ByteBuffer readNextBuffer() throws IOException {
+		AtomicState s = state;
+		if (s.pos == s.len) {
+			if (s.buffer == null) return null;
+			try { fill(); }
+			catch (CancelException e) {
+				throw new IOException("IO closed");
+			}
+			if (state.pos == state.len) return null;
+		}
+		ByteBuffer buf = ByteBuffer.allocate(state.len - state.pos);
+		try { buf.put(state.buffer, state.pos, state.len - state.pos); }
+		catch (NullPointerException e) {
+			throw new IOException("IO closed");
+		}
+		state.pos = state.len;
+		buf.flip();
+		return buf;
+	}
+	
+	@Override
 	public int skip(int skip) throws IOException {
 		return (int)skipSync(skip);
 	}

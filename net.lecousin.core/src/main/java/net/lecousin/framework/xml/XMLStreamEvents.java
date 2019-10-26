@@ -306,14 +306,19 @@ public abstract class XMLStreamEvents {
 
 	/* Utility methods */
 	
-	private static boolean[] isSpace = new boolean[] { true, true, false, false, true };
+	private static boolean[] isSpace = new boolean[] {
+		false, false, false, false, false, false, false, false, false, // 0-8
+		true, true, // 9-10
+		false, false, // 11-12
+		true, //13
+		false, false, false, false, false, false, false, false, false, // 14-22
+		false, false, false, false, false, false, false, false, false, // 23-31
+		true // 32
+	};
 	
 	/** Return true if the given character is considered as a white space. */
 	public static boolean isSpaceChar(char c) {
-		if (c == 0x20) return true;
-		if (c > 0xD) return false;
-		if (c < 0x9) return false;
-		return isSpace[c - 9];
+		return c < 0x21 && isSpace[c];
 	}
 	
 	/* Charset handling */
@@ -339,12 +344,16 @@ public abstract class XMLStreamEvents {
 		protected UnprotectedStringBuffer xmlEncoding = null;
 		protected UnprotectedStringBuffer xmlStandalone = null;
 		
-		private byte[] firstBytes = new byte[1024];
-		private int firstBytesPos = 0;
-		private int firstBytesLength = 0;
+		private byte[] firstBytes;
+		private int firstBytesPos;
+		private int firstBytesLength;
 		
 		public BufferedReadableCharacterStreamLocation start() throws IOException, XMLException {
-			firstBytesLength = io.readFully(firstBytes);
+			ByteBuffer buf = io.readNextBuffer();
+			firstBytes = buf.array();
+			firstBytesPos = buf.arrayOffset() + buf.position();
+			firstBytesLength = firstBytesPos + buf.remaining();
+			//firstBytesLength = io.readFully(firstBytes);
 			readBOM();
 			int posAfterBOM = firstBytesPos;
 			try {
@@ -357,6 +366,7 @@ public abstract class XMLStreamEvents {
 			} catch (Exception e) {
 				throw new IOException("Error initializing character decoder", e);
 			}
+			chars = new char[firstBytesLength - firstBytesPos];
 			// TODO line and posInLine...
 			boolean hasDecl = readXMLDeclaration();
 			if (!hasDecl) {
@@ -476,7 +486,7 @@ public abstract class XMLStreamEvents {
 			}
 		}
 		
-		private char[] chars = new char[64];
+		private char[] chars;
 		private int charsPos = 0;
 		private int charsLength = 0;
 
@@ -513,40 +523,53 @@ public abstract class XMLStreamEvents {
 			while (isSpaceChar(c = nextChar()));
 			if (c != '<')
 				return false;
-			c = nextChar();
-			if (c != '?')
-				return false;
-			c = nextChar();
-			if (c != 'x' && c != 'X')
-				return false;
-			char c2 = nextChar();
-			if (c2 != 'm' && c2 != 'M')
-				return false;
-			char c3 = nextChar();
-			if (c3 != 'l' && c3 != 'L')
-				return false;
-			char c4 = nextChar();
-			if (!isSpaceChar(c4))
-				return false;
+			if (charsPos + 5 <= charsLength) {
+				if (chars[charsPos++] != '?') return false;
+				if ((c = chars[charsPos++]) != 'x' && c != 'X') return false;
+				if ((c = chars[charsPos++]) != 'm' && c != 'M') return false;
+				if ((c = chars[charsPos++]) != 'l' && c != 'L') return false;
+				if (!isSpaceChar(chars[charsPos++])) return false;
+			} else {
+				if (nextChar() != '?') return false;
+				if ((c = nextChar()) != 'x' && c != 'X') return false;
+				if ((c = nextChar()) != 'm' && c != 'M') return false;
+				if ((c = nextChar()) != 'l' && c != 'L') return false;
+				if (!isSpaceChar(nextChar())) return false;
+			}
 			while (isSpaceChar(c = nextChar()));
 			if (c != 'v' && c != 'V') throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-			c = nextChar();
-			if (c != 'e' && c != 'E') throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-			c = nextChar();
-			if (c != 'r' && c != 'R') throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-			c = nextChar();
-			if (c != 's' && c != 'S') throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-			c = nextChar();
-			if (c != 'i' && c != 'I') throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-			c = nextChar();
-			if (c != 'o' && c != 'O') throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-			c = nextChar();
-			if (c != 'n' && c != 'N') throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+			if (charsPos + 6 <= charsLength) {
+				if ((c = chars[charsPos++]) != 'e' && c != 'E')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+				if ((c = chars[charsPos++]) != 'r' && c != 'R')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+				if ((c = chars[charsPos++]) != 's' && c != 'S')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+				if ((c = chars[charsPos++]) != 'i' && c != 'I')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+				if ((c = chars[charsPos++]) != 'o' && c != 'O')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+				if ((c = chars[charsPos++]) != 'n' && c != 'N')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+			} else {
+				if ((c = nextChar()) != 'e' && c != 'E')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+				if ((c = nextChar()) != 'r' && c != 'R')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+				if ((c = nextChar()) != 's' && c != 'S')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+				if ((c = nextChar()) != 'i' && c != 'I')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+				if ((c = nextChar()) != 'o' && c != 'O')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+				if ((c = nextChar()) != 'n' && c != 'N')
+					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+			}
 			while (isSpaceChar(c = nextChar()));
 			if (c != '=') throw new IOException("Invalid XML Declaration: character '=' expected after attribute name 'version'");
 			while (isSpaceChar(c = nextChar()));
 			if (c != '\'' && c != '"') throw new IOException("Invalid XML Declaration: character ' or \" expected after 'version='");
-			c2 = c;
+			char c2 = c;
 			xmlVersion = new UnprotectedStringBuffer();
 			while ((c = nextChar()) != c2)
 				xmlVersion.append(c);

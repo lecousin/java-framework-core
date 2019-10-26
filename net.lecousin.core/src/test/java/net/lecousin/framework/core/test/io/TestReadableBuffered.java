@@ -162,6 +162,37 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		done.blockThrow(0);
 		io.close();
 	}
+	
+	@Test(timeout=120000)
+	public void testReadableBufferedNextBuffer() throws Exception {
+		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
+		int pos = 0;
+		do {
+			ByteBuffer buf = io.readNextBuffer();
+			if (pos == testBuf.length * nbBuf) {
+				if (buf != null)
+					throw new Exception("" + buf.remaining() + " byte(s) read after the end of the file");
+				break;
+			}
+			if (buf == null)
+				throw new Exception("Method readNextBufferAsync returned a null buffer, but this is not the end of the file: offset " + pos);
+			int nb = buf.remaining();
+			int i = 0;
+			while (i < nb) {
+				int start = (pos+i) % testBuf.length;
+				int len = nb - i;
+				if (len > testBuf.length - start) len = testBuf.length - start;
+				for (int j = 0; j < len; ++j) {
+					byte b = buf.get();
+					if (b != testBuf[start+j])
+						throw new Exception("Invalid byte " + b + " at offset " + (pos + i + start + j) + ", expected is " + testBuf[start+j]);
+				}
+				i += len;
+			}
+			pos += nb;
+		} while (true);
+		io.close();
+	}
 
 	@Test(timeout=120000)
 	public void testReadableBufferedReadFullySyncIfPossible() throws Exception {

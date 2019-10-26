@@ -91,6 +91,14 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		Assert.assertEquals(900, p.getAmount());
 		Assert.assertEquals(500, p.getRemainingWork());
 		Assert.assertEquals(400, p.getPosition());
+		p.setPosition(-100);
+		Assert.assertEquals(900, p.getAmount());
+		Assert.assertEquals(900, p.getRemainingWork());
+		Assert.assertEquals(0, p.getPosition());
+		p.setPosition(10000);
+		Assert.assertEquals(900, p.getAmount());
+		Assert.assertEquals(0, p.getRemainingWork());
+		Assert.assertEquals(900, p.getPosition());
 		p.done();
 		p.error(new Exception());
 		p.cancel(new CancelException(new Exception()));
@@ -99,6 +107,34 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		Assert.assertEquals(1, p.getAmount());
 		Assert.assertEquals(0, p.getRemainingWork());
 		Assert.assertEquals(1, p.getPosition());
+		
+		p = new WorkProgressImpl(1000);
+		p.unlisten(listener);
+		Async<Exception> changed2 = new Async<>();
+		listener = () -> {
+			changed2.unblock();
+		};
+		p.listen(listener);
+		p.interruptEvents();
+		p.progress(100);
+		Thread.sleep(1000);
+		Assert.assertFalse(changed2.isDone());
+		p.resumeEvents(false);
+		Assert.assertFalse(changed2.isDone());
+		p.progress(100);
+		Thread.sleep(1000);
+		Assert.assertTrue(changed2.isDone());
+		Async<Exception> changed3 = new Async<>();
+		listener = () -> {
+			changed3.unblock();
+		};
+		p.listen(listener);
+		p.interruptEvents();
+		p.resumeEvents(true);
+		Thread.sleep(1000);
+		Assert.assertTrue(changed3.isDone());
+		p.done();
+		p.unlisten(listener);
 	}
 	
 	@Test(timeout=30000)

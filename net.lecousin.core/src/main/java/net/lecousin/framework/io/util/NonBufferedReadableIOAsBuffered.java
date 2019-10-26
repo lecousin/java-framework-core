@@ -168,4 +168,13 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable<IOExcep
 		return result;
 	}
 	
+	@Override
+	public ByteBuffer readNextBuffer() throws IOException {
+		ByteBuffer buf = ByteBuffer.allocate(4096);
+		int nb = readSync(buf);
+		if (nb <= 0) return null;
+		buf.flip();
+		return buf;
+	}
+	
 }

@@ -206,8 +206,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		try {
 			if (maxTextSize <= 0)
 				do {
-					if ((c = stream.read()) != '-') {
-						chars[pos] = c;
+					if ((chars[pos] = stream.read()) != '-') {
 						if (++pos == chars.length) {
 							t.append(new UnprotectedString(chars));
 							chars = new char[chars.length * 2];
@@ -216,7 +215,6 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 						continue;
 					}
 					if ((c = stream.read()) != '-') {
-						chars[pos] = '-';
 						if (++pos == chars.length) {
 							t.append(new UnprotectedString(chars));
 							chars = new char[chars.length * 2];
@@ -351,8 +349,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		try {
 			if (maxCDataSize <= 0) {
 				do {
-					if ((c = stream.read()) != ']') {
-						chars[pos] = c;
+					if ((chars[pos] = stream.read()) != ']') {
 						if (++pos == chars.length) {
 							t.append(new UnprotectedString(chars));
 							chars = new char[chars.length * 2];
@@ -361,7 +358,6 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 						continue;
 					}
 					if ((c = stream.read()) != ']') {
-						chars[pos] = ']';
 						if (++pos == chars.length) {
 							t.append(new UnprotectedString(chars));
 							chars = new char[chars.length * 2];
@@ -606,13 +602,10 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		try {
 			if (maxTextSize <= 0) {
 				do {
-					if (c == '&') {
-						CharSequence ref = readReference();
-						t.append(ref);
-					} else if (c == '<') {
+					if (c == '<') { // 0x3C
 						stream.back(c);
 						break;
-					} else if (c == '\r') {
+					} else if (c == '\r') { // 0x0A
 						try {
 							c = stream.read();
 						} catch (EOFException e) {
@@ -625,6 +618,9 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 							t.append('\r');
 							continue;
 						}
+					} else if (c == '&') { // 0x26
+						CharSequence ref = readReference();
+						t.append(ref);
 					} else {
 						t.append(c);
 					}
@@ -632,11 +628,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				} while (true);
 			} else {
 				do {
-					if (c == '&') {
-						CharSequence ref = readReference();
-						if (t.length() < maxTextSize)
-							t.append(ref);
-					} else if (c == '<') {
+					if (c == '<') {
 						stream.back(c);
 						break;
 					} else if (c == '\r') {
@@ -655,6 +647,10 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 								t.append('\r');
 							continue;
 						}
+					} else if (c == '&') {
+						CharSequence ref = readReference();
+						if (t.length() < maxTextSize)
+							t.append(ref);
 					} else if (t.length() < maxTextSize) {
 						t.append(c);
 					}
@@ -762,7 +758,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readEndTag() throws XMLException, IOException {
 		event.type = Type.END_ELEMENT;
-		event.text = new UnprotectedStringBuffer(new UnprotectedString(20));
+		event.text = new UnprotectedStringBuffer();
 		readName(event.text);
 		do {
 			char c = stream.read();
@@ -964,21 +960,22 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	private void continueReadName(UnprotectedStringBuffer name, char c) throws IOException {
-		char[] chars = new char[16];
+		int charsSize = 16;
+		char[] chars = new char[charsSize];
 		chars[0] = c;
 		int pos = 1;
 		if (maxTextSize <= 0)
 			do {
-				if (!isNameChar(c = stream.read())) {
-					stream.back(c);
+				if (!isNameChar(chars[pos] = stream.read())) {
+					stream.back(chars[pos]);
 					if (pos > 0)
-						name.append(new UnprotectedString(chars, 0, pos, chars.length));
+						name.append(new UnprotectedString(chars, 0, pos, charsSize));
 					return;
 				}
-				chars[pos] = c;
-				if (++pos == chars.length) {
+				if (++pos == charsSize) {
 					name.append(new UnprotectedString(chars));
-					chars = new char[chars.length * 2];
+					charsSize *= 2;
+					chars = new char[charsSize];
 					pos = 0;
 				}
 			} while (true);
@@ -987,14 +984,15 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			if (!isNameChar(c = stream.read())) {
 				stream.back(c);
 				if (pos > 0)
-					name.append(new UnprotectedString(chars, 0, pos, chars.length));
+					name.append(new UnprotectedString(chars, 0, pos, charsSize));
 				return;
 			}
 			if (len < maxTextSize) {
 				chars[pos] = c;
-				if (++pos == chars.length) {
+				if (++pos == charsSize) {
 					name.append(new UnprotectedString(chars));
-					chars = new char[chars.length * 2];
+					charsSize *= 2;
+					chars = new char[charsSize];
 					pos = 0;
 				}
 			}
@@ -1021,9 +1019,11 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			if (c < 0x3A) return false; // :
 			if (c < 0xC0) {
 				return
-					(c == ':' /*3A*/ || c == '_' /*5F*/) ||
 					(c >= 'a' && c <= 'z') || /*61-7A*/
-					(c >= 'A' && c <= 'Z'); /*41-5A*/
+					(c >= 'A' && c <= 'Z') || /*41-5A*/
+					c == ':' /*3A*/ ||
+					c == '_' /*5F*/
+					;
 			}
 			return (c != 0xD7 && c != 0xF7);
 		}
@@ -1061,9 +1061,10 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			}
 			if (c < 0xC0) {
 				return
-					(c == ':' /*3A*/ || c == '_' /*5F*/) ||
 					(c >= 'a' && c <= 'z') || /*61-7A*/
 					(c >= 'A' && c <= 'Z') || /*41-5A*/
+					c == ':' /*3A*/ ||
+					c == '_' /*5F*/ ||
 					c == 0xB7;
 			}
 			return c != 0xD7 && c != 0xF7;

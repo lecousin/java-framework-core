@@ -10,7 +10,6 @@ import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.LockPoint;
 import net.lecousin.framework.exception.NoException;
@@ -519,33 +518,32 @@ public class OutputToInputBuffers extends ConcurrentCloseable<IOException>
 
 	@Override
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
-		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>(
-			"Peek next buffer from OutputToInputBuffers", getPriority(), ondone
-		) {
-			@Override
-			public ByteBuffer run() throws IOException, CancelException {
-				Async<NoException> sp = null;
-				ByteBuffer b = null;
-				do {
-					synchronized (this) {
-						if (isClosing() || isClosed()) throw IO.cancelClosed();
-						if (!buffers.isEmpty()) {
-							b = buffers.removeFirst();
-							if (maxPendingBuffers > 0)
-								sp = lockMaxBuffers.pollFirst();
-							break;
-						}
-						if (eof) break;
-						if (lock.hasError())
-							throw new OutputToInputTransferException(lock.getError());
-					}
-					lock.lock();
-				} while (true);
-				if (sp != null) sp.unblock();
-				return b;
-			}
-		};
+		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu.FromSupplierThrows<>(
+			"Peek next buffer from OutputToInputBuffers", getPriority(), ondone, this::readNextBuffer);
 		operation(task).startOn(canStartReading(), true);
 		return task.getOutput();
+	}
+	
+	@Override
+	public ByteBuffer readNextBuffer() throws IOException {
+		Async<NoException> sp = null;
+		ByteBuffer b = null;
+		do {
+			synchronized (this) {
+				if (isClosing() || isClosed()) throw new IOException("IO closed");
+				if (!buffers.isEmpty()) {
+					b = buffers.removeFirst();
+					if (maxPendingBuffers > 0)
+						sp = lockMaxBuffers.pollFirst();
+					break;
+				}
+				if (eof) break;
+				if (lock.hasError())
+					throw new OutputToInputTransferException(lock.getError());
+			}
+			lock.lock();
+		} while (true);
+		if (sp != null) sp.unblock();
+		return b;
 	}
 }

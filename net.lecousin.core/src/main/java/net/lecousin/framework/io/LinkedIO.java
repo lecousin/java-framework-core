@@ -198,6 +198,11 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 				return super.readNextBufferAsync(ondone);
 			}
 			
+			@Override
+			public ByteBuffer readNextBuffer() throws IOException {
+				return super.readNextBuffer();
+			}
+			
 			/** Linked Readable Buffered IO and add the DeterminedSize capability. */
 			public static class DeterminedSize extends LinkedIO.Readable.Buffered implements IO.KnownSize {
 
@@ -357,6 +362,11 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 					Consumer<Pair<ByteBuffer, IOException>> ondone
 				) {
 					return super.readNextBufferAsync(ondone);
+				}
+				
+				@Override
+				public ByteBuffer readNextBuffer() throws IOException {
+					return super.readNextBuffer();
 				}
 				
 				/** Add the DeterminedSize capability. */
@@ -703,6 +713,27 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 			result.unblockSuccess(buf);
 		}, result, ondone));
 		return result;
+	}
+	
+	protected ByteBuffer readNextBuffer() throws IOException {
+		do {
+			if (ioIndex == ios.size()) return null;
+			IO.Readable.Buffered io = (IO.Readable.Buffered)ios.get(ioIndex);
+			ByteBuffer buf = io.readNextBuffer();
+			if (buf != null) {
+				posInIO += buf.remaining();
+				pos += buf.remaining();
+				return buf;
+			}
+			if (sizes.get(ioIndex) == null)
+				sizes.set(ioIndex, Long.valueOf(posInIO));
+			if (ioIndex == ios.size() - 1) {
+				ioIndex++;
+				posInIO = 0;
+				return null;
+			}
+			nextIOSync();
+		} while (true);
 	}
 
 

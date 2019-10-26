@@ -3,6 +3,7 @@ package net.lecousin.framework.core.tests.progress;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.progress.MultiTaskProgress;
 import net.lecousin.framework.progress.WorkProgress;
+import net.lecousin.framework.progress.WorkProgress.MultiTask.SubTask;
 import net.lecousin.framework.progress.WorkProgressImpl;
 
 import org.junit.Assert;
@@ -74,6 +75,46 @@ public class TestMultiTaskProgress extends LCCoreAbstractTest {
 		catch (InterruptedException e) {}
 		Assert.assertTrue(p.getSynch().isDone());
 		Assert.assertEquals(650, p.getPosition());
+		
+		p = new MultiTaskProgress("Test");
+		Assert.assertEquals(0, p.getTasks().size());
+		t1 = new WorkProgressImpl(1000);
+		SubTask st = p.addTask(t1, 150);
+		Assert.assertEquals(1, p.getTasks().size());
+		p.removeTask(st);
+		Assert.assertEquals(0, p.getTasks().size());
+		t1 = new WorkProgressImpl(1000);
+		st = p.addTask(t1, 150);
+		p.doneOnSubTasksDone();
+		p.doneOnSubTasksDone();
+		Assert.assertEquals(1, p.getTasks().size());
+		p.removeTask(st);
+		Assert.assertEquals(0, p.getTasks().size());
+		Assert.assertTrue(p.getSynch().isDone());
+		
+		p = new MultiTaskProgress("Test");
+		t1 = new WorkProgressImpl(1000);
+		st = p.addTask(t1, 150);
+		p.doneOnSubTasksDone();
+		t2 = new WorkProgressImpl(2000);
+		st = p.addTask(t2, 150);
+		t1.done();
+		p.removeTask(st);
+		Assert.assertTrue(p.getSynch().isDone());
+		Assert.assertFalse(p.getSynch().hasError());
+		
+		p = new MultiTaskProgress("Test");
+		t1 = new WorkProgressImpl(1000);
+		st = p.addTask(t1, 150);
+		p.doneOnSubTasksDone();
+		t2 = new WorkProgressImpl(2000);
+		st = p.addTask(t2, 150);
+		t2.done();
+		p.removeTask(st);
+		Assert.assertFalse(p.getSynch().isDone());
+		t1.error(new Exception());
+		Assert.assertTrue(p.getSynch().isDone());
+		Assert.assertTrue(p.getSynch().hasError());
 	}
 	
 }

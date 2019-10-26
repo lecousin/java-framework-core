@@ -252,23 +252,24 @@ public class SingleBufferReadable extends ConcurrentCloseable<IOException> imple
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		AtomicState s = state;
 		if (s.pos == s.len && s.eof) return IOUtil.success(null, ondone);
-		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
-			@Override
-			public ByteBuffer run() throws IOException, CancelException {
-				if (reading.hasError()) throw reading.getError();
-				if (reading.isCancelled()) throw reading.getCancelEvent();
-				AtomicState s = state;
-				if (s.pos == s.len && s.eof) return null;
-				ByteBuffer buf = ByteBuffer.allocate(s.len - s.pos);
-				buf.put(buffer, s.pos, s.len - s.pos);
-				s.pos = s.len;
-				fillNextBuffer();
-				buf.flip();
-				return buf;
-			}
-		};
+		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu.FromSupplierThrows<>(
+			"Read next buffer", getPriority(), ondone, this::readNextBuffer);
 		operation(task).startOn(reading, true);
 		return task.getOutput();
+	}
+	
+	@Override
+	public ByteBuffer readNextBuffer() throws IOException {
+		if (reading.hasError()) throw reading.getError();
+		if (reading.isCancelled()) throw IO.errorCancelled(reading.getCancelEvent());
+		AtomicState s = state;
+		if (s.pos == s.len && s.eof) return null;
+		ByteBuffer buf = ByteBuffer.allocate(s.len - s.pos);
+		buf.put(buffer, s.pos, s.len - s.pos);
+		s.pos = s.len;
+		fillNextBuffer();
+		buf.flip();
+		return buf;
 	}
 	
 	@Override

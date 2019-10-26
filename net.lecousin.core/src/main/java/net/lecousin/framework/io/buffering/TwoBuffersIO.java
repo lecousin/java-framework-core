@@ -514,6 +514,46 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S3776") // complexity
+	public ByteBuffer readNextBuffer() throws IOException {
+		if (nb1 < 0) {
+			if (!read1.isDone()) read1.block(0);
+			if (read1.hasError()) throw read1.getError();
+			if (read1.isCancelled()) throw IO.errorCancelled(read1.getCancelEvent());
+			nb1 = read1.getResult().intValue();
+			if (nb1 < 0) nb1 = 0;
+			if (nb1 == 0) return null;
+		}
+		if (pos < nb1) {
+			ByteBuffer buf = ByteBuffer.allocate(nb1 - pos);
+			buf.put(buf1, pos, nb1 - pos);
+			buf.flip();
+			pos = nb1;
+			return buf;
+		}
+		if (buf2 == null) return null;
+		if (nb2 < 0) {
+			if (!read1.isDone()) read1.block(0);
+			if (read1.hasError()) throw read1.getError();
+			if (read1.isCancelled()) throw IO.errorCancelled(read1.getCancelEvent());
+			if (read2 == null) waitRead2();
+			if (read2.hasError()) throw read2.getError();
+			if (read2.isCancelled()) throw IO.errorCancelled(read2.getCancelEvent());
+			nb2 = read2.getResult().intValue();
+			if (nb2 < 0) nb2 = 0;
+			if (nb2 == 0)
+				return null;
+		}
+		if (pos >= nb1 + nb2) return null;
+		ByteBuffer buf = ByteBuffer.allocate(nb1 + nb2 - pos);
+		if (pos < nb1) buf.put(buf1, pos, nb1 - pos);
+		buf.put(buf2, pos - nb1, nb2 - (pos - nb1));
+		buf.flip();
+		pos = nb1 + nb2;
+		return buf;
+	}
+	
+	@Override
 	public int readFullySync(ByteBuffer buffer) throws IOException {
 		int nb = readFullySync(pos, buffer);
 		if (nb > 0) pos += nb;

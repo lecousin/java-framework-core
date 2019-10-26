@@ -207,24 +207,25 @@ public class MemoryIO extends ConcurrentCloseable<IOException>
 	@Override
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		if (pos == size) return IOUtil.success(null, ondone);
-		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
-			@Override
-			public ByteBuffer run() {
-				if (pos == size) return null;
-				int index = pos / bufferSize;
-				int bufferPos = pos % bufferSize;
-				int len = size - pos;
-				if (len > bufferSize - bufferPos) len = bufferSize - bufferPos;
-				ByteBuffer buf = ByteBuffer.allocate(len);
-				buf.put(buffers[index], bufferPos, len);
-				pos += len;
-				buf.flip();
-				return buf;
-			}
-		};
+		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu.FromSupplierThrows<>(
+			"Read next buffer", getPriority(), ondone, this::readNextBuffer);
 		task.start();
 		operation(task);
 		return task.getOutput();
+	}
+	
+	@Override
+	public ByteBuffer readNextBuffer() throws IOException {
+		if (pos == size) return null;
+		int index = pos / bufferSize;
+		int bufferPos = pos % bufferSize;
+		int len = size - pos;
+		if (len > bufferSize - bufferPos) len = bufferSize - bufferPos;
+		ByteBuffer buf = ByteBuffer.allocate(len);
+		buf.put(buffers[index], bufferPos, len);
+		pos += len;
+		buf.flip();
+		return buf;
 	}
 	
 	@Override

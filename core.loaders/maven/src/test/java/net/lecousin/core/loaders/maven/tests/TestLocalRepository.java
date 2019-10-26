@@ -262,6 +262,9 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "t", "ejb-client"));
 		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "ejb-client", Task.PRIORITY_NORMAL).blockResult(30000));
 
+		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "t", "ejb"));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "ejb", Task.PRIORITY_NORMAL).blockResult(30000));
+
 		repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "java-source");
 		repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "java-source", Task.PRIORITY_NORMAL).blockResult(30000);
 

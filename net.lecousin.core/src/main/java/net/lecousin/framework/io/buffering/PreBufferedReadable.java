@@ -820,5 +820,29 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 		sp.onDone(() -> readNextBufferAsync(ondone).forward(result));
 		return operation(result);
 	}
+	
+	@Override
+	public ByteBuffer readNextBuffer() throws IOException {
+		do {
+			Async<NoException> sp;
+			synchronized (this) {
+				if (error != null) throw error;
+				if (current != null) {
+					if (!current.hasRemaining() && endReached)
+						return null;
+					ByteBuffer buf = ByteBuffer.allocate(current.remaining());
+					buf.put(current);
+					moveNextBuffer(true);
+					buf.flip();
+					return buf;
+				}
+				if (endReached) return null;
+				if (isClosing() || isClosed()) throw new ClosedChannelException();
+				if (dataReady == null) dataReady = new Async<>();
+				sp = dataReady;
+			}
+			sp.block(0);
+		} while (true);
+	}
 
 }

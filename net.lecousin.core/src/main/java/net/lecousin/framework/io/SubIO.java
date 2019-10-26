@@ -323,6 +323,19 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 					task.start();
 					return result;
 				}
+				
+				@Override
+				public ByteBuffer readNextBuffer() throws IOException {
+					if (pos == size) return null;
+					int len = 16384;
+					if (len > size - pos) len = (int)(size - pos);
+					ByteBuffer buf = ByteBuffer.allocate(len);
+					int nb = ((IO.Readable.Seekable)io).readSync(start + pos, buf);
+					if (nb > 0)
+						pos += nb;
+					buf.flip();
+					return buf;
+				}
 			}
 		}
 		

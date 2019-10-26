@@ -53,7 +53,7 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 		file.deleteOnExit();
 		FileIO.ReadWrite fio = new FileIO.ReadWrite(file, io.getPriority());
 		buffered = new BufferedIO.ReadWrite(fio, 0L, 512, bufferSize, false);
-		readNextBuffer();
+		nextBuffer();
 	}
 	
 	private IO.Readable.Buffered io;
@@ -126,7 +126,7 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 			synchronized (this) {
 				if (knownSize >= 0) return knownSize;
 				if (buffering.isDone())
-					readNextBuffer();
+					nextBuffer();
 			}
 			buffering.block(0);
 			if (buffering.isCancelled()) throw new IOException("IO closed");
@@ -147,7 +147,7 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 		return operation(seek);
 	}
 
-	private void readNextBuffer() {
+	private void nextBuffer() {
 		if (knownSize == ioPos) {
 			buffering = new AsyncSupplier<>(Boolean.TRUE, null);
 			return;
@@ -203,7 +203,7 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 						if (pos >= ioPos) return false;
 						break;
 					}
-					readNextBuffer();
+					nextBuffer();
 				}
 			}
 		}
@@ -219,7 +219,7 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 					return buffering; // will be ok with the next buffer
 			} else {
 				boolean nextEnough = pos < ioPos + 8192; // will be ok with the next buffer
-				readNextBuffer();
+				nextBuffer();
 				if (nextEnough)
 					return buffering;
 			}
@@ -237,7 +237,7 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 				public Void run() {
 					synchronized (ReadableToSeekable.this) {
 						if (buffering.isDone())
-							readNextBuffer();
+							nextBuffer();
 					}
 					AsyncSupplier<Boolean,IOException> next = bufferizeTo(pos);
 					if (next == null)
@@ -410,6 +410,16 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 		else
 			bufferize.thenStart(task, true);
 		return result;
+	}
+	
+	@Override
+	public ByteBuffer readNextBuffer() throws IOException {
+		if (!waitPosition(pos))
+			return null;
+		ByteBuffer buf = buffered.readNextBuffer();
+		if (buf != null)
+			pos += buf.remaining();
+		return buf;
 	}
 	
 	@Override

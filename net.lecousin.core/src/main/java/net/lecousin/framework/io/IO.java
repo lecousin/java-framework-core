@@ -168,7 +168,7 @@ public interface IO extends IConcurrentCloseable<IOException> {
 		/** Indicates the IO is buffered, and add operations. */
 		public interface Buffered extends Readable, ReadableByteStream {
 			/** Retrieve a buffer of bytes in the most efficient way depending on the implementation of Buffered.<br/>
-			 * This method is similar to readAsync, it read some bytes that are immediately available with a minimum of
+			 * This method is similar to readAsync, it reads some bytes that are immediately available with a minimum of
 			 * operations. The problem with readAsync is that we have to give a buffer to fill. If there are more
 			 * bytes that can be read, a new call will be needed. If there not enough available bytes, the given buffer
 			 * is not fully filled and uses more memory than needed.<br/>
@@ -183,6 +183,11 @@ public interface IO extends IConcurrentCloseable<IOException> {
 			
 			/** Equivalent to readNextBufferAsync(null). */
 			default AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync() { return readNextBufferAsync(null); }
+			
+			/** Retrieve a buffer of bytes in the most efficient way depending on the implementation of Buffered.<br/>
+			 * Its returns the immediately available bytes with a minimum of operations.<br/>
+			 */
+			ByteBuffer readNextBuffer() throws IOException;
 			
 			/** Read a single byte if possible.
 			 * @return the next byte, or -1 if the end of the IO has been reached, or -2 if no more byte is available.

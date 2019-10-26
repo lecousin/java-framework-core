@@ -15,6 +15,7 @@ import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.Runnables;
 
 /** Task to be executed asynchronously.
  * @param <T> type of result
@@ -153,6 +154,33 @@ public abstract class Task<T,TError extends Exception> {
 			public Void run() {
 				runnable.run();
 				return null;
+			}
+		}
+		
+		/** CPU task from a Supplier.
+		 * @param <T> type of result
+		 * @param <TError> type of exception
+		 */
+		public static class FromSupplierThrows<T, TError extends Exception> extends Task.Cpu<T, TError> {
+			/** Constructor. */
+			public FromSupplierThrows(String description, byte priority, Runnables.SupplierThrows<T, TError> supplier) {
+				super(description, priority);
+				this.supplier = supplier;
+			}
+
+			/** Constructor. */
+			public FromSupplierThrows(
+				String description, byte priority, Consumer<Pair<T, TError>> ondone, Runnables.SupplierThrows<T, TError> supplier
+			) {
+				super(description, priority, ondone);
+				this.supplier = supplier;
+			}
+
+			private Runnables.SupplierThrows<T, TError> supplier;
+			
+			@Override
+			public T run() throws TError {
+				return supplier.get();
 			}
 		}
 	}
