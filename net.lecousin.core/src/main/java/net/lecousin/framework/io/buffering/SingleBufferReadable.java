@@ -260,16 +260,22 @@ public class SingleBufferReadable extends ConcurrentCloseable<IOException> imple
 	
 	@Override
 	public ByteBuffer readNextBuffer() throws IOException {
-		if (reading.hasError()) throw reading.getError();
-		if (reading.isCancelled()) throw IO.errorCancelled(reading.getCancelEvent());
-		AtomicState s = state;
-		if (s.pos == s.len && s.eof) return null;
-		ByteBuffer buf = ByteBuffer.allocate(s.len - s.pos);
-		buf.put(buffer, s.pos, s.len - s.pos);
-		s.pos = s.len;
-		fillNextBuffer();
-		buf.flip();
-		return buf;
+		do {
+			if (reading.hasError()) throw reading.getError();
+			if (reading.isCancelled()) throw IO.errorCancelled(reading.getCancelEvent());
+			AtomicState s = state;
+			if (s.pos == s.len) {
+				if (s.eof) return null;
+				waitBufferSync();
+				continue;
+			}
+			ByteBuffer buf = ByteBuffer.allocate(s.len - s.pos);
+			buf.put(buffer, s.pos, s.len - s.pos);
+			s.pos = s.len;
+			fillNextBuffer();
+			buf.flip();
+			return buf;
+		} while (true);
 	}
 	
 	@Override

@@ -42,16 +42,15 @@ public class TestSubIOReadableBuffered extends TestReadableBuffered {
 	}
 	
 	public TestSubIOReadableBuffered(File testFile, byte[] testBuf, int nbBuf, int nbBufSkippedStart, int nbBufSkippedEnd) {
-		super(testFile, testBuf, nbBuf - nbBufSkippedStart - nbBufSkippedEnd);
+		super(testFile, testBuf, nbBuf - nbBufSkippedStart - nbBufSkippedEnd, 0);
 		this.nbBufSkippedStart = nbBufSkippedStart;
 	}
 
 
 	private int nbBufSkippedStart;
 	
-	@SuppressWarnings("resource")
 	@Override
-	protected Seekable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws IOException {
+	protected Seekable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws IOException {
 		BufferedIO buffered = new BufferedIO(file, file.getSizeSync(), 8192, 8192, false);
 		return new SubIO.Readable.Seekable.Buffered(buffered, (long)nbBufSkippedStart * testBuf.length, fileSize, "test subio", true);
 	}

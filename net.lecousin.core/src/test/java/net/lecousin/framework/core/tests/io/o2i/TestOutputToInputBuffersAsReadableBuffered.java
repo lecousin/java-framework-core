@@ -23,11 +23,11 @@ public class TestOutputToInputBuffersAsReadableBuffered extends TestReadableBuff
 	}
 	
 	public TestOutputToInputBuffersAsReadableBuffered(File testFile, byte[] testBuf, int nbBuf) {
-		super(testFile, testBuf, nbBuf);
+		super(testFile, testBuf, nbBuf, 0);
 	}
 	
 	@Override
-	protected OutputToInputBuffers createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
+	protected OutputToInputBuffers createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception {
 		OutputToInputBuffers o2i = new OutputToInputBuffers(true, -3, Task.PRIORITY_NORMAL);
 		IOUtil.copy(file, o2i, fileSize, false, null, 0).blockException(0);
 		o2i.endOfData();

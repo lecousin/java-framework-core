@@ -26,7 +26,7 @@ public class TestLinkedIOWithSubIOReadableBuffered extends TestReadableBuffered 
 	}
 	
 	public TestLinkedIOWithSubIOReadableBuffered(FragmentedFile f) {
-		super(f.file, f.testBuf, f.nbBuf);
+		super(f.file, f.testBuf, f.nbBuf, 0);
 		this.f = f;
 	}
 	
@@ -35,7 +35,7 @@ public class TestLinkedIOWithSubIOReadableBuffered extends TestReadableBuffered 
 	
 	@SuppressWarnings("resource")
 	@Override
-	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
+	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception {
 		BufferedIO bio = new BufferedIO(file, file.getSizeSync(), 4096, 4096, true);
 		IO.Readable.Buffered[] ios = new IO.Readable.Buffered[f.fragments.size()];
 		int i = 0;

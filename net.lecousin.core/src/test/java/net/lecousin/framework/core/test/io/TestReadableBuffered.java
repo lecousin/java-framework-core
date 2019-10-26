@@ -3,6 +3,10 @@ package net.lecousin.framework.core.test.io;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.Task;
@@ -22,20 +26,46 @@ import org.junit.Test;
 
 public abstract class TestReadableBuffered extends TestReadableByteStream {
 	
-	protected TestReadableBuffered(File testFile, byte[] testBuf, int nbBuf) {
-		super(testFile, testBuf, nbBuf);
+	public static synchronized List<Object[]> generateTestCases(boolean faster) {
+		return addBufferingSize(TestIO.UsingGeneratedTestFiles.generateTestCases(faster));
 	}
+	
+	public static List<Object[]> addBufferingSize(Collection<Object[]> cases) {
+		ArrayList<Object[]> result = new ArrayList<>(cases.size() * testBufferingSize.length);
+		for (int i = 0; i < testBufferingSize.length; ++i) {
+			for (Object[] params : cases) {
+				Object[] newParams = new Object[params.length + 1];
+				System.arraycopy(params, 0, newParams, 0, params.length);
+				newParams[params.length] = Integer.valueOf(testBufferingSize[i]);
+				result.add(newParams);
+			}
+		}
+		return result;
+	}
+	
+	public static int[] testBufferingSize = {
+		65536,
+		1024,
+		2
+	};
+	
+	protected TestReadableBuffered(File testFile, byte[] testBuf, int nbBuf, int bufferingSize) {
+		super(testFile, testBuf, nbBuf);
+		this.bufferingSize = bufferingSize;
+	}
+	
+	protected int bufferingSize;
 
-	protected abstract IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception;
+	protected abstract IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception;
 
 	@Override
 	protected ReadableByteStream createReadableByteStreamFromFile(ReadOnly file, long fileSize) throws Exception {
-		return createReadableBufferedFromFile(file, fileSize);
+		return createReadableBufferedFromFile(file, fileSize, bufferingSize);
 	}
 	
 	@Test(timeout=120000)
 	public void testReadableBufferedByteByByteAsync() throws Exception {
-		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
+		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
 		MutableInteger i = new MutableInteger(0);
 		MutableInteger j = new MutableInteger(0);
 		Async<Exception> sp = new Async<>();
@@ -100,9 +130,9 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		io.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test(timeout=240000)
 	public void testReadableBufferedNextBufferAsync() throws Exception {
-		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
+		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
 		Async<Exception> done = new Async<>();
 		MutableInteger pos = new MutableInteger(0);
 		Mutable<AsyncSupplier<ByteBuffer,IOException>> read = new Mutable<>(null);
@@ -138,6 +168,10 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 						return;
 					}
 					int nb = buffer.remaining();
+					if (nb == 0) {
+						done.error(new Exception("Method readNextBufferAsync returned an empty buffer at offset " + p));
+						return;
+					}
 					int i = 0;
 					while (i < nb) {
 						int start = (p+i) % testBuf.length;
@@ -165,18 +199,27 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 	
 	@Test(timeout=120000)
 	public void testReadableBufferedNextBuffer() throws Exception {
-		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
-		int pos = 0;
+		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
+		LinkedList<ByteBuffer> buffers = new LinkedList<>();
 		do {
 			ByteBuffer buf = io.readNextBuffer();
+			if (buf == null) break;
+			buffers.add(buf);
+		} while (true);
+		io.close();
+		int pos = 0;
+		do {
+			ByteBuffer buf = buffers.isEmpty() ? null : buffers.removeFirst();
 			if (pos == testBuf.length * nbBuf) {
 				if (buf != null)
 					throw new Exception("" + buf.remaining() + " byte(s) read after the end of the file");
 				break;
 			}
 			if (buf == null)
-				throw new Exception("Method readNextBufferAsync returned a null buffer, but this is not the end of the file: offset " + pos);
+				throw new Exception("Method readNextBuffer returned a null buffer, but this is not the end of the file: offset " + pos);
 			int nb = buf.remaining();
+			if (nb <= 0)
+				throw new Exception("Method readNextBuffer returned an empty buffer at offset " + pos);
 			int i = 0;
 			while (i < nb) {
 				int start = (pos+i) % testBuf.length;
@@ -191,12 +234,11 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 			}
 			pos += nb;
 		} while (true);
-		io.close();
 	}
 
-	@Test(timeout=120000)
+	@Test(timeout=240000)
 	public void testReadableBufferedReadFullySyncIfPossible() throws Exception {
-		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize());
+		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
 		byte[] buf = new byte[testBuf.length];
 		Async<Exception> sp = new Async<>();
 		new Task.Cpu.FromRunnable("Test readFullySyncIfPossible", Task.PRIORITY_NORMAL, () -> {

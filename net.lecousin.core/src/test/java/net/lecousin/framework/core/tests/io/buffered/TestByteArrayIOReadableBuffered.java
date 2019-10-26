@@ -22,11 +22,11 @@ public class TestByteArrayIOReadableBuffered extends TestReadableBuffered {
 	}
 	
 	public TestByteArrayIOReadableBuffered(File testFile, byte[] testBuf, int nbBuf) {
-		super(testFile, testBuf, nbBuf);
+		super(testFile, testBuf, nbBuf, 4096);
 	}
 	
 	@Override
-	protected ByteArrayIO createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
+	protected ByteArrayIO createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception {
 		byte[] b = new byte[(int)fileSize];
 		if (file.readFullySync(ByteBuffer.wrap(b)) != fileSize)
 			throw new Exception("Error loading file into memory");

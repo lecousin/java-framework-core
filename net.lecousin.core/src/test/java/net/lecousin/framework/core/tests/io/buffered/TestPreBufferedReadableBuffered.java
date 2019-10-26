@@ -22,7 +22,7 @@ public class TestPreBufferedReadableBuffered extends TestReadableBuffered {
 	}
 	
 	public TestPreBufferedReadableBuffered(File testFile, byte[] testBuf, int nbBuf, int bufferSize1, int bufferSize2, int nbBuffers) {
-		super(testFile, testBuf, nbBuf);
+		super(testFile, testBuf, nbBuf, 0);
 		this.bufferSize1 = bufferSize1;
 		this.bufferSize2 = bufferSize2;
 		this.nbBuffers = nbBuffers;
@@ -31,7 +31,7 @@ public class TestPreBufferedReadableBuffered extends TestReadableBuffered {
 	private int bufferSize1, bufferSize2, nbBuffers;
 	
 	@Override
-	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
+	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception {
 		return new PreBufferedReadable(file, bufferSize1, Task.PRIORITY_IMPORTANT, bufferSize2, Task.PRIORITY_IMPORTANT, nbBuffers);
 	}
 

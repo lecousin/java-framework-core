@@ -14,21 +14,21 @@ import net.lecousin.framework.io.buffering.SingleBufferReadable;
 @RunWith(Parameterized.class)
 public class TestSingleBufferReadableBuffered extends TestReadableBuffered {
 
-	@Parameters(name = "nbBuf = {2}, useReadFully = {3}")
+	@Parameters(name = "nbBuf = {2}, useReadFully = {3}, bufferingSize = {4}")
 	public static Collection<Object[]> parameters() {
-		return TestSingleBufferReadable.parameters();
+		return addBufferingSize(TestSingleBufferReadable.parameters());
 	}
 	
-	public TestSingleBufferReadableBuffered(File testFile, byte[] testBuf, int nbBuf, boolean useReadFully) {
-		super(testFile, testBuf, nbBuf);
+	public TestSingleBufferReadableBuffered(File testFile, byte[] testBuf, int nbBuf, boolean useReadFully, int bufferingSize) {
+		super(testFile, testBuf, nbBuf, bufferingSize);
 		this.useReadFully = useReadFully;
 	}
 	
 	private boolean useReadFully;
 	
 	@Override
-	protected SingleBufferReadable createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) {
-		return new SingleBufferReadable(file, 4096, useReadFully);
+	protected SingleBufferReadable createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) {
+		return new SingleBufferReadable(file, bufferingSize, useReadFully);
 	}
 	
 }

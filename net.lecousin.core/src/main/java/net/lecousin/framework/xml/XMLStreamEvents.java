@@ -350,9 +350,21 @@ public abstract class XMLStreamEvents {
 		
 		public BufferedReadableCharacterStreamLocation start() throws IOException, XMLException {
 			ByteBuffer buf = io.readNextBuffer();
-			firstBytes = buf.array();
-			firstBytesPos = buf.arrayOffset() + buf.position();
-			firstBytesLength = firstBytesPos + buf.remaining();
+			if (buf != null) {
+				firstBytes = buf.array();
+				firstBytesPos = buf.arrayOffset() + buf.position();
+				firstBytesLength = firstBytesPos + buf.remaining();
+				while (firstBytesLength < 4) {
+					buf = io.readNextBuffer();
+					if (buf == null) break;
+					byte[] b = new byte[firstBytesLength + buf.remaining()];
+					System.arraycopy(firstBytes, firstBytesPos, b, 0, firstBytesLength);
+					System.arraycopy(buf.array(), buf.arrayOffset() + buf.position(), b, firstBytesLength, buf.remaining());
+					firstBytes = b;
+					firstBytesPos = 0;
+					firstBytesLength += buf.remaining();
+				}
+			}
 			//firstBytesLength = io.readFully(firstBytes);
 			readBOM();
 			int posAfterBOM = firstBytesPos;
@@ -366,7 +378,7 @@ public abstract class XMLStreamEvents {
 			} catch (Exception e) {
 				throw new IOException("Error initializing character decoder", e);
 			}
-			chars = new char[firstBytesLength - firstBytesPos];
+			chars = new char[Math.min(firstBytesLength - firstBytesPos, bufferSize * maxBuffers)];
 			// TODO line and posInLine...
 			boolean hasDecl = readXMLDeclaration();
 			if (!hasDecl) {
@@ -415,7 +427,7 @@ public abstract class XMLStreamEvents {
 						CharBuffer.wrap(chars, charsPos, charsLength - charsPos)), line, posInLine);
 		}
 		
-		public void readBOM() throws XMLException {
+		private void readBOM() throws XMLException {
 			if (firstBytesLength == 0) throw new XMLException(null, "File is empty");
 			switch (firstBytes[0] & 0xFF) {
 			case 0xEF: {
@@ -494,20 +506,14 @@ public abstract class XMLStreamEvents {
 			if (charsPos < charsLength)
 				return chars[charsPos++];
 			if (firstBytesPos > 0 && firstBytesLength - firstBytesPos < 10) {
-				// TODO in fact we must enlarge firstBytes...
-				if (firstBytesPos < firstBytesLength) {
-					int len = firstBytesLength - firstBytesPos;
-					System.arraycopy(firstBytes, firstBytesPos, firstBytes, 0, len);
-					int nb = io.readFullySync(ByteBuffer.wrap(firstBytes, len, firstBytes.length - len));
-					if (nb == -1) nb = 0;
-					firstBytesPos = 0;
-					firstBytesLength = len + nb;
-					// TODO if end reached
-				} else {
-					firstBytesPos = 0;
-					firstBytesLength = io.readFullySync(ByteBuffer.wrap(firstBytes));
-					// TODO if end reached
-				}
+				byte[] b = new byte[firstBytes.length > 256 ? firstBytes.length * 2 : 512];
+				System.arraycopy(firstBytes, 0, b, 0, firstBytes.length);
+				int nb = io.readFullySync(ByteBuffer.wrap(b, firstBytesLength, b.length - firstBytesLength));
+				if (nb <= 0) throw new EOFException();
+				firstBytes = b;
+				firstBytesLength += nb;
+				int minSize = Math.min(512, bufferSize * maxBuffers);
+				if (chars.length < minSize) chars = new char[minSize];
 			}
 			charsPos = 0;
 			ByteBuffer bb = ByteBuffer.wrap(firstBytes, firstBytesPos, firstBytesLength - firstBytesPos);
@@ -518,7 +524,7 @@ public abstract class XMLStreamEvents {
 			return chars[charsPos++];
 		}
 		
-		protected boolean readXMLDeclaration() throws IOException {
+		private boolean readXMLDeclaration() throws IOException {
 			char c;
 			while (isSpaceChar(c = nextChar()));
 			if (c != '<')

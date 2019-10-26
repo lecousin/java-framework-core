@@ -24,11 +24,11 @@ public class TestByteBuffersIOReadableBuffered extends TestReadableBuffered {
 	}
 	
 	public TestByteBuffersIOReadableBuffered(File testFile, byte[] testBuf, int nbBuf) {
-		super(testFile, testBuf, nbBuf);
+		super(testFile, testBuf, nbBuf, 4096);
 	}
 	
 	@Override
-	protected ByteBuffersIO createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
+	protected ByteBuffersIO createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception {
 		ByteBuffersIO io = new ByteBuffersIO(true, "test", Task.PRIORITY_NORMAL);
 		IOUtil.copy(file, io, fileSize, false, null, 0).blockThrow(0);
 		file.close();

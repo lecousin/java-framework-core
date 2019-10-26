@@ -28,11 +28,11 @@ public class TestNonBufferedReadableIOAsBuffered extends TestReadableBuffered {
 	}
 	
 	public TestNonBufferedReadableIOAsBuffered(File testFile, byte[] testBuf, int nbBuf) {
-		super(testFile, testBuf, nbBuf);
+		super(testFile, testBuf, nbBuf, 0);
 	}
 	
 	@Override
-	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) {
+	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) {
 		return new NonBufferedReadableIOAsBuffered(file);
 	}
 	

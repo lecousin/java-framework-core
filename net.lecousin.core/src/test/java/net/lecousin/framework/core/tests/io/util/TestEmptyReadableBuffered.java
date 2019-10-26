@@ -9,11 +9,11 @@ import net.lecousin.framework.io.util.EmptyReadable;
 public class TestEmptyReadableBuffered extends TestReadableBuffered {
 
 	public TestEmptyReadableBuffered() {
-		super((File)generateTestCases(true).get(0)[0], (byte[])generateTestCases(true).get(0)[1], 0);
+		super((File)generateTestCases(true).get(0)[0], (byte[])generateTestCases(true).get(0)[1], 0, 0);
 	}
 
 	@Override
-	protected EmptyReadable createReadableBufferedFromFile(ReadOnly file, long fileSize) {
+	protected EmptyReadable createReadableBufferedFromFile(ReadOnly file, long fileSize, int bufferingSize) {
 		return new EmptyReadable("test empty", file.getPriority());
 	}
 	

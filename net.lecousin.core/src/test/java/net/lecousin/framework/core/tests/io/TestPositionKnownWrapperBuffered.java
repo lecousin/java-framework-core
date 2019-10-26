@@ -4,10 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.util.Collection;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadableBuffered;
@@ -16,6 +12,10 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.PositionKnownWrapper;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
+
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 public class TestPositionKnownWrapperBuffered extends TestReadableBuffered {
@@ -26,16 +26,15 @@ public class TestPositionKnownWrapperBuffered extends TestReadableBuffered {
 	}
 	
 	public TestPositionKnownWrapperBuffered(File testFile, byte[] testBuf, int nbBuf) {
-		super(testFile, testBuf, nbBuf);
+		super(testFile, testBuf, nbBuf, 4096);
 	}
 	
-	@SuppressWarnings("resource")
 	@Override
-	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
+	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception {
 		File f = file.getFile();
 		IOFromInputStream io = new IOFromInputStream(new FileInputStream(f), f.getAbsolutePath(), file.getTaskManager(), Task.PRIORITY_NORMAL);
 		file.closeAsync();
-		SimpleBufferedReadable bio = new SimpleBufferedReadable(io, 4096);
+		SimpleBufferedReadable bio = new SimpleBufferedReadable(io, bufferingSize);
 		return new PositionKnownWrapper.Readable.Buffered(bio);
 	}
 	

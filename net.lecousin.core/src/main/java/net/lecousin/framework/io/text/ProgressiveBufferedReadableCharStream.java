@@ -58,7 +58,8 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable<I
 			if (lastBufferReady != -1) firstBufferReady = 1;
 			if (firstChars.hasRemaining())
 				throw new IllegalArgumentException("firstChars is too large to fit in buffers: bufferSize is "
-					+ bufferSize + " and maxBuffers is " + maxBuffers);
+					+ bufferSize + " and maxBuffers is " + maxBuffers + ", firstChars contains "
+					+ firstChars.remaining() + " additional characters");
 		}
 		taskFillBuffer = new TaskFillBuffer();
 		taskFillBuffer.start(); // TODO on io ready
