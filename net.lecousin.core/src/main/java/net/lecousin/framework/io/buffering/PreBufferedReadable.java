@@ -487,6 +487,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S3776") // complexity
 	public long skipSync(long n) throws IOException {
 		long skipped = 0;
 		do {
@@ -539,11 +540,9 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 					sp = dataReady;
 				}
 			}
-			if (remaining > 0) {
+			if (remaining > 0)
 				n = remaining;
-				continue;
-			}
-			if (sp != null)
+			else if (sp != null)
 				sp.block(0);
 		} while (true);		
 	}
@@ -605,52 +604,64 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 		buffer.clear();
 		nextReadTask = operation(src.readFullyAsync(buffer));
 		nextReadTask.onDone(() -> {
-			if (nextReadTask == null) return; // case we have been closed
-			Throwable e;
-			try { e = nextReadTask.getError(); }
-			catch (NullPointerException ex) { return; /* we are closed */ }
-			if (e != null) {
-				if (e instanceof IOException) error = (IOException)e;
-				else error = new IOException("Read failed", e);
-				nextReadTask = null;
-				synchronized (PreBufferedReadable.this) {
-					if (dataReady != null) {
-						Async<NoException> dr = dataReady;
-						dataReady = null;
-						dr.unblock();
-					}
-				}
+			if (handleNextReadError())
 				return;
-			}
 			int nb;
 			try { nb = ((Integer)nextReadTask.getResult()).intValue(); }
 			catch (NullPointerException ex) { nb = 0; /* we are closed */ }
-			Async<NoException> sp = null;
-			synchronized (PreBufferedReadable.this) {
-				nextReadTask = null;
-				if (buffersReady == null) return; // closed
-				if (nb <= 0) {
-					endReached = true;
-				} else {
-					read += nb;
-					if (nb < buffer.limit() || (size > 0 && read == size)) 
-						endReached = true;
-					buffer.flip();
-					if (current == null) current = buffer;
-					else buffersReady.addLast(buffer);
-					if (!endReached && !reusableBuffers.isEmpty() && !stopReading)
-						nextRead();
-				}
-				if (endReached && size > 0 && read < size && buffersReady != null && !isClosing() && !isClosed())
-					error = new UnexpectedEnd(this);
-				if (dataReady != null) {
-					sp = dataReady;
-					dataReady = null;
-				}
-			}
-			if (sp != null)
-				sp.unblock();
+			if (handleNextReadResult(nb, buffer))
+				return;
 		});
+	}
+	
+	@SuppressWarnings("squid:S1696") // NullPointerException
+	private boolean handleNextReadError() {
+		if (nextReadTask == null) return true; // case we have been closed
+		Throwable e;
+		try { e = nextReadTask.getError(); }
+		catch (NullPointerException ex) { return true; /* we are closed */ }
+		if (e == null)
+			return false;
+		if (e instanceof IOException) error = (IOException)e;
+		else error = new IOException("Read failed", e);
+		nextReadTask = null;
+		synchronized (PreBufferedReadable.this) {
+			if (dataReady != null) {
+				Async<NoException> dr = dataReady;
+				dataReady = null;
+				dr.unblock();
+			}
+		}
+		return true;
+	}
+	
+	private boolean handleNextReadResult(int nb, ByteBuffer buffer) {
+		Async<NoException> sp = null;
+		synchronized (PreBufferedReadable.this) {
+			nextReadTask = null;
+			if (buffersReady == null) return true; // closed
+			if (nb <= 0) {
+				endReached = true;
+			} else {
+				read += nb;
+				if (nb < buffer.limit() || (size > 0 && read == size)) 
+					endReached = true;
+				buffer.flip();
+				if (current == null) current = buffer;
+				else buffersReady.addLast(buffer);
+				if (!endReached && !reusableBuffers.isEmpty() && !stopReading)
+					nextRead();
+			}
+			if (endReached && size > 0 && read < size && buffersReady != null && !isClosing() && !isClosed())
+				error = new UnexpectedEnd(this);
+			if (dataReady != null) {
+				sp = dataReady;
+				dataReady = null;
+			}
+		}
+		if (sp != null)
+			sp.unblock();
+		return false;
 	}
 	
 	@Override

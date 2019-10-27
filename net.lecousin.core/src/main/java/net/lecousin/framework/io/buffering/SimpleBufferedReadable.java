@@ -2,6 +2,7 @@ package net.lecousin.framework.io.buffering;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.Task;
@@ -231,20 +232,21 @@ public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> imp
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S1696") // NPE
 	public ByteBuffer readNextBuffer() throws IOException {
 		AtomicState s = state;
 		if (s.pos == s.len) {
 			if (s.buffer == null) return null;
 			try { fill(); }
 			catch (CancelException e) {
-				throw new IOException("IO closed");
+				throw new ClosedChannelException();
 			}
 			if (state.pos == state.len) return null;
 		}
 		ByteBuffer buf = ByteBuffer.allocate(state.len - state.pos);
 		try { buf.put(state.buffer, state.pos, state.len - state.pos); }
 		catch (NullPointerException e) {
-			throw new IOException("IO closed");
+			throw new ClosedChannelException();
 		}
 		state.pos = state.len;
 		buf.flip();

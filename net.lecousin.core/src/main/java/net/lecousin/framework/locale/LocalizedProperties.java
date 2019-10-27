@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -106,32 +107,8 @@ public class LocalizedProperties implements IMemoryManageable {
 			input, StandardCharsets.US_ASCII, Task.PRIORITY_RATHER_IMPORTANT);
 		Namespace toLoad = ns;
 		read.thenStart(new Task.Cpu.FromRunnable("Read localized properties namespace file", Task.PRIORITY_RATHER_IMPORTANT, () -> {
-			List<Namespace.Language> languages = new LinkedList<>();
-			UnprotectedStringBuffer str = read.getResult();
-			for (UnprotectedStringBuffer s : str.split(',')) {
-				s.trim().toLowerCase();
-				if (s.length() == 0) continue;
-				Namespace.Language l = new Namespace.Language();
-				List<UnprotectedStringBuffer> list = s.split('-');
-				l.tag = new String[list.size()];
-				int i = 0;
-				for (UnprotectedStringBuffer us : list) l.tag[i++] = us.asString();
-				languages.add(l);
-			}
-			languages.sort((l1, l2) -> {
-				/* Order:
-				 *  tags are alphabetically ordered
-				 *  but tags xx-yy are before tag xx
-				 */
-				int i = 0;
-				do {
-					if (i == l1.tag.length) return 1;
-					if (i == l2.tag.length) return -1;
-					int c = l1.tag[i].compareTo(l2.tag[i]);
-					if (c != 0) return c;
-					i++;
-				} while (true);
-			});
+			List<Namespace.Language> languages = parseLanguages(read.getResult());
+			languages.sort(languageComparator);
 			toLoad.languages = languages.toArray(new Namespace.Language[languages.size()]);
 			// set parents
 			for (int i = 0; i < toLoad.languages.length; ++i) {
@@ -152,6 +129,36 @@ public class LocalizedProperties implements IMemoryManageable {
 		sp.onError(error -> logger.error("Error loading localized properties namespace file " + path + ".languages", error));
 		return sp;
 	}
+	
+	private static List<Namespace.Language> parseLanguages(UnprotectedStringBuffer str) {
+		List<Namespace.Language> languages = new LinkedList<>();
+		for (UnprotectedStringBuffer s : str.split(',')) {
+			s.trim().toLowerCase();
+			if (s.length() == 0) continue;
+			Namespace.Language l = new Namespace.Language();
+			List<UnprotectedStringBuffer> list = s.split('-');
+			l.tag = new String[list.size()];
+			int i = 0;
+			for (UnprotectedStringBuffer us : list) l.tag[i++] = us.asString();
+			languages.add(l);
+		}
+		return languages;
+	}
+	
+	private static final Comparator<Namespace.Language> languageComparator = (l1, l2) -> {
+		/* Order:
+		 *  tags are alphabetically ordered
+		 *  but tags xx-yy are before tag xx
+		 */
+		int i = 0;
+		do {
+			if (i == l1.tag.length) return 1;
+			if (i == l2.tag.length) return -1;
+			int c = l1.tag[i].compareTo(l2.tag[i]);
+			if (c != 0) return c;
+			i++;
+		} while (true);
+	};
 	
 	/** Register the path on which localized properties can be found for a namespace.
 	 * If the namespace already exists, the new path will override the previous one.

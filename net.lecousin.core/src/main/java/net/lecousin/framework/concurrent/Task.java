@@ -748,6 +748,7 @@ public abstract class Task<T,TError extends Exception> {
 		}
 	}
 	
+	@SuppressWarnings("squid:S3400") // default value but may be overriden
 	public long getMaxBlockingTimeInNanoBeforeToLog() {
 		return 100000000;
 	}

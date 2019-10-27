@@ -2,6 +2,7 @@ package net.lecousin.framework.io.out2in;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.util.LinkedList;
 import java.util.function.Consumer;
 
@@ -258,7 +259,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable<IOException>
 			ByteBuffer b = null;
 			synchronized (this) {
 				if (isClosing() || isClosed()) {
-					IOException e = new IOException("IO closed");
+					IOException e = new ClosedChannelException();
 					if (ondone != null) ondone.accept(new Pair<>(null, e));
 					return new AsyncSupplier<>(null, e);
 				}
@@ -329,7 +330,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable<IOException>
 	public int readAsync() throws IOException {
 		ByteBuffer b = null;
 		synchronized (this) {
-			if (isClosing() || isClosed()) throw new IOException("IO closed");
+			if (isClosing() || isClosed()) throw new ClosedChannelException();
 			if (!buffers.isEmpty())
 				b = buffers.get(0);
 			else if (eof)
@@ -530,7 +531,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable<IOException>
 		ByteBuffer b = null;
 		do {
 			synchronized (this) {
-				if (isClosing() || isClosed()) throw new IOException("IO closed");
+				if (isClosing() || isClosed()) throw new ClosedChannelException();
 				if (!buffers.isEmpty()) {
 					b = buffers.removeFirst();
 					if (maxPendingBuffers > 0)

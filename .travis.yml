@@ -15,11 +15,6 @@ script:
 #- mvn test verify -B
 #- mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent install sonar:sonar -Dsonar.projectKey=lecousin_java-framework-core
 - mvn test verify install sonar:sonar -Dsonar.projectKey=lecousin_java-framework-core -B 
-after_script:
-- echo _____________CHECKSTYLE______________
-- cat */target/checkstyle-result.xml
-- echo _____________SOPTBUGS______________
-- cat */target/findbugsXml.xml
 after_success:
 - bash <(curl -s https://codecov.io/bash)
     

@@ -90,6 +90,40 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable<I
 	public void back(char c) {
 		back = c;
 	}
+	
+	/** Return true if eof is reached. */
+	private boolean nextBuffer() throws IOException {
+		synchronized (buffers) {
+			if (error != null) throw error;
+			if (iNeedABuffer == null || iNeedABuffer.isDone()) {
+				iNeedABuffer = null;
+				currentBufferIndex = -1;
+				if (firstBufferReady != -1) {
+					currentBufferIndex = firstBufferReady;
+					currentBuffer = buffers[currentBufferIndex];
+					if (firstBufferReady == lastBufferReady) {
+						firstBufferReady = -1;
+						lastBufferReady = -1;
+					} else {
+						firstBufferReady++;
+						if (firstBufferReady == buffers.length)
+							firstBufferReady = 0;
+					}
+					if (taskFillBuffer == null && !eofReached) {
+						// we took a buffer, the task can start again
+						taskFillBuffer = new TaskFillBuffer();
+						taskFillBuffer.start();
+					}
+				} else if (eofReached) {
+					return true;
+				} else {
+					iNeedABuffer = new Async<>();
+					interruptFillBuffer.set(true);
+				}
+			}
+		}
+		return false;
+	}
 
 	@Override
 	@SuppressWarnings("squid:S2259") // iNeedABuffer cannot be null because currentBufferIndex != -1
@@ -102,35 +136,8 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable<I
 		do {
 			if (currentBufferIndex != -1 && currentBuffer.pos < currentBuffer.length)
 				return currentBuffer.chars[currentBuffer.pos++];
-			synchronized (buffers) {
-				if (error != null) throw error;
-				if (iNeedABuffer == null || iNeedABuffer.isDone()) {
-					iNeedABuffer = null;
-					currentBufferIndex = -1;
-					if (firstBufferReady != -1) {
-						currentBufferIndex = firstBufferReady;
-						currentBuffer = buffers[currentBufferIndex];
-						if (firstBufferReady == lastBufferReady) {
-							firstBufferReady = -1;
-							lastBufferReady = -1;
-						} else {
-							firstBufferReady++;
-							if (firstBufferReady == buffers.length)
-								firstBufferReady = 0;
-						}
-						if (taskFillBuffer == null && !eofReached) {
-							// we took a buffer, the task can start again
-							taskFillBuffer = new TaskFillBuffer();
-							taskFillBuffer.start();
-						}
-					} else if (eofReached) {
-						throw new EOFException();
-					} else {
-						iNeedABuffer = new Async<>();
-						interruptFillBuffer.set(true);
-					}
-				}
-			}
+			if (nextBuffer())
+				throw new EOFException();
 			if (currentBufferIndex != -1)
 				return currentBuffer.chars[currentBuffer.pos++];
 			iNeedABuffer.block(0);
@@ -161,35 +168,8 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable<I
 					return len + done;
 				}
 			}
-			synchronized (buffers) {
-				if (error != null) throw error;
-				if (iNeedABuffer == null || iNeedABuffer.isDone()) {
-					iNeedABuffer = null;
-					currentBufferIndex = -1;
-					if (firstBufferReady != -1) {
-						currentBufferIndex = firstBufferReady;
-						currentBuffer = buffers[currentBufferIndex];
-						if (firstBufferReady == lastBufferReady) {
-							firstBufferReady = -1;
-							lastBufferReady = -1;
-						} else {
-							firstBufferReady++;
-							if (firstBufferReady == buffers.length)
-								firstBufferReady = 0;
-						}
-						if (taskFillBuffer == null && !eofReached) {
-							// we took a buffer, the task can start again
-							taskFillBuffer = new TaskFillBuffer();
-							taskFillBuffer.start();
-						}
-					} else if (eofReached) {
-						return done > 0 ? done : -1;
-					} else {
-						iNeedABuffer = new Async<>();
-						interruptFillBuffer.set(true);
-					}
-				}
-			}
+			if (nextBuffer())
+				return done > 0 ? done : -1;
 			if (currentBufferIndex != -1) {
 				int len = currentBuffer.length - currentBuffer.pos;
 				if (len > length) len = length;
@@ -268,35 +248,8 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable<I
 		do {
 			if (currentBufferIndex != -1 && currentBuffer.pos < currentBuffer.length)
 				return currentBuffer.chars[currentBuffer.pos++];
-			synchronized (buffers) {
-				if (error != null) throw error;
-				if (iNeedABuffer == null || iNeedABuffer.isDone()) {
-					iNeedABuffer = null;
-					currentBufferIndex = -1;
-					if (firstBufferReady != -1) {
-						currentBufferIndex = firstBufferReady;
-						currentBuffer = buffers[currentBufferIndex];
-						if (firstBufferReady == lastBufferReady) {
-							firstBufferReady = -1;
-							lastBufferReady = -1;
-						} else {
-							firstBufferReady++;
-							if (firstBufferReady == buffers.length)
-								firstBufferReady = 0;
-						}
-						if (taskFillBuffer == null && !eofReached) {
-							// we took a buffer, the task can start again
-							taskFillBuffer = new TaskFillBuffer();
-							taskFillBuffer.start();
-						}
-					} else if (eofReached) {
-						return -1;
-					} else {
-						iNeedABuffer = new Async<>();
-						interruptFillBuffer.set(true);
-					}
-				}
-			}
+			if (nextBuffer())
+				return -1;
 			if (currentBufferIndex != -1)
 				return currentBuffer.chars[currentBuffer.pos++];
 			if (!iNeedABuffer.isDone())
@@ -344,38 +297,14 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable<I
 					result.unblockSuccess(Integer.valueOf(1));
 					return null;
 				}
-				synchronized (buffers) {
-					if (error != null) {
-						result.error(error);
+				try {
+					if (nextBuffer()) {
+						result.unblockSuccess(Integer.valueOf(-1));
 						return null;
 					}
-					if (iNeedABuffer == null || iNeedABuffer.isDone()) {
-						iNeedABuffer = null;
-						currentBufferIndex = -1;
-						if (firstBufferReady != -1) {
-							currentBufferIndex = firstBufferReady;
-							currentBuffer = buffers[currentBufferIndex];
-							if (firstBufferReady == lastBufferReady) {
-								firstBufferReady = -1;
-								lastBufferReady = -1;
-							} else {
-								firstBufferReady++;
-								if (firstBufferReady == buffers.length)
-									firstBufferReady = 0;
-							}
-							if (taskFillBuffer == null && !eofReached) {
-								// we took a buffer, the task can start again
-								taskFillBuffer = new TaskFillBuffer();
-								taskFillBuffer.start();
-							}
-						} else if (eofReached) {
-							result.unblockSuccess(Integer.valueOf(-1));
-							return null;
-						} else {
-							iNeedABuffer = new Async<>();
-							interruptFillBuffer.set(true);
-						}
-					}
+				} catch (IOException e) {
+					result.error(error);
+					return null;
 				}
 				if (currentBufferIndex != -1) {
 					int len = currentBuffer.length - currentBuffer.pos;
@@ -421,44 +350,20 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable<I
 						return null;
 					}
 				}
-				synchronized (buffers) {
-					if (error != null) {
-						result.error(error);
+				try {
+					if (nextBuffer()) {
+						if (back != -1) {
+							char c = (char)back;
+							back = -1;
+							result.unblockSuccess(new UnprotectedString(c));
+						} else {
+							result.unblockSuccess(null);
+						}
 						return null;
 					}
-					if (iNeedABuffer == null || iNeedABuffer.isDone()) {
-						iNeedABuffer = null;
-						currentBufferIndex = -1;
-						if (firstBufferReady != -1) {
-							currentBufferIndex = firstBufferReady;
-							currentBuffer = buffers[currentBufferIndex];
-							if (firstBufferReady == lastBufferReady) {
-								firstBufferReady = -1;
-								lastBufferReady = -1;
-							} else {
-								firstBufferReady++;
-								if (firstBufferReady == buffers.length)
-									firstBufferReady = 0;
-							}
-							if (taskFillBuffer == null && !eofReached) {
-								// we took a buffer, the task can start again
-								taskFillBuffer = new TaskFillBuffer();
-								taskFillBuffer.start();
-							}
-						} else if (eofReached) {
-							if (back != -1) {
-								char c = (char)back;
-								back = -1;
-								result.unblockSuccess(new UnprotectedString(c));
-							} else {
-								result.unblockSuccess(null);
-							}
-							return null;
-						} else {
-							iNeedABuffer = new Async<>();
-							interruptFillBuffer.set(true);
-						}
-					}
+				} catch (IOException e) {
+					result.error(error);
+					return null;
 				}
 				if (currentBufferIndex != -1) {
 					int len = currentBuffer.length - currentBuffer.pos;
@@ -479,80 +384,28 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable<I
 		private TaskFillBuffer() {
 			super("Fill buffers", priority);
 		}
+
+		private Buffer buffer = null;
+		private byte myBuffer = -1;
+		private int lastNb = 0;
 		
 		@Override
+		@SuppressWarnings("squid:S1854") // not useless assignment, useful for garbage collection
 		public Void run() throws CancelException {
-			Buffer buffer = null;
-			byte myBuffer = -1;
-			int lastNb = 0;
 			do {
-				if (buffer == null) {
-					synchronized (buffers) {
-						if (firstBufferReady == -1) {
-							myBuffer = (byte) (currentBufferIndex + 1);
-							if (myBuffer == buffers.length) myBuffer = 0;
-						} else {
-							myBuffer = (byte) (lastBufferReady + 1);
-							if (myBuffer == buffers.length) myBuffer = 0;
-							if (myBuffer == firstBufferReady || myBuffer == currentBufferIndex) {
-								// full => stop the task
-								taskFillBuffer = null;
-								return null;
-							}
-						}
-					}
-					buffer = buffers[myBuffer];
-					if (buffer == null) {
-						// TODO reuse previous buffer if available
-						buffer = new Buffer();
-						buffer.chars = new char[bufferSize];
-						buffers[myBuffer] = buffer;
-					}
-					buffer.pos = 0;
-					buffer.length = 0;
-				}
-				int min = lastNb < bufferSize / 10 ? bufferSize / 10 : 1;
-				int nb;
-				try { nb = decoder.decode(buffer.chars, buffer.length, bufferSize - buffer.length, interruptFillBuffer, min); }
-				catch (IOException e) {
-					synchronized (buffers) {
-						error = e;
-						if (iNeedABuffer != null)
-							iNeedABuffer.unblock();
-					}
+				if (buffer == null && !getNextBuffer())
+					return null; // full
+				int nb = decode();
+				if (nb == -3)
 					return null;
-				}
 				if (isCancelling())
 					return null;
 				if (nb == -2) {
-					synchronized (buffers) {
-						if (buffer.length > 0) {
-							lastBufferReady = myBuffer;
-							if (firstBufferReady == -1) firstBufferReady = myBuffer;
-							myBuffer = -1;
-							buffer = null;
-							interruptFillBuffer.set(false);
-							if (iNeedABuffer != null)
-								iNeedABuffer.unblock();
-						}
-						taskFillBuffer = new TaskFillBuffer();
-					}
-					decoder.canDecode().thenStart(taskFillBuffer, true);
+					needMoreData();
 					return null;
 				}
 				if (nb == -1) {
-					synchronized (buffers) {
-						if (buffer.length > 0) {
-							lastBufferReady = myBuffer;
-							if (firstBufferReady == -1) firstBufferReady = myBuffer;
-							myBuffer = -1;
-							buffer = null;
-							interruptFillBuffer.set(false);
-						}
-						eofReached = true;
-						if (iNeedABuffer != null)
-							iNeedABuffer.unblock();
-					}
+					noMoreCharacter();
 					return null;
 				}
 				lastNb = nb;
@@ -571,6 +424,78 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable<I
 				}
 			} while (!isClosing());
 			return null;
+		}
+		
+		private boolean getNextBuffer() {
+			synchronized (buffers) {
+				if (firstBufferReady == -1) {
+					myBuffer = (byte) (currentBufferIndex + 1);
+					if (myBuffer == buffers.length) myBuffer = 0;
+				} else {
+					myBuffer = (byte) (lastBufferReady + 1);
+					if (myBuffer == buffers.length) myBuffer = 0;
+					if (myBuffer == firstBufferReady || myBuffer == currentBufferIndex) {
+						// full => stop the task
+						taskFillBuffer = null;
+						return false;
+					}
+				}
+			}
+			buffer = buffers[myBuffer];
+			if (buffer == null) {
+				// TODO reuse previous buffer if available
+				buffer = new Buffer();
+				buffer.chars = new char[bufferSize];
+				buffers[myBuffer] = buffer;
+			}
+			buffer.pos = 0;
+			buffer.length = 0;
+			return true;
+		}
+		
+		private int decode() throws CancelException {
+			int min = lastNb < bufferSize / 10 ? bufferSize / 10 : 1;
+			try {
+				return decoder.decode(buffer.chars, buffer.length, bufferSize - buffer.length, interruptFillBuffer, min);
+			} catch (IOException e) {
+				synchronized (buffers) {
+					error = e;
+					if (iNeedABuffer != null)
+						iNeedABuffer.unblock();
+				}
+				return -3;
+			}
+		}
+		
+		private void needMoreData() {
+			synchronized (buffers) {
+				if (buffer.length > 0) {
+					lastBufferReady = myBuffer;
+					if (firstBufferReady == -1) firstBufferReady = myBuffer;
+					myBuffer = -1;
+					buffer = null;
+					interruptFillBuffer.set(false);
+					if (iNeedABuffer != null)
+						iNeedABuffer.unblock();
+				}
+				taskFillBuffer = new TaskFillBuffer();
+			}
+			decoder.canDecode().thenStart(taskFillBuffer, true);
+		}
+		
+		private void noMoreCharacter() {
+			synchronized (buffers) {
+				if (buffer.length > 0) {
+					lastBufferReady = myBuffer;
+					if (firstBufferReady == -1) firstBufferReady = myBuffer;
+					myBuffer = -1;
+					buffer = null;
+					interruptFillBuffer.set(false);
+				}
+				eofReached = true;
+				if (iNeedABuffer != null)
+					iNeedABuffer.unblock();
+			}
 		}
 	}
 	

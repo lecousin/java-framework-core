@@ -449,40 +449,27 @@ public abstract class XMLStreamEvents {
 		
 		private void readBomFF() throws XMLException {
 			// it may be a BOM for UTF-16 little-endian or UTF-32 little-endian
-			if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-			if (firstBytes[1] == (byte)0xFE) {
-				if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-				if (firstBytes[2] == (byte)0x00) {
-					if (firstBytesLength == 3) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-					if (firstBytes[3] == (byte)0x00) {
-						// UTF-32 little-endian
-						bomEncoding = Charset.forName("UTF-32LE");
-						firstBytesPos = 4;
-					}
-					return;
-				}
-				// UTF-16 little-endian
-				bomEncoding = StandardCharsets.UTF_16LE;
-				firstBytesPos = 2;
-			}
+			readBom16or32((byte)0xFE, StandardCharsets.UTF_16LE, (byte)0x00, (byte)0x00, Charset.forName("UTF-32LE"));
 		}
 		
 		private void readBom00() throws XMLException {
 			// it may be a UTF-32 big-endian BOM, but it may also be UTF-16 without BOM
+			readBom16or32((byte)0x00, StandardCharsets.UTF_16BE, (byte)0xFE, (byte)0xFF, Charset.forName("UTF-32BE"));
+		}
+		
+		private void readBom16or32(byte second, Charset secondCharset, byte third, byte fourth, Charset fourthCharset) throws XMLException {
 			if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-			if (firstBytes[1] == (byte)0x00) {
+			if (firstBytes[1] == second) {
 				if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-				if (firstBytes[2] == (byte)0xFE) {
+				if (firstBytes[2] == third) {
 					if (firstBytesLength == 3) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-					if (firstBytes[3] == (byte)0xFF) {
-						// UTF-32 big-endian
-						bomEncoding = Charset.forName("UTF-32BE");
+					if (firstBytes[3] == fourth) {
+						bomEncoding = fourthCharset;
 						firstBytesPos = 4;
 					}
 					return;
 				}
-				// UTF-16 without BOM
-				bomEncoding = StandardCharsets.UTF_16BE;
+				bomEncoding = secondCharset;
 				firstBytesPos = 2;
 			}
 		}
@@ -551,139 +538,82 @@ public abstract class XMLStreamEvents {
 			return chars[charsPos++];
 		}
 		
+		@SuppressWarnings("squid:S3776") // complexity
 		private boolean readXMLDeclaration() throws IOException {
 			char c;
 			while (isSpaceChar(c = nextChar()));
 			if (c != '<')
 				return false;
 			if (charsPos + 5 <= charsLength) {
-				if (chars[charsPos++] != '?') return false;
-				if ((c = chars[charsPos++]) != 'x' && c != 'X') return false;
-				if ((c = chars[charsPos++]) != 'm' && c != 'M') return false;
-				if ((c = chars[charsPos++]) != 'l' && c != 'L') return false;
-				if (!isSpaceChar(chars[charsPos++])) return false;
+				if ((chars[charsPos++] != '?') ||
+					((c = chars[charsPos++]) != 'x' && c != 'X') ||
+					((c = chars[charsPos++]) != 'm' && c != 'M') ||
+					((c = chars[charsPos++]) != 'l' && c != 'L') ||
+					(!isSpaceChar(chars[charsPos++])))
+					return false;
 			} else {
-				if (nextChar() != '?') return false;
-				if ((c = nextChar()) != 'x' && c != 'X') return false;
-				if ((c = nextChar()) != 'm' && c != 'M') return false;
-				if ((c = nextChar()) != 'l' && c != 'L') return false;
-				if (!isSpaceChar(nextChar())) return false;
+				if ((nextChar() != '?') ||
+					((c = nextChar()) != 'x' && c != 'X') ||
+					((c = nextChar()) != 'm' && c != 'M') ||
+					((c = nextChar()) != 'l' && c != 'L') ||
+					(!isSpaceChar(nextChar())))
+					return false;
 			}
+			
 			while (isSpaceChar(c = nextChar()));
 			if (c != 'v' && c != 'V') throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-			if (charsPos + 6 <= charsLength) {
-				if ((c = chars[charsPos++]) != 'e' && c != 'E')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-				if ((c = chars[charsPos++]) != 'r' && c != 'R')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-				if ((c = chars[charsPos++]) != 's' && c != 'S')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-				if ((c = chars[charsPos++]) != 'i' && c != 'I')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-				if ((c = chars[charsPos++]) != 'o' && c != 'O')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-				if ((c = chars[charsPos++]) != 'n' && c != 'N')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-			} else {
-				if ((c = nextChar()) != 'e' && c != 'E')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-				if ((c = nextChar()) != 'r' && c != 'R')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-				if ((c = nextChar()) != 's' && c != 'S')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-				if ((c = nextChar()) != 'i' && c != 'I')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-				if ((c = nextChar()) != 'o' && c != 'O')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-				if ((c = nextChar()) != 'n' && c != 'N')
-					throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
-			}
-			while (isSpaceChar(c = nextChar()));
-			if (c != '=') throw new IOException("Invalid XML Declaration: character '=' expected after attribute name 'version'");
-			while (isSpaceChar(c = nextChar()));
-			if (c != '\'' && c != '"') throw new IOException("Invalid XML Declaration: character ' or \" expected after 'version='");
-			char c2 = c;
-			xmlVersion = new UnprotectedStringBuffer();
-			while ((c = nextChar()) != c2)
-				xmlVersion.append(c);
+			xmlVersion = eat(
+				new char[] { 'e', 'r', 's', 'i', 'o', 'n' },
+				new char[] { 'E', 'R', 'S', 'I', 'O', 'N' });
+			if (xmlVersion == null)
+				throw new IOException("Invalid XML Declaration: first attribute must be 'version'");
+			
 			while (isSpaceChar(c = nextChar()));
 			if (c == 'e' || c == 'E') {
-				c = nextChar();
-				if (c != 'n' && c != 'N')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'e" + c + "'");
-				c = nextChar();
-				if (c != 'c' && c != 'C')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'en" + c + "'");
-				c = nextChar();
-				if (c != 'o' && c != 'O')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'enc" + c + "'");
-				c = nextChar();
-				if (c != 'd' && c != 'D')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'enco" + c + "'");
-				c = nextChar();
-				if (c != 'i' && c != 'I')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'encod" + c + "'");
-				c = nextChar();
-				if (c != 'n' && c != 'N')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'encodi" + c + "'");
-				c = nextChar();
-				if (c != 'g' && c != 'G')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'encodin" + c + "'");
-				while (isSpaceChar(c = nextChar()));
-				if (c != '=')
-					throw new IOException("Invalid XML Declaration: character '=' expected after attribute name 'encoding'");
-				while (isSpaceChar(c = nextChar()));
-				if (c != '\'' && c != '"')
-					throw new IOException("Invalid XML Declaration: character ' or \" expected after 'encoding='");
-				c2 = c;
-				xmlEncoding = new UnprotectedStringBuffer();
-				while ((c = nextChar()) != c2)
-					xmlEncoding.append(c);
+				xmlEncoding = eat(
+					new char[] { 'n', 'c', 'o', 'd', 'i', 'n', 'g' },
+					new char[] { 'N', 'C', 'O', 'D', 'I', 'N', 'G' });
+				if (xmlEncoding == null)
+					throw new IOException("Invalid XML Declaration: unknown attribute");
 				while (isSpaceChar(c = nextChar()));
 			}
 			if (c == 's' || c == 'S') {
-				c = nextChar();
-				if (c != 't' && c != 'T')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 's" + c + "'");
-				c = nextChar();
-				if (c != 'a' && c != 'A')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'st" + c + "'");
-				c = nextChar();
-				if (c != 'n' && c != 'N')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'sta" + c + "'");
-				c = nextChar();
-				if (c != 'd' && c != 'D')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'stan" + c + "'");
-				c = nextChar();
-				if (c != 'a' && c != 'A')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'stand" + c + "'");
-				c = nextChar();
-				if (c != 'l' && c != 'L')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standa" + c + "'");
-				c = nextChar();
-				if (c != 'o' && c != 'O')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standal" + c + "'");
-				c = nextChar();
-				if (c != 'n' && c != 'N')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standalo" + c + "'");
-				c = nextChar();
-				if (c != 'e' && c != 'E')
-					throw new IOException("Invalid XML Declaration: unknown attribute starting with 'standalon" + c + "'");
-				while (isSpaceChar(c = nextChar()));
-				if (c != '=')
-					throw new IOException("Invalid XML Declaration: character '=' expected after attribute name 'standalone'");
-				while (isSpaceChar(c = nextChar()));
-				if (c != '\'' && c != '"')
-					throw new IOException("Invalid XML Declaration: character ' or \" expected after 'standalone='");
-				c2 = c;
-				xmlStandalone = new UnprotectedStringBuffer();
-				while ((c = nextChar()) != c2)
-					xmlStandalone.append(c);
+				xmlStandalone = eat(
+					new char[] { 't', 'a', 'n', 'd', 'a', 'l', 'o', 'n', 'e' },
+					new char[] { 'T', 'A', 'N', 'D', 'A', 'L', 'O', 'N', 'E' });
+				if (xmlStandalone == null)
+					throw new IOException("Invalid XML Declaration: unknown attribute");
 				while (isSpaceChar(c = nextChar()));
 			}
+			
 			if (c != '?') throw new IOException("Unexpected character '" + c + "' in XML declaration tag");
 			if (nextChar() != '>') throw new IOException("Unexpected character '" + c + "' in XML declaration tag");
 			return true;
+		}
+		
+		private UnprotectedStringBuffer eat(char[] lowerCase, char[] upperCase) throws IOException {
+			int l = lowerCase.length;
+			char c;
+			if (charsPos + l <= charsLength) {
+				for (int i = 0; i < l; ++i)
+					if ((c = chars[charsPos++]) != lowerCase[i] && c != upperCase[i])
+						return null;
+			} else {
+				for (int i = 0; i < l; ++i)
+					if ((c = nextChar()) != lowerCase[i] && c != upperCase[i])
+						return null;
+			}
+			while (isSpaceChar(c = nextChar()));
+			if (c != '=')
+				throw new IOException("Invalid XML Declaration: character '=' expected after attribute name");
+			while (isSpaceChar(c = nextChar()));
+			if (c != '\'' && c != '"')
+				throw new IOException("Invalid XML Declaration: character ' or \" expected after '='");
+			char c2 = c;
+			UnprotectedStringBuffer value = new UnprotectedStringBuffer();
+			while ((c = nextChar()) != c2)
+				value.append(c);
+			return value;
 		}
 		
 	}
