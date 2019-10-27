@@ -31,6 +31,7 @@ public abstract class XMLStreamEvents {
 	protected int maxCDataSize = -1;
 
 	/** Parsing event. */
+	@SuppressWarnings("squid:S1319") // we want to use LinkedList, not just List
 	public static class Event {
 		
 		/** Type of event. */
@@ -349,6 +350,37 @@ public abstract class XMLStreamEvents {
 		private int firstBytesLength;
 		
 		public BufferedReadableCharacterStreamLocation start() throws IOException, XMLException {
+			loadFirstBytes();
+			readBOM();
+			int posAfterBOM = firstBytesPos;
+			try {
+				if (givenEncoding != null)
+					tmpDecoder = Decoder.get(givenEncoding);
+				else if (bomEncoding != null)
+					tmpDecoder = Decoder.get(bomEncoding);
+				else
+					tmpDecoder = Decoder.get(StandardCharsets.UTF_8);
+			} catch (Exception e) {
+				throw new IOException("Error initializing character decoder", e);
+			}
+			chars = new char[Math.min(firstBytesLength - firstBytesPos, bufferSize * maxBuffers)];
+			// TODO line and posInLine...
+			boolean hasDecl = readXMLDeclaration();
+			if (!hasDecl)
+				return initWithoutXMLDeclaration(posAfterBOM);
+			if (xmlEncoding != null) {
+				Charset encoding = Charset.forName(xmlEncoding.asString());
+				if (!encoding.equals(tmpDecoder.getEncoding()))
+					return initWithSpecifiedEncoding(posAfterBOM, encoding);
+			}
+			tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, firstBytesPos, firstBytesLength - firstBytesPos));
+			tmpDecoder.setInput(io);
+			return new BufferedReadableCharacterStreamLocation(
+				new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers,
+						CharBuffer.wrap(chars, charsPos, charsLength - charsPos)), line, posInLine);
+		}
+		
+		private void loadFirstBytes() throws IOException {
 			ByteBuffer buf = io.readNextBuffer();
 			if (buf != null) {
 				firstBytes = buf.array();
@@ -366,136 +398,126 @@ public abstract class XMLStreamEvents {
 				}
 			}
 			//firstBytesLength = io.readFully(firstBytes);
-			readBOM();
-			int posAfterBOM = firstBytesPos;
-			try {
-				if (givenEncoding != null)
-					tmpDecoder = Decoder.get(givenEncoding);
-				else if (bomEncoding != null)
-					tmpDecoder = Decoder.get(bomEncoding);
-				else
-					tmpDecoder = Decoder.get(StandardCharsets.UTF_8);
-			} catch (Exception e) {
-				throw new IOException("Error initializing character decoder", e);
-			}
-			chars = new char[Math.min(firstBytesLength - firstBytesPos, bufferSize * maxBuffers)];
-			// TODO line and posInLine...
-			boolean hasDecl = readXMLDeclaration();
-			if (!hasDecl) {
-				// simple
-				try { tmpDecoder = Decoder.get(tmpDecoder.getEncoding()); }
-				catch (Exception e) {
-					throw new IOException("Error initializing character decoder", e);
-				}
-				tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, posAfterBOM, firstBytesLength - posAfterBOM));
-				tmpDecoder.setInput(io);
-				return new BufferedReadableCharacterStreamLocation(
-					new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers), line, posInLine);
-			}
-			if (xmlEncoding != null) {
-				Charset encoding = Charset.forName(xmlEncoding.asString());
-				if (!encoding.equals(tmpDecoder.getEncoding())) {
-					try { tmpDecoder = Decoder.get(encoding); }
-					catch (Exception e) {
-						throw new IOException("Error initializing character decoder", e);
-					}
-					tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, posAfterBOM, firstBytesLength - posAfterBOM));
-					tmpDecoder.setInput(io);
-					BufferedReadableCharacterStreamLocation stream = new BufferedReadableCharacterStreamLocation(
-						new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers), line, posInLine);
-					// we reset the decoder, so we need to skip the <?xml ... ?>
-					char c;
-					boolean end = false;
-					do {
-						c = stream.read();
-						// TODO string
-						while (c == '?') {
-							c = stream.read();
-							if (c == '>') {
-								end = true;
-								break;
-							}
-						}
-					} while (!end);
-					return stream;
-				}
-			}
-			tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, firstBytesPos, firstBytesLength - firstBytesPos));
-			tmpDecoder.setInput(io);
-			return new BufferedReadableCharacterStreamLocation(
-				new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers,
-						CharBuffer.wrap(chars, charsPos, charsLength - charsPos)), line, posInLine);
 		}
 		
 		private void readBOM() throws XMLException {
 			if (firstBytesLength == 0) throw new XMLException(null, "File is empty");
 			switch (firstBytes[0] & 0xFF) {
-			case 0xEF: {
-				// it may be a UTF-8 BOM
-				if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-				if (firstBytes[1] == (byte)0xBB) {
-					if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-					if (firstBytes[2] == (byte)0xBF) {
-						// UTF-8 BOM
-						bomEncoding = StandardCharsets.UTF_8;
-						firstBytesPos = 3;
+			case 0x00:
+				readBom00();
+				break;
+			case 0xEF:
+				readBomEF();
+				break;
+			case 0xFE:
+				readBomFE();
+				break;
+			case 0xFF:
+				readBomFF();
+				break;
+			default: break;
+			}
+		}
+		
+		private void readBomEF() throws XMLException {
+			// it may be a UTF-8 BOM
+			if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+			if (firstBytes[1] == (byte)0xBB) {
+				if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+				if (firstBytes[2] == (byte)0xBF) {
+					// UTF-8 BOM
+					bomEncoding = StandardCharsets.UTF_8;
+					firstBytesPos = 3;
+				}
+			}
+		}
+		
+		private void readBomFE() throws XMLException {
+			// it may be a UTF-16 big-endian BOM
+			if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+			if (firstBytes[1] == (byte)0xFF) {
+				// UTF-16 big-endian
+				bomEncoding = StandardCharsets.UTF_16BE;
+				firstBytesPos = 2;
+			}
+		}
+		
+		private void readBomFF() throws XMLException {
+			// it may be a BOM for UTF-16 little-endian or UTF-32 little-endian
+			if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+			if (firstBytes[1] == (byte)0xFE) {
+				if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+				if (firstBytes[2] == (byte)0x00) {
+					if (firstBytesLength == 3) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+					if (firstBytes[3] == (byte)0x00) {
+						// UTF-32 little-endian
+						bomEncoding = Charset.forName("UTF-32LE");
+						firstBytesPos = 4;
 					}
+					return;
 				}
-				break;
+				// UTF-16 little-endian
+				bomEncoding = StandardCharsets.UTF_16LE;
+				firstBytesPos = 2;
 			}
-			case 0xFE: {
-				// it may be a UTF-16 big-endian BOM
-				if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-				if (firstBytes[1] == (byte)0xFF) {
-					// UTF-16 big-endian
-					bomEncoding = StandardCharsets.UTF_16BE;
-					firstBytesPos = 2;
+		}
+		
+		private void readBom00() throws XMLException {
+			// it may be a UTF-32 big-endian BOM, but it may also be UTF-16 without BOM
+			if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+			if (firstBytes[1] == (byte)0x00) {
+				if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+				if (firstBytes[2] == (byte)0xFE) {
+					if (firstBytesLength == 3) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+					if (firstBytes[3] == (byte)0xFF) {
+						// UTF-32 big-endian
+						bomEncoding = Charset.forName("UTF-32BE");
+						firstBytesPos = 4;
+					}
+					return;
 				}
-				break;
+				// UTF-16 without BOM
+				bomEncoding = StandardCharsets.UTF_16BE;
+				firstBytesPos = 2;
 			}
-			case 0xFF: {
-				// it may be a BOM for UTF-16 little-endian or UTF-32 little-endian
-				if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-				if (firstBytes[1] == (byte)0xFE) {
-					if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-					if (firstBytes[2] == (byte)0x00) {
-						if (firstBytesLength == 3) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-						if (firstBytes[3] == (byte)0x00) {
-							// UTF-32 little-endian
-							bomEncoding = Charset.forName("UTF-32LE");
-							firstBytesPos = 4;
-						}
+		}
+		
+		private BufferedReadableCharacterStreamLocation initWithoutXMLDeclaration(int posAfterBOM) throws IOException {
+			// simple
+			try { tmpDecoder = Decoder.get(tmpDecoder.getEncoding()); }
+			catch (Exception e) {
+				throw new IOException("Error initializing character decoder", e);
+			}
+			tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, posAfterBOM, firstBytesLength - posAfterBOM));
+			tmpDecoder.setInput(io);
+			return new BufferedReadableCharacterStreamLocation(
+				new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers), line, posInLine);
+		}
+		
+		private BufferedReadableCharacterStreamLocation initWithSpecifiedEncoding(int posAfterBOM, Charset encoding) throws IOException {
+			try { tmpDecoder = Decoder.get(encoding); }
+			catch (Exception e) {
+				throw new IOException("Error initializing character decoder", e);
+			}
+			tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, posAfterBOM, firstBytesLength - posAfterBOM));
+			tmpDecoder.setInput(io);
+			BufferedReadableCharacterStreamLocation stream = new BufferedReadableCharacterStreamLocation(
+				new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers), line, posInLine);
+			// we reset the decoder, so we need to skip the <?xml ... ?>
+			char c;
+			boolean end = false;
+			do {
+				c = stream.read();
+				// TODO string
+				while (c == '?') {
+					c = stream.read();
+					if (c == '>') {
+						end = true;
 						break;
 					}
-					// UTF-16 little-endian
-					bomEncoding = StandardCharsets.UTF_16LE;
-					firstBytesPos = 2;
 				}
-				break;
-			}
-			case 0x00: {
-				// it may be a UTF-32 big-endian BOM, but it may also be UTF-16 without BOM
-				if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-				if (firstBytes[1] == (byte)0x00) {
-					if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-					if (firstBytes[2] == (byte)0xFE) {
-						if (firstBytesLength == 3) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-						if (firstBytes[3] == (byte)0xFF) {
-							// UTF-32 big-endian
-							bomEncoding = Charset.forName("UTF-32BE");
-							firstBytesPos = 4;
-						}
-						break;
-					}
-					// UTF-16 without BOM
-					bomEncoding = StandardCharsets.UTF_16BE;
-					firstBytesPos = 2;
-				}
-				break;
-			}
-			default:
-				break;
-			}
+			} while (!end);
+			return stream;
 		}
 		
 		private char[] chars;

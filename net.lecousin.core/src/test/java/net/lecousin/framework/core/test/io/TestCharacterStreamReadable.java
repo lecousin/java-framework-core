@@ -9,6 +9,7 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.ICharacterStream;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedTestFiles {
@@ -21,6 +22,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 	
 	@Override
 	protected IO getIOForCommonTests() {
+		Assume.assumeTrue(nbBuf < 5000);
 		return openFile();
 	}
 	

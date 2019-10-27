@@ -54,6 +54,7 @@ public abstract class TestWritable extends TestIO.UsingTestData {
 	
 	@Override
 	protected IO getIOForCommonTests() throws Exception {
+		Assume.assumeTrue(nbBuf < 5000);
 		return createWritable();
 	}
 	

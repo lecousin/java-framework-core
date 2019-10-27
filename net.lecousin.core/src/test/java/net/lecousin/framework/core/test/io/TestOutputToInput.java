@@ -14,6 +14,7 @@ import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 public abstract class TestOutputToInput extends TestIO.UsingTestData {
@@ -26,6 +27,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 	
 	@Override
 	protected IO getIOForCommonTests() throws IOException {
+		Assume.assumeTrue(nbBuf > 100 && nbBuf < 5000);
 		return createOutputToInput();
 	}
 	

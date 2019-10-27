@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.function.Consumer;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
@@ -35,6 +36,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 	
 	@Override
 	protected IO getIOForCommonTests() throws Exception {
+		Assume.assumeTrue(nbBuf < 5000);
 		return createReadableSeekableFromFile(openFile(), getFileSize());
 	}
 	

@@ -484,13 +484,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 				if (nb1 == 0)
 					return null;
 			}
-			if (pos < nb1) {
-				ByteBuffer buf = ByteBuffer.allocate(nb1 - pos);
-				buf.put(buf1, pos, nb1 - pos);
-				buf.flip();
-				pos = nb1;
-				return buf;
-			}
+			if (pos < nb1) return getRemainingBuf1();
 			if (buf2 == null) return null;
 			if (nb2 < 0) {
 				if (read1.hasError()) throw read1.getError();
@@ -504,12 +498,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 					return null;
 			}
 			if (pos >= nb1 + nb2) return null;
-			ByteBuffer buf = ByteBuffer.allocate(nb1 + nb2 - pos);
-			if (pos < nb1) buf.put(buf1, pos, nb1 - pos);
-			buf.put(buf2, pos - nb1, nb2 - (pos - nb1));
-			buf.flip();
-			pos = nb1 + nb2;
-			return buf;
+			return getRemainingBuf2();
 		}
 	}
 	
@@ -520,13 +509,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 			needRead1();
 			if (nb1 == 0) return null;
 		}
-		if (pos < nb1) {
-			ByteBuffer buf = ByteBuffer.allocate(nb1 - pos);
-			buf.put(buf1, pos, nb1 - pos);
-			buf.flip();
-			pos = nb1;
-			return buf;
-		}
+		if (pos < nb1) return getRemainingBuf1();
 		if (buf2 == null) return null;
 		if (nb2 < 0) {
 			needRead2();
@@ -534,6 +517,18 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 				return null;
 		}
 		if (pos >= nb1 + nb2) return null;
+		return getRemainingBuf2();
+	}
+	
+	private ByteBuffer getRemainingBuf1() {
+		ByteBuffer buf = ByteBuffer.allocate(nb1 - pos);
+		buf.put(buf1, pos, nb1 - pos);
+		buf.flip();
+		pos = nb1;
+		return buf;
+	}
+	
+	private ByteBuffer getRemainingBuf2() {
 		ByteBuffer buf = ByteBuffer.allocate(nb1 + nb2 - pos);
 		if (pos < nb1) buf.put(buf1, pos, nb1 - pos);
 		buf.put(buf2, pos - nb1, nb2 - (pos - nb1));

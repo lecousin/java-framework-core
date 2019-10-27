@@ -10,6 +10,7 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.ReadableByteStream;
 import net.lecousin.framework.io.buffering.BufferedReverseIOReading;
 
+import org.junit.Assume;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -35,6 +36,7 @@ public class TestBufferedReverseIOReading extends TestReadableByteStream {
 	
 	@Override
 	protected IO getIOForCommonTests() {
+		Assume.assumeTrue(nbBuf < 5000);
 		return createReadableByteStreamFromFile(openFile(), getFileSize());
 	}
 	

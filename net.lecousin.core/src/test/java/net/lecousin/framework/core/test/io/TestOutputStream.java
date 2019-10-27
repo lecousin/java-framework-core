@@ -4,6 +4,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import net.lecousin.framework.io.IO;
@@ -20,6 +21,7 @@ public abstract class TestOutputStream extends TestIO.UsingTestData {
 	
 	@Override
 	protected IO getIOForCommonTests() throws Exception {
+		Assume.assumeTrue(nbBuf < 5000);
 		return openReadable(createStream());
 	}
 	

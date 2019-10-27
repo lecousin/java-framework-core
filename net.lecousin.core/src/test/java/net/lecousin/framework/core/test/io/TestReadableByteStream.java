@@ -4,6 +4,7 @@ import java.io.EOFException;
 import java.io.File;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
@@ -20,6 +21,7 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 	
 	@Override
 	protected IO getIOForCommonTests() throws Exception {
+		Assume.assumeTrue(nbBuf < 5000);
 		return createReadableByteStreamFromFile(openFile(), getFileSize());
 	}
 	

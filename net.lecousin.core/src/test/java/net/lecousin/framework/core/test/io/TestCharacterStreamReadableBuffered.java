@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import net.lecousin.framework.concurrent.Task;
@@ -23,6 +24,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 	
 	@Override
 	protected IO getIOForCommonTests() {
+		Assume.assumeTrue(nbBuf < 5000);
 		return openFile();
 	}
 

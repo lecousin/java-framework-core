@@ -9,6 +9,7 @@ import java.util.Random;
 import java.util.function.Consumer;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import net.lecousin.framework.concurrent.Task;

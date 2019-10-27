@@ -27,51 +27,38 @@ import org.junit.Test;
 public abstract class TestReadableBuffered extends TestReadableByteStream {
 	
 	public static synchronized List<Object[]> generateTestCases(boolean faster) {
-		List<Object[]> cases = TestIO.UsingGeneratedTestFiles.generateTestCases(faster);
-		ArrayList<Object[]> result = new ArrayList<>(cases.size() * testBufferingSize.length);
-		for (int i = 0; i < testBufferingSize.length; ++i) {
-			List<Object[]> list;
-			if (testBufferingSize[i] >= 64)
-				list = cases;
-			else {
-				list = TestIO.UsingGeneratedTestFiles.generateTestCases(true);
-				for (Object[] params : list)
-					if (((Integer)params[2]).intValue() > 20000) {
-						params[0] = getFile20000();
-						params[1] = testBuf20000;
-						params[2] = Integer.valueOf(20000);
-					}
-			}
-			for (Object[] params : list) {
-				Object[] newParams = new Object[params.length + 1];
-				System.arraycopy(params, 0, newParams, 0, params.length);
-				newParams[params.length] = Integer.valueOf(testBufferingSize[i]);
-				result.add(newParams);
-			}
-		}
-		return result;
+		return addBufferingSize(TestIO.UsingGeneratedTestFiles.generateTestCases(faster));
 	}
 	
-	private static File file20000;
-	private static byte[] testBuf20000 = "0123456789$ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghijklmnopqrstuvwxyz*9876543210\r\n".getBytes();
+	private static File file10000;
+	private static byte[] testBuf10000 = "0123456789$ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghijklmnopqrstuvwxyz*9876543210\r\n".getBytes();
 	
-	private static File getFile20000() {
-		if (file20000 == null)
+	private static File getFile10000() {
+		if (file10000 == null)
 			try {
-				file20000 = generateFile(testBuf20000, 20000);
+				file10000 = generateFile(testBuf10000, 10000);
 			} catch (IOException e) {
 				throw new RuntimeException("Unable to generate file", e);
 			}
-		return file20000;
+		return file10000;
 	}
 	
 	public static List<Object[]> addBufferingSize(Collection<Object[]> cases) {
 		ArrayList<Object[]> result = new ArrayList<>(cases.size() * testBufferingSize.length);
 		for (int i = 0; i < testBufferingSize.length; ++i) {
+			boolean largeWithSmallBufferingFound = false;
 			for (Object[] params : cases) {
 				Object[] newParams = new Object[params.length + 1];
 				System.arraycopy(params, 0, newParams, 0, params.length);
 				newParams[params.length] = Integer.valueOf(testBufferingSize[i]);
+				if (testBufferingSize[i] < 64 && ((Integer)newParams[2]).intValue() > 10000) {
+					if (largeWithSmallBufferingFound)
+						continue;
+					largeWithSmallBufferingFound = true;
+					newParams[0] = getFile10000();
+					newParams[1] = testBuf10000;
+					newParams[2] = Integer.valueOf(10000);
+				}
 				result.add(newParams);
 			}
 		}

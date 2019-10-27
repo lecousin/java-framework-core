@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.Collection;
 
+import org.junit.Assume;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -35,6 +36,7 @@ public class TestIOAsInputStream extends TestInputStream {
 	
 	@Override
 	protected IO getIOForCommonTests() {
+		Assume.assumeTrue(nbBuf < 5000);
 		return new FileIO.ReadOnly(testFile, Task.PRIORITY_NORMAL);
 	}
 	

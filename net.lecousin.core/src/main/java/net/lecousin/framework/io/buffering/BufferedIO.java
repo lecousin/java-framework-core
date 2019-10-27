@@ -1179,19 +1179,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 			Buffer b = getBuffer.getResult();
 			b.loaded.thenStart(new Task.Cpu.FromRunnable("BufferedIO.readNextBufferAsync", io.getPriority(), () -> {
 				if (!checkLoaded(b, result, ondone)) return;
-				long pos = position;
-				int off = getBufferOffset(pos);
-				int len = b.data.length - off;
-				if (pos + len > size) len = (int)(size - pos);
-				byte[] bb = new byte[len];
-				System.arraycopy(b.data, off, bb, 0, len);
-				ByteBuffer res = ByteBuffer.wrap(bb);
-				pos += len;
-				position = pos;
-				b.lastRead = System.currentTimeMillis();
-				b.usage.endRead();
-				if (preLoadNextBuffer && pos < size && getBufferIndex(pos) != b.index)
-					preLoadBuffer(pos);
+				ByteBuffer res = getBufferContent(b);
 				if (ondone != null) ondone.accept(new Pair<>(res, null));
 				result.unblockSuccess(res);
 			}), true);
@@ -1209,6 +1197,10 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		} catch (CancelException e) {
 			throw IO.errorCancelled(e);
 		}
+		return getBufferContent(b);
+	}
+	
+	private ByteBuffer getBufferContent(Buffer b) {
 		long pos = position;
 		int off = getBufferOffset(pos);
 		int len = b.data.length - off;

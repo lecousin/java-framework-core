@@ -31,6 +31,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 	
 	@Override
 	protected IO getIOForCommonTests() throws Exception {
+		Assume.assumeTrue(nbBuf < 5000);
 		return createReadableFromFile(openFile(), getFileSize());
 	}
 	

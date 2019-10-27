@@ -23,6 +23,7 @@ public abstract class TestReadWriteBuffered extends TestIO.UsingTestData {
 	
 	@Override
 	protected IO getIOForCommonTests() throws Exception {
+		Assume.assumeTrue(nbBuf < 5000);
 		return openReadWriteBuffered();
 	}
 	
