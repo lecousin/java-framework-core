@@ -188,7 +188,7 @@ public class XMLDocument extends XMLNode implements Document {
 					create(doc, stream, result, next);
 					return null;
 				}
-			}, result);
+			}, true);
 			return;
 		} while (true);
 	}

@@ -403,7 +403,9 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		
 		boolean remove(Buffer buffer, boolean force);
 		
-		void setSize(long nbBuffersBefore, long nbBuffersAfter);
+		void setSize(long nbBuffersAfter);
+		
+		long getNbBuffers();
 		
 		IAsync<IOException> flush();
 	}
@@ -428,9 +430,9 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 					b.owner = BufferedIO.this;
 					b.index = i;
 					b.data = new byte[i == 0 ? firstBufferSize : bufferSize];
+					b.usage.startRead();
 					buffers[i] = b;
 					isNew.set(true);
-					b.usage.startRead();
 				} else {
 					b.lastRead = System.currentTimeMillis();
 				}
@@ -523,7 +525,13 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		}
 		
 		@Override
-		public void setSize(long nbBuffersBefore, long nbBuffersAfter) {
+		public long getNbBuffers() {
+			return buffers.length;
+		}
+		
+		@Override
+		public void setSize(long nbBuffersAfter) {
+			int nbBuffersBefore = buffers.length;
 			if (nbBuffersAfter > nbBuffersBefore) {
 				// only need to increase array size
 				synchronized (this) {
@@ -572,6 +580,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	
 	private class MapBufferTable implements BufferTable {
 		private LongMap<Buffer> map = new LongMapRBT<>(2500);
+		private long nbBuffers = 0;
 
 		private Buffer initNeedBuffer(long index, boolean newAtTheEnd, MutableBoolean isNew) {
 			Buffer b;
@@ -581,9 +590,10 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 					b.owner = BufferedIO.this;
 					b.index = index;
 					b.data = new byte[index == 0 ? firstBufferSize : bufferSize];
-					map.put(index, b);
-					isNew.set(true);
 					b.usage.startRead();
+					map.put(index, b);
+					if (index + 1 > nbBuffers) nbBuffers = index + 1;
+					isNew.set(true);
 				} else {
 					b.lastRead = System.currentTimeMillis();
 				}
@@ -671,13 +681,19 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 				sp.block(0);
 			} while (true);
 		}
+		
+		@Override
+		public long getNbBuffers() {
+			return nbBuffers;
+		}
 
 		@Override
-		public void setSize(long nbBuffersBefore, long nbBuffersAfter) {
+		public void setSize(long nbBuffersAfter) {
 			Buffer lastPrevious;
 			synchronized (this) {
-				if (nbBuffersAfter > nbBuffersBefore) {
+				if (nbBuffersAfter > nbBuffers) {
 					// only new buffers, nothing to do
+					nbBuffers = nbBuffersAfter;
 					return;
 				}
 				// we need to ensure there is no flush in progress on the removed buffers and the last buffer
@@ -693,6 +709,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 					remove(b, true);
 					memory.removeReference(b);
 				}
+				nbBuffers = nbBuffersAfter;
 			}
 			// make sure the last buffer is not flushing
 			if (lastPrevious != null) {
@@ -1521,7 +1538,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		
 		@Override
 		public void setSizeSync(long newSize) throws IOException {
-			long nbBuffersBefore = size <= firstBufferSize ? 1 : ((size - firstBufferSize) / bufferSize) + 2;
+			long nbBuffersBefore = bufferTable.getNbBuffers();
 			long nbBuffersAfter = newSize <= firstBufferSize ? 1 : ((newSize - firstBufferSize) / bufferSize) + 2;
 			if (nbBuffersBefore == nbBuffersAfter) {
 				if (newSize < size) {
@@ -1540,11 +1557,11 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 			if (nbBuffersAfter > nbBuffersBefore) {
 				((IO.Resizable)io).setSizeSync(newSize);
 				size = newSize;
-				bufferTable.setSize(nbBuffersBefore, nbBuffersAfter);
+				bufferTable.setSize(nbBuffersAfter);
 				if (position > size) position = size;
 				return;
 			}
-			bufferTable.setSize(nbBuffersBefore, nbBuffersAfter);
+			bufferTable.setSize(nbBuffersAfter);
 			size = newSize;
 			((IO.Resizable)io).setSizeSync(newSize);
 			if (position > size) position = size;
@@ -1552,8 +1569,8 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		
 		@Override
 		public IAsync<IOException> setSizeAsync(long newSize) {
-			int nbBuffersBefore = size <= firstBufferSize ? 1 : (int)((size - firstBufferSize) / bufferSize) + 2;
-			int nbBuffersAfter = newSize <= firstBufferSize ? 1 : (int)((newSize - firstBufferSize) / bufferSize) + 2;
+			long nbBuffersBefore = bufferTable.getNbBuffers();
+			long nbBuffersAfter = newSize <= firstBufferSize ? 1 : ((newSize - firstBufferSize) / bufferSize) + 2;
 			if (nbBuffersBefore == nbBuffersAfter) {
 				if (newSize < size) {
 					Buffer b = bufferTable.needBufferSync(nbBuffersAfter - 1L, false);
@@ -1573,7 +1590,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 				((IO.Resizable)io).setSizeAsync(newSize).thenStart(
 				new Task.Cpu.FromRunnable("BufferedIO.setSizeAsync", io.getPriority(), () -> {
 					size = newSize;
-					bufferTable.setSize(nbBuffersBefore, nbBuffersAfter);
+					bufferTable.setSize(nbBuffersAfter);
 					if (position > size) position = size;
 					sp.unblock();
 				}), sp);
@@ -1581,7 +1598,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 			}
 			Async<IOException> sp = new Async<>();
 			new Task.Cpu.FromRunnable("BufferedIO.setSizeAsync", io.getPriority(), () -> {
-				bufferTable.setSize(nbBuffersBefore, nbBuffersAfter);
+				bufferTable.setSize(nbBuffersAfter);
 				((IO.Resizable)io).setSizeAsync(newSize).onDone(sp);
 				size = newSize;
 				if (position > size) position = size;

@@ -252,7 +252,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			try {
 				io.writeSync(range.min + startPos, buf);
 			} catch (Exception e) {
-				throw new Exception("Error writing at " + range.min + startPos + ", " + len + " bytes", e);
+				throw new Exception("Error writing at " + (range.min + startPos) + ", " + len + " bytes", e);
 			}
 			Assert.assertEquals("Remaining data not written at position " + (range.min + startPos) + " on " + len, 0, buf.remaining());
 			Assert.assertEquals("Write at a given position should not change the IO cursor", 0, io.getPosition());
