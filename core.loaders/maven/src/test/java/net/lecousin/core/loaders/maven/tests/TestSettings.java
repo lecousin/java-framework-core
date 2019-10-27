@@ -30,7 +30,7 @@ public class TestSettings extends LCCoreAbstractTest {
 		Assert.assertNull(settings.getLocalRepository());
 	}
 	
-	@Test
+	@Test(expected = LibraryManagementException.class)
 	public void testInvalidSettings() throws Exception {
 		try (InputStream in = getClass().getClassLoader().getResourceAsStream("test-maven/settings.invalid.xml")) {
 			MavenSettings.load(in);
