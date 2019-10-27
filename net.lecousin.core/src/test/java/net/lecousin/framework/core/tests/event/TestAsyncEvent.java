@@ -9,7 +9,7 @@ import org.junit.Test;
 
 public class TestAsyncEvent extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		Async<Exception> sp = new Async<>();
 		Runnable listener = () -> { sp.unblock(); };

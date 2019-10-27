@@ -13,7 +13,7 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
 public class TestLinkedIterators extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		ArrayList<Integer> c1 = new ArrayList<Integer>();
 		ArrayList<Integer> c2 = new ArrayList<Integer>();

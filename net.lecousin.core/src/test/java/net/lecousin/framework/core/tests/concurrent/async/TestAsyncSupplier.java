@@ -22,7 +22,7 @@ import org.junit.Test;
 
 public class TestAsyncSupplier extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void testStatus() throws NoException, CancelException {
 		Exception error = new Exception("test");
 		CancelException cancel = new CancelException("test");
@@ -361,7 +361,7 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testFuture() {
 		AsyncSupplier<Integer, Exception> aw = new AsyncSupplier<>();
 		Assert.assertFalse(aw.isDone());
@@ -424,7 +424,7 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 		Assert.assertFalse(aw.cancel(true));
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testUnblock() {
 		AsyncSupplier<Integer, Exception> aw;
 		aw = new AsyncSupplier<>();

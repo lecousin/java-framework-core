@@ -9,7 +9,7 @@ import org.junit.Test;
 
 public class TestWaitingDataQueueSynchronizationPoint extends LCCoreAbstractTest {
 
-	@Test(timeout=60000)
+	@Test
 	public void test() {
 		WaitingDataQueueSynchronizationPoint<Integer, Exception> wdq;
 		

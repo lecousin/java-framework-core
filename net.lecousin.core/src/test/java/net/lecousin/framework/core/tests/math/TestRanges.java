@@ -13,7 +13,7 @@ import net.lecousin.framework.util.Pair;
 
 public class TestRanges extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void testRangeInteger() throws Exception {
 		RangeInteger r1 = new RangeInteger(10, 20);
 		RangeInteger r2 = new RangeInteger(15, 25);
@@ -97,7 +97,7 @@ public class TestRanges extends LCCoreAbstractTest {
 		try { new RangeInteger.Parser().parse("[hello-200]"); throw new AssertionError("Error case"); } catch (Exception e) {}
 	}
 
-	@Test(timeout=30000)
+	@Test
 	public void testRangeLong() throws Exception {
 		RangeLong r1 = new RangeLong(10, 20);
 		RangeLong r2 = new RangeLong(15, 25);
@@ -181,7 +181,7 @@ public class TestRanges extends LCCoreAbstractTest {
 		try { new RangeLong.Parser().parse("[hello-200]"); throw new AssertionError("Error case"); } catch (Exception e) {}
 	}
 
-	@Test(timeout=30000)
+	@Test
 	public void testRangeBigInteger() throws Exception {
 		RangeBigInteger r1 = new RangeBigInteger(BigInteger.valueOf(10), BigInteger.valueOf(20));
 		RangeBigInteger r2 = new RangeBigInteger(BigInteger.valueOf(15), BigInteger.valueOf(25));

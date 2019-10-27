@@ -18,7 +18,7 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 
 	public abstract IntegerMap<Object> createIntegerMap();
 
-	@Test(timeout=120000)
+	@Test
 	public void testIntegerMapIncrement() {
 		IntegerMap<Object> map = createIntegerMap();
 		HashMap<Integer, Object> checkMap = new HashMap<>();
@@ -39,7 +39,7 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 		}
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void testIntegerMapRandom() {
 		IntegerMap<Object> map = createIntegerMap();
 		HashMap<Integer, Object> checkMap = new HashMap<>();
@@ -60,7 +60,7 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 		checkEmpty(map);
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void testIntegerMapRandomWithNegativeValue() {
 		IntegerMap<Object> map = createIntegerMap();
 		HashMap<Integer, Object> checkMap = new HashMap<>();
@@ -83,7 +83,7 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 		checkEmpty(map);
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testClear() {
 		IntegerMap<Object> map = createIntegerMap();
 		checkEmpty(map);
@@ -95,7 +95,7 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 		checkEmpty(map);
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testValuesIterator() {
 		IntegerMap<Object> map = createIntegerMap();
 		List<Integer> list = new LinkedList<>();

@@ -11,7 +11,7 @@ import org.junit.Test;
 
 public class TestMapUtil extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		Map<Integer, String> map = new HashMap<>();
 		map.put(Integer.valueOf(0), "test1");

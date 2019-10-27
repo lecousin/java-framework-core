@@ -60,7 +60,7 @@ public class TestAdapter extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testDirectAdapter() throws Exception {
 		Source1 src = new Source1();
 		src.value = 51;
@@ -150,7 +150,7 @@ public class TestAdapter extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testIntermediates() throws Exception {
 		Source2 src = new Source2();
 		src.value = 51;

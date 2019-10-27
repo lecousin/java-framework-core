@@ -176,7 +176,7 @@ public abstract class TestXMLStreamEventsWithDOM<EVENTS extends XMLStreamEvents>
 	protected abstract void next(EVENTS xml) throws Exception;
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testParse() throws Exception {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		factory.setValidating(false);

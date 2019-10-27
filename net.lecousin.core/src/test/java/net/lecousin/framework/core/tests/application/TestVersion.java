@@ -10,7 +10,7 @@ import org.junit.Test;
 
 public class TestVersion extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void testRanges() {
 		Assert.assertTrue(new VersionRange(new Version("1.2.3")).includes(new Version("1.2.3")));
 		Assert.assertTrue(new VersionRange(new Version("1.2.3-alpha")).includes(new Version("1.2.3-beta")));
@@ -53,7 +53,7 @@ public class TestVersion extends LCCoreAbstractTest {
 		Assert.assertFalse(new VersionRange(new Version("1.3.6"), null, true).includes(new Version("0.4")));
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testVersion() {
 		Assert.assertEquals(0, new Version("1.2.3.4.5-alpha").compareTo(new Version("1.2.3.4.5-beta")));
 		Assert.assertEquals(new Version("1.2.3.4.5-alpha").hashCode(), new Version("1.2.3.4.5-beta").hashCode());
@@ -66,7 +66,7 @@ public class TestVersion extends LCCoreAbstractTest {
 		Assert.assertEquals(1, Version.compare(new int[] { 1,  2, 3 }, new int[] { 1, 2 }));
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testSpec() {
 		Version v = new Version("3.7.12.56");
 		VersionSpecification.SingleVersion s = new VersionSpecification.SingleVersion(v);

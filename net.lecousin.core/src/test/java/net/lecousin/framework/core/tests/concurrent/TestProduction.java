@@ -25,7 +25,7 @@ import org.junit.Test;
 public class TestProduction extends LCCoreAbstractTest {
 
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testProduction() {
 		//System.out.println("Start");
 		MyChecker checker = new MyChecker();
@@ -184,7 +184,7 @@ public class TestProduction extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test(timeout=60000)
+	@Test
 	public void testTransformation() throws Exception {
 		AsyncSupplier<List<Long>, Exception> result = new AsyncSupplier<>();
 		Consumer<Long> finalConsumer = new Consumer<Long>() {

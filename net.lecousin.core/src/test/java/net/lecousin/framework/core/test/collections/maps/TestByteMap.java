@@ -18,7 +18,7 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 
 	public abstract ByteMap<Object> createByteMap();
 
-	@Test(timeout=120000)
+	@Test
 	public void testByteMapIncrement() {
 		ByteMap<Object> map = createByteMap();
 		HashMap<Byte, Object> checkMap = new HashMap<>();
@@ -39,7 +39,7 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 			remove((byte)i, map, checkMap);
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void testByteMapRandom() {
 		ByteMap<Object> map = createByteMap();
 		HashMap<Byte, Object> checkMap = new HashMap<>();
@@ -58,7 +58,7 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 		checkEmpty(map);
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testClear() {
 		ByteMap<Object> map = createByteMap();
 		checkEmpty(map);
@@ -71,7 +71,7 @@ public abstract class TestByteMap extends LCCoreAbstractTest {
 	}
 	
 	
-	@Test(timeout=30000)
+	@Test
 	public void testValuesIterator() {
 		ByteMap<Object> map = createByteMap();
 		List<Byte> list = new LinkedList<>();

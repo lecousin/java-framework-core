@@ -7,7 +7,7 @@ import org.junit.Test;
 
 public class TestMutableLong {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		MutableLong i = new MutableLong(10);
 		Assert.assertEquals(10, i.get());

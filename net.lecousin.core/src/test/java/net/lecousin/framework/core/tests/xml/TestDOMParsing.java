@@ -9,6 +9,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.xml.XMLStreamReader;
@@ -17,12 +18,11 @@ import net.lecousin.framework.xml.dom.XMLDocument;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 
-@RunWith(Parameterized.class)
+@RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestDOMParsing extends TestDOM {
 
 	private static final String[] files = {
@@ -163,7 +163,7 @@ public class TestDOMParsing extends TestDOM {
 	
 	private String filepath;
 	
-	@Test(timeout=120000)
+	@Test
 	public void testReaderSync() throws Exception {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		factory.setValidating(false);
@@ -182,7 +182,7 @@ public class TestDOMParsing extends TestDOM {
 		io.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testReaderAsync() throws Exception {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		factory.setValidating(false);

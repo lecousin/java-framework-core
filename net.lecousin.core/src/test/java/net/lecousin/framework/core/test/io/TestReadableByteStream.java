@@ -30,7 +30,7 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 		super.basicTests(io);
 	}
 	
-	@Test(timeout=240000)
+	@Test
 	public void testReadableBufferedBufferByBufferFully() throws Exception {
 		IO.ReadableByteStream ioBuf = createReadableByteStreamFromFile(openFile(), getFileSize());
 		byte[] b = new byte[testBuf.length];
@@ -49,7 +49,7 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 		ioBuf.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testReadableBufferedByteByByte() throws Exception {
 		IO.ReadableByteStream io = createReadableByteStreamFromFile(openFile(), getFileSize());
 		for (int i = 0; i < nbBuf; ++i) {
@@ -84,7 +84,7 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 		io.close();
 	}
 	
-	@Test(timeout=240000)
+	@Test
 	public void testReadableBufferedBufferByBuffer() throws Exception {
 		long size = getFileSize();
 		IO.ReadableByteStream ioBuf = createReadableByteStreamFromFile(openFile(), size);
@@ -115,7 +115,7 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 		ioBuf.close();
 	}
 	
-	@Test(timeout=240000)
+	@Test
 	public void testReadableBufferedBySmallBufferSync() throws Exception {
 		long size = getFileSize();
 		IO.ReadableByteStream io = createReadableByteStreamFromFile(openFile(), size);
@@ -141,7 +141,7 @@ public abstract class TestReadableByteStream extends TestIO.UsingGeneratedTestFi
 	}
 	
 
-	@Test(timeout=120000)
+	@Test
 	public void testSkip() throws Exception {
 		long size = getFileSize();
 		IO.ReadableByteStream ioBuf = createReadableByteStreamFromFile(openFile(), size);

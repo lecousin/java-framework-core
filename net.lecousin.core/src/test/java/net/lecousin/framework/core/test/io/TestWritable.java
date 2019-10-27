@@ -64,7 +64,7 @@ public abstract class TestWritable extends TestIO.UsingTestData {
 		((IO.Writable)io).canStartWriting();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testWriteBufferByBufferSync() throws Exception {
 		IO.Writable io = createWritable();
 		if (io instanceof IO.PositionKnown)
@@ -81,7 +81,7 @@ public abstract class TestWritable extends TestIO.UsingTestData {
 		check();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testWriteBufferByBufferAsync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		IO.Writable io = createWritable();

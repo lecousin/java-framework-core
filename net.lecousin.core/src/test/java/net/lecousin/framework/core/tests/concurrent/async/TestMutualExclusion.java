@@ -9,7 +9,7 @@ import org.junit.Test;
 
 public class TestMutualExclusion extends LCCoreAbstractTest {
 
-	@Test(timeout=120000)
+	@Test
 	public void test() {
 		MutualExclusion<Exception> mutex = new MutualExclusion<>();
 		Assert.assertTrue(mutex.isDone());

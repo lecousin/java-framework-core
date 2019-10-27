@@ -16,7 +16,7 @@ import org.junit.Test;
 
 public class TestJoinPoint extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		Threading.debugSynchronization = true;
 		JoinPoint<Exception> jp = new JoinPoint<>();

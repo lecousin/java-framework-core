@@ -24,7 +24,7 @@ import net.lecousin.framework.xml.dom.XMLText;
 
 public class TestDOMModifications extends TestDOM {
 
-	@Test(timeout=120000)
+	@Test
 	public void test() throws Exception {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		factory.setValidating(false);

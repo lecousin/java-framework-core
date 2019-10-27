@@ -15,7 +15,7 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 	protected abstract XMLStreamEventsAsync parse(String resource) throws Exception;
 	
 	@SuppressWarnings("boxing")
-	@Test(timeout=120000)
+	@Test
 	public void test1() throws Exception {
 		XMLStreamEventsAsync xml = parse("xml-test-suite/mine/002.xml");
 		xml.start().blockThrow(0);
@@ -45,7 +45,7 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 		Assert.assertFalse(xml.nextInnerElement(ctx).blockResult(0));
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testSearchElement() throws Exception {
 		XMLStreamEventsAsync xml = parse("xml-test-suite/mine/002.xml");
 		xml.start().blockThrow(0);
@@ -60,7 +60,7 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 	}
 	
 	@SuppressWarnings("boxing")
-	@Test(timeout=120000)
+	@Test
 	public void testGoInto() throws Exception {
 		XMLStreamEventsAsync xml = parse("xml-test-suite/mine/002.xml");
 		xml.start().blockThrow(0);
@@ -77,7 +77,7 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 		Assert.assertFalse(xml.goInto(root, "translation", "hello", "german").blockResult(0));
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testReadInnerElementsText() throws Exception {
 		XMLStreamEventsAsync xml = parse("xml-test-suite/mine/002.xml");
 		xml.start().blockThrow(0);
@@ -92,7 +92,7 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(null, map.get("german"));
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void test2() throws Exception {
 		XMLStreamEventsAsync xml;
 		xml = parse("xml-test-suite/mine/002.xml");
@@ -116,7 +116,7 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 		xml.closeElement().blockThrow(0);
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testInnerText() throws Exception {
 		XMLStreamEventsAsync xml;
 		xml = parse("xml-unit-tests/innerText01.xml");
@@ -124,7 +124,7 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 		Assert.assertEquals("Hello World", xml.readInnerText().blockResult(0).trim().asString());
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testErrors() {
 		for (int i = TestXMLStreamEventsSync.ERROR_START; i <= TestXMLStreamEventsSync.ERROR_END; ++i) {
 			String s = Integer.toString(i);

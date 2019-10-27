@@ -15,7 +15,7 @@ import org.junit.Test;
 
 public class TestDataUtil extends LCCoreAbstractTest {
 
-	@Test(timeout=120000)
+	@Test
 	public void testBuffer() throws Exception {
 		testShort((short)0x0000, 0);
 		testShort((short)0x0001, 1);

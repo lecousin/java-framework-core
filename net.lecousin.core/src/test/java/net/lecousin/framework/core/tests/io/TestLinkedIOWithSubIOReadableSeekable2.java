@@ -5,16 +5,13 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.function.Consumer;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.core.test.io.TestFragmented;
 import net.lecousin.framework.core.test.io.TestFragmented.FragmentedFile;
 import net.lecousin.framework.core.test.io.TestReadableSeekable;
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.LinkedIO;
@@ -24,7 +21,10 @@ import net.lecousin.framework.math.RangeLong;
 import net.lecousin.framework.util.CloseableListenable;
 import net.lecousin.framework.util.Pair;
 
-@RunWith(Parameterized.class)
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized.Parameters;
+
+@RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable {
 
 	@Parameters

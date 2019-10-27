@@ -8,7 +8,7 @@ import org.junit.Test;
 
 public class TestRunnables extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		Runnables.WithData<String> r = new Runnables.WithData<String>("test") {
 			@Override

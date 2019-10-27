@@ -15,7 +15,7 @@ import org.junit.Test;
 
 public class TestIOProviderFromURI extends LCCoreAbstractTest {
 
-	@Test(timeout=60000)
+	@Test
 	public void test() throws Exception {
 		IOProviderFromURI provider = IOProviderFromURI.getInstance();
 		provider.registerProtocol("testProtocol", new IOProviderFrom<URI>() {

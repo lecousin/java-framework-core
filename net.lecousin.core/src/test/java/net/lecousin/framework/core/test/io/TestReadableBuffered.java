@@ -85,7 +85,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		return createReadableBufferedFromFile(file, fileSize, bufferingSize);
 	}
 	
-	@Test(timeout=240000)
+	@Test
 	public void testReadableBufferedByteByByteAsync() throws Exception {
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
 		MutableInteger i = new MutableInteger(0);
@@ -152,7 +152,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		io.close();
 	}
 	
-	@Test(timeout=240000)
+	@Test
 	public void testReadableBufferedNextBufferAsync() throws Exception {
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
 		Async<Exception> done = new Async<>();
@@ -219,7 +219,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		io.close();
 	}
 	
-	@Test(timeout=240000)
+	@Test
 	public void testReadableBufferedNextBuffer() throws Exception {
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
 		LinkedList<ByteBuffer> buffers = new LinkedList<>();
@@ -258,7 +258,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		} while (true);
 	}
 
-	@Test(timeout=240000)
+	@Test
 	public void testReadableBufferedReadFullySyncIfPossible() throws Exception {
 		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
 		byte[] buf = new byte[testBuf.length];

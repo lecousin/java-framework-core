@@ -10,7 +10,7 @@ import net.lecousin.framework.util.SimpleIDManagerLong;
 
 public class TestIDManagerStringFromLong extends LCCoreAbstractTest {
 
-	@Test(timeout=60000)
+	@Test
 	public void test() {
 		IDManagerLong idml = new SimpleIDManagerLong();
 		IDManagerStringFromLong idms = new IDManagerStringFromLong(idml);

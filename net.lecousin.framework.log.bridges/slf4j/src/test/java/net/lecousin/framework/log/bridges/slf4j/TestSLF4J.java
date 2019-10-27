@@ -11,7 +11,7 @@ import org.slf4j.impl.StaticMarkerBinder;
 
 public class TestSLF4J extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		Logger l = LoggerFactory.getLogger("test");
 		l = LoggerFactory.getLogger("test");
@@ -53,19 +53,19 @@ public class TestSLF4J extends LCCoreAbstractTest {
 		((LCLoggerFactory)LoggerFactory.getILoggerFactory()).reset();
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testMarkerBinder() {
 		StaticMarkerBinder.getSingleton().getMarkerFactory();
 		StaticMarkerBinder.getSingleton().getMarkerFactoryClassStr();
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testMDCBinder() {
 		StaticMDCBinder.getSingleton().getMDCA();
 		StaticMDCBinder.getSingleton().getMDCAdapterClassStr();
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testLoggerBinder() {
 		StaticLoggerBinder.getSingleton().getLoggerFactoryClassStr();
 	}

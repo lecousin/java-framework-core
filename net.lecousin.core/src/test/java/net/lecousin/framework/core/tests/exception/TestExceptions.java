@@ -10,7 +10,7 @@ import org.junit.Test;
 
 public class TestExceptions extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		Assert.assertEquals("Fichier 'test' existe déjà", new AlreadyExistsException("b", "File", "test").getLocalizable().localize("fr").blockResult(0));
 		Assert.assertEquals("Fichier invalide: test", new InvalidException("b", "File", "test").getLocalizable().localize("fr").blockResult(0));

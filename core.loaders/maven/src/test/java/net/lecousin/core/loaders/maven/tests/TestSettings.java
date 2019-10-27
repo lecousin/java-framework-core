@@ -12,7 +12,7 @@ import org.junit.Test;
 
 public class TestSettings extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void testSettings() throws Exception {
 		InputStream in = getClass().getClassLoader().getResourceAsStream("test-maven/settings.xml");
 		MavenSettings settings = MavenSettings.load(in);
@@ -22,7 +22,7 @@ public class TestSettings extends LCCoreAbstractTest {
 		Assert.assertEquals(0, profiles.size());
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testEmptySettings() throws Exception {
 		InputStream in = getClass().getClassLoader().getResourceAsStream("test-maven/settings.empty.xml");
 		MavenSettings settings = MavenSettings.load(in);
@@ -30,14 +30,14 @@ public class TestSettings extends LCCoreAbstractTest {
 		Assert.assertNull(settings.getLocalRepository());
 	}
 	
-	@Test(timeout=30000, expected = LibraryManagementException.class)
+	@Test
 	public void testInvalidSettings() throws Exception {
 		try (InputStream in = getClass().getClassLoader().getResourceAsStream("test-maven/settings.invalid.xml")) {
 			MavenSettings.load(in);
 		}
 	}
 
-	@Test(timeout=30000)
+	@Test
 	public void testSettingsActiveProfile() throws Exception {
 		InputStream in = getClass().getClassLoader().getResourceAsStream("test-maven/settings.active_profile.xml");
 		MavenSettings settings = MavenSettings.load(in);

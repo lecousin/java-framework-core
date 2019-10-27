@@ -12,7 +12,7 @@ import net.lecousin.framework.util.RandomIDManagerLong;
 
 public class TestRandomIDManagerLong extends LCCoreAbstractTest {
 
-	@Test(timeout=60000)
+	@Test
 	public void test() {
 		RandomIDManagerLong idm = new RandomIDManagerLong();
 		Set<Long> used = new HashSet<Long>();

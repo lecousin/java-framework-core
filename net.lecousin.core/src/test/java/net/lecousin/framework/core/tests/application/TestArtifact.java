@@ -10,7 +10,7 @@ import org.junit.Test;
 
 public class TestArtifact extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		Artifact a1 = new Artifact("mygroup", "myartifact", new Version("0.0.0"));
 		Artifact a2 = new Artifact(a1);

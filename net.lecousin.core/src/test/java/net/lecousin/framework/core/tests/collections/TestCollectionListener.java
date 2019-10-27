@@ -16,7 +16,7 @@ import net.lecousin.framework.mutable.Mutable;
 
 public class TestCollectionListener extends LCCoreAbstractTest {
 
-	@Test(timeout=120000)
+	@Test
 	public void testKeep() {
 		CollectionListener.Keep<Integer> keep = new Keep<>(new ArrayList<>(), Task.PRIORITY_NORMAL);
 		ArrayList<Integer> col = new ArrayList<>();

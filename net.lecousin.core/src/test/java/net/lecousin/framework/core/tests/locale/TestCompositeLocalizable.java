@@ -8,7 +8,7 @@ import org.junit.Test;
 
 public class TestCompositeLocalizable extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		TestILocalizableString.test(new CompositeLocalizable(" * ", new LocalizableString("b", "name"), new LocalizableString("b", "file")), "name * file", "nom * fichier");
 	}

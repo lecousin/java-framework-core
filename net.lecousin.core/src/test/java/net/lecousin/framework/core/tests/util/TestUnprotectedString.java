@@ -5,18 +5,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.core.test.util.TestIString;
 import net.lecousin.framework.util.IString;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
-@RunWith(Parameterized.class)
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized.Parameters;
+
+@RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestUnprotectedString extends TestIString {
 
 	@SuppressWarnings("boxing")
@@ -50,7 +50,7 @@ public class TestUnprotectedString extends TestIString {
 		return new UnprotectedString(chars, start, c.length, c.length + end);
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testConstructor() {
 		UnprotectedString s1 = new UnprotectedString(5);
 		s1.append("Hello").append(' ').append("World").append('!');
@@ -59,7 +59,7 @@ public class TestUnprotectedString extends TestIString {
 		Assert.assertEquals("Hello World!", s2.asString());
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testSimple() {
 		UnprotectedString s = new UnprotectedString(0);
 		Assert.assertEquals(-1, s.firstChar());
@@ -78,7 +78,7 @@ public class TestUnprotectedString extends TestIString {
 	}
 	
 	@Override
-	@Test(timeout=120000)
+	@Test
 	public void testAppend() {
 		super.testAppend();
 		UnprotectedString s = new UnprotectedString(0);
@@ -90,7 +90,7 @@ public class TestUnprotectedString extends TestIString {
 		Assert.assertEquals("Hello World!", s.asString());
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void test() throws CharacterCodingException {
 		UnprotectedString s = new UnprotectedString("Hello");
 		/*ByteBuffer bb = */s.encode(StandardCharsets.UTF_8);

@@ -21,7 +21,7 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 		return new XMLStreamReader(LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL), 512, 4);
 	}
 	
-	@Test(timeout=60000)
+	@Test
 	public void testDocType() throws Exception {
 		XMLStreamReader xml;
 		xml = parse("xml-test-suite/mine/003.xml");
@@ -48,7 +48,7 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=60000)
+	@Test
 	public void testStart() throws Exception {
 		IO.Readable io = LCCore.getApplication().getResource("xml-test-suite/mine/001.xml", Task.PRIORITY_NORMAL);
 		SimpleBufferedReadable bio = new SimpleBufferedReadable(io, 1024);
@@ -61,7 +61,7 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 		Assert.assertEquals("myRoot", xml.event.localName.asString());
 	}
 	
-	@Test(timeout=60000)
+	@Test
 	public void testMaxTextSize() throws XMLException, IOException {
 		XMLStreamReader xml = parse("xml-test-suite/mine/longText.xml");
 		xml.setMaximumCDataSize(15);

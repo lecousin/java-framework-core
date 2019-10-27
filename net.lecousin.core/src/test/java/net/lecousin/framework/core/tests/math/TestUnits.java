@@ -15,7 +15,7 @@ import net.lecousin.framework.math.TimeUnit.Second;
 
 public class TestUnits extends LCCoreAbstractTest {
 	
-	@Test(timeout=3000)
+	@Test
 	public void testTimeUnitsConversions() throws UnitConversionException {
 		Assert.assertEquals(0, IntegerUnit.ConverterRegistry.convert(0, Millisecond.class, Millisecond.class));
 		Assert.assertEquals(10, IntegerUnit.ConverterRegistry.convert(10, Millisecond.class, Millisecond.class));
@@ -87,7 +87,7 @@ public class TestUnits extends LCCoreAbstractTest {
 		
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testFakeUnit() {
 		try {
 			IntegerUnit.ConverterRegistry.convert(125, Second.class, FakeUnit.class);

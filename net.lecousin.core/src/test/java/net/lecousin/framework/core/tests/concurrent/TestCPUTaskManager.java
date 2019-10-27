@@ -9,7 +9,7 @@ import org.junit.Test;
 
 public class TestCPUTaskManager extends LCCoreAbstractTest {
 
-	@Test(timeout=120000)
+	@Test
 	public void test() {
 		CPUTaskManager cpu = (CPUTaskManager)Threading.getCPUTaskManager();
 		

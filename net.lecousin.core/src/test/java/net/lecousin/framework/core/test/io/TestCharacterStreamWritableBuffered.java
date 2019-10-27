@@ -21,7 +21,7 @@ public abstract class TestCharacterStreamWritableBuffered extends LCCoreAbstract
 	
 	protected abstract void flush(ICharacterStream.Writable cs) throws Exception;
 	
-	@Test(timeout=120000)
+	@Test
 	public void test() throws Exception {
 		testWrite("Hello", StandardCharsets.US_ASCII);
 		testWrite("Bonjour vous-même", StandardCharsets.UTF_8);

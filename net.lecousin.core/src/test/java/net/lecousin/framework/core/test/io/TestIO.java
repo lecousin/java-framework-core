@@ -113,7 +113,7 @@ public abstract class TestIO extends LCCoreAbstractTest {
 	protected abstract IO getIOForCommonTests() throws Exception;
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testBasicCommonFunctions() throws Exception {
 		IO io = getIOForCommonTests();
 		basicTests(io);

@@ -18,7 +18,7 @@ public abstract class TestList extends TestCollection {
 	public boolean supportNullValue() { return true; }
 	
 	@SuppressWarnings("boxing")
-	@Test(timeout=120000)
+	@Test
 	public void testList() {
 		List<Long> l = createLongCollection();
 		check(l);
@@ -344,7 +344,7 @@ public abstract class TestList extends TestCollection {
 		Assert.assertFalse(it.hasNext());
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testAddOutOfRange() {
 		List<Long> l = createLongCollection();
 		ArrayList<Long> l2 = new ArrayList<>();

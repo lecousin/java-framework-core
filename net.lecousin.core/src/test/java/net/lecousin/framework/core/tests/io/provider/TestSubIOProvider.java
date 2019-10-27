@@ -10,7 +10,7 @@ import org.junit.Test;
 
 public class TestSubIOProvider extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		ByteArrayIO io = new ByteArrayIO(new byte[200], "test");
 		SubIOProvider.Readable provider = new SubIOProvider.Readable(io, 10, 20, "test");

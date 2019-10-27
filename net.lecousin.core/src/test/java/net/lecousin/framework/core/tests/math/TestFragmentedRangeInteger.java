@@ -12,7 +12,7 @@ import org.junit.Test;
 
 public class TestFragmentedRangeInteger extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		FragmentedRangeInteger f = new FragmentedRangeInteger();
 		Assert.assertEquals(0, f.size());

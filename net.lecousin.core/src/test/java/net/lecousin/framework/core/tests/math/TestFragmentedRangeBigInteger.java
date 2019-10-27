@@ -13,7 +13,7 @@ import net.lecousin.framework.math.RangeBigInteger;
 
 public class TestFragmentedRangeBigInteger extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		FragmentedRangeBigInteger f = new FragmentedRangeBigInteger();
 		Assert.assertEquals(0, f.size());

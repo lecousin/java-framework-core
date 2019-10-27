@@ -17,7 +17,7 @@ public abstract class TestCollection extends LCCoreAbstractTest {
 	
 	public boolean supportRetainAll() { return true; }
 
-	@Test(timeout=120000)
+	@Test
 	public void testCollection() {
 		Collection<Long> c = createLongCollection();
 		testCollectionEmpty(c);

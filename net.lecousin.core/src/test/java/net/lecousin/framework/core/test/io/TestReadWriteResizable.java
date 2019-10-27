@@ -22,7 +22,7 @@ public abstract class TestReadWriteResizable extends TestIO {
 		return openReadWriteResizable();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.KnownSize & IO.Resizable>
 	void testResizeSync() throws Exception {
 		byte[] buf = new byte[100];
@@ -139,7 +139,7 @@ public abstract class TestReadWriteResizable extends TestIO {
 		io.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.KnownSize & IO.Resizable>
 	void testResizeAsync() throws Exception {
 		T io = openReadWriteResizable();

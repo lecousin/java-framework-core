@@ -8,7 +8,7 @@ import org.junit.Test;
 
 public class TestFixedLocalizedString extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		TestILocalizableString.test(new FixedLocalizedString("it's fixed"), "it's fixed", "it's fixed");
 		Assert.assertTrue(new FixedLocalizedString("test").equals(new FixedLocalizedString("test")));

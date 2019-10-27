@@ -29,7 +29,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 	}
 
 
-	@Test(timeout=15000)
+	@Test
 	public void testIOError() throws Exception {
 		ICharacterStream.Readable.Buffered s = openStream(new TestIOError.IOError1());
 		try {
@@ -56,7 +56,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		s.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testCharByChar() throws Exception {
 		ICharacterStream.Readable.Buffered s = openStream(openFile());
 		for (int i = 0; i < nbBuf; ++i) {
@@ -88,7 +88,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		s.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testCharByCharAsync() throws Exception {
 		ICharacterStream.Readable.Buffered s = openStream(openFile());
 		Async<Exception> sp = new Async<>();
@@ -132,7 +132,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		sp.unblock();
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void testNextBufferAsync() throws Exception {
 		ICharacterStream.Readable.Buffered s = openStream(openFile());
 		int iBuf = 0;

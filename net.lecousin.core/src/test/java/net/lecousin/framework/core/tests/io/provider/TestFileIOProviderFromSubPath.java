@@ -11,7 +11,7 @@ import org.junit.Test;
 
 public class TestFileIOProviderFromSubPath extends LCCoreAbstractTest {
 
-	@Test(timeout=60000)
+	@Test
 	public void test() throws Exception {
 		File f = TemporaryFiles.get().createFileSync("test", "fileioproviderfromname");
 		FileIOProviderFromSubPath provider = new FileIOProviderFromSubPath(f.getParentFile());

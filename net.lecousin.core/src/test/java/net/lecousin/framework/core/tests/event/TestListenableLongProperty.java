@@ -12,7 +12,7 @@ import org.junit.Test;
 
 public class TestListenableLongProperty extends LCCoreAbstractTest {
 
-	@Test(timeout=60000)
+	@Test
 	public void test() {
 		ListenableLongProperty p = new ListenableLongProperty(5);
 		MutableLong value = new MutableLong(100);

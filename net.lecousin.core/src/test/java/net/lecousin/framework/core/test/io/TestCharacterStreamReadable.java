@@ -39,14 +39,14 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		stream.close();
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void basicStreamTests() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());
 		s.setPriority(Task.PRIORITY_IMPORTANT);
 		s.close();
 	}
 
-	@Test(timeout=15000)
+	@Test
 	public void testIOError() throws Exception {
 		ICharacterStream.Readable s = openStream(new TestIOError.IOError1());
 		try {
@@ -77,7 +77,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 	}
 	
 	@SuppressWarnings({ "resource" })
-	@Test(timeout=120000)
+	@Test
 	public void testBufferByBufferFully() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());
 		char[] buf = new char[testBuf.length];
@@ -97,7 +97,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 	}
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testBufferByBuffer() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());
 		char[] buf = new char[testBuf.length * 3 - testBuf.length / 10];
@@ -120,7 +120,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 	}
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testBufferByBufferAsync() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());
 		char[] buf = new char[testBuf.length * 3 - testBuf.length / 10];
@@ -144,7 +144,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 	}
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testBufferByBufferFullyAsync() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());
 		char[] buf = new char[testBuf.length * 3 - testBuf.length / 10];

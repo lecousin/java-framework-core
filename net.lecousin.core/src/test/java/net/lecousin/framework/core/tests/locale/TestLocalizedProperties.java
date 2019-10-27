@@ -15,7 +15,7 @@ import org.junit.Test;
 
 public class TestLocalizedProperties extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void testErrors() {
 		LocalizedProperties lp = LCCore.getApplication().getLocalizedProperties();
 		ClassLoader cl = getClass().getClassLoader();
@@ -64,7 +64,7 @@ public class TestLocalizedProperties extends LCCoreAbstractTest {
 		Assert.assertFalse(content.hasError());
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		LocalizedProperties lp = LCCore.getApplication().getLocalizedProperties();
 		// for coverage
@@ -72,13 +72,14 @@ public class TestLocalizedProperties extends LCCoreAbstractTest {
 		lp.getDeclaredNamespaces();
 	}
 	
-	@Test(timeout=30000, expected = IOException.class)
-	public void testRegisterExistingNamespace() throws Exception {
+	@Test
+	public void testRegisterExistingNamespace() {
 		IAsync<IOException> res = LCCore.getApplication().getLocalizedProperties().registerNamespace("b", "hello", getClass().getClassLoader());
-		res.blockThrow(10000);
+		res.block(10000);
+		Assert.assertTrue(res.hasError());
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testRegisterNotExistingFile() throws Exception {
 		IAsync<IOException> res = LCCore.getApplication().getLocalizedProperties().registerNamespace("hello", "world", getClass().getClassLoader());
 		try {

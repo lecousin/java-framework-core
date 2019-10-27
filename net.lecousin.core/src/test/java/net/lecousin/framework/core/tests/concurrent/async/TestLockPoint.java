@@ -11,7 +11,7 @@ import org.junit.Test;
 
 public class TestLockPoint extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		LockPoint<Exception> lp = new LockPoint<>();
 		lp.error(new Exception());

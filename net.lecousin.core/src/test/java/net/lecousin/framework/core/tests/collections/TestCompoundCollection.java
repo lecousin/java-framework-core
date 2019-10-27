@@ -13,7 +13,7 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
 public class TestCompoundCollection extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		CompoundCollection<Integer> col = new CompoundCollection<>();
 		check(col);

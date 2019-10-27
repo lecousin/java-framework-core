@@ -12,7 +12,7 @@ import org.junit.Test;
 
 public class TestWorkProgressImpl extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		WorkProgressImpl p = new WorkProgressImpl(1000);
 		Assert.assertEquals(1000, p.getAmount());
@@ -137,7 +137,7 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		p.unlisten(listener);
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testLinks() throws Exception {
 		WorkProgressImpl main = new WorkProgressImpl(1000);
 		WorkProgressImpl sub1 = new WorkProgressImpl(1000);

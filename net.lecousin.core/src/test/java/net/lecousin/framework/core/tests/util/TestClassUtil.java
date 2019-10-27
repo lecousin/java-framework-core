@@ -72,7 +72,7 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		public Boolean isBool4() { return bool4; }
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testGetAllFieldsInheritedFirst() {
 		//ArrayList<Field> fields =
 		ClassUtil.getAllFieldsInheritedFirst(Class2.class);
@@ -80,12 +80,12 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		//Assert.assertEquals("myInteger", fields.get(0).getName());
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testGetAllMethodsInheritedFirst() {
 		ClassUtil.getAllMethodsInheritedFirst(Class2.class);
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testGettersAndSetters() {
 		Assert.assertNotNull(ClassUtil.getGetter(Class2.class, "myBoolean").getAnnotation(Property.class));
 		Assert.assertNull(ClassUtil.getGetter(Class2.class, "myBoolean2"));
@@ -109,7 +109,7 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		public int toto(int i, String s) { return 3; }
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testGetMethod() throws Exception {
 		Object[] toto1 = new Object[] { "test", Integer.valueOf(51) };
 		Object[] toto2 = new Object[] { "test", Long.valueOf(51) };
@@ -139,7 +139,7 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		public int i = 1;
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testFieldPath() throws Exception {
 		Root root = new Root();
 		Assert.assertEquals(1, root.e1.sub1.i);
@@ -149,12 +149,12 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(Integer.valueOf(11), ClassUtil.getFieldFromPath(root, "e2.sub2.i"));
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testGetMethods() {
 		Assert.assertEquals(1, ClassUtil.getMethods(Class2.class, "setMyBoolean", 1).size());
 	}
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws ClassNotFoundException {
 		Assert.assertEquals("", ClassUtil.getPackageName(getClass().getClassLoader().loadClass("NoPackageClass")));
 	}

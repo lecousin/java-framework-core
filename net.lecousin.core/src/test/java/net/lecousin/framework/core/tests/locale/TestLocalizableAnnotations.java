@@ -17,7 +17,7 @@ public class TestLocalizableAnnotations extends LCCoreAbstractTest {
 	@Property(name="hello2", value="bonjour2")
 	public String myTest2;
 	
-	@Test(timeout=30000)
+	@Test
 	public void testGet() throws Exception {
 		ILocalizableString ls;
 		

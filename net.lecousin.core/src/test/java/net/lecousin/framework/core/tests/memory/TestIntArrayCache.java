@@ -9,7 +9,7 @@ import net.lecousin.framework.memory.IMemoryManageable.FreeMemoryLevel;
 
 public class TestIntArrayCache extends LCCoreAbstractTest {
 
-	@Test(timeout=60000)
+	@Test
 	public void test() {
 		IntArrayCache cache = IntArrayCache.getInstance();
 		Assert.assertTrue(cache == IntArrayCache.getInstance());

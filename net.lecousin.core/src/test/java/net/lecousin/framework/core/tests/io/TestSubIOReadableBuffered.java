@@ -5,17 +5,17 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
 import net.lecousin.framework.core.test.io.TestReadableBuffered;
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO.Readable.Seekable;
 import net.lecousin.framework.io.SubIO;
 import net.lecousin.framework.io.buffering.BufferedIO;
 
-@RunWith(Parameterized.class)
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized.Parameters;
+
+@RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestSubIOReadableBuffered extends TestReadableBuffered {
 
 	@Parameters(name = "nbBuf = {2}, nbBufSkippedStart = {3}, nbBufSkippedEnd = {4}")

@@ -4,14 +4,14 @@ import java.io.File;
 import java.util.Collection;
 
 import net.lecousin.framework.core.test.io.TestReadableBuffered;
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.buffering.TwoBuffersIO;
 
 import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-@RunWith(Parameterized.class)
+@RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestTwoBuffersIODeterminedSizeReadableBuffered extends TestReadableBuffered {
 
 	@Parameters(name = "nbBuf = {2}, bufferingSize = {3}")

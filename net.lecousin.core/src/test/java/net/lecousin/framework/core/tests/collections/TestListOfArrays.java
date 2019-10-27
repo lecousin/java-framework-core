@@ -11,7 +11,7 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
 public class TestListOfArrays extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void testEmpty() {
 		ListOfArrays<Integer> l = new ListOfArrays<>();
 		Assert.assertEquals(0, l.getArrays().size());
@@ -25,7 +25,7 @@ public class TestListOfArrays extends LCCoreAbstractTest {
 		}
 	}
 
-	@Test(timeout=30000)
+	@Test
 	public void testOneArray() {
 		ListOfArrays<Integer> l = new ListOfArrays<>();
 		Integer[] a = new Integer[10];
@@ -47,7 +47,7 @@ public class TestListOfArrays extends LCCoreAbstractTest {
 		}
 	}
 
-	@Test(timeout=30000)
+	@Test
 	public void testSeveralArrays() {
 		ListOfArrays<Integer> l = new ListOfArrays<>();
 		Integer[] a = new Integer[10];

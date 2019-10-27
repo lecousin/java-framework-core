@@ -3,15 +3,15 @@ package net.lecousin.framework.core.tests.xml;
 import java.io.EOFException;
 import java.util.Collection;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.IO.Readable;
 import net.lecousin.framework.xml.XMLStreamEventsAsync;
 import net.lecousin.framework.xml.XMLStreamEventsRecorder;
 
-@RunWith(Parameterized.class)
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized.Parameters;
+
+@RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestXMLStreamEventsRecorderAsync extends TestXMLStreamReaderAsyncWithDOM {
 
 	@Parameters(name = "file = {0}")

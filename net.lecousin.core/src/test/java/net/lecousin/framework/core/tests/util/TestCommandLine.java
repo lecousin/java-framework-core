@@ -10,7 +10,7 @@ import org.junit.Test;
 
 public class TestCommandLine extends LCCoreAbstractTest {
 
-	@Test(timeout=15000)
+	@Test
 	public void testGetOptionValue() {
 		String[] args = new String[] { "hello", "-test", "world", "-aa=bb", "-hello=world", "cc=dd" };
 		Assert.assertNull(CommandLine.getOptionValue(args, "toto"));
@@ -22,7 +22,7 @@ public class TestCommandLine extends LCCoreAbstractTest {
 	}
 
 	@SuppressWarnings("unchecked")
-	@Test(timeout=15000)
+	@Test
 	public void testParse() throws Exception {
 		Launcher.CommandLineContext context = new Launcher.CommandLineContext();
 		String[] args = new String[] { "-artifactId=myArtifact", "-groupId=myGroup", "-parameters", "p1", "p2" };

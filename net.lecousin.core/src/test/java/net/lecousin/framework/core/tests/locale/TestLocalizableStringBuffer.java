@@ -8,7 +8,7 @@ import org.junit.Test;
 
 public class TestLocalizableStringBuffer extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		TestILocalizableString.test(new LocalizableStringBuffer("start/", new LocalizableString("b", "name"), "/end"), "start/name/end", "start/nom/end");
 		LocalizableStringBuffer b = new LocalizableStringBuffer("#");

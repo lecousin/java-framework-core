@@ -9,7 +9,7 @@ import net.lecousin.framework.memory.CachedObject;
 public class TestCachedObject extends LCCoreAbstractTest {
 
 	
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		CachedObject<Integer> co = new CachedObject<Integer>(Integer.valueOf(51), 5000) {
 			@Override

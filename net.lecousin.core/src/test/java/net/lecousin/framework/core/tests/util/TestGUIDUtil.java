@@ -8,7 +8,7 @@ import net.lecousin.framework.util.GUIDUtil;
 
 public class TestGUIDUtil extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		byte[] guid = GUIDUtil.toGUID(12345678, 753, 159, 85246, 987654321);
 		String s = GUIDUtil.toString(guid);

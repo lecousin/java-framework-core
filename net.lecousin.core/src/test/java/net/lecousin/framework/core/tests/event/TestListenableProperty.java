@@ -10,7 +10,7 @@ import net.lecousin.framework.mutable.MutableInteger;
 
 public class TestListenableProperty {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		ListenableProperty<Integer> prop = new ListenableProperty<Integer>(Integer.valueOf(1));
 		Assert.assertEquals(1, prop.get().intValue());

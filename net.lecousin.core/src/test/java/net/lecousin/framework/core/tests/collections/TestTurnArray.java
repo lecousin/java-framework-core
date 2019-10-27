@@ -21,7 +21,7 @@ public class TestTurnArray extends TestDeque {
 		return false;
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testFullAndEmpty() {
 		TurnArray<Long> q = new TurnArray<>(5);
 		Assert.assertTrue(q.isEmpty());
@@ -77,7 +77,7 @@ public class TestTurnArray extends TestDeque {
 	}
 	
 	@SuppressWarnings("boxing")
-	@Test(timeout=120000)
+	@Test
 	public void testSpecificCases() {
 		TurnArray<Long> q = new TurnArray<>(5);
 
@@ -166,7 +166,7 @@ public class TestTurnArray extends TestDeque {
 		}
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testIncreaseAndDecrease() {
 		TurnArray<Long> q = new TurnArray<>(5);
 
@@ -194,7 +194,7 @@ public class TestTurnArray extends TestDeque {
 	}
 
 	@SuppressWarnings("boxing")
-	@Test(timeout=120000)
+	@Test
 	public void testRemoveAny() {
 		TurnArray<Long> q = new TurnArray<>(5);
 		q.add(Long.valueOf(21));
@@ -251,7 +251,7 @@ public class TestTurnArray extends TestDeque {
 	}
 
 	@SuppressWarnings("boxing")
-	@Test(timeout=120000)
+	@Test
 	public void testAddAll() {
 		TurnArray<Long> q = new TurnArray<>(5);
 		q.addAll(Arrays.asList(1L, 2L, 3L));
@@ -275,7 +275,7 @@ public class TestTurnArray extends TestDeque {
 	}
 
 	@SuppressWarnings("boxing")
-	@Test(timeout=120000)
+	@Test
 	public void testRemoveFirstOccurence() {
 		TurnArray<Long> q = new TurnArray<>(5);
 		q.add(1L);
@@ -337,7 +337,7 @@ public class TestTurnArray extends TestDeque {
 	}
 
 	@SuppressWarnings("boxing")
-	@Test(timeout=120000)
+	@Test
 	public void testRemoveLastOccurence() {
 		TurnArray<Long> q = new TurnArray<>(5);
 		q.add(1L);
@@ -403,7 +403,7 @@ public class TestTurnArray extends TestDeque {
 		checkDeque(q, 1, 3, 2);
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testRemoveInstance() {
 		TurnArray<Object> q = new TurnArray<>(5);
 		Object o1 = new Object();
@@ -442,7 +442,7 @@ public class TestTurnArray extends TestDeque {
 		checkDeque(q, o3, o5, o1, o2);
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testRemoveAllNoOrder() {
 		TurnArray<Object> q = new TurnArray<>(5);
 		Object o1 = new Object();

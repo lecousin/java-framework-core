@@ -60,7 +60,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		pomLoader.addRepository(repo);
 	}
 	
-	@Test(timeout=60000)
+	@Test
 	public void testPOMLoader() throws Exception {
 		Assert.assertTrue(pomLoader.detect(new File(".")));
 		
@@ -96,7 +96,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		Assert.assertEquals("1.1", pomLoader.resolveVersionConflict("g3", "a3", artifactVersions).toString());
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testLocalRepository() throws Exception {
 		Assert.assertNotNull(repo.toString());
 		Assert.assertTrue(repo.isReleasesEnabled());
@@ -109,7 +109,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		Assert.assertFalse(repo.isSame(repoDir.getParentFile().toURI().toURL().toString(), true, true));
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testJUnitVersion() throws Exception {
 		List<String> versions = repo.getAvailableVersions("junit", "junit", Task.PRIORITY_NORMAL).blockResult(0);
 		Assert.assertNotNull(versions);
@@ -117,7 +117,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 			throw new AssertionError("Available versions of junit does not contain " + junit.runner.Version.id() + ": " + versions.toString());
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testUnknownArtifactVersion() throws Exception {
 		List<String> versions = repo.getAvailableVersions("junit", "doesnotexist", Task.PRIORITY_NORMAL).blockResult(0);
 		Assert.assertTrue(versions == null || versions.isEmpty());
@@ -125,7 +125,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		Assert.assertTrue(versions == null || versions.isEmpty());
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testLoadJUnit() throws Exception {
 		MavenPOM pom = repo.load("junit", "junit", junit.runner.Version.id(), pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
 		Assert.assertEquals("junit", pom.getGroupId());
@@ -139,7 +139,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		zip.close();
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void testLoadUnknownArtifact() throws Exception {
 		try {
 			MavenPOM pom = repo.load("junit", "doesnotexist", junit.runner.Version.id(), pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
@@ -153,7 +153,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		Assert.assertTrue(load.hasError() && load.getError().getCause() instanceof FileNotFoundException);
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testDependencyWithSystemPath() throws Exception {
 		AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new URI("classpath:test-maven/test-system-path.pom.xml"), Task.PRIORITY_NORMAL, pomLoader, false);
 		MavenPOM pom = load.blockResult(30000);
@@ -171,7 +171,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testMyPOM() throws Exception {
 		AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
 		MavenPOM pom = load.blockResult(30000);
@@ -186,7 +186,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		Assert.assertEquals(lib.getArtifactId(), "maven");
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testPOMWithOutputDirectory() throws Exception {
 		File outFile = new File("./test-output-dir.pom.xml");
 		outFile.createNewFile();
@@ -210,7 +210,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testPOMWithRepositories() throws Exception {
 		File outFile = new File("./test-repositories.pom.xml");
 		outFile.createNewFile();
@@ -233,7 +233,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testLoadFile() throws Exception {
 		Assert.assertNotNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, null));
 		Assert.assertNotNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));

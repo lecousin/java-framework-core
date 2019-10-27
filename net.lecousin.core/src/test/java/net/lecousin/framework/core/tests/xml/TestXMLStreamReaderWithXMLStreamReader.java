@@ -2,14 +2,14 @@ package net.lecousin.framework.core.tests.xml;
 
 import java.util.Collection;
 
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.xml.XMLStreamReader;
 
 import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-@RunWith(Parameterized.class)
+@RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestXMLStreamReaderWithXMLStreamReader extends TestXMLStreamEventsWithXMLStreamReader<XMLStreamReader> {
 
 	@Parameters(name = "file = {0}")

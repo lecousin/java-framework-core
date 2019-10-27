@@ -35,7 +35,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		return createReadableFromFile(openFile(), getFileSize());
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testReadableBySmallBufferSync() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[testBuf.length / 2 + testBuf.length / 3];
@@ -63,7 +63,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testReadableBufferByBufferSync() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[testBuf.length];
@@ -88,7 +88,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testReadableBufferByBufferFullySync() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[testBuf.length];
@@ -113,7 +113,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 	}
 
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testReadableBufferByBufferFullySyncBigBuffer() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[testBuf.length * 1000];
@@ -143,7 +143,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void testReadableBufferByBufferFullyAsync() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[testBuf.length];
@@ -224,7 +224,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void testReadableBufferByBufferFullyAsyncBigBuffer() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[testBuf.length * 1000];
@@ -279,7 +279,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testReadableBufferByBufferAsync() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
 		byte[] b = new byte[8192];
@@ -338,7 +338,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testReadableSkipSync() throws Exception {
 		long size = getFileSize();
 		IO.Readable io = createReadableFromFile(openFile(), size);
@@ -368,7 +368,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void testReadableSkipAsync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		long size = getFileSize();
@@ -463,7 +463,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testSkipSyncNegativeValue() throws Exception {
 		Assume.assumeTrue(nbBuf > 2);
 		long size = getFileSize();
@@ -494,7 +494,7 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 
 	/* Should find a better way to test it
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testCanStartReading() throws Exception {
 		// first, make the task manager busy
 		TaskManager tm = Threading.getDrivesTaskManager().getTaskManager(testFile);

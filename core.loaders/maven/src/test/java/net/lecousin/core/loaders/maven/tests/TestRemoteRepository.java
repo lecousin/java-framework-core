@@ -22,7 +22,7 @@ import org.junit.Test;
 
 public class TestRemoteRepository extends LCCoreAbstractTest {
 
-	@Test(timeout=120000)
+	@Test
 	public void testRemoteRepository() throws Exception {
 		MavenRemoteRepository repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2/", true, false);
 
@@ -149,7 +149,7 @@ public class TestRemoteRepository extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testLoadDifferentVersions() throws Exception {
 		MavenRemoteRepository repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2/", true, false);
 		MavenPOMLoader pomLoader = new MavenPOMLoader();
@@ -170,7 +170,7 @@ public class TestRemoteRepository extends LCCoreAbstractTest {
 		Assert.assertEquals("0.3", pom.getVersionString());
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testLoadFile() throws Exception {
 		MavenRemoteRepository repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2/", true, false);
 		

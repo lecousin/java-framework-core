@@ -11,7 +11,7 @@ import org.junit.Test;
 
 public class TestMultiTaskProgress extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		MultiTaskProgress p = new MultiTaskProgress("Test");
 		WorkProgress t1 = p.createTaskProgress(1000, "Task1");

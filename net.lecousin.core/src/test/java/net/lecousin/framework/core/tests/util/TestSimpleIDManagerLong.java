@@ -8,7 +8,7 @@ import net.lecousin.framework.util.SimpleIDManagerLong;
 
 public class TestSimpleIDManagerLong extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		SimpleIDManagerLong idm = new SimpleIDManagerLong();
 		Assert.assertEquals(1, idm.allocate());

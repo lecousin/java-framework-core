@@ -12,7 +12,7 @@ import net.lecousin.framework.util.ProcessUtil;
 
 public class TestProcessUtil extends LCCoreAbstractTest {
 
-	@Test(timeout=60000)
+	@Test
 	public void test() throws IOException {
 		ProcessBuilder pb = new ProcessBuilder(System.getProperty("java.home") + "/bin/java", "-version");
 		Process p = pb.start();

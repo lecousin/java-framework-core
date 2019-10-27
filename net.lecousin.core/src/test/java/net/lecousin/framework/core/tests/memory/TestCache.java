@@ -13,7 +13,7 @@ import org.junit.Test;
 
 public class TestCache extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		Cache<String, Integer> cache = new Cache<>("Test cache", (integer) -> {
 			

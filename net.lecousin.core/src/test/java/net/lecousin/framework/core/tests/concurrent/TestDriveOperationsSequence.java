@@ -20,7 +20,7 @@ import org.junit.Test;
 
 public class TestDriveOperationsSequence extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		File file = File.createTempFile("test", "sequence");
 		file.deleteOnExit();

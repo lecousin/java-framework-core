@@ -15,7 +15,7 @@ import org.junit.Test;
 
 public class TestIOProviderFromPathUsingClassloader extends LCCoreAbstractTest {
 
-	@Test(timeout=60000)
+	@Test
 	public void test() throws Exception {
 		IOProviderFromPathUsingClassloader provider = new IOProviderFromPathUsingClassloader(getClass().getClassLoader());
 		IOProvider.Readable iop = provider.get("META-INF/net.lecousin/plugins");

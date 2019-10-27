@@ -8,7 +8,7 @@ import org.junit.Test;
 
 public class TestFakeWorkProgress extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		FakeWorkProgress p = new FakeWorkProgress();
 		p.getPosition();

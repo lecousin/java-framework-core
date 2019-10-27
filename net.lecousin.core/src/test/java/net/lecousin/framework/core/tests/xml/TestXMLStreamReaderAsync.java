@@ -1,23 +1,23 @@
 package net.lecousin.framework.core.tests.xml;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
 import java.io.EOFException;
 import java.util.ArrayList;
 import java.util.Collection;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SingleBufferReadable;
 import net.lecousin.framework.xml.XMLStreamEvents.Event;
 import net.lecousin.framework.xml.XMLStreamReaderAsync;
 
-@RunWith(Parameterized.class)
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized.Parameters;
+
+@RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 
 	@Parameters(name = "efficient = {0}")

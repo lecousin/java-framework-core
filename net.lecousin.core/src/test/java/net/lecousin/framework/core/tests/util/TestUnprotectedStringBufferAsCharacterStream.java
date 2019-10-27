@@ -4,18 +4,18 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 
-import org.junit.Assume;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
 import net.lecousin.framework.core.test.io.TestCharacterStreamReadable;
 import net.lecousin.framework.core.test.io.TestIO;
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
-@RunWith(Parameterized.class)
+import org.junit.Assume;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized.Parameters;
+
+@RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestUnprotectedStringBufferAsCharacterStream extends TestCharacterStreamReadable {
 
 	@Parameters(name = "nbBuf = {2}")

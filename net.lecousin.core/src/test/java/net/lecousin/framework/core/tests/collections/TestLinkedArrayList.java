@@ -18,7 +18,7 @@ public class TestLinkedArrayList extends TestList {
 		return new LinkedArrayList<Long>(5);
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testLong() {
 		LinkedArrayList<Long> l = createLongCollection();
 		check(l);
@@ -180,7 +180,7 @@ public class TestLinkedArrayList extends TestList {
 		}
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testAddLongOutOfRange() {
 		LinkedArrayList<Long> l = new LinkedArrayList<>(2);
 		ArrayList<Long> l2 = new ArrayList<>();
@@ -202,7 +202,7 @@ public class TestLinkedArrayList extends TestList {
 		}
 	}
 
-	@Test(timeout=30000)
+	@Test
 	public void testAppendArray() {
 		LinkedArrayList<Long> l = new LinkedArrayList<>(2);
 		for (long val = 1; val <= 20; val++)

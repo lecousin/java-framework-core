@@ -11,14 +11,14 @@ import org.junit.Test;
 
 public class TestClassPath extends LCCoreAbstractTest {
 
-	@Test(timeout=15000)
+	@Test
 	public void testDefaultApplicationClassLoader() throws IOException {
 		DefaultApplicationClassLoader cl = new DefaultApplicationClassLoader(LCCore.getApplication(), new File[] { new File("./pom.xml") });
 		cl.getURLs();
 		cl.close();
 	}
 	
-	@Test(timeout=60000)
+	@Test
 	public void testScanLibraries() {
 		LCCore.getApplication().getLibrariesManager().scanLibraries("net.lecousin", true, pkg -> true, cl -> true, cl -> {});
 		LCCore.getApplication().getLibrariesManager().scanLibraries("org.junit", true, pkg -> true, cl -> true, cl -> {});

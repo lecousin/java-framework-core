@@ -14,6 +14,7 @@ import javax.xml.validation.Validator;
 
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.core.test.serialization.TestSerialization;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Readable;
@@ -35,10 +36,9 @@ import net.lecousin.framework.xml.serialization.XMLSerializer;
 import net.lecousin.framework.xml.serialization.XMLSpecWriter;
 
 import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-@RunWith(Parameterized.class)
+@RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestXMLSerialization extends TestSerialization {
 
 	@Parameters(name = "efficient = {0}")

@@ -12,7 +12,7 @@ public abstract class TestDeque extends TestQueueFIFO {
 	@Override
 	public abstract Deque<Long> createLongCollection();
 	
-	@Test(timeout=120000)
+	@Test
 	public void testDeque() {
 		Deque<Long> c = createLongCollection();
 		testDequeEmpty(c);

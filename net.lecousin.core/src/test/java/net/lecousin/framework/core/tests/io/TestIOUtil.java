@@ -32,7 +32,7 @@ import org.junit.Test;
 
 public class TestIOUtil extends LCCoreAbstractTest {
 
-	@Test(timeout=120000)
+	@Test
 	public void test1() throws Exception {
 		byte[] data = new byte[150];
 		for (int i = 0; i < 150; ++i) data[i] = (byte)(i + 21 % 140);
@@ -95,7 +95,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		io.close();
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void test2() throws Exception {
 		String expected = "This is a string to test";
 		byte[] data = expected.getBytes(StandardCharsets.UTF_16);
@@ -113,7 +113,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testCopy() throws Exception {
 		String string = "This is a string to test";
 		byte[] data = string.getBytes(StandardCharsets.UTF_16);
@@ -160,7 +160,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		tmp2.delete();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testToTempFile() throws Exception {
 		byte[] b = new byte[65000];
 		for (int i = 0; i < b.length; ++i)
@@ -172,7 +172,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		f.delete();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testReadFullyUnknownSize() throws Exception {
 		ByteArrayInputStream in = new ByteArrayInputStream(new byte[] {0, 1, 2, 3, 4, 5, 6, 7});
 		AsyncSupplier<byte[], IOException> result = new AsyncSupplier<>();
@@ -187,7 +187,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		Assert.assertNotNull(result.getError());
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testReadFullyAsync() throws Exception {
 		ByteArrayInputStream in = new ByteArrayInputStream(new byte[] {0, 1, 2, 3, 4, 5, 6, 7});
 		IO.Readable io = new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.PRIORITY_NORMAL);
@@ -197,7 +197,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		bbio.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testErrors() throws Exception {
 		TestIOError.IOError1 io = new TestIOError.IOError1();
 		AsyncSupplier<byte[], IOException> resultB;

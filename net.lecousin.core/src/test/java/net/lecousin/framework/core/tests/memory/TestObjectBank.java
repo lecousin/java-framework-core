@@ -9,7 +9,7 @@ import org.junit.Test;
 
 public class TestObjectBank extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		ObjectBank<Integer> bank = new ObjectBank<>(3, "test");
 		Assert.assertNull(bank.get());

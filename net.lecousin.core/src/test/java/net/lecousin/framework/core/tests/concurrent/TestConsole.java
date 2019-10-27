@@ -8,7 +8,7 @@ import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
 public class TestConsole extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		Console c = LCCore.getApplication().getConsole();
 		c.out(new Exception("test"));

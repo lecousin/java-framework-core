@@ -15,7 +15,7 @@ import org.junit.Test;
 
 public class TestTask extends LCCoreAbstractTest {
 
-	@Test(timeout=60000)
+	@Test
 	public void test() throws Exception {
 		Task.Cpu.Parameter<Integer, Long, Exception> cpuParam = new Task.Cpu.Parameter<Integer, Long, Exception>("test", Task.PRIORITY_NORMAL) {
 			@Override

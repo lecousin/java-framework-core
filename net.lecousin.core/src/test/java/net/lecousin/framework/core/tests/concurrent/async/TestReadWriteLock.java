@@ -8,7 +8,7 @@ import org.junit.Test;
 
 public class TestReadWriteLock extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		ReadWriteLockPoint lock = new ReadWriteLockPoint();
 		lock.startRead();

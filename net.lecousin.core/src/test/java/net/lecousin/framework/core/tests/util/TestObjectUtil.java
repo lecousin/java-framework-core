@@ -8,7 +8,7 @@ import org.junit.Test;
 
 public class TestObjectUtil extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		Assert.assertTrue(ObjectUtil.equalsOrNull(null, null));
 		Assert.assertFalse(ObjectUtil.equalsOrNull(new Object(), null));

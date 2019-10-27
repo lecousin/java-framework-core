@@ -37,7 +37,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	}
 
 	@SuppressWarnings({ "resource" })
-	@Test(timeout=120000)
+	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testWriteThenReadFullySync() throws Exception {
 		T io = openReadWrite();
 		ByteBuffer buf = ByteBuffer.wrap(testBuf);
@@ -67,7 +67,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		io.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testRandomWriteAndReadAsync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		int nbBuf = this.nbBuf;
@@ -232,7 +232,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testRandomPartialWriteSync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		T io = openReadWrite();
@@ -280,7 +280,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		io.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testWriteSyncOneShot() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		T io = openReadWrite();
@@ -302,7 +302,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		io.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testWriteAsyncOneShot() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		T io = openReadWrite();
@@ -325,7 +325,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	}
 	
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testDichotomicWriteSeekSyncThenReverseReadSeekSync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		T io = openReadWrite();
@@ -386,7 +386,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		io.writeSync(ByteBuffer.wrap(testBuf, 0, testBuf.length / 2));
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testSeekAsyncWriteOddEvenThenReadReverse() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
 		T io = openReadWrite();

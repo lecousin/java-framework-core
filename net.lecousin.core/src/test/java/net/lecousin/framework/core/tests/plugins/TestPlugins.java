@@ -14,7 +14,7 @@ import org.junit.Test;
 
 public class TestPlugins extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void testPlugins() {
 		AnExtensionPoint ep = ExtensionPoints.getExtensionPoint(AnExtensionPoint.class);
 		Assert.assertFalse(ep == null);

@@ -16,7 +16,7 @@ import net.lecousin.framework.mutable.MutableInteger;
 
 public class TestAsync extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		Async<Exception> sp = new Async<>();
 		Assert.assertEquals(0, sp.getAllListeners().size());
@@ -320,7 +320,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(567, as.getResult().intValue());
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testFuture() {
 		Async<Exception> sp = new Async<>();
 		Assert.assertFalse(sp.isDone());

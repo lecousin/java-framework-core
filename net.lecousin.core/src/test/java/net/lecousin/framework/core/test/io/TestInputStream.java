@@ -17,7 +17,7 @@ public abstract class TestInputStream extends TestIO.UsingGeneratedTestFiles {
 
 	protected abstract InputStream openStream();
 
-	@Test(timeout=120000)
+	@Test
 	public void testBasics() throws Exception {
 		InputStream in = openStream();
 		in.available();
@@ -28,7 +28,7 @@ public abstract class TestInputStream extends TestIO.UsingGeneratedTestFiles {
 		in.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testByFullBuffer() throws Exception {
 		InputStream in = openStream();
 		byte[] buf = new byte[testBuf.length];
@@ -47,7 +47,7 @@ public abstract class TestInputStream extends TestIO.UsingGeneratedTestFiles {
 		in.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testByByte() throws Exception {
 		Assume.assumeTrue(nbBuf < 500);
 		InputStream in = openStream();
@@ -59,7 +59,7 @@ public abstract class TestInputStream extends TestIO.UsingGeneratedTestFiles {
 		in.close();
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void testWithSkip() throws Exception {
 		InputStream in = openStream();
 		byte[] buf = new byte[testBuf.length];

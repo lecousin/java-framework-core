@@ -39,7 +39,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		((IO.OutputToInput)io).getAvailableDataSize();
 	}
 	
-	@Test(timeout=15000)
+	@Test
 	public void testError() throws Exception {
 		IO.OutputToInput o2i = createOutputToInput();
 		IOException err = new IOException();
@@ -71,7 +71,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 	}
 
 	@SuppressWarnings("resource")
-	@Test(timeout=120000)
+	@Test
 	public void testWriteSyncReadHalfSync() throws Exception {
 		IO.OutputToInput o2i = createOutputToInput();
 		int nbWrite = 0;
@@ -112,7 +112,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 			throw new IOException("Read bytes do not match expected ones");
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testWriteAsyncReadHalfAsync() throws Exception {
 		IO.OutputToInput o2i = createOutputToInput();
 		Async<IOException> spWrite = new Async<>();
@@ -202,7 +202,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		o2i.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testSkipSync() throws Exception {
 		IO.OutputToInput o2i = createOutputToInput();
 		writeBg(o2i, nbBuf, testBuf);
@@ -220,7 +220,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 		o2i.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testSkipAsync() throws Exception {
 		IO.OutputToInput o2i = createOutputToInput();
 		writeBg(o2i, nbBuf, testBuf);

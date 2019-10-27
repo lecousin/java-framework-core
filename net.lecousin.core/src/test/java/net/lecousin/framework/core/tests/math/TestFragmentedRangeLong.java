@@ -12,7 +12,7 @@ import net.lecousin.framework.math.RangeLong;
 
 public class TestFragmentedRangeLong extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		FragmentedRangeLong f = new FragmentedRangeLong();
 		Assert.assertEquals(0, f.size());

@@ -28,7 +28,7 @@ public class TestCollectionsUtil extends LCCoreAbstractTest {
 		return list;
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testIteratorToEnumeration() {
 		List<Integer> list = createList();
 		Enumeration<Integer> e = CollectionsUtil.enumeration(list.iterator());
@@ -58,7 +58,7 @@ public class TestCollectionsUtil extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testEnumerationAsIterable() {
 		List<Integer> list = createList();
 		Enumeration<Integer> e = CollectionsUtil.enumeration(list.iterator());
@@ -110,7 +110,7 @@ public class TestCollectionsUtil extends LCCoreAbstractTest {
 		Assert.assertFalse(it.hasNext());
 	}
 
-	@Test(timeout=30000)
+	@Test
 	public void testEnumerationAsSingleTimeIterable() {
 		List<Integer> list = createList();
 		Enumeration<Integer> e = CollectionsUtil.enumeration(list.iterator());
@@ -144,7 +144,7 @@ public class TestCollectionsUtil extends LCCoreAbstractTest {
 		Assert.assertFalse(it.hasNext());
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void tests() {
 		Assert.assertTrue(CollectionsUtil.equals(createList(), createList()));
 		List<Integer> list = createList();
@@ -162,7 +162,7 @@ public class TestCollectionsUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(18, list.size());
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testMap() {
 		List<Integer> input = createList();
 		List<Long> output = CollectionsUtil.map(input, i -> Long.valueOf(i.longValue()));
@@ -175,7 +175,7 @@ public class TestCollectionsUtil extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testFindElement() {
 		List<Integer> list = createList();
 		for (Integer val : list)
@@ -183,7 +183,7 @@ public class TestCollectionsUtil extends LCCoreAbstractTest {
 		Assert.assertNull(CollectionsUtil.findElement(list, i -> false));
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testFilterSingle() {
 		List<Integer> list = createList();
 		for (Integer val : list)

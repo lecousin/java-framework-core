@@ -290,7 +290,7 @@ public class TestArrayUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(-1, ArrayUtil.search(new byte[] { 5, 6 }, new byte[] { 6 }));
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testArrayIterator() {
 		Iterator<Integer> it = new ArrayIterator<>(new Integer[] { Integer.valueOf(10), Integer.valueOf(20) });
 		Assert.assertTrue(it.hasNext());

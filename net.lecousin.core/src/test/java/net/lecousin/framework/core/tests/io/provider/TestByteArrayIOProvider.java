@@ -9,7 +9,7 @@ import org.junit.Test;
 
 public class TestByteArrayIOProvider extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() throws Exception {
 		ByteArrayIOProvider provider = new ByteArrayIOProvider(new byte[100], "test");
 		provider.provideIOReadable(Task.PRIORITY_NORMAL).close();

@@ -8,7 +8,7 @@ import org.junit.Test;
 
 public class TestLCCore extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		try {
 			LCCore.get().add(LCCore.getApplication());

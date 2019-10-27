@@ -4,17 +4,17 @@ import java.io.File;
 import java.nio.charset.Charset;
 import java.util.Collection;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
 import net.lecousin.framework.core.test.io.TestCharacterStreamReadableBuffered;
 import net.lecousin.framework.core.test.io.TestIO;
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.ICharacterStream;
 
-@RunWith(Parameterized.class)
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized.Parameters;
+
+@RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestBufferedReadableCharacterStreamBuffered extends TestCharacterStreamReadableBuffered {
 
 	@Parameters(name = "nbBuf = {2}")

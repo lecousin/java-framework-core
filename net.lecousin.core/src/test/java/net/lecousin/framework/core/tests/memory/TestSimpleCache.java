@@ -12,7 +12,7 @@ import org.junit.Test;
 
 public class TestSimpleCache extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		Map<Integer, Integer> created = new HashMap<>();
 		SimpleCache<String, Integer> cache = new SimpleCache<>("test simple cache", (str) -> {

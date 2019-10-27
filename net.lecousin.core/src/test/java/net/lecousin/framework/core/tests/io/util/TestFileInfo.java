@@ -17,7 +17,7 @@ import org.junit.Test;
 
 public class TestFileInfo extends LCCoreAbstractTest {
 
-	@Test(timeout=120000)
+	@Test
 	public void test() throws Exception {
 		File f = File.createTempFile("test", "fileinfo");
 		f.deleteOnExit();

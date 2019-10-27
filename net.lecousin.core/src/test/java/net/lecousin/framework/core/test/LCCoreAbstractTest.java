@@ -1,8 +1,5 @@
 package net.lecousin.framework.core.test;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-
 import net.lecousin.framework.LCCoreVersion;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.Artifact;
@@ -10,10 +7,16 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.StandaloneLCCore;
 import net.lecousin.framework.application.Version;
 import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.memory.MemoryManager;
 
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.runner.RunWith;
+
+@RunWith(LCConcurrentRunner.class)
 public abstract class LCCoreAbstractTest {
 
 	@BeforeClass

@@ -17,7 +17,7 @@ import org.junit.Test;
 
 public class TestApplicationConfiguration extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void testFromStream() throws Exception {
 		InputStream input = getClass().getClassLoader().getResourceAsStream("app/lc-project.xml");
 		ApplicationConfiguration cfg = ApplicationConfiguration.load(input);
@@ -29,7 +29,7 @@ public class TestApplicationConfiguration extends LCCoreAbstractTest {
 		Assert.assertEquals("Le Monde", cfg.getProperties().get("bonjour"));
 	}
 
-	@Test(timeout=30000)
+	@Test
 	public void testFromFile() throws Exception {
 		File tmp = File.createTempFile("test", "lc-project");
 		tmp.deleteOnExit();
@@ -57,7 +57,7 @@ public class TestApplicationConfiguration extends LCCoreAbstractTest {
 		}
 	}
 	
-	@Test(timeout=30000)
+	@Test
 	public void testErrors() throws Exception {
 		testError("invalid");
 		testError("empty");

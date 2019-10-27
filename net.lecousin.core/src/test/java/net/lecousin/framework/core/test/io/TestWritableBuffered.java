@@ -19,7 +19,7 @@ public abstract class TestWritableBuffered extends TestWritable {
 		return createWritableBuffered();
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void testWriteBufferByBufferInBuffered() throws Exception {
 		IO.Writable.Buffered io = createWritableBuffered();
 		for (int i = 0; i < nbBuf; ++i)
@@ -30,7 +30,7 @@ public abstract class TestWritableBuffered extends TestWritable {
 		check();
 	}
 
-	@Test(timeout=120000)
+	@Test
 	public void testWriteByteByByteInBuffered() throws Exception {
 		IO.Writable.Buffered io = createWritableBuffered();
 		for (int i = 0; i < nbBuf; ++i)

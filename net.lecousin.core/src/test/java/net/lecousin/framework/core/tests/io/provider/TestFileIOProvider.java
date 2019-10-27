@@ -13,7 +13,7 @@ import org.junit.Test;
 public class TestFileIOProvider extends LCCoreAbstractTest {
 
 	@SuppressWarnings("unused")
-	@Test(timeout=60000)
+	@Test
 	public void test() throws Exception {
 		File f = TemporaryFiles.get().createFileSync("test", "fileioprovider");
 		FileIOProvider provider = new FileIOProvider(f);

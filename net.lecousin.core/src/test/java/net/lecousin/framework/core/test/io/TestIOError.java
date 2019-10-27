@@ -180,7 +180,7 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 
 	protected abstract IO.Readable.Seekable getReadableSeekable(IOError1 io) throws Exception;
 	
-	@Test(timeout=120000)
+	@Test
 	public void testsReadable() throws Exception {
 		IO.Readable io = getReadable(new IOError1());
 		Assume.assumeNotNull(io);
@@ -258,7 +258,7 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		io.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testsReadableSeekable() throws Exception {
 		IO.Readable.Seekable io = getReadableSeekable(new IOError1());
 		Assume.assumeNotNull(io);
@@ -312,7 +312,7 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		io.close();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testsReadableBuffered() throws Exception {
 		IO.Readable.Buffered io = getReadableBuffered(new IOError1());
 		Assume.assumeNotNull(io);

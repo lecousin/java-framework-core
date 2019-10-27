@@ -824,9 +824,9 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		}
 		IAsync<IOException> flush = flush(b);
 		flush.onDone(() -> {
-			b.usage.endWrite();
 			if (flush.isSuccessful())
 				memory.flushed(b);
+			b.usage.endWrite();
 			jp.joined();
 		});
 		if (recurs > 250) {

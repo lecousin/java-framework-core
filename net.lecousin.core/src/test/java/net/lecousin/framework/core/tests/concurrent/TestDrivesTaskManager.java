@@ -21,7 +21,7 @@ import net.lecousin.framework.util.Pair;
 
 public class TestDrivesTaskManager extends LCCoreAbstractTest {
 
-	@Test(timeout=60000)
+	@Test
 	public void simpleTests() {
 		Object res1 = Threading.getDrivesTaskManager().getResource(new File("."));
 		Object res2 = Threading.getDrivesTaskManager().getResource(new File(".").getAbsolutePath());
@@ -30,7 +30,7 @@ public class TestDrivesTaskManager extends LCCoreAbstractTest {
 		Threading.getDrivesTaskManager().getResources();
 	}
 	
-	@Test(timeout=120000)
+	@Test
 	public void testDrivesProvider() throws Exception {
 		DrivesTaskManager tm = Threading.getDrivesTaskManager();
 		File tmpDir = TemporaryFiles.get().createDirectorySync("testDrivesTM");

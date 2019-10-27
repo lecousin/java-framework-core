@@ -9,7 +9,7 @@ import org.junit.Test;
 
 public class TestCompositeNamedObject extends LCCoreAbstractTest {
 
-	@Test(timeout=30000)
+	@Test
 	public void test() {
 		CompositeNamedObject c = new CompositeNamedObject();
 		c.add(new FixedLocalizedString("Test"), Integer.valueOf(51));
