@@ -31,7 +31,7 @@ public abstract class TestIO extends LCCoreAbstractTest {
 		protected byte[] testBuf;
 		protected int nbBuf;
 		
-		private static final byte[] testBuf1 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\r\nabcdefghijklmnopqrstuvwxyz\r\n0123456789012345678901234567890123456789\r\n\r\n".getBytes();;
+		private static final byte[] testBuf1 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\r\nabcdefghijklmnopqrstuvwxyz\r\n0123456789012345678901234567890123456789\r\n\r\n".getBytes();
 		private static final int nbBuf1Large = 100000;
 		private static final int nbBuf1Large_faster = 60000;
 		private static final int nbBuf1Medium = 1000;
@@ -86,7 +86,7 @@ public abstract class TestIO extends LCCoreAbstractTest {
 			return list;
 		}
 		
-		private static File generateFile(byte[] testBuf, int nbBuf) throws IOException {
+		protected static File generateFile(byte[] testBuf, int nbBuf) throws IOException {
 			System.out.println("Generating file of "+nbBuf+" * "+testBuf.length+" = "+(nbBuf*testBuf.length));
 			File file = File.createTempFile("test", "lcfw");
 			file.deleteOnExit();

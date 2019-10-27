@@ -36,8 +36,11 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 			else {
 				list = TestIO.UsingGeneratedTestFiles.generateTestCases(true);
 				for (Object[] params : list)
-					if (((Integer)params[2]).intValue() > 20000)
-						params[2] = Integer.valueOf(((Integer)params[2]).intValue() / 3);
+					if (((Integer)params[2]).intValue() > 20000) {
+						params[0] = getFile20000();
+						params[1] = testBuf20000;
+						params[2] = Integer.valueOf(20000);
+					}
 			}
 			for (Object[] params : list) {
 				Object[] newParams = new Object[params.length + 1];
@@ -47,6 +50,19 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 			}
 		}
 		return result;
+	}
+	
+	private static File file20000;
+	private static byte[] testBuf20000 = "0123456789$ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghijklmnopqrstuvwxyz*9876543210\r\n".getBytes();
+	
+	private static File getFile20000() {
+		if (file20000 == null)
+			try {
+				file20000 = generateFile(testBuf20000, 20000);
+			} catch (IOException e) {
+				throw new RuntimeException("Unable to generate file", e);
+			}
+		return file20000;
 	}
 	
 	public static List<Object[]> addBufferingSize(Collection<Object[]> cases) {
