@@ -748,6 +748,10 @@ public abstract class Task<T,TError extends Exception> {
 		}
 	}
 	
+	public long getMaxBlockingTimeInNanoBeforeToLog() {
+		return 100000000;
+	}
+	
 	@Override
 	public final String toString() {
 		return super.toString() + "[" + description + "]";

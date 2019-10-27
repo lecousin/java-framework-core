@@ -126,26 +126,18 @@ class TaskWorker implements Runnable, BlockedThreadHandler {
 		long end = System.nanoTime();
 		workingTime -= end - start;
 		waitingTime += end - start;
-		if (end - start > 100000000 && Threading.logger.debug()) {
+		if (end - start > currentTask.getMaxBlockingTimeInNanoBeforeToLog() && Threading.logger.debug()) {
 			StackTraceElement[] stack = thread.getStackTrace();
 			ArrayList<String> blocking = new ArrayList<>(stack.length - 2);
 			for (int i = 2; i < stack.length; ++i) {
 				StackTraceElement e = stack[i];
 				String c = e.getClassName();
-				/*
-				if ("java.lang.Thread".equals(c)) continue;
-				if (c.equals(getClass().getName())) continue;
-				try {
-					if (IBlockingPoint.class.isAssignableFrom(Class.forName(c))) continue;
-				} catch (Throwable t) { continue; }*/
 				blocking.add(e.getFileName() + ":" + c + "." + e.getMethodName() + ":" + e.getLineNumber());
-				//if (blocking.size() == 5)
-				//	break;
 			}
 			StringBuilder s = new StringBuilder();
 			s.append("Task ").append(currentTask.description).append(" has been blocked for ")
 				.append(((end - start) / 1000000)).append("ms. consider to split it into several tasks: ");
-			for (String b : blocking) s.append("\r\n - ").append(b);
+			for (String b : blocking) s.append("\n - ").append(b);
 			Threading.logger.debug(s.toString());
 		}
 	}
