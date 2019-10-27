@@ -162,7 +162,9 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				// start a new event
 				if (c == -1) {
 					// end of stream
-					sp.error(new EOFException());
+					sp.error(new EOFException("End of file reached at line "
+						+ stream.getLine() + ":" + stream.getPositionInLine()
+						+ ", context = " + event.context));
 					return;
 				}
 				if (c == '<') {

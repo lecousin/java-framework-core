@@ -309,7 +309,7 @@ public class MemoryIO extends ConcurrentCloseable<IOException>
 	
 	private void increaseBuffers(int min) {
 		// need to resize
-		byte[][] b = new byte[min > buffers.length * 2 ? min + 10 : buffers.length * 2][];
+		byte[][] b = new byte[min >= buffers.length * 2 - 10 ? min + 10 : buffers.length * 2][];
 		System.arraycopy(buffers, 0, b, 0, buffers.length);
 		buffers = b;
 	}

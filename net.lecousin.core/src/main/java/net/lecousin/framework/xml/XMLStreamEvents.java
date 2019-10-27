@@ -115,6 +115,11 @@ public abstract class XMLStreamEvents {
 		public UnprotectedStringBuffer localName;
 		/** List of pair prefix/uri. */
 		public List<Pair<UnprotectedStringBuffer, UnprotectedStringBuffer>> namespaces = new LinkedList<>();
+		
+		@Override
+		public String toString() {
+			return "XML Element Context: " + (localName != null ? localName.asString() : "null");
+		}
 	}
 	
 	/** An attribute on an element node. */
