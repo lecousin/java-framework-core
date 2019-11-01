@@ -98,14 +98,15 @@ public class XMLDocument extends XMLNode implements Document {
 			switch (stream.event.type) {
 			case DOCTYPE:
 				if (doc.docType != null)
-					throw new XMLException(stream.getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_ELEMENT, "DOCTYPE");
+					throw new XMLException(stream.getCharacterStream(), stream.event.context,
+						XMLException.LOCALIZED_MESSAGE_UNEXPECTED_ELEMENT, "DOCTYPE");
 				doc.docType = new XMLDocumentType(doc, stream.event.text.asString(),
 					stream.event.publicId != null ? stream.event.publicId.asString() : null,
 					stream.event.system != null ? stream.event.system.asString() : null);
 				break;
 			case START_ELEMENT:
 				if (doc.root != null)
-					throw new XMLException(stream.getPosition(),
+					throw new XMLException(stream.getCharacterStream(), stream.event.context,
 						XMLException.LOCALIZED_MESSAGE_UNEXPECTED_ELEMENT, stream.event.text.asString());
 				doc.root = XMLElement.create(doc, stream);
 				break;

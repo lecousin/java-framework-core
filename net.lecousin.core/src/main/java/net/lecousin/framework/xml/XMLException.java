@@ -1,10 +1,10 @@
 package net.lecousin.framework.xml;
 
 import net.lecousin.framework.exception.LocalizableException;
+import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.locale.ILocalizableString;
 import net.lecousin.framework.locale.LocalizableString;
 import net.lecousin.framework.locale.LocalizableStringBuffer;
-import net.lecousin.framework.util.Pair;
 
 /** XML parsing error. */
 public class XMLException extends LocalizableException {
@@ -20,26 +20,37 @@ public class XMLException extends LocalizableException {
 	private static final long serialVersionUID = -963187033082725980L;
 
 	/** Constructor. */
-	public XMLException(Pair<Integer,Integer> pos, String message, Object... values) {
-		super(get(pos, new LocalizableString(LOCALIZED_NAMESPACE_XML_ERROR, message, values)));
+	public XMLException(ICharacterStream.Readable stream, Object context, String message, Object... values) {
+		super(get(stream, context, new LocalizableString(LOCALIZED_NAMESPACE_XML_ERROR, message, values)));
 	}
 	
 	/** Constructor. */
-	public XMLException(Pair<Integer,Integer> pos, ILocalizableString message) {
-		super(get(pos, message));
+	public XMLException(ICharacterStream.Readable stream, Object context, ILocalizableString message) {
+		super(get(stream, context, message));
 	}
 
 	/** Constructor. */
-	public XMLException(Pair<Integer,Integer> pos, ILocalizableString... messages) {
-		super(get(pos, get(messages)));
+	public XMLException(ICharacterStream.Readable stream, Object context, ILocalizableString... messages) {
+		super(get(stream, context, get(messages)));
 	}
 	
-	private static ILocalizableString get(Pair<Integer,Integer> pos, ILocalizableString message) {
-		if (pos == null) return message;
-		return new LocalizableStringBuffer(
-			message, " ", new LocalizableString(LOCALIZED_NAMESPACE_XML_ERROR, "at"), " ",
-			new LocalizableString(LOCALIZED_NAMESPACE_XML_ERROR, "line"), " " + pos.getValue1() + " ",
-			new LocalizableString(LOCALIZED_NAMESPACE_XML_ERROR, "character"), " " + pos.getValue2());
+	private static ILocalizableString get(ICharacterStream.Readable stream, Object context, ILocalizableString message) {
+		LocalizableStringBuffer result = new LocalizableStringBuffer(message);
+		if (stream instanceof ICharacterStream.Readable.PositionInText) {
+			result.add(" ");
+			result.add(new LocalizableString(LOCALIZED_NAMESPACE_XML_ERROR, "at"));
+			result.add(" ");
+			result.add(new LocalizableString(LOCALIZED_NAMESPACE_XML_ERROR, "line"));
+			result.add(" " + ((ICharacterStream.Readable.PositionInText)stream).getLine() + " ");
+			result.add(new LocalizableString(LOCALIZED_NAMESPACE_XML_ERROR, "character"));
+			result.add(" " + ((ICharacterStream.Readable.PositionInText)stream).getPositionInLine());
+		}
+		if (context != null) {
+			result.add(" (");
+			result.add(context.toString());
+			result.add(")");
+		}
+		return result;
 	}
 	
 	private static ILocalizableString get(ILocalizableString... messages) {

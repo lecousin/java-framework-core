@@ -34,7 +34,6 @@ public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 	
 	protected boolean efficient;
 	
-	@SuppressWarnings("resource")
 	@Override
 	protected XMLStreamReaderAsync parse(String resource) {
 		if (efficient)
@@ -86,7 +85,6 @@ public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 
 		xml = parse("xml-test-suite/mine/longText.xml");
 		xml.start().blockThrow(0);
-		xml.getPosition();
 		xml.setMaximumTextSize(555);
 		xml.setMaximumCDataSize(666);
 		xml.searchElement("testText").blockThrow(0);

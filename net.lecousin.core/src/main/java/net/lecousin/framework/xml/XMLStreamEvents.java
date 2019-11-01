@@ -13,6 +13,7 @@ import java.util.List;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStreamLocation;
 import net.lecousin.framework.io.text.Decoder;
+import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.io.text.ProgressiveBufferedReadableCharStream;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
@@ -29,6 +30,11 @@ public abstract class XMLStreamEvents {
 	
 	protected int maxTextSize = -1;
 	protected int maxCDataSize = -1;
+	protected ICharacterStream.Readable.Buffered stream;
+	
+	public final ICharacterStream.Readable.Buffered getCharacterStream() {
+		return stream;
+	}
 
 	/** Parsing event. */
 	@SuppressWarnings("squid:S1319") // we want to use LinkedList, not just List
@@ -331,16 +337,18 @@ public abstract class XMLStreamEvents {
 
 	/** Helper class to start parsing the XML file and detect the encoding, either with a BOM or with the XML declaration tag. */
 	protected static class Starter {
-		public Starter(IO.Readable.Buffered io, Charset givenEncoding, int bufferSize, int maxBuffers) {
+		public Starter(IO.Readable.Buffered io, Charset givenEncoding, int bufferSize, int maxBuffers, boolean addPositionInErrors) {
 			this.io = io;
 			this.givenEncoding = givenEncoding;
 			this.bufferSize = bufferSize;
 			this.maxBuffers = maxBuffers;
+			this.addPositionInErrors = addPositionInErrors;
 		}
 		
 		protected IO.Readable.Buffered io;
 		protected int bufferSize;
 		protected int maxBuffers;
+		protected boolean addPositionInErrors;
 		protected Charset givenEncoding;
 		protected Charset bomEncoding;
 		protected Decoder tmpDecoder;
@@ -354,7 +362,7 @@ public abstract class XMLStreamEvents {
 		private int firstBytesPos;
 		private int firstBytesLength;
 		
-		public BufferedReadableCharacterStreamLocation start() throws IOException, XMLException {
+		public ICharacterStream.Readable.Buffered start() throws IOException, XMLException {
 			loadFirstBytes();
 			readBOM();
 			int posAfterBOM = firstBytesPos;
@@ -371,18 +379,28 @@ public abstract class XMLStreamEvents {
 			chars = new char[Math.min(firstBytesLength - firstBytesPos, bufferSize * maxBuffers)];
 			// TODO line and posInLine...
 			boolean hasDecl = readXMLDeclaration();
-			if (!hasDecl)
-				return initWithoutXMLDeclaration(posAfterBOM);
+			if (!hasDecl) {
+				ICharacterStream.Readable.Buffered stream = initWithoutXMLDeclaration(posAfterBOM);
+				if (addPositionInErrors)
+					stream = new BufferedReadableCharacterStreamLocation(stream, line, posInLine);
+				return stream;
+			}
 			if (xmlEncoding != null) {
 				Charset encoding = Charset.forName(xmlEncoding.asString());
-				if (!encoding.equals(tmpDecoder.getEncoding()))
-					return initWithSpecifiedEncoding(posAfterBOM, encoding);
+				if (!encoding.equals(tmpDecoder.getEncoding())) {
+					ICharacterStream.Readable.Buffered stream = initWithSpecifiedEncoding(posAfterBOM, encoding);
+					if (addPositionInErrors)
+						stream = new BufferedReadableCharacterStreamLocation(stream, line, posInLine);
+					return stream;
+				}
 			}
 			tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, firstBytesPos, firstBytesLength - firstBytesPos));
 			tmpDecoder.setInput(io);
-			return new BufferedReadableCharacterStreamLocation(
-				new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers,
-						CharBuffer.wrap(chars, charsPos, charsLength - charsPos)), line, posInLine);
+			ICharacterStream.Readable.Buffered stream = new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers,
+				CharBuffer.wrap(chars, charsPos, charsLength - charsPos));
+			if (addPositionInErrors)
+				stream = new BufferedReadableCharacterStreamLocation(stream, line, posInLine);
+			return stream;
 		}
 		
 		private void loadFirstBytes() throws IOException {
@@ -474,7 +492,7 @@ public abstract class XMLStreamEvents {
 			}
 		}
 		
-		private BufferedReadableCharacterStreamLocation initWithoutXMLDeclaration(int posAfterBOM) throws IOException {
+		private ICharacterStream.Readable.Buffered initWithoutXMLDeclaration(int posAfterBOM) throws IOException {
 			// simple
 			try { tmpDecoder = Decoder.get(tmpDecoder.getEncoding()); }
 			catch (Exception e) {
@@ -482,19 +500,17 @@ public abstract class XMLStreamEvents {
 			}
 			tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, posAfterBOM, firstBytesLength - posAfterBOM));
 			tmpDecoder.setInput(io);
-			return new BufferedReadableCharacterStreamLocation(
-				new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers), line, posInLine);
+			return new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers);
 		}
 		
-		private BufferedReadableCharacterStreamLocation initWithSpecifiedEncoding(int posAfterBOM, Charset encoding) throws IOException {
+		private ICharacterStream.Readable.Buffered initWithSpecifiedEncoding(int posAfterBOM, Charset encoding) throws IOException {
 			try { tmpDecoder = Decoder.get(encoding); }
 			catch (Exception e) {
 				throw new IOException("Error initializing character decoder", e);
 			}
 			tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, posAfterBOM, firstBytesLength - posAfterBOM));
 			tmpDecoder.setInput(io);
-			BufferedReadableCharacterStreamLocation stream = new BufferedReadableCharacterStreamLocation(
-				new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers), line, posInLine);
+			ICharacterStream.Readable.Buffered stream = new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers);
 			// we reset the decoder, so we need to skip the <?xml ... ?>
 			char c;
 			boolean end = false;

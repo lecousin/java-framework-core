@@ -13,9 +13,7 @@ import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.encoding.DecimalNumber;
 import net.lecousin.framework.io.encoding.HexadecimalNumber;
 import net.lecousin.framework.io.encoding.INumberEncoding;
-import net.lecousin.framework.io.text.BufferedReadableCharacterStreamLocation;
 import net.lecousin.framework.locale.LocalizableString;
-import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
@@ -52,7 +50,6 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	private int charactersBuffersSize;
 	private int maxBuffers;
 	private IO.Readable.Buffered io;
-	private BufferedReadableCharacterStreamLocation stream;
 	
 	/* Public methods */
 
@@ -61,7 +58,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		Async<Exception> sp = new Async<>();
 		io.canStartReading().thenStart(new Task.Cpu.FromRunnable(() -> {
 			try {
-				Starter start = new Starter(io, defaultEncoding, charactersBuffersSize, maxBuffers);
+				Starter start = new Starter(io, defaultEncoding, charactersBuffersSize, maxBuffers, false);
 				stream = start.start();
 				next().onDone(sp);
 			} catch (Exception e) {
@@ -85,10 +82,6 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	@Override
 	public byte getPriority() {
 		return io.getPriority();
-	}
-	
-	public Pair<Integer, Integer> getPosition() {
-		return new Pair<>(Integer.valueOf(stream.getLine()), Integer.valueOf(stream.getPositionInLine()));
 	}
 	
 	/** Shortcut to move forward to the first START_ELEMENT event, skipping the header or comments. */
@@ -162,9 +155,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				// start a new event
 				if (c == -1) {
 					// end of stream
-					sp.error(new EOFException("End of file reached at line "
-						+ stream.getLine() + ":" + stream.getPositionInLine()
-						+ ", context = " + event.context));
+					sp.error(new EOFException("End of file reached, context = " + event.context));
 					return;
 				}
 				if (c == '<') {
@@ -298,7 +289,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readTag(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -329,13 +320,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			event.text.append((char)c);
 			return true;
 		}
-		sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
+		sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
 		return false;
 	}
 	
 	private boolean readTagExclamation(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -357,7 +348,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				event.text.append((char)c);
 				return true;
 			}
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML));
+			sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_INVALID_XML));
 			return false;
 		}
 		char c1 = event.text.charAt(0);
@@ -370,7 +361,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				event.text = new UnprotectedStringBuffer();
 				return true;
 			}
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML));
+			sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_INVALID_XML));
 			return false;
 		}
 		// CDATA
@@ -379,11 +370,11 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			if (event.text.length() < 7) {
 				if (event.text.isStartOf("[CDATA["))
 					return true;
-				sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML));
+				sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_INVALID_XML));
 				return false;
 			}
 			if (!event.text.equals("[CDATA[")) {
-				sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML));
+				sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_INVALID_XML));
 				return false;
 			}
 			state = State.CDATA;
@@ -396,11 +387,11 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			event.text.append((char)c);
 			if (event.text.isStartOf("DOCTYPE"))
 				return true;
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML));
+			sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_INVALID_XML));
 			return false;
 		}
 		if (!isSpaceChar((char)c)) {
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_INVALID_XML));
+			sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_INVALID_XML));
 			return false;
 		}
 		state = State.DOCTYPE;
@@ -411,14 +402,15 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readDocType(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
 		}
 		if (isSpaceChar((char)c)) return true;
 		if (!XMLStreamReader.isNameStartChar((char)c)) {
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
+			sp.error(new XMLException(stream, event.context,
+				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
 			return false;
 		}
 		event.text.append((char)c);
@@ -428,7 +420,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readDocTypeName(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -449,13 +441,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			sp.unblock();
 			return false;
 		}
-		sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
+		sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
 		return false;
 	}
 	
 	private boolean readDocTypeSpace(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -480,20 +472,20 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			statePos = 1;
 			return true;
 		}
-		sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
+		sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
 		return false;
 	}
 	
 	private boolean readDocTypePublicName(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
 		}
 		if (statePos < 6) {
 			if (c != "PUBLIC".charAt(statePos)) {
-				sp.error(new XMLException(getPosition(),
+				sp.error(new XMLException(stream, event.context,
 					XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
 				return false;
 			}
@@ -503,12 +495,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		if (event.publicId == null)
 			event.publicId = new UnprotectedStringBuffer();
 		if (event.publicId.length() > 0) {
-			sp.error(new XMLException(getPosition(),
+			sp.error(new XMLException(stream, event.context,
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_INVALID_XML)));
 			return false;
 		}			
 		if (!isSpaceChar((char)c)) {
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
+			sp.error(new XMLException(stream, event.context,
+				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_PUBLIC_SPACE;
@@ -517,7 +510,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readDocTypePublicSpace(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -525,7 +518,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		if (isSpaceChar((char)c))
 			return true;
 		if (c != '"' && c != '\'') {
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
+			sp.error(new XMLException(stream, event.context,
+				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_PUBLIC_ID;
@@ -535,7 +529,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readDocTypePublicId(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -555,20 +549,20 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			event.publicId.append((char)c);
 			return true;
 		}
-		sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
+		sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
 		return false;
 	}
 	
 	private boolean readDocTypeSystemName(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
 		}
 		if (statePos < 6) {
 			if (c != "SYSTEM".charAt(statePos)) {
-				sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER,
+				sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER,
 					Character.valueOf((char)c)));
 				return false;
 			}
@@ -578,12 +572,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		if (event.system == null)
 			event.system = new UnprotectedStringBuffer();
 		if (event.system.length() > 0) {
-			sp.error(new XMLException(getPosition(),
+			sp.error(new XMLException(stream, event.context,
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_INVALID_XML)));
 			return false;
 		}			
 		if (!isSpaceChar((char)c)) {
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
+			sp.error(new XMLException(stream, event.context,
+				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_SYSTEM_SPACE;
@@ -592,7 +587,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 
 	private boolean readDocTypeSystemSpace(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -600,7 +595,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		if (isSpaceChar((char)c))
 			return true;
 		if (c != '"' && c != '\'') {
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
+			sp.error(new XMLException(stream, event.context,
+				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
 			return false;
 		}
 		state = State.DOCTYPE_SYSTEM_VALUE;
@@ -610,7 +606,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readDocTypeSystemValue(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -627,7 +623,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readComment(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(),
+			sp.error(new XMLException(stream, event.context,
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "inside comment")));
 			return false;
@@ -664,7 +660,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readCData(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(),
+			sp.error(new XMLException(stream, event.context,
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "inside CDATA")));
 			return false;
@@ -701,7 +697,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readStartElementName(int i, Async<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -725,20 +721,21 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			state = State.START_ELEMENT_CLOSED;
 			return true;
 		}
-		sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+		sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 		return false;
 	}
 	
 	@SuppressWarnings("squid:S3516") // always return false
 	private boolean readStartElementClosed(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
 		}
 		if (c != '>') {
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
+			sp.error(new XMLException(stream, event.context,
+				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf((char)c)));
 			return false;
 		}
 		event.isClosed = true;
@@ -749,7 +746,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readStartElementSpace(int i, Async<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -775,7 +772,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				state = State.START_ELEMENT_CLOSED;
 				return true;
 			}
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+			sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 			return false;
 		}
 		if (c == '?') {
@@ -788,7 +785,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readAttributeName(int i, Async<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -814,7 +811,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readAttributeNameSpace(int i, Async<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -834,7 +831,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readAttributeValueSpace(int i, Async<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -856,13 +853,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			a.value = new UnprotectedStringBuffer();
 			return true;
 		}
-		sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+		sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 		return false;
 	}
 	
 	private boolean readAttributeValue(int i, Async<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -880,7 +877,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		}
 		if (c == '<') {
-			sp.error(new XMLException(getPosition(),
+			sp.error(new XMLException(stream, event.context,
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 					XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in attribute value")));
@@ -899,7 +896,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readProcessingInstruction(int i, Async<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -907,7 +904,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		char c = (char)i;
 		if (event.text.length() == 0) {
 			if (!XMLStreamReader.isNameStartChar(c)) {
-				sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+				sp.error(new XMLException(stream, event.context,
+					XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 				return false;
 			}
 			event.text.append(c);
@@ -924,7 +922,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readProcessingInstructionClosed(int c, Async<Exception> sp) {
 		if (c == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -967,7 +965,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readEndElementName(int i, Async<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(getPosition(), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
+			sp.error(new XMLException(stream, event.context, new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 				XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in XML document")));
 			return false;
@@ -975,7 +973,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		char c = (char)i;
 		if (event.text.length() == 0) {
 			if (!XMLStreamReader.isNameStartChar(c)) {
-				sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+				sp.error(new XMLException(stream, event.context,
+					XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 				return false;
 			}
 			event.text.append(c);
@@ -985,12 +984,12 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		if (c == '>') {
 			ElementContext ctx = event.context.peekFirst();
 			if (ctx == null) {
-				sp.error(new XMLException(getPosition(),
+				sp.error(new XMLException(stream, event.context,
 					"Unexpected end element", event.text.asString()));
 				return false;
 			}
 			if (!ctx.text.equals(event.text)) {
-				sp.error(new XMLException(getPosition(),
+				sp.error(new XMLException(stream, event.context,
 					"Unexpected end element expected is", event.text.asString(), ctx.text.asString()));
 				return false;
 			}
@@ -1011,7 +1010,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		}
 		if (statePos != 0 || !XMLStreamReader.isNameChar(c)) {
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+			sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 			return false;
 		}
 		if (maxTextSize <= 0 || event.text.length() < maxTextSize)
@@ -1066,7 +1065,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readInternalSubset(int i, Async<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(getPosition(),
+			sp.error(new XMLException(stream, event.context,
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in internal subset declaration")));
 			return false;
@@ -1084,7 +1083,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		}
 		if (c != '<') {
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+			sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 			return false;
 		}
 		state = State.DOCTYPE_INTERNAL_SUBSET_TAG;
@@ -1094,7 +1093,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	
 	private boolean readInternalSubsetPEReference(int i, Async<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(getPosition(),
+			sp.error(new XMLException(stream, event.context,
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in internal subset declaration")));
 			return false;
@@ -1102,7 +1101,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		char c = (char)i;
 		if (statePos == 0) {
 			if (!XMLStreamReader.isNameStartChar(c)) {
-				sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+				sp.error(new XMLException(stream, event.context,
+					XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 				return false;
 			}
 			statePos = 1;
@@ -1119,7 +1119,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				state = State.DOCTYPE_INTERNAL_SUBSET;
 				return true;
 			}
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+			sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 			return false;
 		}
 		if (isSpaceChar(c))
@@ -1128,13 +1128,13 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			state = State.DOCTYPE_INTERNAL_SUBSET;
 			return true;
 		}
-		sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+		sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 		return false;
 	}
 	
 	private boolean readInternalSubsetTag(int i, Async<Exception> sp) {
 		if (i == -1) {
-			sp.error(new XMLException(getPosition(),
+			sp.error(new XMLException(stream, event.context,
 					new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,
 						XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 					new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in internal subset declaration")));
@@ -1150,7 +1150,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				statePos = 10;
 				return true;
 			}
-			sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+			sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 			return false;
 		}
 		if (statePos == 1) {
@@ -1210,7 +1210,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				statePos = 10;
 			return true;
 		}
-		sp.error(new XMLException(getPosition(), XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
+		sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
 		return false;
 	}
 

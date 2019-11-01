@@ -6,7 +6,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.xml.XMLStreamEvents.Event;
 
 /**
@@ -48,11 +47,6 @@ public interface XMLStreamEventsRecorder {
 		protected boolean recording = false;
 		protected LinkedList<Event> record = null;
 		protected Iterator<Event> replaying = null;
-		
-		@Override
-		public Pair<Integer, Integer> getPosition() {
-			return stream.getPosition(); // TODO during replay ?
-		}
 		
 		@Override
 		public Event getFirstRecordedEvent() {

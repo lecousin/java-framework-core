@@ -47,12 +47,11 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 		Assert.assertEquals("mySystem", xml.event.system.asString());
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testStart() throws Exception {
 		IO.Readable io = LCCore.getApplication().getResource("xml-test-suite/mine/001.xml", Task.PRIORITY_NORMAL);
 		SimpleBufferedReadable bio = new SimpleBufferedReadable(io, 1024);
-		XMLStreamReader.start(bio, 1024, 4).blockResult(0);
+		XMLStreamReader.start(bio, 1024, 4, true).blockResult(0);
 		bio.close();
 		
 		XMLStreamReader xml;

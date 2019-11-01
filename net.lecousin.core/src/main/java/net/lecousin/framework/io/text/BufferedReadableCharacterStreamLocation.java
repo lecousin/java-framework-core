@@ -13,7 +13,8 @@ import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /** Buffered readable character stream that calculate the line number and position on the current line while reading. */
-public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable<IOException> implements ICharacterStream.Readable.Buffered {
+public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable<IOException>
+implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.PositionInText {
 
 	/** Constructor. */
 	public BufferedReadableCharacterStreamLocation(ICharacterStream.Readable.Buffered stream) {
@@ -32,8 +33,10 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 	private int pos;
 	private int lastLinePos;
 	
+	@Override
 	public int getLine() { return line; }
 	
+	@Override
 	public int getPositionInLine() { return pos; }
 	
 	@Override

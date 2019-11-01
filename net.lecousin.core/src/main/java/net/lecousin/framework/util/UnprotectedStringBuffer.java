@@ -1020,6 +1020,10 @@ public class UnprotectedStringBuffer implements IString {
 					bufferIndex = pos + 1;
 					return true;
 				}
+				if (bufferIndex == 0)
+					string.append(strings[buffer]);
+				else
+					string.append(strings[buffer].substring(bufferIndex, strings[buffer].length()));
 				buffer++;
 				bufferIndex = 0;
 			} while (true);

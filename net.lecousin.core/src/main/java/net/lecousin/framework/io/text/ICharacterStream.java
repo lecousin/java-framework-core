@@ -83,6 +83,15 @@ public interface ICharacterStream extends IConcurrentCloseable<IOException> {
 			return result;
 		}
 		
+		/** Readable character stream with known line and position in line. */
+		public interface PositionInText extends Readable {
+			/** Return the current line number. */
+			int getLine();
+			
+			/** Return the current column number in line. */
+			int getPositionInLine();
+		}
+		
 		/** Buffered readable character stream. */
 		public interface Buffered extends Readable {
 			

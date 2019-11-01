@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 
@@ -19,9 +18,6 @@ public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 	
 	/** Move forward to the next event. */
 	public abstract void next() throws XMLException, IOException;
-	
-	/** Return the current line number and character number on the line. */
-	public abstract Pair<Integer, Integer> getPosition();
 
 	/** Shortcut to move forward to the next START_ELEMENT, return false if no START_ELEMENT event was found. */
 	public boolean nextStartElement() throws XMLException, IOException {
@@ -75,7 +71,7 @@ public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 		do {
 			try { next(); }
 			catch (EOFException e) {
-				throw new XMLException(getPosition(), "Unexpected end", "readInnerText(" + elementName.toString() + ")");
+				throw new XMLException(stream, event.context, "Unexpected end", "readInnerText(" + elementName.toString() + ")");
 			}
 			if (Type.COMMENT.equals(event.type)) continue;
 			if (Type.TEXT.equals(event.type)) {
@@ -88,7 +84,7 @@ public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 			}
 			if (Type.END_ELEMENT.equals(event.type)) {
 				if (!event.text.equals(elementName))
-					throw new XMLException(getPosition(), "Unexpected end element", event.text.asString());
+					throw new XMLException(stream, event.context, "Unexpected end element", event.text.asString());
 				return innerText;
 			}
 		} while (true);
@@ -103,7 +99,7 @@ public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 		do {
 			try { next(); }
 			catch (EOFException e) {
-				throw new XMLException(getPosition(), "Unexpected end", "closeElement(" + ctx.text.asString() + ")");
+				throw new XMLException(stream, event.context, "Unexpected end", "closeElement(" + ctx.text.asString() + ")");
 			}
 			if (Type.END_ELEMENT.equals(event.type) && event.context.getFirst() == ctx)
 				return;
