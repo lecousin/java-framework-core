@@ -13,7 +13,9 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.util.ConcurrentCloseable;
+import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedString;
+import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /**
  * Buffered readable character stream.
@@ -332,53 +334,140 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable<I
 			@Override
 			@SuppressWarnings("squid:S2259") // iNeedABuffer cannot be null because currentBufferIndex != -1
 			public Void run() {
-				if (currentBufferIndex != -1) {
-					int len = currentBuffer.length - currentBuffer.pos;
-					if (len > 0) {
-						UnprotectedString s = new UnprotectedString(len + (back != -1 ? 1 : 0));
-						if (back != -1) {
-							s.append((char)back);
-							back = -1;
-						}
-						s.append(currentBuffer.chars, currentBuffer.pos, len);
-						result.unblockSuccess(s);
-						return null;
-					} else if (back != -1) {
-						UnprotectedString s = new UnprotectedString((char)back);
-						back = -1;
-						result.unblockSuccess(s);
-						return null;
-					}
-				}
 				try {
-					if (nextBuffer()) {
-						if (back != -1) {
-							char c = (char)back;
-							back = -1;
-							result.unblockSuccess(new UnprotectedString(c));
-						} else {
-							result.unblockSuccess(null);
-						}
+					Pair<Boolean, UnprotectedString> p = getNextBuffer();
+					if (p.getValue1().booleanValue()) {
+						result.unblockSuccess(p.getValue2());
 						return null;
 					}
+					iNeedABuffer.onDone(() -> readNextBufferAsync(result));
 				} catch (IOException e) {
 					result.error(error);
-					return null;
 				}
-				if (currentBufferIndex != -1) {
-					int len = currentBuffer.length - currentBuffer.pos;
-					UnprotectedString s = new UnprotectedString(len);
-					s.append(currentBuffer.chars, currentBuffer.pos, len);
-					currentBuffer.pos += len;
-					result.unblockSuccess(s);
-					return null;
-				}
-				iNeedABuffer.onDone(() -> readNextBufferAsync(result));
 				return null;
 			}
 		}.start();
 	}
+	
+	@Override
+	public UnprotectedString readNextBuffer() throws IOException {
+		do {
+			Pair<Boolean, UnprotectedString> p = getNextBuffer();
+			if (p.getValue1().booleanValue())
+				return p.getValue2();
+			iNeedABuffer.block(0);
+		} while (true);
+	}
+	
+	private Pair<Boolean, UnprotectedString> getNextBuffer() throws IOException {
+		if (currentBufferIndex != -1) {
+			int len = currentBuffer.length - currentBuffer.pos;
+			if (len > 0) {
+				UnprotectedString s = new UnprotectedString(len + (back != -1 ? 1 : 0));
+				if (back != -1) {
+					s.append((char)back);
+					back = -1;
+				}
+				s.append(currentBuffer.chars, currentBuffer.pos, len);
+				return new Pair<>(Boolean.TRUE, s);
+			}
+			if (back != -1) {
+				UnprotectedString s = new UnprotectedString((char)back);
+				back = -1;
+				return new Pair<>(Boolean.TRUE, s);
+			}
+		}
+		if (nextBuffer()) {
+			if (back != -1) {
+				char c = (char)back;
+				back = -1;
+				return new Pair<>(Boolean.TRUE, new UnprotectedString(c));
+			}
+			return new Pair<>(Boolean.TRUE, null);
+		}
+		if (currentBufferIndex != -1) {
+			int len = currentBuffer.length - currentBuffer.pos;
+			UnprotectedString s = new UnprotectedString(len);
+			s.append(currentBuffer.chars, currentBuffer.pos, len);
+			currentBuffer.pos += len;
+			return new Pair<>(Boolean.TRUE, s);
+		}
+		return new Pair<>(Boolean.FALSE, null);
+	}
 
+	@Override
+	public boolean readUntil(char endChar, UnprotectedStringBuffer string) throws IOException {
+		if (back != -1) {
+			if (back == endChar) {
+				back = -1;
+				return true;
+			}
+			string.append((char)back);
+			back = -1;
+		}
+		do {
+			if (readCurrentBufferUntil(endChar, string))
+				return true;
+			if (nextBuffer())
+				return false;
+			if (currentBufferIndex == -1)
+				iNeedABuffer.block(0);
+		} while (true);
+	}
+	
+	@Override
+	public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, UnprotectedStringBuffer string) {
+		if (back != -1) {
+			if (back == endChar) {
+				back = -1;
+				return new AsyncSupplier<>(Boolean.TRUE, null);
+			}
+			string.append((char)back);
+			back = -1;
+		}
+		AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
+		readUntilAsync(endChar, string, result);
+		return result;
+	}
+	
+	private void readUntilAsync(char endChar, UnprotectedStringBuffer string, AsyncSupplier<Boolean, IOException> result) {
+		new Task.Cpu.FromRunnable("ProgressiveBufferedReadableCharStream.readUntilAsync", getPriority(), () -> {
+			do {
+				if (readCurrentBufferUntil(endChar, string)) {
+					result.unblockSuccess(Boolean.TRUE);
+					return;
+				}
+				try {
+					if (nextBuffer()) {
+						result.unblockSuccess(Boolean.FALSE);
+						return;
+					}
+				} catch (IOException e) {
+					result.error(e);
+					return;
+				}
+				if (currentBufferIndex == -1) {
+					iNeedABuffer.onDone(() -> readUntilAsync(endChar, string, result));
+					return;
+				}
+			} while (true);
+		}).start();
+	}
+	
+	private boolean readCurrentBufferUntil(char endChar, UnprotectedStringBuffer string) {
+		if (currentBufferIndex != -1) {
+			int start = currentBuffer.pos;
+			while (currentBuffer.pos < currentBuffer.length) {
+				if (currentBuffer.chars[currentBuffer.pos++] == endChar) {
+					if (start < currentBuffer.pos - 1)
+						string.append(currentBuffer.chars, start, currentBuffer.pos - start - 1);
+					return true;
+				}
+			}
+			string.append(currentBuffer.chars, start, currentBuffer.length - start);
+		}
+		return false;
+	}
 	
 	private class TaskFillBuffer extends Task.Cpu<Void, NoException> {
 		private TaskFillBuffer() {

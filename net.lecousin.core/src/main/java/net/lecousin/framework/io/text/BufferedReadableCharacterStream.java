@@ -20,6 +20,7 @@ import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.UnprotectedString;
+import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /** Implement a buffered readable character stream from a readable IO. */
 public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOException> implements ICharacterStream.Readable.Buffered {
@@ -458,17 +459,18 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 	
 	@Override
 	public AsyncSupplier<UnprotectedString, IOException> readNextBufferAsync() {
-		if (back != -1) {
-			char c = (char)back;
-			back = -1;
-			return new AsyncSupplier<>(new UnprotectedString(c), null);
-		}
 		AsyncSupplier<UnprotectedString, IOException> result = new AsyncSupplier<>();
 		readNextBufferAsync(result);
 		return result;
 	}
 	
 	private void readNextBufferAsync(AsyncSupplier<UnprotectedString, IOException> result) {
+		if (back != -1) {
+			char c = (char)back;
+			back = -1;
+			result.unblockSuccess(new UnprotectedString(c));
+			return;
+		}
 		if (chars == null) {
 			boolean full;
 			synchronized (ready) {
@@ -491,14 +493,115 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 				return;
 			}
 		}
-		char[] buf = new char[chars.remaining()];
-		chars.get(buf);
+		UnprotectedString buf = new UnprotectedString(
+			chars.array(),
+			chars.arrayOffset() + chars.position(),
+			chars.remaining(),
+			chars.capacity() - (chars.arrayOffset() + chars.position())
+		);
 		boolean full;
 		synchronized (ready) {
 			full = ready.isFull();
 			chars = ready.pollFirst();
 		}
 		if (full && !endReached) bufferize();
-		result.unblockSuccess(new UnprotectedString(buf));
+		result.unblockSuccess(buf);
+	}
+	
+	@Override
+	public UnprotectedString readNextBuffer() throws IOException {
+		try {
+			return readNextBufferAsync().blockResult(0);
+		} catch (CancelException e) {
+			throw IO.errorCancelled(e);
+		}
+	}
+	
+	@Override
+	public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, UnprotectedStringBuffer string) {
+		AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
+		new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readUntil", getPriority(),
+			() -> readUntil(endChar, string, result)).start();
+		return result;
+	}
+	
+	@Override
+	public boolean readUntil(char endChar, UnprotectedStringBuffer string) throws IOException {
+		AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
+		readUntil(endChar, string, result);
+		try {
+			return result.blockResult(0).booleanValue();
+		} catch (CancelException e) {
+			throw IO.errorCancelled(e);
+		}
+	}
+	
+	private void readUntil(char endChar, UnprotectedStringBuffer string, AsyncSupplier<Boolean, IOException> result) {
+		if (back != -1) {
+			char c = (char)back;
+			back = -1;
+			if (c == endChar) {
+				result.unblockSuccess(Boolean.TRUE);
+				return;
+			}
+			string.append(c);
+		}
+		do {
+			if (chars == null) {
+				boolean full;
+				synchronized (ready) {
+					full = ready.isFull();
+					chars = ready.pollFirst();
+					if (chars == null && endReached) {
+						result.unblockSuccess(Boolean.FALSE);
+						return;
+					}
+					if (nextReady.hasError()) {
+						result.error(nextReady.getError());
+						return;
+					}
+				}
+				if (full && !endReached) bufferize();
+				if (chars == null) {
+					canStartReading().thenStart(
+					new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readUntil", getPriority(),
+						() -> readUntil(endChar, string, result)), result);
+					return;
+				}
+			}
+			boolean found = searchCurrentChars(endChar, string);
+			if (!chars.hasRemaining()) {
+				boolean full;
+				synchronized (ready) {
+					full = ready.isFull();
+					chars = ready.pollFirst();
+				}
+				if (full && !endReached) bufferize();
+			}
+			if (found) {
+				result.unblockSuccess(Boolean.TRUE);
+				return;
+			}
+		} while (true);
+	}
+	
+	private boolean searchCurrentChars(char endChar, UnprotectedStringBuffer string) {
+		char[] buf = chars.array();
+		int off = chars.arrayOffset() + chars.position();
+		int len = chars.remaining();
+		for (int i = 0; i < len; ++i) {
+			if (buf[off + i] == endChar) {
+				if (i == 0) {
+					chars.position(chars.position() + 1);
+				} else {
+					string.append(new UnprotectedString(buf, off, i, i));
+					chars.position(chars.position() + i + 1);
+				}
+				return true;
+			}
+		}
+		string.append(new UnprotectedString(buf, off, len, len));
+		chars.position(chars.position() + len);
+		return false;
 	}
 }

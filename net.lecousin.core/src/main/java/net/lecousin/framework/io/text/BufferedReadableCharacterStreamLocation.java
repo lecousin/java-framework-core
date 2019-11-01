@@ -10,6 +10,7 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.UnprotectedString;
+import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /** Buffered readable character stream that calculate the line number and position on the current line while reading. */
 public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable<IOException> implements ICharacterStream.Readable.Buffered {
@@ -158,18 +159,67 @@ public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable
 				result.unblockSuccess(null);
 				return;
 			}
-			char[] buf = str.charArray();
-			int offset = str.charArrayStart();
-			int len = str.length();
-			for (int i = 0; i < len; ++i)
-				if (buf[offset + i] == '\n') {
-					line++;
-					lastLinePos = pos;
-					pos = 0;
-				} else if (buf[offset + i] != '\r') {
-					pos++;
-				}
+			processLocation(str);
 			result.unblockSuccess(str);
+		}), result);
+		return result;
+	}
+	
+	@Override
+	public UnprotectedString readNextBuffer() throws IOException {
+		UnprotectedString str = stream.readNextBuffer();
+		if (str == null)
+			return null;
+		processLocation(str);
+		return str;
+	}
+	
+	private void processLocation(UnprotectedString str) {
+		char[] buf = str.charArray();
+		int offset = str.charArrayStart();
+		int len = str.length();
+		for (int i = 0; i < len; ++i)
+			if (buf[offset + i] == '\n') {
+				line++;
+				lastLinePos = pos;
+				pos = 0;
+			} else if (buf[offset + i] != '\r') {
+				pos++;
+			}
+	}
+	
+	private void processLocation(int start, UnprotectedStringBuffer string) {
+		int nb = string.getNbUsableUnprotectedStrings();
+		for (int i = 0; i < nb; ++i) {
+			UnprotectedString str = string.getUnprotectedString(i);
+			if (start > 0) {
+				int l = str.length();
+				if (start >= l) {
+					start -= l;
+					continue;
+				}
+				str = str.substring(start);
+			}
+			processLocation(str);
+		}
+	}
+	
+	@Override
+	public boolean readUntil(char endChar, UnprotectedStringBuffer string) throws IOException {
+		int start = string.length();
+		boolean result = stream.readUntil(endChar, string);
+		processLocation(start, string);
+		return result;
+	}
+	
+	@Override
+	public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, UnprotectedStringBuffer string) {
+		int start = string.length();
+		AsyncSupplier<Boolean, IOException> read = stream.readUntilAsync(endChar, string);
+		AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
+		read.thenStart(new Task.Cpu.FromRunnable("BufferedReadableCharacterStreamLocation.readUntilAsync", stream.getPriority(), () -> {
+			processLocation(start, string);
+			result.unblockSuccess(read.getResult());
 		}), result);
 		return result;
 	}

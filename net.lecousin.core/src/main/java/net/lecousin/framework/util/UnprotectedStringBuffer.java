@@ -890,6 +890,7 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	/** Base class for CharacterStream implementations. */
+	@SuppressWarnings("squid:S2694") // not static because inherited classes are not static
 	protected abstract class AbstractCS extends ConcurrentCloseable<IOException> implements ICharacterStream {
 		protected byte priority = Task.PRIORITY_NORMAL;
 		
@@ -986,16 +987,55 @@ public class UnprotectedStringBuffer implements IString {
 		
 		@Override
 		public AsyncSupplier<UnprotectedString, IOException> readNextBufferAsync() {
-			if (strings == null) return new AsyncSupplier<>(null, null);
+			return new AsyncSupplier<>(readNextBuffer(), null);
+		}
+		
+		@Override
+		public UnprotectedString readNextBuffer() {
+			if (strings == null) return null;
 			while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
 				buffer++;
 				bufferIndex = 0;
 			}
-			if (buffer > lastUsed) return new AsyncSupplier<>(null, null);
+			if (buffer > lastUsed) return null;
 			UnprotectedString str = strings[buffer].substring(bufferIndex);
 			buffer++;
 			bufferIndex = 0;
-			return new AsyncSupplier<>(str, null);
+			return str;
+		}
+		
+		@Override
+		public boolean readUntil(char endChar, UnprotectedStringBuffer string) throws IOException {
+			if (strings == null) return false;
+			do {
+				while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
+					buffer++;
+					bufferIndex = 0;
+				}
+				if (buffer > lastUsed) return false;
+				int pos = strings[buffer].indexOf(endChar, bufferIndex);
+				if (pos >= 0) {
+					if (pos > 0)
+						string.append(strings[buffer].substring(bufferIndex, pos));
+					bufferIndex = pos + 1;
+					return true;
+				}
+				buffer++;
+				bufferIndex = 0;
+			} while (true);
+		}
+		
+		@Override
+		public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, UnprotectedStringBuffer string) {
+			AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
+			new Task.Cpu.FromRunnable("UnprotectedStringBuffer.readUntilAsync", getPriority(), () -> {
+				try {
+					result.unblockSuccess(Boolean.valueOf(readUntil(endChar, string)));
+				} catch (IOException e) {
+					result.error(e);
+				}
+			}).start();
+			return result;
 		}
 		
 		@Override

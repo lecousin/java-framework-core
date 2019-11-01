@@ -13,6 +13,7 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.util.UnprotectedString;
+import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGeneratedTestFiles {
 
@@ -49,6 +50,24 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		}
 		try {
 			s.readNextBufferAsync().blockResult(10000);
+			throw new AssertionError();
+		} catch (IOException e) {
+			// ok
+		}
+		try {
+			s.readNextBuffer();
+			throw new AssertionError();
+		} catch (IOException e) {
+			// ok
+		}
+		try {
+			s.readUntil('m', new UnprotectedStringBuffer());
+			throw new AssertionError();
+		} catch (IOException e) {
+			// ok
+		}
+		try {
+			s.readUntilAsync('m', new UnprotectedStringBuffer()).blockResult(10000);
 			throw new AssertionError();
 		} catch (IOException e) {
 			// ok
@@ -160,5 +179,125 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		Assert.assertEquals('z', str.charAt(0));
 		Assert.assertNull(s.readNextBufferAsync().blockResult(0));
 		s.close();
-	}	
+	}
+	
+	@Test
+	public void testNextBuffer() throws Exception {
+		ICharacterStream.Readable.Buffered s = openStream(openFile());
+		int iBuf = 0;
+		int iChar = 0;
+		while (iBuf < nbBuf) {
+			UnprotectedString str = s.readNextBuffer();
+			Assert.assertNotNull(str);
+			char[] chars = str.charArray();
+			int len = str.length();
+			for (int i = str.charArrayStart(), nb = 0; nb < len; ++i, ++nb) {
+				Assert.assertEquals(testBuf[iChar] & 0xFF, chars[i]);
+				if (++iChar == testBuf.length) {
+					iChar = 0;
+					iBuf++;
+				}
+			}
+		}
+		Assert.assertEquals(nbBuf, iBuf);
+		Assert.assertEquals(0, iChar);
+		Assert.assertNull(s.readNextBuffer());
+		s.back('z');
+		UnprotectedString str = s.readNextBuffer();
+		Assert.assertNotNull(str);
+		Assert.assertEquals(1, str.length());
+		Assert.assertEquals('z', str.charAt(0));
+		Assert.assertNull(s.readNextBuffer());
+		s.close();
+	}
+	
+	@Test
+	public void testReadUntil() throws Exception {
+		ICharacterStream.Readable.Buffered s = openStream(openFile());
+		int iBuf = 0;
+		int iChar = 0;
+		while (iBuf < nbBuf) {
+			UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+			char endChar = (char)testBuf[(iBuf + 17 + iChar) % testBuf.length];
+			boolean found = s.readUntil(endChar, str);
+			int i = 0;
+			boolean foundExpected = false;
+			do {
+				if (testBuf[iChar] == endChar) {
+					Assert.assertEquals(i, str.length());
+					if (++iChar == testBuf.length) {
+						iChar = 0;
+						iBuf++;
+					}
+					foundExpected = true;
+					break;
+				}
+				Assert.assertTrue(str.length() > i);
+				Assert.assertEquals(testBuf[iChar], str.charAt(i++));
+				if (++iChar == testBuf.length) {
+					iChar = 0;
+					iBuf++;
+				}
+			} while (iBuf < nbBuf);
+			Assert.assertTrue(foundExpected == found);
+		}
+		UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+		boolean found = s.readUntil('m', str);
+		Assert.assertFalse(found);
+		Assert.assertEquals(0, str.length());
+		s.close();
+		if (nbBuf <= 100) {
+			s = openStream(openFile());
+			str = new UnprotectedStringBuffer();
+			found = s.readUntil('$', str);
+			s.close();
+			Assert.assertFalse(found);
+			Assert.assertEquals(nbBuf * testBuf.length, str.length());
+		}
+	}
+	
+	@Test
+	public void testReadUntilAsync() throws Exception {
+		ICharacterStream.Readable.Buffered s = openStream(openFile());
+		int iBuf = 0;
+		int iChar = 0;
+		while (iBuf < nbBuf) {
+			UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+			char endChar = (char)testBuf[(iBuf + (testBuf.length * 2 / 3 - 1) + iChar) % testBuf.length];
+			boolean found = s.readUntilAsync(endChar, str).blockResult(10000).booleanValue();
+			int i = 0;
+			boolean foundExpected = false;
+			do {
+				if (testBuf[iChar] == endChar) {
+					Assert.assertEquals(i, str.length());
+					if (++iChar == testBuf.length) {
+						iChar = 0;
+						iBuf++;
+					}
+					foundExpected = true;
+					break;
+				}
+				Assert.assertTrue(str.length() > i);
+				Assert.assertEquals(testBuf[iChar], str.charAt(i++));
+				if (++iChar == testBuf.length) {
+					iChar = 0;
+					iBuf++;
+				}
+			} while (iBuf < nbBuf);
+			Assert.assertTrue(foundExpected == found);
+		}
+		UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+		boolean found = s.readUntilAsync('m', str).blockResult(10000).booleanValue();
+		Assert.assertFalse(found);
+		Assert.assertEquals(0, str.length());
+		s.close();
+		if (nbBuf <= 100) {
+			s = openStream(openFile());
+			str = new UnprotectedStringBuffer();
+			found = s.readUntilAsync('$', str).blockResult(10000).booleanValue();
+			s.close();
+			Assert.assertFalse(found);
+			Assert.assertEquals(nbBuf * testBuf.length, str.length());
+		}
+	}
 }

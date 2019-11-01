@@ -8,6 +8,7 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.IConcurrentCloseable;
 import net.lecousin.framework.util.UnprotectedString;
+import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /** Character stream. */
 public interface ICharacterStream extends IConcurrentCloseable<IOException> {
@@ -84,6 +85,13 @@ public interface ICharacterStream extends IConcurrentCloseable<IOException> {
 		
 		/** Buffered readable character stream. */
 		public interface Buffered extends Readable {
+			
+			/** Return a synchronization point which is unblocked once some characters have been buffered. */
+			IAsync<IOException> canStartReading();
+			
+			/** Put back one character. */
+			void back(char c);
+
 			/** Read one character. */
 			char read() throws IOException;
 			
@@ -93,14 +101,23 @@ public interface ICharacterStream extends IConcurrentCloseable<IOException> {
 			 */
 			int readAsync() throws IOException;
 			
-			/** Put back one character. */
-			void back(char c);
-			
-			/** Return a synchronization point which is unblocked once some characters have been buffered. */
-			IAsync<IOException> canStartReading();
+			/** Return the next buffer, or null if the end of stream has been reached. */
+			UnprotectedString readNextBuffer() throws IOException;
 			
 			/** Return the next buffer as soon as available, or null if then end of stream has been reached. */
 			AsyncSupplier<UnprotectedString, IOException> readNextBufferAsync();
+			
+			/** Read characters until the given end, and put them in the given string.
+			 * It returns true if the endChar has been found (and is not included in the string),
+			 * or false if the end of stream has been reached without the ending character.
+			 */
+			boolean readUntil(char endChar, UnprotectedStringBuffer string) throws IOException;
+			
+			/** Read characters until the given end, and put them in the given string.
+			 * It returns true if the endChar has been found (and is not included in the string),
+			 * or false if the end of stream has been reached without the ending character.
+			 */
+			AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, UnprotectedStringBuffer string);
 		}
 	}
 	
