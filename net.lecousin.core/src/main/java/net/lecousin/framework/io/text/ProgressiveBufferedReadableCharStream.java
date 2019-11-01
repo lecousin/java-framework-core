@@ -39,29 +39,38 @@ public class ProgressiveBufferedReadableCharStream extends ConcurrentCloseable<I
 		this.buffers = new Buffer[maxBuffers];
 		if (firstChars != null) {
 			Buffer b = new Buffer();
-			b.chars = new char[bufferSize];
-			b.pos = 0;
-			b.length = firstChars.remaining();
-			if (b.length > bufferSize) b.length = bufferSize;
-			firstChars.get(b.chars, 0, b.length);
-			buffers[0] = b;
-			currentBufferIndex = 0;
-			currentBuffer = b;
-			for (int i = 1; firstChars.hasRemaining() && i < maxBuffers; ++i) {
-				b = new Buffer();
+			if (firstChars.hasArray() && firstChars.array().length == bufferSize) {
+				b.chars = firstChars.array();
+				b.pos = firstChars.arrayOffset() + firstChars.position();
+				b.length = b.pos + firstChars.remaining();
+				buffers[0] = b;
+				currentBufferIndex = 0;
+				currentBuffer = b;
+			} else {
 				b.chars = new char[bufferSize];
 				b.pos = 0;
 				b.length = firstChars.remaining();
 				if (b.length > bufferSize) b.length = bufferSize;
 				firstChars.get(b.chars, 0, b.length);
-				buffers[i] = b;
-				lastBufferReady = (byte)i;
+				buffers[0] = b;
+				currentBufferIndex = 0;
+				currentBuffer = b;
+				for (int i = 1; firstChars.hasRemaining() && i < maxBuffers; ++i) {
+					b = new Buffer();
+					b.chars = new char[bufferSize];
+					b.pos = 0;
+					b.length = firstChars.remaining();
+					if (b.length > bufferSize) b.length = bufferSize;
+					firstChars.get(b.chars, 0, b.length);
+					buffers[i] = b;
+					lastBufferReady = (byte)i;
+				}
+				if (lastBufferReady != -1) firstBufferReady = 1;
+				if (firstChars.hasRemaining())
+					throw new IllegalArgumentException("firstChars is too large to fit in buffers: bufferSize is "
+						+ bufferSize + " and maxBuffers is " + maxBuffers + ", firstChars contains "
+						+ firstChars.remaining() + " additional characters");
 			}
-			if (lastBufferReady != -1) firstBufferReady = 1;
-			if (firstChars.hasRemaining())
-				throw new IllegalArgumentException("firstChars is too large to fit in buffers: bufferSize is "
-					+ bufferSize + " and maxBuffers is " + maxBuffers + ", firstChars contains "
-					+ firstChars.remaining() + " additional characters");
 		}
 		taskFillBuffer = new TaskFillBuffer();
 		taskFillBuffer.start(); // TODO on io ready

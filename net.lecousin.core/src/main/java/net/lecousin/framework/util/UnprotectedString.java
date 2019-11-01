@@ -81,6 +81,11 @@ public class UnprotectedString implements IString {
 		return end - start + 1;
 	}
 	
+	@Override
+	public boolean isEmpty() {
+		return end == -1;
+	}
+	
 	/** Make this string empty, only by setting the end offset to the start offset. */
 	public void reset() {
 		end = start - 1;
@@ -110,7 +115,7 @@ public class UnprotectedString implements IString {
 		return -1;
 	}
 	
-	/** Return true if there are unused characters at the end of the array. */
+	/** Return then number of unused characters at the end of the array. */
 	public int canAppendWithoutEnlarging() {
 		return usableEnd - end;
 	}
@@ -144,7 +149,7 @@ public class UnprotectedString implements IString {
 	@Override
 	public UnprotectedString append(char c) {
 		if (end == usableEnd)
-			enlarge(chars.length < 1024 ? 512 : chars.length >> 1);
+			enlarge(chars.length < 128 ? 64 : chars.length >> 1);
 		chars[++end] = c;
 		return this;
 	}
@@ -152,8 +157,8 @@ public class UnprotectedString implements IString {
 	@Override
 	public UnprotectedString append(char[] chars, int offset, int len) {
 		if (usableEnd - end < len) {
-			int l = chars.length < 1024 ? 512 : chars.length >> 1;
-			if (l < len) l = len;
+			int l = chars.length < 128 ? 64 : chars.length >> 1;
+			if (l < len + 16) l = len + 16;
 			enlarge(l);
 		}
 		System.arraycopy(chars, offset, this.chars, end + 1, len);
@@ -173,7 +178,7 @@ public class UnprotectedString implements IString {
 			int l = usb.length();
 			if (l == 0) return this;
 			if (l >= usableEnd - end)
-				enlarge(l);
+				enlarge(l + 16);
 			int i = 0;
 			do {
 				UnprotectedString us = usb.getUnprotectedString(i);
@@ -183,8 +188,10 @@ public class UnprotectedString implements IString {
 			return this;
 		}
 		int l = s.length();
+		if (l >= usableEnd - end)
+			enlarge(l + 16);
 		for (int i = 0; i < l; ++i)
-			append(s.charAt(i));
+			chars[++end] = s.charAt(i);
 		return this;
 	}
 	

@@ -121,6 +121,7 @@ public abstract class XMLStreamEvents {
 		public UnprotectedStringBuffer localName;
 		/** List of pair prefix/uri. */
 		public List<Pair<UnprotectedStringBuffer, UnprotectedStringBuffer>> namespaces = new LinkedList<>();
+		public UnprotectedStringBuffer defaultNamespace = null;
 		
 		@Override
 		public String toString() {
@@ -146,6 +147,12 @@ public abstract class XMLStreamEvents {
 	
 	/** Get the namespace URI for a prefix, or empty string if the prefix is not defined. */
 	public UnprotectedStringBuffer getNamespaceURI(CharSequence namespacePrefix) {
+		if (namespacePrefix.length() == 0) {
+			for (ElementContext ctx : event.context)
+				if (ctx.defaultNamespace != null)
+					return ctx.defaultNamespace;
+			return new UnprotectedStringBuffer();
+		}
 		for (ElementContext ctx : event.context) {
 			for (Pair<UnprotectedStringBuffer, UnprotectedStringBuffer> ns : ctx.namespaces)
 				if (ns.getValue1().equals(namespacePrefix))
@@ -281,8 +288,7 @@ public abstract class XMLStreamEvents {
 	}
 	
 	
-	protected void onStartElement() {
-		int i = event.text.indexOf(':');
+	protected void onStartElement(int i) {
 		if (i < 0) {
 			event.namespacePrefix = new UnprotectedStringBuffer();
 			event.localName = event.text;
@@ -294,18 +300,18 @@ public abstract class XMLStreamEvents {
 		ctx.text = event.text;
 		ctx.namespacePrefix = event.namespacePrefix;
 		ctx.localName = event.localName;
-		ctx.namespaces = readNamespaces();
+		readNamespaces(ctx);
 		event.context.addFirst(ctx);
 		event.namespaceURI = getNamespaceURI(event.namespacePrefix);
 	}
 	
-	protected List<Pair<UnprotectedStringBuffer, UnprotectedStringBuffer>> readNamespaces() {
+	protected void readNamespaces(ElementContext ctx) {
 		List<Pair<UnprotectedStringBuffer, UnprotectedStringBuffer>> list = new LinkedList<>();
 		for (Iterator<Attribute> it = event.attributes.iterator(); it.hasNext(); ) {
 			Attribute a = it.next();
-			if (a.namespacePrefix.length() == 0) {
+			if (a.namespacePrefix.isEmpty()) {
 				if (a.localName.equals("xmlns")) {
-					list.add(new Pair<>(a.namespacePrefix, a.value));
+					ctx.defaultNamespace = a.value;
 					it.remove();
 				}
 			} else if (a.namespacePrefix.equals("xmlns")) {
@@ -313,24 +319,355 @@ public abstract class XMLStreamEvents {
 				it.remove();
 			}
 		}
-		return list;
+		ctx.namespaces = list;
 	}
 
 	/* Utility methods */
 	
-	private static boolean[] isSpace = new boolean[] {
-		false, false, false, false, false, false, false, false, false, // 0-8
-		true, true, // 9-10
-		false, false, // 11-12
-		true, //13
-		false, false, false, false, false, false, false, false, false, // 14-22
-		false, false, false, false, false, false, false, false, false, // 23-31
-		true // 32
+	private static byte[] charType = {
+		(byte)99,	// 0x00
+		(byte)99,	// 0x01
+		(byte)99,	// 0x02
+		(byte)99,	// 0x03
+		(byte)99,	// 0x04
+		(byte)99,	// 0x05
+		(byte)99,	// 0x06
+		(byte)99,	// 0x07
+		(byte)99,	// 0x08
+		(byte)2,	// 0x09
+		(byte)2,	// 0x0a
+		(byte)99,	// 0x0b
+		(byte)99,	// 0x0c
+		(byte)2,	// 0x0d
+		(byte)99,	// 0x0e
+		(byte)99,	// 0x0f
+		(byte)99,	// 0x10
+		(byte)99,	// 0x11
+		(byte)99,	// 0x12
+		(byte)99,	// 0x13
+		(byte)99,	// 0x14
+		(byte)99,	// 0x15
+		(byte)99,	// 0x16
+		(byte)99,	// 0x17
+		(byte)99,	// 0x18
+		(byte)99,	// 0x19
+		(byte)99,	// 0x1a
+		(byte)99,	// 0x1b
+		(byte)99,	// 0x1c
+		(byte)99,	// 0x1d
+		(byte)99,	// 0x1e
+		(byte)99,	// 0x1f
+		(byte)2,	// 0x20
+		(byte)99,	// 0x21
+		(byte)99,	// 0x22
+		(byte)99,	// 0x23
+		(byte)99,	// 0x24
+		(byte)99,	// 0x25
+		(byte)99,	// 0x26
+		(byte)99,	// 0x27
+		(byte)99,	// 0x28
+		(byte)99,	// 0x29
+		(byte)99,	// 0x2a
+		(byte)99,	// 0x2b
+		(byte)99,	// 0x2c
+		(byte)1,	// 0x2d
+		(byte)1,	// 0x2e
+		(byte)99,	// 0x2f
+		(byte)1,	// 0x30
+		(byte)1,	// 0x31
+		(byte)1,	// 0x32
+		(byte)1,	// 0x33
+		(byte)1,	// 0x34
+		(byte)1,	// 0x35
+		(byte)1,	// 0x36
+		(byte)1,	// 0x37
+		(byte)1,	// 0x38
+		(byte)1,	// 0x39
+		(byte)0,	// 0x3a
+		(byte)99,	// 0x3b
+		(byte)99,	// 0x3c
+		(byte)99,	// 0x3d
+		(byte)99,	// 0x3e
+		(byte)99,	// 0x3f
+		(byte)99,	// 0x40
+		(byte)0,	// 0x41
+		(byte)0,	// 0x42
+		(byte)0,	// 0x43
+		(byte)0,	// 0x44
+		(byte)0,	// 0x45
+		(byte)0,	// 0x46
+		(byte)0,	// 0x47
+		(byte)0,	// 0x48
+		(byte)0,	// 0x49
+		(byte)0,	// 0x4a
+		(byte)0,	// 0x4b
+		(byte)0,	// 0x4c
+		(byte)0,	// 0x4d
+		(byte)0,	// 0x4e
+		(byte)0,	// 0x4f
+		(byte)0,	// 0x50
+		(byte)0,	// 0x51
+		(byte)0,	// 0x52
+		(byte)0,	// 0x53
+		(byte)0,	// 0x54
+		(byte)0,	// 0x55
+		(byte)0,	// 0x56
+		(byte)0,	// 0x57
+		(byte)0,	// 0x58
+		(byte)0,	// 0x59
+		(byte)0,	// 0x5a
+		(byte)99,	// 0x5b
+		(byte)99,	// 0x5c
+		(byte)99,	// 0x5d
+		(byte)99,	// 0x5e
+		(byte)0,	// 0x5f
+		(byte)99,	// 0x60
+		(byte)0,	// 0x61
+		(byte)0,	// 0x62
+		(byte)0,	// 0x63
+		(byte)0,	// 0x64
+		(byte)0,	// 0x65
+		(byte)0,	// 0x66
+		(byte)0,	// 0x67
+		(byte)0,	// 0x68
+		(byte)0,	// 0x69
+		(byte)0,	// 0x6a
+		(byte)0,	// 0x6b
+		(byte)0,	// 0x6c
+		(byte)0,	// 0x6d
+		(byte)0,	// 0x6e
+		(byte)0,	// 0x6f
+		(byte)0,	// 0x70
+		(byte)0,	// 0x71
+		(byte)0,	// 0x72
+		(byte)0,	// 0x73
+		(byte)0,	// 0x74
+		(byte)0,	// 0x75
+		(byte)0,	// 0x76
+		(byte)0,	// 0x77
+		(byte)0,	// 0x78
+		(byte)0,	// 0x79
+		(byte)0,	// 0x7a
+		(byte)99,	// 0x7b
+		(byte)99,	// 0x7c
+		(byte)99,	// 0x7d
+		(byte)99,	// 0x7e
+		(byte)99,	// 0x7f
+		(byte)99,	// 0x80
+		(byte)99,	// 0x81
+		(byte)99,	// 0x82
+		(byte)99,	// 0x83
+		(byte)99,	// 0x84
+		(byte)99,	// 0x85
+		(byte)99,	// 0x86
+		(byte)99,	// 0x87
+		(byte)99,	// 0x88
+		(byte)99,	// 0x89
+		(byte)99,	// 0x8a
+		(byte)99,	// 0x8b
+		(byte)99,	// 0x8c
+		(byte)99,	// 0x8d
+		(byte)99,	// 0x8e
+		(byte)99,	// 0x8f
+		(byte)99,	// 0x90
+		(byte)99,	// 0x91
+		(byte)99,	// 0x92
+		(byte)99,	// 0x93
+		(byte)99,	// 0x94
+		(byte)99,	// 0x95
+		(byte)99,	// 0x96
+		(byte)99,	// 0x97
+		(byte)99,	// 0x98
+		(byte)99,	// 0x99
+		(byte)99,	// 0x9a
+		(byte)99,	// 0x9b
+		(byte)99,	// 0x9c
+		(byte)99,	// 0x9d
+		(byte)99,	// 0x9e
+		(byte)99,	// 0x9f
+		(byte)99,	// 0xa0
+		(byte)99,	// 0xa1
+		(byte)99,	// 0xa2
+		(byte)99,	// 0xa3
+		(byte)99,	// 0xa4
+		(byte)99,	// 0xa5
+		(byte)99,	// 0xa6
+		(byte)99,	// 0xa7
+		(byte)99,	// 0xa8
+		(byte)99,	// 0xa9
+		(byte)99,	// 0xaa
+		(byte)99,	// 0xab
+		(byte)99,	// 0xac
+		(byte)99,	// 0xad
+		(byte)99,	// 0xae
+		(byte)99,	// 0xaf
+		(byte)99,	// 0xb0
+		(byte)99,	// 0xb1
+		(byte)99,	// 0xb2
+		(byte)99,	// 0xb3
+		(byte)99,	// 0xb4
+		(byte)99,	// 0xb5
+		(byte)99,	// 0xb6
+		(byte)1,	// 0xb7
+		(byte)99,	// 0xb8
+		(byte)99,	// 0xb9
+		(byte)99,	// 0xba
+		(byte)99,	// 0xbb
+		(byte)99,	// 0xbc
+		(byte)99,	// 0xbd
+		(byte)99,	// 0xbe
+		(byte)99,	// 0xbf
+		(byte)0,	// 0xc0
+		(byte)0,	// 0xc1
+		(byte)0,	// 0xc2
+		(byte)0,	// 0xc3
+		(byte)0,	// 0xc4
+		(byte)0,	// 0xc5
+		(byte)0,	// 0xc6
+		(byte)0,	// 0xc7
+		(byte)0,	// 0xc8
+		(byte)0,	// 0xc9
+		(byte)0,	// 0xca
+		(byte)0,	// 0xcb
+		(byte)0,	// 0xcc
+		(byte)0,	// 0xcd
+		(byte)0,	// 0xce
+		(byte)0,	// 0xcf
+		(byte)0,	// 0xd0
+		(byte)0,	// 0xd1
+		(byte)0,	// 0xd2
+		(byte)0,	// 0xd3
+		(byte)0,	// 0xd4
+		(byte)0,	// 0xd5
+		(byte)0,	// 0xd6
+		(byte)99,	// 0xd7
+		(byte)0,	// 0xd8
+		(byte)0,	// 0xd9
+		(byte)0,	// 0xda
+		(byte)0,	// 0xdb
+		(byte)0,	// 0xdc
+		(byte)0,	// 0xdd
+		(byte)0,	// 0xde
+		(byte)0,	// 0xdf
+		(byte)0,	// 0xe0
+		(byte)0,	// 0xe1
+		(byte)0,	// 0xe2
+		(byte)0,	// 0xe3
+		(byte)0,	// 0xe4
+		(byte)0,	// 0xe5
+		(byte)0,	// 0xe6
+		(byte)0,	// 0xe7
+		(byte)0,	// 0xe8
+		(byte)0,	// 0xe9
+		(byte)0,	// 0xea
+		(byte)0,	// 0xeb
+		(byte)0,	// 0xec
+		(byte)0,	// 0xed
+		(byte)0,	// 0xee
+		(byte)0,	// 0xef
+		(byte)0,	// 0xf0
+		(byte)0,	// 0xf1
+		(byte)0,	// 0xf2
+		(byte)0,	// 0xf3
+		(byte)0,	// 0xf4
+		(byte)0,	// 0xf5
+		(byte)0,	// 0xf6
+		(byte)99,	// 0xf7
+		(byte)0,	// 0xf8
+		(byte)0,	// 0xf9
+		(byte)0,	// 0xfa
+		(byte)0,	// 0xfb
+		(byte)0,	// 0xfc
+		(byte)0,	// 0xfd
+		(byte)0,	// 0xfe
+		(byte)0	// 0xff
 	};
 	
 	/** Return true if the given character is considered as a white space. */
 	public static boolean isSpaceChar(char c) {
-		return c < 0x21 && isSpace[c];
+		return c < 0x100 && charType[c] == 2;
+	}
+	
+	/** Return true if the given character is a valid starting character for a name. */
+	public static boolean isNameStartChar(char c) {
+		/*
+		if (c < 0xF8) {
+			if (c < 0x3A) return false; // :
+			if (c < 0xC0) {
+				return
+					(c >= 'a' && c <= 'z') || // 61-7A
+					(c >= 'A' && c <= 'Z') || // 41-5A
+					c == ':' || // 3A
+					c == '_' // 5F
+					;
+			}
+			return (c != 0xD7 && c != 0xF7);
+		}*/
+		if (c < 0x100) return charType[c] == 0;
+		if (c < 0x2000) {
+			if (c >= 0x300 && c <= 0x36F) return false;
+			if (c == 0x37E) return false;
+			return true;
+		}
+		if (c < 0xD800) {
+			if (c <= 0x3000) {
+				if (c < 0x2070)
+					return c != 0x200C && c != 0x200D;
+				if (c < 0x2190) return true;
+				if (c < 0x2C00) return false;
+				if (c > 0x2FEF) return false;
+			}
+			return true;
+		}
+		if (c >= 0xE000) {
+			if (c < 0xF900) return false;
+			if (c <= 0xFDCF) return true;
+			if (c < 0xFDF0) return false;
+			if (c <= 0xFFFD) return true;
+			return false;
+		}
+		if (c >= 0xDC00) return false;
+		return true;
+	}
+	
+	/** Return true if the given character is a valid character for a name. */
+	public static boolean isNameChar(char c) {
+		/*
+		if (c < 0xF8) {
+			if (c < 0x3A) {
+				return c >= 0x2D && c != 0x2F;
+			}
+			if (c < 0xC0) {
+				return
+					(c >= 'a' && c <= 'z') || // 61-7A
+					(c >= 'A' && c <= 'Z') || // 41-5A
+					c == ':' || // 3A
+					c == '_' || // 5F
+					c == 0xB7;
+			}
+			return c != 0xD7 && c != 0xF7;
+		}*/
+		if (c < 0x100) return charType[c] <= 1;
+		if (c < 0x2000) {
+			return c != 0x37E;
+		}
+		if (c < 0xD800) {
+			if (c <= 0x3000) {
+				if (c < 0x2070)
+					return c != 0x200C && c != 0x200D && c != 0x203F && c != 0x2040;
+				if (c < 0x2190) return true;
+				if (c < 0x2C00 || c > 0x2FEF) return false;
+			}
+			return true;
+		}
+		if (c >= 0xE000) {
+			if (c < 0xF900) return false;
+			if (c <= 0xFDCF) return true;
+			if (c < 0xFDF0) return false;
+			if (c <= 0xFFFD) return true;
+			return false;
+		}
+		return true;
 	}
 	
 	/* Charset handling */
@@ -376,7 +713,7 @@ public abstract class XMLStreamEvents {
 			} catch (Exception e) {
 				throw new IOException("Error initializing character decoder", e);
 			}
-			chars = new char[Math.min(firstBytesLength - firstBytesPos, bufferSize * maxBuffers)];
+			chars = new char[bufferSize];
 			// TODO line and posInLine...
 			boolean hasDecl = readXMLDeclaration();
 			if (!hasDecl) {
@@ -394,7 +731,8 @@ public abstract class XMLStreamEvents {
 					return stream;
 				}
 			}
-			tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, firstBytesPos, firstBytesLength - firstBytesPos));
+			if (firstBytesPos < firstBytesLength)
+				tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, firstBytesPos, firstBytesLength - firstBytesPos));
 			tmpDecoder.setInput(io);
 			ICharacterStream.Readable.Buffered stream = new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers,
 				CharBuffer.wrap(chars, charsPos, charsLength - charsPos));
@@ -542,8 +880,6 @@ public abstract class XMLStreamEvents {
 				if (nb <= 0) throw new EOFException();
 				firstBytes = b;
 				firstBytesLength += nb;
-				int minSize = Math.min(512, bufferSize * maxBuffers);
-				if (chars.length < minSize) chars = new char[minSize];
 			}
 			charsPos = 0;
 			ByteBuffer bb = ByteBuffer.wrap(firstBytes, firstBytesPos, firstBytesLength - firstBytesPos);

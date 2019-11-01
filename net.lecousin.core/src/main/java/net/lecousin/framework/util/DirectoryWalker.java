@@ -80,7 +80,7 @@ public abstract class DirectoryWalker<T> {
 				DirectoryReader.Result result = reader.getResult();
 				ArrayList<Triple<File, T, String>> dirs = new ArrayList<>(result.getNbDirectories());
 				for (FileInfo f : result.getFiles()) {
-					String p = path.length() == 0 ? f.file.getName() : path + '/' + f.file.getName();
+					String p = path.isEmpty() ? f.file.getName() : path + '/' + f.file.getName();
 					if (f.isDirectory) {
 						T o = directoryFound(object, f, p);
 						if (o != null)

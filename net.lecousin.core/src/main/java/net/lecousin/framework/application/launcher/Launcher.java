@@ -174,7 +174,7 @@ public class Launcher {
 
 	/** Utility method to check if an option is present. */
 	public static void checkPresent(String s, String optionName, List<String> errors) {
-		if (s == null || s.trim().length() == 0)
+		if (s == null || s.trim().isEmpty())
 			errors.add("Missing option " + optionName + " in command line");
 	}
 	
@@ -282,7 +282,7 @@ public class Launcher {
 			String[] list = plugins.split(";");
 			for (String plugin : list) {
 				plugin = plugin.trim();
-				if (plugin.length() == 0) continue;
+				if (plugin.isEmpty()) continue;
 				int i = plugin.indexOf(':');
 				if (i < 0) {
 					addPlugins.add(new Triple<>(plugin, null, null));

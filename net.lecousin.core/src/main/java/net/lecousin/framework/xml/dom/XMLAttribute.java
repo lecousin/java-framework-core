@@ -35,7 +35,7 @@ public class XMLAttribute extends XMLNode implements Attr {
 	
 	@Override
 	public String getPrefix() {
-		return prefix == null || prefix.length() == 0 ? null : prefix;
+		return prefix == null || prefix.isEmpty() ? null : prefix;
 	}
 	
 	@Override

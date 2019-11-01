@@ -400,9 +400,9 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	
 	private static DependencyNode createDependencyNode(LibraryDescriptor descr, LibraryDescriptor.Dependency dep) {
 		DependencyNode node = new DependencyNode(dep);
-		if (dep.getGroupId() == null || dep.getGroupId().length() == 0)
+		if (dep.getGroupId() == null || dep.getGroupId().isEmpty())
 			node.setDescriptor(new AsyncSupplier<>(null, new LibraryManagementException("Missing groupId in dependency")));
-		else if (dep.getArtifactId() == null || dep.getArtifactId().length() == 0)
+		else if (dep.getArtifactId() == null || dep.getArtifactId().isEmpty())
 			node.setDescriptor(new AsyncSupplier<>(null, new LibraryManagementException("Missing artifactId in dependency")));
 		else {
 			VersionSpecification depV = dep.getVersionSpecification();

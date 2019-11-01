@@ -47,6 +47,8 @@ public class XMLElement extends XMLNode implements Element {
 		this(doc, context.namespacePrefix.asString(), context.localName.asString());
 		for (Pair<UnprotectedStringBuffer, UnprotectedStringBuffer> ns : context.namespaces)
 			declareNamespace(ns.getValue2().asString(), ns.getValue1().asString());
+		if (context.defaultNamespace != null && !context.defaultNamespace.isEmpty())
+			declareNamespace(context.defaultNamespace.asString(), "");
 	}
 	
 	protected String prefix;
@@ -92,7 +94,7 @@ public class XMLElement extends XMLNode implements Element {
 	
 	@Override
 	public String getPrefix() {
-		return prefix == null || prefix.length() == 0 ? null : prefix;
+		return prefix == null || prefix.isEmpty() ? null : prefix;
 	}
 	
 	@Override
@@ -435,7 +437,7 @@ public class XMLElement extends XMLNode implements Element {
 	public boolean isDefaultNamespace(String namespaceURI) {
 		if (prefixToURI != null)
 			for (Map.Entry<String, String> e : prefixToURI.entrySet())
-				if (e.getKey().length() == 0)
+				if (e.getKey().isEmpty())
 					return e.getValue().equals(namespaceURI);
 		if (parent == null)
 			return false;

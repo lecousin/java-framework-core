@@ -27,7 +27,7 @@ public abstract class PropertiesReader<T> extends FullReadLines<T> {
 	
 	@Override
 	protected void processLine(UnprotectedStringBuffer line) {
-		if (line.length() == 0) return;
+		if (line.isEmpty()) return;
 		if (line.charAt(0) == commentChar) return;
 		int i = line.indexOf('=');
 		if (i < 0) return;

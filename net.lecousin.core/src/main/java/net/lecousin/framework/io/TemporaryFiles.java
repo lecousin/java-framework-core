@@ -50,7 +50,7 @@ public final class TemporaryFiles {
 			prefix = InetAddress.getLocalHost().getHostName();
 		} catch (Exception t) {
 			prefix = System.getenv("COMPUTERNAME");
-			if (prefix == null || prefix.length() == 0)
+			if (prefix == null || prefix.isEmpty())
 				prefix = System.getenv("HOSTNAME");
 			if (prefix == null)
 				prefix = "";

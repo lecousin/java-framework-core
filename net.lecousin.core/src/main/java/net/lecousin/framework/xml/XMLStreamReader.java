@@ -15,6 +15,7 @@ import net.lecousin.framework.io.encoding.INumberEncoding;
 import net.lecousin.framework.locale.LocalizableString;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.util.UnprotectedStringBufferLimited;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 
 /**
@@ -108,17 +109,18 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	/* Private methods */
 	
+	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	private void readTag() throws XMLException, IOException {
 		try {
 			char c;
-			if ((c = stream.read()) == '!') {
+			if (isNameStartChar(c = stream.read())) {
+				readStartTag(c);
+			} else if (c == '/') {
+				readEndTag();
+			} else if (c == '!') {
 				readTagExclamation();
 			} else if (c == '?') {
 				readProcessingInstruction();
-			} else if (c == '/') {
-				readEndTag();
-			} else if (isNameStartChar(c)) {
-				readStartTag(c);
 			} else {
 				throw new XMLException(stream, event.context,
 					XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
@@ -195,130 +197,27 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readComment() throws XMLException, IOException {
 		event.type = Type.COMMENT;
-		UnprotectedStringBuffer t = event.text = new UnprotectedStringBuffer();
-		char[] chars = new char[64];
-		int pos = 0;
+		UnprotectedStringBuffer t = event.text =
+			maxTextSize <= 0 ? new UnprotectedStringBuffer() : new UnprotectedStringBufferLimited(maxTextSize);
 		char c;
 		try {
-			if (maxTextSize <= 0)
-				do {
-					if ((chars[pos] = stream.read()) != '-') {
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						continue;
-					}
-					if ((c = stream.read()) != '-') {
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						chars[pos] = c;
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						continue;
-					}
-					do {
-						if ((c = stream.read()) == '>') {
-							if (pos > 0)
-								t.append(new UnprotectedString(chars, 0, pos, chars.length));
-							return;
-						}
-						if (c == '-') {
-							chars[pos] = '-';
-							if (++pos == chars.length) {
-								t.append(new UnprotectedString(chars));
-								chars = new char[chars.length * 2];
-								pos = 0;
-							}
-							continue;
-						}
-						chars[pos] = '-';
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						chars[pos] = '-';
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						break;
-					} while (true);
-				} while (true);
-			int len = 0;
 			do {
+				if (!stream.readUntil('-', t))
+					throw new XMLException(stream, event.context, new LocalizableString(
+						XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
+						new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "inside comment"));
 				if ((c = stream.read()) != '-') {
-					if (len < maxTextSize) {
-						chars[pos] = c;
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						len++;
-					}
-					continue;
-				}
-				if ((c = stream.read()) != '-') {
-					if (len < maxTextSize) {
-						chars[pos] = '-';
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						chars[pos] = c;
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						len += 2;
-					}
+					t.append(new UnprotectedString(new char[] { '-', c }));
 					continue;
 				}
 				do {
-					if ((c = stream.read()) == '>') {
-						if (pos > 0)
-							t.append(new UnprotectedString(chars, 0, pos, chars.length));
+					if ((c = stream.read()) == '>')
 						return;
-					}
 					if (c == '-') {
-						if (len < maxTextSize) {
-							chars[pos] = '-';
-							if (++pos == chars.length) {
-								t.append(new UnprotectedString(chars));
-								chars = new char[chars.length * 2];
-								pos = 0;
-							}
-							len++;
-						}
+						t.append('-');
 						continue;
 					}
-					if (len < maxTextSize) {
-						chars[pos] = '-';
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						chars[pos] = '-';
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						len += 2;
-					}
+					t.append(new UnprotectedString(new char[] { '-', '-', c }));
 					break;
 				} while (true);
 			} while (true);
@@ -338,143 +237,27 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readCData() throws XMLException, IOException {
 		event.type = Type.CDATA;
-		UnprotectedStringBuffer t = event.text = new UnprotectedStringBuffer();
-		char[] chars = new char[64];
-		int pos = 0;
+		UnprotectedStringBuffer t = event.text =
+			maxCDataSize <= 0 ? new UnprotectedStringBuffer() : new UnprotectedStringBufferLimited(maxCDataSize);
 		char c;
 		try {
-			if (maxCDataSize <= 0) {
-				do {
-					if ((chars[pos] = stream.read()) != ']') {
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						continue;
-					}
-					if ((c = stream.read()) != ']') {
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						chars[pos] = c;
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						continue;
-					}
-					do {
-						if ((c = stream.read()) == '>') {
-							if (pos > 0)
-								t.append(new UnprotectedString(chars, 0, pos, chars.length));
-							return;
-						}
-						if (c == ']') {
-							chars[pos] = ']';
-							if (++pos == chars.length) {
-								t.append(new UnprotectedString(chars));
-								chars = new char[chars.length * 2];
-								pos = 0;
-							}
-							continue;
-						}
-						chars[pos] = ']';
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						chars[pos] = ']';
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						chars[pos] = c;
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						break;
-					} while (true);
-				} while (true);
-			}
-			int len = 0;
 			do {
+				if (!stream.readUntil(']', t))
+					throw new XMLException(stream, event.context, new LocalizableString(
+						XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
+						new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "inside CDATA"));
 				if ((c = stream.read()) != ']') {
-					if (len < maxCDataSize) {
-						chars[pos] = c;
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						len++;
-					}
-					continue;
-				}
-				if ((c = stream.read()) != ']') {
-					if (len < maxCDataSize) {
-						chars[pos] = ']';
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						chars[pos] = c;
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						len += 2;
-					}
+					t.append(new char[] { ']', c });
 					continue;
 				}
 				do {
-					if ((c = stream.read()) == '>') {
-						if (pos > 0)
-							t.append(new UnprotectedString(chars, 0, pos, chars.length));
+					if ((c = stream.read()) == '>')
 						return;
-					}
 					if (c == ']') {
-						if (len < maxCDataSize) {
-							chars[pos] = ']';
-							if (++pos == chars.length) {
-								t.append(new UnprotectedString(chars));
-								chars = new char[chars.length * 2];
-								pos = 0;
-							}
-							len++;
-						}
+						t.append(']');
 						continue;
 					}
-					if (len < maxCDataSize) {
-						chars[pos] = ']';
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						chars[pos] = ']';
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						chars[pos] = c;
-						if (++pos == chars.length) {
-							t.append(new UnprotectedString(chars));
-							chars = new char[chars.length * 2];
-							pos = 0;
-						}
-						len += 3;
-					}
+					t.append(new char[] { ']', ']', c });
 					break;
 				} while (true);
 			} while (true);
@@ -489,7 +272,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	private void readStartTag(char c) throws XMLException, IOException {
 		event.type = Type.START_ELEMENT;
 		event.attributes = new LinkedList<>();
-		continueReadName(event.text = new UnprotectedStringBuffer(), c);
+		int colonPos = continueReadName(event.text = new UnprotectedStringBuffer(), c);
 		do {
 			while (isSpaceChar(c = stream.read()));
 			if (c == '>') break;
@@ -505,8 +288,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			Attribute a = new Attribute();
 			
 			// attribute name
-			continueReadName(a.text = new UnprotectedStringBuffer(), c);
-			int i = a.text.indexOf(':');
+			int i = continueReadName(a.text = new UnprotectedStringBuffer(), c);
 			if (i < 0) {
 				a.namespacePrefix = new UnprotectedStringBuffer();
 				a.localName = a.text;
@@ -523,12 +305,12 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			
 			// attribute value
 			while (isSpaceChar(c = stream.read()));
-			a.value = new UnprotectedStringBuffer(new UnprotectedString(32));
+			a.value = new UnprotectedStringBuffer();
 			if (c == '"' || c == '\'') readAttrValue(a.value, c);
 			else throw new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 			event.attributes.add(a);
 		} while (true);
-		onStartElement();
+		onStartElement(colonPos);
 	}
 	
 	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
@@ -553,8 +335,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				continue;
 			Attribute a = new Attribute();
 			// attribute name
-			continueReadName(a.text = new UnprotectedStringBuffer(), c);
-			int i = a.text.indexOf(':');
+			int i = continueReadName(a.text = new UnprotectedStringBuffer(), c);
 			if (i < 0) {
 				a.namespacePrefix = new UnprotectedStringBuffer();
 				a.localName = a.text;
@@ -581,21 +362,38 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	}
 	
 	private void readAttrValue(UnprotectedStringBuffer value, char quote) throws XMLException, IOException {
+		int pos = 0;
+		char[] chars = null;
 		do {
 			char c = stream.read();
 			if (c == quote) break;
-			if (c == '<') throw new XMLException(stream, event.context,
-				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER,
-				Character.valueOf(c)), new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "in attribute value"));
-			if (c == '&') value.append(readReference());
-			else if (c == '\n') value.append(' ');
-			else if (c != '\r') value.append(c);
+			if (c == '&') {
+				if (pos > 0) {
+					value.append(new UnprotectedString(chars, 0, pos, chars.length));
+					pos = 0;
+				}
+				value.append(readReference());
+			} else if (c != '\r') {
+				if (c == '\n') c = ' ';
+				else if (c == '<') throw new XMLException(stream, event.context, new LocalizableString(
+					XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER,
+					Character.valueOf(c)),new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR,"in attribute value"));
+				if (pos == 0)
+					chars = new char[16];
+				chars[pos++] = c;
+				if (pos == chars.length) {
+					value.append(new UnprotectedString(chars, 0, chars.length, chars.length));
+					pos = 0;
+				}
+			}
 		} while (true);
+		if (pos > 0)
+			value.append(new UnprotectedString(chars, 0, pos, chars.length));
 	}
 	
 	private void readChars(char c) throws XMLException, IOException {
 		event.type = Type.TEXT;
-		UnprotectedStringBuffer t = event.text = new UnprotectedStringBuffer(new UnprotectedString(64));
+		UnprotectedStringBuffer t = event.text = new UnprotectedStringBuffer();
 		try {
 			if (maxTextSize <= 0) {
 				do {
@@ -772,14 +570,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		if (!ctx.text.equals(event.text))
 			throw new XMLException(stream, event.context,
 				"Unexpected end element expected is", event.text.asString(), ctx.text.asString());
-		int i = event.text.indexOf(':');
-		if (i < 0) {
-			event.namespacePrefix = new UnprotectedStringBuffer();
-			event.localName = event.text;
-		} else {
-			event.namespacePrefix = event.text.substring(0, i);
-			event.localName = event.text.substring(i + 1);
-		}
+		event.namespacePrefix = ctx.namespacePrefix;
+		event.localName = ctx.localName;
 		event.namespaceURI = getNamespaceURI(event.namespacePrefix);
 	}
 	
@@ -955,27 +747,29 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 
 	
 	
-	private void readName(UnprotectedStringBuffer name) throws XMLException, IOException {
+	private int readName(UnprotectedStringBuffer name) throws XMLException, IOException {
 		char c = stream.read();
 		if (!isNameStartChar(c))
 			throw new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
-		continueReadName(name, c);
+		return continueReadName(name, c);
 	}
 	
 	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
-	private void continueReadName(UnprotectedStringBuffer name, char c) throws IOException {
+	private int continueReadName(UnprotectedStringBuffer name, char c) throws IOException {
 		int charsSize = 16;
 		char[] chars = new char[charsSize];
 		chars[0] = c;
 		int pos = 1;
+		int colonPos = c == ':' ? 0 : -1;
 		if (maxTextSize <= 0)
 			do {
-				if (!isNameChar(chars[pos] = stream.read())) {
+				if (!isNameChar(c = chars[pos] = stream.read())) {
 					stream.back(chars[pos]);
 					if (pos > 0)
 						name.append(new UnprotectedString(chars, 0, pos, charsSize));
-					return;
+					return colonPos;
 				}
+				if (c == ':' && colonPos == -1) colonPos = name.length() + pos;
 				if (++pos == charsSize) {
 					name.append(new UnprotectedString(chars));
 					charsSize *= 2;
@@ -989,10 +783,11 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				stream.back(c);
 				if (pos > 0)
 					name.append(new UnprotectedString(chars, 0, pos, charsSize));
-				return;
+				return colonPos;
 			}
 			if (len < maxTextSize) {
 				chars[pos] = c;
+				if (c == ':' && colonPos == -1) colonPos = name.length() + pos;
 				if (++pos == charsSize) {
 					name.append(new UnprotectedString(chars));
 					charsSize *= 2;
@@ -1014,85 +809,6 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				return;
 			}
 		} while (true);
-	}
-	
-
-	/** Return true if the given character is a valid starting character for a name. */
-	public static boolean isNameStartChar(char c) {
-		if (c < 0xF8) {
-			if (c < 0x3A) return false; // :
-			if (c < 0xC0) {
-				return
-					(c >= 'a' && c <= 'z') || /*61-7A*/
-					(c >= 'A' && c <= 'Z') || /*41-5A*/
-					c == ':' /*3A*/ ||
-					c == '_' /*5F*/
-					;
-			}
-			return (c != 0xD7 && c != 0xF7);
-		}
-		if (c < 0x2000) {
-			if (c >= 0x300 && c <= 0x36F) return false;
-			if (c == 0x37E) return false;
-			return true;
-		}
-		if (c < 0xD800) {
-			if (c <= 0x3000) {
-				if (c < 0x2070)
-					return c != 0x200C && c != 0x200D;
-				if (c < 0x2190) return true;
-				if (c < 0x2C00) return false;
-				if (c > 0x2FEF) return false;
-			}
-			return true;
-		}
-		if (c >= 0xE000) {
-			if (c < 0xF900) return false;
-			if (c <= 0xFDCF) return true;
-			if (c < 0xFDF0) return false;
-			if (c <= 0xFFFD) return true;
-			return false;
-		}
-		if (c >= 0xDC00) return false;
-		return true;
-	}
-	
-	/** Return true if the given character is a valid character for a name. */
-	public static boolean isNameChar(char c) {
-		if (c < 0xF8) {
-			if (c < 0x3A) {
-				return c >= 0x2D && c != 0x2F;
-			}
-			if (c < 0xC0) {
-				return
-					(c >= 'a' && c <= 'z') || /*61-7A*/
-					(c >= 'A' && c <= 'Z') || /*41-5A*/
-					c == ':' /*3A*/ ||
-					c == '_' /*5F*/ ||
-					c == 0xB7;
-			}
-			return c != 0xD7 && c != 0xF7;
-		}
-		if (c < 0x2000) {
-			return c != 0x37E;
-		}
-		if (c < 0xD800) {
-			if (c <= 0x3000) {
-				if (c < 0x2070)
-					return c != 0x200C && c != 0x200D && c != 0x203F && c != 0x2040;
-				if (c < 0x2190) return true;
-				if (c < 0x2C00 || c > 0x2FEF) return false;
-			}
-			return true;
-		}
-		if (c >= 0xE000) {
-			if (c < 0xF900) return false;
-			if (c <= 0xFDCF) return true;
-			if (c < 0xFDF0) return false;
-			if (c <= 0xFFFD) return true;
-			return false;
-		}
-		return true;
 	}
 
 }

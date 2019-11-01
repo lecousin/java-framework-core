@@ -39,11 +39,11 @@ public interface XMLStreamEventsRecorder {
 		
 		/** Constructor. */
 		public Sync(XMLStreamEventsSync stream) {
-			this.stream = stream;
+			this.xmlStream = stream;
 			this.event = stream.event;
 		}
 		
-		protected XMLStreamEventsSync stream;
+		protected XMLStreamEventsSync xmlStream;
 		protected boolean recording = false;
 		protected LinkedList<Event> record = null;
 		protected Iterator<Event> replaying = null;
@@ -55,7 +55,7 @@ public interface XMLStreamEventsRecorder {
 		
 		@Override
 		public void start() throws XMLException, IOException {
-			stream.start();
+			xmlStream.start();
 		}
 		
 		@Override
@@ -66,10 +66,10 @@ public interface XMLStreamEventsRecorder {
 				event = replaying.next();
 				return;
 			}
-			stream.next();
-			event = stream.event;
+			xmlStream.next();
+			event = xmlStream.event;
 			if (recording)
-				record.add(stream.event.copy());
+				record.add(xmlStream.event.copy());
 		}
 		
 		@Override
@@ -77,7 +77,7 @@ public interface XMLStreamEventsRecorder {
 			recording = true;
 			record = new LinkedList<>();
 			if (recordCurrentEvent)
-				record.add(stream.event.copy());
+				record.add(xmlStream.event.copy());
 		}
 		
 		@Override
@@ -101,18 +101,18 @@ public interface XMLStreamEventsRecorder {
 		
 		/** Constructor. */
 		public Async(XMLStreamEventsAsync stream) {
-			this.stream = stream;
+			this.xmlStream = stream;
 			this.event = stream.event;
 		}
 		
-		protected XMLStreamEventsAsync stream;
+		protected XMLStreamEventsAsync xmlStream;
 		protected boolean recording = false;
 		protected LinkedList<Event> record = null;
 		protected Iterator<Event> replaying = null;
 		
 		@Override
 		public byte getPriority() {
-			return stream.getPriority();
+			return xmlStream.getPriority();
 		}
 		
 		@Override
@@ -122,7 +122,7 @@ public interface XMLStreamEventsRecorder {
 		
 		@Override
 		public IAsync<Exception> start() {
-			return stream.start();
+			return xmlStream.start();
 		}
 
 		@Override
@@ -133,12 +133,12 @@ public interface XMLStreamEventsRecorder {
 				event = replaying.next();
 				return new net.lecousin.framework.concurrent.async.Async<>(true);
 			}
-			net.lecousin.framework.concurrent.async.Async<Exception> next = stream.next();
+			net.lecousin.framework.concurrent.async.Async<Exception> next = xmlStream.next();
 			next.onDone(() -> {
 				if (next.isSuccessful()) {
-					event = stream.event;
+					event = xmlStream.event;
 					if (recording)
-						record.add(stream.event.copy());
+						record.add(xmlStream.event.copy());
 				}
 			});
 			return next;
@@ -149,7 +149,7 @@ public interface XMLStreamEventsRecorder {
 			recording = true;
 			record = new LinkedList<>();
 			if (recordCurrentEvent)
-				record.add(stream.event.copy());
+				record.add(xmlStream.event.copy());
 		}
 		
 		@Override

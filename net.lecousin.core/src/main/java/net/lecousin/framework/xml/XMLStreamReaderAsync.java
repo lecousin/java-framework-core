@@ -332,7 +332,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return false;
 		}
 		// can be a comment, a CDATA, or a DOCTYPE
-		if (event.text.length() == 0) {
+		if (event.text.isEmpty()) {
 			if (c == '-') {
 				// can be a comment
 				event.text.append((char)c);
@@ -713,7 +713,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		}
 		if (c == '>') {
-			onStartElement();
+			onStartElement(event.text.indexOf(':'));
 			sp.unblock();
 			return false;
 		}
@@ -739,7 +739,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return false;
 		}
 		event.isClosed = true;
-		onStartElement();
+		onStartElement(event.text.indexOf(':'));
 		sp.unblock();
 		return false;
 	}
@@ -764,7 +764,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		}
 		if (!Type.PROCESSING_INSTRUCTION.equals(event.type)) {
 			if (c == '>') {
-				onStartElement();
+				onStartElement(event.text.indexOf(':'));
 				sp.unblock();
 				return false;
 			}
@@ -902,7 +902,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return false;
 		}
 		char c = (char)i;
-		if (event.text.length() == 0) {
+		if (event.text.isEmpty()) {
 			if (!XMLStreamReader.isNameStartChar(c)) {
 				sp.error(new XMLException(stream, event.context,
 					XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
@@ -971,7 +971,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return false;
 		}
 		char c = (char)i;
-		if (event.text.length() == 0) {
+		if (event.text.isEmpty()) {
 			if (!XMLStreamReader.isNameStartChar(c)) {
 				sp.error(new XMLException(stream, event.context,
 					XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));

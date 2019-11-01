@@ -134,7 +134,7 @@ public class LocalizedProperties implements IMemoryManageable {
 		List<Namespace.Language> languages = new LinkedList<>();
 		for (UnprotectedStringBuffer s : str.split(',')) {
 			s.trim().toLowerCase();
-			if (s.length() == 0) continue;
+			if (s.isEmpty()) continue;
 			Namespace.Language l = new Namespace.Language();
 			List<UnprotectedStringBuffer> list = s.split('-');
 			l.tag = new String[list.size()];

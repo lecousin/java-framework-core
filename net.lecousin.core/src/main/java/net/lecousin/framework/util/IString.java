@@ -13,6 +13,9 @@ import java.util.List;
  * Interface adding functionalities to CharSequence.
  */
 public interface IString extends CharSequence {
+	
+	/** Return true if empty (length == 0). */
+	boolean isEmpty();
 
 	/** Set a character. */
 	void setCharAt(int index, char c);

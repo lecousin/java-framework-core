@@ -80,7 +80,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			classPath = new ArrayList<>(paths.length);
 			for (String path : paths) {
 				path = path.trim();
-				if (path.length() == 0) continue;
+				if (path.isEmpty()) continue;
 				File f = new File(path);
 				if (!f.exists()) continue;
 				classPath.add(f);

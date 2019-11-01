@@ -414,7 +414,7 @@ public class SplashScreen implements WorkProgress {
 	}
 	
 	private void updateProgress() {
-		if (subText.length() == 0) {
+		if (subText.isEmpty()) {
 			progressText.setText("");
 			progressSubText.setText(text);
 		} else {

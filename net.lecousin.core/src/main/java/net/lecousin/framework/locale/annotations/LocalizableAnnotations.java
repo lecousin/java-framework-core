@@ -19,7 +19,7 @@ public final class LocalizableAnnotations {
 		for (LocalizableProperty p : element.getAnnotationsByType(LocalizableProperty.class)) {
 			if (!p.name().equals(name)) continue;
 			String ns = p.namespace();
-			if (ns.length() == 0) {
+			if (ns.isEmpty()) {
 				LocalizableNamespace lns = element.getAnnotation(LocalizableNamespace.class);
 				if (lns == null && element instanceof Member)
 					lns = ((Member)element).getDeclaringClass().getAnnotation(LocalizableNamespace.class);

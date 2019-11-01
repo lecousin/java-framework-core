@@ -585,7 +585,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	private void readBase64(Base64Decoder decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result) {
 		if (Type.TEXT.equals(input.event.type)) {
 			input.event.text.trim();
-			if (input.event.text.length() == 0) {
+			if (input.event.text.isEmpty()) {
 				readNextBase64(decoder, io, result);
 				return;
 			}

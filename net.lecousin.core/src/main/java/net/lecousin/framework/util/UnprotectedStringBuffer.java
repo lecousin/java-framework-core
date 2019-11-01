@@ -93,6 +93,15 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	@Override
+	public boolean isEmpty() {
+		if (strings == null) return true;
+		for (int i = lastUsed; i >= 0; --i)
+			if (!strings[i].isEmpty())
+				return false;
+		return true;
+	}
+	
+	@Override
 	public char charAt(int index) {
 		if (strings == null) return 0;
 		for (int i = 0; i <= lastUsed; ++i) {
@@ -192,28 +201,26 @@ public class UnprotectedStringBuffer implements IString {
 			strings = a;
 			return this;
 		}
-		if (s instanceof UnprotectedString) {
-			UnprotectedString us = (UnprotectedString)s;
-			if (strings == null) {
-				strings = new UnprotectedString[8];
-				strings[0] = us;
-				lastUsed = 0;
-				return this;
-			}
-			if (lastUsed < strings.length - 1) {
-				strings[++lastUsed] = us;
-				return this;
-			}
-			UnprotectedString[] a = new UnprotectedString[strings.length + 8];
-			System.arraycopy(strings, 0, a, 0, strings.length);
-			a[strings.length] = us;
-			lastUsed++;
-			strings = a;
+		UnprotectedString us;
+		if (s instanceof UnprotectedString)
+			us = (UnprotectedString)s;
+		else
+			us = new UnprotectedString(s);
+		if (strings == null) {
+			strings = new UnprotectedString[8];
+			strings[0] = us;
+			lastUsed = 0;
 			return this;
 		}
-		int l = s.length();
-		for (int i = 0; i < l; ++i)
-			append(s.charAt(i));
+		if (lastUsed < strings.length - 1) {
+			strings[++lastUsed] = us;
+			return this;
+		}
+		UnprotectedString[] a = new UnprotectedString[strings.length + 8];
+		System.arraycopy(strings, 0, a, 0, strings.length);
+		a[strings.length] = us;
+		lastUsed++;
+		strings = a;
 		return this;
 	}
 	
@@ -225,7 +232,7 @@ public class UnprotectedStringBuffer implements IString {
 	/** Add the given string at the beginning. */
 	public UnprotectedStringBuffer addFirst(UnprotectedString s) {
 		if (strings == null) {
-			strings = new UnprotectedString[] { s };
+			strings = new UnprotectedString[] { s, null, null, null, null, null, null, null };
 			lastUsed = 0;
 			return this;
 		}
@@ -469,7 +476,7 @@ public class UnprotectedStringBuffer implements IString {
 					current.append(strings[index].substring(pos, strings[index].length()));
 					break;
 				}
-				if (current.length() == 0) {
+				if (current.isEmpty()) {
 					list.add(new UnprotectedStringBuffer(strings[index].substring(pos, i)));
 				} else {
 					current.append(strings[index].substring(pos, i));

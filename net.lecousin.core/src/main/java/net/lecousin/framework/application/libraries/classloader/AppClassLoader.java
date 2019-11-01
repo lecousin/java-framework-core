@@ -126,7 +126,7 @@ public class AppClassLoader implements ApplicationClassLoader {
 
 	/** Load a resource. */
 	public IO.Readable getResourceIO(String name, byte priority) {
-		if (name.length() == 0) return null;
+		if (name.isEmpty()) return null;
 		if (name.charAt(0) == '/') name = name.substring(1);
 		IO.Readable io = null;
     	for (int i = 0; i < libs.size(); i++) {
@@ -143,7 +143,7 @@ public class AppClassLoader implements ApplicationClassLoader {
 	
 	/** Search a resource. */
 	public URL getResourceURL(String name) {
-		if (name.length() == 0)
+		if (name.isEmpty())
 			return null;
 		if (name.charAt(0) == '/')
 			name = name.substring(1);
@@ -158,7 +158,7 @@ public class AppClassLoader implements ApplicationClassLoader {
 	
 	/** Load a resource, looking first into the given library. */
 	public InputStream getResourceAsStreamFrom(String name, AbstractClassLoader first) {
-		if (name.length() == 0) return null;
+		if (name.isEmpty()) return null;
 		if (name.charAt(0) == '/') name = name.substring(1);
 		IO.Readable io = null;
     	// try with the first one
@@ -183,7 +183,7 @@ public class AppClassLoader implements ApplicationClassLoader {
 	
 	/** Search a resource, looking first into the given library. */
 	public URL getResourceFrom(String name, AbstractClassLoader first) {
-		if (name.length() == 0) return null;
+		if (name.isEmpty()) return null;
 		if (name.charAt(0) == '/') name = name.substring(1);
 		URL url = null;
     	// try with the first one
@@ -205,7 +205,7 @@ public class AppClassLoader implements ApplicationClassLoader {
 
 	/** Search for resources. */
 	public Enumeration<URL> getResources(String name) throws IOException {
-		if (name.length() == 0) return null;
+		if (name.isEmpty()) return null;
 		if (name.charAt(0) == '/') name = name.substring(1);
 		CompoundCollection<URL> list = new CompoundCollection<>();
     	for (int i = 0; i < libs.size(); i++) {
@@ -224,7 +224,7 @@ public class AppClassLoader implements ApplicationClassLoader {
 	
 	/** Search for a resource. */
 	public IOProvider.Readable getIOProviderFrom(String name, AbstractClassLoader first) {
-		if (name.length() == 0) return null;
+		if (name.isEmpty()) return null;
 		if (name.charAt(0) == '/') name = name.substring(1);
 		IOProvider.Readable provider = null;
     	// try with the first one
