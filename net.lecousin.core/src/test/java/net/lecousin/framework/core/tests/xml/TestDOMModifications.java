@@ -2,18 +2,6 @@ package net.lecousin.framework.core.tests.xml;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.w3c.dom.Attr;
-import org.w3c.dom.CDATASection;
-import org.w3c.dom.Comment;
-import org.w3c.dom.Document;
-import org.w3c.dom.DocumentType;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.w3c.dom.Text;
-
 import net.lecousin.framework.xml.dom.XMLAttribute;
 import net.lecousin.framework.xml.dom.XMLCData;
 import net.lecousin.framework.xml.dom.XMLComment;
@@ -21,6 +9,19 @@ import net.lecousin.framework.xml.dom.XMLDocument;
 import net.lecousin.framework.xml.dom.XMLDocumentType;
 import net.lecousin.framework.xml.dom.XMLElement;
 import net.lecousin.framework.xml.dom.XMLText;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.w3c.dom.Attr;
+import org.w3c.dom.CDATASection;
+import org.w3c.dom.Comment;
+import org.w3c.dom.DOMException;
+import org.w3c.dom.Document;
+import org.w3c.dom.DocumentType;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Text;
 
 public class TestDOMModifications extends TestDOM {
 
@@ -41,6 +42,7 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertNull(doc2.getFirstChild());
 		Assert.assertNull(doc1.getLastChild());
 		Assert.assertNull(doc2.getLastChild());
+		Assert.assertNull(doc2.getChildNodes().item(0));
 		checkDocument(doc1, doc2);
 		// impl
 		XMLDocument d = doc2.getImplementation().createDocument("http://test", "toto:titi", doc2.getImplementation().createDocumentType("toto:tata", "hello", "world"));
@@ -67,19 +69,83 @@ public class TestDOMModifications extends TestDOM {
 		Element root1 = doc1.createElement("root");
 		doc1.appendChild(root1);
 		XMLElement root2 = doc2.createElement("root");
+		Assert.assertEquals("root", root2.getNodeName());
+		root2.setPrefix("");
+		Assert.assertEquals("root", root2.getNodeName());
+		root2.setPrefix(null);
+		Assert.assertEquals("root", root2.getNodeName());
+		Assert.assertNull(root2.getPreviousSibling());
+		Assert.assertNull(root2.getNextSibling());
+		try {
+			root2.appendChild(root1);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
+		try {
+			root2.insertBefore(root1, null);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
+		try {
+			root2.removeChild(root1);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
+		try {
+			root2.removeChild(doc2);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
+		try {
+			root2.replaceChild(root1, root2);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
+		try {
+			root2.replaceChild(doc2, root2);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
+		try {
+			root2.replaceChild(root2, root2);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
+		try {
+			root2.appendChild(root2);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
+		try {
+			root2.insertBefore(root2, null);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
 		doc2.appendChild(root2);
+		try {
+			doc2.appendChild(root2);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
 		Assert.assertTrue(doc1.hasChildNodes());
 		Assert.assertTrue(doc2.hasChildNodes());
 		Assert.assertEquals(root1, doc1.getFirstChild());
 		Assert.assertEquals(root1, doc1.getLastChild());
 		Assert.assertEquals(root2, doc2.getFirstChild());
 		Assert.assertEquals(root2, doc2.getLastChild());
+		Assert.assertNotNull(doc2.getChildNodes().item(0));
+		try {
+			root2.appendChild(doc2);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
+		try {
+			root2.insertBefore(doc2, null);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
 		checkDocument(doc1, doc2);
 		// add doc type
 		DocumentType docType1 = doc1.getImplementation().createDocumentType("test", "test", null);
 		XMLDocumentType docType2 = doc2.getImplementation().createDocumentType("test", "test", null);
 		doc1.appendChild(docType1);
 		doc2.appendChild(docType2);
+		try {
+			doc2.appendChild(docType2);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
+		try {
+			doc2.appendChild(doc1);
+			throw new AssertionError("Error expected");
+		} catch (DOMException e) {}
 		checkDocument(doc1, doc2);
 		Assert.assertEquals(root1, doc1.getFirstChild());
 		Assert.assertEquals(docType1, doc1.getLastChild());
@@ -87,6 +153,7 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertEquals(root2, doc2.getLastChild());
 		Assert.assertNull(root2.getChildNodes().item(0));
 		Assert.assertNull(doc2.getChildNodes().item(-1));
+		Assert.assertTrue(doc2.hasChildNodes());
 		// add attribute
 		root1.setAttribute("a1", "v1");
 		root2.setAttribute("a1", "v1");
@@ -113,10 +180,17 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertTrue(root2.hasAttribute("a2"));
 		Assert.assertEquals("V2", root2.getAttributeNode("a2").getNodeValue());
 		// remove attribute
+		root1.removeAttribute("hello");
+		root2.removeAttribute("hello");
 		root1.removeAttribute("a1");
 		root2.removeAttribute("a1");
+		root2.removeAttributeNS("", "a1");
 		checkDocument(doc1, doc2);
 		Assert.assertFalse(root2.hasAttribute("a1"));
+		Assert.assertEquals("", root2.getAttribute("a1"));
+		Assert.assertEquals("", root2.getAttributeNS("", "a1"));
+		Assert.assertNull(root2.getAttributeNode("a1"));
+		Assert.assertNull(root2.getAttributeNodeNS(null, "a1"));
 		// add attribute
 		root1.setAttributeNS("http://test", "test:a3", "v3");
 		root2.setAttributeNS("http://test", "test:a3", "v3");

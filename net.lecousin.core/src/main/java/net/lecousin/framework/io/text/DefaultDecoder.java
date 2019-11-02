@@ -46,40 +46,8 @@ public class DefaultDecoder extends Decoder {
 	
 	@Override
 	public int decode(ByteBuffer b, char[] chars, int pos, int len, MutableBoolean interrupt, int min) {
-		if (b == null) {
-			CharBuffer cb = CharBuffer.wrap(chars, pos, len);
-			if (nextChars != null) {
-				flushNextChars(cb);
-				if (!cb.hasRemaining())
-					return cb.position() - pos;
-			}
-			if (flushed) return -1;
-			ByteBuffer bb = remainingBytesLength > 0 ? ByteBuffer.wrap(remainingBytes, 0, remainingBytesLength) : ByteBuffer.allocate(0);
-			CoderResult cr = decoder.decode(bb, cb, true);
-			if (cr.isOverflow()) {
-				nextChars = CharBuffer.allocate(10);
-				decoder.decode(bb, nextChars, true);
-				nextChars.flip();
-				flushNextChars(cb);
-			}
-			remainingBytesLength = 0;
-			while (bb.hasRemaining())
-				remainingBytes[remainingBytesLength++] = bb.get();
-			if (!cb.hasRemaining())
-				return len;
-			cr = decoder.flush(cb);
-			if (cr.isOverflow()) {
-				if (nextChars == null) nextChars = CharBuffer.allocate(10);
-				else nextChars.compact();
-				decoder.flush(nextChars);
-				nextChars.flip();
-				flushNextChars(cb);
-			}
-			flushed = true;
-			if (cb.position() == pos)
-				return -1;
-			return cb.position() - pos;
-		}
+		if (b == null)
+			return decodeRemaining(chars, pos, len);
 		
 		// TODO interrupt/min
 		CharBuffer cb = CharBuffer.wrap(chars, pos, len);
@@ -125,6 +93,41 @@ public class DefaultDecoder extends Decoder {
 			nextChars.flip();
 			flushNextChars(cb);
 		}
+		return cb.position() - pos;
+	}
+	
+	private int decodeRemaining(char[] chars, int pos, int len) {
+		CharBuffer cb = CharBuffer.wrap(chars, pos, len);
+		if (nextChars != null) {
+			flushNextChars(cb);
+			if (!cb.hasRemaining())
+				return cb.position() - pos;
+		}
+		if (flushed) return -1;
+		ByteBuffer bb = remainingBytesLength > 0 ? ByteBuffer.wrap(remainingBytes, 0, remainingBytesLength) : ByteBuffer.allocate(0);
+		CoderResult cr = decoder.decode(bb, cb, true);
+		if (cr.isOverflow()) {
+			nextChars = CharBuffer.allocate(10);
+			decoder.decode(bb, nextChars, true);
+			nextChars.flip();
+			flushNextChars(cb);
+		}
+		remainingBytesLength = 0;
+		while (bb.hasRemaining())
+			remainingBytes[remainingBytesLength++] = bb.get();
+		if (!cb.hasRemaining())
+			return len;
+		cr = decoder.flush(cb);
+		if (cr.isOverflow()) {
+			if (nextChars == null) nextChars = CharBuffer.allocate(10);
+			else nextChars.compact();
+			decoder.flush(nextChars);
+			nextChars.flip();
+			flushNextChars(cb);
+		}
+		flushed = true;
+		if (cb.position() == pos)
+			return -1;
 		return cb.position() - pos;
 	}
 	

@@ -41,7 +41,7 @@ public abstract class XMLNode implements Node {
 	
 	/** Check if the given node is an ancestor of this node. */
 	public boolean isAncestor(XMLNode node) {
-		return node == parent || (parent != null && parent.isAncestor(node));
+		return node == parent || node == doc || (parent != null && parent.isAncestor(node));
 	}
 
 	@Override

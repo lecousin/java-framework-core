@@ -41,35 +41,7 @@ public class MultipleAppender implements Appender {
 		while (reader.hasNext()) {
 			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
 				if ("AppenderRef".equals(reader.getLocalName())) {
-					String name = null;
-					for (int i = 0; i < reader.getAttributeCount(); ++i) {
-						String attrName = reader.getAttributeLocalName(i);
-						String attrValue = reader.getAttributeValue(i);
-						if ("name".equals(attrName))
-							name = attrValue;
-						else
-							throw new LoggerConfigurationException("Unknown attribute " + attrName + " in AppenderRef");
-					}
-					
-					if (name == null) throw new LoggerConfigurationException("Missing attribute name on AppenderRef");
-					Appender appender = appenders.get(name);
-					if (appender == null) throw new LoggerConfigurationException("Unknown appender " + name + " in AppenderRef");
-					list.add(appender);
-					if (appender.level() < level)
-						level = appender.level();
-					if (!threadName) threadName = appender.needsThreadName();
-					if (!location) location = appender.needsLocation();
-					
-					reader.next();
-					do {
-						if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)
-							break;
-						if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
-							throw new LoggerConfigurationException(
-								"Unexpected element " + reader.getLocalName() + " in AppenderRef");
-						}
-						reader.next();
-					} while (reader.hasNext());
+					parseAppenderRef(reader, list, appenders);
 				} else {
 					throw new LoggerConfigurationException("Unknown element " + reader.getLocalName()
 						+ " in MultipleAppender, only AppenderRef elements are expected");
@@ -87,6 +59,39 @@ public class MultipleAppender implements Appender {
 	private int level;
 	private boolean threadName = false;
 	private boolean location = false;
+	
+	private void parseAppenderRef(XMLStreamReader reader, List<Appender> list, Map<String,Appender> appenders)
+	throws LoggerConfigurationException, XMLStreamException {
+		String name = null;
+		for (int i = 0; i < reader.getAttributeCount(); ++i) {
+			String attrName = reader.getAttributeLocalName(i);
+			String attrValue = reader.getAttributeValue(i);
+			if ("name".equals(attrName))
+				name = attrValue;
+			else
+				throw new LoggerConfigurationException("Unknown attribute " + attrName + " in AppenderRef");
+		}
+		
+		if (name == null) throw new LoggerConfigurationException("Missing attribute name on AppenderRef");
+		Appender appender = appenders.get(name);
+		if (appender == null) throw new LoggerConfigurationException("Unknown appender " + name);
+		list.add(appender);
+		if (appender.level() < level)
+			level = appender.level();
+		if (!threadName) threadName = appender.needsThreadName();
+		if (!location) location = appender.needsLocation();
+		
+		reader.next();
+		do {
+			if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)
+				break;
+			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
+				throw new LoggerConfigurationException(
+					"Unexpected element " + reader.getLocalName() + " in AppenderRef");
+			}
+			reader.next();
+		} while (reader.hasNext());
+	}
 	
 	@Override
 	public void append(Log log) {

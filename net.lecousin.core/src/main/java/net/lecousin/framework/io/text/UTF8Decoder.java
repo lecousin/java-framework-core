@@ -14,7 +14,7 @@ public class UTF8Decoder extends Decoder {
 	private static final char INVALID_CHAR = '�';
 
 	// skip checkstyle: MissingSwitchDefault
-	@SuppressWarnings({"squid:SwitchLastCaseIsDefaultCheck", "squid:AssignmentInSubExpressionCheck"})
+	@SuppressWarnings({"squid:SwitchLastCaseIsDefaultCheck", "squid:AssignmentInSubExpressionCheck", "squid:S3776"})
 	@Override
 	protected int decode(ByteBuffer b, char[] chars, int pos, int len, MutableBoolean interrupt, int min) {
 		if (b == null) {

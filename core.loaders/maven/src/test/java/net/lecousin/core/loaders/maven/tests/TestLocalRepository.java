@@ -236,6 +236,26 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		}
 	}
 	
+	@Test
+	public void testPOMWithAdditionalFields() throws Exception {
+		File outFile = new File("./test-additional-fields.pom.xml");
+		outFile.createNewFile();
+		outFile.deleteOnExit();
+		try {
+			new File("./target/test-out").mkdir();
+			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.PRIORITY_NORMAL);
+			IOUtil.copy(
+				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-additional-fields.pom.xml"))).provideIOReadable(Task.PRIORITY_NORMAL),
+				out,
+				-1, true, null, 0).blockThrow(15000);
+			
+			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-additional-fields.pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+			load.blockResult(30000);
+		} finally {
+			outFile.delete();
+		}
+	}
+	
 	private void testError(String errorName) throws IOException, CancelException, URISyntaxException {
 		File outFile = new File("./test-error-" + errorName + ".pom.xml");
 		outFile.createNewFile();
@@ -264,6 +284,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 	public void testErrors() throws Exception {
 		testError("invalid-root");
 		testError("invalid-xml");
+		testError("empty");
 	}
 	
 	@Test

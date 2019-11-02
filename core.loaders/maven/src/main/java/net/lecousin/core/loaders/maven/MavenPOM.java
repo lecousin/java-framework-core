@@ -564,8 +564,8 @@ public class MavenPOM implements LibraryDescriptor {
 						else
 							xml.closeElement();
 					}
-					if (e.getValue1().equals("*")) e.setValue1(null);
-					if (e.getValue2().equals("*")) e.setValue2(null);
+					if ("*".equals(e.getValue1())) e.setValue1(null);
+					if ("*".equals(e.getValue2())) e.setValue2(null);
 					exclusions.add(e);
 				} else {
 					xml.closeElement();

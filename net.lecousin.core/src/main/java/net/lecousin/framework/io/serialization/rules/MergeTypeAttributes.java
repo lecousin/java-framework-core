@@ -131,68 +131,78 @@ public class MergeTypeAttributes implements SerializationRule {
 			// we are on the target attribute
 			MergeTargetAttribute ma = (MergeTargetAttribute)actx.getAttribute();
 			if (serializing) {
-				// we need to change the instance
-				Object containerObject = octx.getInstance();
-				TypeDefinition targetType;
-				if (containerObject != null) {
-					Object targetInstance;
-					Method getter = ClassUtil.getGetter(containerObject.getClass(), targetAttributeName);
-					if (getter != null)
-						targetInstance = getter.invoke(containerObject);
-					else {
-						Field f = ClassUtil.getField(containerObject.getClass(), targetAttributeName);
-						if (f != null)
-							targetInstance = f.get(containerObject);
-						else
-							throw new SerializationException("Cannot find attribute " + targetAttributeName
-								+ " on class " + containerObject.getClass().getName());
-					}
-					octx.setInstance(targetInstance);
-					targetType = TypeDefinition.from(targetInstance.getClass(), ma.targetType);
-				} else {
-					Attribute a = octx.getSerializationClass().getAttributeByOriginalName(targetAttributeName);
-					targetType = a.getOriginalType();
-				}
-				// we need to change the type
-				SerializationClass containerClass = octx.getSerializationClass();
-				SerializationClass sc = new SerializationClass(targetType);
-				octx.setSerializationClass(sc);
-				octx.setOriginalType(ma.targetType);
-				// we need to add other attributes
-				for (Attribute a : containerClass.getAttributes()) {
-					if (a.getOriginalName().equals(targetAttributeName)) continue;
-					sc.getAttributes().add(new MergedAttribute(a, sc, containerObject));
-				}
+				applyOnAttributeContextForSerialization(octx, ma);
 			} else {
-				// we need to instantiate the target attribute
-				Object mergedInstance = SerializationClass.instantiate(ma.targetType.getBase());
-				// we can set the targetAttribute
-				Method setter = ClassUtil.getSetter(this.type, targetAttributeName);
-				if (setter != null)
-					setter.invoke(octx.getInstance(), mergedInstance);
-				else {
-					Field f = ClassUtil.getField(this.type, targetAttributeName);
-					if (f != null)
-						f.set(octx.getInstance(), mergedInstance);
-					else
-						throw new SerializationException("Cannot find attribute " + targetAttributeName
-							+ " on class " + this.type.getName());
-				}
-				// we skip the targetAttribute
-				for (Iterator<Attribute> it = octx.getSerializationClass().getAttributes().iterator();
-					it.hasNext(); ) {
-					if (it.next().getOriginalName().equals(targetAttributeName)) {
-						it.remove();
-						break;
-					}
-				}
-				// we need to add other attributes
-				SerializationClass sc = new SerializationClass(ma.targetType);
-				for (Attribute a : sc.getAttributes()) {
-					octx.getSerializationClass().getAttributes().add(
-						new MergedAttribute(a, octx.getSerializationClass(), mergedInstance));
-				}
+				applyOnAttributeContextForDeserialization(octx, ma);
 			}
+		}
+	}
+	
+	private void applyOnAttributeContextForSerialization(ObjectContext octx, MergeTargetAttribute ma)
+	throws SerializationException, ReflectiveOperationException {
+		// we need to change the instance
+		Object containerObject = octx.getInstance();
+		TypeDefinition targetType;
+		if (containerObject != null) {
+			Object targetInstance;
+			Method getter = ClassUtil.getGetter(containerObject.getClass(), targetAttributeName);
+			if (getter != null)
+				targetInstance = getter.invoke(containerObject);
+			else {
+				Field f = ClassUtil.getField(containerObject.getClass(), targetAttributeName);
+				if (f != null)
+					targetInstance = f.get(containerObject);
+				else
+					throw new SerializationException("Cannot find attribute " + targetAttributeName
+						+ " on class " + containerObject.getClass().getName());
+			}
+			octx.setInstance(targetInstance);
+			targetType = TypeDefinition.from(targetInstance.getClass(), ma.targetType);
+		} else {
+			Attribute a = octx.getSerializationClass().getAttributeByOriginalName(targetAttributeName);
+			targetType = a.getOriginalType();
+		}
+		// we need to change the type
+		SerializationClass containerClass = octx.getSerializationClass();
+		SerializationClass sc = new SerializationClass(targetType);
+		octx.setSerializationClass(sc);
+		octx.setOriginalType(ma.targetType);
+		// we need to add other attributes
+		for (Attribute a : containerClass.getAttributes()) {
+			if (a.getOriginalName().equals(targetAttributeName)) continue;
+			sc.getAttributes().add(new MergedAttribute(a, sc, containerObject));
+		}
+	}
+	
+	private void applyOnAttributeContextForDeserialization(ObjectContext octx, MergeTargetAttribute ma)
+	throws SerializationException, ReflectiveOperationException {
+		// we need to instantiate the target attribute
+		Object mergedInstance = SerializationClass.instantiate(ma.targetType.getBase());
+		// we can set the targetAttribute
+		Method setter = ClassUtil.getSetter(this.type, targetAttributeName);
+		if (setter != null)
+			setter.invoke(octx.getInstance(), mergedInstance);
+		else {
+			Field f = ClassUtil.getField(this.type, targetAttributeName);
+			if (f != null)
+				f.set(octx.getInstance(), mergedInstance);
+			else
+				throw new SerializationException("Cannot find attribute " + targetAttributeName
+					+ " on class " + this.type.getName());
+		}
+		// we skip the targetAttribute
+		for (Iterator<Attribute> it = octx.getSerializationClass().getAttributes().iterator();
+			it.hasNext(); ) {
+			if (it.next().getOriginalName().equals(targetAttributeName)) {
+				it.remove();
+				break;
+			}
+		}
+		// we need to add other attributes
+		SerializationClass sc = new SerializationClass(ma.targetType);
+		for (Attribute a : sc.getAttributes()) {
+			octx.getSerializationClass().getAttributes().add(
+				new MergedAttribute(a, octx.getSerializationClass(), mergedInstance));
 		}
 	}
 	
@@ -202,76 +212,86 @@ public class MergeTypeAttributes implements SerializationRule {
 			SerializationClass.searchAttributeType(octx.getOriginalType(), targetAttributeName);
 		if (targetType != null) {
 			if (serializing) {
-				// we need to change the instance
-				Object containerObject = octx.getInstance();
-				TypeDefinition newType;
-				if (containerObject != null) {
-					Object targetInstance;
-					Method getter =
-					ClassUtil.getGetter(containerObject.getClass(), targetAttributeName);
-					if (getter != null)
-						targetInstance = getter.invoke(containerObject);
-					else {
-						Field f = ClassUtil.getField(
-							containerObject.getClass(), targetAttributeName);
-						if (f != null)
-							targetInstance = f.get(containerObject);
-						else
-							throw new SerializationException("Cannot find attribute "
-								+ targetAttributeName
-								+ " on class "
-								+ containerObject.getClass().getName());
-					}
-					octx.setInstance(targetInstance);
-					newType = TypeDefinition.from(targetInstance.getClass(), targetType);
-				} else {
-					Attribute a = octx.getSerializationClass()
-						.getAttributeByOriginalName(targetAttributeName);
-					newType = a.getOriginalType();
-				}
-				// we need to change the type
-				SerializationClass containerClass = octx.getSerializationClass();
-				SerializationClass sc = new SerializationClass(newType);
-				octx.setSerializationClass(sc);
-				octx.setOriginalType(targetType);
-				// we need to add other attributes
-				for (Attribute a : containerClass.getAttributes()) {
-					if (a.getOriginalName().equals(targetAttributeName)) continue;
-					sc.getAttributes().add(new MergedAttribute(a, sc, containerObject));
-				}
+				applyOnCollectionContextInAttributeForSerialization(octx, targetType);
 			} else {
-				// we need to instantiate the target attribute
-				Object mergedInstance = SerializationClass.instantiate(targetType.getBase());
-				// we can set the targetAttribute
-				Method setter = ClassUtil.getSetter(this.type, targetAttributeName);
-				if (setter != null)
-					setter.invoke(octx.getInstance(), mergedInstance);
-				else {
-					Field f = ClassUtil.getField(this.type, targetAttributeName);
-					if (f != null)
-						f.set(octx.getInstance(), mergedInstance);
-					else
-						throw new SerializationException("Cannot find attribute "
-							+ targetAttributeName
-							+ " on class " + this.type.getName());
-				}
-				// we skip the targetAttribute
-				for (Iterator<Attribute> it =
-					octx.getSerializationClass().getAttributes().iterator();
-					it.hasNext(); ) {
-					if (it.next().getOriginalName().equals(targetAttributeName)) {
-						it.remove();
-						break;
-					}
-				}
-				// we need to add other attributes
-				SerializationClass sc = new SerializationClass(targetType);
-				for (Attribute a : sc.getAttributes()) {
-					octx.getSerializationClass().getAttributes().add(
-						new MergedAttribute(a, octx.getSerializationClass(),
-							mergedInstance));
-				}
+				applyOnCollectionContextInAttributeForDeserialization(octx, targetType);
 			}
+		}
+	}
+	
+	private void applyOnCollectionContextInAttributeForSerialization(ObjectContext octx, TypeDefinition targetType)
+	throws SerializationException, ReflectiveOperationException {
+		// we need to change the instance
+		Object containerObject = octx.getInstance();
+		TypeDefinition newType;
+		if (containerObject != null) {
+			Object targetInstance;
+			Method getter =
+			ClassUtil.getGetter(containerObject.getClass(), targetAttributeName);
+			if (getter != null)
+				targetInstance = getter.invoke(containerObject);
+			else {
+				Field f = ClassUtil.getField(
+					containerObject.getClass(), targetAttributeName);
+				if (f != null)
+					targetInstance = f.get(containerObject);
+				else
+					throw new SerializationException("Cannot find attribute "
+						+ targetAttributeName
+						+ " on class "
+						+ containerObject.getClass().getName());
+			}
+			octx.setInstance(targetInstance);
+			newType = TypeDefinition.from(targetInstance.getClass(), targetType);
+		} else {
+			Attribute a = octx.getSerializationClass()
+				.getAttributeByOriginalName(targetAttributeName);
+			newType = a.getOriginalType();
+		}
+		// we need to change the type
+		SerializationClass containerClass = octx.getSerializationClass();
+		SerializationClass sc = new SerializationClass(newType);
+		octx.setSerializationClass(sc);
+		octx.setOriginalType(targetType);
+		// we need to add other attributes
+		for (Attribute a : containerClass.getAttributes()) {
+			if (a.getOriginalName().equals(targetAttributeName)) continue;
+			sc.getAttributes().add(new MergedAttribute(a, sc, containerObject));
+		}
+	}
+	
+	private void applyOnCollectionContextInAttributeForDeserialization(ObjectContext octx, TypeDefinition targetType)
+	throws SerializationException, ReflectiveOperationException {
+		// we need to instantiate the target attribute
+		Object mergedInstance = SerializationClass.instantiate(targetType.getBase());
+		// we can set the targetAttribute
+		Method setter = ClassUtil.getSetter(this.type, targetAttributeName);
+		if (setter != null)
+			setter.invoke(octx.getInstance(), mergedInstance);
+		else {
+			Field f = ClassUtil.getField(this.type, targetAttributeName);
+			if (f != null)
+				f.set(octx.getInstance(), mergedInstance);
+			else
+				throw new SerializationException("Cannot find attribute "
+					+ targetAttributeName
+					+ " on class " + this.type.getName());
+		}
+		// we skip the targetAttribute
+		for (Iterator<Attribute> it =
+			octx.getSerializationClass().getAttributes().iterator();
+			it.hasNext(); ) {
+			if (it.next().getOriginalName().equals(targetAttributeName)) {
+				it.remove();
+				break;
+			}
+		}
+		// we need to add other attributes
+		SerializationClass sc = new SerializationClass(targetType);
+		for (Attribute a : sc.getAttributes()) {
+			octx.getSerializationClass().getAttributes().add(
+				new MergedAttribute(a, octx.getSerializationClass(),
+					mergedInstance));
 		}
 	}
 	
