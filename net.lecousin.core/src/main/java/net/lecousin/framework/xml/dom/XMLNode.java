@@ -114,22 +114,22 @@ public abstract class XMLNode implements Node {
 	
 	@Override
 	public Node appendChild(Node newChild) {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Operation not allowed");
+		throw DOMErrors.operationNotAllowed();
 	}
 	
 	@Override
 	public Node insertBefore(Node newChild, Node refChild) {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Operation not allowed");
+		throw DOMErrors.operationNotAllowed();
 	}
 	
 	@Override
 	public Node removeChild(Node oldChild) {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Operation not allowed");
+		throw DOMErrors.operationNotAllowed();
 	}
 	
 	@Override
 	public Node replaceChild(Node newChild, Node oldChild) {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Operation not allowed");
+		throw DOMErrors.operationNotAllowed();
 	}
 
 	

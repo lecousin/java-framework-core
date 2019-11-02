@@ -85,4 +85,33 @@ public class TestListOfArrays extends LCCoreAbstractTest {
 		}
 	}
 	
+	@Test
+	public void testWithEmptyArrays() {
+		ListOfArrays<Integer> l = new ListOfArrays<>();
+		l.add(new Integer[0]);
+		Integer[] a = new Integer[10];
+		for (int i = 0; i < a.length; ++i)
+			a[i] = Integer.valueOf(i * 2);
+		l.add(a);
+		Integer[] b = new Integer[0];
+		l.add(b);
+		Integer[] c = new Integer[8];
+		for (int i = 0; i < c.length; ++i)
+			c[i] = Integer.valueOf(1000 + i * 2);
+		l.add(c);
+		Integer[] d = new Integer[0];
+		l.add(d);
+		Assert.assertEquals(5, l.getArrays().size());
+		Iterator<Integer> it = l.iterator();
+		for (int i = 0; i < a.length; ++i) {
+			Assert.assertTrue(it.hasNext());
+			Assert.assertEquals(i * 2, it.next().intValue());
+		}
+		for (int i = 0; i < c.length; ++i) {
+			Assert.assertTrue(it.hasNext());
+			Assert.assertEquals(1000 + i * 2, it.next().intValue());
+		}
+		Assert.assertFalse(it.hasNext());
+	}
+	
 }

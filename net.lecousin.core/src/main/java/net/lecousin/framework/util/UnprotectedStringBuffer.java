@@ -277,6 +277,7 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	@Override
+	@SuppressWarnings("squid:S3776") // complexity
 	public int indexOf(CharSequence s, int start) {
 		int sl = s.length();
 		if (sl == 0 || strings == null) return -1;
@@ -701,6 +702,7 @@ public class UnprotectedStringBuffer implements IString {
 	/** Search for a starting string and a ending string, and replace them including the content with new content.
 	 * This may be typically used to replace variables such as ${xxx} with their values.
 	 */
+	@SuppressWarnings("squid:S3776") // complexity
 	public void searchAndReplace(
 		CharSequence start, CharSequence end, UnaryOperator<UnprotectedStringBuffer> valueProvider
 	) {

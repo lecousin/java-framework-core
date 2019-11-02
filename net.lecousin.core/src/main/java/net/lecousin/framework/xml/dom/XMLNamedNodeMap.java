@@ -4,7 +4,6 @@ import java.util.List;
 
 import net.lecousin.framework.util.ObjectUtil;
 
-import org.w3c.dom.DOMException;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 
@@ -30,12 +29,12 @@ public class XMLNamedNodeMap implements NamedNodeMap {
 
 	@Override
 	public XMLNode setNamedItem(Node arg) {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
+		throw DOMErrors.operationNotSupported();
 	}
 
 	@Override
 	public Node removeNamedItem(String name) {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
+		throw DOMErrors.operationNotSupported();
 	}
 
 	@Override
@@ -62,12 +61,12 @@ public class XMLNamedNodeMap implements NamedNodeMap {
 
 	@Override
 	public Node setNamedItemNS(Node arg) {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
+		throw DOMErrors.operationNotSupported();
 	}
 
 	@Override
-	public Node removeNamedItemNS(String namespaceURI, String localName) throws DOMException {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
+	public Node removeNamedItemNS(String namespaceURI, String localName) {
+		throw DOMErrors.operationNotSupported();
 	}
 	
 }

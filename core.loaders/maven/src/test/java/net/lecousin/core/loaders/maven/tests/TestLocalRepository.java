@@ -2,7 +2,9 @@ package net.lecousin.core.loaders.maven.tests;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -24,6 +26,7 @@ import net.lecousin.framework.collections.Tree;
 import net.lecousin.framework.collections.Tree.Node;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IOUtil;
@@ -231,6 +234,36 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		} finally {
 			outFile.delete();
 		}
+	}
+	
+	private void testError(String errorName) throws IOException, CancelException, URISyntaxException {
+		File outFile = new File("./test-error-" + errorName + ".pom.xml");
+		outFile.createNewFile();
+		outFile.deleteOnExit();
+		try {
+			new File("./target/test-out").mkdir();
+			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.PRIORITY_NORMAL);
+			IOUtil.copy(
+				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/error/test-" + errorName + ".pom.xml"))).provideIOReadable(Task.PRIORITY_NORMAL),
+				out,
+				-1, true, null, 0).blockThrow(15000);
+			
+			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-error-\" + errorName + \".pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+			try {
+				load.blockResult(30000);
+				throw new AssertionError("Error expected for pom " + errorName);
+			} catch (LibraryManagementException e) {
+				// ok
+			}
+		} finally {
+			outFile.delete();
+		}
+	}
+	
+	@Test
+	public void testErrors() throws Exception {
+		testError("invalid-root");
+		testError("invalid-xml");
 	}
 	
 	@Test

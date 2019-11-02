@@ -259,7 +259,7 @@ public class XMLDocument extends XMLNode implements Document {
 	
 	@Override
 	public DocumentFragment createDocumentFragment() {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
+		throw DOMErrors.operationNotSupported();
 	}
 
 	@Override
@@ -425,7 +425,7 @@ public class XMLDocument extends XMLNode implements Document {
 	@Override
 	public Node renameNode(Node n, String namespaceURI, String qualifiedName) {
 		// TODO UserDataHandler
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
+		throw DOMErrors.operationNotSupported();
 	}
 	
 }

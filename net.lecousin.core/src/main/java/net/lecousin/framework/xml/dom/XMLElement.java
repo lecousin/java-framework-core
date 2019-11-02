@@ -110,13 +110,10 @@ public class XMLElement extends XMLNode implements Element {
 	
 	@Override
 	public XMLNode appendChild(Node newChild) {
-		if (!(newChild instanceof XMLNode))
-			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "newChild must implement XMLNode");
-		if (newChild == this)
-			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "Cannot insert a node inside itself");
+		if (!(newChild instanceof XMLNode)) throw DOMErrors.invalidChildType(newChild);
+		if (newChild == this) throw DOMErrors.cannotBeAChildOfItself();
 		XMLNode child = (XMLNode)newChild;
-		if (isAncestor(child))
-			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "Cannot insert an ancestor into a descendent");
+		if (isAncestor(child)) throw DOMErrors.cannotAddAnAncestor();
 		child.setParent(this);
 		children.add(child);
 		return child;
@@ -124,13 +121,10 @@ public class XMLElement extends XMLNode implements Element {
 	
 	@Override
 	public XMLNode insertBefore(Node newChild, Node refChild) {
-		if (!(newChild instanceof XMLNode))
-			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "newChild must implement XMLNode");
-		if (newChild == this)
-			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "Cannot insert a node inside itself");
+		if (!(newChild instanceof XMLNode)) throw DOMErrors.invalidChildType(newChild);
+		if (newChild == this) throw DOMErrors.cannotBeAChildOfItself();
 		XMLNode child = (XMLNode)newChild;
-		if (isAncestor(child))
-			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "Cannot insert an ancestor into a descendent");
+		if (isAncestor(child)) throw DOMErrors.cannotAddAnAncestor();
 		if (refChild == null) {
 			child.setParent(this);
 			children.add(child);
@@ -158,18 +152,14 @@ public class XMLElement extends XMLNode implements Element {
 	
 	@Override
 	public XMLNode replaceChild(Node newChild, Node oldChild) {
-		if (!(newChild instanceof XMLNode))
-			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "newChild must implement XMLNode");
-		if (newChild == this)
-			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "Cannot insert a node inside itself");
-		if (!(oldChild instanceof XMLNode))
-			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "oldChild must implement XMLNode");
+		if (!(newChild instanceof XMLNode)) throw DOMErrors.invalidChildType(newChild);
+		if (newChild == this) throw DOMErrors.cannotBeAChildOfItself();
+		if (!(oldChild instanceof XMLNode)) throw DOMErrors.invalidChildType(oldChild);
 		XMLNode neChild = (XMLNode)newChild;
 		XMLNode olChild = (XMLNode)oldChild;
 		if (olChild.parent != this)
 			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "The given oldChild is not a child of this Element");
-		if (isAncestor(neChild))
-			throw new DOMException(DOMException.HIERARCHY_REQUEST_ERR, "Cannot insert an ancestor into a descendent");
+		if (isAncestor(neChild)) throw DOMErrors.cannotAddAnAncestor();
 		int i = children.indexOf(olChild);
 		olChild.parent = null;
 		neChild.setParent(this);
@@ -290,22 +280,22 @@ public class XMLElement extends XMLNode implements Element {
 	
 	@Override
 	public boolean hasAttributeNS(String namespaceURI, String localName) {
-		String prefix = getPrefixForNamespaceURI(namespaceURI);
-		if (prefix == null)
+		String prefx = getPrefixForNamespaceURI(namespaceURI);
+		if (prefx == null)
 			return false;
 		for (XMLAttribute a : attributes)
-			if (prefix.equals(a.prefix) && localName.equals(a.localName))
+			if (prefx.equals(a.prefix) && localName.equals(a.localName))
 				return true;
 		return false;
 	}
 	
 	@Override
 	public String getAttributeNS(String namespaceURI, String localName) {
-		String prefix = getPrefixForNamespaceURI(namespaceURI);
-		if (prefix == null)
+		String prefx = getPrefixForNamespaceURI(namespaceURI);
+		if (prefx == null)
 			return "";
 		for (XMLAttribute a : attributes)
-			if (prefix.equals(a.prefix) && localName.equals(a.localName))
+			if (prefx.equals(a.prefix) && localName.equals(a.localName))
 				return a.value == null ? "" : a.value;
 		return "";
 	}
@@ -313,25 +303,25 @@ public class XMLElement extends XMLNode implements Element {
 	@Override
 	public void setAttributeNS(String namespaceURI, String qualifiedName, String value) {
 		int i = qualifiedName.indexOf(':');
-		String prefix;
-		String localName;
+		String pref;
+		String local;
 		if (i < 0) {
-			prefix = "";
-			localName = qualifiedName;
+			pref = "";
+			local = qualifiedName;
 		} else {
-			prefix = qualifiedName.substring(0, i);
-			localName = qualifiedName.substring(i + 1);
+			pref = qualifiedName.substring(0, i);
+			local = qualifiedName.substring(i + 1);
 		}
 		if (prefixToURI != null) {
-			String uri = prefixToURI.get(prefix);
+			String uri = prefixToURI.get(pref);
 			if (uri != null && !uri.equals(namespaceURI))
-				throw new DOMException(DOMException.NAMESPACE_ERR, "Prefix " + prefix + " is already used for namespace " + uri);
+				throw new DOMException(DOMException.NAMESPACE_ERR, "Prefix " + pref + " is already used for namespace " + uri);
 			if (uri == null)
-				prefixToURI.put(prefix, namespaceURI);
-		} else if (namespaceURI != null || !prefix.isEmpty()) {
-			declareNamespace(namespaceURI, prefix);
+				prefixToURI.put(pref, namespaceURI);
+		} else if (namespaceURI != null || !pref.isEmpty()) {
+			declareNamespace(namespaceURI, pref);
 		}
-		XMLAttribute a = new XMLAttribute(doc, prefix, localName, value);
+		XMLAttribute a = new XMLAttribute(doc, pref, local, value);
 		setAttributeNode(a);
 	}
 
@@ -378,23 +368,20 @@ public class XMLElement extends XMLNode implements Element {
 	@Override
 	public void setIdAttribute(String name, boolean isId) {
 		XMLAttribute a = getAttributeNode(name);
-		if (a == null)
-			throw new DOMException(DOMException.NOT_FOUND_ERR, "Attribute " + name + " does not exist on this element");
+		if (a == null) throw DOMErrors.attributeDoesNotExist(name);
 		a.isId = isId;
 	}
 
 	@Override
 	public void setIdAttributeNS(String namespaceURI, String localName, boolean isId) {
 		XMLAttribute a = getAttributeNodeNS(namespaceURI, localName);
-		if (a == null)
-			throw new DOMException(DOMException.NOT_FOUND_ERR, "Attribute " + localName + " does not exist on this element");
+		if (a == null) throw DOMErrors.attributeDoesNotExist(localName);
 		a.isId = isId;
 	}
 
 	@Override
 	public void setIdAttributeNode(Attr idAttr, boolean isId) {
-		if (!attributes.contains(idAttr))
-			throw new DOMException(DOMException.NOT_FOUND_ERR, "Attribute " + localName + " does not exist on this element");
+		if (!attributes.contains(idAttr)) throw DOMErrors.attributeDoesNotExist(localName);
 		XMLAttribute a = (XMLAttribute)idAttr;
 		a.isId = isId;
 	}
@@ -525,6 +512,7 @@ public class XMLElement extends XMLNode implements Element {
 	}
 
 	@Override
+	@SuppressWarnings("squid:ForLoopCounterChangedCheck")
 	public void normalize() {
 		for (int pos = 1; pos < children.size(); ++pos) {
 			XMLNode child = children.get(pos);

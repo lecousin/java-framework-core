@@ -434,59 +434,57 @@ public abstract class AbstractDeserializer implements Deserializer {
 		do {
 			AsyncSupplier<Pair<Object, Boolean>, SerializationException> next =
 				deserializeCollectionValueElement(context, elementIndex, colPath, rules);
-			if (next.isDone()) {
-				if (next.hasError()) {
-					result.error(next.getError());
-					return;
-				}
-				Pair<Object, Boolean> p = next.getResult();
-				if (!p.getValue2().booleanValue()) {
-					// end of collection
-					if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
-						result.unblockSuccess(context.getCollection());
-					else
-						result.unblockSuccess(toArray(context));
-					return;
-				}
-				Object element = p.getValue1();
-				if (element != null &&
-					Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
-					!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-					result.error(new SerializationException("Invalid collection element type "
-							+ element.getClass().getName()
-							+ ", expected is " + context.getElementType().getBase().getName()));
+			if (!next.isDone()) {
+				int currentIndex = elementIndex;
+				next.onDone(p -> {
+					if (!p.getValue2().booleanValue()) {
+						// end of collection
+						if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
+							result.unblockSuccess(context.getCollection());
+						else
+							result.unblockSuccess(toArray(context));
 						return;
-				}
-				((Collection)context.getCollection()).add(element);
-				elementIndex++;
-				continue;
-			}
-			int currentIndex = elementIndex;
-			next.onDone(() -> {
-				Pair<Object, Boolean> p = next.getResult();
-				if (!p.getValue2().booleanValue()) {
-					// end of collection
-					if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
-						result.unblockSuccess(context.getCollection());
-					else
-						result.unblockSuccess(toArray(context));
-					return;
-				}
-				new DeserializationTask(() -> {
-					Object element = p.getValue1();
-					if (element != null &&
-						Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
-						!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-						result.error(new SerializationException("Invalid collection element type "
-								+ element.getClass().getName()
-								+ ", expected is " + context.getElementType().getBase().getName()));
-							return;
 					}
-					((Collection)context.getCollection()).add(element);
-					deserializeNextCollectionValueElement(context, currentIndex + 1, colPath, rules, result);
-				}).start();
-			}, result);
-			return;
+					new DeserializationTask(() -> {
+						Object element = p.getValue1();
+						if (element != null &&
+							Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
+							!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+							result.error(new SerializationException("Invalid collection element type "
+									+ element.getClass().getName()
+									+ ", expected is " + context.getElementType().getBase().getName()));
+								return;
+						}
+						((Collection)context.getCollection()).add(element);
+						deserializeNextCollectionValueElement(context, currentIndex + 1, colPath, rules, result);
+					}).start();
+				}, result);
+				return;
+			}
+			if (next.hasError()) {
+				result.error(next.getError());
+				return;
+			}
+			Pair<Object, Boolean> p = next.getResult();
+			if (!p.getValue2().booleanValue()) {
+				// end of collection
+				if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
+					result.unblockSuccess(context.getCollection());
+				else
+					result.unblockSuccess(toArray(context));
+				return;
+			}
+			Object element = p.getValue1();
+			if (element != null &&
+				Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
+				!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+				result.error(new SerializationException("Invalid collection element type "
+						+ element.getClass().getName()
+						+ ", expected is " + context.getElementType().getBase().getName()));
+					return;
+			}
+			((Collection)context.getCollection()).add(element);
+			elementIndex++;
 		} while (true);
 	}
 	
@@ -552,60 +550,58 @@ public abstract class AbstractDeserializer implements Deserializer {
 		do {
 			AsyncSupplier<Pair<Object, Boolean>, SerializationException> next =
 				deserializeCollectionAttributeValueElement(context, elementIndex, colPath, rules);
-			if (next.isDone()) {
-				if (next.hasError()) {
-					result.error(next.getError());
-					return;
-				}
-				Pair<Object, Boolean> p = next.getResult();
-				if (!p.getValue2().booleanValue()) {
-					// end of collection
-					if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
-						result.unblockSuccess(context.getCollection());
-					else
-						result.unblockSuccess(toArray(context));
-					return;
-				}
-				Object element = p.getValue1();
-				if (element != null &&
-					Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
-					!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-
-					result.error(new SerializationException("Invalid collection element type "
-							+ element.getClass().getName()
-							+ ", expected is " + context.getElementType().getBase().getName()));
+			if (!next.isDone()) {
+				int currentIndex = elementIndex;
+				next.onDone(p -> {
+					if (!p.getValue2().booleanValue()) {
+						// end of collection
+						if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
+							result.unblockSuccess(context.getCollection());
+						else
+							result.unblockSuccess(toArray(context));
 						return;
-				}
-				((Collection)context.getCollection()).add(element);
-				elementIndex++;
-				continue;
-			}
-			int currentIndex = elementIndex;
-			next.onDone(() -> {
-				Pair<Object, Boolean> p = next.getResult();
-				if (!p.getValue2().booleanValue()) {
-					// end of collection
-					if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
-						result.unblockSuccess(context.getCollection());
-					else
-						result.unblockSuccess(toArray(context));
-					return;
-				}
-				new DeserializationTask(() -> {
-					Object element = p.getValue1();
-					if (element != null &&
-						Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
-						!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-						result.error(new SerializationException("Invalid collection element type "
-								+ element.getClass().getName()
-								+ ", expected is " + context.getElementType().getBase().getName()));
-							return;
 					}
-					((Collection)context.getCollection()).add(element);
-					deserializeNextCollectionAttributeValueElement(context, currentIndex + 1, colPath, rules, result);
-				}).start();
-			}, result);
-			return;
+					new DeserializationTask(() -> {
+						Object element = p.getValue1();
+						if (element != null &&
+							Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
+							!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+							result.error(new SerializationException("Invalid collection element type "
+									+ element.getClass().getName()
+									+ ", expected is " + context.getElementType().getBase().getName()));
+								return;
+						}
+						((Collection)context.getCollection()).add(element);
+						deserializeNextCollectionAttributeValueElement(context, currentIndex + 1, colPath, rules, result);
+					}).start();
+				}, result);
+				return;
+			}
+			if (next.hasError()) {
+				result.error(next.getError());
+				return;
+			}
+			Pair<Object, Boolean> p = next.getResult();
+			if (!p.getValue2().booleanValue()) {
+				// end of collection
+				if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
+					result.unblockSuccess(context.getCollection());
+				else
+					result.unblockSuccess(toArray(context));
+				return;
+			}
+			Object element = p.getValue1();
+			if (element != null &&
+				Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
+				!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
+
+				result.error(new SerializationException("Invalid collection element type "
+						+ element.getClass().getName()
+						+ ", expected is " + context.getElementType().getBase().getName()));
+					return;
+			}
+			((Collection)context.getCollection()).add(element);
+			elementIndex++;
 		} while (true);
 	}
 	
@@ -844,6 +840,27 @@ public abstract class AbstractDeserializer implements Deserializer {
 		deserializeNextObjectAttribute(ctx, path, rules, result);
 	}
 	
+	private static Attribute checkNextAttributeName(
+		String n, ObjectContext context, String path, AsyncSupplier<Object, SerializationException> result
+	) {
+		if (n == null) {
+			result.unblockSuccess(context.getInstance());
+			return null;
+		}
+		Attribute a = context.getSerializationClass().getAttributeByName(n);
+		if (a == null) {
+			result.error(new SerializationException("Unknown attribute " + n + " for type "
+				+ context.getInstance().getClass().getName() + " in " + path));
+			return null;
+		}
+		if (!a.canSet()) {
+			result.error(new SerializationException("Attribute " + n + " cannot be set on type "
+				+ context.getInstance().getClass().getName()));
+			return null;
+		}
+		return a;
+	}
+	
 	protected void deserializeNextObjectAttribute(
 		ObjectContext context, String path, List<SerializationRule> rules, AsyncSupplier<Object, SerializationException> result
 	) {
@@ -854,29 +871,15 @@ public abstract class AbstractDeserializer implements Deserializer {
 					result.error(name.getError());
 					return;
 				}
+				
 				String n = name.getResult();
-				if (n == null) {
-					result.unblockSuccess(context.getInstance());
-					return;
-				}
-				Attribute a = context.getSerializationClass().getAttributeByName(n);
-				if (a == null) {
-					result.error(new SerializationException("Unknown attribute " + n + " for type "
-						+ context.getInstance().getClass().getName() + " in " + path));
-					return;
-				}
-				if (!a.canSet()) {
-					result.error(new SerializationException("Attribute " + n + " cannot be set on type "
-						+ context.getInstance().getClass().getName()));
-					return;
-				}
+				Attribute a = checkNextAttributeName(n, context, path, result);
+				if (a == null) return;
 				IAsync<SerializationException> val =
 					deserializeObjectAttributeValue(context, a, path + '.' + n, rules);
 				if (val.isDone()) {
-					if (val.hasError()) {
-						result.error(val.getError());
+					if (val.forwardIfNotSuccessful(result))
 						return;
-					}
 					continue;
 				}
 				val.thenStart(new DeserializationTask(() -> deserializeNextObjectAttribute(context, path, rules, result)), result);
@@ -888,25 +891,14 @@ public abstract class AbstractDeserializer implements Deserializer {
 						result.unblockSuccess(context.getInstance());
 						return;
 					}
-					Attribute a = context.getSerializationClass().getAttributeByName(n);
-					if (a == null) {
-						result.error(new SerializationException("Unknown attribute " + n + " for type "
-							+ context.getInstance().getClass().getName()));
-						return;
-					}
-					if (!a.canSet()) {
-						result.error(new SerializationException("Attribute " + n + " cannot be set on type "
-							+ context.getInstance().getClass().getName()));
-						return;
-					}
 					new DeserializationTask(() -> {
+						Attribute a = checkNextAttributeName(n, context, path, result);
+						if (a == null) return;
 						IAsync<SerializationException> val =
 							deserializeObjectAttributeValue(context, a, path + '.' + n, rules);
 						if (val.isDone()) {
-							if (val.hasError()) {
-								result.error(val.getError());
+							if (val.forwardIfNotSuccessful(result))
 								return;
-							}
 							deserializeNextObjectAttribute(context, path, rules, result);
 							return;
 						}
@@ -978,44 +970,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		
 		if (CharSequence.class.isAssignableFrom(c)) {
 			AsyncSupplier<? extends CharSequence, SerializationException> str = deserializeStringAttributeValue(context);
-			AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
-			str.onDone(
-				string -> {
-					if (string == null) {
-						result.unblockSuccess(null);
-						return;
-					}
-					if (c.isAssignableFrom(string.getClass())) {
-						result.unblockSuccess(string);
-						return;
-					}
-					for (Constructor<?> ctor : c.getConstructors()) {
-						Class<?>[] params = ctor.getParameterTypes();
-						if (params.length != 1) continue;
-						if (params[0].isAssignableFrom(string.getClass())) {
-							try { result.unblockSuccess(ctor.newInstance(string)); }
-							catch (Exception t) {
-								result.error(new SerializationException(
-									"Error instantiating type " + c.getName(), t));
-							}
-							return;
-						}
-						if (params[0].isAssignableFrom(String.class)) {
-							try { result.unblockSuccess(ctor.newInstance(string.toString())); }
-							catch (Exception t) {
-								result.error(new SerializationException(
-									"Error instantiating type " + c.getName(), t));
-							}
-							return;
-						}
-					}
-					result.error(new SerializationException("Type " + c.getName()
-						+ " does not have a compatible constructor with parameter type " + string.getClass()
-						+ " or String"));
-				},
-				result
-			);
-			return result;
+			return convertFromStringToCharSequence(str, c);
 		}
 
 		if (c.isEnum()) {
@@ -1051,6 +1006,49 @@ public abstract class AbstractDeserializer implements Deserializer {
 			return deserializeIOReadableAttributeValue(context, rules);
 
 		return deserializeObjectAttributeObjectValue(context, path, rules);
+	}
+	
+	protected AsyncSupplier<Object, SerializationException> convertFromStringToCharSequence(
+		AsyncSupplier<? extends CharSequence, SerializationException> str, Class<?> target
+	) {
+		AsyncSupplier<Object, SerializationException> result = new AsyncSupplier<>();
+		str.onDone(
+			string -> {
+				if (string == null) {
+					result.unblockSuccess(null);
+					return;
+				}
+				if (target.isAssignableFrom(string.getClass())) {
+					result.unblockSuccess(string);
+					return;
+				}
+				for (Constructor<?> ctor : target.getConstructors()) {
+					Class<?>[] params = ctor.getParameterTypes();
+					if (params.length != 1) continue;
+					if (params[0].isAssignableFrom(string.getClass())) {
+						try { result.unblockSuccess(ctor.newInstance(string)); }
+						catch (Exception t) {
+							result.error(new SerializationException(
+								"Error instantiating type " + target.getName(), t));
+						}
+						return;
+					}
+					if (params[0].isAssignableFrom(String.class)) {
+						try { result.unblockSuccess(ctor.newInstance(string.toString())); }
+						catch (Exception t) {
+							result.error(new SerializationException(
+								"Error instantiating type " + target.getName(), t));
+						}
+						return;
+					}
+				}
+				result.error(new SerializationException("Type " + target.getName()
+					+ " does not have a compatible constructor with parameter type " + string.getClass()
+					+ " or String"));
+			},
+			result
+		);
+		return result;
 	}
 
 	protected AsyncSupplier<Object, SerializationException> deserializeObjectAttributeObjectValue(

@@ -99,6 +99,8 @@ public class XMLWriter {
 	
 	private static final char[] PRETTY_END_TAG = new char[] { '>', '\n' };
 	
+	private static final String ALREADY_CLOSED_ERROR_MESSAGE = "XML document already closed";
+	
 	/**
 	 * Start the document with the XML processing instruction if needed, and opening the root element.
 	 * @param rootNamespaceURI namespace of the root element
@@ -166,7 +168,7 @@ public class XMLWriter {
 	public IAsync<IOException> addAttribute(CharSequence name, CharSequence value) {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new Async<>(new IOException("XML document closed"));
+			return new Async<>(new IOException(ALREADY_CLOSED_ERROR_MESSAGE));
 		if (!ctx.open)
 			return new Async<>(new IOException("Cannot add attribute to XML element when the opening tag is closed"));
 		writer.write(' ');
@@ -183,7 +185,7 @@ public class XMLWriter {
 	public IAsync<IOException> endOfAttributes() {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new Async<>(new IOException("XML document closed"));
+			return new Async<>(new IOException(ALREADY_CLOSED_ERROR_MESSAGE));
 		if (!ctx.open)
 			return new Async<>(new IOException("Opening tag already closed"));
 		return endOfAttributes(ctx);
@@ -204,7 +206,7 @@ public class XMLWriter {
 		lastNodeType = Node.ELEMENT_NODE;
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new Async<>(new IOException("XML document closed"));
+			return new Async<>(new IOException(ALREADY_CLOSED_ERROR_MESSAGE));
 		if (ctx.open) {
 			endOfAttributes(ctx);
 		}
@@ -243,7 +245,7 @@ public class XMLWriter {
 		lastNodeType = Node.ELEMENT_NODE;
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new Async<>(new IOException("XML document closed"));
+			return new Async<>(new IOException(ALREADY_CLOSED_ERROR_MESSAGE));
 		if (ctx.open) {
 			context.removeFirst();
 			if (!pretty)
@@ -272,7 +274,7 @@ public class XMLWriter {
 	public IAsync<IOException> addText(CharSequence text) {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new Async<>(new IOException("XML document closed"));
+			return new Async<>(new IOException(ALREADY_CLOSED_ERROR_MESSAGE));
 		if (ctx.open)
 			endOfAttributes(ctx);
 		if (!pretty || lastNodeType == Node.TEXT_NODE)
@@ -286,7 +288,7 @@ public class XMLWriter {
 	public IAsync<IOException> addCData(CharSequence data) {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
-			return new Async<>(new IOException("XML document closed"));
+			return new Async<>(new IOException(ALREADY_CLOSED_ERROR_MESSAGE));
 		if (ctx.open)
 			endOfAttributes(ctx);
 		if (pretty) {
