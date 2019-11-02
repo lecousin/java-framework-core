@@ -158,16 +158,28 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		Assert.assertEquals(0, sub2.getPosition());
 		task2.start().getOutput().blockThrow(0);
 		Assert.assertEquals(1000, sub2.getPosition());
+		for (int i = 0; i < 100; ++i) {
+			if (main.getPosition() == 500) break;
+			try { Thread.sleep(10); } catch (InterruptedException e) {}
+		}
 		Assert.assertEquals(500, main.getPosition());
 		
 		Assert.assertEquals(0, sub3.getPosition());
 		task3.start().getOutput().blockThrow(0);
 		Assert.assertEquals(1000, sub3.getPosition());
+		for (int i = 0; i < 100; ++i) {
+			if (main.getPosition() == 750) break;
+			try { Thread.sleep(10); } catch (InterruptedException e) {}
+		}
 		Assert.assertEquals(750, main.getPosition());
 		
 		Assert.assertEquals(0, sub1.getPosition());
 		task1.start().getOutput().blockThrow(0);
 		Assert.assertEquals(1000, sub1.getPosition());
+		for (int i = 0; i < 100; ++i) {
+			if (main.getPosition() == 950) break;
+			try { Thread.sleep(10); } catch (InterruptedException e) {}
+		}
 		Assert.assertEquals(950, main.getPosition());
 		
 		main = new WorkProgressImpl(1000);
