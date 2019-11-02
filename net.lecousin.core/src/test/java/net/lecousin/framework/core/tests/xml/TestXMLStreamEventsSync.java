@@ -3,6 +3,8 @@ package net.lecousin.framework.core.tests.xml;
 import java.util.Map;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.core.test.io.TestIOError;
+import net.lecousin.framework.io.IO;
 import net.lecousin.framework.xml.XMLStreamEvents.Attribute;
 import net.lecousin.framework.xml.XMLStreamEvents.ElementContext;
 import net.lecousin.framework.xml.XMLStreamEventsSync;
@@ -13,6 +15,7 @@ import org.junit.Test;
 public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 
 	protected abstract XMLStreamEventsSync parse(String resource) throws Exception;
+	protected abstract XMLStreamEventsSync parse(IO.Readable io) throws Exception;
 	
 	@Test
 	public void test1() throws Exception {
@@ -134,10 +137,16 @@ public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 	}
 	
 	public static final int ERROR_START = 1;
-	public static final int ERROR_END = 79;
+	public static final int ERROR_END = 93;
 	
 	@Test
 	public void testErrors() {
+		try {
+			parse(new TestIOError.IOError1()).start();
+			throw new AssertionError("Error expected");
+		} catch (Exception err) {
+			// ok
+		}
 		for (int i = ERROR_START; i <= ERROR_END; ++i) {
 			String s = Integer.toString(i);
 			while (s.length() != 3) s = "0" + s;

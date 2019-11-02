@@ -83,7 +83,7 @@ public class UnprotectedString implements IString {
 	
 	@Override
 	public boolean isEmpty() {
-		return end == -1;
+		return end == -1 || end < start;
 	}
 	
 	/** Make this string empty, only by setting the end offset to the start offset. */

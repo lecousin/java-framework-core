@@ -101,20 +101,13 @@ public class UnprotectedStringBufferLimited extends UnprotectedStringBuffer {
 	}
 	
 	@Override
-	public UnprotectedStringBuffer replace(CharSequence search, UnprotectedString replace) {
-		int l = length();
-		super.replace(search, replace);
-		int l2 = length();
-		size -= (l - l2);
-		return this;
-	}
-
-	@Override
 	public void replace(int start, int end, UnprotectedString s) {
 		int l = length();
 		super.replace(start, end, s);
 		int l2 = length();
 		size -= (l - l2);
+		if (size > maxSize)
+			removeEndChars(size - maxSize);
 	}
 	
 	@Override
@@ -123,6 +116,8 @@ public class UnprotectedStringBufferLimited extends UnprotectedStringBuffer {
 		super.replace(start, end, s);
 		int l2 = length();
 		size -= (l - l2);
+		if (size > maxSize)
+			removeEndChars(size - maxSize);
 		return this;
 	}
 	
@@ -134,5 +129,7 @@ public class UnprotectedStringBufferLimited extends UnprotectedStringBuffer {
 		super.searchAndReplace(start, end, valueProvider);
 		int l2 = length();
 		size -= (l - l2);
+		if (size > maxSize)
+			removeEndChars(size - maxSize);
 	}
 }

@@ -1,15 +1,16 @@
 package net.lecousin.framework.core.tests.xml;
 
+import java.io.EOFException;
+import java.io.IOException;
+
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
 import net.lecousin.framework.xml.XMLException;
 import net.lecousin.framework.xml.XMLStreamEvents.Event;
+import net.lecousin.framework.xml.XMLStreamEventsSync;
 import net.lecousin.framework.xml.XMLStreamReader;
-
-import java.io.EOFException;
-import java.io.IOException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -19,6 +20,11 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 	@Override
 	protected XMLStreamReader parse(String resource) {
 		return new XMLStreamReader(LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL), 512, 4);
+	}
+	
+	@Override
+	protected XMLStreamEventsSync parse(IO.Readable io) throws Exception {
+		return new XMLStreamReader(io, 512, 4);
 	}
 	
 	@Test

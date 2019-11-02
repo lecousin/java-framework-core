@@ -435,7 +435,7 @@ public class UnprotectedStringBuffer implements IString {
 				strings = null;
 				return this;
 			}
-			System.arraycopy(strings, 1, strings, 0, lastUsed - 1);
+			System.arraycopy(strings, 1, strings, 0, lastUsed);
 			strings[lastUsed] = null;
 			lastUsed--;
 			nb -= l;
@@ -790,6 +790,7 @@ public class UnprotectedStringBuffer implements IString {
 						break;
 					}
 					endChar = end.charAt(++endIndex);
+					bufferIndex++;
 				}
 				continue;
 			}

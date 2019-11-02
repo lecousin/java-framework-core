@@ -4,6 +4,8 @@ import java.io.EOFException;
 import java.util.Map;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.core.test.io.TestIOError;
+import net.lecousin.framework.io.IO;
 import net.lecousin.framework.xml.XMLStreamEvents.ElementContext;
 import net.lecousin.framework.xml.XMLStreamEventsAsync;
 
@@ -13,6 +15,7 @@ import org.junit.Test;
 public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 
 	protected abstract XMLStreamEventsAsync parse(String resource) throws Exception;
+	protected abstract XMLStreamEventsAsync parse(IO.Readable io) throws Exception;
 	
 	@SuppressWarnings("boxing")
 	@Test
@@ -126,6 +129,13 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testErrors() {
+		try {
+			parse(new TestIOError.IOError1()).start().blockThrow(0);;
+			throw new AssertionError("Error expected");
+		} catch (Exception err) {
+			// ok
+		}
+
 		for (int i = TestXMLStreamEventsSync.ERROR_START; i <= TestXMLStreamEventsSync.ERROR_END; ++i) {
 			String s = Integer.toString(i);
 			while (s.length() != 3) s = "0" + s;

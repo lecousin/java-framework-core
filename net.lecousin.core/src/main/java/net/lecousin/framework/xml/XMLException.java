@@ -16,6 +16,8 @@ public class XMLException extends LocalizableException {
 	public static final String LOCALIZED_MESSAGE_UNEXPECTED_END = "Unexpected end";
 	public static final String LOCALIZED_MESSAGE_UNEXPECTED_ELEMENT = "Unexpected element";
 	public static final String LOCALIZED_MESSAGE_EXPECTED_CHARACTER = "Expected character";
+	public static final String LOCALIZED_MESSAGE_IN_XML_DOCUMENT = "in XML document";
+	public static final String LOCALIZED_MESSAGE_IN_INTERNAL_SUBSET = "in internal subset declaration";
 
 	private static final long serialVersionUID = -963187033082725980L;
 

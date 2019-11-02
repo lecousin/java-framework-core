@@ -43,6 +43,14 @@ public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 		return new XMLStreamReaderAsync(bio, 1, 64);
 	}
 	
+	@Override
+	protected XMLStreamReaderAsync parse(IO.Readable io) {
+		if (efficient)
+			return new XMLStreamReaderAsync(io, 512, 8);
+		SingleBufferReadable bio = new SingleBufferReadable(io, 2, false);
+		return new XMLStreamReaderAsync(bio, 1, 64);
+	}
+	
 	@Test
 	public void testDocType() throws Exception {
 		XMLStreamReaderAsync xml;

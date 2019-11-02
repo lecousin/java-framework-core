@@ -606,8 +606,7 @@ public abstract class XMLStreamEvents {
 		if (c < 0x100) return charType[c] == 0;
 		if (c < 0x2000) {
 			if (c >= 0x300 && c <= 0x36F) return false;
-			if (c == 0x37E) return false;
-			return true;
+			return (c != 0x37E);
 		}
 		if (c < 0xD800) {
 			if (c <= 0x3000) {
@@ -623,11 +622,9 @@ public abstract class XMLStreamEvents {
 			if (c < 0xF900) return false;
 			if (c <= 0xFDCF) return true;
 			if (c < 0xFDF0) return false;
-			if (c <= 0xFFFD) return true;
-			return false;
+			return (c <= 0xFFFD);
 		}
-		if (c >= 0xDC00) return false;
-		return true;
+		return (c < 0xDC00);
 	}
 	
 	/** Return true if the given character is a valid character for a name. */
@@ -664,8 +661,7 @@ public abstract class XMLStreamEvents {
 			if (c < 0xF900) return false;
 			if (c <= 0xFDCF) return true;
 			if (c < 0xFDF0) return false;
-			if (c <= 0xFFFD) return true;
-			return false;
+			return (c <= 0xFFFD);
 		}
 		return true;
 	}
