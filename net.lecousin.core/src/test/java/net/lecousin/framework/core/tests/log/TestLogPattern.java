@@ -1,0 +1,70 @@
+package net.lecousin.framework.core.tests.log;
+
+import java.util.Calendar;
+
+import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.log.LogPattern;
+import net.lecousin.framework.log.LogPattern.Log;
+import net.lecousin.framework.log.Logger;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+public class TestLogPattern extends LCCoreAbstractTest {
+
+	@Test
+	public void tests() {
+		Log log = new Log();
+		log.level = Logger.Level.INFO;
+		log.location = new Exception().getStackTrace()[0];
+		log.loggerName = "test_logger";
+		log.message = "this is the message";
+		log.threadName = "theThread";
+		log.timestamp = System.currentTimeMillis();
+		
+		expect("no pattern", log, "no pattern");
+		expect("no pattern%", log, "no pattern%");
+		expect("no pattern%%", log, "no pattern%");
+		expect("test %- hello", log, "test %- hello");
+		expect("test %d hello", log, "test %d hello");
+		expect("test %d{ hello", log, "test %d{ hello");
+		expect("test %d{yyyy} hello", log, "test " + Calendar.getInstance().get(Calendar.YEAR) + " hello");
+		expect("file %f!", log, "file TestLogPattern.java!");
+		expect("thread %t", log, "thread theThread");
+		expect("test %l", log, "test %l");
+		expect("test %le", log, "test %le");
+		expect("test %lev", log, "test %lev");
+		expect("test %leve", log, "test %leve");
+		expect("test %levex", log, "test %levex");
+		expect("test %levxx", log, "test %levxx");
+		expect("test %lexxx", log, "test %lexxx");
+		expect("test %lxxxx", log, "test %lxxxx");
+		expect("test %level", log, "test INFO ");
+		expect("test %lo", log, "test %lo");
+		expect("test %log", log, "test %log");
+		expect("test %logg", log, "test %logg");
+		expect("test %logge", log, "test %logge");
+		expect("test %logger", log, "test test_logger");
+		expect("test %loggex", log, "test %loggex");
+		expect("test %loggxx", log, "test %loggxx");
+		expect("test %logxxx", log, "test %logxxx");
+		expect("test %loxxxx", log, "test %loxxxx");
+		expect("test %lxxxxx", log, "test %lxxxxx");
+		expect("test %logger{", log, "test test_logger{");
+		expect("test %loggerx", log, "test test_loggerx");
+		expect("test %logger{}", log, "test test_logger");
+		expect("test %logger{x}", log, "test test_logger");
+		expect("test %logger{5}", log, "test ..ger");
+		expect("test: %m!", log, "test: this is the message!");
+		expect("class %C---", log, "class net.lecousin.framework.core.tests.log.TestLogPattern---");
+		expect("line %L,00", log, "line 19,00");
+		expect("method %M", log, "method tests");
+		
+	}
+	
+	private static void expect(String pattern, Log log, String expected) {
+		StringBuilder s = new LogPattern(pattern).generate(log);
+		Assert.assertEquals(expected, s.toString());
+	}
+	
+}

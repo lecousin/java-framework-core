@@ -37,120 +37,7 @@ public class LogPattern {
 	
 	/** Constructor. */
 	public LogPattern(String pattern) {
-		List<Section> sections = new LinkedList<>();
-		int pos = 0;
-		int len = pattern.length();
-		while (pos < len) {
-			int i = pattern.indexOf('%', pos);
-			if (i > pos) {
-				sections.add(new StringSection(pattern.substring(pos, i)));
-				pos = i;
-			} else if (i < 0) {
-				sections.add(new StringSection(pattern.substring(pos)));
-				break;
-			}
-			if (pos == len - 1) {
-				sections.add(new StringSection("%"));
-				break;
-			}
-			char c = pattern.charAt(pos + 1);
-			if (c == 'd') {
-				if (pos + 3 >= len || pattern.charAt(pos + 2) != '{') {
-					sections.add(new StringSection(pattern.substring(pos, pos + 2)));
-					pos += 2;
-				} else {
-					i = pattern.indexOf('}', pos + 3);
-					if (i < 0) {
-						sections.add(new StringSection(pattern.substring(pos, pos + 2)));
-						pos += 2;
-					} else {
-						String format = pattern.substring(pos + 3, i);
-						sections.add(new DateSection(format));
-						pos = i + 1;
-					}
-				}
-			} else if (c == 't') {
-				sections.add(new ThreadNameSection());
-				needsThreadName = true;
-				pos += 2;
-			} else if (c == '%') {
-				sections.add(new StringSection("%"));
-				pos += 2;
-			} else if (c == 'l') {
-				if (pos + 5 >= len) {
-					sections.add(new StringSection(pattern.substring(pos, pos + 2)));
-					pos += 2;
-				} else {
-					c = pattern.charAt(pos + 2);
-					if (c == 'e') {
-						// can be level
-						if (pattern.charAt(pos + 3) == 'v' &&
-							pattern.charAt(pos + 4) == 'e' &&
-							pattern.charAt(pos + 5) == 'l') {
-							sections.add(new LevelSection());
-							pos += 6;
-						} else {
-							sections.add(new StringSection(pattern.substring(pos, pos + 2)));
-							pos += 2;
-						}
-					} else if (c == 'o') {
-						// can be logger or location
-						if (pos < len - 7 &&
-							pattern.charAt(pos + 3) == 'g' &&
-							pattern.charAt(pos + 4) == 'g' &&
-							pattern.charAt(pos + 5) == 'e' &&
-							pattern.charAt(pos + 6) == 'r') {
-							if (pos < len - 8 && pattern.charAt(pos + 7) == '{') {
-								i = pattern.indexOf('}', pos + 8);
-								if (i < 0) {
-									sections.add(new LoggerSection(-1));
-									pos += 7;
-								} else {
-									int size = -1;
-									try { size = Integer.parseInt(pattern.substring(pos + 8, i)); }
-									catch (Exception t) { /* ignore */ }
-									sections.add(new LoggerSection(size));
-									pos = i + 1;
-								}
-							} else {
-								sections.add(new LoggerSection(-1));
-								pos += 7;
-							}
-						} else {
-							sections.add(new StringSection(pattern.substring(pos, pos + 2)));
-							pos += 2;
-						}
-					} else {
-						sections.add(new StringSection(pattern.substring(pos, pos + 2)));
-						pos += 2;
-					}
-				}
-			} else if (c == 'm') {
-				sections.add(new MessageSection());
-				pos += 2;
-			} else if (c == 'C') {
-				sections.add(new ClassNameSection());
-				needsLocation = true;
-				pos += 2;
-			} else if (c == 'M') {
-				sections.add(new MethodNameSection());
-				needsLocation = true;
-				pos += 2;
-			} else if (c == 'L') {
-				sections.add(new LineSection());
-				needsLocation = true;
-				pos += 2;
-			} else if (c == 'f') {
-				sections.add(new FileNameSection());
-				needsLocation = true;
-				pos += 2;
-			} else {
-				sections.add(new StringSection(pattern.substring(pos, pos + 2)));
-				pos += 2;
-			}
-		}
-		// TODO concatenate successive StringSection
-		parts = sections.toArray(new Section[sections.size()]);
+		parsePattern(pattern);
 	}
 	
 	private Section[] parts;
@@ -281,4 +168,132 @@ public class LogPattern {
 		}
 	}
 	
+	private void parsePattern(String pattern) {
+		List<Section> sections = new LinkedList<>();
+		int pos = 0;
+		int len = pattern.length();
+		while (pos < len) {
+			int i = pattern.indexOf('%', pos);
+			if (i > pos) {
+				sections.add(new StringSection(pattern.substring(pos, i)));
+				pos = i;
+			} else if (i < 0) {
+				sections.add(new StringSection(pattern.substring(pos)));
+				break;
+			}
+			if (pos == len - 1) {
+				sections.add(new StringSection("%"));
+				break;
+			}
+			char c = pattern.charAt(pos + 1);
+			switch (c) {
+			case 'd':
+				pos = parsePatternD(pattern, pos, len, sections);
+				break;
+			case 'f':
+				sections.add(new FileNameSection());
+				needsLocation = true;
+				pos += 2;
+				break;
+			case 't':
+				sections.add(new ThreadNameSection());
+				needsThreadName = true;
+				pos += 2;
+				break;
+			case 'l':
+				pos = parsePatternL(pattern, pos, len, sections);
+				break;
+			case 'm':
+				sections.add(new MessageSection());
+				pos += 2;
+				break;
+			case 'C':
+				sections.add(new ClassNameSection());
+				needsLocation = true;
+				pos += 2;
+				break;
+			case 'L':
+				sections.add(new LineSection());
+				needsLocation = true;
+				pos += 2;
+				break;
+			case 'M':
+				sections.add(new MethodNameSection());
+				needsLocation = true;
+				pos += 2;
+				break;
+			case '%':
+				sections.add(new StringSection("%"));
+				pos += 2;
+				break;
+			default:
+				sections.add(new StringSection(pattern.substring(pos, pos + 2)));
+				pos += 2;
+				break;
+			}
+		}
+		// TODO concatenate successive StringSection
+		parts = sections.toArray(new Section[sections.size()]);
+	}
+	
+	private static int parsePatternD(String pattern, int pos, int len, List<Section> sections) {
+		if (pos + 3 >= len || pattern.charAt(pos + 2) != '{') {
+			sections.add(new StringSection(pattern.substring(pos, pos + 2)));
+			return pos + 2;
+		}
+		int i = pattern.indexOf('}', pos + 3);
+		if (i < 0) {
+			sections.add(new StringSection(pattern.substring(pos, pos + 2)));
+			return pos + 2;
+		}
+		String format = pattern.substring(pos + 3, i);
+		sections.add(new DateSection(format));
+		return i + 1;
+	}
+	
+	private static int parsePatternL(String pattern, int pos, int len, List<Section> sections) {
+		if (pos + 5 >= len) {
+			sections.add(new StringSection(pattern.substring(pos, pos + 2)));
+			return pos + 2;
+		}
+		char c = pattern.charAt(pos + 2);
+		if (c == 'e') {
+			// can be level
+			if (pattern.charAt(pos + 3) == 'v' &&
+				pattern.charAt(pos + 4) == 'e' &&
+				pattern.charAt(pos + 5) == 'l') {
+				sections.add(new LevelSection());
+				return pos + 6;
+			}
+			sections.add(new StringSection(pattern.substring(pos, pos + 2)));
+			return pos + 2;
+		}
+		if (c == 'o') {
+			// can be logger or location
+			if (pos <= len - 7 &&
+				pattern.charAt(pos + 3) == 'g' &&
+				pattern.charAt(pos + 4) == 'g' &&
+				pattern.charAt(pos + 5) == 'e' &&
+				pattern.charAt(pos + 6) == 'r') {
+				if (pos <= len - 8 && pattern.charAt(pos + 7) == '{') {
+					int i = pattern.indexOf('}', pos + 8);
+					if (i < 0) {
+						sections.add(new LoggerSection(-1));
+						return pos + 7;
+					}
+					int size = -1;
+					try { size = Integer.parseInt(pattern.substring(pos + 8, i)); }
+					catch (Exception t) { /* ignore */ }
+					sections.add(new LoggerSection(size));
+					return i + 1;
+				}
+				sections.add(new LoggerSection(-1));
+				return pos + 7;
+			}
+			sections.add(new StringSection(pattern.substring(pos, pos + 2)));
+			return pos + 2;
+		}
+		sections.add(new StringSection(pattern.substring(pos, pos + 2)));
+		return pos + 2;
+	}
 }

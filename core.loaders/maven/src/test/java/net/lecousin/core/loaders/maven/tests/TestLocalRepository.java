@@ -248,7 +248,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 				out,
 				-1, true, null, 0).blockThrow(15000);
 			
-			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-error-\" + errorName + \".pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-error-" + errorName + ".pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
 			try {
 				load.blockResult(30000);
 				throw new AssertionError("Error expected for pom " + errorName);

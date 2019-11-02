@@ -163,6 +163,13 @@ public class TestRedBlackTreeInteger extends TestSortedAssociatedWithInteger {
 		Assert.assertEquals(80, tree.searchNearestLower(88, false).getValue());
 		Assert.assertEquals(80, tree.searchNearestLower(90, false).getValue());
 		Assert.assertEquals(90, tree.searchNearestLower(99, false).getValue());
+		
+		Assert.assertEquals(10, tree.searchNearestHigher(0, false).getValue());
+		Assert.assertEquals(10, tree.searchNearestHigher(9, false).getValue());
+		Assert.assertEquals(20, tree.searchNearestHigher(10, false).getValue());
+		Assert.assertEquals(10, tree.searchNearestHigher(10, true).getValue());
+		Assert.assertEquals(20, tree.searchNearestHigher(11, false).getValue());
+		Assert.assertNull(tree.searchNearestHigher(99, false));
 	}
 	
 }
