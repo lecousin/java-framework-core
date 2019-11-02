@@ -8,10 +8,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Consumer;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -19,6 +15,9 @@ import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.util.CloseableListenable;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public abstract class TestIO extends LCCoreAbstractTest {
 	
@@ -112,7 +111,6 @@ public abstract class TestIO extends LCCoreAbstractTest {
 	
 	protected abstract IO getIOForCommonTests() throws Exception;
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testBasicCommonFunctions() throws Exception {
 		IO io = getIOForCommonTests();
@@ -147,7 +145,6 @@ public abstract class TestIO extends LCCoreAbstractTest {
 
 	protected boolean canSetPriority() { return true; }
 	
-	@SuppressWarnings("unused")
 	protected void basicTests(IO io) throws Exception {
 		// priority
 		if (canSetPriority()) {

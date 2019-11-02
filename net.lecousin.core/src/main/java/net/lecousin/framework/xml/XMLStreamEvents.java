@@ -657,13 +657,11 @@ public abstract class XMLStreamEvents {
 			}
 			return true;
 		}
-		if (c >= 0xE000) {
-			if (c < 0xF900) return false;
-			if (c <= 0xFDCF) return true;
-			if (c < 0xFDF0) return false;
-			return (c <= 0xFFFD);
-		}
-		return true;
+		if (c < 0xE000) return true;
+		if (c < 0xF900) return false;
+		if (c <= 0xFDCF) return true;
+		if (c < 0xFDF0) return false;
+		return (c <= 0xFFFD);
 	}
 	
 	/* Charset handling */

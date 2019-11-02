@@ -1155,7 +1155,9 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 					buffer.put(b.data, off, len);
 					b.lastRead = System.currentTimeMillis();
 				} catch (Exception t) {
-					result.error(new IOException("Error reading from BufferedIO buffer at " + off + ", len=" + len, t));
+					result.error(new IOException("Error reading from BufferedIO buffer at " + pos + " offset " + off + " len="
+						+ len + " size=" + size + " buffer len=" + (b.data != null ? Integer.toString(b.data.length) : null)
+						+ " remaining=" + buffer.remaining(), t));
 				} finally {
 					b.usage.endRead();
 				}

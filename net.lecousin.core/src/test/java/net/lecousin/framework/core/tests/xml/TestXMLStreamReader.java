@@ -5,6 +5,7 @@ import java.io.IOException;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.core.test.io.TestIOError;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
 import net.lecousin.framework.xml.XMLException;
@@ -64,6 +65,13 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 		xml = parse("xml-test-suite/mine/003.xml");
 		xml.startRootElement();
 		Assert.assertEquals("myRoot", xml.event.localName.asString());
+		
+		try {
+			XMLStreamReader.start(new TestIOError.IOError1(), 1024, 4, true).blockResult(0);
+			throw new AssertionError("Error expected");
+		} catch (Exception e) {
+			// ok
+		}
 	}
 	
 	@Test
