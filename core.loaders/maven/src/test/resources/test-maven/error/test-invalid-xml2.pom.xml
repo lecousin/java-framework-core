@@ -6,6 +6,10 @@
 	<artifactId>maven</artifactId>
 	<version>1</version>
 	<packaging>bundle</packaging>
+	
+	<error / error>
 
 	<build>
 		<outputDirectory>target/test-out</outputDirectory>
+	</build>
+</project>

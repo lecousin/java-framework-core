@@ -694,9 +694,9 @@ public class MavenPOM implements LibraryDescriptor {
 				} else if (xml.event.text.equals("url")) {
 					repo.url = xml.readInnerText().trim().asString();
 				} else if (xml.event.text.equals("releases")) {
-					readRepositoryType(xml, ctx, repo, true);
+					readRepositoryType(xml, repo, true);
 				} else if (xml.event.text.equals("snapshots")) {
-					readRepositoryType(xml, ctx, repo, false);
+					readRepositoryType(xml, repo, false);
 				} else {
 					xml.closeElement();
 				}
@@ -704,9 +704,10 @@ public class MavenPOM implements LibraryDescriptor {
 			return repo;
 		}
 		
-		private void readRepositoryType(XMLStreamReader xml, ElementContext ctx, Repository repo, boolean isReleases)
+		private void readRepositoryType(XMLStreamReader xml, Repository repo, boolean isReleases)
 		throws XMLException, MavenPOMException, IOException {
 			if (xml.event.isClosed) return;
+			ElementContext ctx = xml.event.context.getFirst();
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))

@@ -32,4 +32,12 @@ public class TestAsyncEvent extends LCCoreAbstractTest {
 		Assert.assertFalse(sp.isDone());
 	}
 	
+	@Test
+	public void testListenerError() {
+		AsyncEvent e = new AsyncEvent();
+		Runnable listener = () -> { throw new RuntimeException("a test"); };
+		e.addListener(listener);
+		e.fire();
+	}
+	
 }

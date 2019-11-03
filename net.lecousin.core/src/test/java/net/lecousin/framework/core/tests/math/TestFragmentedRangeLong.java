@@ -3,12 +3,12 @@ package net.lecousin.framework.core.tests.math;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.math.FragmentedRangeLong;
 import net.lecousin.framework.math.RangeLong;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestFragmentedRangeLong extends LCCoreAbstractTest {
 
@@ -98,6 +98,10 @@ public class TestFragmentedRangeLong extends LCCoreAbstractTest {
 		Assert.assertFalse(f.containsRange(300, 400));
 		Assert.assertTrue(f.containsRange(500, 120));
 
+		Assert.assertTrue(f.containsOneValueIn(Arrays.asList(new RangeLong(101, 150), new RangeLong(50, 70))));
+		Assert.assertTrue(f.containsOneValueIn(Arrays.asList(new RangeLong(50, 70), new RangeLong(101, 150))));
+		Assert.assertFalse(f.containsOneValueIn(Arrays.asList(new RangeLong(50, 70), new RangeLong(300, 400))));
+		
 		// 9-31, 100-155, 175-180, 190-250
 		f.addRange(151, 155);
 		Assert.assertEquals(4, f.size());

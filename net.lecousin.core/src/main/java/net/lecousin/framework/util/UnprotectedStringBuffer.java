@@ -969,8 +969,9 @@ public class UnprotectedStringBuffer implements IString {
 					return 1;
 				if (strings == null) return 1;
 				done = 1;
-			} else if (strings == null)
+			} else if (strings == null) {
 				return -1;
+			}
 			do {
 				while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
 					buffer++;

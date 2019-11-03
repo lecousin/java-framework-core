@@ -118,4 +118,14 @@ public class TestEvent extends LCCoreAbstractTest {
 		Assert.assertEquals(30, val2.get());
 	}
 	
+	@Test
+	public void testListenerError() {
+		Event<Integer> e = new Event<>();
+		Runnable listener1 = () -> { throw new RuntimeException("a test"); };
+		Consumer<Integer> listener2 = ev -> { throw new RuntimeException("a test"); };
+		e.addListener(listener1);
+		e.addListener(listener2);
+		e.fire(Integer.valueOf(10));
+	}
+	
 }

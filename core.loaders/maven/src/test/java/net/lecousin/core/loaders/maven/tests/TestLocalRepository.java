@@ -187,6 +187,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> load2 = pomLoader.loadProject(new File("."), Task.PRIORITY_NORMAL);
 		LibraryDescriptor lib = load2.blockResult(30000);
 		Assert.assertEquals(lib.getArtifactId(), "maven");
+		lib.getDependencies();
 	}
 	
 	@Test
@@ -208,6 +209,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 			File classes = pom.getClasses().blockResult(30000);
 			Assert.assertNotNull(classes);
 			Assert.assertEquals(new File("./target/test-out").getAbsolutePath(), classes.getAbsolutePath());
+			pom.getDependencies();
 		} finally {
 			outFile.delete();
 		}
@@ -284,6 +286,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 	public void testErrors() throws Exception {
 		testError("invalid-root");
 		testError("invalid-xml");
+		testError("invalid-xml2");
 		testError("empty");
 	}
 	

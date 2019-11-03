@@ -89,6 +89,10 @@ public class TestFragmentedRangeInteger extends LCCoreAbstractTest {
 		Assert.assertFalse(f.containsRange(130, 160));
 		Assert.assertFalse(f.containsRange(300, 400));
 		Assert.assertTrue(f.containsRange(500, 120));
+		
+		Assert.assertTrue(f.containsOneValueIn(Arrays.asList(new RangeInteger(101, 150), new RangeInteger(50, 70))));
+		Assert.assertTrue(f.containsOneValueIn(Arrays.asList(new RangeInteger(50, 70), new RangeInteger(101, 150))));
+		Assert.assertFalse(f.containsOneValueIn(Arrays.asList(new RangeInteger(50, 70), new RangeInteger(300, 400))));
 
 		// 9-31, 100-155, 175-180, 190-250
 		f.addRange(151, 155);

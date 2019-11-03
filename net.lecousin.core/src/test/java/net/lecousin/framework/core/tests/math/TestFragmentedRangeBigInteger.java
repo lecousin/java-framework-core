@@ -4,12 +4,12 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.math.FragmentedRangeBigInteger;
 import net.lecousin.framework.math.RangeBigInteger;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestFragmentedRangeBigInteger extends LCCoreAbstractTest {
 
@@ -93,6 +93,10 @@ public class TestFragmentedRangeBigInteger extends LCCoreAbstractTest {
 		Assert.assertFalse(f.containsRange(BigInteger.valueOf(300), BigInteger.valueOf(400)));
 		Assert.assertTrue(f.containsRange(BigInteger.valueOf(500), BigInteger.valueOf(120)));
 
+		Assert.assertTrue(f.containsOneValueIn(Arrays.asList(new RangeBigInteger(BigInteger.valueOf(101), BigInteger.valueOf(150)), new RangeBigInteger(BigInteger.valueOf(50), BigInteger.valueOf(70)))));
+		Assert.assertTrue(f.containsOneValueIn(Arrays.asList(new RangeBigInteger(BigInteger.valueOf(50), BigInteger.valueOf(70)), new RangeBigInteger(BigInteger.valueOf(101), BigInteger.valueOf(150)))));
+		Assert.assertFalse(f.containsOneValueIn(Arrays.asList(new RangeBigInteger(BigInteger.valueOf(50), BigInteger.valueOf(70)), new RangeBigInteger(BigInteger.valueOf(300), BigInteger.valueOf(400)))));
+		
 		// 9-31, 100-155, 175-180, 190-250
 		f.addRange(BigInteger.valueOf(151), BigInteger.valueOf(155));
 		Assert.assertEquals(4, f.size());

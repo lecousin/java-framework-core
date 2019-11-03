@@ -46,9 +46,21 @@
 					<unknown/>
 				</property>
 				<file>
+					<missing>hello</missing>
 					<unknown/>
 				</file>
+				<activeByDefault>false</activeByDefault>
 			</activation>
+			<repositories>
+				<unknown/>
+				<repository>
+					<unknown/>
+					<snapshots>
+						<enabled>false</enabled>
+						<unknown/>
+					</snapshots>
+				</repository>
+			</repositories>
 		</profile>
 	</profiles>
 	
