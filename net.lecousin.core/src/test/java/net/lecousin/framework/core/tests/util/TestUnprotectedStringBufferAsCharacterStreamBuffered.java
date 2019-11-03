@@ -33,7 +33,7 @@ public class TestUnprotectedStringBufferAsCharacterStreamBuffered extends TestCh
 		UnprotectedStringBuffer s = new UnprotectedStringBuffer();
 		char[] chars = new char[testBuf.length];
 		for (int i = 0; i < testBuf.length; ++i)
-			chars[i] = (char)testBuf[i];
+			chars[i] = (char)(testBuf[i] & 0xFF);
 		for (int i = 0; i < nbBuf; ++i) {
 			s.append(new UnprotectedString(chars, 0, chars.length, chars.length));
 		}

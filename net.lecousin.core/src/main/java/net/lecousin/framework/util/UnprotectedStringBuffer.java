@@ -940,9 +940,15 @@ public class UnprotectedStringBuffer implements IString {
 	protected class CS extends AbstractCS implements ICharacterStream.Readable.Buffered {
 		private int buffer = 0;
 		private int bufferIndex = 0;
+		private int back = -1;
 		
 		@Override
 		public char read() throws EOFException {
+			if (back != -1) {
+				char c = (char)back;
+				back = -1;
+				return c;
+			}
 			if (strings == null) throw new EOFException();
 			while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
 				buffer++;
@@ -954,8 +960,17 @@ public class UnprotectedStringBuffer implements IString {
 		
 		@Override
 		public int readSync(char[] buf, int offset, int length) {
-			if (strings == null) return -1;
+			if (length <= 0) return 0;
 			int done = 0;
+			if (back != -1) {
+				buf[offset++] = (char)back;
+				back = -1;
+				if (--length <= 0)
+					return 1;
+				if (strings == null) return 1;
+				done = 1;
+			} else if (strings == null)
+				return -1;
 			do {
 				while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
 					buffer++;
@@ -976,6 +991,11 @@ public class UnprotectedStringBuffer implements IString {
 		
 		@Override
 		public int readAsync() {
+			if (back != -1) {
+				char c = (char)back;
+				back = -1;
+				return c;
+			}
 			if (strings == null) return -1;
 			while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
 				buffer++;
@@ -1002,6 +1022,11 @@ public class UnprotectedStringBuffer implements IString {
 		
 		@Override
 		public UnprotectedString readNextBuffer() {
+			if (back != -1) {
+				UnprotectedString s = new UnprotectedString(new char[] { (char)back }, 0, 1, 1);
+				back = -1;
+				return s;
+			}
 			if (strings == null) return null;
 			while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
 				buffer++;
@@ -1016,6 +1041,13 @@ public class UnprotectedStringBuffer implements IString {
 		
 		@Override
 		public boolean readUntil(char endChar, UnprotectedStringBuffer string) throws IOException {
+			if (back != -1) {
+				char c = (char)back;
+				back = -1;
+				if (c == endChar)
+					return true;
+				string.append(c);
+			}
 			if (strings == null) return false;
 			do {
 				while (buffer <= lastUsed && bufferIndex == strings[buffer].length()) {
@@ -1054,26 +1086,12 @@ public class UnprotectedStringBuffer implements IString {
 		
 		@Override
 		public void back(char c) {
-			if (strings == null) {
-				append(c);
-				buffer = 0;
-				bufferIndex = 0;
-				return;
-			}
-			while (bufferIndex == 0 && buffer > 0) {
-				buffer--;
-				bufferIndex = strings[buffer].length();
-			}
-			if (bufferIndex == 0 && buffer == 0) {
-				addFirst(c);
-				return;
-			}
-			strings[buffer].setCharAt(--bufferIndex, c);
+			back = c;
 		}
 		
 		@Override
 		public boolean endReached() {
-			return strings == null || buffer > lastUsed;
+			return back == -1 && (strings == null || buffer > lastUsed);
 		}
 		
 		@Override
