@@ -26,22 +26,22 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 		map.remove(123);
 		checkEmpty(map);
 		for (long i = 0; i < 200; ++i)
-			put(i, map, checkMap);
+			put(i, map, checkMap, i % 2 == 0);
 		for (long i = 5000; i < 10000; i += 7)
-			put(i, map, checkMap);
-		for (long i = 1000000000L; i < 1000050000L; i += 1500)
-			put(i, map, checkMap);
+			put(i, map, checkMap, i % 2 == 0);
+		for (long i = 1000000000L; i < 1000020000L; i += 1500)
+			put(i, map, checkMap, i % 2 == 0);
 		for (long i = 0; i < 300; i += 3)
-			remove(i, map, checkMap);
+			remove(i, map, checkMap, i % 2 == 0);
 		for (long i = 4500; i < 11000; i += 5)
-			remove(i, map, checkMap);
-		for (long i = 1000000007L; i < 1000050007L; i += 13)
-			remove(i, map, checkMap);
+			remove(i, map, checkMap, i % 2 == 0);
+		for (long i = 1000000007L; i < 1000020007L; i += 13)
+			remove(i, map, checkMap, i % 2 == 0);
 		for (long i = -5000; i > -7000; i -= 3)
-			put(i, map, checkMap);
+			put(i, map, checkMap, i % 2 == 0);
 		for (long i = 600; i < 800; ++i) {
-			put(i, map, checkMap);
-			put(i, map, checkMap);
+			put(i, map, checkMap, i % 2 == 0);
+			put(i, map, checkMap, i % 2 == 0);
 		}
 	}
 
@@ -58,11 +58,11 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 			values.add(Long.valueOf(value));
 		}
 		while (!values.isEmpty())
-			put(values.remove(rand.nextInt(values.size())).longValue(), map, checkMap);
+			put(values.remove(rand.nextInt(values.size())).longValue(), map, checkMap, values.size() % 2 == 0);
 		values.clear();
 		values.addAll(checkMap.keySet());
 		while (!values.isEmpty())
-			remove(values.remove(rand.nextInt(values.size())).longValue(), map, checkMap);
+			remove(values.remove(rand.nextInt(values.size())).longValue(), map, checkMap, values.size() % 2 == 0);
 		checkEmpty(map);
 	}
 
@@ -81,11 +81,11 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 			values.add(Long.valueOf(value));
 		}
 		while (!values.isEmpty())
-			put(values.remove(rand.nextInt(values.size())).longValue(), map, checkMap);
+			put(values.remove(rand.nextInt(values.size())).longValue(), map, checkMap, values.size() % 2 == 0);
 		values.clear();
 		values.addAll(checkMap.keySet());
 		while (!values.isEmpty())
-			remove(values.remove(rand.nextInt(values.size())).longValue(), map, checkMap);
+			remove(values.remove(rand.nextInt(values.size())).longValue(), map, checkMap, values.size() % 2 == 0);
 		checkEmpty(map);
 	}
 	
@@ -172,16 +172,17 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 		Assert.assertFalse(values.hasNext());
 	}
 	
-	protected void put(long i, LongMap<Object> map, HashMap<Long, Object> checkMap) {
+	protected void put(long i, LongMap<Object> map, HashMap<Long, Object> checkMap, boolean doCheck) {
 		try { map.put(i, Long.valueOf(i)); }
 		catch (Throwable t) {
 			throw new RuntimeException("Error in put(" + i + ")", t);
 		}
 		checkMap.put(Long.valueOf(i), Long.valueOf(i));
-		checkMap(map, checkMap);
+		if (doCheck)
+			checkMap(map, checkMap);
 	}
 	
-	protected void remove(long i, LongMap<Object> map, HashMap<Long, Object> checkMap) {
+	protected void remove(long i, LongMap<Object> map, HashMap<Long, Object> checkMap, boolean doCheck) {
 		if (!checkMap.containsKey(Long.valueOf(i))) {
 			Assert.assertFalse(map.containsKey(i));
 			Assert.assertTrue(map.remove(i) == null);
@@ -192,7 +193,8 @@ public abstract class TestLongMap extends LCCoreAbstractTest {
 			throw new RuntimeException("Error in remove(" + i + ")", t);
 		}
 		checkMap.remove(Long.valueOf(i));
-		checkMap(map, checkMap);
+		if (doCheck)
+			checkMap(map, checkMap);
 	}
 	
 }

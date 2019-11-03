@@ -1,6 +1,7 @@
 package net.lecousin.core.loaders.maven.tests;
 
 import java.io.File;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipFile;
@@ -16,6 +17,10 @@ import net.lecousin.framework.application.VersionSpecification.SingleVersion;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor.Dependency;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.io.FileIO;
+import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.io.provider.IOProvider;
+import net.lecousin.framework.io.provider.IOProviderFromURI;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -191,6 +196,35 @@ public class TestRemoteRepository extends LCCoreAbstractTest {
 
 		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "test-jar"));
 		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "test-jar", Task.PRIORITY_NORMAL).blockResult(30000));
+	}
+	
+	@Test
+	public void testErrors() throws Exception {
+		File dir = new File("./target/test-remote");
+		dir.mkdirs();
+		testMetaDataError(dir, "error1", "not-metadata");
+		testMetaDataError(dir, "error1", "empty");
+	}
+	
+	private static void testMetaDataError(File repoDir, String groupId, String testName) throws Exception {
+		File dir = new File(repoDir + "/" + groupId + "/" + testName);
+		dir.mkdirs();
+		File outFile = new File(dir, "maven-metadata.xml");
+		outFile.createNewFile();
+		outFile.deleteOnExit();
+		try {
+			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.PRIORITY_NORMAL);
+			IOUtil.copy(
+				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/remote/error/" + testName + ".maven-metadata.xml"))).provideIOReadable(Task.PRIORITY_NORMAL),
+				out,
+				-1, true, null, 0).blockThrow(15000);
+			
+			MavenRemoteRepository repo = new MavenRemoteRepository(repoDir.toURI().toString(), true, true);
+			List<String> versions = repo.getAvailableVersions(groupId, testName, Task.PRIORITY_NORMAL).blockResult(0);
+			Assert.assertNull(versions);
+		} finally {
+			outFile.delete();
+		}
 	}
 
 }

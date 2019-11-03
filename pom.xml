@@ -33,6 +33,8 @@
   	</sonar.coverage.exclusions>
   	<sonar.cpd.exclusions>
   		**/framework/collections/sort/RedBlackTree*.*,
+  		**/framework/collections/ArrayUtil.*,
+  		**/framework/collections/map/*MapRBT.*,
   		**/framework/memory/*ArrayCache.*,
   		**/framework/io/SubIO.*,
   		**/framework/io/FileIO.*,

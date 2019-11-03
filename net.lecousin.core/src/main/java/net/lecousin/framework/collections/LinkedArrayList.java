@@ -232,18 +232,7 @@ public class LinkedArrayList<T> implements List<T> {
 	
 	@Override
 	public T get(int index) {
-		if (head == null) throw new IndexOutOfBoundsException(Integer.toString(index));
-		if (index < 0) throw new IndexOutOfBoundsException(Integer.toString(index));
-		Array<T> a = head;
-		int i = 0;
-		while (i + a.size <= index && a.next != null) {
-			i += a.size;
-			a = a.next;
-		}
-		i = index - i;
-		if (i >= a.size)
-			throw new IndexOutOfBoundsException(Integer.toString(index));
-		return a.elements[i];
+		return getlong(index);
 	}
 	
 	/** Get an element using a long index. */
@@ -300,20 +289,7 @@ public class LinkedArrayList<T> implements List<T> {
 	
 	@Override
 	public T remove(int index) {
-		if (head == null) throw new IndexOutOfBoundsException(Integer.toString(index));
-		if (index < 0) throw new IndexOutOfBoundsException(Integer.toString(index));
-		Array<T> a = head;
-		int i = 0;
-		while (i + a.size <= index && a.next != null) {
-			i += a.size;
-			a = a.next;
-		}
-		i = index - i;
-		if (i >= a.size) throw new IndexOutOfBoundsException(Integer.toString(index));
-		T element = a.elements[i];
-		shiftLeft(a, i);
-		size--;
-		return element;
+		return removelong(index);
 	}
 	
 	@Override

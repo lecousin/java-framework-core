@@ -694,9 +694,9 @@ public class MavenPOM implements LibraryDescriptor {
 				} else if (xml.event.text.equals("url")) {
 					repo.url = xml.readInnerText().trim().asString();
 				} else if (xml.event.text.equals("releases")) {
-					readRepositoryReleases(xml, ctx, repo);
+					readRepositoryType(xml, ctx, repo, true);
 				} else if (xml.event.text.equals("snapshots")) {
-					readRepositorySnapshots(xml, ctx, repo);
+					readRepositoryType(xml, ctx, repo, false);
 				} else {
 					xml.closeElement();
 				}
@@ -704,44 +704,29 @@ public class MavenPOM implements LibraryDescriptor {
 			return repo;
 		}
 		
-		private void readRepositoryReleases(XMLStreamReader xml, ElementContext ctx, Repository repo)
-		throws XMLException, MavenPOMException, IOException {
-			if (xml.event.isClosed)
-				return;
-			do {
-				if (!xml.nextInnerElement(ctx)) {
-					if (!Type.END_ELEMENT.equals(xml.event.type))
-						throw new MavenPOMException(pomFile,
-							"Invalid POM: missing closing releases tag");
-					break;
-				}
-				if (xml.event.text.equals("enabled")) {
-					String s = xml.readInnerText().trim().asString();
-					if (s.equalsIgnoreCase("false"))
-						repo.releasesEnabled = false;
-				}
-			} while (true);
-		}
-
-		private void readRepositorySnapshots(XMLStreamReader xml, ElementContext ctx, Repository repo)
+		private void readRepositoryType(XMLStreamReader xml, ElementContext ctx, Repository repo, boolean isReleases)
 		throws XMLException, MavenPOMException, IOException {
 			if (xml.event.isClosed) return;
 			do {
 				if (!xml.nextInnerElement(ctx)) {
 					if (!Type.END_ELEMENT.equals(xml.event.type))
 						throw new MavenPOMException(pomFile,
-							"Invalid POM: missing closing snapshots tag");
+							"Invalid POM: missing closing " + (isReleases ? "releases" : "snapshots") + " tag");
 					break;
 				}
 				if (xml.event.text.equals("enabled")) {
 					String s = xml.readInnerText().trim().asString();
-					if (s.equalsIgnoreCase("false"))
-						repo.snapshotsEnabled = false;
+					if (s.equalsIgnoreCase("false")) {
+						if (isReleases)
+							repo.releasesEnabled = false;
+						else
+							repo.snapshotsEnabled = false;
+					}
 				}
 			} while (true);
 		}
 	}
-	
+
 	private class Finalize extends Task.Cpu<Void, NoException> {
 		public Finalize(AsyncSupplier<MavenPOM, LibraryManagementException> result, byte priority) {
 			super("Finalize POM loading", priority);

@@ -18,7 +18,7 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(LCConcurrentRunner.Parameterized.class) @org.junit.runners.Parameterized.UseParametersRunnerFactory(LCConcurrentRunner.ConcurrentParameterizedRunnedFactory.class)
 public class TestFragmentedSubIOReadWrite extends TestReadWrite {
 
-	@Parameters
+	@Parameters(name = "nbBuf = {2}")
 	public static Collection<Object[]> parameters() throws IOException {
 		return TestFragmented.generateTestCases();
 	}

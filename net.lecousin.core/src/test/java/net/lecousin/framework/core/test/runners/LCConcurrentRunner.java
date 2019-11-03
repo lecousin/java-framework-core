@@ -57,7 +57,12 @@ public class LCConcurrentRunner extends BlockJUnit4ClassRunner {
 			
 			@Override
 	        public void schedule(Runnable childStatement) {
-				jp.addToJoin(new Task.Cpu.FromRunnable("Execute JUnit test", Task.PRIORITY_LOW, childStatement) {
+				jp.addToJoin(new Task.Unmanaged<Void, NoException>("Execute JUnit test", Task.PRIORITY_LOW) {
+					@Override
+					public Void run() {
+						childStatement.run();
+						return null;
+					}
 					@Override
 					public long getMaxBlockingTimeInNanoBeforeToLog() {
 						return Long.MAX_VALUE;

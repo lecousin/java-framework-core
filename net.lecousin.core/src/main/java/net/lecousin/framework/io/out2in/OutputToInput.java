@@ -355,36 +355,27 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			}, res);
 			return res;
 		case FROM_END:
-			if (lock.hasError() && !eof) {
-				IOException e = new OutputToInputTransferException(lock.getError());
-				if (ondone != null) ondone.accept(new Pair<>(null, e));
-				return new AsyncSupplier<>(null, e);
-			}
+			if (lock.hasError() && !eof)
+				return IOUtil.error(new OutputToInputTransferException(lock.getError()), ondone);
 			if (eof) {
 				if (move <= 0)
 					readPos = writePos;
 				else
 					readPos = writePos - move;
 				if (readPos < 0) readPos = 0;
-				Long r = Long.valueOf(readPos);
-				if (ondone != null) ondone.accept(new Pair<>(r, null));
-				return new AsyncSupplier<>(r, null);
+				return IOUtil.success(Long.valueOf(readPos), ondone);
 			}
 			AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
-			lock.thenStart(operation(new Task.Cpu<Void, NoException>("OutputToInput.seekAsync", io.getPriority()) {
-				@Override
-				public Void run() {
-					try {
-						Long nb = Long.valueOf(seekSync(type, move));
-						if (ondone != null) ondone.accept(new Pair<>(nb, null));
-						result.unblockSuccess(nb);
-					} catch (IOException e) {
-						if (ondone != null) ondone.accept(new Pair<>(null, e));
-						result.unblockError(e);
-					}
-					return null;
+			lock.thenStart(operation(new Task.Cpu.FromRunnable("OutputToInput.seekAsync", io.getPriority(), () -> {
+				try {
+					Long nb = Long.valueOf(seekSync(type, move));
+					if (ondone != null) ondone.accept(new Pair<>(nb, null));
+					result.unblockSuccess(nb);
+				} catch (IOException e) {
+					if (ondone != null) ondone.accept(new Pair<>(null, e));
+					result.unblockError(e);
 				}
-			}), true);
+			})), true);
 			return result;
 		default:
 			return new AsyncSupplier<>(null, new IOException("Unknown SeekType " + type));

@@ -135,7 +135,7 @@ public class TestProduction extends LCCoreAbstractTest {
 				//System.out.println("Write "+nbWrite+" bytes: "+(byte)i);
 				pool.write(buffer);
 				if (i < 100)
-					Thread.sleep(rand.nextInt(300));
+					Thread.sleep(rand.nextBoolean() ? rand.nextInt(300) : rand.nextInt(100));
 			}
 			pool.onDone().onDone(new Runnable() {
 				@Override

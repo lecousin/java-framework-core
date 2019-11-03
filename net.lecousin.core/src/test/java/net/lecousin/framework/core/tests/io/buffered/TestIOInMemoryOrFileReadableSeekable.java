@@ -29,7 +29,7 @@ public class TestIOInMemoryOrFileReadableSeekable extends TestReadableSeekable {
 	
 	@Override
 	protected IOInMemoryOrFile createReadableSeekableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
-		IOInMemoryOrFile io = new IOInMemoryOrFile(2*1024*1024, Task.PRIORITY_NORMAL, "test");
+		IOInMemoryOrFile io = new IOInMemoryOrFile((int)(fileSize * 2 / 3), Task.PRIORITY_NORMAL, "test");
 		IOUtil.copy(file, io, fileSize, false, null, 0).blockThrow(0);
 		file.close();
 		io.seekSync(SeekType.FROM_BEGINNING, 0);

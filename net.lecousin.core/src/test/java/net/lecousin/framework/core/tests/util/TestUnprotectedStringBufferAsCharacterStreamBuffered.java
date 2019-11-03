@@ -1,7 +1,6 @@
 package net.lecousin.framework.core.tests.util;
 
 import java.io.File;
-import java.nio.ByteBuffer;
 import java.util.Collection;
 
 import net.lecousin.framework.core.test.io.TestCharacterStreamReadableBuffered;
@@ -9,6 +8,7 @@ import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.ICharacterStream;
+import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 import org.junit.Assume;
@@ -20,7 +20,7 @@ public class TestUnprotectedStringBufferAsCharacterStreamBuffered extends TestCh
 
 	@Parameters(name = "nbBuf = {2}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingGeneratedTestFiles.generateTestCases(false);
+		return TestIO.UsingGeneratedTestFiles.generateTestCases(true);
 	}
 	
 	public TestUnprotectedStringBufferAsCharacterStreamBuffered(File testFile, byte[] testBuf, int nbBuf) {
@@ -29,13 +29,14 @@ public class TestUnprotectedStringBufferAsCharacterStreamBuffered extends TestCh
 
 	@Override
 	protected ICharacterStream.Readable.Buffered openStream(IO.Readable io) throws Exception {
+		io.closeAsync();
 		UnprotectedStringBuffer s = new UnprotectedStringBuffer();
-		byte[] buf = new byte[testBuf.length];
+		char[] chars = new char[testBuf.length];
+		for (int i = 0; i < testBuf.length; ++i)
+			chars[i] = (char)testBuf[i];
 		for (int i = 0; i < nbBuf; ++i) {
-			io.readFullySync(ByteBuffer.wrap(buf));
-			s.append(new String(buf, 0, buf.length));
+			s.append(new UnprotectedString(chars, 0, chars.length, chars.length));
 		}
-		io.close();
 		return s.asCharacterStream();
 	}
 	

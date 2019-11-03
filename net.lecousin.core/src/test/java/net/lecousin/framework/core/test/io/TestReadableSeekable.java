@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.function.Consumer;
 
 import org.junit.Assert;
@@ -47,31 +48,29 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		Assert.assertEquals(0, io.getPosition());
 		byte[] b = new byte[1];
 		ByteBuffer buffer = ByteBuffer.wrap(b);
-		ArrayList<Integer> offsets = new ArrayList<Integer>(nbBuf);
-		for (int i = 0; i < nbBuf; ++i) offsets.add(Integer.valueOf(i));
-		boolean faster = false;
+		LinkedList<Long> offsets = new LinkedList<>();
+		for (int i = 0; i < nbBuf && offsets.size() < 2000 && (nbBuf < 1000 || i < nbBuf - 1); ++i) {
+			if (i > 100 && rand.nextBoolean()) continue;
+			for (int j = 0; j < testBuf.length && offsets.size() < 2000; ++j) {
+				if (offsets.size() < 1000 || rand.nextBoolean())
+					offsets.add(Long.valueOf(i * testBuf.length + j));
+			}
+		}
+		if (nbBuf >= 1000)
+			for (int j = 0; j < testBuf.length && offsets.size() < 2000; ++j)
+				offsets.add(Long.valueOf((nbBuf - 1) * testBuf.length + j));
+				
 		while (!offsets.isEmpty()) {
-			if (nbBuf > 1000 && (offsets.size() % 100) == 50) {
-				// make the test faster
-				for (int skip = 0; skip < 120 && !offsets.isEmpty(); ++skip)
-					offsets.remove(rand.nextInt(offsets.size()));
-				continue;
-			}
-			if (nbBuf > 1000 && !faster && nbBuf - offsets.size() > 1000)
-				faster = true;
 			int i = rand.nextInt(offsets.size());
-			Integer offset = offsets.remove(i);
-			for (int j = 0; j < testBuf.length; ++j) {
-				if (faster && (j%((i%5)+1)) == 1) continue;
-				buffer.clear();
-				int nb = io.readSync(offset.intValue()*testBuf.length+j, buffer);
-				if (nb <= 0)
-					throw new Exception("Unexpected end of stream at " + (i*testBuf.length+j));
-				if (nb > 1)
-					throw new Exception("Unexpected number of bytes read at " + (i*testBuf.length+j) + ": " + nb + " bytes returned, only one requested");
-				if (b[0] != testBuf[j])
-					throw new Exception("Invalid byte "+(b[0]&0xFF)+" at "+(i*testBuf.length+j));
-			}
+			Long offset = offsets.remove(i);
+			buffer.clear();
+			int nb = io.readSync(offset.longValue(), buffer);
+			if (nb <= 0)
+				throw new Exception("Unexpected end of stream at " + offset);
+			if (nb > 1)
+				throw new Exception("Unexpected number of bytes read at " + offset + ": " + nb + " bytes returned, only one requested");
+			if (b[0] != testBuf[(int)(offset.longValue() % testBuf.length)])
+				throw new Exception("Invalid byte " + (b[0]&0xFF) + " at "+ offset);
 			Assert.assertEquals("Read at a given position should not change the IO cursor", 0, io.getPosition());
 		}
 		buffer.clear();

@@ -168,22 +168,11 @@ public class SplashScreen implements WorkProgress {
 		}
 		
 		private void loadPoweredBy() {
-			int pos = 0;
-			int size = 4363;
-			byte[] buffer = new byte[size];
-			try (InputStream in = getClass().getClassLoader().getResourceAsStream("net/lecousin/framework/core/logo_110x40.png")) {
-				do {
-					int nb = in.read(buffer, pos, size - pos);
-					if (nb <= 0) break;
-					pos += nb;
-				} while (pos < size);
-			} catch (IOException e) {
-				// ignore, no logo
-			}
-			if (pos == size) {
+			ImageIcon image = loadImage("logo_110x40.png", 4363);
+			if (image != null) {
 				synchronized (SplashScreen.this) {
 					if (win != null)
-						poweredBy = new ImageIcon(buffer);
+						poweredBy = image;
 				}
 			}
 		}
@@ -263,13 +252,11 @@ public class SplashScreen implements WorkProgress {
 		this.isCustomLogo = isCustom;
 		update();
 	}
-
-	/** Load the default logo. */
-	public void loadDefaultLogo() {
+	
+	private ImageIcon loadImage(String filename, int size) {
 		int pos = 0;
-		int size = 18296;
 		byte[] buffer = new byte[size];
-		try (InputStream in = getClass().getClassLoader().getResourceAsStream("net/lecousin/framework/core/logo_200x200.png")) {
+		try (InputStream in = getClass().getClassLoader().getResourceAsStream("net/lecousin/framework/core/" + filename)) {
 			do {
 				int nb = in.read(buffer, pos, size - pos);
 				if (nb <= 0) break;
@@ -279,7 +266,15 @@ public class SplashScreen implements WorkProgress {
 			// ignore, no logo
 		}
 		if (pos == size)
-			setLogo(new ImageIcon(buffer), false);
+			return new ImageIcon(buffer);
+		return null;
+	}
+
+	/** Load the default logo. */
+	public void loadDefaultLogo() {
+		ImageIcon image = loadImage("logo_200x200.png", 18296);
+		if (image != null)
+			setLogo(image, false);
 	}
 	
 	/** Show application name. */

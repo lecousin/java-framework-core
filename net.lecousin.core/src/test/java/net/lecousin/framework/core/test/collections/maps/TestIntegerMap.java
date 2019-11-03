@@ -26,16 +26,16 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 		map.remove(123);
 		checkEmpty(map);
 		for (int i = 0; i < 1000; ++i)
-			put(i, map, checkMap);
+			put(i, map, checkMap, (i % 2) == 0);
 		for (int i = 2000; i < 10000; i += 7)
-			put(i, map, checkMap);
+			put(i, map, checkMap, (i % 2) == 0);
 		for (int i = 0; i < 10000; i += 3)
-			remove(i, map, checkMap);
+			remove(i, map, checkMap, (i % 2) == 0);
 		for (int i = -100; i > -1000; --i)
-			put(i, map, checkMap);
+			put(i, map, checkMap, (i % 2) == 0);
 		for (int i = 600; i < 800; ++i) {
-			put(i, map, checkMap);
-			put(i, map, checkMap);
+			put(i, map, checkMap, (i % 2) == 0);
+			put(i, map, checkMap, (i % 2) == 0);
 		}
 	}
 
@@ -47,16 +47,16 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 		LinkedList<Integer> integers = new LinkedList<>();
 		Random rand = new Random();
 		int value = 0;
-		for (int i = 0; i < 2500; ++i) {
+		for (int i = 0; i < 2000; ++i) {
 			value += rand.nextInt(20);
 			integers.add(Integer.valueOf(value));
 		}
 		while (!integers.isEmpty())
-			put(integers.remove(rand.nextInt(integers.size())).intValue(), map, checkMap);
+			put(integers.remove(rand.nextInt(integers.size())).intValue(), map, checkMap, integers.size() % 2 == 0);
 		integers.clear();
 		integers.addAll(checkMap.keySet());
 		while (!integers.isEmpty())
-			remove(integers.remove(rand.nextInt(integers.size())).intValue(), map, checkMap);
+			remove(integers.remove(rand.nextInt(integers.size())).intValue(), map, checkMap, integers.size() % 2 == 0);
 		checkEmpty(map);
 	}
 
@@ -75,11 +75,11 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 			integers.add(Integer.valueOf(value));
 		}
 		while (!integers.isEmpty())
-			put(integers.remove(rand.nextInt(integers.size())).intValue(), map, checkMap);
+			put(integers.remove(rand.nextInt(integers.size())).intValue(), map, checkMap, integers.size() % 2 == 0);
 		integers.clear();
 		integers.addAll(checkMap.keySet());
 		while (!integers.isEmpty())
-			remove(integers.remove(rand.nextInt(integers.size())).intValue(), map, checkMap);
+			remove(integers.remove(rand.nextInt(integers.size())).intValue(), map, checkMap, integers.size() % 2 == 0);
 		checkEmpty(map);
 	}
 	
@@ -166,16 +166,17 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 		Assert.assertFalse(values.hasNext());
 	}
 	
-	protected void put(int i, IntegerMap<Object> map, HashMap<Integer, Object> checkMap) {
+	protected void put(int i, IntegerMap<Object> map, HashMap<Integer, Object> checkMap, boolean doCheck) {
 		try { map.put(i, Integer.valueOf(i)); }
 		catch (Throwable t) {
 			throw new RuntimeException("Error in put(" + i + ")", t);
 		}
 		checkMap.put(Integer.valueOf(i), Integer.valueOf(i));
-		checkMap(map, checkMap);
+		if (doCheck)
+			checkMap(map, checkMap);
 	}
 	
-	protected void remove(int i, IntegerMap<Object> map, HashMap<Integer, Object> checkMap) {
+	protected void remove(int i, IntegerMap<Object> map, HashMap<Integer, Object> checkMap, boolean doCheck) {
 		if (!checkMap.containsKey(Integer.valueOf(i))) {
 			Assert.assertFalse(map.containsKey(i));
 			Assert.assertTrue(map.remove(i) == null);
@@ -186,7 +187,8 @@ public abstract class TestIntegerMap extends LCCoreAbstractTest {
 			throw new RuntimeException("Error in remove(" + i + ")", t);
 		}
 		checkMap.remove(Integer.valueOf(i));
-		checkMap(map, checkMap);
+		if (doCheck)
+			checkMap(map, checkMap);
 	}
 	
 }

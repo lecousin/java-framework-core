@@ -258,45 +258,12 @@ public class OutputToInputBuffers extends ConcurrentCloseable<IOException>
 		do {
 			ByteBuffer b = null;
 			synchronized (this) {
-				if (isClosing() || isClosed()) {
-					IOException e = new ClosedChannelException();
-					if (ondone != null) ondone.accept(new Pair<>(null, e));
-					return new AsyncSupplier<>(null, e);
-				}
+				if (isClosing() || isClosed())
+					return IOUtil.error(new ClosedChannelException(), ondone);
 				if (!buffers.isEmpty())
 					b = buffers.get(0);
-				else if (eof) {
-					Integer r = Integer.valueOf(done > 0 ? done : -1);
-					if (ondone != null) ondone.accept(new Pair<>(r, null));
-					return new AsyncSupplier<>(r, null);
-				} else if (lock.hasError()) {
-					IOException e = new OutputToInputTransferException(lock.getError());
-					if (ondone != null) ondone.accept(new Pair<>(null, e));
-					return new AsyncSupplier<>(null, e);
-				} else /*if (!lock.isUnblocked())*/ {
-					if (done == 0)
-						return readFullyAsync(buffer, ondone);
-					AsyncSupplier<Integer, IOException> r = new AsyncSupplier<>();
-					int d = done;
-					readFullyAsync(buffer, res -> {
-						if (ondone != null) {
-							if (res.getValue1() != null) {
-								int n = res.getValue1().intValue();
-								if (n < 0) n = 0;
-								n += d;
-								ondone.accept(new Pair<>(Integer.valueOf(n), null));
-							} else {
-								ondone.accept(res);
-							}
-						}
-					}).onDone(nb -> {
-						int n = nb.intValue();
-						if (n < 0) n = 0;
-						n += d;
-						r.unblockSuccess(Integer.valueOf(n));
-					}, r);
-					return r;
-				} 
+				else
+					return readFullyCannotSync(buffer, done, ondone);
 			}
 			int len = buffer.remaining();
 			if (len >= b.remaining()) {
@@ -318,12 +285,38 @@ public class OutputToInputBuffers extends ConcurrentCloseable<IOException>
 				}
 				if (sp != null) sp.unblock();
 			}
-			if (!buffer.hasRemaining()) {
-				Integer r = Integer.valueOf(done);
-				if (ondone != null) ondone.accept(new Pair<>(r, null));
-				return new AsyncSupplier<>(r, null);
-			}
+			if (!buffer.hasRemaining())
+				return IOUtil.success(Integer.valueOf(done), ondone);
 		} while (true);
+	}
+	
+	private AsyncSupplier<Integer, IOException> readFullyCannotSync(ByteBuffer buffer, int done, Consumer<Pair<Integer, IOException>> ondone) {
+		if (eof)
+			return IOUtil.success(Integer.valueOf(done > 0 ? done : -1), ondone);
+		if (lock.hasError())
+			return IOUtil.error(new OutputToInputTransferException(lock.getError()), ondone);
+		if (done == 0)
+			return readFullyAsync(buffer, ondone);
+		AsyncSupplier<Integer, IOException> r = new AsyncSupplier<>();
+		int d = done;
+		readFullyAsync(buffer, res -> {
+			if (ondone != null) {
+				if (res.getValue1() != null) {
+					int n = res.getValue1().intValue();
+					if (n < 0) n = 0;
+					n += d;
+					ondone.accept(new Pair<>(Integer.valueOf(n), null));
+				} else {
+					ondone.accept(res);
+				}
+			}
+		}).onDone(nb -> {
+			int n = nb.intValue();
+			if (n < 0) n = 0;
+			n += d;
+			r.unblockSuccess(Integer.valueOf(n));
+		}, r);
+		return r;
 	}
 	
 	@Override
