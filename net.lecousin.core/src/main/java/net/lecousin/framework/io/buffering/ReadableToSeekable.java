@@ -469,6 +469,11 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 			public Long run() throws IOException {
 				return Long.valueOf(seekSync(type, move));
 			}
+			
+			@Override
+			public long getMaxBlockingTimeInNanoBeforeToLog() {
+				return Long.MAX_VALUE;
+			}
 		};
 		operation(task.start());
 		return task.getOutput();
@@ -538,6 +543,11 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 			@Override
 			public Long run() throws IOException {
 				return Long.valueOf(skipSync(move));
+			}
+			
+			@Override
+			public long getMaxBlockingTimeInNanoBeforeToLog() {
+				return Long.MAX_VALUE;
 			}
 		};
 		operation(task.start());
