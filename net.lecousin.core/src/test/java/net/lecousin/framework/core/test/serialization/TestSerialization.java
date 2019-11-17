@@ -524,6 +524,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(integers, int[].class);
 		
 		testWrongType(int[].class);
+		testWrongType(int[].class, new boolean[] { true, false });
 	}
 	
 	public static class TestListOfList {

@@ -628,7 +628,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 			return;
 		}
 		if (Type.END_ELEMENT.equals(input.event.type)) {
-			Function<IOException, SerializationException> errorConverter = ioe -> xmlErrorConverter.apply(ioe);
+			Function<IOException, SerializationException> errorConverter = xmlErrorConverter::apply;
 			decoder.flush().onDone(() ->
 				io.seekAsync(SeekType.FROM_BEGINNING, 0).onDone(
 					() -> result.unblockSuccess(io), result, errorConverter), result, errorConverter);

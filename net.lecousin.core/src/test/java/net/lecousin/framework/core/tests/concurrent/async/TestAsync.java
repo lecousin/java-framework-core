@@ -1,5 +1,6 @@
 package net.lecousin.framework.core.tests.concurrent.async;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -16,22 +17,26 @@ import net.lecousin.framework.mutable.MutableInteger;
 
 public class TestAsync extends LCCoreAbstractTest {
 
+	Async<Exception> sp = new Async<>();
+	Async<Exception> sp2 = new Async<>();
+
+	MutableInteger ok = new MutableInteger(0);
+	MutableInteger error = new MutableInteger(0);
+	MutableInteger cancel = new MutableInteger(0);
+	
+	Runnable onOk = () -> { ok.inc(); };
+	Consumer<Exception> onError = (err) -> { error.inc(); };
+	Consumer<CancelException> onCancel = (err) -> { cancel.inc(); };
+	
 	@Test
-	public void test() throws Exception {
-		Async<Exception> sp = new Async<>();
+	public void testAddListener() {
 		Assert.assertEquals(0, sp.getAllListeners().size());
 		sp.onDone(() -> {});
 		Assert.assertEquals(1, sp.getAllListeners().size());
-		
-		MutableInteger ok = new MutableInteger(0);
-		MutableInteger error = new MutableInteger(0);
-		MutableInteger cancel = new MutableInteger(0);
-		
-		Runnable onOk = () -> { ok.inc(); };
-		Consumer<Exception> onError = (err) -> { error.inc(); };
-		Consumer<CancelException> onCancel = (err) -> { cancel.inc(); };
-		
-		sp = new Async<>();
+	}
+	
+	@Test
+	public void testOnDoneOk() {
 		sp.onDone(onOk, onError, onCancel);
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -41,224 +46,210 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, error.get());
 		Assert.assertEquals(0, cancel.get());
 		for (Object o : sp.getAllListeners()) o.toString();
+	}
 
-		sp = new Async<>();
+	@Test
+	public void testOnDoneError() {
 		sp.onDone(onOk, onError, onCancel);
 		sp.error(new Exception());
-		Assert.assertEquals(1, ok.get());
+		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(1, error.get());
 		Assert.assertEquals(0, cancel.get());
+	}
 
-		sp = new Async<>();
+	@Test
+	public void testOnDoneCancel() throws Exception {
 		sp.onDone(onOk, onError, onCancel);
 		sp.cancel(new CancelException("test"));
-		Assert.assertEquals(1, ok.get());
-		Assert.assertEquals(1, error.get());
+		Assert.assertEquals(0, ok.get());
+		Assert.assertEquals(0, error.get());
 		Assert.assertEquals(1, cancel.get());
 		try { sp.blockThrow(0); throw new AssertionError(); }
 		catch (CancelException e) {
 			Assert.assertEquals("test", e.getMessage());
 		}
+	}
 		
-		Async<Exception> sp2;
-		
-		sp = new Async<>();
-		sp2 = new Async<>();
+	@Test
+	public void testOnDoneOk2SP() {
 		sp.onDone(onOk, sp2);
 		sp2.onDone(onOk, onError, onCancel);
 		sp.unblock();
-		Assert.assertEquals(2, ok.get());
+		Assert.assertEquals(1, ok.get());
+		Assert.assertEquals(0, error.get());
+		Assert.assertEquals(0, cancel.get());
+	}
+
+	@Test
+	public void testOnDoneErrorTransferWithErrorOrCancel() {
+		sp.onDone(onOk, sp2);
+		sp2.onDone(onOk, onError, onCancel);
+		sp.error(new Exception());
+		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(1, error.get());
+		Assert.assertEquals(0, cancel.get());
+	}
+
+	@Test
+	public void testOnDoneErrorTransfer() {
+		sp.onDone(sp2);
+		sp2.onDone(onOk, onError, onCancel);
+		sp.error(new Exception());
+		Assert.assertEquals(0, ok.get());
+		Assert.assertEquals(1, error.get());
+		Assert.assertEquals(0, cancel.get());
+	}
+
+	@Test
+	public void testOnDoneCancelTransferWithErrorOrCancel() {
+		sp.onDone(onOk, sp2);
+		sp2.onDone(onOk, onError, onCancel);
+		sp.cancel(new CancelException("test"));
+		Assert.assertEquals(0, ok.get());
+		Assert.assertEquals(0, error.get());
 		Assert.assertEquals(1, cancel.get());
+	}
 
-		sp = new Async<>();
-		sp2 = new Async<>();
-		sp.onDone(onOk, sp2);
+	@Test
+	public void testOnDoneCancelTransfer() {
+		sp.onDone(sp2);
 		sp2.onDone(onOk, onError, onCancel);
-		sp.error(new Exception());
-		Assert.assertEquals(2, ok.get());
-		Assert.assertEquals(2, error.get());
+		sp.cancel(new CancelException("test"));
+		Assert.assertEquals(0, ok.get());
+		Assert.assertEquals(0, error.get());
 		Assert.assertEquals(1, cancel.get());
-
-		sp = new Async<>();
-		sp2 = new Async<>();
-		sp.onDone(onOk, sp2);
-		sp2.onDone(onOk, onError, onCancel);
-		sp.cancel(new CancelException("test"));
-		Assert.assertEquals(2, ok.get());
-		Assert.assertEquals(2, error.get());
-		Assert.assertEquals(2, cancel.get());
-
-		sp = new Async<>();
-		sp2 = new Async<>();
+	}
+	
+	@Test
+	public void testOnDoneOkTransfer() {
 		sp.onDone(sp2);
 		sp2.onDone(onOk, onError, onCancel);
 		sp.unblock();
-		Assert.assertEquals(3, ok.get());
-		Assert.assertEquals(2, error.get());
-		Assert.assertEquals(2, cancel.get());
+		Assert.assertEquals(1, ok.get());
+		Assert.assertEquals(0, error.get());
+		Assert.assertEquals(0, cancel.get());
+	}
 
-		sp = new Async<>();
-		sp2 = new Async<>();
-		sp.onDone(sp2);
-		sp2.onDone(onOk, onError, onCancel);
-		sp.error(new Exception());
-		Assert.assertEquals(3, ok.get());
-		Assert.assertEquals(3, error.get());
-		Assert.assertEquals(2, cancel.get());
-
-		sp = new Async<>();
-		sp2 = new Async<>();
-		sp.onDone(sp2);
-		sp2.onDone(onOk, onError, onCancel);
-		sp.cancel(new CancelException("test"));
-		Assert.assertEquals(3, ok.get());
-		Assert.assertEquals(3, error.get());
-		Assert.assertEquals(3, cancel.get());
-
-		sp = new Async<>();
-		sp2 = new Async<>();
+	@Test
+	public void testOnDoneOkWithErrorOrCancel() {
 		sp.onDone(onOk, sp2);
 		sp2.onDone(onOk, onError, onCancel);
 		sp.unblock();
-		Assert.assertEquals(4, ok.get());
-		Assert.assertEquals(3, error.get());
-		Assert.assertEquals(3, cancel.get());
+		Assert.assertEquals(1, ok.get());
+		Assert.assertEquals(0, error.get());
+		Assert.assertEquals(0, cancel.get());
+	}
 
-		sp = new Async<>();
-		sp2 = new Async<>();
-		sp.onDone(onOk, sp2);
-		sp2.onDone(onOk, onError, onCancel);
-		sp.error(new Exception());
-		Assert.assertEquals(4, ok.get());
-		Assert.assertEquals(4, error.get());
-		Assert.assertEquals(3, cancel.get());
-
-		sp = new Async<>();
-		sp2 = new Async<>();
-		sp.onDone(onOk, sp2);
-		sp2.onDone(onOk, onError, onCancel);
-		sp.cancel(new CancelException("test"));
-		Assert.assertEquals(4, ok.get());
-		Assert.assertEquals(4, error.get());
-		Assert.assertEquals(4, cancel.get());
-
-		sp = new Async<>();
-		sp2 = new Async<>();
-		sp.onDone(sp2);
-		sp2.onDone(onOk, onError, onCancel);
-		sp.unblock();
-		Assert.assertEquals(5, ok.get());
-		Assert.assertEquals(4, error.get());
-		Assert.assertEquals(4, cancel.get());
-
-		sp = new Async<>();
-		sp2 = new Async<>();
-		sp.onDone(sp2);
-		sp2.onDone(onOk, onError, onCancel);
-		sp.error(new Exception());
-		Assert.assertEquals(5, ok.get());
-		Assert.assertEquals(5, error.get());
-		Assert.assertEquals(4, cancel.get());
-
-		sp = new Async<>();
-		sp2 = new Async<>();
-		sp.onDone(sp2);
-		sp2.onDone(onOk, onError, onCancel);
-		sp.cancel(new CancelException("test"));
-		Assert.assertEquals(5, ok.get());
-		Assert.assertEquals(5, error.get());
-		Assert.assertEquals(5, cancel.get());
-
-		sp = new Async<>();
-		sp2 = new Async<>();
+	@Test
+	public void testOnDoneOkRunnable() {
 		sp.onDone(sp2::unblock);
 		sp2.onDone(onOk, onError, onCancel);
 		sp.unblock();
-		Assert.assertEquals(6, ok.get());
-		Assert.assertEquals(5, error.get());
-		Assert.assertEquals(5, cancel.get());
+		Assert.assertEquals(1, ok.get());
+		Assert.assertEquals(0, error.get());
+		Assert.assertEquals(0, cancel.get());
+	}
 
-		sp = new Async<>();
-		sp2 = new Async<>();
+	@Test
+	public void testOnDoneErrorRunnable() {
 		sp.onDone(sp2::unblock);
 		sp2.onDone(onOk, onError, onCancel);
 		sp.error(new Exception());
-		Assert.assertEquals(7, ok.get());
-		Assert.assertEquals(5, error.get());
-		Assert.assertEquals(5, cancel.get());
+		Assert.assertEquals(1, ok.get());
+		Assert.assertEquals(0, error.get());
+		Assert.assertEquals(0, cancel.get());
+	}
 
-		sp = new Async<>();
-		sp2 = new Async<>();
+	@Test
+	public void testOnDoneCancelRunnable() {
 		sp.onDone(sp2::unblock);
 		sp2.onDone(onOk, onError, onCancel);
 		sp.cancel(new CancelException("test"));
-		Assert.assertEquals(8, ok.get());
-		Assert.assertEquals(5, error.get());
-		Assert.assertEquals(5, cancel.get());
-		
-		sp = new Async<>();
-		sp2 = new Async<>();
+		Assert.assertEquals(1, ok.get());
+		Assert.assertEquals(0, error.get());
+		Assert.assertEquals(0, cancel.get());
+	}
+	
+	@Test
+	public void testCancelWithErrorConverter() {
 		sp.onDone(sp2, e -> e);
 		sp.cancel(new CancelException("test"));
 		Assert.assertTrue(sp2.isCancelled());
-		
-		sp = new Async<>();
-		sp2 = new Async<>();
+	}
+
+	@Test
+	public void testErrorWithConverter() {
 		sp.onDone(sp2, e -> e);
 		sp.error(new Exception("test"));
 		Assert.assertTrue(sp2.hasError());
-		
-		sp = new Async<>();
+	}
+
+	@Test
+	public void testListenersOk() {
 		sp.onSuccess(onOk);
 		sp.onError(onError);
 		sp.onCancel(onCancel);
 		sp.unblock();
-		Assert.assertEquals(9, ok.get());
+		Assert.assertEquals(1, ok.get());
+		Assert.assertEquals(0, error.get());
+		Assert.assertEquals(0, cancel.get());
 		for (Object o : sp.getAllListeners()) o.toString();
-		
-		sp = new Async<>();
+	}
+	
+	@Test
+	public void testListenersError() {
 		sp.onSuccess(onOk);
 		sp.onError(onError);
 		sp.onCancel(onCancel);
 		sp.error(new Exception());
-		Assert.assertEquals(6, error.get());
-		
-		sp = new Async<>();
-		sp.onSuccess(onOk);
-		sp.onError(onError);
-		sp.onCancel(onCancel);
-		sp.error(new Exception());
-		Assert.assertEquals(7, error.get());
-		
-		sp = new Async<>();
+		Assert.assertEquals(0, ok.get());
+		Assert.assertEquals(1, error.get());
+		Assert.assertEquals(0, cancel.get());
+	}
+	
+	@Test
+	public void testListenersCancel() {
 		sp.onSuccess(onOk);
 		sp.onError(onError);
 		sp.onCancel(onCancel);
 		sp.cancel(new CancelException("test"));
-		Assert.assertEquals(6, cancel.get());
-		
-		AsyncSupplier<Void, Exception> aw;
-		sp = new Async<>();
-		aw = sp.toAsyncSupplier();
+		Assert.assertEquals(0, ok.get());
+		Assert.assertEquals(0, error.get());
+		Assert.assertEquals(1, cancel.get());
+	}
+	
+	@Test
+	public void testToAsyncSupplierOk() {
+		AsyncSupplier<Void, Exception> aw = sp.toAsyncSupplier();
 		aw.onDone(onOk, onError, onCancel);
 		sp.unblock();
-		Assert.assertEquals(10, ok.get());
+		Assert.assertEquals(1, ok.get());
+		Assert.assertEquals(0, error.get());
+		Assert.assertEquals(0, cancel.get());
+	}
 
-		sp = new Async<>();
-		aw = sp.toAsyncSupplier();
+	@Test
+	public void testToAsyncSupplierError() {
+		AsyncSupplier<Void, Exception> aw = sp.toAsyncSupplier();
 		aw.onDone(onOk, onError, onCancel);
 		sp.error(new Exception());
-		Assert.assertEquals(8, error.get());
+		Assert.assertEquals(0, ok.get());
+		Assert.assertEquals(1, error.get());
+		Assert.assertEquals(0, cancel.get());
+	}
 
-		sp = new Async<>();
-		aw = sp.toAsyncSupplier();
+	@Test
+	public void testToAsyncSupplierCancel() {
+		AsyncSupplier<Void, Exception> aw = sp.toAsyncSupplier();
 		aw.onDone(onOk, onError, onCancel);
 		sp.cancel(new CancelException("test"));
-		Assert.assertEquals(7, cancel.get());
-		
-		sp = new Async<>();
-		sp2 = new Async<>();
+		Assert.assertEquals(0, ok.get());
+		Assert.assertEquals(0, error.get());
+		Assert.assertEquals(1, cancel.get());
+	}
+	
+	@Test
+	public void testOkThenStartCancel() {
 		sp.thenStart(new Task.Cpu<Void, Exception>("test", Task.PRIORITY_NORMAL) {
 			@Override
 			public Void run() throws CancelException {
@@ -268,35 +259,215 @@ public class TestAsync extends LCCoreAbstractTest {
 		sp.unblock();
 		sp2.block(0);
 		Assert.assertTrue(sp2.isCancelled());
-		
-		sp = new Async<>();
-		sp2 = new Async<>();
-		sp.thenStart(new Task.Cpu<Void, Exception>("test", Task.PRIORITY_NORMAL) {
-			@Override
-			public Void run() throws CancelException {
-				throw new CancelException("test");
-			}
-		}, sp2);
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableOkAsync() {
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		Assert.assertEquals(0, ok.get());
 		sp.unblock();
 		sp2.block(0);
-		Assert.assertTrue(sp2.isCancelled());
-		
+		Assert.assertEquals(51, ok.get());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableOkSync() {
+		Assert.assertEquals(0, ok.get());
+		sp.unblock();
+		Assert.assertEquals(0, ok.get());
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		Assert.assertEquals(51, ok.get());
+		Assert.assertTrue(sp2.isSuccessful());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableErrorAsync() {
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		Assert.assertEquals(0, ok.get());
+		sp.error(new Exception());
+		sp2.block(0);
+		Assert.assertEquals(51, ok.get());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableErrorSync() {
+		Assert.assertEquals(0, ok.get());
+		sp.error(new Exception());
+		Assert.assertEquals(0, ok.get());
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		Assert.assertEquals(51, ok.get());
+		Assert.assertTrue(sp2.isSuccessful());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableCancelAsync() {
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		Assert.assertEquals(0, ok.get());
+		sp.cancel(new CancelException("test"));
+		sp2.block(0);
+		Assert.assertEquals(51, ok.get());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableCancelSync() {
+		Assert.assertEquals(0, ok.get());
+		sp.cancel(new CancelException("test"));
+		Assert.assertEquals(0, ok.get());
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		Assert.assertEquals(51, ok.get());
+		Assert.assertTrue(sp2.isSuccessful());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableWithOnErrorOrCancelOkAsync() {
+		Async<Exception> sp3 = new Async<>();
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		Assert.assertEquals(0, ok.get());
+		sp.unblock();
+		sp2.block(0);
+		Assert.assertEquals(51, ok.get());
+		Assert.assertFalse(sp3.isDone());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableWithOnErrorOrCancelOkSync() {
+		Async<Exception> sp3 = new Async<>();
+		Assert.assertEquals(0, ok.get());
+		sp.unblock();
+		Assert.assertEquals(0, ok.get());
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		Assert.assertEquals(51, ok.get());
+		Assert.assertTrue(sp2.isSuccessful());
+		Assert.assertFalse(sp3.isDone());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableWithOnErrorOrCancelErrorAsync() {
+		Async<Exception> sp3 = new Async<>();
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		Assert.assertEquals(0, ok.get());
+		sp.error(new Exception());
+		Assert.assertEquals(0, ok.get());
+		Assert.assertTrue(sp3.hasError());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableWithOnErrorOrCancelErrorSync() {
+		Async<Exception> sp3 = new Async<>();
+		Assert.assertEquals(0, ok.get());
+		sp.error(new Exception());
+		Assert.assertEquals(0, ok.get());
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		Assert.assertEquals(0, ok.get());
+		Assert.assertTrue(sp3.hasError());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableeWithOnErrorOrCancelCancelAsync() {
+		Async<Exception> sp3 = new Async<>();
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		Assert.assertEquals(0, ok.get());
+		sp.cancel(new CancelException("test"));
+		Assert.assertEquals(0, ok.get());
+		Assert.assertTrue(sp3.isCancelled());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableeWithOnErrorOrCancelCancelSync() {
+		Async<Exception> sp3 = new Async<>();
+		Assert.assertEquals(0, ok.get());
+		sp.cancel(new CancelException("test"));
+		Assert.assertEquals(0, ok.get());
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		Assert.assertEquals(0, ok.get());
+		Assert.assertTrue(sp3.isCancelled());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableWithOnErrorOrCancelAndErrorConverterOkAsync() {
+		Async<IOException> sp3 = new Async<>();
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		Assert.assertEquals(0, ok.get());
+		sp.unblock();
+		sp2.block(0);
+		Assert.assertEquals(51, ok.get());
+		Assert.assertFalse(sp3.isDone());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableWithOnErrorOrCancelAndErrorConverterOkSync() {
+		Async<IOException> sp3 = new Async<>();
+		Assert.assertEquals(0, ok.get());
+		sp.unblock();
+		Assert.assertEquals(0, ok.get());
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		Assert.assertEquals(51, ok.get());
+		Assert.assertTrue(sp2.isSuccessful());
+		Assert.assertFalse(sp3.isDone());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableWithOnErrorOrCancelAndErrorConverterErrorAsync() {
+		Async<IOException> sp3 = new Async<>();
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		Assert.assertEquals(0, ok.get());
+		sp.error(new Exception());
+		Assert.assertEquals(0, ok.get());
+		Assert.assertTrue(sp3.hasError());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableWithOnErrorOrCancelAndErrorConverterErrorSync() {
+		Async<IOException> sp3 = new Async<>();
+		Assert.assertEquals(0, ok.get());
+		sp.error(new Exception());
+		Assert.assertEquals(0, ok.get());
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		Assert.assertEquals(0, ok.get());
+		Assert.assertTrue(sp3.hasError());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableeWithOnErrorOrCancelAndErrorConverterCancelAsync() {
+		Async<IOException> sp3 = new Async<>();
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		Assert.assertEquals(0, ok.get());
+		sp.cancel(new CancelException("test"));
+		Assert.assertEquals(0, ok.get());
+		Assert.assertTrue(sp3.isCancelled());
+	}
+	
+	@Test
+	public void testThenDoOrStartRunnableeWithOnErrorOrCancelAndErrorConverterCancelSync() {
+		Async<IOException> sp3 = new Async<>();
+		Assert.assertEquals(0, ok.get());
+		sp.cancel(new CancelException("test"));
+		Assert.assertEquals(0, ok.get());
+		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		Assert.assertEquals(0, ok.get());
+		Assert.assertTrue(sp3.isCancelled());
+	}
+	
+	@Test
+	public void testConstructors() {
 		sp = new Async<>(new CancelException("test"));
 		Assert.assertTrue(sp.isCancelled());
-		
-		Async<Exception> spbp1 = new Async<>();
-		Async<Exception> spbp2 = new Async<>();
+	}
+	
+	@Test
+	public void testUnblockAsynchronously() {
 		new Task.Cpu.FromRunnable(() -> {
-			spbp1.unblock();
-			spbp2.blockPause(5000);
+			sp.unblock();
+			sp2.blockPause(5000);
 		}, "test", Task.PRIORITY_NORMAL).start();
-		spbp1.block(0);
+		sp.block(0);
 		try { Thread.sleep(100); } catch (InterruptedException e) {}
-		spbp2.unblock();
-		spbp2.blockPause(1);
-		
-		sp = new Async<>();
-		ok.set(0);
+		sp2.unblock();
+		sp2.blockPause(1);
+	}
+	
+	@Test
+	public void testOnErrorAndCancelWithError() {
 		sp.onError(e -> {});
 		sp.onErrorOrCancel(() -> ok.set(51));
 		for (Object o : sp.getAllListeners())
@@ -304,15 +475,18 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, ok.get());
 		sp.error(new Exception());
 		Assert.assertEquals(51, ok.get());
-
-		sp = new Async<>();
-		ok.set(0);
+	}
+	
+	@Test
+	public void testOnErrorOrCancelWithOk() {
 		sp.onErrorOrCancel(() -> ok.set(51));
 		Assert.assertEquals(0, ok.get());
 		sp.unblock();
 		Assert.assertEquals(0, ok.get());
-		
-		sp = new Async<>();
+	}
+	
+	@Test
+	public void testOnDoneAsyncSupplierWithSupplier() {
 		AsyncSupplier<Integer, Exception> as = new AsyncSupplier<>();
 		sp.onDone(as, () -> Integer.valueOf(567));
 		sp.unblock();
@@ -321,8 +495,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	}
 	
 	@Test
-	public void testFuture() {
-		Async<Exception> sp = new Async<>();
+	public void testFutureOk() {
 		Assert.assertFalse(sp.isDone());
 		sp.unblock();
 		try {
@@ -333,8 +506,10 @@ public class TestAsync extends LCCoreAbstractTest {
 		} catch (Exception e) {
 			throw new AssertionError(e);
 		}
-		
-		sp = new Async<>();
+	}
+	
+	@Test
+	public void testFutureCancel() {
 		Assert.assertFalse(sp.isDone());
 		sp.cancel(new CancelException("test"));
 		try {
@@ -359,8 +534,10 @@ public class TestAsync extends LCCoreAbstractTest {
 		sp = new Async<>();
 		Assert.assertTrue(sp.cancel(true));
 		Assert.assertTrue(sp.isDone());
-
-		sp = new Async<>();
+	}
+	
+	@Test
+	public void testFutureError() {
 		Assert.assertFalse(sp.isDone());
 		sp.error(new Exception("test"));
 		try {

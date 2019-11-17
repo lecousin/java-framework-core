@@ -296,6 +296,43 @@ public interface IAsync<TError extends Exception> extends Cancellable {
 		}, onErrorOrCancel);
 	}
 
+	
+	/** Call runnable immediately (in current thread) if done, or start a CPU task on done. */
+	default boolean thenDoOrStart(Runnable runnable, String taskDescription, byte taskPriority) {
+		if (isDone()) {
+			runnable.run();
+			return true;
+		}
+		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, runnable), true);
+		return false;
+	}
+	
+	/** Call runnable immediately (in current thread) if done, or start a CPU task on done. */
+	default boolean thenDoOrStart(Runnable runnable, String taskDescription, byte taskPriority, IAsync<TError> onErrorOrCancel) {
+		if (isDone()) {
+			if (!forwardIfNotSuccessful(onErrorOrCancel))
+				runnable.run();
+			return true;
+		}
+		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, runnable), onErrorOrCancel);
+		return false;
+	}
+	
+	/** Call runnable immediately (in current thread) if done, or start a CPU task on done. */
+	default <TError2 extends Exception> boolean thenDoOrStart(
+		Runnable runnable, String taskDescription, byte taskPriority,
+		IAsync<TError2> onErrorOrCancel, Function<TError, TError2> errorConverter
+	) {
+		if (isDone()) {
+			if (hasError()) onErrorOrCancel.error(errorConverter.apply(getError()));
+			else if (isCancelled()) onErrorOrCancel.cancel(getCancelEvent());
+			else runnable.run();
+			return true;
+		}
+		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, runnable), onErrorOrCancel, errorConverter);
+		return false;
+	}
+	
 	/** Convert this synchronization point into an AsyncWork with Void result. */
 	default AsyncSupplier<Void, TError> toAsyncSupplier() {
 		AsyncSupplier<Void, TError> aw = new AsyncSupplier<>();
