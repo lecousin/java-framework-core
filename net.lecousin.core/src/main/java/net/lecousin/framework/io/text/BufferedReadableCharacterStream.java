@@ -68,7 +68,16 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 			bytes.put(initBytes);
 			bytes.flip();
 		}
-		chars = initChars;
+		if (initChars != null) {
+			if (initChars.hasArray()) {
+				charsArray = initChars.array();
+				charsPos = initChars.arrayOffset() + initChars.position();
+				charsLen = charsPos + initChars.remaining();
+			} else {
+				charsArray = new char[initChars.remaining()];
+				initChars.get(charsArray);
+			}
+		}
 		// start decoding
 		if (input instanceof IO.Readable.Buffered)
 			((IO.Readable.Buffered)input).canStartReading().onDone(this::bufferize);
@@ -82,7 +91,9 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 	private int bufferSize;
 	private TurnArray<CharBuffer> ready; 
 	private ByteBuffer bytes;
-	private CharBuffer chars;
+	private char[] charsArray;
+	private int charsPos;
+	private int charsLen;
 	private boolean endReached = false;
 	private int back = -1;
 	private Async<IOException> nextReady = new Async<>();
@@ -107,7 +118,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 	@Override
 	protected void closeResources(Async<IOException> ondone) {
 		bytes = null;
-		chars = null;
+		charsArray = null;
 		decoder = null;
 		ready = null;
 		input = null;
@@ -244,11 +255,22 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		}
 	}
 	
+	private void pollNextBuffer() {
+		CharBuffer chars = ready.pollFirst();
+		if (chars != null) {
+			charsArray = chars.array();
+			charsPos = 0;
+			charsLen = chars.remaining();
+		} else {
+			charsArray = null;
+		}
+	}
+	
 	@Override
 	public boolean endReached() {
-		if (endReached && chars == null) {
+		if (endReached && charsArray == null) {
 			synchronized (ready) {
-				if (endReached && chars == null && ready.isEmpty())
+				if (endReached && charsArray == null && ready.isEmpty())
 					return true;
 			}
 		}
@@ -267,26 +289,26 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 			back = -1;
 			return c;
 		}
-		while (chars == null) {
+		while (charsArray == null) {
 			boolean full;
 			Async<IOException> sp;
 			synchronized (ready) {
 				full = ready.isFull();
-				chars = ready.pollFirst();
-				if (chars == null && endReached) throw new EOFException();
+				pollNextBuffer();
+				if (charsArray == null && endReached) throw new EOFException();
 				if (nextReady.hasError()) throw nextReady.getError();
 				sp = nextReady;
 			}
 			if (full && !endReached) bufferize();
-			if (chars != null) break;
+			if (charsArray != null) break;
 			sp.block(0);
 		}
-		char c = chars.get();
-		if (!chars.hasRemaining()) {
+		char c = charsArray[charsPos++];
+		if (charsPos == charsLen) {
 			boolean full;
 			synchronized (ready) {
 				full = ready.isFull();
-				chars = ready.pollFirst();
+				pollNextBuffer();
 			}
 			if (full && !endReached) bufferize();
 		}
@@ -306,32 +328,33 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 				return 1;
 			done = 1;
 		}
-		while (chars == null) {
+		while (charsArray == null) {
 			boolean full;
 			Async<IOException> sp;
 			synchronized (ready) {
 				full = ready.isFull();
-				chars = ready.pollFirst();
+				pollNextBuffer();
 				sp = nextReady;
-				if (chars == null && endReached) {
+				if (charsArray == null && endReached) {
 					if (done > 0) return done;
 					return -1;
 				}
 			}
 			if (full && !endReached) bufferize();
-			if (chars != null) break;
+			if (charsArray != null) break;
 			sp.block(0);
 			if (sp.hasError()) throw sp.getError();
 			if (sp.isCancelled()) throw IO.error(sp.getCancelEvent());
 		}
 		int len = length;
-		if (len > chars.remaining()) len = chars.remaining();
-		chars.get(buf, offset, len);
-		if (!chars.hasRemaining()) {
+		if (len > charsLen - charsPos) len = charsLen - charsPos;
+		System.arraycopy(charsArray, charsPos, buf, offset, len);
+		charsPos += len;
+		if (charsPos == charsLen) {
 			boolean full;
 			synchronized (ready) {
 				full = ready.isFull();
-				chars = ready.pollFirst();
+				pollNextBuffer();
 			}
 			if (full && !endReached) bufferize();
 		}
@@ -345,23 +368,23 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 			back = -1;
 			return c;
 		}
-		if (chars == null) {
+		if (charsArray == null) {
 			boolean full;
 			synchronized (ready) {
 				full = ready.isFull();
-				chars = ready.pollFirst();
-				if (chars == null && endReached) return -1;
+				pollNextBuffer();
+				if (charsArray == null && endReached) return -1;
 				if (nextReady.hasError()) throw nextReady.getError();
 			}
 			if (full && !endReached) bufferize();
-			if (chars == null) return -2;
+			if (charsArray == null) return -2;
 		}
-		char c = chars.get();
-		if (!chars.hasRemaining()) {
+		char c = charsArray[charsPos++];
+		if (charsPos == charsLen) {
 			boolean full;
 			synchronized (ready) {
 				full = ready.isFull();
-				chars = ready.pollFirst();
+				pollNextBuffer();
 			}
 			if (full && !endReached) bufferize();
 		}
@@ -407,18 +430,19 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 				done = 1;
 			}
 			
-			if (chars == null && !getNextChars(done, readResult))
+			if (charsArray == null && !getNextChars(done, readResult))
 				return null;
 			
 			int len = length;
-			if (len > chars.remaining()) len = chars.remaining();
-			chars.get(buf, offset, len);
+			if (len > charsLen - charsPos) len = charsLen - charsPos;
+			System.arraycopy(charsArray, charsPos, buf, offset, len);
+			charsPos += len;
 			
-			if (!chars.hasRemaining()) {
+			if (charsPos == charsLen) {
 				boolean full;
 				synchronized (ready) {
 					full = ready.isFull();
-					chars = ready.pollFirst();
+					pollNextBuffer();
 				}
 				if (full && !endReached) bufferize();
 			}
@@ -432,9 +456,9 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 			Async<IOException> sp;
 			synchronized (ready) {
 				full = ready.isFull();
-				chars = ready.pollFirst();
+				pollNextBuffer();
 				sp = nextReady;
-				if (chars == null && endReached) {
+				if (charsArray == null && endReached) {
 					if (done > 0)
 						result.unblockSuccess(Integer.valueOf(done));
 					else
@@ -443,7 +467,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 				}
 			}
 			if (full && !endReached) bufferize();
-			if (chars == null) {
+			if (charsArray == null) {
 				if (sp.forwardIfNotSuccessful(result))
 					return false;
 				int don = done;
@@ -471,12 +495,12 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 			result.unblockSuccess(new UnprotectedString(c));
 			return;
 		}
-		if (chars == null) {
+		if (charsArray == null) {
 			boolean full;
 			synchronized (ready) {
 				full = ready.isFull();
-				chars = ready.pollFirst();
-				if (chars == null && endReached) {
+				pollNextBuffer();
+				if (charsArray == null && endReached) {
 					result.unblockSuccess(null);
 					return;
 				}
@@ -486,7 +510,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 				}
 			}
 			if (full && !endReached) bufferize();
-			if (chars == null) {
+			if (charsArray == null) {
 				canStartReading().thenStart(
 				new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readNextBufferAsync", getPriority(),
 					() -> readNextBufferAsync(result)), result);
@@ -494,15 +518,15 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 			}
 		}
 		UnprotectedString buf = new UnprotectedString(
-			chars.array(),
-			chars.arrayOffset() + chars.position(),
-			chars.remaining(),
-			chars.capacity() - (chars.arrayOffset() + chars.position())
+			charsArray,
+			charsPos,
+			charsLen - charsPos,
+			charsArray.length - charsPos
 		);
 		boolean full;
 		synchronized (ready) {
 			full = ready.isFull();
-			chars = ready.pollFirst();
+			pollNextBuffer();
 		}
 		if (full && !endReached) bufferize();
 		result.unblockSuccess(buf);
@@ -547,12 +571,12 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 			string.append(c);
 		}
 		do {
-			if (chars == null) {
+			if (charsArray == null) {
 				boolean full;
 				synchronized (ready) {
 					full = ready.isFull();
-					chars = ready.pollFirst();
-					if (chars == null && endReached) {
+					pollNextBuffer();
+					if (charsArray == null && endReached) {
 						result.unblockSuccess(Boolean.FALSE);
 						return;
 					}
@@ -562,7 +586,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 					}
 				}
 				if (full && !endReached) bufferize();
-				if (chars == null) {
+				if (charsArray == null) {
 					canStartReading().thenStart(
 					new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readUntil", getPriority(),
 						() -> readUntil(endChar, string, result)), result);
@@ -570,11 +594,11 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 				}
 			}
 			boolean found = searchCurrentChars(endChar, string);
-			if (!chars.hasRemaining()) {
+			if (charsPos == charsLen) {
 				boolean full;
 				synchronized (ready) {
 					full = ready.isFull();
-					chars = ready.pollFirst();
+					pollNextBuffer();
 				}
 				if (full && !endReached) bufferize();
 			}
@@ -586,22 +610,19 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 	}
 	
 	private boolean searchCurrentChars(char endChar, UnprotectedStringBuffer string) {
-		char[] buf = chars.array();
-		int off = chars.arrayOffset() + chars.position();
-		int len = chars.remaining();
-		for (int i = 0; i < len; ++i) {
-			if (buf[off + i] == endChar) {
-				if (i == 0) {
-					chars.position(chars.position() + 1);
+		for (int i = charsPos; i < charsLen; ++i) {
+			if (charsArray[i] == endChar) {
+				if (i == charsPos) {
+					charsPos++;
 				} else {
-					string.append(new UnprotectedString(buf, off, i, i));
-					chars.position(chars.position() + i + 1);
+					string.append(new UnprotectedString(charsArray, charsPos, i - charsPos, i - charsPos));
+					charsPos = i + 1;
 				}
 				return true;
 			}
 		}
-		string.append(new UnprotectedString(buf, off, len, len));
-		chars.position(chars.position() + len);
+		string.append(new UnprotectedString(charsArray, charsPos, charsLen - charsPos, charsLen - charsPos));
+		charsPos = charsLen;
 		return false;
 	}
 }

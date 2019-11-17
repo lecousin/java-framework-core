@@ -1,5 +1,8 @@
 package net.lecousin.framework.core.test;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 import net.lecousin.framework.LCCoreVersion;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.Artifact;
@@ -42,6 +45,19 @@ public abstract class LCCoreAbstractTest {
 			return;
 		}
 		throw new AssertionError("No exception raised, expected is " + expectedError.getName());
+	}
+	
+	public static Collection<Object[]> addTestParameter(Collection<Object[]> params, Object... additionalParameterCases) {
+		ArrayList<Object[]> list = new ArrayList<>(params.size() * additionalParameterCases.length);
+		for (Object[] prevParams : params) {
+			for (Object newParam : additionalParameterCases) {
+				Object[] newParams = new Object[prevParams.length + 1];
+				System.arraycopy(prevParams, 0, newParams, 0, prevParams.length);
+				newParams[prevParams.length] = newParam;
+				list.add(newParams);
+			}
+		}
+		return list;
 	}
 	
 }

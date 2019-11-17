@@ -81,7 +81,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		Assert.assertNotNull(res.getError());
 	}
 	
-	@SuppressWarnings("resource")
 	private void testPrimitive(Object value, Class<?> type) throws Exception {
 		MemoryIO io = new MemoryIO(1024, "test");
 		io.lockClose();
@@ -96,6 +95,55 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		Assert.assertEquals(value, r2.getResult());
 		testSpec(type, io);
 		io.unlockClose();
+	}
+	
+	private void testPrimitiveNull(Class<?> primitiveType, Class<?> wrapperType) throws Exception {
+		MemoryIO io = new MemoryIO(1024, "test");
+		io.lockClose();
+		Serializer s = createSerializer();
+		IAsync<SerializationException> r1 = s.serialize(null, new TypeDefinition(wrapperType), io, new ArrayList<>(0));
+		r1.blockThrow(0);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		print(io, null);
+		Deserializer d = createDeserializer();
+		AsyncSupplier<Object, SerializationException> r2 = d.deserialize(new TypeDefinition(primitiveType), io, new ArrayList<>(0));
+		try {
+			r2.blockThrow(0);
+			throw new AssertionError("Error expected when deserializing null value to primitive type " + primitiveType.getName());
+		} catch (SerializationException e) {
+			// ok
+		} finally {
+			io.unlockClose();
+		}
+	}
+	
+	private void testWrongType(Class<?> targetType) throws Exception {
+		//testWrongType(targetType, new TestWrongType());
+		if (!CharSequence.class.isAssignableFrom(targetType)) {
+			testWrongType(targetType, "string");
+			if (!targetType.equals(boolean.class) && !targetType.equals(Boolean.class))
+				testWrongType(targetType, Boolean.TRUE);
+		}
+	}
+	
+	private void testWrongType(Class<?> targetType, Object wrongValue) throws Exception {
+		MemoryIO io = new MemoryIO(1024, "test");
+		io.lockClose();
+		Serializer s = createSerializer();
+		IAsync<SerializationException> r1 = s.serialize(wrongValue, new TypeDefinition(wrongValue.getClass()), io, new ArrayList<>(0));
+		r1.blockThrow(0);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		print(io, null);
+		Deserializer d = createDeserializer();
+		AsyncSupplier<Object, SerializationException> r2 = d.deserialize(new TypeDefinition(targetType), io, new ArrayList<>(0));
+		try {
+			r2.blockThrow(0);
+			throw new AssertionError("Error expected when deserializing from type " + wrongValue.getClass().getName() + " to " + targetType.getName());
+		} catch (SerializationException e) {
+			// ok
+		} finally {
+			io.unlockClose();
+		}
 	}
 	
 	/** Structure to test booleans. */
@@ -121,6 +169,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(Boolean.TRUE, Boolean.class);
 		test(Boolean.FALSE, Boolean.class);
 		test(null, Boolean.class);
+		testWrongType(Boolean.class);
 		test(createBooleans(), TestBooleans.class);
 		TestBooleans t = createBooleans();
 		t.attr3 = null;
@@ -131,6 +180,8 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	public void testBooleanPrimitive() throws Exception {
 		testPrimitive(Boolean.TRUE, boolean.class);
 		testPrimitive(Boolean.FALSE, boolean.class);
+		testPrimitiveNull(boolean.class, Boolean.class);
+		testWrongType(boolean.class);
 	}
 	
 	public static class TestNumbers {
@@ -181,26 +232,32 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(Byte.valueOf((byte)-1), Byte.class);
 		test(Byte.valueOf((byte)-123), Byte.class);
 		test(null, Byte.class);
+		testWrongType(Byte.class);
 		test(Short.valueOf((short)0), Short.class);
 		test(Short.valueOf((short)10), Short.class);
 		test(Short.valueOf((short)-2340), Short.class);
 		test(null, Short.class);
+		testWrongType(Short.class);
 		test(Integer.valueOf(0), Integer.class);
 		test(Integer.valueOf(-12345), Integer.class);
 		test(Integer.valueOf(54321), Integer.class);
 		test(null, Integer.class);
+		testWrongType(Integer.class);
 		test(Long.valueOf(0), Long.class);
 		test(Long.valueOf(123456789L), Long.class);
 		test(Long.valueOf(987654321L), Long.class);
 		test(null, Long.class);
+		testWrongType(Long.class);
 		test(Float.valueOf(0f), Float.class);
 		test(Float.valueOf(450.678f), Float.class);
 		test(Float.valueOf(-0.0000111f), Float.class);
 		test(null, Float.class);
+		testWrongType(Float.class);
 		test(Double.valueOf(0d), Double.class);
 		test(Double.valueOf(1122330d), Double.class);
 		test(Double.valueOf(-1.234567890d), Double.class);
 		test(null, Double.class);
+		testWrongType(Double.class);
 		test(createNumbers(), TestNumbers.class);
 		TestNumbers t = createNumbers();
 		t.b2 = null;
@@ -232,6 +289,18 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testPrimitive(Double.valueOf(-0.0000001d), double.class);
 		testPrimitive(Double.valueOf(12345.9876d), double.class);
 		testPrimitive(Double.valueOf(-12345.9876d), double.class);
+		testPrimitiveNull(byte.class, Byte.class);
+		testPrimitiveNull(short.class, Short.class);
+		testPrimitiveNull(int.class, Integer.class);
+		testPrimitiveNull(long.class, Long.class);
+		testPrimitiveNull(float.class, Float.class);
+		testPrimitiveNull(double.class, Double.class);
+		testWrongType(byte.class);
+		testWrongType(short.class);
+		testWrongType(int.class);
+		testWrongType(long.class);
+		testWrongType(float.class);
+		testWrongType(double.class);
 	}
 	
 	
@@ -269,6 +338,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testIString("123");
 		testIString("a\tb\rc\nd\be\\fg\"hi\'jk&#{([-|_@)]=+}£$*%!:/;.,?<012>34");
 		testIString(null);
+		testWrongType(String.class);
 	}
 	
 	
@@ -313,6 +383,9 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testChar('\t');
 		testChar('\b');
 		testChar('\f');
+		testPrimitiveNull(char.class, Character.class);
+		testWrongType(char.class);
+		testWrongType(Character.class);
 	}
 	
 	public static enum Enum1 { VAL1, VAL2, VAL3 };
@@ -323,6 +396,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		test(Enum1.VAL2, Enum1.class);
 		test(Enum2.VAL33, Enum2.class);
 		test(null, Enum1.class);
+		testWrongType(Enum1.class);
 	}
 	
 	public static class TestSimpleObjects {
@@ -336,8 +410,14 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public Enum2 e2;
 	}
 	
+	public static class TestWrongType {
+		public int wrong = 51;
+		public TestSimpleObjects simple = new TestSimpleObjects();
+	}
+	
 	@Test
 	public void testSimpleObjects() throws Exception {
+		/*
 		TestSimpleObjects o = new TestSimpleObjects();
 		o.booleans = createBooleans();
 		o.i = 52;
@@ -355,7 +435,8 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		o = new TestSimpleObjects();
 		o.i = 53;
 		o.s = "s";
-		test(o, TestSimpleObjects.class);
+		test(o, TestSimpleObjects.class);*/
+		testWrongType(TestSimpleObjects.class);
 	}
 	
 	public static class TestLists {
@@ -441,6 +522,8 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		for (int i = 0; i < integers.length; ++i)
 			integers[i] = rand.nextInt();
 		test(integers, int[].class);
+		
+		testWrongType(int[].class);
 	}
 	
 	public static class TestListOfList {
@@ -480,7 +563,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		map.put(Integer.valueOf(2), "World");
 		map.put(Integer.valueOf(3), "!");
 		map.put(Integer.valueOf(4), null);
-		@SuppressWarnings("resource")
 		MemoryIO io = serializeInMemory(map, new TypeDefinition(HashMap.class, new TypeDefinition(Integer.class), new TypeDefinition(String.class)));
 		print(io, map);
 		Map<Integer,String> map2 = deserialize(io, new TypeDefinition(HashMap.class, new TypeDefinition(Integer.class), new TypeDefinition(String.class)));
@@ -555,7 +637,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testIntegerUnit("31", Long.valueOf(31L));
 	}
 
-	@SuppressWarnings("resource")
 	private void testIntegerUnit(String str, Long val) throws Exception {
 		MemoryIO io;
 		IntegerUnitAsString s;
@@ -619,7 +700,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		}
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testInstantiate() throws Exception {
 		MyImplementation impl = new MyImplementation();
@@ -656,7 +736,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public int i2 = 20;
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testTransient() throws Exception {
 		TestWithTransient t1 = new TestWithTransient();
@@ -699,7 +778,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		TestRename1 t1 = new TestRename1();
 		t1.hello = "bonjour";
 		test(t1, TestRename1.class);
-		@SuppressWarnings("resource")
 		MemoryIO ioMem = serializeInMemory(t1, new TypeDefinition(TestRename1.class));
 		TestRename2 t2 = deserialize(ioMem, new TypeDefinition(TestRename2.class));
 		Assert.assertEquals("bonjour", t2.world);
@@ -724,7 +802,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		TestRenamePair1 t1 = new TestRenamePair1();
 		t1.pair = new Pair<>("Hello", "World");
 		test(t1, TestRenamePair1.class);
-		@SuppressWarnings("resource")
 		MemoryIO ioMem = serializeInMemory(t1, new TypeDefinition(TestRenamePair1.class));
 		TestRenamePair2 t2 = deserialize(ioMem, new TypeDefinition(TestRenamePair2.class));
 		Assert.assertEquals(t1.pair.getValue1(), t2.pair.myValue1);
@@ -843,7 +920,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public MergedPair2 pair;
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testMergeAttributes() throws Exception {
 		Merged merged = new Merged();
@@ -898,7 +974,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		m = new Merged();
 		m.aString = "World";
 		t.list.add(new Pair<>("le monde", m));
-		@SuppressWarnings("resource")
 		MemoryIO io = serializeInMemory(t, new TypeDefinition(ToMerge3.class));
 		print(io, t);
 		deserialize(io, new TypeDefinition(Merged3.class));
@@ -927,7 +1002,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		t.test = new TestAddAttribute();
 		t.test.hello = "World";
 		t.test.value = 51;
-		@SuppressWarnings("resource")
 		MemoryIO ioMem = serializeInMemory(t, new TypeDefinition(TestAddAttributeContainer.class));
 		TestAddAttributeContainer t2 = deserialize(ioMem, new TypeDefinition(TestAddAttributeContainer.class));
 		Assert.assertEquals("World", t2.test.hello);
@@ -956,7 +1030,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public MyInterfaceToInstantiate test;
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testTypeInstantiationContainer() throws Exception {
 		MyInterfaceToInstantiateContainer t = new MyInterfaceToInstantiateContainer();
@@ -970,7 +1043,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		Assert.assertEquals("World", ((MyImplementationDeserialized)o2.test).hello);
 	}
 
-	@SuppressWarnings("resource")
 	@Test
 	public void testTypeInstantiationValue() throws Exception {
 		MyImplementationSerialized o = new MyImplementationSerialized();
@@ -1000,7 +1072,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		}
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testInstantiation() throws Exception {
 		InstantiationContainer t = new InstantiationContainer();
@@ -1038,7 +1109,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	}
 
 	protected <T> void testInMemory(T object, Class<T> type) throws Exception {
-		@SuppressWarnings("resource")
 		MemoryIO ioMem = serializeInMemory(object, new TypeDefinition(type));
 		ioMem.lockClose();
 		print(ioMem, object);
@@ -1049,7 +1119,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	}
 
 	protected <T> void testInFile(T object, Class<T> type) throws Exception {
-		@SuppressWarnings("resource")
 		FileIO.ReadWrite ioFile = serializeInFile(object, new TypeDefinition(type));
 		print(ioFile, object);
 		T o2 = deserialize(ioFile, new TypeDefinition(type));
@@ -1086,7 +1155,6 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	protected void testSpec(Class<?> type, MemoryIO serialization) throws Exception {
 		SerializationSpecWriter sw = createSpecWriter();
 		if (sw == null) return;
-		@SuppressWarnings("resource")
 		MemoryIO io = new MemoryIO(1024, "test");
 		sw.writeSpecification(type, io, new ArrayList<>(0)).blockThrow(0);
 		printSpec(io, type);

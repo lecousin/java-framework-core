@@ -15,4 +15,9 @@ public class SerializationException extends Exception {
 		super(message, cause);
 	}
 	
+	/** Instantiation error. */
+	public static SerializationException instantiation(String className, Throwable cause) {
+		return new SerializationException("Error instantiating type " + className, cause);
+	}
+	
 }

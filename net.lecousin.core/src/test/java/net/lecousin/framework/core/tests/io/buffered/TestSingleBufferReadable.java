@@ -2,7 +2,6 @@ package net.lecousin.framework.core.tests.io.buffered;
 
 import java.io.File;
 import java.util.Collection;
-import java.util.LinkedList;
 
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadable;
@@ -18,19 +17,7 @@ public class TestSingleBufferReadable extends TestReadable {
 
 	@Parameters(name = "nbBuf = {2}, useReadFully = {3}")
 	public static Collection<Object[]> parameters() {
-		Collection<Object[]> base = TestIO.UsingGeneratedTestFiles.generateTestCases(true);
-		LinkedList<Object[]> list = new LinkedList<>();
-		for (Object[] params : base) {
-			Object[] params2 = new Object[params.length + 1];
-			System.arraycopy(params, 0, params2, 0, params.length);
-			params2[params.length] = Boolean.TRUE;
-			list.add(params2);
-			params2 = new Object[params.length + 1];
-			System.arraycopy(params, 0, params2, 0, params.length);
-			params2[params.length] = Boolean.FALSE;
-			list.add(params2);
-		}
-		return list;
+		return addTestParameter(TestIO.UsingGeneratedTestFiles.generateTestCases(true), Boolean.FALSE, Boolean.TRUE);
 	}
 	
 	public TestSingleBufferReadable(File testFile, byte[] testBuf, int nbBuf, boolean useReadFully) {

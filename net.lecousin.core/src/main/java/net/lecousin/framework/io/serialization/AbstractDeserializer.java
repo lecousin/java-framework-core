@@ -182,16 +182,14 @@ public abstract class AbstractDeserializer implements Deserializer {
 						if (params[0].isAssignableFrom(string.getClass())) {
 							try { result.unblockSuccess((T)ctor.newInstance(string)); }
 							catch (Exception t) {
-								result.error(
-									new SerializationException("Error instantiating type " + c.getName(), t));
+								result.error(SerializationException.instantiation(c.getName(), t));
 							}
 							return;
 						}
 						if (params[0].isAssignableFrom(String.class)) {
 							try { result.unblockSuccess((T)ctor.newInstance(string.toString())); }
 							catch (Exception t) {
-								result.error(
-									new SerializationException("Error instantiating type " + c.getName(), t));
+								result.error(SerializationException.instantiation(c.getName(), t));
 							}
 							return;
 						}
@@ -720,7 +718,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		} catch (SerializationException e) {
 			throw e;
 		} catch (Exception e) {
-			throw new SerializationException("Error instantiating type " + type, e);
+			throw SerializationException.instantiation(type.toString(), e);
 		}
 	}
 	
@@ -1028,16 +1026,14 @@ public abstract class AbstractDeserializer implements Deserializer {
 					if (params[0].isAssignableFrom(string.getClass())) {
 						try { result.unblockSuccess(ctor.newInstance(string)); }
 						catch (Exception t) {
-							result.error(new SerializationException(
-								"Error instantiating type " + target.getName(), t));
+							result.error(SerializationException.instantiation(target.getName(), t));
 						}
 						return;
 					}
 					if (params[0].isAssignableFrom(String.class)) {
 						try { result.unblockSuccess(ctor.newInstance(string.toString())); }
 						catch (Exception t) {
-							result.error(new SerializationException(
-								"Error instantiating type " + target.getName(), t));
+							result.error(SerializationException.instantiation(target.getName(), t));
 						}
 						return;
 					}

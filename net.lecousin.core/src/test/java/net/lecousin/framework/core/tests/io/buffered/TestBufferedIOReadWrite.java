@@ -1,9 +1,7 @@
 package net.lecousin.framework.core.tests.io.buffered;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.io.TestIO;
@@ -24,22 +22,7 @@ public class TestBufferedIOReadWrite extends TestReadWrite {
 
 	@Parameters(name = "nbBuf = {1}, small memory = {2}")
 	public static Collection<Object[]> parameters() {
-		List<Object[]> tests = TestIO.UsingTestData.generateTestCases(false);
-		List<Object[]> params = new ArrayList<>(tests.size() * 2);
-		for (Object[] o : tests) {
-			Object[] p;
-			p = new Object[3];
-			p[0] = o[0];
-			p[1] = o[1];
-			p[2] = Boolean.FALSE;
-			params.add(p);
-			p = new Object[3];
-			p[0] = o[0];
-			p[1] = o[1];
-			p[2] = Boolean.TRUE;
-			params.add(p);
-		}
-		return params;
+		return addTestParameter(TestIO.UsingTestData.generateTestCases(false), Boolean.FALSE, Boolean.TRUE);
 	}
 	
 	public TestBufferedIOReadWrite(byte[] testBuf, int nbBuf, boolean smallMemory) {
