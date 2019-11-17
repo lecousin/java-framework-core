@@ -11,24 +11,20 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
 /** Implements Readable from an InputStream. */
-public class IOFromInputStream extends ConcurrentCloseable<IOException> implements IO.Readable {
+public class IOFromInputStream extends AbstractIO implements IO.Readable {
 
 	/** Constructor. */
 	public IOFromInputStream(InputStream stream, String sourceDescription, TaskManager manager, byte priority) {
+		super(sourceDescription, priority);
 		this.stream = stream;
-		this.sourceDescription = sourceDescription;
 		this.manager = manager;
-		this.priority = priority;
 	}
 	
 	private InputStream stream;
-	private String sourceDescription;
 	private TaskManager manager;
-	private byte priority;
 	
 	/** Add the capability to get the size to IOFromInputStream. */
 	public static class KnownSize extends IOFromInputStream implements IO.KnownSize {
@@ -59,16 +55,7 @@ public class IOFromInputStream extends ConcurrentCloseable<IOException> implemen
 	public InputStream getInputStream() { return stream; }
 	
 	@Override
-	public String getSourceDescription() { return sourceDescription; }
-	
-	@Override
 	public IO getWrappedIO() { return null; }
-	
-	@Override
-	public byte getPriority() { return priority; }
-	
-	@Override
-	public void setPriority(byte priority) { this.priority = priority; }
 	
 	@Override
 	public TaskManager getTaskManager() {

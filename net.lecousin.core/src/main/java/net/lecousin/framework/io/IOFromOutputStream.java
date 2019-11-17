@@ -9,49 +9,30 @@ import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
 /**
  * Implements Writable from an OutputStream.
  */
-public class IOFromOutputStream extends ConcurrentCloseable<IOException> implements IO.Writable {
+public class IOFromOutputStream extends AbstractIO implements IO.Writable {
 
 	/** Constructor. */
 	public IOFromOutputStream(OutputStream stream, String sourceDescription, TaskManager manager, byte priority) {
+		super(sourceDescription, priority);
 		this.stream = stream;
-		this.sourceDescription = sourceDescription;
 		this.manager = manager;
-		this.priority = priority;
 	}
 	
 	private OutputStream stream;
-	private String sourceDescription;
 	private TaskManager manager;
-	private byte priority;
 	
 	public OutputStream getOutputStream() {
 		return stream;
 	}
 	
 	@Override
-	public String getSourceDescription() {
-		return sourceDescription;
-	}
-	
-	@Override
 	public IO getWrappedIO() {
 		return null;
-	}
-
-	@Override
-	public byte getPriority() {
-		return priority;
-	}
-
-	@Override
-	public void setPriority(byte priority) {
-		this.priority = priority;
 	}
 	
 	@Override

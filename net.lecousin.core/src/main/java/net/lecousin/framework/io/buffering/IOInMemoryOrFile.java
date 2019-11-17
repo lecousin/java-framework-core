@@ -13,12 +13,12 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.TemporaryFiles;
 import net.lecousin.framework.mutable.Mutable;
-import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
 /**
@@ -31,13 +31,12 @@ import net.lecousin.framework.util.Pair;
  * <br/>
  * This IO is writable and readable: the written data are readable.
  */
-public class IOInMemoryOrFile extends ConcurrentCloseable<IOException>
+public class IOInMemoryOrFile extends AbstractIO
 	implements IO.Readable.Seekable, IO.Writable.Seekable, IO.KnownSize, IO.Resizable {
 
 	/** Constructor. */
 	public IOInMemoryOrFile(int maxSizeInMemory, byte priority, String sourceDescription) {
-		this.priority = priority;
-		this.sourceDescription = sourceDescription;
+		super(sourceDescription, priority);
 		int nbBuffers = maxSizeInMemory / BUFFER_SIZE;
 		if ((maxSizeInMemory % BUFFER_SIZE) > 0) nbBuffers++;
 		this.maxSizeInMemory = nbBuffers * BUFFER_SIZE;
@@ -47,15 +46,10 @@ public class IOInMemoryOrFile extends ConcurrentCloseable<IOException>
 	private static final int BUFFER_SIZE = 8192;
 	
 	private int maxSizeInMemory;
-	private byte priority;
-	private String sourceDescription;
 	private long pos = 0;
 	private long size = 0;
 	private byte[][] memory;
 	private FileIO.ReadWrite file = null;
-	
-	@Override
-	public String getSourceDescription() { return sourceDescription; }
 	
 	private void createFileSync() throws IOException {
 		this.file = TemporaryFiles.get().createAndOpenFileSync("net.lecousin.framework", "tempIO");
@@ -160,16 +154,6 @@ public class IOInMemoryOrFile extends ConcurrentCloseable<IOException>
 	@Override
 	public AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
 		return IOUtil.success(Long.valueOf(skipSync(n)), ondone);
-	}
-	
-	@Override
-	public byte getPriority() {
-		return priority;
-	}
-	
-	@Override
-	public void setPriority(byte priority) {
-		this.priority = priority;
 	}
 	
 	@Override

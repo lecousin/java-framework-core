@@ -11,16 +11,16 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
-import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.Triple;
 
 /**
  * Implementation of IO using a list of byte array.
  */
-public class ByteBuffersIO extends ConcurrentCloseable<IOException> implements IO.Readable.Buffered, IO.Readable.Seekable, IO.KnownSize, IO.Writable {
+public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, IO.Readable.Seekable, IO.KnownSize, IO.Writable {
 
 	/** Constructor.
 	 * @param copyBuffers if true each written buffer is copied into a new buffer,
@@ -28,14 +28,11 @@ public class ByteBuffersIO extends ConcurrentCloseable<IOException> implements I
 	 * @param description description
 	 */
 	public ByteBuffersIO(boolean copyBuffers, String description, byte priority) {
+		super(description, priority);
 		this.copyBuffers = copyBuffers;
-		this.description = description;
-		this.priority = priority;
 	}
 	
 	private boolean copyBuffers;
-	private String description;
-	private byte priority;
 	private LinkedArrayList<Triple<byte[],Integer,Integer>> buffers = new LinkedArrayList<>(10);
 	private int pos = 0;
 	private int bufferIndex = 0;
@@ -259,23 +256,8 @@ public class ByteBuffersIO extends ConcurrentCloseable<IOException> implements I
 	}
 
 	@Override
-	public String getSourceDescription() {
-		return description;
-	}
-
-	@Override
 	public IO getWrappedIO() {
 		return null;
-	}
-
-	@Override
-	public byte getPriority() {
-		return priority;
-	}
-
-	@Override
-	public void setPriority(byte priority) {
-		this.priority = priority;
 	}
 
 	@Override

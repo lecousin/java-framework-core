@@ -5,12 +5,13 @@ import java.util.List;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.event.SimpleListenable;
 import net.lecousin.framework.mutable.MutableLong;
 
 /**
  * A WorkProgress allows to follow the progression of an asynchronous or background work.
  */
-public interface WorkProgress {
+public interface WorkProgress extends SimpleListenable {
 
 	/** Set the total amount of work to be done. */
 	void setAmount(long work);
@@ -41,12 +42,6 @@ public interface WorkProgress {
 	
 	/** Return a synchronization point that will be unblocked by one of the method done, error or cancel. */
 	IAsync<Exception> getSynch();
-	
-	/** Add a listener to call on every change in the progress. */
-	void listen(Runnable onchange);
-
-	/** Remove a listener to call on every change in the progress. */
-	void unlisten(Runnable onchange);
 	
 	/** Stop triggering events to listener, this may be useful before doing several modifications. */
 	void interruptEvents();

@@ -9,42 +9,23 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
 /**
  * Implement an empty Readable IO, with Buffered, Seekable and KnownSize capabilities.
  */
-public class EmptyReadable extends ConcurrentCloseable<IOException> implements IO.Readable, IO.KnownSize, IO.Readable.Buffered, IO.Readable.Seekable {
+public class EmptyReadable extends AbstractIO implements IO.Readable, IO.KnownSize, IO.Readable.Buffered, IO.Readable.Seekable {
 
 	/** Constructor. */
 	public EmptyReadable(String description, byte priority) {
-		this.description = description;
-		this.priority = priority;
-	}
-	
-	private String description;
-	private byte priority;
-	
-	@Override
-	public String getSourceDescription() {
-		return description;
+		super(description, priority);
 	}
 
 	@Override
 	public IO getWrappedIO() {
 		return null;
-	}
-
-	@Override
-	public byte getPriority() {
-		return priority;
-	}
-
-	@Override
-	public void setPriority(byte priority) {
-		this.priority = priority;
 	}
 
 	@Override

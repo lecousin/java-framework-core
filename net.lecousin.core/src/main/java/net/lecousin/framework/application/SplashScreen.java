@@ -23,6 +23,7 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.event.AsyncEvent;
+import net.lecousin.framework.event.SimpleListenableContainer;
 import net.lecousin.framework.progress.WorkProgress;
 import net.lecousin.framework.util.ThreadUtil;
 
@@ -31,7 +32,7 @@ import net.lecousin.framework.util.ThreadUtil;
  * It starts a new thread so the loading process can continue while the window is initializing,
  * and avoid slowing down the loading process.
  */
-public class SplashScreen implements WorkProgress {
+public class SplashScreen extends SimpleListenableContainer<AsyncEvent> implements WorkProgress {
 	
 	/** Constructor.
 	 * @param devMode if true the screen is automatically closed after 20 seconds if the application is still loading.
@@ -66,7 +67,11 @@ public class SplashScreen implements WorkProgress {
 	private long amount = 10000;
 	private long worked = 0;
 	private Async<Exception> synch = new Async<>();
-	private AsyncEvent event = null;
+	
+	@Override
+	protected AsyncEvent createEvent() {
+		return new AsyncEvent();
+	}
 	
 	/** Close this window. */
 	public void close() {
@@ -376,22 +381,6 @@ public class SplashScreen implements WorkProgress {
 	@Override
 	public IAsync<Exception> getSynch() {
 		return synch;
-	}
-	
-	@Override
-	public void listen(Runnable onchange) {
-		synchronized (this) {
-			if (event == null) event = new AsyncEvent();
-			event.addListener(onchange);
-		}
-	}
-	
-	@Override
-	public void unlisten(Runnable onchange) {
-		synchronized (this) {
-			if (event == null) return;
-			event.removeListener(onchange);
-		}
 	}
 	
 	private boolean eventInterrupted;

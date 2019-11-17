@@ -332,23 +332,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 	/** By default, deserialize a string and get the first character. */
 	protected AsyncSupplier<Character, SerializationException> deserializeCharacterValue(boolean nullable) {
 		AsyncSupplier<? extends CharSequence, SerializationException> read = deserializeStringValue();
-		AsyncSupplier<Character, SerializationException> result = new AsyncSupplier<>();
-		read.onDone(string -> {
-			if (string == null || string.length() == 0) {
-				if (nullable)
-					result.unblockSuccess(null);
-				else
-					result.error(new SerializationException("Character value expected"));
-				return;
-			}
-			if (string.length() > 1) {
-				result.error(new SerializationException(
-					"A single character value is expected, " + string.length() + " characters found"));
-				return;
-			}
-			result.unblockSuccess(Character.valueOf(string.charAt(0)));
-		}, result);
-		return result;
+		return deserializeCharacter(read, nullable);
 	}
 	
 	/** By default, deserialize a string and get the first character. */
@@ -357,6 +341,12 @@ public abstract class AbstractDeserializer implements Deserializer {
 		fakeAttr.setType(new TypeDefinition(String.class));
 		AttributeContext fakeContext = new AttributeContext(context.getParent(), fakeAttr);
 		AsyncSupplier<? extends CharSequence, SerializationException> read = deserializeStringAttributeValue(fakeContext);
+		return deserializeCharacter(read, nullable);
+	}
+	
+	private static AsyncSupplier<Character, SerializationException> deserializeCharacter(
+		AsyncSupplier<? extends CharSequence, SerializationException> read, boolean nullable
+	) {
 		AsyncSupplier<Character, SerializationException> result = new AsyncSupplier<>();
 		read.onDone(string -> {
 			if (string == null || string.length() == 0) {
@@ -424,14 +414,23 @@ public abstract class AbstractDeserializer implements Deserializer {
 	/** Return true if the start has been found, false if null has been found, or an error. */
 	protected abstract AsyncSupplier<Boolean, SerializationException> startCollectionValue();
 	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void deserializeNextCollectionValueElement(
 		CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules,
 		AsyncSupplier<Object, SerializationException> result
 	) {
+		deserializeCollectionValueElement(context, elementIndex, colPath, rules, false, result);
+	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void deserializeCollectionValueElement(
+		CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules,
+		boolean isAttribute,
+		AsyncSupplier<Object, SerializationException> result
+	) {
 		do {
-			AsyncSupplier<Pair<Object, Boolean>, SerializationException> next =
-				deserializeCollectionValueElement(context, elementIndex, colPath, rules);
+			AsyncSupplier<Pair<Object, Boolean>, SerializationException> next = isAttribute
+				? deserializeCollectionAttributeValueElement(context, elementIndex, colPath, rules)
+				: deserializeCollectionValueElement(context, elementIndex, colPath, rules);
 			if (!next.isDone()) {
 				int currentIndex = elementIndex;
 				next.onDone(p -> {
@@ -454,7 +453,11 @@ public abstract class AbstractDeserializer implements Deserializer {
 								return;
 						}
 						((Collection)context.getCollection()).add(element);
-						deserializeNextCollectionValueElement(context, currentIndex + 1, colPath, rules, result);
+						if (isAttribute)
+							deserializeNextCollectionAttributeValueElement(
+								context, currentIndex + 1, colPath, rules, result);
+						else
+							deserializeNextCollectionValueElement(context, currentIndex + 1, colPath, rules, result);
 					}).start();
 				}, result);
 				return;
@@ -483,6 +486,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 			}
 			((Collection)context.getCollection()).add(element);
 			elementIndex++;
+			
 		} while (true);
 	}
 	
@@ -540,67 +544,11 @@ public abstract class AbstractDeserializer implements Deserializer {
 		return startCollectionValue();
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void deserializeNextCollectionAttributeValueElement(
 		CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules,
 		AsyncSupplier<Object, SerializationException> result
 	) {
-		do {
-			AsyncSupplier<Pair<Object, Boolean>, SerializationException> next =
-				deserializeCollectionAttributeValueElement(context, elementIndex, colPath, rules);
-			if (!next.isDone()) {
-				int currentIndex = elementIndex;
-				next.onDone(p -> {
-					if (!p.getValue2().booleanValue()) {
-						// end of collection
-						if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
-							result.unblockSuccess(context.getCollection());
-						else
-							result.unblockSuccess(toArray(context));
-						return;
-					}
-					new DeserializationTask(() -> {
-						Object element = p.getValue1();
-						if (element != null &&
-							Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
-							!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-							result.error(new SerializationException("Invalid collection element type "
-									+ element.getClass().getName()
-									+ ", expected is " + context.getElementType().getBase().getName()));
-								return;
-						}
-						((Collection)context.getCollection()).add(element);
-						deserializeNextCollectionAttributeValueElement(context, currentIndex + 1, colPath, rules, result);
-					}).start();
-				}, result);
-				return;
-			}
-			if (next.hasError()) {
-				result.error(next.getError());
-				return;
-			}
-			Pair<Object, Boolean> p = next.getResult();
-			if (!p.getValue2().booleanValue()) {
-				// end of collection
-				if (Collection.class.isAssignableFrom(context.getCollectionType().getBase()))
-					result.unblockSuccess(context.getCollection());
-				else
-					result.unblockSuccess(toArray(context));
-				return;
-			}
-			Object element = p.getValue1();
-			if (element != null &&
-				Collection.class.isAssignableFrom(context.getCollectionType().getBase()) &&
-				!context.getElementType().getBase().isAssignableFrom(element.getClass())) {
-
-				result.error(new SerializationException("Invalid collection element type "
-						+ element.getClass().getName()
-						+ ", expected is " + context.getElementType().getBase().getName()));
-					return;
-			}
-			((Collection)context.getCollection()).add(element);
-			elementIndex++;
-		} while (true);
+		deserializeCollectionValueElement(context, elementIndex, colPath, rules, true, result);
 	}
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -765,22 +713,17 @@ public abstract class AbstractDeserializer implements Deserializer {
 		SerializationContext context, List<SerializationRule> rules
 	) {
 		AsyncSupplier<IO.Readable, SerializationException> io = deserializeIOReadableValue(context, rules);
-		AsyncSupplier<byte[], IOException> res = new AsyncSupplier<>();
-		AsyncSupplier<byte[], SerializationException> result = new AsyncSupplier<>();
-		res.forward(result, ioe -> new SerializationException("Error deserializing byte array", ioe));
-		io.thenDoOrStart(ior -> {
-			if (ior == null)
-				result.unblockSuccess(null);
-			else
-				IOUtil.readFully(ior, res);
-		}, taskDescription, priority, result);
-		return result;
+		return deserializeByteArray(io);
 	}
 	
 	protected AsyncSupplier<byte[], SerializationException> deserializeByteArrayAttributeValue(
 		AttributeContext context, List<SerializationRule> rules
 	) {
 		AsyncSupplier<IO.Readable, SerializationException> io = deserializeIOReadableAttributeValue(context, rules);
+		return deserializeByteArray(io);
+	}
+	
+	private AsyncSupplier<byte[], SerializationException> deserializeByteArray(AsyncSupplier<IO.Readable, SerializationException> io) {
 		AsyncSupplier<byte[], IOException> res = new AsyncSupplier<>();
 		AsyncSupplier<byte[], SerializationException> result = new AsyncSupplier<>();
 		res.forward(result, ioe -> new SerializationException("Error deserializing byte array", ioe));

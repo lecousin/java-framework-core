@@ -4,9 +4,10 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.event.AsyncEvent;
+import net.lecousin.framework.event.SimpleListenableContainer;
 
 /** Default implementation of a WorkProgress. */
-public class WorkProgressImpl implements WorkProgress {
+public class WorkProgressImpl extends SimpleListenableContainer<AsyncEvent> implements WorkProgress {
 
 	/** Constructor. */
 	public WorkProgressImpl(long amount, String text, String subText) {
@@ -31,7 +32,11 @@ public class WorkProgressImpl implements WorkProgress {
 	protected String subText;
 	protected Async<Exception> synch = new Async<>();
 	protected boolean eventsInterrupted = false;
-	protected AsyncEvent event = null;
+	
+	@Override
+	protected AsyncEvent createEvent() {
+		return new AsyncEvent();
+	}
 	
 	@Override
 	public void setAmount(long work) {
@@ -114,22 +119,6 @@ public class WorkProgressImpl implements WorkProgress {
 	public void setSubText(String text) {
 		this.subText = text;
 		changed();
-	}
-	
-	@Override
-	public void listen(Runnable onchange) {
-		synchronized (this) {
-			if (event == null) event = new AsyncEvent();
-			event.addListener(onchange);
-		}
-	}
-	
-	@Override
-	public void unlisten(Runnable onchange) {
-		synchronized (this) {
-			if (event == null) return;
-			event.removeListener(onchange);
-		}
 	}
 	
 	@Override

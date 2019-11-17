@@ -12,16 +12,16 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
-import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
 /**
  * IO implemented with a single byte array.
  * It supports read, write and resize operations.
  */
-public class ByteArrayIO extends ConcurrentCloseable<IOException> 
+public class ByteArrayIO extends AbstractIO
 	implements IO.Readable.Buffered, IO.Readable.Seekable, IO.Writable.Seekable, IO.Writable.Buffered, IO.KnownSize, IO.Resizable {
 
 	/** Constructor with initial buffer size of 4096. */
@@ -31,14 +31,14 @@ public class ByteArrayIO extends ConcurrentCloseable<IOException>
 	
 	/** Constructor. */
 	public ByteArrayIO(int initialSize, String description) {
-		this.description = description;
+		super(description, Task.PRIORITY_NORMAL);
 		array = new byte[initialSize];
 		pos = size = 0;
 	}
 	
 	/** Constructor. */
 	public ByteArrayIO(byte[] data, String description) {
-		this.description = description;
+		super(description, Task.PRIORITY_NORMAL);
 		array = data;
 		pos = 0;
 		size = data.length;
@@ -46,32 +46,21 @@ public class ByteArrayIO extends ConcurrentCloseable<IOException>
 	
 	/** Constructor. */
 	public ByteArrayIO(byte[] data, int bytesUsed, String description) {
-		this.description = description;
+		super(description, Task.PRIORITY_NORMAL);
 		array = data;
 		pos = 0;
 		size = bytesUsed;
 	}
 	
-	private String description;
 	private byte[] array;
 	private int pos;
 	private int size;
-	private byte priority = Task.PRIORITY_NORMAL;
 	
 	@Override
 	public TaskManager getTaskManager() { return Threading.getCPUTaskManager(); }
 	
 	@Override
 	public IO getWrappedIO() { return null; }
-	
-	@Override
-	public String getSourceDescription() { return description; }
-	
-	@Override
-	public byte getPriority() { return priority; }
-	
-	@Override
-	public void setPriority(byte priority) { this.priority = priority; }
 	
 	@Override
 	protected IAsync<IOException> closeUnderlyingResources() {

@@ -11,9 +11,9 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
-import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
 /**
@@ -21,21 +21,19 @@ import net.lecousin.framework.util.Pair;
  * <br/>
  * Each byte array is allocated using the given bufferSize.
  */
-public class MemoryIO extends ConcurrentCloseable<IOException>
+public class MemoryIO extends AbstractIO
 	implements IO.Readable.Buffered, IO.Readable.Seekable, IO.Writable.Seekable, IO.Writable.Buffered, IO.KnownSize, IO.Resizable {
 
 	/** Constructor. */
 	public MemoryIO(int bufferSize, String description) {
+		super(description, Task.PRIORITY_NORMAL);
 		this.bufferSize = bufferSize;
-		this.description = description;
 	}
 	
-	private String description;
 	private int bufferSize;
 	private byte[][] buffers = new byte[10][];
 	private int pos = 0;
 	private int size = 0;
-	private byte priority = Task.PRIORITY_NORMAL;
 	
 	@Override
 	protected IAsync<IOException> closeUnderlyingResources() {
@@ -58,15 +56,6 @@ public class MemoryIO extends ConcurrentCloseable<IOException>
 	public IAsync<IOException> canStartWriting() {
 		return new Async<>(true);
 	}
-	
-	@Override
-	public byte getPriority() { return priority; }
-	
-	@Override
-	public void setPriority(byte priority) { this.priority = priority; }
-	
-	@Override
-	public String getSourceDescription() { return description; }
 	
 	@Override
 	public IO getWrappedIO() { return null; }

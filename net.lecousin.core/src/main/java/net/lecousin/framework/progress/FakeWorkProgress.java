@@ -80,13 +80,18 @@ public class FakeWorkProgress implements WorkProgress {
 	}
 	
 	@Override
-	public void listen(Runnable onchange) {
+	public void addListener(Runnable onchange) {
 		// fake
 	}
 	
 	@Override
-	public void unlisten(Runnable onchange) {
+	public void removeListener(Runnable onchange) {
 		// fake
+	}
+	
+	@Override
+	public boolean hasListeners() {
+		return false;
 	}
 	
 	@Override
