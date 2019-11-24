@@ -933,50 +933,56 @@ public class MavenPOM implements LibraryDescriptor {
 				if (!changed) break;
 			}
 		}
-		
-		private String resolve(String value, Map<String, String> properties) {
-			if (value == null) return null;
-			int i = value.indexOf("${");
-			if (i < 0) return value;
-			int j = value.indexOf('}', i + 2);
-			if (j < 0) return value;
-			String name = value.substring(i + 2, j).trim();
-			if (properties.containsKey(name)) {
-				StringBuilder s = new StringBuilder();
-				if (i > 0) s.append(value.substring(0, i));
-				s.append(properties.get(name));
-				if (j < value.length() - 1) s.append(value.substring(j + 1));
-				return resolve(s.toString(), properties);
-			}
-			if (name.equals("project.groupId"))
-				return groupId;
-			if (name.equals("project.artifactId"))
-				return artifactId;
-			if (name.equals("project.version"))
-				return version;
-			if (name.equals("parent.groupId")) {
-				if (parentLoading != null) return parentLoading.getResult().groupId;
-				return null;
-			}
-			if (name.equals("parent.artifactId")) {
-				if (parentLoading != null) return parentLoading.getResult().artifactId;
-				return null;
-			}
-			if (name.equals("parent.version")) {
-				if (parentLoading != null) return parentLoading.getResult().version;
-				return null;
-			}
-			if (name.startsWith("env.")) {
-				return System.getenv(name.substring(4));
-			}
-			if (name.startsWith("settings.")) {
-				// TODO
-				return null;
-			}
-			return System.getProperty(name);
-		}
+	}
+	
+	/** Resolve the given value with properties from this POM. */
+	public String resolveProperty(String value) {
+		return resolve(value, properties);
 	}
 
+	
+	private String resolve(String value, Map<String, String> properties) {
+		if (value == null) return null;
+		int i = value.indexOf("${");
+		if (i < 0) return value;
+		int j = value.indexOf('}', i + 2);
+		if (j < 0) return value;
+		String name = value.substring(i + 2, j).trim();
+		if (properties.containsKey(name)) {
+			StringBuilder s = new StringBuilder();
+			if (i > 0) s.append(value.substring(0, i));
+			s.append(properties.get(name));
+			if (j < value.length() - 1) s.append(value.substring(j + 1));
+			return resolve(s.toString(), properties);
+		}
+		if (name.equals("project.groupId"))
+			return groupId;
+		if (name.equals("project.artifactId"))
+			return artifactId;
+		if (name.equals("project.version"))
+			return version;
+		if (name.equals("parent.groupId")) {
+			if (parentLoading != null) return parentLoading.getResult().groupId;
+			return null;
+		}
+		if (name.equals("parent.artifactId")) {
+			if (parentLoading != null) return parentLoading.getResult().artifactId;
+			return null;
+		}
+		if (name.equals("parent.version")) {
+			if (parentLoading != null) return parentLoading.getResult().version;
+			return null;
+		}
+		if (name.startsWith("env.")) {
+			return System.getenv(name.substring(4));
+		}
+		if (name.startsWith("settings.")) {
+			// TODO
+			return null;
+		}
+		return System.getProperty(name);
+	}
+	
 	/** Parse a version specification in POM format. */
 	public static VersionSpecification parseVersionSpecification(String s) {
 		if (s == null) return null;

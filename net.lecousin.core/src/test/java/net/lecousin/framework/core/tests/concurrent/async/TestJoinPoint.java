@@ -8,8 +8,10 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.mutable.MutableInteger;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -84,6 +86,83 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		Assert.assertTrue(jp.isDone());
 		
 		Threading.debugSynchronization = false;
+	}
+	
+	@Test
+	public void testAddToJoinWithErrorConverterOk() {
+		JoinPoint<IOException> jp = new JoinPoint<>();
+		AsyncSupplier<Integer, Exception> as = new AsyncSupplier<>();
+		jp.addToJoin(as, e -> new IOException(e.getMessage()));
+		jp.start();
+		as.unblockSuccess(Integer.valueOf(33));
+		Assert.assertTrue(jp.isSuccessful());
+	}
+	
+	@Test
+	public void testAddToJoinWithErrorConverterError() {
+		JoinPoint<IOException> jp = new JoinPoint<>();
+		AsyncSupplier<Integer, Exception> as = new AsyncSupplier<>();
+		jp.addToJoin(as, e -> new IOException(e.getMessage()));
+		jp.start();
+		as.error(new Exception("ex join"));
+		Assert.assertTrue(jp.hasError());
+		Assert.assertEquals("ex join", jp.getError().getMessage());
+	}
+	
+	@Test
+	public void testAddToJoinWithErrorConverterCancel() {
+		JoinPoint<IOException> jp = new JoinPoint<>();
+		AsyncSupplier<Integer, Exception> as = new AsyncSupplier<>();
+		jp.addToJoin(as, e -> new IOException(e.getMessage()));
+		jp.start();
+		as.cancel(new CancelException("cancel"));
+		Assert.assertTrue(jp.isCancelled());
+	}
+	
+	@Test
+	public void testWithTimeout() {
+		JoinPoint<Exception> jp = new JoinPoint<>();
+		AsyncSupplier<Integer, Exception> as = new AsyncSupplier<>();
+		jp.addToJoin(as);
+		MutableInteger timedout = new MutableInteger(0);
+		jp.timeout(1, timedout::inc);
+		new Task.Cpu.FromRunnable("test", Task.PRIORITY_NORMAL, () -> {
+			try { Thread.sleep(1000); }
+			catch (InterruptedException e) {}
+			as.unblockSuccess(Integer.valueOf(11));
+		}).start();
+		jp.start();
+		jp.block(10000);
+		Assert.assertTrue(jp.isDone());
+		Assert.assertEquals(1, timedout.get());
+	}
+	
+	@Test
+	public void testListenTime() {
+		JoinPoint<Exception> jp = new JoinPoint<>();
+		AsyncSupplier<Integer, Exception> as = new AsyncSupplier<>();
+		jp.addToJoin(as);
+		MutableInteger timedout = new MutableInteger(0);
+		jp.listenTime(1, timedout::inc);
+		new Task.Cpu.FromRunnable("test", Task.PRIORITY_NORMAL, () -> {
+			try { Thread.sleep(1000); }
+			catch (InterruptedException e) {}
+			as.unblockSuccess(Integer.valueOf(11));
+		}).start();
+		jp.start();
+		jp.block(10000);
+		Assert.assertTrue(jp.isDone());
+		Assert.assertEquals(1, timedout.get());
+	}
+	
+	@Test
+	public void testJoinOnDoneThenDo() {
+		MutableInteger i = new MutableInteger(0);
+		AsyncSupplier<Integer, Exception> as = new AsyncSupplier<>();
+		JoinPoint.joinThenDo(i::inc, as);
+		Assert.assertEquals(0, i.get());
+		as.error(new Exception());
+		Assert.assertEquals(1, i.get());
 	}
 	
 }

@@ -68,9 +68,15 @@ public class LCConcurrentRunner extends BlockJUnit4ClassRunner {
 			@Override
 	        public void finished() {
 				jp.start();
-				jp.block(10L * 60 * 1000);
+				int lastNb = jp.getToJoin();
+				do {
+					jp.block(10L * 60 * 1000);
+					if (lastNb == jp.getToJoin())
+						break;
+					lastNb = jp.getToJoin();
+				} while (!jp.isDone());
 				if (!jp.isDone())
-					throw new RuntimeException("Some tests are not finished after 10 minutes");
+					throw new RuntimeException("Some tests are not finished after 10 minutes: still waiting for " + jp.getToJoin());
 	        }
 	    };
 	};

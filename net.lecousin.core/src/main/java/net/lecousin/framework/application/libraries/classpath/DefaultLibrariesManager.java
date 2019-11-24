@@ -63,6 +63,23 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	private File[] additionalClassPath;
 	private ArrayList<File> classPath;
 	
+	private static BufferedReadableCharacterStream loadNextFile(Enumeration<URL> urls, Async<Exception> sp) {
+		if (!urls.hasMoreElements()) {
+			sp.unblock();
+			return null;
+		}
+		URL url = urls.nextElement();
+		InputStream input;
+		try { input = url.openStream(); }
+		catch (IOException e) {
+			sp.error(e);
+			return null;
+		}
+		IOFromInputStream io = new IOFromInputStream(
+			input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
+		return new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
+	}
+	
 	private class Start extends Task.Cpu<Void, NoException> {
 		private Start() {
 			super("Start DefaultLibrariesManager", Task.PRIORITY_IMPORTANT);
@@ -111,20 +128,8 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		}
 		
 		private void loadExtensionPoints(Enumeration<URL> urls, Async<Exception> sp) {
-			if (!urls.hasMoreElements()) {
-				sp.unblock();
-				return;
-			}
-			URL url = urls.nextElement();
-			InputStream input;
-			try { input = url.openStream(); }
-			catch (IOException e) {
-				sp.error(e);
-				return;
-			}
-			IOFromInputStream io = new IOFromInputStream(
-				input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
-			BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
+			BufferedReadableCharacterStream stream = loadNextFile(urls, sp);
+			if (stream == null) return;
 			LoadLibraryExtensionPointsFile load = new LoadLibraryExtensionPointsFile(stream, acl);
 			load.start().onDone(() -> loadExtensionPoints(urls, sp), sp);
 			stream.closeAfter(sp);
@@ -182,20 +187,8 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		}
 		
 		private void loadPlugins(Enumeration<URL> urls, Async<Exception> sp) {
-			if (!urls.hasMoreElements()) {
-				sp.unblock();
-				return;
-			}
-			URL url = urls.nextElement();
-			InputStream input;
-			try { input = url.openStream(); }
-			catch (IOException e) {
-				sp.error(e);
-				return;
-			}
-			IOFromInputStream io = new IOFromInputStream(
-				input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
-			BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
+			BufferedReadableCharacterStream stream = loadNextFile(urls, sp);
+			if (stream == null) return;
 			LoadLibraryPluginsFile load = new LoadLibraryPluginsFile(stream, acl);
 			load.start().onDone(() -> loadPlugins(urls, sp), sp);
 			stream.closeAfter(sp);

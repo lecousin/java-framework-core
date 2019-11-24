@@ -233,6 +233,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 			
 			List<LibrariesRepository> repos = pom.getDependenciesAdditionalRepositories();
 			Assert.assertEquals(2, repos.size());
+			pom.toString();
 		} finally {
 			outFile.delete();
 		}
@@ -252,6 +253,26 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 				-1, true, null, 0).blockThrow(15000);
 			
 			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-additional-fields.pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+			load.blockResult(30000);
+		} finally {
+			outFile.delete();
+		}
+	}
+
+	@Test
+	public void testPOMWithProperties() throws Exception {
+		File outFile = new File("./test-properties.pom.xml");
+		outFile.createNewFile();
+		outFile.deleteOnExit();
+		try {
+			new File("./target/test-out").mkdir();
+			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.PRIORITY_NORMAL);
+			IOUtil.copy(
+				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-properties.pom.xml"))).provideIOReadable(Task.PRIORITY_NORMAL),
+				out,
+				-1, true, null, 0).blockThrow(15000);
+			
+			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-properties.pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
 			load.blockResult(30000);
 		} finally {
 			outFile.delete();
@@ -287,6 +308,9 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		testError("invalid-root");
 		testError("invalid-xml");
 		testError("invalid-xml2");
+		testError("invalid-xml3");
+		testError("invalid-xml4");
+		testError("invalid-xml5");
 		testError("empty");
 	}
 	

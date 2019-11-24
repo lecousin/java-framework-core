@@ -1,5 +1,6 @@
 package net.lecousin.framework.core.tests.concurrent.async;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -461,6 +462,24 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 		Assert.assertTrue(aw.isSuccessful());
 		Assert.assertFalse(aw.hasError());
 		Assert.assertFalse(aw.isCancelled());
+	}
+	
+	@Test
+	public void testConvertErrorOk() {
+		AsyncSupplier<Integer, Exception> as1 = new AsyncSupplier<>();
+		AsyncSupplier<Integer, IOException> as2 = as1.convertError(e -> new IOException(e.getMessage()));
+		as1.unblockSuccess(Integer.valueOf(15));
+		Assert.assertTrue(as2.isSuccessful());
+		Assert.assertEquals(Integer.valueOf(15), as2.getResult());
+	}
+	
+	@Test
+	public void testConvertErrorError() {
+		AsyncSupplier<Integer, Exception> as1 = new AsyncSupplier<>();
+		AsyncSupplier<Integer, IOException> as2 = as1.convertError(e -> new IOException(e.getMessage()));
+		as1.error(new Exception("test conversion"));
+		Assert.assertTrue(as2.hasError());
+		Assert.assertEquals("test conversion", as2.getError().getMessage());
 	}
 	
 }
