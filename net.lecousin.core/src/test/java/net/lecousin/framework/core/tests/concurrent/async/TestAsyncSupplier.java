@@ -315,6 +315,10 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 		AsyncSupplier<Long, NoException> awl = awi.thenStart(converter, true);
 		awi.unblockSuccess(Integer.valueOf(51));
 		Assert.assertEquals(51L, awl.blockResult(5000).longValue());
+		converter = new Task.Cpu.Parameter.FromFunction<Integer, Long>(
+			"converter", Task.PRIORITY_NORMAL,
+			i -> Long.valueOf(i.longValue())
+		);		
 		awi = new AsyncSupplier<>();
 		awl = awi.thenStart(converter, false);
 		awi.unblockSuccess(Integer.valueOf(51));
@@ -325,7 +329,9 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 		awi.thenDoOrStart(i -> okResult.set(i.intValue()), "test", Task.PRIORITY_NORMAL);
 		Assert.assertEquals(0, okResult.get());
 		awi.unblockSuccess(Integer.valueOf(51));
-		while (okResult.get() != 51);
+		while (okResult.get() != 51) {
+			new Async<Exception>().block(100);
+		}
 
 		awi = new AsyncSupplier<>();
 		okResult.set(0);
