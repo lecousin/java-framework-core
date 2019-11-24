@@ -1,11 +1,11 @@
 package net.lecousin.framework.core.tests.log;
 
 import java.io.File;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Calendar;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
@@ -25,6 +25,9 @@ import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.LoggerFactory;
 import net.lecousin.framework.log.appenders.RollingFileAppender;
 import net.lecousin.framework.util.StringUtil;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestLoggers extends LCCoreAbstractTest {
 
@@ -102,7 +105,7 @@ public class TestLoggers extends LCCoreAbstractTest {
 		expected.append(' ');
 		expected.append("test");
 		expected.append(' ');
-		expected.append(79);
+		expected.append(82);
 		expected.append(' ');
 		expected.append("TestLoggers.java");
 		expected.append(' ');
@@ -191,6 +194,40 @@ public class TestLoggers extends LCCoreAbstractTest {
 		log.info("this is info");
 		log.debug("this is debug");
 		log.trace("this is trace");
+	}
+	
+	@Test
+	public void testInvalidConfig() throws MalformedURLException {
+		testInvalidConfig("");
+		testInvalidConfig("<!-- -->");
+		testInvalidConfig("<root></root>");
+		testInvalidConfig("<LoggingConfiguration><unexpected/></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Appender>");
+		testInvalidConfig("<LoggingConfiguration><Appender></Appender></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Appender class=\"hello\"></Appender></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Appender name=\"hello\"></Appender></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Appender name=\"hello\" class=\"" + getClass().getName() + "\"></Appender></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Logger>");
+		testInvalidConfig("<LoggingConfiguration><Logger toto=\"1\"></Logger></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Logger level=\"UNKNOWN\"></Logger></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Logger name=\"test\" level=\"WARN\"></Logger></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Logger name=\"test\" level=\"WARN\" appender=\"unknown\"></Logger></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Logger name=\"test\" level=\"WARN\" appender=\"console\"><!----><unexpected/></Logger></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Default>");
+		testInvalidConfig("<LoggingConfiguration><Default></Default></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Default toto=\"1\"></Default></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Default appender=\"unknown\"></Default></LoggingConfiguration>");
+		testInvalidConfig("<LoggingConfiguration><Default appender=\"console\"><!----><unexpected/></Default></LoggingConfiguration>");
+	}
+	
+	private static void testInvalidConfig(String config) throws MalformedURLException {
+		URL url = new URL("string://UTF-8/" + config);
+		try (InputStream in = url.openStream()) {
+			LCCore.getApplication().getLoggerFactory().configure(in);
+			throw new AssertionError("Error expected to configure loggers: " + config);
+		} catch (Exception e) {
+			// ok
+		}
 	}
 	
 }
