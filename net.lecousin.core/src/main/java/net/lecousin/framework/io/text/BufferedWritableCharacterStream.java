@@ -267,22 +267,18 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable<IOExcep
 	}
 	
 	private void writeAsync(char[] c, int off, int len, Async<IOException> result) {
-		new Task.Cpu<Void, NoException>("BufferedWritableCharacterStream.writeAsync", output.getPriority()) {
-			@Override
-			public Void run() {
-				int l = len > buffer.length - pos ? buffer.length - pos : len;
-				System.arraycopy(c, off, buffer, pos, l);
-				pos += l;
-				if (l == len) {
-					if (pos == buffer.length)
-						flushBufferAsync().onDone(result);
-					else
-						result.unblock();
-					return null;
-				}
-				flushBufferAsync().onDone(() -> writeAsync(c, off + l, len - l, result), result);
-				return null;
-			}
-		}.start();
+		int l = len > buffer.length - pos ? buffer.length - pos : len;
+		System.arraycopy(c, off, buffer, pos, l);
+		pos += l;
+		if (l == len) {
+			if (pos == buffer.length)
+				flushBufferAsync().onDone(result);
+			else
+				result.unblock();
+			return;
+		}
+		flushBufferAsync().thenStart(new Task.Cpu.FromRunnable(
+			"BufferedWritableCharacterStream.writeAsync", output.getPriority(),
+			() -> writeAsync(c, off + l, len - l, result)), result);
 	}
 }

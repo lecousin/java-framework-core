@@ -92,10 +92,10 @@ public class XMLWriter {
 	private static final char[] ATTRIBUTE_EQUALS = new char[] { '=', '"' };
 	private static final char[] CLOSE_EMPTY_TAG = new char[] { '/', '>' };
 	private static final char[] START_CLOSE = new char[] { '<', '/' };
-	private static final char[] START_CDATA = new char[] { '[', 'C', 'D', 'A', 'T', 'A', '[' };
-	private static final char[] END_CDATA = new char[] { ']', ']' };
-	private static final char[] START_COMMENT = new char[] { '<', '!', '-', '-', ' ' };
-	private static final char[] END_COMMENT = new char[] { ' ', '-', '-', '>' };
+	private static final char[] START_CDATA = new char[] { '<', '!', '[', 'C', 'D', 'A', 'T', 'A', '[' };
+	private static final char[] END_CDATA = new char[] { ']', ']', '>' };
+	private static final char[] START_COMMENT = new char[] { '<', '!', '-', '-' };
+	private static final char[] END_COMMENT = new char[] { '-', '-', '>' };
 	
 	private static final char[] PRETTY_END_TAG = new char[] { '>', '\n' };
 	
@@ -105,7 +105,7 @@ public class XMLWriter {
 	 * Start the document with the XML processing instruction if needed, and opening the root element.
 	 * @param rootNamespaceURI namespace of the root element
 	 * @param rootLocalName name of the root element
-	 * @param namespaces mapping from namespace URI and prefix, prefix may be empty for default namespace
+	 * @param namespaces mapping from namespace URI to prefix, prefix may be empty for default namespace
 	 */
 	public IAsync<IOException> start(String rootNamespaceURI, String rootLocalName, Map<String, String> namespaces) {
 		if (includeXMLDeclaration) {
@@ -292,7 +292,8 @@ public class XMLWriter {
 		if (ctx.open)
 			endOfAttributes(ctx);
 		if (pretty) {
-			writer.write('\n');
+			if (lastNodeType != Node.ELEMENT_NODE && lastNodeType != Node.COMMENT_NODE && lastNodeType != Node.CDATA_SECTION_NODE)
+				writer.write('\n');
 			indent();
 		}
 		writer.write(START_CDATA);
@@ -310,7 +311,8 @@ public class XMLWriter {
 		if (ctx != null && ctx.open)
 			endOfAttributes(ctx);
 		if (pretty) {
-			writer.write('\n');
+			if (lastNodeType != Node.ELEMENT_NODE && lastNodeType != Node.COMMENT_NODE && lastNodeType != Node.CDATA_SECTION_NODE)
+				writer.write('\n');
 			indent();
 		}
 		writer.write(START_COMMENT);
@@ -321,6 +323,8 @@ public class XMLWriter {
 		writer.write(END_COMMENT);
 		return writer.write('\n');
 	}
+	
+	private static final String DOM_TASK_DESCRIPTION = "Write DOM";
 	
 	/** Write the given DOM element. */
 	public IAsync<IOException> write(Element element) {
@@ -333,13 +337,48 @@ public class XMLWriter {
 			namespaces = new HashMap<>(5);
 			namespaces.put(uri, prefix);
 		}
-		openElement(uri, name, namespaces);
+		IAsync<IOException> open = openElement(uri, name, namespaces);
+		if (open.isDone())
+			return writeAttributes(element);
+		Async<IOException> sp = new Async<>();
+		open.thenStart(new Task.Cpu.FromRunnable(DOM_TASK_DESCRIPTION, output.getPriority(), () ->
+			writeAttributes(element).onDone(sp)
+		), sp);
+		return sp;
+	}
+	
+	private IAsync<IOException> writeAttributes(Element element) {
 		NamedNodeMap attrs = element.getAttributes();
-		if (attrs != null)
-			for (int i = 0; i < attrs.getLength(); ++i) {
-				Node a = attrs.item(i);
-				addAttribute(a.getNodeName(), a.getNodeValue());
+		if (attrs != null && attrs.getLength() > 0)
+			return writeAttribute(element, attrs, 0);
+		return writeChildren(element);
+	}
+	
+	private IAsync<IOException> writeAttribute(Element element, NamedNodeMap attrs, int attrIndex) {
+		do {
+			Node a = attrs.item(attrIndex);
+			IAsync<IOException> sp = addAttribute(a.getNodeName(), a.getNodeValue());
+			if (sp.isDone()) {
+				if (sp.hasError()) return sp;
+				attrIndex++;
+				if (attrIndex == attrs.getLength())
+					return writeChildren(element);
+				continue;
 			}
+			Async<IOException> result = new Async<>();
+			int nextIndex = attrIndex + 1;
+			sp.thenStart(new Task.Cpu.FromRunnable(DOM_TASK_DESCRIPTION, output.getPriority(), () -> {
+				if (nextIndex == attrs.getLength()) {
+					writeChildren(element).onDone(result);
+					return;
+				}
+				writeAttribute(element, attrs, nextIndex).onDone(result);
+			}), result);
+			return result;
+		} while (true);
+	}
+	
+	private IAsync<IOException> writeChildren(Element element) {
 		NodeList children = element.getChildNodes();
 		if (children.getLength() == 0)
 			return closeElement();
@@ -349,7 +388,7 @@ public class XMLWriter {
 			return writeChild(children, 0);
 		}
 		Async<IOException> sp = new Async<>();
-		open.thenStart(new Task.Cpu.FromRunnable("Write DOM", output.getPriority(), () ->
+		open.thenStart(new Task.Cpu.FromRunnable(DOM_TASK_DESCRIPTION, output.getPriority(), () ->
 			writeChild(children, 0).onDone(sp)
 		), sp);
 		return sp;
@@ -372,14 +411,14 @@ public class XMLWriter {
 			if (sp.isDone()) {
 				if (sp.hasError()) return sp;
 				childIndex++;
-				if (childIndex == children.getLength()) return sp;
+				if (childIndex == children.getLength()) return closeElement();
 				continue;
 			}
 			Async<IOException> result = new Async<>();
 			int nextIndex = childIndex + 1;
-			sp.thenStart(new Task.Cpu.FromRunnable("Write DOM", output.getPriority(), () -> {
+			sp.thenStart(new Task.Cpu.FromRunnable(DOM_TASK_DESCRIPTION, output.getPriority(), () -> {
 				if (nextIndex == children.getLength()) {
-					result.unblock();
+					closeElement().onDone(result);
 					return;
 				}
 				writeChild(children, nextIndex).onDone(result);

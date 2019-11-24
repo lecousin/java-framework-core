@@ -127,10 +127,8 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		MutableInteger timedout = new MutableInteger(0);
 		jp.timeout(1, timedout::inc);
 		new Task.Cpu.FromRunnable("test", Task.PRIORITY_NORMAL, () -> {
-			try { Thread.sleep(1000); }
-			catch (InterruptedException e) {}
 			as.unblockSuccess(Integer.valueOf(11));
-		}).start();
+		}).executeIn(5000).start();
 		jp.start();
 		jp.block(10000);
 		Assert.assertTrue(jp.isDone());
@@ -145,10 +143,8 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		MutableInteger timedout = new MutableInteger(0);
 		jp.listenTime(1, timedout::inc);
 		new Task.Cpu.FromRunnable("test", Task.PRIORITY_NORMAL, () -> {
-			try { Thread.sleep(1000); }
-			catch (InterruptedException e) {}
 			as.unblockSuccess(Integer.valueOf(11));
-		}).start();
+		}).executeIn(2500).start();
 		jp.start();
 		jp.block(10000);
 		Assert.assertTrue(jp.isDone());
