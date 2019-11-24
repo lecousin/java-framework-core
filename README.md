@@ -24,19 +24,19 @@ is recommended for better performances on disk operations (detection of physical
 [![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=master&metric=coverage)](https://sonarcloud.io/dashboard?branch=master&id=lecousin_java-framework-core)
 
  - core [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.16.1-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.16.1)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.16.2-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.16.2)
  
  - core.loaders.maven [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.loaders.maven.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin.core.loaders%22%20AND%20a%3A%22maven%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.16.1-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.core.loaders/maven/0.16.1)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.16.2-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.core.loaders/maven/0.16.2)
  
  - core.javaee [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.javaee.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core.javaee%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.16.1-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core.javaee/0.16.1)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.16.2-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core.javaee/0.16.2)
  
  - log.bridges.commons-logging [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin.framework/log.bridges.commons-logging.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin.framework%22%20AND%20a%3A%22log.bridges.commons-logging%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.16.1-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.16.1)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.16.2-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.commons-logging/0.16.2)
  
  - log.bridges.slf4j [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin.framework/log.bridges.slf4j.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin.framework%22%20AND%20a%3A%22log.bridges.slf4j%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.16.1-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.slf4j/0.16.1)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.16.2-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.framework/log.bridges.slf4j/0.16.2)
 
 ### Current development - branch dev
 
