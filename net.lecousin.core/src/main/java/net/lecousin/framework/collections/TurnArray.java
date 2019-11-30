@@ -135,7 +135,7 @@ public class TurnArray<T> implements Deque<T> {
 	}
 	
 	@Override
-	public boolean isEmpty() {
+	public synchronized boolean isEmpty() {
 		return start == end;
 	}
 	
