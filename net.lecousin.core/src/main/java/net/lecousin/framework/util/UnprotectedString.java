@@ -56,6 +56,14 @@ public class UnprotectedString implements IString {
 		end = chars.length - 1;
 		usableEnd = end;
 	}
+	
+	/** Creates an UnprotectedString from the given String (a copy of characters is done). */
+	public UnprotectedString(String s, int startPos, int endPos) {
+		chars = s.toCharArray();
+		start = startPos;
+		end = start + endPos - startPos - 1;
+		usableEnd = end;
+	}
 
 	/** Creates an UnprotectedString from the given String (a copy of characters is done). */
 	public UnprotectedString(IString s) {
@@ -69,6 +77,11 @@ public class UnprotectedString implements IString {
 	/** Creates an UnprotectedString from the given CharSequence (a copy of characters is done). */
 	public UnprotectedString(CharSequence s) {
 		this(s.toString());
+	}
+
+	/** Creates an UnprotectedString from the given CharSequence (a copy of characters is done). */
+	public UnprotectedString(CharSequence s, int startPos, int endPos) {
+		this(s.toString(), startPos, endPos);
 	}
 	
 	private char[] chars;
@@ -168,17 +181,18 @@ public class UnprotectedString implements IString {
 	
 	@Override
 	public UnprotectedString append(CharSequence s) {
+		if (s == null) s = "null";
 		if (s instanceof UnprotectedString) {
 			UnprotectedString us = (UnprotectedString)s;
 			append(us.chars, us.start, us.end - us.start + 1);
 			return this;
 		}
+		int l = s.length();
+		if (l == 0) return this;
+		if (l >= usableEnd - end)
+			enlarge(l + 16);
 		if (s instanceof UnprotectedStringBuffer) {
 			UnprotectedStringBuffer usb = (UnprotectedStringBuffer)s;
-			int l = usb.length();
-			if (l == 0) return this;
-			if (l >= usableEnd - end)
-				enlarge(l + 16);
 			int i = 0;
 			do {
 				UnprotectedString us = usb.getUnprotectedString(i);
@@ -187,11 +201,42 @@ public class UnprotectedString implements IString {
 			} while (++i < usb.getNbUsableUnprotectedStrings());
 			return this;
 		}
-		int l = s.length();
-		if (l >= usableEnd - end)
-			enlarge(l + 16);
 		for (int i = 0; i < l; ++i)
 			chars[++end] = s.charAt(i);
+		return this;
+	}
+	
+	@Override
+	public UnprotectedString append(CharSequence s, int startPos, int endPos) {
+		if (s == null) return append("null");
+		if (s instanceof UnprotectedString) {
+			UnprotectedString us = (UnprotectedString)s;
+			append(us.chars, us.start + startPos, endPos - startPos);
+			return this;
+		}
+		int l = endPos - startPos;
+		if (l == 0) return this;
+		if (l >= usableEnd - end)
+			enlarge(l + 16);
+		if (s instanceof UnprotectedStringBuffer) {
+			UnprotectedStringBuffer usb = (UnprotectedStringBuffer)s;
+			int i = 0;
+			int pos = 0;
+			do {
+				UnprotectedString us = usb.getUnprotectedString(i);
+				int usl = us.length();
+				if (pos + usl > startPos) {
+					int st = startPos > pos ? startPos - pos : 0;
+					int addLen = usl > endPos - (pos + st) ? endPos - (pos + st) : usl;
+					System.arraycopy(us.chars, us.start + st, chars, end + 1, addLen);
+					end += addLen;
+				}
+				pos += usl;
+			} while (++i < usb.getNbUsableUnprotectedStrings() && pos < endPos);
+			return this;
+		}
+		for (int i = 0; i < l; ++i)
+			chars[++end] = s.charAt(i + startPos);
 		return this;
 	}
 	

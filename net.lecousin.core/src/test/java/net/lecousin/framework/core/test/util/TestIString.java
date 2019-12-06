@@ -4,6 +4,8 @@ import java.util.List;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.util.IString;
+import net.lecousin.framework.util.UnprotectedString;
+import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -63,6 +65,26 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		check("Hello World", s);
 		s.append("!!!");
 		check("Hello World!!!", s);
+		s.append(new UnprotectedString("abcdefghijklmnopqrstuvwxyz"), 7, 11);
+		check("Hello World!!!hijk", s);
+		s.append(new UnprotectedString("0123"), 2, 4);
+		check("Hello World!!!hijk23", s);
+		s.append(new UnprotectedString("9876"), 0, 2);
+		check("Hello World!!!hijk2398", s);
+		s.append("abcdefghijklmnopqrstuvwxyz", 7, 11);
+		check("Hello World!!!hijk2398hijk", s);
+		s.append("0123", 2, 4);
+		check("Hello World!!!hijk2398hijk23", s);
+		s.append("9876", 0, 2);
+		check("Hello World!!!hijk2398hijk2398", s);
+		s.append(new UnprotectedStringBuffer("abcdefghijklmnopqrstuvwxyz"), 7, 11);
+		check("Hello World!!!hijk2398hijk2398hijk", s);
+		s.append(new UnprotectedStringBuffer("0123"), 2, 4);
+		check("Hello World!!!hijk2398hijk2398hijk23", s);
+		s.append(new UnprotectedStringBuffer("9876"), 0, 2);
+		check("Hello World!!!hijk2398hijk2398hijk2398", s);
+		s.append("-------", 3, 3);
+		check("Hello World!!!hijk2398hijk2398hijk2398", s);
 	}
 	
 	@Test

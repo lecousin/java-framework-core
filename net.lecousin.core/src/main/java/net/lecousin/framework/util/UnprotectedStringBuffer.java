@@ -180,6 +180,7 @@ public class UnprotectedStringBuffer implements IString {
 	
 	@Override
 	public UnprotectedStringBuffer append(CharSequence s) {
+		if (s == null) s = "null";
 		if (s instanceof UnprotectedStringBuffer) {
 			UnprotectedStringBuffer us = (UnprotectedStringBuffer)s;
 			if (us.strings == null) return this;
@@ -222,6 +223,16 @@ public class UnprotectedStringBuffer implements IString {
 		lastUsed++;
 		strings = a;
 		return this;
+	}
+	
+	@Override
+	public UnprotectedStringBuffer append(CharSequence s, int startPos, int endPos) {
+		if (s == null) return append("null");
+		if (s instanceof UnprotectedStringBuffer)
+			return append(((UnprotectedStringBuffer)s).substring(startPos, endPos));
+		if (s instanceof UnprotectedString)
+			return append(((UnprotectedString)s).substring(startPos, endPos));
+		return append(new UnprotectedString(s, startPos, endPos));
 	}
 	
 	/** Add the given string at the beginning. */

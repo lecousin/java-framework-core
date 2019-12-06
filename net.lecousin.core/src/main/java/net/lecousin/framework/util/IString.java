@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * Interface adding functionalities to CharSequence.
  */
-public interface IString extends CharSequence {
+public interface IString extends CharSequence, Appendable {
 	
 	/** Return true if empty (length == 0). */
 	boolean isEmpty();
@@ -21,6 +21,7 @@ public interface IString extends CharSequence {
 	void setCharAt(int index, char c);
 	
 	/** Append a character. */
+	@Override
 	IString append(char c);
 	
 	/** Append characters. */
@@ -32,7 +33,12 @@ public interface IString extends CharSequence {
 	}
 	
 	/** Append characters. */
+	@Override
 	IString append(CharSequence s);
+	
+	/** Append characters. */
+	@Override
+	IString append(CharSequence s, int start, int end);
 	
 	/** Return the index of the first occurrence of the given character, starting at the given position, or -1 if not found. */
 	int indexOf(char c, int start);
