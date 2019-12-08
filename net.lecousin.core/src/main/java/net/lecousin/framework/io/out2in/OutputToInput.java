@@ -119,16 +119,17 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 				AsyncSupplier<Integer, IOException> write = ((IO.Writable.Seekable)io).writeAsync(writePos, buffer, param -> {
 					if (param.getValue1() != null) {
 						writePos += param.getValue1().intValue();
+						lockIO.unlock();
 						lock.unlock();
 						if (ondone != null) ondone.accept(param);
 					} else {
+						lockIO.unlock();
 						if (ondone != null) ondone.accept(param);
 						lock.error(param.getValue2());
 					}
 				});
 				write.onCancel(lock::cancel);
 				write.forward(result);
-				lockIO.unlock();
 				return null;
 			}
 		}).start();
@@ -215,6 +216,11 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 						throw e;
 					}
 				}
+				
+				@Override
+				public long getMaxBlockingTimeInNanoBeforeToLog() {
+					return 1000L * 1000000; // 1s
+				}
 			}), true);
 			return result;
 		}
@@ -223,8 +229,11 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			@Override
 			public Void run() {
 				lockIO.lock();
-				((IO.Readable.Seekable)io).readAsync(pos, buffer, ondone).forward(result);
-				lockIO.unlock();
+				AsyncSupplier<Integer, IOException> read = ((IO.Readable.Seekable)io).readAsync(pos, buffer, ondone);
+				read.onDone(() -> {
+					lockIO.unlock();
+					read.forward(result);
+				});
 				return null;
 			}
 		}.start();
@@ -302,6 +311,11 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 					result.unblockError(e);
 					throw e;
 				}
+			}
+			
+			@Override
+			public long getMaxBlockingTimeInNanoBeforeToLog() {
+				return 1000L * 1000000; // 1s
 			}
 		}), true);
 		return result;
