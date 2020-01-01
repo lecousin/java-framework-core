@@ -65,14 +65,18 @@ public abstract class SimpleReadableBitIO extends AbstractBitIO<IO.Readable.Buff
 	
 	protected abstract boolean getNextBooleanValue();
 	
+	protected abstract long getRemainingBits();
+	
 	@Override
 	public long readBits(int n) throws IOException {
 		do {
 			if (n < currentNbBits)
 				return getNextBits(n);
 			if (n == currentNbBits) {
+				long val = getRemainingBits();
 				currentNbBits = 0;
-				return currentValue;
+				currentValue = 0;
+				return val;
 			}
 			if (eof) throw new EOFException();
 			int b = io.read();
@@ -194,9 +198,14 @@ public abstract class SimpleReadableBitIO extends AbstractBitIO<IO.Readable.Buff
 	
 		@Override
 		protected long getNextBits(int n) {
-			long value = currentValue >> (currentNbBits - n);
+			long value = (currentValue >> (currentNbBits - n)) & ((1 << n) - 1);
 			currentNbBits -= n;
 			return value;
+		}
+		
+		@Override
+		protected long getRemainingBits() {
+			return currentValue & ((1 << currentNbBits) - 1);
 		}
 		
 		@Override
@@ -230,10 +239,15 @@ public abstract class SimpleReadableBitIO extends AbstractBitIO<IO.Readable.Buff
 
 		@Override
 		protected long getNextBits(int n) {
-			long value = (currentValue & (1 << (n - 1)));
+			long value = (currentValue & ((1 << n) - 1));
 			currentValue >>= n;
 			currentNbBits -= n;
 			return value;
+		}
+		
+		@Override
+		protected long getRemainingBits() {
+			return currentValue;
 		}
 		
 		@Override

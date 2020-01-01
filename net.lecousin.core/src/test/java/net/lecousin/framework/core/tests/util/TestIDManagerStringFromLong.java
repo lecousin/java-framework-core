@@ -22,6 +22,8 @@ public class TestIDManagerStringFromLong extends LCCoreAbstractTest {
 		idms.used("5");
 		Assert.assertEquals("4", idms.allocate());
 		Assert.assertEquals("6", idms.allocate());
+		idms.free("z");
+		idms.used("z");
 	}
 	
 }

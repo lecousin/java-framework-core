@@ -172,7 +172,8 @@ public class UnprotectedStringAscii implements IString {
 			if (l < len + 16) l = len + 16;
 			enlarge(l);
 		}
-		System.arraycopy(chars, offset, this.chars, end + 1, len);
+		for (int i = 0; i < len; ++i)
+			this.chars[end + 1 + i] = (byte)chars[offset + i];
 		end += len;
 		return this;
 	}
@@ -302,7 +303,8 @@ public class UnprotectedStringAscii implements IString {
 	@Override
 	public int fill(char[] chars, int start) {
 		int len = this.end - this.start + 1;
-		System.arraycopy(this.chars, this.start, chars, start, len);
+		for (int i = 0; i < len; ++i)
+			chars[start + i] = (char)(this.chars[this.start + i] & 0xFF);
 		return len;
 	}
 	

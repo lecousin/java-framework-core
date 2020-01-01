@@ -75,6 +75,17 @@ public class TestUnprotectedString extends TestIString {
 		Assert.assertEquals(3, s.countChar('l'));
 		Assert.assertEquals(1, s.countChar('d'));
 		Assert.assertEquals(0, s.countChar('x'));
+		
+		s = new UnprotectedString(16);
+		s.append('a');
+		Assert.assertEquals(1, s.length());
+		s.reset();
+		Assert.assertEquals(0, s.length());
+		s.append("abcdef");
+		Assert.assertEquals(6, s.length());
+		s.moveForward(2);
+		Assert.assertEquals(4, s.length());
+		Assert.assertEquals("cdef", s.toString());
 	}
 	
 	@Override

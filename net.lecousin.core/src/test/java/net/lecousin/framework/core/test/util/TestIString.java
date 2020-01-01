@@ -102,6 +102,7 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		Assert.assertEquals(7, s.indexOf("or", 5));
 		Assert.assertEquals(-1, s.indexOf('o', 10));
 		Assert.assertEquals(-1, s.indexOf("or", 10));
+		Assert.assertEquals(-1, s.indexOf("od", 7));
 	}
 	
 	@Test
@@ -225,5 +226,14 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		byte[] bytes = new byte[5];
 		createString("He").append("ll").append('o').fillUsAsciiBytes(bytes);
 		Assert.assertArrayEquals(new byte[] { 'H', 'e', 'l', 'l', 'o' }, bytes);
+	}
+	
+	@Test
+	public void testCopy() {
+		IString s = createString("abcdefgh");
+		IString copy = s.copy();
+		Assert.assertEquals("abcdefgh", copy.toString());
+		s.append('z');
+		Assert.assertEquals("abcdefgh", copy.toString());
 	}
 }

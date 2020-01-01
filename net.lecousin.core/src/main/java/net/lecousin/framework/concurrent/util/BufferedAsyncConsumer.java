@@ -38,6 +38,8 @@ public class BufferedAsyncConsumer<T, TError extends Exception> implements Async
 	@Override
 	public IAsync<TError> consume(T data, Consumer<T> onDataRelease) {
 		synchronized (queue) {
+			if (error != null)
+				return new Async<>(error);
 			if (lastOperation == null) {
 				// nothing currently consumed, start it
 				lastOperation = consumer.consume(data, onDataRelease);
@@ -79,6 +81,8 @@ public class BufferedAsyncConsumer<T, TError extends Exception> implements Async
 	@Override
 	public IAsync<TError> end() {
 		synchronized (queue) {
+			if (error != null)
+				return new Async<>(error);
 			if (queue.isEmpty())
 				return consumer.end();
 			end = new Async<>();
