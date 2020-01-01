@@ -1,9 +1,9 @@
-package net.lecousin.framework.io.encoding;
+package net.lecousin.framework.encoding.number;
 
 /**
  * Handle a number encoding: characters can be added, then the current decoded value can be retrieved.
  */
-public interface INumberEncoding {
+public interface NumberEncoding {
 
 	/** A new character to decode. */
 	boolean addChar(char c);

@@ -1,5 +1,8 @@
 package net.lecousin.framework.util;
 
+import net.lecousin.framework.encoding.EncodingException;
+import net.lecousin.framework.encoding.StringEncoding;
+
 /**
  * IDManagerString using an IDManagerLong and a StringEncoding.
  */
@@ -21,17 +24,29 @@ public class IDManagerStringFromLong implements IDManagerString {
 	
 	@Override
 	public String allocate() {
-		return encoder.encode(Long.valueOf(manager.allocate()));
+		try {
+			return encoder.encode(Long.valueOf(manager.allocate()));
+		} catch (EncodingException e) {
+			throw new NumberFormatException(e.getMessage());
+		}
 	}
 	
 	@Override
 	public void free(String id) {
-		manager.free(encoder.decode(id).longValue());
+		try {
+			manager.free(encoder.decode(id).longValue());
+		} catch (Exception e) {
+			// ignore
+		}
 	}
 	
 	@Override
 	public void used(String id) {
-		manager.used(encoder.decode(id).longValue());
+		try {
+			manager.used(encoder.decode(id).longValue());
+		} catch (Exception e) {
+			// ignore
+		}
 	}
 	
 }

@@ -11,9 +11,9 @@ import java.util.function.Function;
 
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.encoding.Base64Encoding;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
-import net.lecousin.framework.io.encoding.Base64;
 import net.lecousin.framework.io.serialization.AbstractSerializer;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
@@ -22,7 +22,11 @@ import net.lecousin.framework.io.serialization.SerializationContext.CollectionCo
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
 import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
+import net.lecousin.framework.io.util.Bytes;
+import net.lecousin.framework.io.util.RawByteBuffer;
+import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.UnprotectedString;
+import net.lecousin.framework.util.UnprotectedStringAscii;
 import net.lecousin.framework.xml.XMLUtil;
 import net.lecousin.framework.xml.XMLWriter;
 
@@ -315,8 +319,11 @@ public class XMLSerializer extends AbstractSerializer {
 	protected IAsync<SerializationException> serializeIOReadableValue(
 		SerializationContext context, IO.Readable io, String path, List<SerializationRule> rules
 	) {
-		IAsync<IOException> encode = Base64.encodeAsync(io, (char[] c, int offset, int length) ->
-			output.addText(new UnprotectedString(c, offset, length, c.length))
+		IAsync<IOException> encode = io.toReadConsumer(
+			new Base64Encoding.EncoderConsumer<IOException>(
+				ByteArrayCache.getInstance(),
+				UnprotectedStringAscii.bytesConsumer(str -> output.addEscapedText(str)).convert(Bytes.Readable::toByteBuffer)
+			).convert(RawByteBuffer::new)
 		);
 		if (encode.isDone()) {
 			if (encode.hasError()) return new Async<>(encode, ioErrorConverter);

@@ -3,6 +3,9 @@ package net.lecousin.framework.util;
 import java.math.BigInteger;
 import java.text.ParseException;
 
+import net.lecousin.framework.encoding.EncodingException;
+import net.lecousin.framework.encoding.HexaDecimalEncoding;
+
 /**
  * Utility methods for String.
  */
@@ -48,13 +51,6 @@ public final class StringUtil {
 		return paddingRight(s, str, fixedSize, ' ');
 	}
 	
-	private static final char[] hexaChar = new char[] { '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F' };
-	
-	/** Encode a single hexadecimal digit (given value must be between 0 and 15). */
-	public static char encodeHexaDigit(int value) {
-		return hexaChar[value];
-	}
-	
 	/** Encode the given bytes into hexadecimal. */
 	public static String encodeHexa(byte[] data) {
 		return encodeHexa(data, 0, data.length);
@@ -64,79 +60,83 @@ public final class StringUtil {
 	public static String encodeHexa(byte[] data, int off, int len) {
 		StringBuilder str = new StringBuilder();
 		for (int i = 0; i < len; ++i)
-			str.append(hexaChar[(data[i + off] >>> 4) & 0xF]).append(hexaChar[data[i + off] & 0xF]);
+			str.append(HexaDecimalEncoding.encodeDigit((data[i + off] >>> 4) & 0xF))
+				.append(HexaDecimalEncoding.encodeDigit(data[i + off] & 0xF));
 		return str.toString();
 	}
 	
 	/** Encode the given byte into hexadecimal. */
 	public static String encodeHexa(byte b) {
-		return new StringBuilder().append(hexaChar[(b >>> 4) & 0xF]).append(hexaChar[b & 0xF]).toString();
+		return new StringBuilder()
+			.append(HexaDecimalEncoding.encodeDigit((b >>> 4) & 0xF))
+			.append(HexaDecimalEncoding.encodeDigit(b & 0xF))
+			.toString();
 	}
 	
 	/** Encode a long value into hexadecimal, padding with zeros to create a string of 16 characters. */
 	public static String encodeHexaPadding(long value) {
 		char[] s = new char[16];
-		s[0] = encodeHexaDigit((int)((value >> 60) & 0xF));
-		s[1] = encodeHexaDigit((int)((value >> 56) & 0xF));
-		s[2] = encodeHexaDigit((int)((value >> 52) & 0xF));
-		s[3] = encodeHexaDigit((int)((value >> 48) & 0xF));
-		s[4] = encodeHexaDigit((int)((value >> 44) & 0xF));
-		s[5] = encodeHexaDigit((int)((value >> 40) & 0xF));
-		s[6] = encodeHexaDigit((int)((value >> 36) & 0xF));
-		s[7] = encodeHexaDigit((int)((value >> 32) & 0xF));
-		s[8] = encodeHexaDigit((int)((value >> 28) & 0xF));
-		s[9] = encodeHexaDigit((int)((value >> 24) & 0xF));
-		s[10] = encodeHexaDigit((int)((value >> 20) & 0xF));
-		s[11] = encodeHexaDigit((int)((value >> 16) & 0xF));
-		s[12] = encodeHexaDigit((int)((value >> 12) & 0xF));
-		s[13] = encodeHexaDigit((int)((value >> 8) & 0xF));
-		s[14] = encodeHexaDigit((int)((value >> 4) & 0xF));
-		s[15] = encodeHexaDigit((int)(value & 0xF));
+		s[0] = HexaDecimalEncoding.encodeDigit((int)((value >> 60) & 0xF));
+		s[1] = HexaDecimalEncoding.encodeDigit((int)((value >> 56) & 0xF));
+		s[2] = HexaDecimalEncoding.encodeDigit((int)((value >> 52) & 0xF));
+		s[3] = HexaDecimalEncoding.encodeDigit((int)((value >> 48) & 0xF));
+		s[4] = HexaDecimalEncoding.encodeDigit((int)((value >> 44) & 0xF));
+		s[5] = HexaDecimalEncoding.encodeDigit((int)((value >> 40) & 0xF));
+		s[6] = HexaDecimalEncoding.encodeDigit((int)((value >> 36) & 0xF));
+		s[7] = HexaDecimalEncoding.encodeDigit((int)((value >> 32) & 0xF));
+		s[8] = HexaDecimalEncoding.encodeDigit((int)((value >> 28) & 0xF));
+		s[9] = HexaDecimalEncoding.encodeDigit((int)((value >> 24) & 0xF));
+		s[10] = HexaDecimalEncoding.encodeDigit((int)((value >> 20) & 0xF));
+		s[11] = HexaDecimalEncoding.encodeDigit((int)((value >> 16) & 0xF));
+		s[12] = HexaDecimalEncoding.encodeDigit((int)((value >> 12) & 0xF));
+		s[13] = HexaDecimalEncoding.encodeDigit((int)((value >> 8) & 0xF));
+		s[14] = HexaDecimalEncoding.encodeDigit((int)((value >> 4) & 0xF));
+		s[15] = HexaDecimalEncoding.encodeDigit((int)(value & 0xF));
 		return new String(s);
 	}
 	
-	/** Decode a string containing hexadecimal digits into an array of bytes. */
-	public static byte[] decodeHexa(String s) {
+	/** Decode a string containing hexadecimal digits into an array of bytes. 
+	 * @throws EncodingException if a character is not a valid hexadecimal digit
+	 */
+	public static byte[] decodeHexa(String s) throws EncodingException {
 		byte[] data = new byte[s.length() / 2];
 		decodeHexa(s, data);
 		return data;
 	}
 	
-	/** Decode a string containing hexadecimal digits into the given array of bytes. */
-	public static void decodeHexa(String s, byte[] data) {
+	/** Decode a string containing hexadecimal digits into the given array of bytes. 
+	 * @throws EncodingException if a character is not a valid hexadecimal digit
+	 */
+	public static void decodeHexa(String s, byte[] data) throws EncodingException {
 		for (int i = 0; i < data.length; ++i)
-			data[i] = (byte)((decodeHexa(s.charAt(i * 2)) << 4) + decodeHexa(s.charAt(i * 2 + 1)));
+			data[i] = (byte)(
+				(HexaDecimalEncoding.decodeChar(s.charAt(i * 2)) << 4)
+				+ HexaDecimalEncoding.decodeChar(s.charAt(i * 2 + 1)));
 	}
 	
-	/** Return the integer value of the given hexadecimal digit, or -1 if it is not an hexadecimal digit. */
-	public static int decodeHexa(char c) {
-		if (c >= '0' && c <= '9') return c - '0';
-		if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-		if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-		return -1;
-	}
-	
-	/** Decode the given hexadecimal string into a byte (the string must contain 1 or 2 hexa digits). */
-	public static byte decodeHexaByte(String hexa) {
-		int i = decodeHexa(hexa.charAt(0));
+	/** Decode the given hexadecimal string into a byte (the string must contain 1 or 2 hexa digits). 
+	 * @throws EncodingException if a character is not a valid hexadecimal digit
+	 */
+	public static byte decodeHexaByte(String hexa) throws EncodingException {
+		int i = HexaDecimalEncoding.decodeChar(hexa.charAt(0));
 		if (hexa.length() > 1) {
-			i = (i << 4) | decodeHexa(hexa.charAt(1));
+			i = (i << 4) | HexaDecimalEncoding.decodeChar(hexa.charAt(1));
 		}
 		return (byte)i;
 	}
 	
-	/** Decode the given string containing hexadecimal digits into a long value. */
-	public static long decodeHexaLong(String hexa) {
-		long l = decodeHexa(hexa.charAt(0));
+	/** Decode the given string containing hexadecimal digits into a long value. 
+	 * @throws EncodingException if a character is not a valid hexadecimal digit
+	 */
+	public static long decodeHexaLong(String hexa) throws EncodingException {
+		long l = HexaDecimalEncoding.decodeChar(hexa.charAt(0));
 		for (int i = 1; i < hexa.length(); ++i) {
 			l <<= 4;
-			l |= decodeHexa(hexa.charAt(i));
+			l |= HexaDecimalEncoding.decodeChar(hexa.charAt(i));
 		}
 		return l;
 	}
 	  
-	public static boolean isHexa(char c) { return decodeHexa(c) != -1; }
-	
 	/** Create a string containing all enumeration values separated by a comma, for printing or debugging purpose. */
 	public static String possibleValues(Class<? extends Enum<?>> e) {
 		StringBuilder s = new StringBuilder();

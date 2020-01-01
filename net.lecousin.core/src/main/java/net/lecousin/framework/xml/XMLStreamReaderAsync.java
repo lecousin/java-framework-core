@@ -8,11 +8,11 @@ import java.util.LinkedList;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.encoding.number.DecimalNumber;
+import net.lecousin.framework.encoding.number.HexadecimalNumber;
+import net.lecousin.framework.encoding.number.NumberEncoding;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
-import net.lecousin.framework.io.encoding.DecimalNumber;
-import net.lecousin.framework.io.encoding.HexadecimalNumber;
-import net.lecousin.framework.io.encoding.INumberEncoding;
 import net.lecousin.framework.locale.LocalizableString;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
@@ -1026,7 +1026,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			if (j < 0) break;
 			if (s.charAt(i + 1) == '#') {
 				// character reference
-				INumberEncoding n;
+				NumberEncoding n;
 				pos = i;
 				if (s.charAt(i + 2) == 'x') {
 					n = new HexadecimalNumber();

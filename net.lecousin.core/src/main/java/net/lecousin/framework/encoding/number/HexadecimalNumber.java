@@ -1,9 +1,9 @@
-package net.lecousin.framework.io.encoding;
+package net.lecousin.framework.encoding.number;
 
 /**
  * Decode a number in hexadecimal digits.
  */
-public class HexadecimalNumber implements INumberEncoding {
+public class HexadecimalNumber implements NumberEncoding {
 
 	private long value = 0;
 	

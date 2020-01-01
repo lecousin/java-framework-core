@@ -272,16 +272,21 @@ public class XMLWriter {
 	
 	/** Add text inside the current element. */
 	public IAsync<IOException> addText(CharSequence text) {
+		return addEscapedText(escape(text));
+	}
+	
+	/** Add text inside the current element. */
+	public IAsync<IOException> addEscapedText(CharSequence text) {
 		Context ctx = context.peekFirst();
 		if (ctx == null)
 			return new Async<>(new IOException(ALREADY_CLOSED_ERROR_MESSAGE));
 		if (ctx.open)
 			endOfAttributes(ctx);
 		if (!pretty || lastNodeType == Node.TEXT_NODE)
-			return writer.write(escape(text));
+			return writer.write(text);
 		indent();
 		lastNodeType = Node.TEXT_NODE;
-		return writer.write(escape(text));
+		return writer.write(text);
 	}
 	
 	/** Add a CDATA section inside the current element. */

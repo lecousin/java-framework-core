@@ -1,8 +1,9 @@
 package net.lecousin.framework.util;
 
-import java.nio.CharBuffer;
 import java.util.LinkedList;
 import java.util.List;
+
+import net.lecousin.framework.io.util.RawCharBuffer;
 
 /**
  * Unprotected and mutable string.
@@ -328,10 +329,9 @@ public class UnprotectedString implements IString {
 
 	@Override
 	public int fill(char[] chars, int start) {
-		int pos = 0;
-		for (int i = this.start; i <= this.end; ++i)
-			chars[start + (pos++)] = this.chars[i];
-		return pos;
+		int len = this.end - this.start + 1;
+		System.arraycopy(this.chars, this.start, chars, start, len);
+		return len;
 	}
 	
 	@Override
@@ -396,13 +396,13 @@ public class UnprotectedString implements IString {
 	}
 	
 	/** Create a CharBuffer wrapping the current string. */
-	public CharBuffer asCharBuffer() {
-		return CharBuffer.wrap(chars, start, end - start + 1);
+	public RawCharBuffer asCharBuffer() {
+		return new RawCharBuffer(chars, start, end - start + 1);
 	}
 	
 	@Override
-	public CharBuffer[] asCharBuffers() {
-		return new CharBuffer[] { asCharBuffer() };
+	public RawCharBuffer[] asCharBuffers() {
+		return new RawCharBuffer[] { asCharBuffer() };
 	}
 	
 	/** Return the underlying character array. */
@@ -413,6 +413,13 @@ public class UnprotectedString implements IString {
 	/** Return the current start offset in the underlying character array. */
 	public int charArrayStart() {
 		return start;
+	}
+	
+	@Override
+	public UnprotectedString copy() {
+		char[] copy = new char[end - start + 1];
+		System.arraycopy(chars, start, copy, 0, end - start + 1);
+		return new UnprotectedString(copy);
 	}
 	
 	/** Return the number of occurences of the given array in this string. */

@@ -1,10 +1,10 @@
-package net.lecousin.framework.core.tests.io.encoding;
+package net.lecousin.framework.core.tests.encoding.number;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
-import net.lecousin.framework.io.encoding.DecimalNumber;
+import net.lecousin.framework.encoding.number.DecimalNumber;
 
 public class TestDecimalNumber extends LCCoreAbstractTest {
 

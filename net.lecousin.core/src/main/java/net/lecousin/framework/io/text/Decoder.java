@@ -110,13 +110,15 @@ public abstract class Decoder implements Closeable, AsyncCloseable<IOException> 
 		} while (true);
 	}
 
-	/** Decode characters without IO. */
+	/** Decode characters without IO. The full buffer is read.
+	 * If b is null, the remaining bytes from the previous operation are decoded. */
 	public int decode(ByteBuffer b, char[] chars, int pos, int len) {
 		if (io != null)
 			throw new IllegalStateException();
 		return decode(b, chars, pos, len, null, 1);
 	}
 	
+	/** Return this number of decoded characters, or -1 if no more character can be decoded. */
 	protected abstract int decode(ByteBuffer b, char[] chars, int pos, int len, MutableBoolean interrupt, int min);
 	
 	/** Return the charset of this decoder. */

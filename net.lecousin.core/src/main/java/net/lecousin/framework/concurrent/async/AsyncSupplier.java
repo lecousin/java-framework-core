@@ -237,6 +237,11 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 		return task.getOutput();
 	}
 	
+	/** Call consumer in a new CPU task on done. */
+	public void thenStart(Consumer<T> consumer, String taskDescription, byte taskPriority, IAsync<TError> onErrorOrCancel) {
+		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, () -> consumer.accept(getResult())), onErrorOrCancel);
+	}
+	
 	/** Call consumer immediately (in current thread) if done, or start a CPU task on done. */
 	public boolean thenDoOrStart(Consumer<T> consumer, String taskDescription, byte taskPriority) {
 		if (isDone()) {

@@ -3,13 +3,13 @@ package net.lecousin.framework.util;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 import net.lecousin.framework.concurrent.Task;
@@ -17,8 +17,11 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.text.Decoder;
 import net.lecousin.framework.io.text.ICharacterStream;
+import net.lecousin.framework.io.util.RawCharBuffer;
 
 /**
  * Array of UnprotectedString, allowing to add and remove characters without re-allocating a character array.
@@ -71,6 +74,12 @@ public class UnprotectedStringBuffer implements IString {
 
 	private UnprotectedString[] strings;
 	private int lastUsed;
+	
+	/** Reset this string to empty. */
+	public void reset() {
+		strings = null;
+		lastUsed = 0;
+	}
 	
 	/** Return the number of UnprotectedString hold by this instance that can be used. */
 	public int getNbUsableUnprotectedStrings() {
@@ -419,6 +428,13 @@ public class UnprotectedStringBuffer implements IString {
 		for (int i = 0; i <= lastUsed; ++i)
 			pos += strings[i].fillUsAsciiBytes(bytes, start + pos);
 		return pos;
+	}
+	
+	@Override
+	public UnprotectedString copy() {
+		char[] copy = new char[length()];
+		fill(copy, 0);
+		return new UnprotectedString(copy);
 	}
 	
 	@Override
@@ -892,9 +908,9 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	@Override
-	public CharBuffer[] asCharBuffers() {
-		if (strings == null) return new CharBuffer[0];
-		CharBuffer[] chars = new CharBuffer[lastUsed + 1];
+	public RawCharBuffer[] asCharBuffers() {
+		if (strings == null) return new RawCharBuffer[0];
+		RawCharBuffer[] chars = new RawCharBuffer[lastUsed + 1];
 		for (int i = 0; i <= lastUsed; ++i)
 			chars[i] = strings[i].asCharBuffer();
 		return chars;
@@ -1164,7 +1180,7 @@ public class UnprotectedStringBuffer implements IString {
 	) {
 		new Task.Cpu.FromRunnable("Encode string into bytes", priority, () -> {
 			try {
-				ByteBuffer bytes = encoder.encode(strings[index].asCharBuffer());
+				ByteBuffer bytes = encoder.encode(strings[index].asCharBuffer().toCharBuffer());
 				if (prevWrite == null || prevWrite.isDone()) {
 					if (prevWrite != null && prevWrite.hasError()) {
 						result.error(prevWrite.getError());
@@ -1190,5 +1206,44 @@ public class UnprotectedStringBuffer implements IString {
 				result.error(e);
 			}
 		}).start();
+	}
+
+	/** Create a ByteBuffer consumer that decodes into a string using the given charset. */
+	public static AsyncConsumer<ByteBuffer, IOException> decoderConsumerToString(Charset charset, Consumer<String> onEnd) {
+		UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+		Decoder decoder;
+		try { decoder = Decoder.get(charset); }
+		catch (Exception e) {
+			return new AsyncConsumer.Error<>(new IOException("Unsupported charset", e));
+		}
+		return new AsyncConsumer<ByteBuffer, IOException>() {
+			 @Override
+			public IAsync<IOException> consume(ByteBuffer data, Consumer<ByteBuffer> onDataRelease) {
+				 char[] chars = new char[Math.max(data.remaining(), 512)];
+				 do {
+					 int nb = decoder.decode(data, chars, 0, chars.length);
+					 if (nb <= 0) break;
+					 str.append(chars, 0, nb);
+				 } while (data.hasRemaining());
+				 if (onDataRelease != null)
+					 onDataRelease.accept(data);
+				 return new Async<>(true);
+			}
+			 
+			 @Override
+			public IAsync<IOException> end() {
+				 char[] chars = new char[64];
+				 int nb = decoder.decode(null, chars, 0, chars.length);
+				 if (nb > 0)
+					 str.append(chars, 0, nb);
+				 onEnd.accept(str.asString());
+				 return new Async<>(true);
+			}
+			 
+			@Override
+			public void error(IOException error) {
+				// ignore
+			}
+		};
 	}
 }

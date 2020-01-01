@@ -1225,6 +1225,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 			try {
 				checkValue(o1, o2);
 			} catch (Throwable e) {
+				e.printStackTrace();
 				throw new Exception("Error in field " + f.getName() + " of object " + found.getClass().getName(), e);
 			}
 		}

@@ -7,11 +7,11 @@ import java.util.LinkedList;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.encoding.number.DecimalNumber;
+import net.lecousin.framework.encoding.number.HexadecimalNumber;
+import net.lecousin.framework.encoding.number.NumberEncoding;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
-import net.lecousin.framework.io.encoding.DecimalNumber;
-import net.lecousin.framework.io.encoding.HexadecimalNumber;
-import net.lecousin.framework.io.encoding.INumberEncoding;
 import net.lecousin.framework.locale.LocalizableString;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
@@ -441,7 +441,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private char[] readCharRef() throws XMLException, IOException {
 		char c = stream.read();
-		INumberEncoding n;
+		NumberEncoding n;
 		if (c == 'x') {
 			n = new HexadecimalNumber();
 		} else {

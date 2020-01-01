@@ -5,6 +5,7 @@ import java.text.ParseException;
 import java.util.Locale;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.encoding.EncodingException;
 import net.lecousin.framework.util.StringUtil;
 
 import org.junit.Assert;
@@ -43,24 +44,7 @@ public class TestStringUtil extends LCCoreAbstractTest {
 	}
 	
 	@Test
-	public void testHexa() {
-		Assert.assertEquals('0', StringUtil.encodeHexaDigit(0));
-		Assert.assertEquals('1', StringUtil.encodeHexaDigit(1));
-		Assert.assertEquals('2', StringUtil.encodeHexaDigit(2));
-		Assert.assertEquals('3', StringUtil.encodeHexaDigit(3));
-		Assert.assertEquals('4', StringUtil.encodeHexaDigit(4));
-		Assert.assertEquals('5', StringUtil.encodeHexaDigit(5));
-		Assert.assertEquals('6', StringUtil.encodeHexaDigit(6));
-		Assert.assertEquals('7', StringUtil.encodeHexaDigit(7));
-		Assert.assertEquals('8', StringUtil.encodeHexaDigit(8));
-		Assert.assertEquals('9', StringUtil.encodeHexaDigit(9));
-		Assert.assertEquals('A', StringUtil.encodeHexaDigit(10));
-		Assert.assertEquals('B', StringUtil.encodeHexaDigit(11));
-		Assert.assertEquals('C', StringUtil.encodeHexaDigit(12));
-		Assert.assertEquals('D', StringUtil.encodeHexaDigit(13));
-		Assert.assertEquals('E', StringUtil.encodeHexaDigit(14));
-		Assert.assertEquals('F', StringUtil.encodeHexaDigit(15));
-		
+	public void testHexa() throws EncodingException {
 		Assert.assertEquals("00", StringUtil.encodeHexa((byte)0));
 		Assert.assertEquals("12", StringUtil.encodeHexa((byte)0x12));
 		Assert.assertEquals("7F", StringUtil.encodeHexa((byte)0x7F));
@@ -77,34 +61,6 @@ public class TestStringUtil extends LCCoreAbstractTest {
 		Assert.assertEquals("A123456789ABCDEF", StringUtil.encodeHexaPadding(0xA123456789ABCDEFL));
 		
 		Assert.assertArrayEquals(new byte[] { 0, 0x34, 0x6F, (byte)0x8D, (byte)0xBA, (byte)0xFF}, StringUtil.decodeHexa("00346F8DBAFF"));
-		
-		Assert.assertEquals(0, StringUtil.decodeHexa('0'));
-		Assert.assertEquals(1, StringUtil.decodeHexa('1'));
-		Assert.assertEquals(2, StringUtil.decodeHexa('2'));
-		Assert.assertEquals(3, StringUtil.decodeHexa('3'));
-		Assert.assertEquals(4, StringUtil.decodeHexa('4'));
-		Assert.assertEquals(5, StringUtil.decodeHexa('5'));
-		Assert.assertEquals(6, StringUtil.decodeHexa('6'));
-		Assert.assertEquals(7, StringUtil.decodeHexa('7'));
-		Assert.assertEquals(8, StringUtil.decodeHexa('8'));
-		Assert.assertEquals(9, StringUtil.decodeHexa('9'));
-		Assert.assertEquals(10, StringUtil.decodeHexa('A'));
-		Assert.assertEquals(11, StringUtil.decodeHexa('B'));
-		Assert.assertEquals(12, StringUtil.decodeHexa('C'));
-		Assert.assertEquals(13, StringUtil.decodeHexa('D'));
-		Assert.assertEquals(14, StringUtil.decodeHexa('E'));
-		Assert.assertEquals(15, StringUtil.decodeHexa('F'));
-		Assert.assertEquals(10, StringUtil.decodeHexa('a'));
-		Assert.assertEquals(11, StringUtil.decodeHexa('b'));
-		Assert.assertEquals(12, StringUtil.decodeHexa('c'));
-		Assert.assertEquals(13, StringUtil.decodeHexa('d'));
-		Assert.assertEquals(14, StringUtil.decodeHexa('e'));
-		Assert.assertEquals(15, StringUtil.decodeHexa('f'));
-		Assert.assertEquals(-1, StringUtil.decodeHexa('g'));
-		
-		Assert.assertTrue(StringUtil.isHexa('b'));
-		Assert.assertTrue(StringUtil.isHexa('6'));
-		Assert.assertFalse(StringUtil.isHexa('t'));
 		
 		Assert.assertEquals(0x00, StringUtil.decodeHexaByte("00"));
 		Assert.assertEquals(0x01, StringUtil.decodeHexaByte("01"));

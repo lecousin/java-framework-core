@@ -1,13 +1,14 @@
 package net.lecousin.framework.util;
 
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 import java.util.List;
+
+import net.lecousin.framework.io.util.RawCharBuffer;
 
 /**
  * Interface adding functionalities to CharSequence.
@@ -108,6 +109,9 @@ public interface IString extends CharSequence, Appendable {
 	/** Return a list of strings, by splitting the current string using the given character as separator. */
 	List<? extends IString> split(char sep);
 	
+	/** Create a copy of this string, so it can be modified safely. */
+	IString copy();
+	
 	/** Compare the given CharSequence with this string. */
 	@SuppressWarnings("squid:S1201") // we want the name equals
 	default boolean equals(CharSequence s) {
@@ -152,12 +156,12 @@ public interface IString extends CharSequence, Appendable {
 	}
 	
 	/** Convert into an array of character buffers. */
-	CharBuffer[] asCharBuffers();
+	RawCharBuffer[] asCharBuffers();
 	
 	/** Encode this string into a ByteBuffer using the specified charset. */
 	@SuppressWarnings("squid:S2259") // false positive: cr cannot be null because cbs length cannot be 0
 	default ByteBuffer encode(Charset cs) throws CharacterCodingException {
-		CharBuffer[] cbs = asCharBuffers();
+		RawCharBuffer[] cbs = asCharBuffers();
 		if (cbs.length == 0)
 			return ByteBuffer.allocate(0);
 		int len = length();
@@ -172,7 +176,7 @@ public interface IString extends CharSequence, Appendable {
         ByteBuffer bb = ByteBuffer.wrap(ba);
     	CoderResult cr = null;
     	for (int i = 0; i < cbs.length; ++i)
-    		cr = ce.encode(cbs[i], bb, i == cbs.length - 1);
+    		cr = ce.encode(cbs[i].toCharBuffer(), bb, i == cbs.length - 1);
         if (!cr.isUnderflow())
             cr.throwException();
         cr = ce.flush(bb);

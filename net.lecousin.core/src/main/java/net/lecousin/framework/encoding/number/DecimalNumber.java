@@ -1,9 +1,9 @@
-package net.lecousin.framework.io.encoding;
+package net.lecousin.framework.encoding.number;
 
 /**
  * Decode a number in decimal digits.
  */
-public class DecimalNumber implements INumberEncoding {
+public class DecimalNumber implements NumberEncoding {
 
 	private long value = 0;
 	

@@ -1,7 +1,7 @@
-package net.lecousin.framework.core.tests.io.encoding;
+package net.lecousin.framework.core.tests.encoding.number;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
-import net.lecousin.framework.io.encoding.HexadecimalNumber;
+import net.lecousin.framework.encoding.number.HexadecimalNumber;
 
 import org.junit.Assert;
 import org.junit.Test;

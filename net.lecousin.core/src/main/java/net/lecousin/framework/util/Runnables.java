@@ -27,6 +27,19 @@ public interface Runnables {
 	}
 	
 	/**
+	 * Same as Function but that throws an exception.
+	 * @param <T1> type of data given
+	 * @param <T2> type of data returned
+	 * @param <TError> type of the exception
+	 */
+	public interface FunctionThrows<T1, T2, TError extends Exception> {
+
+		/** Called to execute the runnable. */
+		T2 apply(T1 input) throws TError;
+		
+	}
+	
+	/**
 	 * A simple abstract class that implements Runnable and holds an object given in the constructor.
 	 * @param <T> type of object to hold
 	 */

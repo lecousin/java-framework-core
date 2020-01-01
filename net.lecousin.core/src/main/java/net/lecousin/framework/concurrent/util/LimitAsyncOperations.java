@@ -12,7 +12,7 @@ import net.lecousin.framework.util.Pair;
 
 /**
  * This class allows to queue asynchronous operations, but blocks if too many are waiting.
- * This can typically used in operations receiving data, and writing to an IO, when the amount of data can be large:
+ * This can typically be used in operations receiving data, and writing to an IO, when the amount of data can be large:
  * if we receive more data than the write operations can do, and we need to avoid having too much buffers in memory waiting
  * to write.
  *

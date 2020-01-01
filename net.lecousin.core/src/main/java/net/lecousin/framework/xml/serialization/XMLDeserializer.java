@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -18,11 +17,11 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.encoding.Base64Encoding;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.buffering.IOInMemoryOrFile;
-import net.lecousin.framework.io.encoding.Base64Decoder;
 import net.lecousin.framework.io.serialization.AbstractDeserializer;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
@@ -33,7 +32,10 @@ import net.lecousin.framework.io.serialization.SerializationContext.ObjectContex
 import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
+import net.lecousin.framework.io.util.Bytes;
+import net.lecousin.framework.io.util.RawCharBuffer;
 import net.lecousin.framework.math.IntegerUnit;
+import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
@@ -596,13 +598,23 @@ public class XMLDeserializer extends AbstractDeserializer {
 			}
 			// not a reference, default to base 64 encoded string
 			IOInMemoryOrFile io = new IOInMemoryOrFile(128 * 1024, priority, "base 64 encoded from XML");
-			Base64Decoder decoder = new Base64Decoder(io);
+			Base64Encoding.DecoderConsumer<IOException> decoder = new Base64Encoding.DecoderConsumer<>(
+				ByteArrayCache.getInstance(),
+				io.createWriteConsumer(
+					() -> io.seekAsync(SeekType.FROM_BEGINNING, 0)
+						.onDone(() -> result.unblockSuccess(io), result, xmlErrorConverter::apply),
+					err -> result.error(xmlErrorConverter.apply(err))
+				).convert(Bytes.Readable::toByteBuffer),
+				err -> new IOException("Base 64 encoding error in XML", err)
+			);
 			readBase64(decoder, io, result);
 		}), result, xmlErrorConverter);
 		return result;
 	}
 	
-	private void readNextBase64(Base64Decoder decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result) {
+	private void readNextBase64(
+		Base64Encoding.DecoderConsumer<IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result
+	) {
 		IAsync<Exception> next = input.next();
 		if (next.isDone()) {
 			if (next.hasError()) result.error(xmlErrorConverter.apply(next.getError()));
@@ -612,14 +624,16 @@ public class XMLDeserializer extends AbstractDeserializer {
 		next.thenStart(new DeserializationTask(() -> readBase64(decoder, io, result)), result, xmlErrorConverter);
 	}
 	
-	private void readBase64(Base64Decoder decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result) {
+	private void readBase64(
+		Base64Encoding.DecoderConsumer<IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result
+	) {
 		if (Type.TEXT.equals(input.event.type)) {
 			input.event.text.trim();
 			if (input.event.text.isEmpty()) {
 				readNextBase64(decoder, io, result);
 				return;
 			}
-			CharBuffer[] buffers = input.event.text.asCharBuffers();
+			RawCharBuffer[] buffers = input.event.text.asCharBuffers();
 			decodeBase64(decoder, io, result, buffers, 0);
 			return;
 		}
@@ -628,19 +642,17 @@ public class XMLDeserializer extends AbstractDeserializer {
 			return;
 		}
 		if (Type.END_ELEMENT.equals(input.event.type)) {
-			Function<IOException, SerializationException> errorConverter = xmlErrorConverter::apply;
-			decoder.flush().onDone(() ->
-				io.seekAsync(SeekType.FROM_BEGINNING, 0).onDone(
-					() -> result.unblockSuccess(io), result, errorConverter), result, errorConverter);
+			decoder.end();
 			return;
 		}
 		readNextBase64(decoder, io, result);
 	}
 	
 	private void decodeBase64(
-		Base64Decoder decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result, CharBuffer[] buffers, int index
+		Base64Encoding.DecoderConsumer<IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result,
+		RawCharBuffer[] buffers, int index
 	) {
-		IAsync<IOException> decode = decoder.decode(buffers[index]);
+		IAsync<IOException> decode = decoder.consume(buffers[index].asciiAsReadableBytes(), null);
 		decode.thenStart(new DeserializationTask(() -> {
 			if (decode.hasError())
 				result.error(new SerializationException("Error decoding base 64", decode.getError()));
