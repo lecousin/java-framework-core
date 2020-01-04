@@ -5,12 +5,9 @@ import java.nio.CharBuffer;
 
 /** Utility class that contains a byte array with public attributes. */
 @SuppressWarnings("squid:ClassVariableVisibilityCheck")
-public class RawCharBuffer implements Chars.Readable, Chars.Writable {
+public class RawCharBuffer extends RawBuffer implements Chars.Readable, Chars.Writable {
 
 	public char[] array;
-	public int arrayOffset;
-	public int currentOffset;
-	public int length;
 	
 	/** Constructor. */
 	public RawCharBuffer(char[] buffer, int offset, int length) {
@@ -52,36 +49,6 @@ public class RawCharBuffer implements Chars.Readable, Chars.Writable {
 	}
 
 	@Override
-	public int remaining() {
-		return length - (currentOffset - arrayOffset);
-	}
-	
-	@Override
-	public boolean hasRemaining() {
-		return currentOffset - arrayOffset < length;
-	}
-
-	@Override
-	public int position() {
-		return currentOffset - arrayOffset;
-	}
-	
-	@Override
-	public void setPosition(int position) {
-		currentOffset = arrayOffset + position;
-	}
-	
-	@Override
-	public void moveForward(int offset) {
-		currentOffset += offset;
-	}
-
-	@Override
-	public void goToEnd() {
-		currentOffset = arrayOffset + length;
-	}
-	
-	@Override
 	public char get() {
 		return array[currentOffset++];
 	}
@@ -106,12 +73,6 @@ public class RawCharBuffer implements Chars.Readable, Chars.Writable {
 	public void put(char[] buffer, int offset, int length) {
 		System.arraycopy(buffer, offset, array, currentOffset, length);
 		currentOffset += length;
-	}
-
-	/** Flip this buffer. */
-	public void flip() {
-		length = currentOffset - arrayOffset;
-		currentOffset = arrayOffset;
 	}
 
 	/** Create a CharBuffer from this buffer. */

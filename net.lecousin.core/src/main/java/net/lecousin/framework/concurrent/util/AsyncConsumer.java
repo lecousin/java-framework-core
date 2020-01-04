@@ -96,6 +96,7 @@ public interface AsyncConsumer<T, TError extends Exception> {
 
 		@Override
 		public void error(TError error) {
+			// nothing
 		}
 		
 	}

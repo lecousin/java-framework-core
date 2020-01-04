@@ -3,31 +3,7 @@ package net.lecousin.framework.io.util;
 import java.nio.ByteBuffer;
 
 /** Bytes array. */
-public interface Bytes {
-
-	/** Return the number of remaining bytes. */
-	int remaining();
-	
-	/** Return true if at least one byte is remaining. */
-	default boolean hasRemaining() {
-		return remaining() > 0;
-	}
-	
-	/** Return the current position (currentOffset - arrayOffset). */
-	int position();
-	
-	/** Set the position. */
-	void setPosition(int position);
-	
-	/** Move the position forward. */
-	default void moveForward(int offset) {
-		setPosition(position() + offset);
-	}
-	
-	/** Set the position to the end. */
-	default void goToEnd() {
-		setPosition(position() + remaining());
-	}
+public interface Bytes extends ArrayBuffer {
 	
 	/** Convert this Bytes into a ByteBuffer. */
 	ByteBuffer toByteBuffer();

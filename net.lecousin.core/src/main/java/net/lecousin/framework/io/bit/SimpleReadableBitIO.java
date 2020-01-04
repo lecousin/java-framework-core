@@ -5,12 +5,13 @@ import java.io.IOException;
 
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 
 /**
  * Simple implementation of a Readable BitIO, based on a Buffered Readable IO.
+ * It reads byte after byte on demand from the IO, meaning no additional byte is read in advance or buffered.
+ * This means it can be used in a middle of "normal" read operations on the IO.
  */
 public abstract class SimpleReadableBitIO extends AbstractBitIO<IO.Readable.Buffered> implements BitIO.Readable {
 
@@ -58,7 +59,7 @@ public abstract class SimpleReadableBitIO extends AbstractBitIO<IO.Readable.Buff
 			currentNbBits = 7;
 			return Boolean.valueOf(getBooleanValueFromByte());
 		}
-		return Boolean.valueOf((currentValue & (1 << (--currentNbBits))) != 0);
+		return Boolean.valueOf(getNextBooleanValue());
 	}
 	
 	protected abstract boolean getBooleanValueFromByte();
@@ -95,8 +96,10 @@ public abstract class SimpleReadableBitIO extends AbstractBitIO<IO.Readable.Buff
 			if (n < currentNbBits)
 				return getNextBits(n);
 			if (n == currentNbBits) {
+				long val = getRemainingBits();
 				currentNbBits = 0;
-				return currentValue;
+				currentValue = 0;
+				return val;
 			}
 			if (eof) throw new EOFException();
 			int b = io.readAsync();
@@ -113,70 +116,6 @@ public abstract class SimpleReadableBitIO extends AbstractBitIO<IO.Readable.Buff
 	protected abstract long getNextBits(int n);
 	
 	protected abstract void pushNewByte(int b);
-
-	@Override
-	public AsyncSupplier<Boolean, IOException> readBooleanAsync() {
-		AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
-		readBooleanAsync(result);
-		return result;
-	}
-	
-	private void readBooleanAsync(AsyncSupplier<Boolean, IOException> result) {
-		try {
-			Boolean b = readBooleanIfAvailable();
-			if (b != null) {
-				result.unblockSuccess(b);
-				return;
-			}
-		} catch (IOException e) {
-			result.error(e);
-			return;
-		}
-		io.canStartReading().onDone(() -> readBooleanAsync(result), result);
-	}
-	
-	@Override
-	public AsyncSupplier<Long, IOException> readBitsAsync(int n) {
-		AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
-		readBitsAsync(n, result);
-		return result;
-	}
-
-	private void readBitsAsync(int n, AsyncSupplier<Long, IOException> result) {
-		do {
-			if (n < currentNbBits) {
-				long value = getNextBits(n);
-				result.unblockSuccess(Long.valueOf(value));
-				return;
-			}
-			if (n == currentNbBits) {
-				currentNbBits = 0;
-				result.unblockSuccess(Long.valueOf(currentValue));
-				return;
-			}
-			if (eof) {
-				result.error(new EOFException());
-				return;
-			}
-			int b;
-			try { b = io.readAsync(); }
-			catch (IOException e) {
-				result.error(e);
-				return;
-			}
-			if (b == -2) {
-				io.canStartReading().onDone(() -> readBitsAsync(n, result), result);
-				return;
-			}
-			if (b == -1) {
-				eof = true;
-				result.error(new EOFException());
-				return;
-			}
-			pushNewByte(b);
-			currentNbBits += 8;
-		} while (true);
-	}
 
 	/** Simple implementation of a Readable BitIO in big endian order, based on a Buffered Readable IO. */
 	public static class BigEndian extends SimpleReadableBitIO implements BitIO.BigEndian {

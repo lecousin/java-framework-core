@@ -4,12 +4,9 @@ import java.nio.ByteBuffer;
 
 /** Utility class that contains a byte array with public attributes. */
 @SuppressWarnings("squid:ClassVariableVisibilityCheck")
-public class RawByteBuffer implements Bytes.Readable, Bytes.Writable {
+public class RawByteBuffer extends RawBuffer implements Bytes.Readable, Bytes.Writable {
 
 	public byte[] array;
-	public int arrayOffset;
-	public int currentOffset;
-	public int length;
 	
 	/** Constructor. */
 	public RawByteBuffer(byte[] buffer, int offset, int length) {
@@ -51,36 +48,6 @@ public class RawByteBuffer implements Bytes.Readable, Bytes.Writable {
 	}
 	
 	@Override
-	public int remaining() {
-		return length - (currentOffset - arrayOffset);
-	}
-	
-	@Override
-	public boolean hasRemaining() {
-		return currentOffset - arrayOffset < length;
-	}
-
-	@Override
-	public int position() {
-		return currentOffset - arrayOffset;
-	}
-	
-	@Override
-	public void setPosition(int position) {
-		currentOffset = arrayOffset + position;
-	}
-	
-	@Override
-	public void moveForward(int offset) {
-		currentOffset += offset;
-	}
-	
-	@Override
-	public void goToEnd() {
-		currentOffset = arrayOffset + length;
-	}
-	
-	@Override
 	public byte get() {
 		return array[currentOffset++];
 	}
@@ -105,12 +72,6 @@ public class RawByteBuffer implements Bytes.Readable, Bytes.Writable {
 	public void put(byte[] buffer, int offset, int length) {
 		System.arraycopy(buffer, offset, array, currentOffset, length);
 		currentOffset += length;
-	}
-
-	/** Flip this buffer. */
-	public void flip() {
-		length = currentOffset - arrayOffset;
-		currentOffset = arrayOffset;
 	}
 	
 	/** Create a ByteBuffer from this buffer. */

@@ -80,13 +80,38 @@ public abstract class TestBitIOReadable extends LCCoreAbstractTest {
 	}
 	
 	@Test
-	public void testLittleEndianBy4Bits() throws IOException {
-		testLittleEndianBy(4);
+	public void testBitByBitAsyncLittleEndian() throws Exception {
+		ByteArrayIO io = new ByteArrayIO(bytes, "test");
+		BitIO.Readable bio = createLittleEndian(io);
+		for (int i = 0; i < bits.length; ++i)
+			Assert.assertTrue("bit " + i, bits[i] == bio.readBooleanAsync().blockResult(0).booleanValue());
+		try {
+			bio.readBooleanAsync().blockResult(0);
+			throw new AssertionError("End of stream expected");
+		} catch (EOFException e) {
+			// ok
+		}
 	}
 	
 	@Test
-	public void testBigEndianBy4Bits() throws IOException {
-		testBigEndianBy(4);
+	public void testBitByBitAsyncBigEndian() throws Exception {
+		ByteArrayIO io = new ByteArrayIO(bytes, "test");
+		BitIO.Readable bio = createBigEndian(io);
+		for (int i = 0; i < bytes.length; ++i) {
+			for (int j = 0; j < 8; ++j)
+				Assert.assertTrue("bit " + (i * 8 + j) + " expected to be " + bits[i * 8 + 7 - j], bits[i * 8 + 7 - j] == bio.readBooleanAsync().blockResult(0).booleanValue());
+		}
+		try {
+			bio.readBooleanAsync().blockResult(0);
+			throw new AssertionError("End of stream expected");
+		} catch (EOFException e) {
+			// ok
+		}
+	}
+	
+	@Test
+	public void testLittleEndianBy4Bits() throws IOException {
+		testLittleEndianBy(4);
 	}
 	
 	@Test
@@ -138,8 +163,66 @@ public abstract class TestBitIOReadable extends LCCoreAbstractTest {
 	}
 	
 	@Test
+	public void testLittleEndianAsyncBy4Bits() throws Exception {
+		testLittleEndianAsyncBy(4);
+	}
+	
+	@Test
+	public void testLittleEndianAsyncBy3Bits() throws Exception {
+		testLittleEndianAsyncBy(3);
+	}
+	
+	@Test
+	public void testLittleEndianAsyncBy5Bits() throws Exception {
+		testLittleEndianAsyncBy(5);
+	}
+	
+	@Test
+	public void testLittleEndianAsyncBy7Bits() throws Exception {
+		testLittleEndianAsyncBy(7);
+	}
+	
+	@Test
+	public void testLittleEndianAsyncBy19Bits() throws Exception {
+		testLittleEndianAsyncBy(19);
+	}
+	
+	private void testLittleEndianAsyncBy(int nbBits) throws Exception {
+		ByteArrayIO io = new ByteArrayIO(bytes, "test");
+		BitIO.Readable bio = createLittleEndian(io);
+		int bitsPos = 0;
+		while (bitsPos + nbBits <= bits.length) {
+			long expected = 0;
+			for (int i = 0; i < nbBits; ++i) {
+				expected <<= 1;
+				expected |= bits[bitsPos + nbBits - 1 - i] ? 1 : 0;
+			}
+			long value = bio.readBitsAsync(nbBits).blockResult(0).longValue();
+			Assert.assertEquals("bits from " + bitsPos, expected, value);
+			bitsPos += nbBits;
+		}
+		try {
+			bio.readBitsAsync(nbBits).blockThrow(0);
+			throw new AssertionError("End of stream expected");
+		} catch (EOFException e) {
+			// ok
+		}
+		try {
+			bio.readBitsAsync(nbBits).blockThrow(0);
+			throw new AssertionError("End of stream expected");
+		} catch (EOFException e) {
+			// ok
+		}
+	}
+	
+	@Test
 	public void testBigEndianBy3Bits() throws IOException {
 		testBigEndianBy(3);
+	}
+	
+	@Test
+	public void testBigEndianBy4Bits() throws IOException {
+		testBigEndianBy(4);
 	}
 	
 	@Test
@@ -181,6 +264,61 @@ public abstract class TestBitIOReadable extends LCCoreAbstractTest {
 		}
 		try {
 			bio.readBits(nbBits);
+			throw new AssertionError("End of stream expected");
+		} catch (EOFException e) {
+			// ok
+		}
+	}
+	
+	@Test
+	public void testBigEndianAsyncBy3Bits() throws Exception {
+		testBigEndianAsyncBy(3);
+	}
+	
+	@Test
+	public void testBigEndianAsyncBy4Bits() throws Exception {
+		testBigEndianAsyncBy(4);
+	}
+	
+	@Test
+	public void testBigEndianAsyncBy5Bits() throws Exception {
+		testBigEndianAsyncBy(5);
+	}
+	
+	@Test
+	public void testBigEndianAsyncBy7Bits() throws Exception {
+		testBigEndianAsyncBy(7);
+	}
+	
+	@Test
+	public void testBigEndianAsyncBy19Bits() throws Exception {
+		testBigEndianAsyncBy(19);
+	}
+	
+	private void testBigEndianAsyncBy(int nbBits) throws Exception {
+		ByteArrayIO io = new ByteArrayIO(bytes, "test");
+		BitIO.Readable bio = createBigEndian(io);
+		int bitsPos = 0;
+		while (bitsPos + nbBits <= bits.length) {
+			long expected = 0;
+			for (int i = 0; i < nbBits; ++i) {
+				expected <<= 1;
+				int o = (bitsPos + i) / 8;
+				int b = (bitsPos + i) % 8;
+				expected |= bits[o * 8 + 7 - b] ? 1 : 0;
+			}
+			long value = bio.readBitsAsync(nbBits).blockResult(0).longValue();
+			Assert.assertEquals("bits from " + bitsPos, expected, value);
+			bitsPos += nbBits;
+		}
+		try {
+			bio.readBitsAsync(nbBits).blockThrow(0);
+			throw new AssertionError("End of stream expected");
+		} catch (EOFException e) {
+			// ok
+		}
+		try {
+			bio.readBitsAsync(nbBits).blockThrow(0);
 			throw new AssertionError("End of stream expected");
 		} catch (EOFException e) {
 			// ok
