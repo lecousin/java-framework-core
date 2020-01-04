@@ -2,6 +2,7 @@ package net.lecousin.framework.io.util;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.util.LimitAsyncOperations;
 import net.lecousin.framework.io.IO;
@@ -15,8 +16,8 @@ import net.lecousin.framework.io.IO;
 public class LimitWriteOperations extends LimitAsyncOperations<ByteBuffer, Integer, IOException> {
 	
 	/** Constructor. */
-	public LimitWriteOperations(IO.Writable io, int maxOperations) {
-		super(maxOperations, io::writeAsync);
+	public LimitWriteOperations(IO.Writable io, int maxOperations, Consumer<ByteBuffer> onWritten) {
+		super(maxOperations, io::writeAsync, onWritten);
 	}
 
 }

@@ -1,6 +1,7 @@
 package net.lecousin.framework.concurrent.util;
 
 import java.io.IOException;
+import java.util.function.Consumer;
 
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.async.Async;
@@ -23,12 +24,16 @@ import net.lecousin.framework.util.Pair;
 public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType extends Exception> {
 	
 	/** Constructor. */
-	public LimitAsyncOperations(int maxOperations, Executor<InputType, OutputResultType, OutputErrorType> executor) {
+	public LimitAsyncOperations(
+		int maxOperations, Executor<InputType, OutputResultType, OutputErrorType> executor, Consumer<InputType> onWritten
+	) {
 		waiting = new TurnArray<>(maxOperations);
 		this.executor = executor;
+		this.onWritten = onWritten;
 	}
 	
 	private Executor<InputType, OutputResultType, OutputErrorType> executor;
+	private Consumer<InputType> onWritten;
 	private TurnArray<Pair<InputType,AsyncSupplier<OutputResultType,OutputErrorType>>> waiting;
 	private Async<NoException> lock = null;
 	private AsyncSupplier<OutputResultType, OutputErrorType> lastWrite = new AsyncSupplier<>(null, null);
@@ -125,13 +130,9 @@ public class LimitAsyncOperations<InputType, OutputResultType, OutputErrorType e
 				op.forward(result);
 			if (lk != null)
 				lk.unblock();
-			writeDone(data, op);
+			if (onWritten != null)
+				onWritten.accept(data);
 		}
-	}
-	
-	@SuppressWarnings("unused")
-	protected void writeDone(InputType data, AsyncSupplier<OutputResultType, OutputErrorType> result) {
-		// to be overriden if needed
 	}
 	
 	/** Return the last pending operation, or null. */

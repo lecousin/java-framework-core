@@ -116,7 +116,7 @@ public class RollingFileAppender implements Appender, Closeable {
 	private LogPattern pattern;
 	private Level level;
 	private boolean closed = false;
-	private LimitAsyncOperations<FileLogOperation, Void, IOException> opStack = new LimitAsyncOperations<>(100, data -> data.execute());
+	private LimitAsyncOperations<FileLogOperation, Void, IOException> opStack = new LimitAsyncOperations<>(100, data -> data.execute(), null);
 	
 	private static interface FileLogOperation {
 		AsyncSupplier<Void, IOException> execute();

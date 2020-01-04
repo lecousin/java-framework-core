@@ -18,7 +18,7 @@ public class TestLimitWriteOperations extends LCCoreAbstractTest {
 		File tmp = File.createTempFile("test", "lwo");
 		tmp.deleteOnExit();
 		FileIO.WriteOnly io = new FileIO.WriteOnly(tmp, Task.PRIORITY_NORMAL);
-		LimitWriteOperations writeOps = new LimitWriteOperations(io, 3);
+		LimitWriteOperations writeOps = new LimitWriteOperations(io, 3, null);
 		for (int i = 0; i < 500; ++i) {
 			byte[] data = new byte[100];
 			for (int j = 0; j < data.length; ++j)
