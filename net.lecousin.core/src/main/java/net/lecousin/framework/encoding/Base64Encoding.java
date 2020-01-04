@@ -6,9 +6,8 @@ import java.util.function.Function;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
-import net.lecousin.framework.io.util.Bytes;
-import net.lecousin.framework.io.util.Bytes.Readable;
-import net.lecousin.framework.io.util.RawByteBuffer;
+import net.lecousin.framework.io.data.Bytes;
+import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.memory.ByteArrayCache;
 
 /** Encode and decode base 64. */
@@ -219,8 +218,8 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	}
 	
 	@Override
-	public <TError extends Exception> AsyncConsumer<Readable, TError> createDecoderConsumer(
-		AsyncConsumer<Readable, TError> decodedConsumer, Function<EncodingException, TError> errorConverter
+	public <TError extends Exception> AsyncConsumer<Bytes.Readable, TError> createDecoderConsumer(
+		AsyncConsumer<Bytes.Readable, TError> decodedConsumer, Function<EncodingException, TError> errorConverter
 	) {
 		return new DecoderConsumer<>(ByteArrayCache.getInstance(), decodedConsumer, errorConverter);
 	}
@@ -407,8 +406,8 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	}
 
 	@Override
-	public <TError extends Exception> AsyncConsumer<Readable, TError> createEncoderConsumer(
-		AsyncConsumer<Readable, TError> encodedConsumer, Function<EncodingException, TError> errorConverter
+	public <TError extends Exception> AsyncConsumer<Bytes.Readable, TError> createEncoderConsumer(
+		AsyncConsumer<Bytes.Readable, TError> encodedConsumer, Function<EncodingException, TError> errorConverter
 	) {
 		return new EncoderConsumer<>(ByteArrayCache.getInstance(), encodedConsumer);
 	}

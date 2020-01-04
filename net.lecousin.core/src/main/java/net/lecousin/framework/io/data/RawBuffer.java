@@ -1,4 +1,4 @@
-package net.lecousin.framework.io.util;
+package net.lecousin.framework.io.data;
 
 /** Abstract base class for raw buffers. */
 @SuppressWarnings("squid:ClassVariableVisibilityCheck")

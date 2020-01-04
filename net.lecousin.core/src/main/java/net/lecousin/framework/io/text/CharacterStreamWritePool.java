@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.io.util.RawCharBuffer;
+import net.lecousin.framework.io.data.RawCharBuffer;
 import net.lecousin.framework.util.IString;
 
 /** Utility class to queue write operations to a character stream.

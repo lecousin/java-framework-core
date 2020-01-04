@@ -3,8 +3,8 @@ package net.lecousin.framework.encoding;
 import java.util.function.Function;
 
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
-import net.lecousin.framework.io.util.Bytes;
-import net.lecousin.framework.io.util.RawByteBuffer;
+import net.lecousin.framework.io.data.Bytes;
+import net.lecousin.framework.io.data.RawByteBuffer;
 
 /** Decode bytes for a specific encoding. */
 public interface BytesDecoder {

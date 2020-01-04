@@ -22,6 +22,8 @@ import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.buffering.IOInMemoryOrFile;
+import net.lecousin.framework.io.data.Bytes;
+import net.lecousin.framework.io.data.RawCharBuffer;
 import net.lecousin.framework.io.serialization.AbstractDeserializer;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
@@ -32,8 +34,6 @@ import net.lecousin.framework.io.serialization.SerializationContext.ObjectContex
 import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
-import net.lecousin.framework.io.util.Bytes;
-import net.lecousin.framework.io.util.RawCharBuffer;
 import net.lecousin.framework.math.IntegerUnit;
 import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.ClassUtil;

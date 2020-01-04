@@ -3,7 +3,7 @@ package net.lecousin.framework.util;
 import java.util.LinkedList;
 import java.util.List;
 
-import net.lecousin.framework.io.util.RawCharBuffer;
+import net.lecousin.framework.io.data.RawCharBuffer;
 
 /**
  * Unprotected and mutable string.

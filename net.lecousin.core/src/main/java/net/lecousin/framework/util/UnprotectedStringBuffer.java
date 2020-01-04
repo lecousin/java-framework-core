@@ -19,9 +19,9 @@ import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.data.RawCharBuffer;
 import net.lecousin.framework.io.text.Decoder;
 import net.lecousin.framework.io.text.ICharacterStream;
-import net.lecousin.framework.io.util.RawCharBuffer;
 
 /**
  * Array of UnprotectedString, allowing to add and remove characters without re-allocating a character array.

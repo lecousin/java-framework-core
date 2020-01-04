@@ -1,4 +1,4 @@
-package net.lecousin.framework.io.util;
+package net.lecousin.framework.io.data;
 
 /** Base interface for array buffers. */
 public interface ArrayBuffer {

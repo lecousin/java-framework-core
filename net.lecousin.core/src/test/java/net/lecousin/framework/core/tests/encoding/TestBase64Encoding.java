@@ -8,10 +8,10 @@ import java.util.List;
 import net.lecousin.framework.core.test.encoding.AbstractTestBytesEncoding;
 import net.lecousin.framework.encoding.Base64Encoding;
 import net.lecousin.framework.encoding.Base64Encoding.InvalidBase64Value;
+import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.encoding.BytesDecoder;
 import net.lecousin.framework.encoding.BytesEncoder;
 import net.lecousin.framework.encoding.UnexpectedEndOfEncodedData;
-import net.lecousin.framework.io.util.RawByteBuffer;
 import net.lecousin.framework.util.Pair;
 
 import org.junit.Assert;

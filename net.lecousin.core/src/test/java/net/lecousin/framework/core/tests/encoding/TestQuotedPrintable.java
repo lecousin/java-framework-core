@@ -10,7 +10,7 @@ import net.lecousin.framework.encoding.BytesDecoder;
 import net.lecousin.framework.encoding.BytesEncoder;
 import net.lecousin.framework.encoding.EncodingException;
 import net.lecousin.framework.encoding.QuotedPrintable;
-import net.lecousin.framework.io.util.RawByteBuffer;
+import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.util.Pair;
 
 import org.junit.Assert;

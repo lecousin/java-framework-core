@@ -14,6 +14,8 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.encoding.Base64Encoding;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
+import net.lecousin.framework.io.data.Bytes;
+import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.io.serialization.AbstractSerializer;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
@@ -22,8 +24,6 @@ import net.lecousin.framework.io.serialization.SerializationContext.CollectionCo
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
 import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
-import net.lecousin.framework.io.util.Bytes;
-import net.lecousin.framework.io.util.RawByteBuffer;
 import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringAscii;

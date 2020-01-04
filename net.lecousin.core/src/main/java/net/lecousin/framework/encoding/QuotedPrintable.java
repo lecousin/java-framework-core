@@ -7,10 +7,9 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
-import net.lecousin.framework.io.util.Bytes;
-import net.lecousin.framework.io.util.Bytes.Readable;
-import net.lecousin.framework.io.util.RawByteBuffer;
-import net.lecousin.framework.io.util.RawCharBuffer;
+import net.lecousin.framework.io.data.Bytes;
+import net.lecousin.framework.io.data.RawByteBuffer;
+import net.lecousin.framework.io.data.RawCharBuffer;
 import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
@@ -165,8 +164,8 @@ public final class QuotedPrintable {
 		}
 		
 		@Override
-		public <TError extends Exception> AsyncConsumer<Readable, TError> createDecoderConsumer(
-			AsyncConsumer<Readable, TError> decodedConsumer, Function<EncodingException, TError> errorConverter
+		public <TError extends Exception> AsyncConsumer<Bytes.Readable, TError> createDecoderConsumer(
+			AsyncConsumer<Bytes.Readable, TError> decodedConsumer, Function<EncodingException, TError> errorConverter
 		) {
 			return new DecoderConsumer<>(decodedConsumer, ByteArrayCache.getInstance(), 0, errorConverter, this);
 		}
@@ -461,8 +460,8 @@ public final class QuotedPrintable {
 		}
 		
 		@Override
-		public <TError extends Exception> AsyncConsumer<Readable, TError> createEncoderConsumer(
-			AsyncConsumer<Readable, TError> encodedConsumer, Function<EncodingException, TError> errorConverter
+		public <TError extends Exception> AsyncConsumer<Bytes.Readable, TError> createEncoderConsumer(
+			AsyncConsumer<Bytes.Readable, TError> encodedConsumer, Function<EncodingException, TError> errorConverter
 		) {
 			return new EncoderConsumer<>(encodedConsumer, ByteArrayCache.getInstance(), 0, this);
 		}

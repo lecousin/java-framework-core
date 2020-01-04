@@ -8,7 +8,7 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 import java.util.List;
 
-import net.lecousin.framework.io.util.RawCharBuffer;
+import net.lecousin.framework.io.data.RawCharBuffer;
 
 /**
  * Interface adding functionalities to CharSequence.

@@ -9,8 +9,8 @@ import java.util.function.Function;
 
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
-import net.lecousin.framework.io.util.RawByteBuffer;
-import net.lecousin.framework.io.util.RawCharBuffer;
+import net.lecousin.framework.io.data.RawByteBuffer;
+import net.lecousin.framework.io.data.RawCharBuffer;
 
 /**
  * Unprotected and mutable string using a byte array to store ASCII characters.
