@@ -71,10 +71,13 @@ public class CharacterDecoderFromCharsetDecoder implements CharacterDecoder {
 
 	@Override
 	public Chars.Readable flush() {
-		if (remainingBytes == null)
+		if (remainingBytes == null) {
+			decoder.reset();
 			return null;
+		}
 		CharBuffer out = CharBuffer.allocate(8);
 		decoder.decode(ByteBuffer.wrap(remainingBytes, 0, nbRemaining), out, true);
+		decoder.reset();
 		if (out.position() == 0)
 			return null;
 		return new RawCharBuffer(out.array(), 0, out.position());

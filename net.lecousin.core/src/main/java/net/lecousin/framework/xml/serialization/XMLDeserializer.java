@@ -650,7 +650,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 		Base64Encoding.DecoderConsumer<IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result,
 		RawCharBuffer[] buffers, int index
 	) {
-		IAsync<IOException> decode = decoder.consume(buffers[index].asciiAsReadableBytes(), null);
+		IAsync<IOException> decode = decoder.consume(buffers[index].iso8859AsReadableBytes(), null);
 		decode.thenStart(new DeserializationTask(() -> {
 			if (decode.hasError())
 				result.error(new SerializationException("Error decoding base 64", decode.getError()));

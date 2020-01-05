@@ -55,6 +55,16 @@ public class TestDecoders extends LCCoreAbstractTest {
 		test("ಭವ ಭವದಿ ಭತಿಸಿಹೇ ಭವತಿ ದೂರ", StandardCharsets.UTF_8);
 	}
 	
+	@Test
+	public void testUTF8_7() {
+		test("比較のとき，大文字と小文字の同一視", StandardCharsets.UTF_8);
+	}
+	
+	@Test
+	public void testUTF8_8() {
+		test("$¢ह€한𐍈", StandardCharsets.UTF_8);
+	}
+	
 	public static void test(String s, Charset charset) {
 		test(s, charset, 4096);
 		test(s, charset, 16);
@@ -69,14 +79,48 @@ public class TestDecoders extends LCCoreAbstractTest {
 	}
 	
 	public static void test(String s, CharacterDecoder decoder) {
-		Chars.Readable chars = decoder.decode(new RawByteBuffer(s.getBytes(decoder.getEncoding())));
+		byte[] bytes = s.getBytes(decoder.getEncoding());
+		Chars.Readable chars = decoder.decode(new RawByteBuffer(bytes));
 		Chars.Readable end = decoder.flush();
 		if (end != null)
 			chars = new CompositeChars.Readable(chars, end);
-		Assert.assertEquals(s.length(), chars.remaining());
+		check(s, chars);
+		
+		// byte by byte
+		CompositeChars.Readable composite = new CompositeChars.Readable();
+		for (int i = 0; i < bytes.length; ++i) {
+			chars = decoder.decode(new RawByteBuffer(bytes, i, 1));
+			if (chars.hasRemaining())
+				composite.add(chars);
+		}
+		end = decoder.flush();
+		if (end != null)
+			composite.add(end);
+		check(s, composite);
+		
+		// by 3 bytes
+		composite = new CompositeChars.Readable();
+		for (int i = 0; i < bytes.length / 3; ++i) {
+			chars = decoder.decode(new RawByteBuffer(bytes, i * 3, 3));
+			if (chars.hasRemaining())
+				composite.add(chars);
+		}
+		if ((bytes.length % 3) > 0) {
+			chars = decoder.decode(new RawByteBuffer(bytes, (bytes.length / 3) * 3, bytes.length % 3));
+			if (chars.hasRemaining())
+				composite.add(chars);
+		}
+		end = decoder.flush();
+		if (end != null)
+			composite.add(end);
+		check(s, composite);
+	}
+	
+	private static void check(String s, Chars.Readable chars) {
+		Assert.assertEquals("Length", s.length(), chars.remaining());
 		for (int i = 0; i < s.length(); ++i) {
 			Assert.assertTrue(chars.hasRemaining());
-			Assert.assertEquals(s.charAt(i), chars.get());
+			Assert.assertEquals("Char " + i, s.charAt(i), chars.get());
 		}
 	}
 	

@@ -71,9 +71,7 @@ public class RawByteBuffer extends RawBuffer<byte[]> implements Bytes.Readable, 
 	/** Create a ByteBuffer from this buffer. */
 	@Override
 	public ByteBuffer toByteBuffer() {
-		ByteBuffer b = ByteBuffer.wrap(array, arrayOffset, length);
-		b.position(currentOffset - arrayOffset);
-		return b;
+		return ByteBuffer.wrap(array, currentOffset, length - (currentOffset - arrayOffset));
 	}
 	
 	@Override

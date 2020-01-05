@@ -17,6 +17,7 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.Runnables.SupplierThrows;
 
 /** Implementation of IO.OutputToInput using the given IO. */
 public class OutputToInput extends ConcurrentCloseable<IOException> implements IO.OutputToInput, IO.Writable, IO.Readable.Seekable {
@@ -202,26 +203,8 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 				return new AsyncSupplier<>(Integer.valueOf(-1), null);
 			}
 			AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
-			lock.thenStart(operation(new Task.Cpu<Integer, IOException>("OutputToInput.readAsync", io.getPriority()) {
-				@Override
-				public Integer run() throws IOException {
-					try {
-						Integer nb = Integer.valueOf(readSync(pos, buffer));
-						if (ondone != null) ondone.accept(new Pair<>(nb, null));
-						result.unblockSuccess(nb);
-						return nb;
-					} catch (IOException e) {
-						if (ondone != null) ondone.accept(new Pair<>(null, e));
-						result.unblockError(e);
-						throw e;
-					}
-				}
-				
-				@Override
-				public long getMaxBlockingTimeInNanoBeforeToLog() {
-					return 1000L * 1000000; // 1s
-				}
-			}), true);
+			lock.thenStart(operation(
+				taskSyncToAsync("OutputToInput.readAsync", result, ondone, () -> Integer.valueOf(readSync(pos, buffer)))), true);
 			return result;
 		}
 		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
@@ -238,6 +221,31 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			}
 		}.start();
 		return operation(result);
+	}
+	
+	private <T> Task.Cpu<T, IOException> taskSyncToAsync(
+		String description, AsyncSupplier<T, IOException> result, Consumer<Pair<T,IOException>> ondone, SupplierThrows<T, IOException> sync
+	) {
+		return new Task.Cpu<T, IOException>(description, io.getPriority()) {
+			@Override
+			public T run() throws IOException {
+				try {
+					T res = sync.get();
+					if (ondone != null) ondone.accept(new Pair<>(res, null));
+					result.unblockSuccess(res);
+					return res;
+				} catch (IOException e) {
+					if (ondone != null) ondone.accept(new Pair<>(null, e));
+					result.unblockError(e);
+					throw e;
+				}
+			}
+			
+			@Override
+			public long getMaxBlockingTimeInNanoBeforeToLog() {
+				return 1000L * 1000000; // 1s
+			}
+		};
 	}
 	
 	@Override
@@ -298,26 +306,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			return new AsyncSupplier<>(Long.valueOf(m), null);
 		}
 		AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
-		lock.thenStart(operation(new Task.Cpu<Long, IOException>("OutputToInput.skipAsync", io.getPriority()) {
-			@Override
-			public Long run() throws IOException {
-				try {
-					Long nb = Long.valueOf(skipSync(n));
-					if (ondone != null) ondone.accept(new Pair<>(nb, null));
-					result.unblockSuccess(nb);
-					return nb;
-				} catch (IOException e) {
-					if (ondone != null) ondone.accept(new Pair<>(null, e));
-					result.unblockError(e);
-					throw e;
-				}
-			}
-			
-			@Override
-			public long getMaxBlockingTimeInNanoBeforeToLog() {
-				return 1000L * 1000000; // 1s
-			}
-		}), true);
+		lock.thenStart(operation(taskSyncToAsync("OutputToInput.skipAsync", result, ondone, () -> Long.valueOf(skipSync(n)))), true);
 		return result;
 	}	
 

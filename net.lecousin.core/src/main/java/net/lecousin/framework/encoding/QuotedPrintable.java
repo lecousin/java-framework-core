@@ -262,7 +262,7 @@ public final class QuotedPrintable {
 		do {
 			char[] chars = new char[Math.max(input.remaining(), 128)];
 			RawCharBuffer output = new RawCharBuffer(chars);
-			decoder.decode(input, output.asWritableAsciiBytes(), true);
+			decoder.decode(input, output.asWritableIso8859Bytes(), true);
 			if (output.currentOffset > 0)
 				str.append(chars, 0, output.currentOffset);
 			else
