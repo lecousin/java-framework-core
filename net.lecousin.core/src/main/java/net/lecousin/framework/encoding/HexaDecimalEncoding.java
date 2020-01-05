@@ -106,14 +106,14 @@ public final class HexaDecimalEncoding implements BytesEncoder.KnownOutputSize, 
 	public <TError extends Exception> AsyncConsumer<Bytes.Readable, TError> createDecoderConsumer(
 		AsyncConsumer<Bytes.Readable, TError> decodedConsumer, Function<EncodingException, TError> errorConverter
 	) {
-		return new DecoderConsumer<>(ByteArrayCache.getInstance(), decodedConsumer, errorConverter);
+		return new DecoderConsumer<>(decodedConsumer, errorConverter);
 	}
 	
 	@Override
 	public <TError extends Exception> AsyncConsumer<Bytes.Readable, TError> createEncoderConsumer(
 		AsyncConsumer<Bytes.Readable, TError> encodedConsumer, Function<EncodingException, TError> errorConverter
 	) {
-		return new EncoderConsumer<>(ByteArrayCache.getInstance(), encodedConsumer);
+		return new EncoderConsumer<>(encodedConsumer);
 	}
 	
 	/** Consume data, encode it as hexadecimal, and gives the encoded bytes to another consumer.
@@ -122,8 +122,8 @@ public final class HexaDecimalEncoding implements BytesEncoder.KnownOutputSize, 
 	public static class EncoderConsumer<TError extends Exception> implements AsyncConsumer<Bytes.Readable, TError> {
 		
 		/** Constructor. */
-		public EncoderConsumer(ByteArrayCache cache, AsyncConsumer<Bytes.Readable, TError> encodedBytesConsumer) {
-			this.cache = cache;
+		public EncoderConsumer(AsyncConsumer<Bytes.Readable, TError> encodedBytesConsumer) {
+			this.cache = ByteArrayCache.getInstance();
 			this.encodedBytesConsumer = encodedBytesConsumer;
 		}
 		
@@ -159,10 +159,10 @@ public final class HexaDecimalEncoding implements BytesEncoder.KnownOutputSize, 
 		
 		/** Constructor. */
 		public DecoderConsumer(
-			ByteArrayCache cache, AsyncConsumer<Bytes.Readable, TError> decodedBytesConsumer,
+			AsyncConsumer<Bytes.Readable, TError> decodedBytesConsumer,
 			Function<EncodingException, TError> errorConverter
 		) {
-			this.cache = cache;
+			this.cache = ByteArrayCache.getInstance();
 			this.decodedBytesConsumer = decodedBytesConsumer;
 			this.errorConverter = errorConverter;
 		}

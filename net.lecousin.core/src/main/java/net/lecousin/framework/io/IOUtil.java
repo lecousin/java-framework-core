@@ -21,13 +21,13 @@ import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.buffering.ByteBuffersIO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
+import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.mutable.MutableLong;
 import net.lecousin.framework.progress.WorkProgress;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /**
@@ -649,7 +649,7 @@ public final class IOUtil {
 		AsyncSupplier<UnprotectedStringBuffer,IOException> result, byte priority
 	) {
 		do {
-			AsyncSupplier<UnprotectedString, IOException> read = stream.readNextBufferAsync();
+			AsyncSupplier<Chars.Readable, IOException> read = stream.readNextBufferAsync();
 			if (read.isDone()) {
 				if (read.hasError()) {
 					result.error(read.getError());
@@ -659,7 +659,7 @@ public final class IOUtil {
 					result.unblockSuccess(str);
 					return;
 				}
-				str.append(read.getResult());
+				read.getResult().get(str, read.getResult().remaining());
 				continue;
 			}
 			read.thenStart(new Task.Cpu.FromRunnable("readFullyAsString: " + stream.getDescription(), priority, () -> {
@@ -667,7 +667,7 @@ public final class IOUtil {
 					result.unblockSuccess(str);
 					return;
 				}
-				str.append(read.getResult());
+				read.getResult().get(str, read.getResult().remaining());
 				readFullyAsString(stream, str, result, priority);
 			}), result);
 			return;

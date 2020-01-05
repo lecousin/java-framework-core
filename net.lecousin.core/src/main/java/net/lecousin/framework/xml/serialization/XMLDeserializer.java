@@ -35,7 +35,6 @@ import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.math.IntegerUnit;
-import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
@@ -599,7 +598,6 @@ public class XMLDeserializer extends AbstractDeserializer {
 			// not a reference, default to base 64 encoded string
 			IOInMemoryOrFile io = new IOInMemoryOrFile(128 * 1024, priority, "base 64 encoded from XML");
 			Base64Encoding.DecoderConsumer<IOException> decoder = new Base64Encoding.DecoderConsumer<>(
-				ByteArrayCache.getInstance(),
 				io.createWriteConsumer(
 					() -> io.seekAsync(SeekType.FROM_BEGINNING, 0)
 						.onDone(() -> result.unblockSuccess(io), result, xmlErrorConverter::apply),

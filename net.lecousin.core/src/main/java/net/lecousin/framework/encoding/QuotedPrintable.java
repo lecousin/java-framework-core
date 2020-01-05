@@ -167,7 +167,7 @@ public final class QuotedPrintable {
 		public <TError extends Exception> AsyncConsumer<Bytes.Readable, TError> createDecoderConsumer(
 			AsyncConsumer<Bytes.Readable, TError> decodedConsumer, Function<EncodingException, TError> errorConverter
 		) {
-			return new DecoderConsumer<>(decodedConsumer, ByteArrayCache.getInstance(), 0, errorConverter, this);
+			return new DecoderConsumer<>(decodedConsumer, 0, errorConverter, this);
 		}
 	}
 	
@@ -178,19 +178,19 @@ public final class QuotedPrintable {
 
 		/** Constructor. */
 		public DecoderConsumer(
-			AsyncConsumer<Bytes.Readable, TError> decodedConsumer, ByteArrayCache cache, int bufferSize,
+			AsyncConsumer<Bytes.Readable, TError> decodedConsumer, int bufferSize,
 			Function<EncodingException, TError> errorConverter
 		) {
-			this(decodedConsumer, cache, bufferSize, errorConverter, new Decoder());
+			this(decodedConsumer, bufferSize, errorConverter, new Decoder());
 		}
 
 		/** Constructor. */
 		public DecoderConsumer(
-			AsyncConsumer<Bytes.Readable, TError> decodedConsumer, ByteArrayCache cache, int bufferSize,
+			AsyncConsumer<Bytes.Readable, TError> decodedConsumer, int bufferSize,
 			Function<EncodingException, TError> errorConverter, Decoder decoder
 		) {
 			this.decodedConsumer = decodedConsumer;
-			this.cache = cache;
+			this.cache = ByteArrayCache.getInstance();
 			this.bufferSize = bufferSize;
 			this.errorConverter = errorConverter;
 			this.decoder = decoder;
@@ -463,7 +463,7 @@ public final class QuotedPrintable {
 		public <TError extends Exception> AsyncConsumer<Bytes.Readable, TError> createEncoderConsumer(
 			AsyncConsumer<Bytes.Readable, TError> encodedConsumer, Function<EncodingException, TError> errorConverter
 		) {
-			return new EncoderConsumer<>(encodedConsumer, ByteArrayCache.getInstance(), 0, this);
+			return new EncoderConsumer<>(encodedConsumer, 0, this);
 		}
 	}
 	
@@ -474,17 +474,17 @@ public final class QuotedPrintable {
 		
 		/** Constructor. */
 		public EncoderConsumer(
-			AsyncConsumer<Bytes.Readable, TError> encodedConsumer, ByteArrayCache cache, int bufferSize
+			AsyncConsumer<Bytes.Readable, TError> encodedConsumer, int bufferSize
 		) {
-			this(encodedConsumer, cache, bufferSize, new Encoder());
+			this(encodedConsumer, bufferSize, new Encoder());
 		}
 		
 		/** Constructor. */
 		public EncoderConsumer(
-			AsyncConsumer<Bytes.Readable, TError> encodedConsumer, ByteArrayCache cache, int bufferSize, Encoder encoder
+			AsyncConsumer<Bytes.Readable, TError> encodedConsumer, int bufferSize, Encoder encoder
 		) {
 			this.encodedConsumer = encodedConsumer;
-			this.cache = cache;
+			this.cache = ByteArrayCache.getInstance();
 			this.bufferSize = bufferSize;
 			this.encoder = encoder;
 		}

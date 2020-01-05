@@ -66,15 +66,15 @@ public interface IString extends CharSequence, Appendable {
 	default int fill(char[] chars) { return fill(chars, 0); }
 	
 	/** Same as with char but with bytes, all characters are directly converted into bytes without CharsetEncoder. */
-	int fillUsAsciiBytes(byte[] bytes, int start);
+	int fillIso8859Bytes(byte[] bytes, int start);
 
 	/** Same as with char but with bytes, all characters are directly converted into bytes without CharsetEncoder. */
-	default int fillUsAsciiBytes(byte[] bytes) { return fillUsAsciiBytes(bytes, 0); }
+	default int fillIso8859Bytes(byte[] bytes) { return fillIso8859Bytes(bytes, 0); }
 
 	/** Same as with char but with bytes, all characters are directly converted into bytes without CharsetEncoder. */
-	default byte[] toUsAsciiBytes() {
+	default byte[] toIso8859Bytes() {
 		byte[] bytes = new byte[length()];
-		fillUsAsciiBytes(bytes, 0);
+		fillIso8859Bytes(bytes, 0);
 		return bytes;
 	}
 	

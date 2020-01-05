@@ -2,33 +2,11 @@ package net.lecousin.framework.io.data;
 
 import java.nio.CharBuffer;
 
-/** Bytes array. */
-public interface Chars {
+import net.lecousin.framework.util.UnprotectedStringBuffer;
 
-	/** Return the number of remaining bytes. */
-	int remaining();
-	
-	/** Return true if at least one byte is remaining. */
-	default boolean hasRemaining() {
-		return remaining() > 0;
-	}
-	
-	/** Return the current position (currentOffset - arrayOffset). */
-	int position();
-	
-	/** Set the position. */
-	void setPosition(int position);
-	
-	/** Move the position forward. */
-	default void moveForward(int offset) {
-		setPosition(position() + offset);
-	}
-	
-	/** Set the position to the end. */
-	default void goToEnd() {
-		setPosition(position() + remaining());
-	}
-	
+/** Bytes array. */
+public interface Chars extends DataBuffer {
+
 	/** Convert this Chars into a CharBuffer. */
 	CharBuffer toCharBuffer();
 
@@ -41,9 +19,14 @@ public interface Chars {
 		/** Read <code>length</code> chars into <code>buffer</code> starting at <code>offset</code>. */
 		void get(char[] buffer, int offset, int length);
 		
+		/** Read <code>length</code> chars into <code>string</code>. */
+		void get(UnprotectedStringBuffer string, int length);
+		
 		/** Return the char at offset from current position, without changing current position. */
 		char getForward(int offset);
 		
+		@Override
+		Chars.Readable subBuffer(int startPosition, int length);
 	}
 	
 	/** Writable bytes. */
@@ -55,6 +38,8 @@ public interface Chars {
 		/** Write <code>length</code> chars from <code>buffer</code> starting at <code>offset</code>. */
 		void put(char[] buffer, int offset, int length);
 		
+		@Override
+		Chars.Writable subBuffer(int startPosition, int length);
 	}
 	
 }

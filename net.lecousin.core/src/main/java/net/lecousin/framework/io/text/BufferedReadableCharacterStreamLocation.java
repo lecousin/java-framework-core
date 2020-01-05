@@ -8,6 +8,7 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
@@ -152,12 +153,12 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 	}
 	
 	@Override
-	public AsyncSupplier<UnprotectedString, IOException> readNextBufferAsync() {
-		AsyncSupplier<UnprotectedString, IOException> result = new AsyncSupplier<>();
-		AsyncSupplier<UnprotectedString, IOException> read = stream.readNextBufferAsync();
+	public AsyncSupplier<Chars.Readable, IOException> readNextBufferAsync() {
+		AsyncSupplier<Chars.Readable, IOException> result = new AsyncSupplier<>();
+		AsyncSupplier<Chars.Readable, IOException> read = stream.readNextBufferAsync();
 		read.thenStart(
 		new Task.Cpu.FromRunnable("Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority(), () -> {
-			UnprotectedString str = read.getResult();
+			Chars.Readable str = read.getResult();
 			if (str == null) {
 				result.unblockSuccess(null);
 				return;
@@ -169,14 +170,30 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 	}
 	
 	@Override
-	public UnprotectedString readNextBuffer() throws IOException {
-		UnprotectedString str = stream.readNextBuffer();
+	public Chars.Readable readNextBuffer() throws IOException {
+		Chars.Readable str = stream.readNextBuffer();
 		if (str == null)
 			return null;
 		processLocation(str);
 		return str;
 	}
 	
+	private void processLocation(Chars.Readable str) {
+		int len = str.remaining();
+		for (int i = 0; i < len; ++i)
+			switch (str.getForward(i)) {
+			case '\n':
+				line++;
+				lastLinePos = pos;
+				pos = 0;
+				break;
+			case '\r':
+				break;
+			default:
+				pos++;
+			}
+	}
+
 	private void processLocation(UnprotectedString str) {
 		char[] buf = str.charArray();
 		int offset = str.charArrayStart();
@@ -190,7 +207,7 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 				pos++;
 			}
 	}
-	
+
 	private void processLocation(int start, UnprotectedStringBuffer string) {
 		int nb = string.getNbUsableUnprotectedStrings();
 		for (int i = 0; i < nb; ++i) {

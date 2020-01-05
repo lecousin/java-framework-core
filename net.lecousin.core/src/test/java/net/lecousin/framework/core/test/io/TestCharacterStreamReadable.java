@@ -86,8 +86,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 			if (nb != testBuf.length)
 				throw new AssertionError("" + nb + " characters read at buffer " + i + ", expected is " + testBuf.length);
 			for (int j = 0; j < testBuf.length; ++j)
-				if (buf[j] != (testBuf[j] & 0xFF))
-					throw new AssertionError("Invalid character " + buf[j] + " at " + (i * testBuf.length + j));
+				Assert.assertEquals("Character at " + (i * testBuf.length + j), testBuf[j] & 0xFF, buf[j]);
 			if (i < nbBuf - 1)
 				Assert.assertFalse(s.endReached());
 		}

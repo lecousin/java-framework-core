@@ -24,9 +24,8 @@ import net.lecousin.framework.io.serialization.SerializationContext.CollectionCo
 import net.lecousin.framework.io.serialization.SerializationContext.ObjectContext;
 import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
-import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.UnprotectedString;
-import net.lecousin.framework.util.UnprotectedStringAscii;
+import net.lecousin.framework.util.UnprotectedStringIso8859;
 import net.lecousin.framework.xml.XMLUtil;
 import net.lecousin.framework.xml.XMLWriter;
 
@@ -321,8 +320,7 @@ public class XMLSerializer extends AbstractSerializer {
 	) {
 		IAsync<IOException> encode = io.toReadConsumer(
 			new Base64Encoding.EncoderConsumer<IOException>(
-				ByteArrayCache.getInstance(),
-				UnprotectedStringAscii.bytesConsumer(str -> output.addEscapedText(str)).convert(Bytes.Readable::toByteBuffer)
+				UnprotectedStringIso8859.bytesConsumer(str -> output.addEscapedText(str)).convert(Bytes.Readable::toByteBuffer)
 			).convert(RawByteBuffer::new)
 		);
 		if (encode.isDone()) {

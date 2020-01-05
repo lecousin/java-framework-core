@@ -4,16 +4,16 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.io.text.ICharacterStream;
-import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
+
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
 public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGeneratedTestFiles {
 
@@ -157,12 +157,10 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		int iBuf = 0;
 		int iChar = 0;
 		while (iBuf < nbBuf) {
-			UnprotectedString str = s.readNextBufferAsync().blockResult(0);
+			Chars.Readable str = s.readNextBufferAsync().blockResult(0);
 			Assert.assertNotNull(str);
-			char[] chars = str.charArray();
-			int len = str.length();
-			for (int i = str.charArrayStart(), nb = 0; nb < len; ++i, ++nb) {
-				Assert.assertEquals(testBuf[iChar] & 0xFF, chars[i]);
+			while (str.hasRemaining()) {
+				Assert.assertEquals(testBuf[iChar] & 0xFF, str.get());
 				if (++iChar == testBuf.length) {
 					iChar = 0;
 					iBuf++;
@@ -173,10 +171,10 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		Assert.assertEquals(0, iChar);
 		Assert.assertNull(s.readNextBufferAsync().blockResult(0));
 		s.back('z');
-		UnprotectedString str = s.readNextBufferAsync().blockResult(0);
+		Chars.Readable str = s.readNextBufferAsync().blockResult(0);
 		Assert.assertNotNull(str);
-		Assert.assertEquals(1, str.length());
-		Assert.assertEquals('z', str.charAt(0));
+		Assert.assertEquals(1, str.remaining());
+		Assert.assertEquals('z', str.get());
 		Assert.assertNull(s.readNextBufferAsync().blockResult(0));
 		s.close();
 	}
@@ -187,12 +185,10 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		int iBuf = 0;
 		int iChar = 0;
 		while (iBuf < nbBuf) {
-			UnprotectedString str = s.readNextBuffer();
+			Chars.Readable str = s.readNextBuffer();
 			Assert.assertNotNull(str);
-			char[] chars = str.charArray();
-			int len = str.length();
-			for (int i = str.charArrayStart(), nb = 0; nb < len; ++i, ++nb) {
-				Assert.assertEquals(testBuf[iChar] & 0xFF, chars[i]);
+			while (str.hasRemaining()) {
+				Assert.assertEquals(testBuf[iChar] & 0xFF, str.get());
 				if (++iChar == testBuf.length) {
 					iChar = 0;
 					iBuf++;
@@ -203,10 +199,10 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		Assert.assertEquals(0, iChar);
 		Assert.assertNull(s.readNextBuffer());
 		s.back('z');
-		UnprotectedString str = s.readNextBuffer();
+		Chars.Readable str = s.readNextBuffer();
 		Assert.assertNotNull(str);
-		Assert.assertEquals(1, str.length());
-		Assert.assertEquals('z', str.charAt(0));
+		Assert.assertEquals(1, str.remaining());
+		Assert.assertEquals('z', str.get());
 		Assert.assertNull(s.readNextBuffer());
 		s.close();
 	}

@@ -6,7 +6,7 @@ import java.util.Collection;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.core.test.util.TestIString;
 import net.lecousin.framework.util.IString;
-import net.lecousin.framework.util.UnprotectedStringAscii;
+import net.lecousin.framework.util.UnprotectedStringIso8859;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 import org.junit.Assert;
@@ -45,21 +45,21 @@ public class TestUnprotectedStringAscii extends TestIString {
 		char[] c = s.toCharArray();
 		for (int i = 0; i < c.length; ++i)
 			chars[i + start] = (byte)c[i];
-		return new UnprotectedStringAscii(chars, start, c.length, c.length + end);
+		return new UnprotectedStringIso8859(chars, start, c.length, c.length + end);
 	}
 	
 	@Test
 	public void testConstructor() {
-		UnprotectedStringAscii s1 = new UnprotectedStringAscii(5);
+		UnprotectedStringIso8859 s1 = new UnprotectedStringIso8859(5);
 		s1.append("Hello").append(' ').append("World").append('!');
-		UnprotectedStringAscii s2 = new UnprotectedStringAscii(s1);
+		UnprotectedStringIso8859 s2 = new UnprotectedStringIso8859(s1);
 		s1.append("!!!");
 		Assert.assertEquals("Hello World!", s2.asString());
 	}
 	
 	@Test
 	public void testSimple() {
-		UnprotectedStringAscii s = new UnprotectedStringAscii(0);
+		UnprotectedStringIso8859 s = new UnprotectedStringIso8859(0);
 		Assert.assertEquals(-1, s.firstChar());
 		Assert.assertEquals(-1, s.lastChar());
 		
@@ -70,7 +70,7 @@ public class TestUnprotectedStringAscii extends TestIString {
 		s.trimToSize();
 		Assert.assertEquals("Hello World!", s.asString());
 		
-		s = new UnprotectedStringAscii(16);
+		s = new UnprotectedStringIso8859(16);
 		s.append('a');
 		Assert.assertEquals(1, s.length());
 		s.reset();
@@ -86,8 +86,8 @@ public class TestUnprotectedStringAscii extends TestIString {
 	@Test
 	public void testAppend() {
 		super.testAppend();
-		UnprotectedStringAscii s = new UnprotectedStringAscii(0);
-		UnprotectedStringAscii s1 = new UnprotectedStringAscii("Hello");
+		UnprotectedStringIso8859 s = new UnprotectedStringIso8859(0);
+		UnprotectedStringIso8859 s1 = new UnprotectedStringIso8859("Hello");
 		UnprotectedStringBuffer s2 = new UnprotectedStringBuffer(" World");
 		s2.append('!');
 		s.append(s1);

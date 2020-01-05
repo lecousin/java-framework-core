@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 import net.lecousin.framework.concurrent.Task;
@@ -17,10 +16,9 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.io.data.RawCharBuffer;
-import net.lecousin.framework.io.text.Decoder;
 import net.lecousin.framework.io.text.ICharacterStream;
 
 /**
@@ -422,11 +420,11 @@ public class UnprotectedStringBuffer implements IString {
 	}
 	
 	@Override
-	public int fillUsAsciiBytes(byte[] bytes, int start) {
+	public int fillIso8859Bytes(byte[] bytes, int start) {
 		if (strings == null) return 0;
 		int pos = 0;
 		for (int i = 0; i <= lastUsed; ++i)
-			pos += strings[i].fillUsAsciiBytes(bytes, start + pos);
+			pos += strings[i].fillIso8859Bytes(bytes, start + pos);
 		return pos;
 	}
 	
@@ -1044,14 +1042,14 @@ public class UnprotectedStringBuffer implements IString {
 		}
 		
 		@Override
-		public AsyncSupplier<UnprotectedString, IOException> readNextBufferAsync() {
+		public AsyncSupplier<Chars.Readable, IOException> readNextBufferAsync() {
 			return new AsyncSupplier<>(readNextBuffer(), null);
 		}
 		
 		@Override
-		public UnprotectedString readNextBuffer() {
+		public Chars.Readable readNextBuffer() {
 			if (back != -1) {
-				UnprotectedString s = new UnprotectedString(new char[] { (char)back }, 0, 1, 1);
+				Chars.Readable s = new RawCharBuffer(new char[] { (char)back });
 				back = -1;
 				return s;
 			}
@@ -1064,7 +1062,7 @@ public class UnprotectedStringBuffer implements IString {
 			UnprotectedString str = strings[buffer].substring(bufferIndex);
 			buffer++;
 			bufferIndex = 0;
-			return str;
+			return str.asCharBuffer();
 		}
 		
 		@Override
@@ -1208,42 +1206,4 @@ public class UnprotectedStringBuffer implements IString {
 		}).start();
 	}
 
-	/** Create a ByteBuffer consumer that decodes into a string using the given charset. */
-	public static AsyncConsumer<ByteBuffer, IOException> decoderConsumerToString(Charset charset, Consumer<String> onEnd) {
-		UnprotectedStringBuffer str = new UnprotectedStringBuffer();
-		Decoder decoder;
-		try { decoder = Decoder.get(charset); }
-		catch (Exception e) {
-			return new AsyncConsumer.Error<>(new IOException("Unsupported charset", e));
-		}
-		return new AsyncConsumer<ByteBuffer, IOException>() {
-			 @Override
-			public IAsync<IOException> consume(ByteBuffer data, Consumer<ByteBuffer> onDataRelease) {
-				 char[] chars = new char[Math.max(data.remaining(), 512)];
-				 do {
-					 int nb = decoder.decode(data, chars, 0, chars.length);
-					 if (nb <= 0) break;
-					 str.append(chars, 0, nb);
-				 } while (data.hasRemaining());
-				 if (onDataRelease != null)
-					 onDataRelease.accept(data);
-				 return new Async<>(true);
-			}
-			 
-			 @Override
-			public IAsync<IOException> end() {
-				 char[] chars = new char[64];
-				 int nb = decoder.decode(null, chars, 0, chars.length);
-				 if (nb > 0)
-					 str.append(chars, 0, nb);
-				 onEnd.accept(str.asString());
-				 return new Async<>(true);
-			}
-			 
-			@Override
-			public void error(IOException error) {
-				// ignore
-			}
-		};
-	}
 }

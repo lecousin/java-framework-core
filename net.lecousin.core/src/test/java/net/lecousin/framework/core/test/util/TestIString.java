@@ -222,9 +222,9 @@ public abstract class TestIString extends LCCoreAbstractTest {
 	
 	@Test
 	public void testToUsAsciiBytes() {
-		Assert.assertArrayEquals(new byte[] { 'H', 'e', 'l', 'l', 'o' }, createString("Hello").toUsAsciiBytes());
+		Assert.assertArrayEquals(new byte[] { 'H', 'e', 'l', 'l', 'o' }, createString("Hello").toIso8859Bytes());
 		byte[] bytes = new byte[5];
-		createString("He").append("ll").append('o').fillUsAsciiBytes(bytes);
+		createString("He").append("ll").append('o').fillIso8859Bytes(bytes);
 		Assert.assertArrayEquals(new byte[] { 'H', 'e', 'l', 'l', 'o' }, bytes);
 	}
 	

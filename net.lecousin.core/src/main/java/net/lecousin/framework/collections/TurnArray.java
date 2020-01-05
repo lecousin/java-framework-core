@@ -65,6 +65,10 @@ public class TurnArray<T> implements Deque<T> {
 		return end == -1;
 	}
 	
+	public synchronized int getNbAvailableSlots() {
+		return array.length - size();
+	}
+	
 	@Override
 	public synchronized void addLast(T element) {
 		if (end == -1) increase();

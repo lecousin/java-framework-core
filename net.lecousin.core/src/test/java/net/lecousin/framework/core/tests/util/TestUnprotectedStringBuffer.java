@@ -53,7 +53,7 @@ public class TestUnprotectedStringBuffer extends TestIString {
 		s = new UnprotectedStringBuffer();
 		Assert.assertEquals(0, s.getNbUsableUnprotectedStrings());
 		Assert.assertEquals(0, s.charAt(10));
-		Assert.assertEquals(0, s.fillUsAsciiBytes(new byte[10], 0));
+		Assert.assertEquals(0, s.fillIso8859Bytes(new byte[10], 0));
 		Assert.assertTrue(s == s.substring(1));
 		Assert.assertTrue(s == s.substring(1, 2));
 		Assert.assertTrue(s == s.removeEndChars(10));

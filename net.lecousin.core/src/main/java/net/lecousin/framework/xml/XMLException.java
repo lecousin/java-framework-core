@@ -1,5 +1,7 @@
 package net.lecousin.framework.xml;
 
+import java.io.Serializable;
+
 import net.lecousin.framework.exception.LocalizableException;
 import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.locale.ILocalizableString;
@@ -22,7 +24,7 @@ public class XMLException extends LocalizableException {
 	private static final long serialVersionUID = -963187033082725980L;
 
 	/** Constructor. */
-	public XMLException(ICharacterStream.Readable stream, Object context, String message, Object... values) {
+	public XMLException(ICharacterStream.Readable stream, Object context, String message, Serializable... values) {
 		super(get(stream, context, new LocalizableString(LOCALIZED_NAMESPACE_XML_ERROR, message, values)));
 	}
 	

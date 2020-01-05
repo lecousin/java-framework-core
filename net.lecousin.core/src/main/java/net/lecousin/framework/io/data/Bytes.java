@@ -3,7 +3,7 @@ package net.lecousin.framework.io.data;
 import java.nio.ByteBuffer;
 
 /** Bytes array. */
-public interface Bytes extends ArrayBuffer {
+public interface Bytes extends DataBuffer {
 	
 	/** Convert this Bytes into a ByteBuffer. */
 	ByteBuffer toByteBuffer();
@@ -20,6 +20,8 @@ public interface Bytes extends ArrayBuffer {
 		/** Return the byte at offset from current position, without changing current position. */
 		byte getForward(int offset);
 		
+		@Override
+		Bytes.Readable subBuffer(int startPosition, int length);
 	}
 	
 	/** Writable bytes. */
@@ -31,6 +33,8 @@ public interface Bytes extends ArrayBuffer {
 		/** Write <code>length</code> bytes from <code>buffer</code> starting at <code>offset</code>. */
 		void put(byte[] buffer, int offset, int length);
 		
+		@Override
+		Bytes.Writable subBuffer(int startPosition, int length);
 	}
 	
 }

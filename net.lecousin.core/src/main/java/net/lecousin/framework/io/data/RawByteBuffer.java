@@ -4,27 +4,21 @@ import java.nio.ByteBuffer;
 
 /** Utility class that contains a byte array with public attributes. */
 @SuppressWarnings("squid:ClassVariableVisibilityCheck")
-public class RawByteBuffer extends RawBuffer implements Bytes.Readable, Bytes.Writable {
+public class RawByteBuffer extends RawBuffer<byte[]> implements Bytes.Readable, Bytes.Writable {
 
-	public byte[] array;
-	
 	/** Constructor. */
 	public RawByteBuffer(byte[] buffer, int offset, int length) {
-		this.array = buffer;
-		this.arrayOffset = offset;
-		this.currentOffset = offset;
-		this.length = length;
+		super(buffer, offset, length);
 	}
 	
 	/** Constructor. */
 	public RawByteBuffer(byte[] buffer) {
-		this(buffer, 0, buffer.length);
+		super(buffer, 0, buffer.length);
 	}
 	
 	/** Constructor. */
 	public RawByteBuffer(RawByteBuffer copy) {
-		this(copy.array, copy.arrayOffset, copy.length);
-		this.currentOffset = copy.currentOffset;
+		super(copy);
 	}
 	
 	/** Constructor. */
@@ -82,4 +76,8 @@ public class RawByteBuffer extends RawBuffer implements Bytes.Readable, Bytes.Wr
 		return b;
 	}
 	
+	@Override
+	public RawByteBuffer subBuffer(int startPosition, int length) {
+		return new RawByteBuffer(array, arrayOffset + startPosition, length);
+	}
 }

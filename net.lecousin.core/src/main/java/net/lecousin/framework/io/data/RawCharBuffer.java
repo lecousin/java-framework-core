@@ -3,29 +3,26 @@ package net.lecousin.framework.io.data;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 
+import net.lecousin.framework.util.UnprotectedString;
+import net.lecousin.framework.util.UnprotectedStringBuffer;
+
 /** Utility class that contains a byte array with public attributes. */
 @SuppressWarnings("squid:ClassVariableVisibilityCheck")
-public class RawCharBuffer extends RawBuffer implements Chars.Readable, Chars.Writable {
+public class RawCharBuffer extends RawBuffer<char[]> implements Chars.Readable, Chars.Writable {
 
-	public char[] array;
-	
 	/** Constructor. */
 	public RawCharBuffer(char[] buffer, int offset, int length) {
-		this.array = buffer;
-		this.arrayOffset = offset;
-		this.currentOffset = offset;
-		this.length = length;
+		super(buffer, offset, length);
 	}
 	
 	/** Constructor. */
 	public RawCharBuffer(char[] buffer) {
-		this(buffer, 0, buffer.length);
+		super(buffer, 0, buffer.length);
 	}
 	
 	/** Constructor. */
 	public RawCharBuffer(RawCharBuffer copy) {
-		this(copy.array, copy.arrayOffset, copy.length);
-		this.currentOffset = copy.currentOffset;
+		super(copy);
 	}
 	
 	/** Constructor. */
@@ -60,6 +57,12 @@ public class RawCharBuffer extends RawBuffer implements Chars.Readable, Chars.Wr
 	}
 	
 	@Override
+	public void get(UnprotectedStringBuffer string, int length) {
+		string.append(new UnprotectedString(array, currentOffset, length, length));
+		currentOffset += length;
+	}
+	
+	@Override
 	public char getForward(int offset) {
 		return array[currentOffset + offset];
 	}
@@ -83,6 +86,11 @@ public class RawCharBuffer extends RawBuffer implements Chars.Readable, Chars.Wr
 		return b;
 	}
 	
+	@Override
+	public RawCharBuffer subBuffer(int startPosition, int length) {
+		return new RawCharBuffer(array, arrayOffset + startPosition, length);
+	}
+
 	/** Create a Readable Bytes from this character array, considering there is only ascii characters. */
 	public Bytes.Readable asciiAsReadableBytes() {
 		return new Bytes.Readable() {
@@ -92,6 +100,11 @@ public class RawCharBuffer extends RawBuffer implements Chars.Readable, Chars.Wr
 				RawCharBuffer.this.setPosition(position);
 			}
 			
+			@Override
+			public int length() {
+				return RawCharBuffer.this.length();
+			}
+
 			@Override
 			public int remaining() {
 				return RawCharBuffer.this.remaining();
@@ -129,6 +142,11 @@ public class RawCharBuffer extends RawBuffer implements Chars.Readable, Chars.Wr
 				get(bytes, 0, bytes.length);
 				return ByteBuffer.wrap(bytes);
 			}
+			
+			@Override
+			public Bytes.Readable subBuffer(int startPosition, int length) {
+				return RawCharBuffer.this.subBuffer(startPosition, length).asciiAsReadableBytes();
+			}
 		};
 	}
 	
@@ -139,6 +157,11 @@ public class RawCharBuffer extends RawBuffer implements Chars.Readable, Chars.Wr
 			@Override
 			public void setPosition(int position) {
 				RawCharBuffer.this.setPosition(position);
+			}
+			
+			@Override
+			public int length() {
+				return RawCharBuffer.this.length();
 			}
 			
 			@Override
@@ -170,6 +193,11 @@ public class RawCharBuffer extends RawBuffer implements Chars.Readable, Chars.Wr
 			@Override
 			public ByteBuffer toByteBuffer() {
 				throw new UnsupportedOperationException();
+			}
+			
+			@Override
+			public Bytes.Writable subBuffer(int startPosition, int length) {
+				return RawCharBuffer.this.subBuffer(startPosition, length).asWritableAsciiBytes();
 			}
 		};
 	}

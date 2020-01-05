@@ -5,9 +5,9 @@ import java.nio.charset.Charset;
 
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.IConcurrentCloseable;
-import net.lecousin.framework.util.UnprotectedString;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /** Character stream. */
@@ -111,10 +111,10 @@ public interface ICharacterStream extends IConcurrentCloseable<IOException> {
 			int readAsync() throws IOException;
 			
 			/** Return the next buffer, or null if the end of stream has been reached. */
-			UnprotectedString readNextBuffer() throws IOException;
+			Chars.Readable readNextBuffer() throws IOException;
 			
 			/** Return the next buffer as soon as available, or null if then end of stream has been reached. */
-			AsyncSupplier<UnprotectedString, IOException> readNextBufferAsync();
+			AsyncSupplier<Chars.Readable, IOException> readNextBufferAsync();
 			
 			/** Read characters until the given end, and put them in the given string.
 			 * It returns true if the endChar has been found (and is not included in the string),

@@ -684,13 +684,14 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		while (isSpaceChar(c)) c = stream.read();
 		boolean inString = false;
 		do {
-			c = stream.read();
 			if (inString) {
 				if (c == '"') inString = false;
+				c = stream.read();
 				continue;
 			}
 			if (c == '"') inString = true;
 			else if (c == '>') break;
+			c = stream.read();
 		} while (true);
 	}
 	

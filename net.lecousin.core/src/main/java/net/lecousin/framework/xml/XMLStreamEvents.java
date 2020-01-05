@@ -3,18 +3,21 @@ package net.lecousin.framework.xml;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import net.lecousin.framework.encoding.charset.CharacterDecoder;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.data.Chars;
+import net.lecousin.framework.io.data.CompositeChars;
+import net.lecousin.framework.io.data.RawByteBuffer;
+import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStreamLocation;
-import net.lecousin.framework.io.text.Decoder;
 import net.lecousin.framework.io.text.ICharacterStream;
-import net.lecousin.framework.io.text.ProgressiveBufferedReadableCharStream;
+import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.UnprotectedStringBuffer;
 
@@ -682,32 +685,30 @@ public abstract class XMLStreamEvents {
 		protected boolean addPositionInErrors;
 		protected Charset givenEncoding;
 		protected Charset bomEncoding;
-		protected Decoder tmpDecoder;
+		protected CharacterDecoder tmpDecoder;
 		protected int line = 1;
 		protected int posInLine = 1;
 		protected UnprotectedStringBuffer xmlVersion = null;
 		protected UnprotectedStringBuffer xmlEncoding = null;
 		protected UnprotectedStringBuffer xmlStandalone = null;
 		
-		private byte[] firstBytes;
-		private int firstBytesPos;
-		private int firstBytesLength;
-		
+		private RawByteBuffer firstBytes;
+		private Chars.Readable chars;
+
 		public ICharacterStream.Readable.Buffered start() throws IOException, XMLException {
-			loadFirstBytes();
+			loadFirstBytes(); // read at least 4 bytes
 			readBOM();
-			int posAfterBOM = firstBytesPos;
+			int posAfterBOM = firstBytes.position();
 			try {
 				if (givenEncoding != null)
-					tmpDecoder = Decoder.get(givenEncoding);
+					tmpDecoder = CharacterDecoder.get(givenEncoding, bufferSize);
 				else if (bomEncoding != null)
-					tmpDecoder = Decoder.get(bomEncoding);
+					tmpDecoder = CharacterDecoder.get(bomEncoding, bufferSize);
 				else
-					tmpDecoder = Decoder.get(StandardCharsets.UTF_8);
+					tmpDecoder = CharacterDecoder.get(StandardCharsets.UTF_8, bufferSize);
 			} catch (Exception e) {
 				throw new IOException("Error initializing character decoder", e);
 			}
-			chars = new char[bufferSize];
 			// TODO line and posInLine...
 			boolean hasDecl = readXMLDeclaration();
 			if (!hasDecl) {
@@ -725,11 +726,8 @@ public abstract class XMLStreamEvents {
 					return stream;
 				}
 			}
-			if (firstBytesPos < firstBytesLength)
-				tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, firstBytesPos, firstBytesLength - firstBytesPos));
-			tmpDecoder.setInput(io);
-			ICharacterStream.Readable.Buffered stream = new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers,
-				CharBuffer.wrap(chars, charsPos, charsLength - charsPos));
+			ICharacterStream.Readable.Buffered stream = new BufferedReadableCharacterStream(io, tmpDecoder, bufferSize, maxBuffers,
+				firstBytes.hasRemaining() ? firstBytes.toByteBuffer() : null, chars);
 			if (addPositionInErrors)
 				stream = new BufferedReadableCharacterStreamLocation(stream, line, posInLine);
 			return stream;
@@ -738,26 +736,23 @@ public abstract class XMLStreamEvents {
 		private void loadFirstBytes() throws IOException {
 			ByteBuffer buf = io.readNextBuffer();
 			if (buf != null) {
-				firstBytes = buf.array();
-				firstBytesPos = buf.arrayOffset() + buf.position();
-				firstBytesLength = firstBytesPos + buf.remaining();
-				while (firstBytesLength < 4) {
+				firstBytes = new RawByteBuffer(buf);
+				while (firstBytes.remaining() < 4) {
 					buf = io.readNextBuffer();
 					if (buf == null) break;
-					byte[] b = new byte[firstBytesLength + buf.remaining()];
-					System.arraycopy(firstBytes, firstBytesPos, b, 0, firstBytesLength);
-					System.arraycopy(buf.array(), buf.arrayOffset() + buf.position(), b, firstBytesLength, buf.remaining());
-					firstBytes = b;
-					firstBytesPos = 0;
-					firstBytesLength += buf.remaining();
+					byte[] b = new byte[firstBytes.remaining() + buf.remaining()];
+					System.arraycopy(firstBytes.array, 0, b, 0, firstBytes.remaining());
+					System.arraycopy(buf.array(), buf.arrayOffset() + buf.position(), b, firstBytes.remaining(), buf.remaining());
+					firstBytes = new RawByteBuffer(b);
 				}
+			} else {
+				firstBytes = new RawByteBuffer(new byte[0]);
 			}
-			//firstBytesLength = io.readFully(firstBytes);
 		}
 		
 		private void readBOM() throws XMLException {
-			if (firstBytesLength == 0) throw new XMLException(null, "File is empty");
-			switch (firstBytes[0] & 0xFF) {
+			if (!firstBytes.hasRemaining()) throw new XMLException(null, "File is empty");
+			switch (firstBytes.getForward(0) & 0xFF) {
 			case 0x00:
 				readBom00();
 				break;
@@ -776,24 +771,24 @@ public abstract class XMLStreamEvents {
 		
 		private void readBomEF() throws XMLException {
 			// it may be a UTF-8 BOM
-			if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-			if (firstBytes[1] == (byte)0xBB) {
-				if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-				if (firstBytes[2] == (byte)0xBF) {
+			if (firstBytes.remaining() == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+			if (firstBytes.getForward(1) == (byte)0xBB) {
+				if (firstBytes.remaining() == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+				if (firstBytes.getForward(2) == (byte)0xBF) {
 					// UTF-8 BOM
 					bomEncoding = StandardCharsets.UTF_8;
-					firstBytesPos = 3;
+					firstBytes.moveForward(3);
 				}
 			}
 		}
 		
 		private void readBomFE() throws XMLException {
 			// it may be a UTF-16 big-endian BOM
-			if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-			if (firstBytes[1] == (byte)0xFF) {
+			if (firstBytes.remaining() == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+			if (firstBytes.getForward(1) == (byte)0xFF) {
 				// UTF-16 big-endian
 				bomEncoding = StandardCharsets.UTF_16BE;
-				firstBytesPos = 2;
+				firstBytes.moveForward(2);
 			}
 		}
 		
@@ -808,41 +803,40 @@ public abstract class XMLStreamEvents {
 		}
 		
 		private void readBom16or32(byte second, Charset secondCharset, byte third, byte fourth, Charset fourthCharset) throws XMLException {
-			if (firstBytesLength == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-			if (firstBytes[1] == second) {
-				if (firstBytesLength == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-				if (firstBytes[2] == third) {
-					if (firstBytesLength == 3) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
-					if (firstBytes[3] == fourth) {
+			if (firstBytes.remaining() == 1) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+			if (firstBytes.getForward(1) == second) {
+				if (firstBytes.remaining() == 2) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+				if (firstBytes.getForward(2) == third) {
+					if (firstBytes.remaining() == 3) throw new XMLException(null, XMLException.LOCALIZED_MESSAGE_NOT_XML);
+					if (firstBytes.getForward(3) == fourth) {
 						bomEncoding = fourthCharset;
-						firstBytesPos = 4;
+						firstBytes.moveForward(4);
 					}
 					return;
 				}
 				bomEncoding = secondCharset;
-				firstBytesPos = 2;
+				firstBytes.moveForward(2);
 			}
 		}
 		
-		private ICharacterStream.Readable.Buffered initWithoutXMLDeclaration(int posAfterBOM) throws IOException {
+		private ICharacterStream.Readable.Buffered initWithoutXMLDeclaration(int posAfterBOM) {
 			// simple
-			try { tmpDecoder = Decoder.get(tmpDecoder.getEncoding()); }
-			catch (Exception e) {
-				throw new IOException("Error initializing character decoder", e);
+			if (chars != null) {
+				chars.setPosition(0);
+				return new BufferedReadableCharacterStream(io, tmpDecoder, bufferSize, maxBuffers, null, chars);
 			}
-			tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, posAfterBOM, firstBytesLength - posAfterBOM));
-			tmpDecoder.setInput(io);
-			return new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers);
+			firstBytes.setPosition(posAfterBOM);
+			return new BufferedReadableCharacterStream(io, tmpDecoder, bufferSize, maxBuffers, firstBytes.toByteBuffer(), null);
 		}
 		
 		private ICharacterStream.Readable.Buffered initWithSpecifiedEncoding(int posAfterBOM, Charset encoding) throws IOException {
-			try { tmpDecoder = Decoder.get(encoding); }
+			try { tmpDecoder = CharacterDecoder.get(encoding, bufferSize); }
 			catch (Exception e) {
 				throw new IOException("Error initializing character decoder", e);
 			}
-			tmpDecoder.setFirstBytes(ByteBuffer.wrap(firstBytes, posAfterBOM, firstBytesLength - posAfterBOM));
-			tmpDecoder.setInput(io);
-			ICharacterStream.Readable.Buffered stream = new ProgressiveBufferedReadableCharStream(tmpDecoder, bufferSize, maxBuffers);
+			firstBytes.setPosition(posAfterBOM);
+			ICharacterStream.Readable.Buffered stream = new BufferedReadableCharacterStream(io, tmpDecoder, bufferSize, maxBuffers,
+					firstBytes.toByteBuffer(), null);
 			// we reset the decoder, so we need to skip the <?xml ... ?>
 			char c;
 			boolean end = false;
@@ -859,29 +853,46 @@ public abstract class XMLStreamEvents {
 			} while (!end);
 			return stream;
 		}
-		
-		private char[] chars;
-		private int charsPos = 0;
-		private int charsLength = 0;
 
 		private char nextChar() throws IOException {
-			if (charsPos < charsLength)
-				return chars[charsPos++];
-			if (firstBytesPos > 0 && firstBytesLength - firstBytesPos < 10) {
-				byte[] b = new byte[firstBytes.length > 256 ? firstBytes.length * 2 : 512];
-				System.arraycopy(firstBytes, 0, b, 0, firstBytes.length);
-				int nb = io.readFullySync(ByteBuffer.wrap(b, firstBytesLength, b.length - firstBytesLength));
+			if (chars == null) {
+				if (firstBytes.hasRemaining()) {
+					chars = tmpDecoder.decode(firstBytes);
+					if (chars.hasRemaining())
+						return chars.get();
+				}
+				byte[] b = ByteArrayCache.getInstance().get(Math.max(512, firstBytes.length * 2), true);
+				System.arraycopy(firstBytes.array, firstBytes.arrayOffset, b, 0, firstBytes.length);
+				int nb = io.readFullySync(ByteBuffer.wrap(b, firstBytes.length, b.length - firstBytes.length));
 				if (nb <= 0) throw new EOFException();
-				firstBytes = b;
-				firstBytesLength += nb;
+				firstBytes = new RawByteBuffer(b, 0, firstBytes.length + nb);
+				firstBytes.setPosition(firstBytes.length - nb);
+				chars = tmpDecoder.decode(firstBytes);
+				if (chars.hasRemaining())
+					return chars.get();
+				chars = tmpDecoder.flush();
+				if (chars == null)
+					throw new EOFException();
+				return chars.get();
 			}
-			charsPos = 0;
-			ByteBuffer bb = ByteBuffer.wrap(firstBytes, firstBytesPos, firstBytesLength - firstBytesPos);
-			charsLength = tmpDecoder.decode(bb, chars, 0, chars.length);
-			if (charsLength <= 0)
-				throw new EOFException();
-			firstBytesPos = bb.position();
-			return chars[charsPos++];
+			if (chars.hasRemaining())
+				return chars.get();
+			byte[] b = ByteArrayCache.getInstance().get(Math.max(512, firstBytes.length * 2), true);
+			System.arraycopy(firstBytes.array, firstBytes.arrayOffset, b, 0, firstBytes.length);
+			int nb = io.readFullySync(ByteBuffer.wrap(b, firstBytes.length, b.length - firstBytes.length));
+			if (nb <= 0) throw new EOFException();
+			firstBytes = new RawByteBuffer(b, 0, firstBytes.length + nb);
+			firstBytes.setPosition(firstBytes.length - nb);
+			Chars.Readable newChars = tmpDecoder.decode(firstBytes);
+			if (!newChars.hasRemaining()) {
+				newChars = tmpDecoder.flush();
+				if (newChars == null)
+					throw new EOFException();
+			}
+			int pos = chars.length();
+			chars = new CompositeChars.Readable(chars, newChars);
+			chars.setPosition(pos);
+			return chars.get();
 		}
 		
 		@SuppressWarnings("squid:S3776") // complexity
@@ -890,12 +901,12 @@ public abstract class XMLStreamEvents {
 			while (isSpaceChar(c = nextChar()));
 			if (c != '<')
 				return false;
-			if (charsPos + 5 <= charsLength) {
-				if ((chars[charsPos++] != '?') ||
-					((c = chars[charsPos++]) != 'x' && c != 'X') ||
-					((c = chars[charsPos++]) != 'm' && c != 'M') ||
-					((c = chars[charsPos++]) != 'l' && c != 'L') ||
-					(!isSpaceChar(chars[charsPos++])))
+			if (chars.remaining() >= 5) {
+				if ((chars.get() != '?') ||
+					((c = chars.get()) != 'x' && c != 'X') ||
+					((c = chars.get()) != 'm' && c != 'M') ||
+					((c = chars.get()) != 'l' && c != 'L') ||
+					(!isSpaceChar(chars.get())))
 					return false;
 			} else {
 				if ((nextChar() != '?') ||
@@ -940,9 +951,9 @@ public abstract class XMLStreamEvents {
 		private UnprotectedStringBuffer eat(char[] lowerCase, char[] upperCase) throws IOException {
 			int l = lowerCase.length;
 			char c;
-			if (charsPos + l <= charsLength) {
+			if (chars.remaining() >= l) {
 				for (int i = 0; i < l; ++i)
-					if ((c = chars[charsPos++]) != lowerCase[i] && c != upperCase[i])
+					if ((c = chars.get()) != lowerCase[i] && c != upperCase[i])
 						return null;
 			} else {
 				for (int i = 0; i < l; ++i)
