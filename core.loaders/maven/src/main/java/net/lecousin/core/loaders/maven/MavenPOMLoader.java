@@ -21,6 +21,7 @@ import net.lecousin.framework.collections.Tree;
 import net.lecousin.framework.collections.Tree.Node;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 
 /**
@@ -148,7 +149,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 				+ " in " + repo.toString());
 		
 		repo.getAvailableVersions(groupId, artifactId, priority)		
-		.thenStart(new Task.Cpu.Parameter.FromConsumer<List<String>>("Search artifact", priority, versions -> {
+		.thenStart(new Task.Cpu.Parameter.FromConsumerThrows<List<String>, NoException>("Search artifact", priority, versions -> {
 			if (versions == null || versions.isEmpty()) {
 				if (debug)
 					logger.debug("No version found for artifact " + Artifact.toString(groupId, artifactId, version.toString())
