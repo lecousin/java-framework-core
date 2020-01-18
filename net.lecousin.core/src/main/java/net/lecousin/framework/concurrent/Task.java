@@ -16,6 +16,8 @@ import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.Runnables;
+import net.lecousin.framework.util.Runnables.ConsumerThrows;
+import net.lecousin.framework.util.Runnables.FunctionThrows;
 
 /** Task to be executed asynchronously.
  * @param <T> type of result
@@ -85,19 +87,21 @@ public abstract class Task<T,TError extends Exception> {
 			
 			/** CPU task with parameter from a Runnable.
 			 * @param <TParam> type of parameter
+			 * @param <TError> type of error
 			 */
-			public static class FromConsumer<TParam> extends Task.Cpu.Parameter<TParam, Void, NoException> {
+			public static class FromConsumerThrows<TParam, TError extends Exception>
+				extends Task.Cpu.Parameter<TParam, Void, TError> {
 				
 				/** Constructor. */
-				public FromConsumer(String description, byte priority, Consumer<TParam> consumer) {
+				public FromConsumerThrows(String description, byte priority, ConsumerThrows<TParam, TError> consumer) {
 					super(description, priority);
 					this.consumer = consumer;
 				}
 				
-				private Consumer<TParam> consumer;
+				private ConsumerThrows<TParam, TError> consumer;
 				
 				@Override
-				public Void run() throws NoException, CancelException {
+				public Void run() throws TError, CancelException {
 					consumer.accept(getParameter());
 					return null;
 				}
@@ -107,19 +111,21 @@ public abstract class Task<T,TError extends Exception> {
 			/** CPU task with parameter from a Function.
 			 * @param <TParam> type of parameter
 			 * @param <TResult> type of result
+			 * @param <TError> type of error
 			 */
-			public static class FromFunction<TParam, TResult> extends Task.Cpu.Parameter<TParam, TResult, NoException> {
+			public static class FromFunctionThrows<TParam, TResult, TError extends Exception>
+				extends Task.Cpu.Parameter<TParam, TResult, TError> {
 				
 				/** Constructor. */
-				public FromFunction(String description, byte priority, Function<TParam, TResult> fct) {
+				public FromFunctionThrows(String description, byte priority, FunctionThrows<TParam, TResult, TError> fct) {
 					super(description, priority);
 					this.fct = fct;
 				}
 				
-				private Function<TParam, TResult> fct;
+				private FunctionThrows<TParam, TResult, TError> fct;
 				
 				@Override
-				public TResult run() throws NoException, CancelException {
+				public TResult run() throws TError, CancelException {
 					return fct.apply(getParameter());
 				}
 				

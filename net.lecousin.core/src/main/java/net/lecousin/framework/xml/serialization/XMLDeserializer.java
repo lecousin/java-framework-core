@@ -598,7 +598,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 			// not a reference, default to base 64 encoded string
 			IOInMemoryOrFile io = new IOInMemoryOrFile(128 * 1024, priority, "base 64 encoded from XML");
 			Base64Encoding.DecoderConsumer<IOException> decoder = new Base64Encoding.DecoderConsumer<>(
-				io.createWriteConsumer(
+				io.createConsumer(
 					() -> io.seekAsync(SeekType.FROM_BEGINNING, 0)
 						.onDone(() -> result.unblockSuccess(io), result, xmlErrorConverter::apply),
 					err -> result.error(xmlErrorConverter.apply(err))

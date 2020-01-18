@@ -4,17 +4,15 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
+import net.lecousin.framework.concurrent.util.AsyncProducer;
 import net.lecousin.framework.memory.ByteArrayCache;
-import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.util.IConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
@@ -141,73 +139,21 @@ public interface IO extends IConcurrentCloseable<IOException> {
 		/** Returns the number of bytes skipped. */
 		default AsyncSupplier<Long,IOException> skipAsync(long n) { return skipAsync(n, null); }
 
-		/** Equivalent to toReadConsumer(8192, ByteArrayCache.getInstance(), false, consumer). */
-		default Async<IOException> toReadConsumer(AsyncConsumer<ByteBuffer, IOException> consumer) {
-			return toReadConsumer(8192, ByteArrayCache.getInstance(), false, consumer);
+		/** Equivalent to createProducer(8192, false). */
+		default AsyncProducer<ByteBuffer, IOException> createProducer() {
+			return createProducer(8192, false);
 		}
-
-		/** Read this IO buffer by buffer and forward each buffer to the given consumer. */
-		default Async<IOException> toReadConsumer(
-			int bufferSize, ByteArrayCache bufferCache,
-			boolean readFully,
-			AsyncConsumer<ByteBuffer, IOException> consumer
-		) {
-			Async<IOException> result = new Async<>();
-			// forward error or cancel to consumer
-			result.onDone(
-				() -> { /* nothing */ },
-				consumer::error,
-				cancel -> consumer.error(IO.errorCancelled(cancel))
-			);
-			Supplier<ByteBuffer> bufferSupplier = bufferCache != null
-				? () -> ByteBuffer.wrap(bufferCache.get(bufferSize, false))
-				: () -> ByteBuffer.allocate(bufferSize);
-			Consumer<ByteBuffer> bufferConsumer = bufferCache != null
-				? b -> bufferCache.free(b.array())
-				: null;
-			
-			Mutable<ByteBuffer> buffer = new Mutable<>(bufferSupplier.get());
-			
-			/** Consume the buffer. */
-			@SuppressWarnings("squid:S4276") // cannot use IntConsumer
-			class ConsumeBuffer implements Consumer<Integer> {
-				@Override
-				public void accept(Integer nbRead) {
-					new Task.Cpu.FromRunnable("IO.Readable.toConsumer", getPriority(), () -> {
-						int nb = nbRead.intValue();
-						if (nb > 0) {
-							ByteBuffer b = buffer.get();
-							b.flip();
-							IAsync<IOException> consume = consumer.consume(b, bufferConsumer);
-							if (!readFully || nb == b.capacity()) {
-								// launch next read
-								buffer.set(bufferSupplier.get());
-								AsyncSupplier<Integer, IOException> read;
-								if (readFully)
-									read = readFullyAsync(buffer.get());
-								else
-									read = readAsync(buffer.get());
-								consume.onDone(() -> read.onDone(ConsumeBuffer.this::accept, result), result);
-								return;
-							}
-							// last buffer to consumer
-							consume.onDone(() -> consumer.end().onDone(result), result);
-							return;
-						}
-						// end of data
-						consumer.end().onDone(result);
-					}).start();
-				}
-			}
-			
-			// launch first buffer
-			AsyncSupplier<Integer, IOException> read;
-			if (readFully)
-				read = readFullyAsync(buffer.get());
-			else
-				read = readAsync(buffer.get());
-			read.onDone(new ConsumeBuffer(), result);
-			return result;
+		
+		/** Create a producer that read from this IO. */
+		default AsyncProducer<ByteBuffer, IOException> createProducer(int bufferSize, boolean readFully) {
+			ByteArrayCache cache = ByteArrayCache.getInstance();
+			return () -> {
+				ByteBuffer buffer = ByteBuffer.wrap(cache.get(bufferSize, true));
+				AsyncSupplier<Integer, IOException> read = readFully ? readFullyAsync(buffer) : readAsync(buffer);
+				AsyncSupplier<ByteBuffer, IOException> production = new AsyncSupplier<>();
+				read.onDone(nb -> production.unblockSuccess(nb.intValue() <= 0 ? null : buffer), production);
+				return production;
+			};
 		}
 		
 		/** Add read operations to read at a specific position.
@@ -292,34 +238,8 @@ public interface IO extends IConcurrentCloseable<IOException> {
 			
 			/** Read this IO buffer by buffer (using readNextBufferAsync) and forward each buffer to the given consumer. */
 			@Override
-			default Async<IOException> toReadConsumer(AsyncConsumer<ByteBuffer, IOException> consumer) {
-				Async<IOException> result = new Async<>();
-				// forward error or cancel to consumer
-				result.onDone(
-					() -> { /* nothing */ },
-					consumer::error,
-					cancel -> consumer.error(IO.errorCancelled(cancel))
-				);
-				
-				/** Consume the result of readNextBufferAsync. */
-				class ConsumeBuffer implements Consumer<ByteBuffer> {
-					@Override
-					public void accept(ByteBuffer buffer) {
-						new Task.Cpu.FromRunnable("IO.Readable.Buffered.toConsumer", getPriority(), () -> {
-							if (buffer == null)
-								consumer.end().onDone(result);
-							else
-								consumer.consume(buffer, null).onDone(
-									() -> readNextBufferAsync().onDone(ConsumeBuffer.this::accept, result),
-									result
-								);
-						}).start();
-					}
-				}
-				
-				// launch first buffer
-				readNextBufferAsync().onDone(new ConsumeBuffer(), result);
-				return result;
+			default AsyncProducer<ByteBuffer, IOException> createProducer() {
+				return () -> readNextBufferAsync();
 			}
 		}
 	}
@@ -334,7 +254,7 @@ public interface IO extends IConcurrentCloseable<IOException> {
 		AsyncSupplier<Integer,IOException> writeAsync(ByteBuffer buffer);
 		
 		/** Create an AsyncConsumer that writes to this IO. */
-		default AsyncConsumer<ByteBuffer, IOException> createWriteConsumer(Runnable onEnd, Consumer<IOException> onError) {
+		default AsyncConsumer<ByteBuffer, IOException> createConsumer(Runnable onEnd, Consumer<IOException> onError) {
 			return new AsyncConsumer<ByteBuffer, IOException>() {
 
 				@Override
@@ -423,6 +343,16 @@ public interface IO extends IConcurrentCloseable<IOException> {
 	}
 	
 	
+	/** Add capability to know the size of an IO. */
+	public interface KnownSize extends IO {
+		/** Synchronous operation to get the size of the IO. */
+		long getSizeSync() throws IOException;
+
+		/** Asynchronous operation to get the size of the IO. */
+		AsyncSupplier<Long, IOException> getSizeAsync();
+	}
+
+	
 	/** Add capability to resize the IO. */
 	public interface Resizable extends IO.KnownSize {
 		/** Synchronous resize. */
@@ -432,15 +362,6 @@ public interface IO extends IConcurrentCloseable<IOException> {
 		IAsync<IOException> setSizeAsync(long newSize);
 	}
 	
-	
-	/** Add capability to know the size of an IO. */
-	public interface KnownSize extends IO {
-		/** Synchronous operation to get the size of the IO. */
-		long getSizeSync() throws IOException;
-
-		/** Asynchronous operation to get the size of the IO. */
-		AsyncSupplier<Long, IOException> getSizeAsync();
-	}
 	
 	/** Convert an Exception into an IOException. If thie given exception is already an IOException, it is directly returned. */
 	static IOException error(Throwable e) {
@@ -532,8 +453,8 @@ public interface IO extends IConcurrentCloseable<IOException> {
 		long getAvailableDataSize();
 		
 		/** Create an AsyncConsumer that writes to this OutputToInput. */
-		default AsyncConsumer<ByteBuffer, IOException> createWriteConsumer() {
-			return createWriteConsumer(this::endOfData, this::signalErrorBeforeEndOfData);
+		default AsyncConsumer<ByteBuffer, IOException> createConsumer() {
+			return createConsumer(this::endOfData, this::signalErrorBeforeEndOfData);
 		}
 
 	}

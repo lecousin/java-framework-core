@@ -318,11 +318,11 @@ public class XMLSerializer extends AbstractSerializer {
 	protected IAsync<SerializationException> serializeIOReadableValue(
 		SerializationContext context, IO.Readable io, String path, List<SerializationRule> rules
 	) {
-		IAsync<IOException> encode = io.toReadConsumer(
+		IAsync<IOException> encode = io.createProducer().toConsumer(
 			new Base64Encoding.EncoderConsumer<IOException>(
 				ByteArrayStringIso8859.bytesConsumer(str -> output.addEscapedText(str)).convert(Bytes.Readable::toByteBuffer)
-			).convert(RawByteBuffer::new)
-		);
+			).convert(RawByteBuffer::new),
+			"Serialize IO.Readable to XML", priority);
 		if (encode.isDone()) {
 			if (encode.hasError()) return new Async<>(encode, ioErrorConverter);
 			return new Async<>(output.closeElement(), ioErrorConverter);

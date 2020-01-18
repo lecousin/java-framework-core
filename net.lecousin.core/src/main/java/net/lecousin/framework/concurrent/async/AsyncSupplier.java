@@ -237,6 +237,15 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 		return task.getOutput();
 	}
 	
+	/** Start the given task when this asynchronous unit is unblocked. */
+	public <T2> AsyncSupplier<T2, TError> thenStart(Task.Parameter<T, T2, TError> task, IAsync<TError> onErrorOrCancel) {
+		onDone(() -> {
+			task.setParameter(getResult());
+			task.start();
+		}, onErrorOrCancel);
+		return task.getOutput();
+	}
+	
 	/** Call consumer in a new CPU task on done. */
 	public void thenStart(Consumer<T> consumer, String taskDescription, byte taskPriority, IAsync<TError> onErrorOrCancel) {
 		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, () -> consumer.accept(getResult())), onErrorOrCancel);
