@@ -29,15 +29,15 @@ public class TestRemoteRepository extends LCCoreAbstractTest {
 
 	@Test
 	public void testRemoteRepository() throws Exception {
-		MavenRemoteRepository repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2/", true, false);
+		MavenRemoteRepository repo = new MavenRemoteRepository("https://repo.maven.apache.org/maven2/", true, false);
 
 		repo.toString();
 		Assert.assertTrue(repo.isReleasesEnabled());
 		Assert.assertFalse(repo.isSnapshotsEnabled());
-		Assert.assertTrue(repo.isSame("http://repo.maven.apache.org/maven2/", true, false));
-		Assert.assertFalse(repo.isSame("http://repo.maven.apache.org/maven2/", true, true));
-		Assert.assertFalse(repo.isSame("http://repo.maven.apache.org/maven2/", false, false));
-		Assert.assertFalse(repo.isSame("http://repo.maven.apache.org/maven3/", true, false));
+		Assert.assertTrue(repo.isSame("https://repo.maven.apache.org/maven2/", true, false));
+		Assert.assertFalse(repo.isSame("https://repo.maven.apache.org/maven2/", true, true));
+		Assert.assertFalse(repo.isSame("https://repo.maven.apache.org/maven2/", false, false));
+		Assert.assertFalse(repo.isSame("https://repo.maven.apache.org/maven3/", true, false));
 
 		List<String> versions = repo.getAvailableVersions("junit", "junit", Task.PRIORITY_NORMAL).blockResult(0);
 		Assert.assertNotNull(versions);
@@ -136,7 +136,7 @@ public class TestRemoteRepository extends LCCoreAbstractTest {
 		pom.getLoader();
 		pom.getDirectory();
 		
-		repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2", false, true);
+		repo = new MavenRemoteRepository("https://repo.maven.apache.org/maven2", false, true);
 		
 		repo = new MavenRemoteRepository("http://www.google.com/", true, false);
 		try {
@@ -156,7 +156,7 @@ public class TestRemoteRepository extends LCCoreAbstractTest {
 	
 	@Test
 	public void testLoadDifferentVersions() throws Exception {
-		MavenRemoteRepository repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2/", true, false);
+		MavenRemoteRepository repo = new MavenRemoteRepository("https://repo.maven.apache.org/maven2/", true, false);
 		MavenPOMLoader pomLoader = new MavenPOMLoader();
 		pomLoader.addRepository(repo);
 		
@@ -177,7 +177,7 @@ public class TestRemoteRepository extends LCCoreAbstractTest {
 	
 	@Test
 	public void testLoadFile() throws Exception {
-		MavenRemoteRepository repo = new MavenRemoteRepository("http://repo.maven.apache.org/maven2/", true, false);
+		MavenRemoteRepository repo = new MavenRemoteRepository("https://repo.maven.apache.org/maven2/", true, false);
 		
 		Assert.assertNotNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, null));
 		Assert.assertNotNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));

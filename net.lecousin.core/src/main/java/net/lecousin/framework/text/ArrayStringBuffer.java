@@ -17,6 +17,7 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 
 	protected T[] strings;
 	protected int lastUsed;
+	protected int newArrayStringCapacity = 64;
 
 	/** Create a new empty string. */
 	public ArrayStringBuffer() {
@@ -37,6 +38,10 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 		int i = 0;
 		for (T s : strings) this.strings[i++] = s;
 		lastUsed = i - 1;
+	}
+	
+	public void setNewArrayStringCapacity(int capacity) {
+		newArrayStringCapacity = capacity;
 	}
 	
 	protected abstract T[] allocateArray(int arraySize);
@@ -109,7 +114,7 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 	public ME append(char c) {
 		if (strings == null) {
 			strings = allocateArray(8);
-			strings[0] = createString(64);
+			strings[0] = createString(newArrayStringCapacity);
 			strings[0].append(c);
 			lastUsed = 0;
 			return (ME)this;
@@ -117,13 +122,13 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 		if (strings[lastUsed].appendNoEnlarge(c))
 			return (ME)this;
 		if (lastUsed < strings.length - 1) {
-			strings[++lastUsed] = createString(64);
+			strings[++lastUsed] = createString(newArrayStringCapacity);
 			strings[lastUsed].append(c);
 			return (ME)this;
 		}
 		T[] a = allocateArray(++lastUsed + 8);
 		System.arraycopy(strings, 0, a, 0, lastUsed);
-		a[lastUsed] = createString(256);
+		a[lastUsed] = createString(newArrayStringCapacity);
 		a[lastUsed].append(c);
 		strings = a;
 		return (ME)this;
@@ -134,7 +139,7 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 	public ME append(char[] chars, int offset, int len) {
 		if (strings == null) {
 			strings = allocateArray(8);
-			strings[0] = createString(len > 50 ? len + 64 : 64);
+			strings[0] = createString(len + newArrayStringCapacity);
 			strings[0].append(chars, offset, len);
 			lastUsed = 0;
 			return (ME)this;
@@ -149,13 +154,13 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 			offset += l;
 		}
 		if (lastUsed < strings.length - 1) {
-			strings[++lastUsed] = createString(len > 50 ? len + 128 : 64);
+			strings[++lastUsed] = createString(len + newArrayStringCapacity);
 			strings[lastUsed].append(chars, offset, len);
 			return (ME)this;
 		}
 		T[] a = allocateArray(lastUsed + 1 + 8);
 		System.arraycopy(strings, 0, a, 0, lastUsed + 1);
-		a[++lastUsed] = createString(len > 50 ? len + 128 : 64);
+		a[++lastUsed] = createString(len + newArrayStringCapacity);
 		a[lastUsed].append(chars, offset, len);
 		strings = a;
 		return (ME)this;
@@ -247,7 +252,7 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 	
 	/** Add the given character at the beginning. */
 	public ME addFirst(char c) {
-		return addFirst(createString(16).append(c));
+		return addFirst(createString(newArrayStringCapacity).append(c));
 	}
 	
 	@Override
