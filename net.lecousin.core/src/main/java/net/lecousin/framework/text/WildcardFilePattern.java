@@ -1,4 +1,4 @@
-package net.lecousin.framework.util;
+package net.lecousin.framework.text;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -60,6 +60,7 @@ public class WildcardFilePattern implements IStringPattern {
     }    
 
     @Override
+    @SuppressWarnings("java:S3776") // complexity
     public boolean matches(final String filename) {
         boolean anyChars = false;
         int textIdx = 0;

@@ -10,7 +10,7 @@ import net.lecousin.framework.io.text.FullReadLines;
 import net.lecousin.framework.plugins.CustomExtensionPoint;
 import net.lecousin.framework.plugins.ExtensionPoint;
 import net.lecousin.framework.plugins.ExtensionPoints;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 
 /**
  * Task to read an extensionpoints file.
@@ -29,7 +29,7 @@ public class LoadLibraryExtensionPointsFile extends FullReadLines<Void> {
 	private ClassLoader classLoader;
 	
 	@Override
-	protected void processLine(UnprotectedStringBuffer line) throws IOException {
+	protected void processLine(CharArrayStringBuffer line) throws IOException {
 		try {
 			Class<?> cl = Class.forName(line.asString(), true, classLoader);
 			if (ExtensionPoint.class.isAssignableFrom(cl)) {

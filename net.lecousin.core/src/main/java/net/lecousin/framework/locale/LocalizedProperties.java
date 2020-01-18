@@ -31,9 +31,9 @@ import net.lecousin.framework.io.text.PropertiesReader;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.memory.IMemoryManageable;
 import net.lecousin.framework.memory.MemoryManager;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.ObjectUtil;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLException;
 
 /**
@@ -103,7 +103,7 @@ public class LocalizedProperties implements IMemoryManageable {
 			logger.error(sp.getError().getMessage());
 			return sp;
 		}
-		AsyncSupplier<UnprotectedStringBuffer, IOException> read = IOUtil.readFullyAsString(
+		AsyncSupplier<CharArrayStringBuffer, IOException> read = IOUtil.readFullyAsString(
 			input, StandardCharsets.US_ASCII, Task.PRIORITY_RATHER_IMPORTANT);
 		Namespace toLoad = ns;
 		read.thenStart(new Task.Cpu.FromRunnable("Read localized properties namespace file", Task.PRIORITY_RATHER_IMPORTANT, () -> {
@@ -130,16 +130,16 @@ public class LocalizedProperties implements IMemoryManageable {
 		return sp;
 	}
 	
-	private static List<Namespace.Language> parseLanguages(UnprotectedStringBuffer str) {
+	private static List<Namespace.Language> parseLanguages(CharArrayStringBuffer str) {
 		List<Namespace.Language> languages = new LinkedList<>();
-		for (UnprotectedStringBuffer s : str.split(',')) {
+		for (CharArrayStringBuffer s : str.split(',')) {
 			s.trim().toLowerCase();
 			if (s.isEmpty()) continue;
 			Namespace.Language l = new Namespace.Language();
-			List<UnprotectedStringBuffer> list = s.split('-');
+			List<CharArrayStringBuffer> list = s.split('-');
 			l.tag = new String[list.size()];
 			int i = 0;
-			for (UnprotectedStringBuffer us : list) l.tag[i++] = us.asString();
+			for (CharArrayStringBuffer us : list) l.tag[i++] = us.asString();
 			languages.add(l);
 		}
 		return languages;
@@ -196,7 +196,7 @@ public class LocalizedProperties implements IMemoryManageable {
 			"Localized properties " + path, cs, Task.PRIORITY_RATHER_IMPORTANT, IO.OperationType.ASYNCHRONOUS
 		) {
 			@Override
-			protected void processProperty(UnprotectedStringBuffer key, UnprotectedStringBuffer value) {
+			protected void processProperty(CharArrayStringBuffer key, CharArrayStringBuffer value) {
 				lang.properties.put(key.asString(), value.asString());
 			}
 			

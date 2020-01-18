@@ -6,8 +6,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
-import net.lecousin.framework.util.StringParser;
-import net.lecousin.framework.util.StringParser.Parse;
+import net.lecousin.framework.text.StringParser;
+import net.lecousin.framework.text.StringParser.Parse;
 
 /**
  * List of RangeLong representing a fragmented data.

@@ -1,4 +1,4 @@
-package net.lecousin.framework.core.tests.util;
+package net.lecousin.framework.core.tests.text;
 
 import java.math.BigInteger;
 import java.text.ParseException;
@@ -6,7 +6,7 @@ import java.util.Locale;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.encoding.EncodingException;
-import net.lecousin.framework.util.StringUtil;
+import net.lecousin.framework.text.StringUtil;
 
 import org.junit.Assert;
 import org.junit.Test;

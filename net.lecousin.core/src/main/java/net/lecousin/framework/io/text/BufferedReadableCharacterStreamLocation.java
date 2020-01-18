@@ -9,9 +9,8 @@ import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.data.Chars;
+import net.lecousin.framework.text.IString;
 import net.lecousin.framework.util.ConcurrentCloseable;
-import net.lecousin.framework.util.UnprotectedString;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /** Buffered readable character stream that calculate the line number and position on the current line while reading. */
 public class BufferedReadableCharacterStreamLocation extends ConcurrentCloseable<IOException>
@@ -194,38 +193,19 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 			}
 	}
 
-	private void processLocation(UnprotectedString str) {
-		char[] buf = str.charArray();
-		int offset = str.charArrayStart();
-		int len = str.length();
-		for (int i = 0; i < len; ++i)
-			if (buf[offset + i] == '\n') {
-				line++;
-				lastLinePos = pos;
-				pos = 0;
-			} else if (buf[offset + i] != '\r') {
-				pos++;
-			}
-	}
-
-	private void processLocation(int start, UnprotectedStringBuffer string) {
-		int nb = string.getNbUsableUnprotectedStrings();
-		for (int i = 0; i < nb; ++i) {
-			UnprotectedString str = string.getUnprotectedString(i);
-			if (start > 0) {
-				int l = str.length();
-				if (start >= l) {
-					start -= l;
-					continue;
-				}
-				str = str.substring(start);
-			}
-			processLocation(str);
+	private void processLocation(int start, IString string) {
+		int i;
+		while ((i = string.indexOf('\n', start)) >= 0) {
+			lastLinePos = pos;
+			pos = 0;
+			line++;
+			start = i + 1;
 		}
+		pos += string.length() - start;
 	}
 	
 	@Override
-	public boolean readUntil(char endChar, UnprotectedStringBuffer string) throws IOException {
+	public boolean readUntil(char endChar, IString string) throws IOException {
 		int start = string.length();
 		boolean result = stream.readUntil(endChar, string);
 		processLocation(start, string);
@@ -233,7 +213,7 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 	}
 	
 	@Override
-	public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, UnprotectedStringBuffer string) {
+	public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, IString string) {
 		int start = string.length();
 		AsyncSupplier<Boolean, IOException> read = stream.readUntilAsync(endChar, string);
 		AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();

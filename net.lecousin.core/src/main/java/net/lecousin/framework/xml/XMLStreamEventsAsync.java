@@ -9,7 +9,7 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 
 /** Base class for asynchronous implementations of XMLStreamEvents. */
@@ -130,18 +130,18 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 	}
 	
 	/** Read inner text and close element. */
-	public AsyncSupplier<UnprotectedStringBuffer, Exception> readInnerText() {
+	public AsyncSupplier<CharArrayStringBuffer, Exception> readInnerText() {
 		if (!Type.START_ELEMENT.equals(event.type))
 			return new AsyncSupplier<>(null, new Exception("Invalid call of readInnerText: it must be called on a start element"));
 		if (event.isClosed)
-			return new AsyncSupplier<>(new UnprotectedStringBuffer(), null);
-		UnprotectedStringBuffer innerText = new UnprotectedStringBuffer();
-		AsyncSupplier<UnprotectedStringBuffer, Exception> result = new AsyncSupplier<>();
+			return new AsyncSupplier<>(new CharArrayStringBuffer(), null);
+		CharArrayStringBuffer innerText = new CharArrayStringBuffer();
+		AsyncSupplier<CharArrayStringBuffer, Exception> result = new AsyncSupplier<>();
 		readInnerText(innerText, result);
 		return result;
 	}
 	
-	private void readInnerText(UnprotectedStringBuffer innerText, AsyncSupplier<UnprotectedStringBuffer, Exception> result) {
+	private void readInnerText(CharArrayStringBuffer innerText, AsyncSupplier<CharArrayStringBuffer, Exception> result) {
 		IAsync<Exception> next = next();
 		do {
 			if (next.isDone()) {
@@ -289,7 +289,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				return;
 			}
 			String name = event.text.asString();
-			AsyncSupplier<UnprotectedStringBuffer, Exception> read = readInnerText();
+			AsyncSupplier<CharArrayStringBuffer, Exception> read = readInnerText();
 			if (read.isDone()) {
 				if (!check(read, result)) return;
 				texts.put(name, read.getResult().asString());
@@ -309,7 +309,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 			}
 			String name = event.text.asString();
 			new ParsingTask(() -> {
-				AsyncSupplier<UnprotectedStringBuffer, Exception> read = readInnerText();
+				AsyncSupplier<CharArrayStringBuffer, Exception> read = readInnerText();
 				if (read.isDone()) {
 					if (!check(read, result)) return;
 					texts.put(name, read.getResult().asString());

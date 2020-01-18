@@ -1,4 +1,4 @@
-package net.lecousin.framework.util;
+package net.lecousin.framework.text;
 
 import java.util.ArrayList;
 import java.util.Arrays;

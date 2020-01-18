@@ -8,7 +8,7 @@ import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.FullReadLines;
 import net.lecousin.framework.plugins.ExtensionPoints;
 import net.lecousin.framework.plugins.Plugin;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 
 /**
  * Task to load a plugins file.
@@ -24,7 +24,7 @@ public class LoadLibraryPluginsFile extends FullReadLines<Void> {
 	private ClassLoader classLoader;
 	
 	@Override
-	protected void processLine(UnprotectedStringBuffer line) throws IOException {
+	protected void processLine(CharArrayStringBuffer line) throws IOException {
 		int i = line.indexOf(':');
 		if (i < 0) {
 			if (line.length() > 0 && ((ApplicationClassLoader)classLoader).getApplication().getDefaultLogger().warn())
@@ -32,7 +32,7 @@ public class LoadLibraryPluginsFile extends FullReadLines<Void> {
 					.warn("Warning: plugins file " + getSourceDescription() + " contains an invalid line: " + line);
 			return;
 		}
-		UnprotectedStringBuffer s = line.substring(0, i);
+		CharArrayStringBuffer s = line.substring(0, i);
 		s.trim();
 		String epName = s.asString();
 		s = line.substring(i + 1);

@@ -3,9 +3,9 @@ package net.lecousin.framework.math;
 import java.math.BigInteger;
 import java.text.ParseException;
 
+import net.lecousin.framework.text.StringParser;
+import net.lecousin.framework.text.StringParser.Parse;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.StringParser;
-import net.lecousin.framework.util.StringParser.Parse;
 
 /**
  * Range of integer values, with a minimum and maximum.

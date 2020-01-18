@@ -15,8 +15,7 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
-import net.lecousin.framework.util.IString;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.IString;
 import net.lecousin.framework.xml.XMLStreamEvents;
 import net.lecousin.framework.xml.XMLStreamEvents.Attribute;
 
@@ -198,7 +197,6 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 	
 	protected abstract void next(EVENTS xml) throws Exception;
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testParse() throws Exception {
 		InputStream in = getClass().getClassLoader().getResourceAsStream(filepath);
@@ -283,7 +281,7 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 					Attribute a = xml.removeAttributeWithPrefix(prefix, name);
 					if (a == null)
 						throw new AssertionError("Missing attribute '" + name + "' with prefix '" + prefix + "' on element " + reader.getLocalName());
-					UnprotectedStringBuffer ourValue = a.value;
+					IString ourValue = a.value;
 					if (ourValue == null)
 						throw new AssertionError("Attribute '" + name + "' has no value on element " + reader.getLocalName());
 					String s = ourValue.asString();

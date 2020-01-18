@@ -27,6 +27,18 @@ public interface Runnables {
 	}
 	
 	/**
+	 * Same as Supplier but that throws an exception.
+	 * @param <T> type of data returned
+	 * @param <TError> type of the exception
+	 */
+	public interface ConsumerThrows<T, TError extends Exception> {
+
+		/** Called to execute the runnable. */
+		void accept(T t) throws TError;
+		
+	}
+	
+	/**
 	 * Same as Function but that throws an exception.
 	 * @param <T1> type of data given
 	 * @param <T2> type of data returned

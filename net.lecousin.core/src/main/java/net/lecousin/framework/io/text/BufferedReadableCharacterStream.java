@@ -20,8 +20,8 @@ import net.lecousin.framework.io.data.CompositeChars;
 import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.io.data.RawCharBuffer;
 import net.lecousin.framework.memory.ByteArrayCache;
+import net.lecousin.framework.text.IString;
 import net.lecousin.framework.util.ConcurrentCloseable;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /** Implement a buffered readable character stream from a readable IO. */
 public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOException> implements ICharacterStream.Readable.Buffered {
@@ -514,7 +514,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 	}
 	
 	@Override
-	public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, UnprotectedStringBuffer string) {
+	public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, IString string) {
 		AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
 		new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readUntil", getPriority(),
 			() -> readUntil(endChar, string, result)).start();
@@ -522,7 +522,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 	}
 	
 	@Override
-	public boolean readUntil(char endChar, UnprotectedStringBuffer string) throws IOException {
+	public boolean readUntil(char endChar, IString string) throws IOException {
 		AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
 		readUntil(endChar, string, result);
 		try {
@@ -532,7 +532,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		}
 	}
 	
-	private void readUntil(char endChar, UnprotectedStringBuffer string, AsyncSupplier<Boolean, IOException> result) {
+	private void readUntil(char endChar, IString string, AsyncSupplier<Boolean, IOException> result) {
 		if (back != -1) {
 			char c = (char)back;
 			back = -1;
@@ -581,7 +581,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		} while (true);
 	}
 	
-	private boolean searchCurrentChars(char endChar, UnprotectedStringBuffer string) {
+	private boolean searchCurrentChars(char endChar, IString string) {
 		int r = currentChars.remaining();
 		for (int i = 0; i < r; ++i) {
 			if (currentChars.getForward(i) == endChar) {

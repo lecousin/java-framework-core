@@ -5,8 +5,8 @@ import java.io.IOException;
 
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 import net.lecousin.framework.util.ConcurrentCloseable;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /** Allow to read a text file line by line. */
 public class TextLineStream extends ConcurrentCloseable<IOException> {
@@ -19,9 +19,9 @@ public class TextLineStream extends ConcurrentCloseable<IOException> {
 	private ICharacterStream.Readable.Buffered input;
 	
 	/** Read a new line, return null if the end of the character stream is reached. */
-	public UnprotectedStringBuffer nextLine() throws IOException {
+	public CharArrayStringBuffer nextLine() throws IOException {
 		if (input.endReached()) return null;
-		UnprotectedStringBuffer line = new UnprotectedStringBuffer();
+		CharArrayStringBuffer line = new CharArrayStringBuffer();
 		boolean prevCR = false;
 		do {
 			try {

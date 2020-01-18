@@ -3,7 +3,7 @@ package net.lecousin.framework.io.text;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 
 /** Task reading a text file line by line.
  * @param <T> type of object returned
@@ -34,7 +34,7 @@ public abstract class FullReadLines<T> {
 		return result;
 	}
 	
-	private UnprotectedStringBuffer line = null;
+	private CharArrayStringBuffer line = null;
 	
 	private void resume(AsyncSupplier<T, Exception> result) {
 		stream.canStartReading().thenStart(new Task.Cpu.FromRunnable(description, priority, () -> scan(result)), true);
@@ -42,7 +42,7 @@ public abstract class FullReadLines<T> {
 	
 	private void scan(AsyncSupplier<T, Exception> result) {
 		do {
-			if (line == null) line = new UnprotectedStringBuffer();
+			if (line == null) line = new CharArrayStringBuffer();
 			int c;
 			try { c = stream.readAsync(); }
 			catch (Exception e) {
@@ -108,7 +108,7 @@ public abstract class FullReadLines<T> {
 	}
 
 	@SuppressWarnings("squid:S00112") // implementation should be free to throw any type
-	protected abstract void processLine(UnprotectedStringBuffer line) throws Exception;
+	protected abstract void processLine(CharArrayStringBuffer line) throws Exception;
 	
 	@SuppressWarnings("squid:S00112") // implementation should be free to throw any type
 	protected abstract T generateResult() throws Exception;

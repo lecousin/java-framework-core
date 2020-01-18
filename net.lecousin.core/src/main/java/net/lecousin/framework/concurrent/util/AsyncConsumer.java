@@ -54,6 +54,13 @@ public interface AsyncConsumer<T, TError extends Exception> {
 		return result;
 	}
 	
+	/** Consume data and call end. */
+	default IAsync<TError> consumeEnd(T data, Consumer<T> onDataRelease) {
+		Async<TError> result = new Async<>();
+		consume(data, onDataRelease).onDone(() -> end().onDone(result), result);
+		return result;
+	}
+	
 	/**
 	 * Simple AsyncConsumer that does nothing for end and error methods.
 	 * @param <T> type of data

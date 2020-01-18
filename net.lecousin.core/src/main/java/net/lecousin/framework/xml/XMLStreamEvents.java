@@ -18,8 +18,9 @@ import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStreamLocation;
 import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.memory.ByteArrayCache;
+import net.lecousin.framework.text.CharArrayStringBuffer;
+import net.lecousin.framework.text.IString;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /**
  * Base class to parse XML raising an event each time a new element (comment, text, node... is found).<br/>
@@ -66,16 +67,16 @@ public abstract class XMLStreamEvents {
 		 *    <li>TEXT: text</li>
 		 *  </ul>
 		 */
-		public UnprotectedStringBuffer text = null;
+		public IString text = null;
 		
 		/** On START_ELEMENT or END_ELEMENT events, it contains the namespace part of the text. */
-		public UnprotectedStringBuffer namespacePrefix = null;
+		public IString namespacePrefix = null;
 		
 		/** On START_ELEMENT or END_ELEMENT events, it contains the namespace URI correpsonding to the prefix. */
-		public UnprotectedStringBuffer namespaceURI = null;
+		public IString namespaceURI = null;
 		
 		/** On START_ELEMENT or END_ELEMENT events, it contains the local name part of the text. */
-		public UnprotectedStringBuffer localName = null;
+		public IString localName = null;
 		
 		/** When type if START_ELEMENT, it specifies if it is an empty-element. */
 		public boolean isClosed = false;
@@ -84,10 +85,10 @@ public abstract class XMLStreamEvents {
 		public LinkedList<Attribute> attributes = null;
 		
 		/** System specified in the DOCTYPE tag. */
-		public UnprotectedStringBuffer system = null;
+		public CharArrayStringBuffer system = null;
 		
 		/** Public ID specified in the DOCTYPE tag. */
-		public UnprotectedStringBuffer publicId = null;
+		public CharArrayStringBuffer publicId = null;
 
 		/** Current context with elements' names of the current hierarchy and namespaces declaration.
 		 * A new context is created on each START_ELEMENT, and removed after the corresponding END_ELEMENT.
@@ -119,12 +120,12 @@ public abstract class XMLStreamEvents {
 	
 	/** Information about an Element node. Those contexts are stacked to know the current hierarchy on an event. */
 	public static class ElementContext {
-		public UnprotectedStringBuffer text;
-		public UnprotectedStringBuffer namespacePrefix;
-		public UnprotectedStringBuffer localName;
+		public IString text;
+		public IString namespacePrefix;
+		public IString localName;
 		/** List of pair prefix/uri. */
-		public List<Pair<UnprotectedStringBuffer, UnprotectedStringBuffer>> namespaces = new LinkedList<>();
-		public UnprotectedStringBuffer defaultNamespace = null;
+		public List<Pair<IString, IString>> namespaces = new LinkedList<>();
+		public IString defaultNamespace = null;
 		
 		@Override
 		public String toString() {
@@ -134,10 +135,10 @@ public abstract class XMLStreamEvents {
 	
 	/** An attribute on an element node. */
 	public static class Attribute {
-		public UnprotectedStringBuffer text;
-		public UnprotectedStringBuffer namespacePrefix;
-		public UnprotectedStringBuffer localName;
-		public UnprotectedStringBuffer value;
+		public IString text;
+		public IString namespacePrefix;
+		public IString localName;
+		public IString value;
 	}
 	
 	public int getMaximumTextSize() { return maxTextSize; }
@@ -149,19 +150,19 @@ public abstract class XMLStreamEvents {
 	public void setMaximumCDataSize(int max) { maxCDataSize = max; }
 	
 	/** Get the namespace URI for a prefix, or empty string if the prefix is not defined. */
-	public UnprotectedStringBuffer getNamespaceURI(CharSequence namespacePrefix) {
+	public IString getNamespaceURI(CharSequence namespacePrefix) {
 		if (namespacePrefix.length() == 0) {
 			for (ElementContext ctx : event.context)
 				if (ctx.defaultNamespace != null)
 					return ctx.defaultNamespace;
-			return new UnprotectedStringBuffer();
+			return new CharArrayStringBuffer();
 		}
 		for (ElementContext ctx : event.context) {
-			for (Pair<UnprotectedStringBuffer, UnprotectedStringBuffer> ns : ctx.namespaces)
+			for (Pair<IString, IString> ns : ctx.namespaces)
 				if (ns.getValue1().equals(namespacePrefix))
 					return ns.getValue2();
 		}
-		return new UnprotectedStringBuffer();
+		return new CharArrayStringBuffer();
 	}
 	
 	/** Shortcut to get the attribute for the given full name. */
@@ -197,7 +198,7 @@ public abstract class XMLStreamEvents {
 	}
 
 	/** Shortcut to get the value of the given attribute name. */
-	public UnprotectedStringBuffer getAttributeValueByFullName(CharSequence name) {
+	public IString getAttributeValueByFullName(CharSequence name) {
 		for (Attribute attr : event.attributes)
 			if (attr.text.equals(name))
 				return attr.value;
@@ -205,7 +206,7 @@ public abstract class XMLStreamEvents {
 	}
 	
 	/** Shortcut to get the value of the given attribute name. */
-	public UnprotectedStringBuffer getAttributeValueByLocalName(CharSequence name) {
+	public IString getAttributeValueByLocalName(CharSequence name) {
 		for (Attribute attr : event.attributes)
 			if (attr.localName.equals(name))
 				return attr.value;
@@ -213,7 +214,7 @@ public abstract class XMLStreamEvents {
 	}
 
 	/** Shortcut to get the value of the given attribute name. */
-	public UnprotectedStringBuffer getAttributeValueWithPrefix(CharSequence prefix, CharSequence name) {
+	public IString getAttributeValueWithPrefix(CharSequence prefix, CharSequence name) {
 		for (Attribute attr : event.attributes)
 			if (attr.localName.equals(name) && attr.namespacePrefix.equals(prefix))
 				return attr.value;
@@ -221,7 +222,7 @@ public abstract class XMLStreamEvents {
 	}
 	
 	/** Shortcut to get the value of the given attribute name. */
-	public UnprotectedStringBuffer getAttributeValueWithNamespaceURI(CharSequence uri, CharSequence name) {
+	public IString getAttributeValueWithNamespaceURI(CharSequence uri, CharSequence name) {
 		for (Attribute attr : event.attributes)
 			if (attr.localName.equals(name) && getNamespaceURI(attr.namespacePrefix).equals(uri))
 				return attr.value;
@@ -293,7 +294,7 @@ public abstract class XMLStreamEvents {
 	
 	protected void onStartElement(int i) {
 		if (i < 0) {
-			event.namespacePrefix = new UnprotectedStringBuffer();
+			event.namespacePrefix = new CharArrayStringBuffer();
 			event.localName = event.text;
 		} else {
 			event.namespacePrefix = event.text.substring(0, i);
@@ -309,7 +310,7 @@ public abstract class XMLStreamEvents {
 	}
 	
 	protected void readNamespaces(ElementContext ctx) {
-		List<Pair<UnprotectedStringBuffer, UnprotectedStringBuffer>> list = new LinkedList<>();
+		List<Pair<IString, IString>> list = new LinkedList<>();
 		for (Iterator<Attribute> it = event.attributes.iterator(); it.hasNext(); ) {
 			Attribute a = it.next();
 			if (a.namespacePrefix.isEmpty()) {
@@ -688,9 +689,9 @@ public abstract class XMLStreamEvents {
 		protected CharacterDecoder tmpDecoder;
 		protected int line = 1;
 		protected int posInLine = 1;
-		protected UnprotectedStringBuffer xmlVersion = null;
-		protected UnprotectedStringBuffer xmlEncoding = null;
-		protected UnprotectedStringBuffer xmlStandalone = null;
+		protected CharArrayStringBuffer xmlVersion = null;
+		protected CharArrayStringBuffer xmlEncoding = null;
+		protected CharArrayStringBuffer xmlStandalone = null;
 		
 		private RawByteBuffer firstBytes;
 		private Chars.Readable chars;
@@ -948,7 +949,7 @@ public abstract class XMLStreamEvents {
 			return true;
 		}
 		
-		private UnprotectedStringBuffer eat(char[] lowerCase, char[] upperCase) throws IOException {
+		private CharArrayStringBuffer eat(char[] lowerCase, char[] upperCase) throws IOException {
 			int l = lowerCase.length;
 			char c;
 			if (chars.remaining() >= l) {
@@ -967,7 +968,7 @@ public abstract class XMLStreamEvents {
 			if (c != '\'' && c != '"')
 				throw new IOException("Invalid XML Declaration: character ' or \" expected after '='");
 			char c2 = c;
-			UnprotectedStringBuffer value = new UnprotectedStringBuffer();
+			CharArrayStringBuffer value = new CharArrayStringBuffer();
 			while ((c = nextChar()) != c2)
 				value.append(c);
 			return value;

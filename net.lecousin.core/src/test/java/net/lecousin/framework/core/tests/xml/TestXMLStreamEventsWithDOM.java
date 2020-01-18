@@ -13,7 +13,7 @@ import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
-import net.lecousin.framework.util.IString;
+import net.lecousin.framework.text.IString;
 import net.lecousin.framework.xml.XMLStreamEvents;
 import net.lecousin.framework.xml.XMLStreamEvents.Attribute;
 

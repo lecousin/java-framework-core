@@ -35,9 +35,9 @@ import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.math.IntegerUnit;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLStreamEvents;
 import net.lecousin.framework.xml.XMLStreamEvents.ElementContext;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
@@ -159,7 +159,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 				return new AsyncSupplier<>(null, null);
 			return new AsyncSupplier<>(null, new SerializationException("null value found but boolean expected"));
 		}
-		AsyncSupplier<UnprotectedStringBuffer, Exception> read = input.readInnerText();
+		AsyncSupplier<CharArrayStringBuffer, Exception> read = input.readInnerText();
 		AsyncSupplier<Boolean, SerializationException> result = new AsyncSupplier<>();
 		read.onDone(text -> {
 			text.toLowerCase();
@@ -183,7 +183,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 				return new AsyncSupplier<>(null, null);
 			return new AsyncSupplier<>(null, new SerializationException("null value found but number expected"));
 		}
-		AsyncSupplier<UnprotectedStringBuffer, Exception> read = input.readInnerText();
+		AsyncSupplier<CharArrayStringBuffer, Exception> read = input.readInnerText();
 		AsyncSupplier<Number, SerializationException> result = new AsyncSupplier<>();
 		read.onDone(text -> {
 			try {

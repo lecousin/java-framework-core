@@ -9,9 +9,7 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.io.data.Bytes;
 import net.lecousin.framework.io.data.RawByteBuffer;
-import net.lecousin.framework.io.data.RawCharBuffer;
 import net.lecousin.framework.memory.ByteArrayCache;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /** Encode and decode quoted-printable as defined in RFC 2045. */
 public final class QuotedPrintable {
@@ -35,8 +33,8 @@ public final class QuotedPrintable {
 		private static final long serialVersionUID = 1L;
 
 		/** Constructor. */
-		public InvalidQuotedPrintableByte(byte b) {
-			super("Invalid byte in quoted-printable: " + (b & 0xFF));
+		public InvalidQuotedPrintableByte(byte b, int pos) {
+			super("Invalid byte in quoted-printable: " + (b & 0xFF) + " at position " + pos);
 		}
 	}
 	
@@ -91,7 +89,7 @@ public final class QuotedPrintable {
 					nbSpaces = 0;
 					continue;
 				default:
-					throw new InvalidQuotedPrintableByte(b);
+					throw new InvalidQuotedPrintableByte(b, input.position());
 				}
 			}
 		}
@@ -253,22 +251,6 @@ public final class QuotedPrintable {
 			decodedConsumer.error(error);
 		}
 		
-	}
-	
-	/** Decode the given bytes into a string. */
-	public static UnprotectedStringBuffer decodeAsString(Bytes.Readable input) throws EncodingException {
-		UnprotectedStringBuffer str = new UnprotectedStringBuffer();
-		Decoder decoder = new Decoder();
-		do {
-			char[] chars = new char[Math.max(input.remaining(), 128)];
-			RawCharBuffer output = new RawCharBuffer(chars);
-			decoder.decode(input, output.asWritableIso8859Bytes(), true);
-			if (output.currentOffset > 0)
-				str.append(chars, 0, output.currentOffset);
-			else
-				break;
-		} while (input.hasRemaining());
-		return str;
 	}
 	
 	/** Encode bytes into quoted-printable. */

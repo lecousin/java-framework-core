@@ -5,7 +5,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.CharArrayStringBuffer;
+import net.lecousin.framework.text.IString;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 
 /** Base class for synchronous implementations of XMLStreamEvents. */
@@ -61,13 +62,13 @@ public abstract class XMLStreamEventsSync extends XMLStreamEvents {
 	}
 	
 	/** Read inner text and close element. */
-	public UnprotectedStringBuffer readInnerText() throws XMLException, IOException {
+	public CharArrayStringBuffer readInnerText() throws XMLException, IOException {
 		if (!Type.START_ELEMENT.equals(event.type))
 			throw new IOException("Invalid call of readInnerText: it must be called on a start element, current event type is: "
 				+ event.type);
-		if (event.isClosed) return new UnprotectedStringBuffer();
-		UnprotectedStringBuffer elementName = event.text;
-		UnprotectedStringBuffer innerText = new UnprotectedStringBuffer();
+		if (event.isClosed) return new CharArrayStringBuffer();
+		IString elementName = event.text;
+		CharArrayStringBuffer innerText = new CharArrayStringBuffer();
 		do {
 			try { next(); }
 			catch (EOFException e) {

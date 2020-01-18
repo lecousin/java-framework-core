@@ -2,6 +2,8 @@ package net.lecousin.framework.util;
 
 import java.nio.ByteBuffer;
 
+import net.lecousin.framework.text.StringUtil;
+
 /** Utility methods for debugging. */
 public final class DebugUtil {
 	

@@ -11,7 +11,7 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.PropertiesReader;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 
 /**
  * Task to read a file of properties.
@@ -66,7 +66,7 @@ public class LoadPropertiesFileTask extends PropertiesReader<Properties> {
 	private Consumer<Properties> onDone;
 	
 	@Override
-	protected void processProperty(UnprotectedStringBuffer key, UnprotectedStringBuffer value) {
+	protected void processProperty(CharArrayStringBuffer key, CharArrayStringBuffer value) {
 		properties.setProperty(key.asString(), value.asString());
 	}
 	

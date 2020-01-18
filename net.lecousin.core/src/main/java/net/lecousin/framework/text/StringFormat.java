@@ -1,4 +1,4 @@
-package net.lecousin.framework.util;
+package net.lecousin.framework.text;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

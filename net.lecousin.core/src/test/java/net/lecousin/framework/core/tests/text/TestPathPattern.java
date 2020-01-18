@@ -1,9 +1,9 @@
-package net.lecousin.framework.core.tests.util;
+package net.lecousin.framework.core.tests.text;
 
 import java.util.Arrays;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
-import net.lecousin.framework.util.PathPattern;
+import net.lecousin.framework.text.PathPattern;
 
 import org.junit.Assert;
 import org.junit.Test;

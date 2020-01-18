@@ -1,5 +1,7 @@
 package net.lecousin.framework.util;
 
+import net.lecousin.framework.text.StringUtil;
+
 /**
  * Utility methods for GUID.
  */

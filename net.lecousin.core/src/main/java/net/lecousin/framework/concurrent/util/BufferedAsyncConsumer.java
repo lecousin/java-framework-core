@@ -3,6 +3,7 @@ package net.lecousin.framework.concurrent.util;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.collections.TurnArray;
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.util.Pair;
@@ -56,26 +57,31 @@ public class BufferedAsyncConsumer<T, TError extends Exception> implements Async
 	}
 	
 	private void nextPending() {
-		synchronized (queue) {
-			if (error != null) {
-				consumer.error(error);
-				return;
-			}
-			Pair<T, Consumer<T>> next = queue.pollFirst();
-			if (next != null) {
-				lastOperation = consumer.consume(next.getValue1(), next.getValue2());
-				if (waiting != null) {
-					queue.add(new Pair<>(waiting.getValue1(), waiting.getValue2()));
-					waiting.getValue3().unblock();
-					waiting = null;
+		new Task.Cpu.FromRunnable("Consume next buffer", Task.PRIORITY_NORMAL, () -> {
+			Async<TError> unblock = null;
+			synchronized (queue) {
+				if (error != null) {
+					consumer.error(error);
+					return;
 				}
-				lastOperation.onDone(this::nextPending, this::error, c -> { /* ignore */ });
-			} else {
-				lastOperation = null;
-				if (end != null)
-					consumer.end().onDone(end);
+				Pair<T, Consumer<T>> next = queue.pollFirst();
+				if (next != null) {
+					lastOperation = consumer.consume(next.getValue1(), next.getValue2());
+					if (waiting != null) {
+						queue.add(new Pair<>(waiting.getValue1(), waiting.getValue2()));
+						unblock = waiting.getValue3();
+						waiting = null;
+					}
+					lastOperation.onDone(this::nextPending, this::error, c -> { /* ignore */ });
+				} else {
+					lastOperation = null;
+					if (end != null)
+						consumer.end().onDone(end);
+				}
 			}
-		}
+			if (unblock != null)
+				unblock.unblock();
+		}).start();
 	}
 
 	@Override
@@ -93,9 +99,20 @@ public class BufferedAsyncConsumer<T, TError extends Exception> implements Async
 	@Override
 	public void error(TError error) {
 		synchronized (queue) {
+			if (this.error != null)
+				return;
 			this.error = error;
+			while (!queue.isEmpty())
+				queue.pollFirst();
+			if (waiting != null)
+				waiting.getValue3().error(error);
+			waiting = null;
 			if (lastOperation == null)
 				consumer.error(error);
+			else
+				lastOperation = null;
+			if (end != null)
+				end.error(error);
 		}
 	}
 	

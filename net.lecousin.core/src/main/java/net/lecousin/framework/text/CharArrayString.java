@@ -1,8 +1,9 @@
-package net.lecousin.framework.util;
+package net.lecousin.framework.text;
 
 import java.util.LinkedList;
 import java.util.List;
 
+import net.lecousin.framework.collections.LinkedArrayList;
 import net.lecousin.framework.io.data.RawCharBuffer;
 
 /**
@@ -19,10 +20,12 @@ import net.lecousin.framework.io.data.RawCharBuffer;
  * instance but sharing the same character array, with different offset and number of characters.
  * That means modifying a character in an UnprotectedString will also modify the character in sub-strings.<br/>
  */
-public class UnprotectedString implements IString {
+public class CharArrayString extends ArrayString {
 
+	private char[] chars;
+	
 	/** Create an empty UnprotectedString with an initial capacity. */ 
-	public UnprotectedString(int initialCapacity) {
+	public CharArrayString(int initialCapacity) {
 		chars = new char[initialCapacity];
 		start = 0;
 		end = -1;
@@ -30,7 +33,7 @@ public class UnprotectedString implements IString {
 	}
 	
 	/** Create a string with a single character. */
-	public UnprotectedString(char singleChar) {
+	public CharArrayString(char singleChar) {
 		chars = new char[] { singleChar };
 		start = 0;
 		end = 0;
@@ -38,7 +41,7 @@ public class UnprotectedString implements IString {
 	}
 
 	/** Create an UnprotectedString based on an existing character array. */
-	public UnprotectedString(char[] chars, int offset, int len, int usableLength) {
+	public CharArrayString(char[] chars, int offset, int len, int usableLength) {
 		this.chars = chars;
 		this.start = offset;
 		this.end = offset + len - 1;
@@ -46,12 +49,12 @@ public class UnprotectedString implements IString {
 	}
 
 	/** Create an UnprotectedString based on an existing character array. */
-	public UnprotectedString(char[] chars) {
+	public CharArrayString(char[] chars) {
 		this(chars, 0, chars.length, chars.length);
 	}
 	
 	/** Creates an UnprotectedString from the given String (a copy of characters is done). */
-	public UnprotectedString(String s) {
+	public CharArrayString(String s) {
 		chars = s.toCharArray();
 		start = 0;
 		end = chars.length - 1;
@@ -59,7 +62,7 @@ public class UnprotectedString implements IString {
 	}
 	
 	/** Creates an UnprotectedString from the given String (a copy of characters is done). */
-	public UnprotectedString(String s, int startPos, int endPos) {
+	public CharArrayString(String s, int startPos, int endPos) {
 		chars = s.toCharArray();
 		start = startPos;
 		end = start + endPos - startPos - 1;
@@ -67,7 +70,7 @@ public class UnprotectedString implements IString {
 	}
 
 	/** Creates an UnprotectedString from the given String (a copy of characters is done). */
-	public UnprotectedString(IString s) {
+	public CharArrayString(IString s) {
 		chars = new char[s.length()];
 		s.fill(chars);
 		start = 0;
@@ -76,33 +79,13 @@ public class UnprotectedString implements IString {
 	}
 
 	/** Creates an UnprotectedString from the given CharSequence (a copy of characters is done). */
-	public UnprotectedString(CharSequence s) {
+	public CharArrayString(CharSequence s) {
 		this(s.toString());
 	}
 
 	/** Creates an UnprotectedString from the given CharSequence (a copy of characters is done). */
-	public UnprotectedString(CharSequence s, int startPos, int endPos) {
+	public CharArrayString(CharSequence s, int startPos, int endPos) {
 		this(s.toString(), startPos, endPos);
-	}
-	
-	private char[] chars;
-	private int start;
-	private int end;
-	private int usableEnd;
-	
-	@Override
-	public int length() {
-		return end - start + 1;
-	}
-	
-	@Override
-	public boolean isEmpty() {
-		return end == -1 || end < start;
-	}
-	
-	/** Make this string empty, only by setting the end offset to the start offset. */
-	public void reset() {
-		end = start - 1;
 	}
 	
 	@Override
@@ -118,20 +101,17 @@ public class UnprotectedString implements IString {
 	}
 	
 	/** Return the first character, or -1 if the string is empty. */
+	@Override
 	public int firstChar() {
 		if (end >= start) return chars[start];
 		return -1;
 	}
 	
 	/** Return the last character, or -1 if the string is empty. */
+	@Override
 	public int lastChar() {
 		if (end >= start) return chars[end];
 		return -1;
-	}
-	
-	/** Return then number of unused characters at the end of the array. */
-	public int canAppendWithoutEnlarging() {
-		return usableEnd - end;
 	}
 	
 	private void enlarge(int add) {
@@ -144,6 +124,7 @@ public class UnprotectedString implements IString {
 	}
 	
 	/** Create a new character array to fit the current content of this string. */
+	@Override
 	public void trimToSize() {
 		char[] a = new char[end - start + 1];
 		System.arraycopy(chars, start, a, 0, a.length);
@@ -154,6 +135,7 @@ public class UnprotectedString implements IString {
 	}
 	
 	/** Append the given character without enlarging the char array, return false if it cannot be done. */
+	@Override
 	public boolean appendNoEnlarge(char c) {
 		if (end == usableEnd) return false;
 		chars[++end] = c;
@@ -161,7 +143,7 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
-	public UnprotectedString append(char c) {
+	public CharArrayString append(char c) {
 		if (end == usableEnd)
 			enlarge(chars.length < 128 ? 64 : chars.length >> 1);
 		chars[++end] = c;
@@ -169,7 +151,7 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
-	public UnprotectedString append(char[] chars, int offset, int len) {
+	public CharArrayString append(char[] chars, int offset, int len) {
 		if (usableEnd - end < len) {
 			int l = chars.length < 128 ? 64 : chars.length >> 1;
 			if (l < len + 16) l = len + 16;
@@ -181,25 +163,15 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
-	public UnprotectedString append(CharSequence s) {
+	public CharArrayString append(CharSequence s) {
 		if (s == null) s = "null";
-		if (s instanceof UnprotectedString) {
-			UnprotectedString us = (UnprotectedString)s;
-			append(us.chars, us.start, us.end - us.start + 1);
-			return this;
-		}
 		int l = s.length();
 		if (l == 0) return this;
 		if (l >= usableEnd - end)
 			enlarge(l + 16);
-		if (s instanceof UnprotectedStringBuffer) {
-			UnprotectedStringBuffer usb = (UnprotectedStringBuffer)s;
-			int i = 0;
-			do {
-				UnprotectedString us = usb.getUnprotectedString(i);
-				System.arraycopy(us.chars, us.start, chars, end + 1, us.length());
-				end += us.length();
-			} while (++i < usb.getNbUsableUnprotectedStrings());
+		if (s instanceof IString) {
+			((IString)s).fill(chars, end + 1);
+			end += l;
 			return this;
 		}
 		for (int i = 0; i < l; ++i)
@@ -208,32 +180,15 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
-	public UnprotectedString append(CharSequence s, int startPos, int endPos) {
+	public CharArrayString append(CharSequence s, int startPos, int endPos) {
 		if (s == null) return append("null");
-		if (s instanceof UnprotectedString) {
-			UnprotectedString us = (UnprotectedString)s;
-			append(us.chars, us.start + startPos, endPos - startPos);
-			return this;
-		}
 		int l = endPos - startPos;
 		if (l == 0) return this;
 		if (l >= usableEnd - end)
 			enlarge(l + 16);
-		if (s instanceof UnprotectedStringBuffer) {
-			UnprotectedStringBuffer usb = (UnprotectedStringBuffer)s;
-			int i = 0;
-			int pos = 0;
-			do {
-				UnprotectedString us = usb.getUnprotectedString(i);
-				int usl = us.length();
-				if (pos + usl > startPos) {
-					int st = startPos > pos ? startPos - pos : 0;
-					int addLen = usl > endPos - (pos + st) ? endPos - (pos + st) : usl;
-					System.arraycopy(us.chars, us.start + st, chars, end + 1, addLen);
-					end += addLen;
-				}
-				pos += usl;
-			} while (++i < usb.getNbUsableUnprotectedStrings() && pos < endPos);
+		if (s instanceof IString) {
+			((IString)s).substring(startPos, endPos).fill(chars, end + 1);
+			end += l;
 			return this;
 		}
 		for (int i = 0; i < l; ++i)
@@ -273,35 +228,21 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
-	public UnprotectedString substring(int start, int end) {
+	public CharArrayString substring(int start, int end) {
 		if (this.start + end > this.end) end = this.end - this.start + 1;
-		if (end <= start) return new UnprotectedString(0);
-		return new UnprotectedString(chars, this.start + start, end - start, end - start);
+		if (end <= start) return new CharArrayString(0);
+		return new CharArrayString(chars, this.start + start, end - start, end - start);
 	}
 	
 	@Override
-	public UnprotectedString substring(int start) {
+	public CharArrayString substring(int start) {
 		if (this.start + start > end)
-			return new UnprotectedString(0);
-		return new UnprotectedString(chars, this.start + start, end - (this.start + start) + 1, end - (this.start + start) + 1);
+			return new CharArrayString(0);
+		return new CharArrayString(chars, this.start + start, end - (this.start + start) + 1, end - (this.start + start) + 1);
 	}
 	
 	@Override
-	public UnprotectedString trimBeginning() {
-		while (start <= end && Character.isWhitespace(chars[start]))
-			start++;
-		return this;
-	}
-	
-	@Override
-	public UnprotectedString trimEnd() {
-		while (end >= start && Character.isWhitespace(chars[end]))
-			end--;
-		return this;
-	}
-	
-	@Override
-	public UnprotectedString replace(char oldChar, char newChar) {
+	public CharArrayString replace(char oldChar, char newChar) {
 		for (int i = start; i <= end; ++i)
 			if (chars[i] == oldChar)
 				chars[i] = newChar;
@@ -309,24 +250,84 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
-	public UnprotectedString removeEndChars(int nb) {
-		end -= nb;
-		if (end < start - 1) end = start - 1;
+	public CharArrayString replace(CharSequence search, CharSequence replace) {
+		int sl = search.length();
+		int rl = replace.length();
+		if (sl == rl) {
+			int pos = 0;
+			int i;
+			while ((i = indexOf(search, pos)) >= 0) {
+				replace(i, i + sl - 1, replace);
+				pos = i + sl;
+			}
+			return this;
+		}
+		if (sl > rl) {
+			int pos = 0;
+			int diff = 0;
+			int i;
+			while ((i = indexOf(search, pos)) >= 0) {
+				if (diff > 0)
+					System.arraycopy(chars, pos, chars, pos - diff, i - pos);
+				overwrite(i - diff, replace);
+				diff += sl - rl;
+				pos = i + sl;
+			}
+			if (diff > 0) {
+				System.arraycopy(chars, pos, chars, pos - diff, end + 1 - pos);
+				end -= diff;
+			}
+			return this;
+		}
+		LinkedArrayList<Integer> found = new LinkedArrayList<>(10);
+		int pos = 0;
+		int i;
+		while ((i = indexOf(search, pos)) >= 0) {
+			found.add(Integer.valueOf(i));
+			pos = i + sl;
+		}
+		if (found.isEmpty())
+			return this;
+		int diff = (rl - sl) * found.size();
+		if (usableEnd - end < diff)
+			enlarge(Math.min(diff, 16));
+		pos = end + 1;
+		i = found.size() - 1;
+		while (i >= 0) {
+			int index = found.get(i--).intValue();
+			System.arraycopy(chars, index + sl, chars, index + rl + ((rl - sl) * (i + 1)), pos - index - sl);
+			overwrite(index + ((rl - sl) * (i + 1)), replace);
+			pos = index;
+		}
 		return this;
 	}
 	
 	@Override
-	public UnprotectedString removeStartChars(int nb) {
-		start += nb;
-		if (start > end) start = end + 1;
+	public CharArrayString replace(int start, int end, CharSequence replace) {
+		int l = replace.length();
+		int l2 = end - start + 1;
+		if (l == l2) {
+			overwrite(start, replace);
+			return this;
+		}
+		if (l < l2) {
+			overwrite(start, replace);
+			System.arraycopy(chars, start + l2, chars, start + l, this.end - end);
+			this.end -= l2 - l;
+			return this;
+		}
+		enlarge(Math.min(l2 - l, 16));
+		System.arraycopy(chars, start + l2, chars, start + l, this.end - end);
+		overwrite(start, replace);
+		this.end += l2 - l;
 		return this;
 	}
 	
-	/** Remove the given number of characters at the beginning of the string. */
-	public void moveForward(int skip) {
-		this.start += skip;
+	private void overwrite(int start, CharSequence s) {
+		for (int i = s.length() - 1; i >= 0; --i)
+			chars[start + i] = s.charAt(i);
 	}
-
+	
 	@Override
 	public int fill(char[] chars, int start) {
 		int len = this.end - this.start + 1;
@@ -343,8 +344,8 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
-	public List<UnprotectedString> split(char sep) {
-		LinkedList<UnprotectedString> list = new LinkedList<>();
+	public List<CharArrayString> split(char sep) {
+		LinkedList<CharArrayString> list = new LinkedList<>();
 		int pos = start;
 		while (pos <= end) {
 			int found = pos;
@@ -356,14 +357,14 @@ public class UnprotectedString implements IString {
 	}
 	
 	@Override
-	public UnprotectedString toLowerCase() {
+	public CharArrayString toLowerCase() {
 		for (int i = start; i <= end; ++i)
 			chars[i] = Character.toLowerCase(chars[i]);
 		return this;
 	}
 	
 	@Override
-	public UnprotectedString toUpperCase() {
+	public CharArrayString toUpperCase() {
 		for (int i = start; i <= end; ++i)
 			chars[i] = Character.toUpperCase(chars[i]);
 		return this;
@@ -410,19 +411,15 @@ public class UnprotectedString implements IString {
 		return chars;
 	}
 	
-	/** Return the current start offset in the underlying character array. */
-	public int charArrayStart() {
-		return start;
-	}
-	
 	@Override
-	public UnprotectedString copy() {
+	public CharArrayString copy() {
 		char[] copy = new char[end - start + 1];
 		System.arraycopy(chars, start, copy, 0, end - start + 1);
-		return new UnprotectedString(copy);
+		return new CharArrayString(copy);
 	}
 	
 	/** Return the number of occurences of the given array in this string. */
+	@Override
 	public int countChar(char c) {
 		int count = 0;
 		for (int i = start; i <= end; ++i)

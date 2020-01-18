@@ -3,8 +3,7 @@ package net.lecousin.framework.io.data;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 
-import net.lecousin.framework.util.UnprotectedString;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.IString;
 
 /** Utility class that contains a byte array with public attributes. */
 @SuppressWarnings("squid:ClassVariableVisibilityCheck")
@@ -57,8 +56,8 @@ public class RawCharBuffer extends RawBuffer<char[]> implements Chars.Readable, 
 	}
 	
 	@Override
-	public void get(UnprotectedStringBuffer string, int length) {
-		string.append(new UnprotectedString(array, currentOffset, length, length));
+	public void get(IString string, int length) {
+		string.append(array, currentOffset, length);
 		currentOffset += length;
 	}
 	

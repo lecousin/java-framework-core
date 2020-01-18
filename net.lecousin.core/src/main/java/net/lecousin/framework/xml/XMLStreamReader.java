@@ -13,15 +13,16 @@ import net.lecousin.framework.encoding.number.NumberEncoding;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.locale.LocalizableString;
-import net.lecousin.framework.util.UnprotectedString;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
-import net.lecousin.framework.util.UnprotectedStringBufferLimited;
+import net.lecousin.framework.text.CappedString;
+import net.lecousin.framework.text.CharArrayString;
+import net.lecousin.framework.text.CharArrayStringBuffer;
+import net.lecousin.framework.text.IString;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 
 /**
  * Read an XML in a similar way as {@link javax.xml.stream.XMLStreamReader}: read-only, forward, event based.
  * The method next() allows to move forward to the next event (such as start element, end element, comment, text...).
- * It uses {@link UnprotectedString} to avoid allocating many character arrays.
+ * It uses {@link CharArrayString} to avoid allocating many character arrays.
  * Charset is automatically detected by reading the beginning of the XML (either with auto-detection or with the specified encoding).
  */
 public class XMLStreamReader extends XMLStreamEventsSync {
@@ -164,7 +165,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readDocType() throws XMLException, IOException {
 		event.type = Type.DOCTYPE;
-		event.text = new UnprotectedStringBuffer();
+		event.text = new CharArrayStringBuffer();
 		readSpace();
 		readName(event.text);
 		char c;
@@ -197,8 +198,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readComment() throws XMLException, IOException {
 		event.type = Type.COMMENT;
-		UnprotectedStringBuffer t = event.text =
-			maxTextSize <= 0 ? new UnprotectedStringBuffer() : new UnprotectedStringBufferLimited(maxTextSize);
+		IString t = event.text =
+			maxTextSize <= 0 ? new CharArrayStringBuffer() : new CappedString(maxTextSize);
 		char c;
 		try {
 			do {
@@ -207,7 +208,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 						XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_END),
 						new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, "inside comment"));
 				if ((c = stream.read()) != '-') {
-					t.append(new UnprotectedString(new char[] { '-', c }));
+					t.append(new CharArrayString(new char[] { '-', c }));
 					continue;
 				}
 				do {
@@ -217,7 +218,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 						t.append('-');
 						continue;
 					}
-					t.append(new UnprotectedString(new char[] { '-', '-', c }));
+					t.append(new CharArrayString(new char[] { '-', '-', c }));
 					break;
 				} while (true);
 			} while (true);
@@ -237,8 +238,8 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readCData() throws XMLException, IOException {
 		event.type = Type.CDATA;
-		UnprotectedStringBuffer t = event.text =
-			maxCDataSize <= 0 ? new UnprotectedStringBuffer() : new UnprotectedStringBufferLimited(maxCDataSize);
+		IString t = event.text =
+			maxCDataSize <= 0 ? new CharArrayStringBuffer() : new CappedString(maxCDataSize);
 		char c;
 		try {
 			do {
@@ -272,7 +273,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	private void readStartTag(char c) throws XMLException, IOException {
 		event.type = Type.START_ELEMENT;
 		event.attributes = new LinkedList<>();
-		int colonPos = continueReadName(event.text = new UnprotectedStringBuffer(), c);
+		int colonPos = continueReadName(event.text = new CharArrayStringBuffer(), c);
 		do {
 			while (isSpaceChar(c = stream.read()));
 			if (c == '>') break;
@@ -288,9 +289,9 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			Attribute a = new Attribute();
 			
 			// attribute name
-			int i = continueReadName(a.text = new UnprotectedStringBuffer(), c);
+			int i = continueReadName(a.text = new CharArrayStringBuffer(), c);
 			if (i < 0) {
-				a.namespacePrefix = new UnprotectedStringBuffer();
+				a.namespacePrefix = new CharArrayStringBuffer();
 				a.localName = a.text;
 			} else {
 				a.namespacePrefix = a.text.substring(0, i);
@@ -305,7 +306,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			
 			// attribute value
 			while (isSpaceChar(c = stream.read()));
-			a.value = new UnprotectedStringBuffer();
+			a.value = new CharArrayStringBuffer();
 			if (c == '"' || c == '\'') readAttrValue(a.value, c);
 			else throw new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 			event.attributes.add(a);
@@ -317,7 +318,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	private void readProcessingInstruction() throws XMLException, IOException {
 		event.type = Type.PROCESSING_INSTRUCTION;
 		event.attributes = new LinkedList<>();
-		event.text = new UnprotectedStringBuffer();
+		event.text = new CharArrayStringBuffer();
 		readName(event.text);
 		char c;
 		do {
@@ -335,9 +336,9 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				continue;
 			Attribute a = new Attribute();
 			// attribute name
-			int i = continueReadName(a.text = new UnprotectedStringBuffer(), c);
+			int i = continueReadName(a.text = new CharArrayStringBuffer(), c);
 			if (i < 0) {
-				a.namespacePrefix = new UnprotectedStringBuffer();
+				a.namespacePrefix = new CharArrayStringBuffer();
 				a.localName = a.text;
 			} else {
 				a.namespacePrefix = a.text.substring(0, i);
@@ -354,14 +355,14 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			}
 			// attribute value
 			while (isSpaceChar(c = stream.read()));
-			a.value = new UnprotectedStringBuffer();
+			a.value = new CharArrayStringBuffer();
 			if (c == '"' || c == '\'') readAttrValue(a.value, c);
 			else throw new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
 			event.attributes.add(a);
 		} while (true);
 	}
 	
-	private void readAttrValue(UnprotectedStringBuffer value, char quote) throws XMLException, IOException {
+	private void readAttrValue(IString value, char quote) throws XMLException, IOException {
 		int pos = 0;
 		char[] chars = null;
 		do {
@@ -369,7 +370,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			if (c == quote) break;
 			if (c == '&') {
 				if (pos > 0) {
-					value.append(new UnprotectedString(chars, 0, pos, chars.length));
+					value.append(new CharArrayString(chars, 0, pos, chars.length));
 					pos = 0;
 				}
 				value.append(readReference());
@@ -382,20 +383,20 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 					chars = new char[16];
 				chars[pos++] = c;
 				if (pos == chars.length) {
-					value.append(new UnprotectedString(chars, 0, chars.length, chars.length));
+					value.append(new CharArrayString(chars, 0, chars.length, chars.length));
 					pos = 0;
 				}
 			}
 		} while (true);
 		if (pos > 0)
-			value.append(new UnprotectedString(chars, 0, pos, chars.length));
+			value.append(new CharArrayString(chars, 0, pos, chars.length));
 	}
 	
 	@SuppressWarnings("squid:S1141") // nested try
 	private void readChars(char c) throws XMLException, IOException {
 		event.type = Type.TEXT;
-		UnprotectedStringBuffer t = event.text =
-			maxTextSize <= 0 ? new UnprotectedStringBuffer() : new UnprotectedStringBufferLimited(maxTextSize);
+		IString t = event.text =
+			maxTextSize <= 0 ? new CharArrayStringBuffer() : new CappedString(maxTextSize);
 		try {
 			do {
 				if (c == '<') { // 0x3C
@@ -430,9 +431,9 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
 	private CharSequence readReference() throws XMLException, IOException {
 		char c = stream.read();
-		if (c == '#') return new UnprotectedString(readCharRef());
-		UnprotectedStringBuffer name;
-		continueReadName(name = new UnprotectedStringBuffer(), c);
+		if (c == '#') return new CharArrayString(readCharRef());
+		CharArrayStringBuffer name;
+		continueReadName(name = new CharArrayStringBuffer(), c);
 		c = stream.read();
 		if (c != ';')
 			throw new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
@@ -459,10 +460,10 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		return Character.toChars((int)n.getNumber());
 	}
 	
-	private static CharSequence resolveEntityRef(UnprotectedStringBuffer name) {
+	private static CharSequence resolveEntityRef(CharArrayStringBuffer name) {
 		int l = name.length();
 		if (l < 2) {
-			UnprotectedStringBuffer s = new UnprotectedStringBuffer();
+			CharArrayStringBuffer s = new CharArrayStringBuffer();
 			s.append('&');
 			s.append(name);
 			s.append(';');
@@ -473,20 +474,20 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		if (c == 'a') {
 			if (l == 3) {
 				if (name.charAt(1) == 'm' && name.charAt(2) == 'p')
-					return new UnprotectedString('&');
+					return new CharArrayString('&');
 			} else if (l == 4 && name.charAt(1) == 'p' && name.charAt(2) == 'o' && name.charAt(3) == 's') {
-				return new UnprotectedString('\'');
+				return new CharArrayString('\'');
 			}
 		} else if (c == 'l') {
 			if (l == 2 && name.charAt(1) == 't')
-				return new UnprotectedString('<');
+				return new CharArrayString('<');
 		} else if (c == 'g') {
 			if (l == 2 && name.charAt(1) == 't')
-				return new UnprotectedString('>');
+				return new CharArrayString('>');
 		} else if (c == 'q' && l == 4 && name.charAt(1) == 'u' && name.charAt(2) == 'o' && name.charAt(3) == 't') {
-			return new UnprotectedString('"');
+			return new CharArrayString('"');
 		}
-		UnprotectedStringBuffer s = new UnprotectedStringBuffer();
+		CharArrayStringBuffer s = new CharArrayStringBuffer();
 		s.append('&');
 		s.append(name);
 		s.append(';');
@@ -494,12 +495,12 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		//throw new XMLException(stream, event.context, "Invalid XML entity", name.toString());
 	}
 	
-	private UnprotectedStringBuffer readSystemLiteral() throws XMLException, IOException {
+	private CharArrayStringBuffer readSystemLiteral() throws XMLException, IOException {
 		char c = stream.read();
 		if (c != '"' && c != '\'')
 			throw new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_EXPECTED_CHARACTER, Character.valueOf(c),
 			"simple or double quote");
-		UnprotectedStringBuffer literal = new UnprotectedStringBuffer();
+		CharArrayStringBuffer literal = new CharArrayStringBuffer();
 		char quote = c;
 		do {
 			c = stream.read();
@@ -509,12 +510,12 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		return literal;
 	}
 
-	private UnprotectedStringBuffer readPublicIDLiteral() throws XMLException, IOException {
+	private CharArrayStringBuffer readPublicIDLiteral() throws XMLException, IOException {
 		char quote = stream.read();
 		if (quote != '"' && quote != '\'')
 			throw new XMLException(stream, event.context,
 				XMLException.LOCALIZED_MESSAGE_EXPECTED_CHARACTER, Character.valueOf(quote), "\",\'");
-		UnprotectedStringBuffer literal = new UnprotectedStringBuffer();
+		CharArrayStringBuffer literal = new CharArrayStringBuffer();
 		do {
 			char c = stream.read();
 			if (c == quote) break;
@@ -525,7 +526,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	
 	private void readEndTag() throws XMLException, IOException {
 		event.type = Type.END_ELEMENT;
-		event.text = new UnprotectedStringBuffer();
+		event.text = new CharArrayStringBuffer();
 		readName(event.text);
 		do {
 			char c = stream.read();
@@ -575,7 +576,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	}
 	
 	private void readIntSubsetPEReference() throws XMLException, IOException {
-		UnprotectedStringBuffer name = new UnprotectedStringBuffer();
+		CharArrayStringBuffer name = new CharArrayStringBuffer();
 		readName(name);
 		try {
 			do {
@@ -673,7 +674,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		char c = stream.read();
 		while (isSpaceChar(c)) c = stream.read();
 		stream.back(c);
-		UnprotectedStringBuffer name = new UnprotectedStringBuffer();
+		CharArrayStringBuffer name = new CharArrayStringBuffer();
 		readName(name);
 		c = stream.read();
 		while (c != '>') c = stream.read();
@@ -705,7 +706,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 
 	
 	
-	private int readName(UnprotectedStringBuffer name) throws XMLException, IOException {
+	private int readName(IString name) throws XMLException, IOException {
 		char c = stream.read();
 		if (!isNameStartChar(c))
 			throw new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c));
@@ -713,7 +714,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 	}
 	
 	@SuppressWarnings({"squid:AssignmentInSubExpressionCheck", "squid:S3776"})
-	private int continueReadName(UnprotectedStringBuffer name, char c) throws IOException {
+	private int continueReadName(IString name, char c) throws IOException {
 		int charsSize = 16;
 		char[] chars = new char[charsSize];
 		chars[0] = c;
@@ -724,12 +725,12 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 				if (!isNameChar(c = chars[pos] = stream.read())) {
 					stream.back(chars[pos]);
 					if (pos > 0)
-						name.append(new UnprotectedString(chars, 0, pos, charsSize));
+						name.append(new CharArrayString(chars, 0, pos, charsSize));
 					return colonPos;
 				}
 				if (c == ':' && colonPos == -1) colonPos = name.length() + pos;
 				if (++pos == charsSize) {
-					name.append(new UnprotectedString(chars));
+					name.append(new CharArrayString(chars));
 					charsSize *= 2;
 					chars = new char[charsSize];
 					pos = 0;
@@ -740,14 +741,14 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			if (!isNameChar(c = stream.read())) {
 				stream.back(c);
 				if (pos > 0)
-					name.append(new UnprotectedString(chars, 0, pos, charsSize));
+					name.append(new CharArrayString(chars, 0, pos, charsSize));
 				return colonPos;
 			}
 			if (len < maxTextSize) {
 				chars[pos] = c;
 				if (c == ':' && colonPos == -1) colonPos = name.length() + pos;
 				if (++pos == charsSize) {
-					name.append(new UnprotectedString(chars));
+					name.append(new CharArrayString(chars));
 					charsSize *= 2;
 					chars = new char[charsSize];
 					pos = 0;

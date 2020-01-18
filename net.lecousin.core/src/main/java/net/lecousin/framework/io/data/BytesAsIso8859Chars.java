@@ -2,8 +2,8 @@ package net.lecousin.framework.io.data;
 
 import java.nio.CharBuffer;
 
-import net.lecousin.framework.util.UnprotectedStringBuffer;
-import net.lecousin.framework.util.UnprotectedStringIso8859;
+import net.lecousin.framework.text.ByteArrayStringIso8859;
+import net.lecousin.framework.text.IString;
 
 /** Wrap a Bytes.Readable as a Chars.Readable considering all bytes are 7-bit encoded so can be considered as US-ASCII chars. */
 public class BytesAsIso8859Chars implements Chars.Readable {
@@ -62,10 +62,10 @@ public class BytesAsIso8859Chars implements Chars.Readable {
 	}
 	
 	@Override
-	public void get(UnprotectedStringBuffer string, int length) {
+	public void get(IString string, int length) {
 		byte[] b = new byte[length];
 		bytes.get(b, 0, length);
-		string.append(new UnprotectedStringIso8859(b, 0, length, length));
+		string.append(new ByteArrayStringIso8859(b, 0, length, length));
 	}
 
 	@Override

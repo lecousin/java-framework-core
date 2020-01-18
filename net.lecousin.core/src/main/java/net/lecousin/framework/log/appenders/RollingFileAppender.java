@@ -25,7 +25,7 @@ import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.LoggerConfigurationException;
 import net.lecousin.framework.log.LoggerFactory;
-import net.lecousin.framework.util.StringUtil;
+import net.lecousin.framework.text.StringUtil;
 
 /** Log appender that appends to a file with a maximum size. Once a file is full,
  * a new file is created and the extension ".1" is added to the log file.

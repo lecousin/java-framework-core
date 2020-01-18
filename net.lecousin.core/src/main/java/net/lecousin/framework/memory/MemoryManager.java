@@ -18,7 +18,7 @@ import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.memory.IMemoryManageable.FreeMemoryLevel;
 import net.lecousin.framework.mutable.MutableLong;
-import net.lecousin.framework.util.StringUtil;
+import net.lecousin.framework.text.StringUtil;
 
 /**
  * The memory manager is handling {@link IMemoryManageable} instances.

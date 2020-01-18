@@ -1,7 +1,7 @@
 package net.lecousin.framework.io.text;
 
 import net.lecousin.framework.io.IO;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 
 /** Implementation of FullReadLines to read a file containing properties.
  * @param <T> type of object returned as result
@@ -26,18 +26,18 @@ public abstract class PropertiesReader<T> extends FullReadLines<T> {
 	private char commentChar;
 	
 	@Override
-	protected void processLine(UnprotectedStringBuffer line) {
+	protected void processLine(CharArrayStringBuffer line) {
 		if (line.isEmpty()) return;
 		if (line.charAt(0) == commentChar) return;
 		int i = line.indexOf('=');
 		if (i < 0) return;
-		UnprotectedStringBuffer key = line.substring(0,i);
+		CharArrayStringBuffer key = line.substring(0,i);
 		key.trim();
-		UnprotectedStringBuffer value = line.substring(i + 1);
+		CharArrayStringBuffer value = line.substring(i + 1);
 		value.trim();
 		processProperty(key, value);
 	}
 	
-	protected abstract void processProperty(UnprotectedStringBuffer key, UnprotectedStringBuffer value);
+	protected abstract void processProperty(CharArrayStringBuffer key, CharArrayStringBuffer value);
 
 }

@@ -1,4 +1,4 @@
-package net.lecousin.framework.util;
+package net.lecousin.framework.text;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -7,18 +7,21 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import net.lecousin.framework.collections.LinkedArrayList;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.io.data.RawCharBuffer;
 
 /**
- * Unprotected and mutable string using a byte array to store ASCII characters.
+ * Unprotected and mutable string using a byte array to store ISO-8859 characters.
  */
-public class UnprotectedStringIso8859 implements IString {
+public class ByteArrayStringIso8859 extends ArrayString {
 
+	private byte[] chars;
+	
 	/** Create an empty UnprotectedString with an initial capacity. */ 
-	public UnprotectedStringIso8859(int initialCapacity) {
+	public ByteArrayStringIso8859(int initialCapacity) {
 		chars = new byte[initialCapacity];
 		start = 0;
 		end = -1;
@@ -26,7 +29,7 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 	
 	/** Create a string with a single character. */
-	public UnprotectedStringIso8859(byte singleChar) {
+	public ByteArrayStringIso8859(byte singleChar) {
 		chars = new byte[] { singleChar };
 		start = 0;
 		end = 0;
@@ -34,7 +37,7 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 
 	/** Create an UnprotectedString based on an existing character array. */
-	public UnprotectedStringIso8859(byte[] chars, int offset, int len, int usableLength) {
+	public ByteArrayStringIso8859(byte[] chars, int offset, int len, int usableLength) {
 		this.chars = chars;
 		this.start = offset;
 		this.end = offset + len - 1;
@@ -42,12 +45,12 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 
 	/** Create an UnprotectedString based on an existing character array. */
-	public UnprotectedStringIso8859(byte[] chars) {
+	public ByteArrayStringIso8859(byte[] chars) {
 		this(chars, 0, chars.length, chars.length);
 	}
 	
 	/** Creates an UnprotectedString from the given String (a copy of characters is done). */
-	public UnprotectedStringIso8859(String s) {
+	public ByteArrayStringIso8859(String s) {
 		chars = s.getBytes(StandardCharsets.US_ASCII);
 		start = 0;
 		end = chars.length - 1;
@@ -55,7 +58,7 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 	
 	/** Creates an UnprotectedString from the given String (a copy of characters is done). */
-	public UnprotectedStringIso8859(String s, int startPos, int endPos) {
+	public ByteArrayStringIso8859(String s, int startPos, int endPos) {
 		chars = s.getBytes(StandardCharsets.US_ASCII);
 		start = startPos;
 		end = start + endPos - startPos - 1;
@@ -63,7 +66,7 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 
 	/** Creates an UnprotectedString from the given String (a copy of characters is done). */
-	public UnprotectedStringIso8859(IString s) {
+	public ByteArrayStringIso8859(IString s) {
 		chars = new byte[s.length()];
 		s.fillIso8859Bytes(chars);
 		start = 0;
@@ -72,33 +75,13 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 
 	/** Creates an UnprotectedString from the given CharSequence (a copy of characters is done). */
-	public UnprotectedStringIso8859(CharSequence s) {
+	public ByteArrayStringIso8859(CharSequence s) {
 		this(s.toString());
 	}
 
 	/** Creates an UnprotectedString from the given CharSequence (a copy of characters is done). */
-	public UnprotectedStringIso8859(CharSequence s, int startPos, int endPos) {
+	public ByteArrayStringIso8859(CharSequence s, int startPos, int endPos) {
 		this(s.toString(), startPos, endPos);
-	}
-	
-	private byte[] chars;
-	private int start;
-	private int end;
-	private int usableEnd;
-	
-	@Override
-	public int length() {
-		return end - start + 1;
-	}
-	
-	@Override
-	public boolean isEmpty() {
-		return end == -1 || end < start;
-	}
-	
-	/** Make this string empty, only by setting the end offset to the start offset. */
-	public void reset() {
-		end = start - 1;
 	}
 	
 	@Override
@@ -114,20 +97,17 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 	
 	/** Return the first character, or -1 if the string is empty. */
+	@Override
 	public int firstChar() {
 		if (end >= start) return chars[start] & 0xFF;
 		return -1;
 	}
 	
 	/** Return the last character, or -1 if the string is empty. */
+	@Override
 	public int lastChar() {
 		if (end >= start) return chars[end] & 0xFF;
 		return -1;
-	}
-	
-	/** Return then number of unused characters at the end of the array. */
-	public int canAppendWithoutEnlarging() {
-		return usableEnd - end;
 	}
 	
 	private void enlarge(int add) {
@@ -140,6 +120,7 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 	
 	/** Create a new character array to fit the current content of this string. */
+	@Override
 	public void trimToSize() {
 		byte[] a = new byte[end - start + 1];
 		System.arraycopy(chars, start, a, 0, a.length);
@@ -149,8 +130,16 @@ public class UnprotectedStringIso8859 implements IString {
 		usableEnd = 0;
 	}
 	
+	/** Append the given character without enlarging the char array, return false if it cannot be done. */
 	@Override
-	public UnprotectedStringIso8859 append(char c) {
+	public boolean appendNoEnlarge(char c) {
+		if (end == usableEnd) return false;
+		chars[++end] = (byte)c;
+		return true;
+	}
+	
+	@Override
+	public ByteArrayStringIso8859 append(char c) {
 		if (end == usableEnd)
 			enlarge(chars.length < 128 ? 64 : chars.length >> 1);
 		chars[++end] = (byte)c;
@@ -158,7 +147,7 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 	
 	/** Append a character. */
-	public UnprotectedStringIso8859 append(byte c) {
+	public ByteArrayStringIso8859 append(byte c) {
 		if (end == usableEnd)
 			enlarge(chars.length < 128 ? 64 : chars.length >> 1);
 		chars[++end] = c;
@@ -166,7 +155,7 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 	
 	@Override
-	public UnprotectedStringIso8859 append(char[] chars, int offset, int len) {
+	public ByteArrayStringIso8859 append(char[] chars, int offset, int len) {
 		if (usableEnd - end < len) {
 			int l = chars.length < 128 ? 64 : chars.length >> 1;
 			if (l < len + 16) l = len + 16;
@@ -179,7 +168,7 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 
 	/** Append characters. */
-	public UnprotectedStringIso8859 append(byte[] chars, int offset, int len) {
+	public ByteArrayStringIso8859 append(byte[] chars, int offset, int len) {
 		if (usableEnd - end < len) {
 			int l = chars.length < 128 ? 64 : chars.length >> 1;
 			if (l < len + 16) l = len + 16;
@@ -191,24 +180,34 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 	
 	@Override
-	public UnprotectedStringIso8859 append(CharSequence s) {
+	public ByteArrayStringIso8859 append(CharSequence s) {
 		if (s == null) s = "null";
 		int l = s.length();
 		if (l == 0) return this;
 		if (l >= usableEnd - end)
 			enlarge(l + 16);
+		if (s instanceof IString) {
+			((IString)s).fillIso8859Bytes(chars, end + 1);
+			end += l;
+			return this;
+		}
 		for (int i = 0; i < l; ++i)
 			chars[++end] = (byte)s.charAt(i);
 		return this;
 	}
 	
 	@Override
-	public UnprotectedStringIso8859 append(CharSequence s, int startPos, int endPos) {
+	public ByteArrayStringIso8859 append(CharSequence s, int startPos, int endPos) {
 		if (s == null) return append("null");
 		int l = endPos - startPos;
 		if (l == 0) return this;
 		if (l >= usableEnd - end)
 			enlarge(l + 16);
+		if (s instanceof IString) {
+			((IString)s).substring(startPos, endPos).fillIso8859Bytes(chars, end + 1);
+			end += l;
+			return this;
+		}
 		for (int i = 0; i < l; ++i)
 			chars[++end] = (byte)s.charAt(i + startPos);
 		return this;
@@ -246,35 +245,21 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 	
 	@Override
-	public UnprotectedStringIso8859 substring(int start, int end) {
+	public ByteArrayStringIso8859 substring(int start, int end) {
 		if (this.start + end > this.end) end = this.end - this.start + 1;
-		if (end <= start) return new UnprotectedStringIso8859(0);
-		return new UnprotectedStringIso8859(chars, this.start + start, end - start, end - start);
+		if (end <= start) return new ByteArrayStringIso8859(0);
+		return new ByteArrayStringIso8859(chars, this.start + start, end - start, end - start);
 	}
 	
 	@Override
-	public UnprotectedStringIso8859 substring(int start) {
+	public ByteArrayStringIso8859 substring(int start) {
 		if (this.start + start > end)
-			return new UnprotectedStringIso8859(0);
-		return new UnprotectedStringIso8859(chars, this.start + start, end - (this.start + start) + 1, end - (this.start + start) + 1);
+			return new ByteArrayStringIso8859(0);
+		return new ByteArrayStringIso8859(chars, this.start + start, end - (this.start + start) + 1, end - (this.start + start) + 1);
 	}
 	
 	@Override
-	public UnprotectedStringIso8859 trimBeginning() {
-		while (start <= end && Character.isWhitespace(chars[start]))
-			start++;
-		return this;
-	}
-	
-	@Override
-	public UnprotectedStringIso8859 trimEnd() {
-		while (end >= start && Character.isWhitespace(chars[end]))
-			end--;
-		return this;
-	}
-	
-	@Override
-	public UnprotectedStringIso8859 replace(char oldChar, char newChar) {
+	public ByteArrayStringIso8859 replace(char oldChar, char newChar) {
 		for (int i = start; i <= end; ++i)
 			if ((chars[i] & 0xFF) == oldChar)
 				chars[i] = (byte)newChar;
@@ -282,22 +267,82 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 	
 	@Override
-	public UnprotectedStringIso8859 removeEndChars(int nb) {
-		end -= nb;
-		if (end < start - 1) end = start - 1;
+	public ByteArrayStringIso8859 replace(CharSequence search, CharSequence replace) {
+		int sl = search.length();
+		int rl = replace.length();
+		if (sl == rl) {
+			int pos = 0;
+			int i;
+			while ((i = indexOf(search, pos)) >= 0) {
+				replace(i, i + sl - 1, replace);
+				pos = i + sl;
+			}
+			return this;
+		}
+		if (sl > rl) {
+			int pos = 0;
+			int diff = 0;
+			int i;
+			while ((i = indexOf(search, pos)) >= 0) {
+				if (diff > 0)
+					System.arraycopy(chars, pos, chars, pos - diff, i - pos);
+				overwrite(i - diff, replace);
+				diff += sl - rl;
+				pos = i + sl;
+			}
+			if (diff > 0) {
+				System.arraycopy(chars, pos, chars, pos - diff, end + 1 - pos);
+				end -= diff;
+			}
+			return this;
+		}
+		LinkedArrayList<Integer> found = new LinkedArrayList<>(10);
+		int pos = 0;
+		int i;
+		while ((i = indexOf(search, pos)) >= 0) {
+			found.add(Integer.valueOf(i));
+			pos = i + sl;
+		}
+		if (found.isEmpty())
+			return this;
+		int diff = (rl - sl) * found.size();
+		if (usableEnd - end < diff)
+			enlarge(Math.min(diff, 16));
+		pos = end + 1;
+		i = found.size() - 1;
+		while (i >= 0) {
+			int index = found.get(i--).intValue();
+			System.arraycopy(chars, index + sl, chars, index + rl + ((rl - sl) * (i + 1)), pos - index - sl);
+			overwrite(index + ((rl - sl) * (i + 1)), replace);
+			pos = index;
+		}
 		return this;
 	}
 	
 	@Override
-	public UnprotectedStringIso8859 removeStartChars(int nb) {
-		start += nb;
-		if (start > end) start = end + 1;
+	public ByteArrayStringIso8859 replace(int start, int end, CharSequence replace) {
+		int l = replace.length();
+		int l2 = end - start + 1;
+		if (l == l2) {
+			overwrite(start, replace);
+			return this;
+		}
+		if (l < l2) {
+			overwrite(start, replace);
+			System.arraycopy(chars, start + l2, chars, start + l, this.end - end);
+			this.end -= l2 - l;
+			return this;
+		}
+		enlarge(Math.min(l2 - l, 16));
+		System.arraycopy(chars, start + l2, chars, start + l, this.end - end);
+		overwrite(start, replace);
+		this.end += l2 - l;
 		return this;
 	}
 	
-	/** Remove the given number of characters at the beginning of the string. */
-	public void moveForward(int skip) {
-		this.start += skip;
+	private void overwrite(int start, CharSequence s) {
+		for (int i = s.length() - 1; i >= 0; --i)
+			chars[start + i] = (byte)s.charAt(i);
 	}
 
 	@Override
@@ -316,8 +361,8 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 	
 	@Override
-	public List<UnprotectedStringIso8859> split(char sep) {
-		LinkedList<UnprotectedStringIso8859> list = new LinkedList<>();
+	public List<ByteArrayStringIso8859> split(char sep) {
+		LinkedList<ByteArrayStringIso8859> list = new LinkedList<>();
 		int pos = start;
 		while (pos <= end) {
 			int found = pos;
@@ -329,14 +374,14 @@ public class UnprotectedStringIso8859 implements IString {
 	}
 	
 	@Override
-	public UnprotectedStringIso8859 toLowerCase() {
+	public ByteArrayStringIso8859 toLowerCase() {
 		for (int i = start; i <= end; ++i)
 			chars[i] = (byte)Character.toLowerCase(chars[i] & 0xFF);
 		return this;
 	}
 	
 	@Override
-	public UnprotectedStringIso8859 toUpperCase() {
+	public ByteArrayStringIso8859 toUpperCase() {
 		for (int i = start; i <= end; ++i)
 			chars[i] = (byte)Character.toUpperCase(chars[i] & 0xFF);
 		return this;
@@ -380,11 +425,27 @@ public class UnprotectedStringIso8859 implements IString {
 		return new RawCharBuffer[] { new RawCharBuffer(toChars()) };
 	}
 	
+	/** Wrap bytes into a ByteBuffer. */
+	public ByteBuffer asByteBuffer() {
+		return ByteBuffer.wrap(chars, start, end - start + 1);
+	}
+	
 	@Override
-	public UnprotectedStringIso8859 copy() {
+	public ByteArrayStringIso8859 copy() {
 		byte[] copy = new byte[end - start + 1];
 		System.arraycopy(chars, start, copy, 0, end - start + 1);
-		return new UnprotectedStringIso8859(copy);
+		return new ByteArrayStringIso8859(copy);
+	}
+	
+	/** Return the number of occurences of the given array in this string. */
+	@Override
+	public int countChar(char c) {
+		byte b = (byte)c;
+		int count = 0;
+		for (int i = start; i <= end; ++i)
+			if (chars[i] == b)
+				count++;
+		return count;
 	}
 	
 	/**
@@ -394,14 +455,14 @@ public class UnprotectedStringIso8859 implements IString {
 	 * @return the AsyncConsumer
 	 */
 	public static <TError extends Exception> AsyncConsumer.Simple<ByteBuffer, TError> bytesConsumer(
-		Function<UnprotectedStringIso8859, IAsync<TError>> consumer
+		Function<ByteArrayStringIso8859, IAsync<TError>> consumer
 	) {
 		return new AsyncConsumer.Simple<ByteBuffer, TError>() {
 			@Override
 			public IAsync<TError> consume(ByteBuffer data, Consumer<ByteBuffer> onDataRelease) {
 				RawByteBuffer raw = new RawByteBuffer(data);
 				IAsync<TError> write = consumer.apply(
-					new UnprotectedStringIso8859(raw.array, raw.arrayOffset, raw.length, raw.length));
+					new ByteArrayStringIso8859(raw.array, raw.arrayOffset, raw.length, raw.length));
 				if (onDataRelease != null) {
 					if (data.hasArray())
 						write.onDone(() -> onDataRelease.accept(data));

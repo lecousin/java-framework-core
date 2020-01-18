@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
@@ -19,12 +20,12 @@ public final class ProcessUtil {
 	/**
 	 * Create a thread that wait for the given process to end, and call the given listener.
 	 */
-	@SuppressWarnings("squid:S2142") // InterruptedException
-	public static void onProcessExited(Process process, Consumer<Integer> exitValueListener) {
+	@SuppressWarnings("java:S2142") // InterruptedException
+	public static void onProcessExited(Process process, IntConsumer exitValueListener) {
 		Application app = LCCore.getApplication();
 		Mutable<Thread> mt = new Mutable<>(null);
 		Thread t = app.getThreadFactory().newThread(() -> {
-			try { exitValueListener.accept(Integer.valueOf(process.waitFor())); }
+			try { exitValueListener.accept(process.waitFor()); }
 			catch (InterruptedException e) { /* ignore and quit */ }
 			app.interrupted(mt.get());
 		});

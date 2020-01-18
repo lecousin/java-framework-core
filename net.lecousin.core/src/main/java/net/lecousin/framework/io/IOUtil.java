@@ -27,8 +27,8 @@ import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.mutable.MutableLong;
 import net.lecousin.framework.progress.WorkProgress;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /**
  * Utility methods for IO.
@@ -615,8 +615,8 @@ public final class IOUtil {
 	/**
 	 * Read all bytes from the given Readable and convert it as a String using the given charset encoding.
 	 */
-	public static AsyncSupplier<UnprotectedStringBuffer,IOException> readFullyAsString(IO.Readable io, Charset charset, byte priority) {
-		AsyncSupplier<UnprotectedStringBuffer,IOException> result = new AsyncSupplier<>();
+	public static AsyncSupplier<CharArrayStringBuffer,IOException> readFullyAsString(IO.Readable io, Charset charset, byte priority) {
+		AsyncSupplier<CharArrayStringBuffer,IOException> result = new AsyncSupplier<>();
 		if (io instanceof IO.KnownSize) {
 			((IO.KnownSize)io).getSizeAsync().onDone(size ->
 				new Task.Cpu.FromRunnable("Prepare readFullyAsString", priority, () -> {
@@ -624,7 +624,7 @@ public final class IOUtil {
 					io.readFullyAsync(ByteBuffer.wrap(buf)).thenStart(
 					new Task.Cpu.FromRunnable("readFullyAsString", priority, () -> {
 						try {
-							result.unblockSuccess(new UnprotectedStringBuffer(
+							result.unblockSuccess(new CharArrayStringBuffer(
 								charset.newDecoder().decode(ByteBuffer.wrap(buf))
 							));
 						} catch (IOException e) {
@@ -638,15 +638,15 @@ public final class IOUtil {
 		new Task.Cpu.FromRunnable("Read file as string: " + io.getSourceDescription(), priority,
 		() -> {
 			BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, charset, 1024, 128);
-			UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+			CharArrayStringBuffer str = new CharArrayStringBuffer();
 			readFullyAsString(stream, str, result, priority);
 		}).startOn(io.canStartReading(), true);
 		return result;
 	}
 	
 	private static void readFullyAsString(
-		BufferedReadableCharacterStream stream, UnprotectedStringBuffer str,
-		AsyncSupplier<UnprotectedStringBuffer,IOException> result, byte priority
+		BufferedReadableCharacterStream stream, CharArrayStringBuffer str,
+		AsyncSupplier<CharArrayStringBuffer,IOException> result, byte priority
 	) {
 		do {
 			AsyncSupplier<Chars.Readable, IOException> read = stream.readNextBufferAsync();

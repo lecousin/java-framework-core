@@ -1,17 +1,17 @@
-package net.lecousin.framework.core.tests.util;
+package net.lecousin.framework.core.tests.text;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
-import net.lecousin.framework.util.UnprotectedStringBufferLimited;
+import net.lecousin.framework.text.CappedString;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-public class TestUnprotectedStringBufferLimited extends LCCoreAbstractTest {
+public class TestCappedString extends LCCoreAbstractTest {
 
 	@Test
 	public void testAppendCharacter() {
-		UnprotectedStringBufferLimited s = new UnprotectedStringBufferLimited(20);
+		CappedString s = new CappedString(20);
 		Assert.assertEquals(20, s.getMaxSize());
 		
 		s.append('a');
@@ -31,7 +31,7 @@ public class TestUnprotectedStringBufferLimited extends LCCoreAbstractTest {
 	
 	@Test
 	public void testAppendChars() {
-		UnprotectedStringBufferLimited s = new UnprotectedStringBufferLimited(20);
+		CappedString s = new CappedString(20);
 		
 		s.append(new char[] { 'a', 'b', 'c', 'd', 'e', 'f' });
 		Assert.assertEquals(6, s.length());
@@ -55,7 +55,7 @@ public class TestUnprotectedStringBufferLimited extends LCCoreAbstractTest {
 	
 	@Test
 	public void testAppendCharSequence() {
-		UnprotectedStringBufferLimited s = new UnprotectedStringBufferLimited(20);
+		CappedString s = new CappedString(20);
 		
 		s.append("abcdef");
 		Assert.assertEquals(6, s.length());
@@ -79,7 +79,7 @@ public class TestUnprotectedStringBufferLimited extends LCCoreAbstractTest {
 	
 	@Test
 	public void testAddFirst() {
-		UnprotectedStringBufferLimited s = new UnprotectedStringBufferLimited(20);
+		CappedString s = new CappedString(20);
 		
 		s.addFirst("abcdef");
 		Assert.assertEquals(6, s.length());
@@ -95,15 +95,15 @@ public class TestUnprotectedStringBufferLimited extends LCCoreAbstractTest {
 		Assert.assertEquals("abcdef123456abcdef", s.toString());
 		s.addFirst("987654");
 		Assert.assertEquals(20, s.length());
-		Assert.assertEquals("98abcdef123456abcdef", s.toString());
+		Assert.assertEquals("987654abcdef123456ab", s.toString());
 		s.addFirst("abcdef");
 		Assert.assertEquals(20, s.length());
-		Assert.assertEquals("98abcdef123456abcdef", s.toString());
+		Assert.assertEquals("abcdef987654abcdef12", s.toString());
 	}
 	
 	@Test
 	public void testTrim() {
-		UnprotectedStringBufferLimited s = new UnprotectedStringBufferLimited(20);
+		CappedString s = new CappedString(20);
 		
 		s.append("  123456789  ");
 		Assert.assertEquals(13, s.length());
@@ -133,7 +133,7 @@ public class TestUnprotectedStringBufferLimited extends LCCoreAbstractTest {
 	
 	@Test
 	public void testRemoveChars() {
-		UnprotectedStringBufferLimited s = new UnprotectedStringBufferLimited(20);
+		CappedString s = new CappedString(20);
 		
 		s.append("abcdefghijklmnopqrstuvwxyz");
 		Assert.assertEquals(20, s.length());
@@ -166,7 +166,7 @@ public class TestUnprotectedStringBufferLimited extends LCCoreAbstractTest {
 	
 	@Test
 	public void testReplace() {
-		UnprotectedStringBufferLimited s = new UnprotectedStringBufferLimited(20);
+		CappedString s = new CappedString(20);
 		
 		s.append("0123456789");
 		Assert.assertEquals(10, s.length());
@@ -180,21 +180,15 @@ public class TestUnprotectedStringBufferLimited extends LCCoreAbstractTest {
 		s.append("abcd");
 		Assert.assertEquals(20, s.length());
 		Assert.assertEquals("01z45678901z456789ab", s.toString());
-		s.replace(5, 9, new UnprotectedStringBuffer("y"));
+		s.replace(5, 9, new CharArrayStringBuffer("y"));
 		Assert.assertEquals(16, s.length());
 		Assert.assertEquals("01z45y1z456789ab", s.toString());
 		s.replace("y", "0123456789");
 		Assert.assertEquals(20, s.length());
 		Assert.assertEquals("01z4501234567891z456", s.toString());
-		s.replace(10, 12, new UnprotectedStringBuffer("0123456789"));
+		s.replace(10, 12, new CharArrayStringBuffer("0123456789"));
 		Assert.assertEquals(20, s.length());
 		Assert.assertEquals("01z45012340123456789", s.toString());
-		s.searchAndReplace("z", "40", content -> new UnprotectedStringBuffer("tptptptp"));
-		Assert.assertEquals(19, s.length());
-		Assert.assertEquals("01tptptptp123456789", s.toString());
-		s.searchAndReplace("12", "56", content -> new UnprotectedStringBuffer("abcdefghijklmnop"));
-		Assert.assertEquals(20, s.length());
-		Assert.assertEquals("01tptptptpabcdefghij", s.toString());
 	}
 	
 }

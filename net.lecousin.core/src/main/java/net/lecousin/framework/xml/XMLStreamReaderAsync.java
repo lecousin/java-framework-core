@@ -14,14 +14,15 @@ import net.lecousin.framework.encoding.number.NumberEncoding;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.locale.LocalizableString;
-import net.lecousin.framework.util.UnprotectedString;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.CharArrayString;
+import net.lecousin.framework.text.CharArrayStringBuffer;
+import net.lecousin.framework.text.IString;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 
 /**
  * Read an XML in a similar way as {@link javax.xml.stream.XMLStreamReader}: read-only, forward, event based.
  * The method next() allows to move forward to the next event (such as start element, end element, comment, text...).
- * It uses {@link UnprotectedString} to avoid allocating many character arrays.
+ * It uses {@link CharArrayString} to avoid allocating many character arrays.
  * Charset is automatically detected by reading the beginning of the XML (either with auto-detection or with the specified encoding).
  */
 public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
@@ -167,7 +168,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				// start characters
 				state = State.CHARS;
 				event.type = Type.TEXT;
-				event.text = new UnprotectedStringBuffer();
+				event.text = new CharArrayStringBuffer();
 				continu = readChars(c, sp);
 				break;
 				
@@ -296,12 +297,12 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		}
 		if (c == '!') {
 			state = State.TAG_EXCLAMATION;
-			event.text = new UnprotectedStringBuffer();
+			event.text = new CharArrayStringBuffer();
 			return true;
 		}
 		if (c == '?') {
 			state = State.PROCESSING_INSTRUCTION;
-			event.text = new UnprotectedStringBuffer();
+			event.text = new CharArrayStringBuffer();
 			event.attributes = new LinkedList<>();
 			event.type = Type.PROCESSING_INSTRUCTION;
 			return true;
@@ -309,14 +310,14 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		if (c == '/') {
 			state = State.END_ELEMENT_NAME;
 			event.type = Type.END_ELEMENT;
-			event.text = new UnprotectedStringBuffer();
+			event.text = new CharArrayStringBuffer();
 			return true;
 		}
 		if (XMLStreamEvents.isNameStartChar((char)c)) {
 			state = State.START_ELEMENT_NAME;
 			event.type = Type.START_ELEMENT;
 			event.attributes = new LinkedList<>();
-			event.text = new UnprotectedStringBuffer();
+			event.text = new CharArrayStringBuffer();
 			event.text.append((char)c);
 			return true;
 		}
@@ -358,7 +359,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				// this is a comment
 				state = State.COMMENT;
 				event.type = Type.COMMENT;
-				event.text = new UnprotectedStringBuffer();
+				event.text = new CharArrayStringBuffer();
 				return true;
 			}
 			sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_INVALID_XML));
@@ -379,7 +380,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			}
 			state = State.CDATA;
 			event.type = Type.CDATA;
-			event.text = new UnprotectedStringBuffer();
+			event.text = new CharArrayStringBuffer();
 			return true;
 		}
 		// DOCTYPE
@@ -396,7 +397,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		}
 		state = State.DOCTYPE;
 		event.type = Type.DOCTYPE;
-		event.text = new UnprotectedStringBuffer();
+		event.text = new CharArrayStringBuffer();
 		return true;
 	}
 	
@@ -493,7 +494,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		}
 		if (event.publicId == null)
-			event.publicId = new UnprotectedStringBuffer();
+			event.publicId = new CharArrayStringBuffer();
 		if (event.publicId.length() > 0) {
 			sp.error(new XMLException(stream, event.context,
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_INVALID_XML)));
@@ -570,7 +571,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		}
 		if (event.system == null)
-			event.system = new UnprotectedStringBuffer();
+			event.system = new CharArrayStringBuffer();
 		if (event.system.length() > 0) {
 			sp.error(new XMLException(stream, event.context,
 				new LocalizableString(XMLException.LOCALIZED_NAMESPACE_XML_ERROR, XMLException.LOCALIZED_MESSAGE_INVALID_XML)));
@@ -616,7 +617,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		}
 		if (event.system == null)
-			event.system = new UnprotectedStringBuffer();
+			event.system = new CharArrayStringBuffer();
 		event.system.append((char)c);
 		return true;
 	}
@@ -756,7 +757,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return true;
 		if (XMLStreamEvents.isNameStartChar(c)) {
 			Attribute a = new Attribute();
-			a.text = new UnprotectedStringBuffer();
+			a.text = new CharArrayStringBuffer();
 			a.text.append(c);
 			event.attributes.add(a);
 			state = State.ATTRIBUTE_NAME;
@@ -799,7 +800,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		}
 		i = a.text.indexOf(':');
 		if (i < 0) {
-			a.namespacePrefix = new UnprotectedStringBuffer();
+			a.namespacePrefix = new CharArrayStringBuffer();
 			a.localName = a.text;
 		} else {
 			a.namespacePrefix = a.text.substring(0, i);
@@ -843,14 +844,14 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			state = State.ATTRIBUTE_VALUE;
 			statePos = 1;
 			Attribute a = event.attributes.getLast();
-			a.value = new UnprotectedStringBuffer();
+			a.value = new CharArrayStringBuffer();
 			return true;
 		}
 		if (c == '\'') {
 			state = State.ATTRIBUTE_VALUE;
 			statePos = 2;
 			Attribute a = event.attributes.getLast();
-			a.value = new UnprotectedStringBuffer();
+			a.value = new CharArrayStringBuffer();
 			return true;
 		}
 		sp.error(new XMLException(stream, event.context, XMLException.LOCALIZED_MESSAGE_UNEXPECTED_CHARACTER, Character.valueOf(c)));
@@ -995,7 +996,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			}
 			i = event.text.indexOf(':');
 			if (i < 0) {
-				event.namespacePrefix = new UnprotectedStringBuffer();
+				event.namespacePrefix = new CharArrayStringBuffer();
 				event.localName = event.text;
 			} else {
 				event.namespacePrefix = event.text.substring(0, i);
@@ -1018,7 +1019,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 		return true;
 	}
 	
-	private static void resolveReferences(UnprotectedStringBuffer s) {
+	private static void resolveReferences(IString s) {
 		int pos = 0;
 		int i;
 		while ((i = s.indexOf('&', pos)) != -1) {
@@ -1038,11 +1039,11 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				while (i < j)
 					n.addChar(s.charAt(i++));
 				char[] chars = Character.toChars((int)n.getNumber());
-				s.replace(pos, j, chars);
+				s.replace(pos, j, new CharArrayString(chars));
 				pos = pos + chars.length;
 				continue;
 			}
-			UnprotectedStringBuffer name = s.substring(i + 1, j);
+			IString name = s.substring(i + 1, j);
 			char c;
 			if (name.equals("amp"))
 				c = '&';
@@ -1058,7 +1059,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				pos = i + 1;
 				continue;
 			}
-			s.replace(i, j, c);
+			s.replace(i, j, new CharArrayString(c));
 			pos = i + 1;
 		}
 	}

@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.IString;
 
 /** Composite Chars (multiple Chars as a single one).
  * @param <T> type of Chars it contains
@@ -159,7 +159,7 @@ public abstract class CompositeChars<T extends Chars> implements Chars {
 		}
 		
 		@Override
-		public void get(UnprotectedStringBuffer string, int length) {
+		public void get(IString string, int length) {
 			while (length > 0) {
 				Chars.Readable chars = list.get(index);
 				int r = chars.remaining();

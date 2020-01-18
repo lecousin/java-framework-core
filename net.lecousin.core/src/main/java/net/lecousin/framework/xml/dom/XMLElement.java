@@ -13,9 +13,9 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.text.IString;
 import net.lecousin.framework.util.ObjectUtil;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 import net.lecousin.framework.xml.XMLException;
 import net.lecousin.framework.xml.XMLStreamEvents;
 import net.lecousin.framework.xml.XMLStreamEvents.Event;
@@ -45,7 +45,7 @@ public class XMLElement extends XMLNode implements Element {
 	/** Constructor. */
 	public XMLElement(XMLDocument doc, XMLStreamEvents.ElementContext context) {
 		this(doc, context.namespacePrefix.asString(), context.localName.asString());
-		for (Pair<UnprotectedStringBuffer, UnprotectedStringBuffer> ns : context.namespaces)
+		for (Pair<IString, IString> ns : context.namespaces)
 			declareNamespace(ns.getValue2().asString(), ns.getValue1().asString());
 		if (context.defaultNamespace != null && !context.defaultNamespace.isEmpty())
 			declareNamespace(context.defaultNamespace.asString(), "");

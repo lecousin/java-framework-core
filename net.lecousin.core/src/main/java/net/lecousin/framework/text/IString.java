@@ -1,4 +1,4 @@
-package net.lecousin.framework.util;
+package net.lecousin.framework.text;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -93,6 +93,12 @@ public interface IString extends CharSequence, Appendable {
 
 	/** Replace all occurrences of oldChar into newChar. */
 	IString replace(char oldChar, char newChar);
+	
+	/** Replace all occurrences of search into replace. */
+	IString replace(CharSequence search, CharSequence replace);
+
+	/** Remove characters from start to end (inclusive), and replace them by the given string. */
+	IString replace(int start, int end, CharSequence replace);
 	
 	/** Remove the given number of characters at the end. */
 	IString removeEndChars(int nb);

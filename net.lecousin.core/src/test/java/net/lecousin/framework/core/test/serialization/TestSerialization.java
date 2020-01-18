@@ -50,12 +50,12 @@ import net.lecousin.framework.io.serialization.annotations.TypeInstantiation;
 import net.lecousin.framework.io.serialization.annotations.TypeSerializationMethod;
 import net.lecousin.framework.io.serialization.annotations.TypeSerializer;
 import net.lecousin.framework.math.IntegerUnit.Unit;
+import net.lecousin.framework.text.CharArrayString;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 import net.lecousin.framework.math.TimeUnit;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Factory;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.UnprotectedString;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -316,14 +316,14 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	}
 
 	public static class TestIString {
-		public UnprotectedStringBuffer str;
+		public CharArrayStringBuffer str;
 	}
 
 	public void testIString(String s) throws Exception {
 		TestIString ts = new TestIString();
-		ts.str = s == null ? null : new UnprotectedStringBuffer(s);
+		ts.str = s == null ? null : new CharArrayStringBuffer(s);
 		test(ts, TestIString.class);
-		test(null, UnprotectedString.class);
+		test(null, CharArrayString.class);
 	}
 	
 	@Test

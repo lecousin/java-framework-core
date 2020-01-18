@@ -11,7 +11,7 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.plugins.CustomExtensionPoint;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 
 public class ACustomExtensionPointWithFile implements CustomExtensionPoint {
 
@@ -31,7 +31,7 @@ public class ACustomExtensionPointWithFile implements CustomExtensionPoint {
 	public <T extends ClassLoader & ApplicationClassLoader> IAsync<Exception> loadPluginConfiguration(
 		IO.Readable io, T libraryClassLoader, IAsync<?>... startOn
 	) {
-		AsyncSupplier<UnprotectedStringBuffer, IOException> task = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL);
+		AsyncSupplier<CharArrayStringBuffer, IOException> task = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL);
 		Async<Exception> sp = new Async<>();
 		task.onDone(() -> {
 			pluginContent = task.getResult().asString();

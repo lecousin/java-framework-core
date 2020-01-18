@@ -30,9 +30,9 @@ import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.memory.IMemoryManageable;
 import net.lecousin.framework.memory.MemoryManager;
 import net.lecousin.framework.mutable.MutableBoolean;
+import net.lecousin.framework.text.StringUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.StringUtil;
 
 /**
  * BufferedIO is often the best buffering implementation when we need both bufferization and seek operations.

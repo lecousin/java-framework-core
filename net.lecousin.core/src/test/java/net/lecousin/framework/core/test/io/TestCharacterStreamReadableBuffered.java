@@ -9,7 +9,7 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.io.text.ICharacterStream;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 
 import org.junit.Assert;
 import org.junit.Assume;
@@ -61,13 +61,13 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 			// ok
 		}
 		try {
-			s.readUntil('m', new UnprotectedStringBuffer());
+			s.readUntil('m', new CharArrayStringBuffer());
 			throw new AssertionError();
 		} catch (IOException e) {
 			// ok
 		}
 		try {
-			s.readUntilAsync('m', new UnprotectedStringBuffer()).blockResult(10000);
+			s.readUntilAsync('m', new CharArrayStringBuffer()).blockResult(10000);
 			throw new AssertionError();
 		} catch (IOException e) {
 			// ok
@@ -213,7 +213,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		int iBuf = 0;
 		int iChar = 0;
 		while (iBuf < nbBuf) {
-			UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+			CharArrayStringBuffer str = new CharArrayStringBuffer();
 			char endChar = (char)testBuf[(iBuf + 17 + iChar) % testBuf.length];
 			boolean found = s.readUntil(endChar, str);
 			int i = 0;
@@ -237,14 +237,14 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 			} while (iBuf < nbBuf);
 			Assert.assertTrue(foundExpected == found);
 		}
-		UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+		CharArrayStringBuffer str = new CharArrayStringBuffer();
 		boolean found = s.readUntil('m', str);
 		Assert.assertFalse(found);
 		Assert.assertEquals(0, str.length());
 		s.close();
 		if (nbBuf <= 100) {
 			s = openStream(openFile());
-			str = new UnprotectedStringBuffer();
+			str = new CharArrayStringBuffer();
 			found = s.readUntil('$', str);
 			s.close();
 			Assert.assertFalse(found);
@@ -258,7 +258,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 		int iBuf = 0;
 		int iChar = 0;
 		while (iBuf < nbBuf) {
-			UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+			CharArrayStringBuffer str = new CharArrayStringBuffer();
 			char endChar = (char)testBuf[(iBuf + (testBuf.length * 2 / 3 - 1) + iChar) % testBuf.length];
 			boolean found = s.readUntilAsync(endChar, str).blockResult(10000).booleanValue();
 			int i = 0;
@@ -282,14 +282,14 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 			} while (iBuf < nbBuf);
 			Assert.assertTrue(foundExpected == found);
 		}
-		UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+		CharArrayStringBuffer str = new CharArrayStringBuffer();
 		boolean found = s.readUntilAsync('m', str).blockResult(10000).booleanValue();
 		Assert.assertFalse(found);
 		Assert.assertEquals(0, str.length());
 		s.close();
 		if (nbBuf <= 100) {
 			s = openStream(openFile());
-			str = new UnprotectedStringBuffer();
+			str = new CharArrayStringBuffer();
 			found = s.readUntilAsync('$', str).blockResult(10000).booleanValue();
 			s.close();
 			Assert.assertFalse(found);

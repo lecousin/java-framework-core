@@ -2,7 +2,7 @@ package net.lecousin.framework.io.data;
 
 import java.nio.CharBuffer;
 
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.IString;
 
 /** Bytes array. */
 public interface Chars extends DataBuffer {
@@ -20,7 +20,7 @@ public interface Chars extends DataBuffer {
 		void get(char[] buffer, int offset, int length);
 		
 		/** Read <code>length</code> chars into <code>string</code>. */
-		void get(UnprotectedStringBuffer string, int length);
+		void get(IString string, int length);
 		
 		/** Return the char at offset from current position, without changing current position. */
 		char getForward(int offset);

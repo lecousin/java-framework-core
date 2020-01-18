@@ -7,8 +7,8 @@ import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.mutable.MutableInteger;
+import net.lecousin.framework.text.IString;
 import net.lecousin.framework.util.IConcurrentCloseable;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
 
 /** Character stream. */
 public interface ICharacterStream extends IConcurrentCloseable<IOException> {
@@ -120,13 +120,13 @@ public interface ICharacterStream extends IConcurrentCloseable<IOException> {
 			 * It returns true if the endChar has been found (and is not included in the string),
 			 * or false if the end of stream has been reached without the ending character.
 			 */
-			boolean readUntil(char endChar, UnprotectedStringBuffer string) throws IOException;
+			boolean readUntil(char endChar, IString string) throws IOException;
 			
 			/** Read characters until the given end, and put them in the given string.
 			 * It returns true if the endChar has been found (and is not included in the string),
 			 * or false if the end of stream has been reached without the ending character.
 			 */
-			AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, UnprotectedStringBuffer string);
+			AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, IString string);
 		}
 	}
 	

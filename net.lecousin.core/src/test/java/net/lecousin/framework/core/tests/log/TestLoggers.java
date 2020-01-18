@@ -24,7 +24,7 @@ import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.LoggerFactory;
 import net.lecousin.framework.log.appenders.RollingFileAppender;
-import net.lecousin.framework.util.StringUtil;
+import net.lecousin.framework.text.StringUtil;
 
 import org.junit.Assert;
 import org.junit.Test;

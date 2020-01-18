@@ -5,8 +5,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import net.lecousin.framework.util.StringParser;
-import net.lecousin.framework.util.StringParser.Parse;
+import net.lecousin.framework.text.StringParser;
+import net.lecousin.framework.text.StringParser.Parse;
 
 /**
  * List of RangeInteger representing a fragmented data.

@@ -15,7 +15,7 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.io.data.Bytes;
 import net.lecousin.framework.io.data.Chars;
-import net.lecousin.framework.util.UnprotectedStringBuffer;
+import net.lecousin.framework.text.CharArrayStringBuffer;
 
 /** Decoder from bytes to characters for a specific charset.
  * Important note: the result may be a wrapper on the given bytes, meaning any change on the given bytes
@@ -113,7 +113,7 @@ public interface CharacterDecoder {
 	decodeConsumerToString(Consumer<String> onEnd) {
 		return new AsyncConsumer<Bytes.Readable, TError>() {
 			
-			private UnprotectedStringBuffer str = new UnprotectedStringBuffer();
+			private CharArrayStringBuffer str = new CharArrayStringBuffer();
 
 			@Override
 			public IAsync<TError> consume(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease) {
