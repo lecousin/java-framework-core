@@ -34,7 +34,7 @@ public class TestIOProviderFromURI extends LCCoreAbstractTest {
 		Assert.assertNull(provider.get(new URI("file:///does/not/exist")));
 		Assert.assertNotNull(provider.get(new File("./pom.xml").toURI()));
 		
-		IOProvider p = provider.get(new URI("https://repo1.maven.org/maven2/net/lecousin/core-parent-pom/0.15.0/core-parent-pom-0.15.0.pom"));
+		IOProvider p = provider.get(new URI("https://www.google.com"));
 		Assert.assertNotNull(p);
 		p.getDescription();
 		Assert.assertTrue(p instanceof IOProvider.Readable);
@@ -42,7 +42,7 @@ public class TestIOProviderFromURI extends LCCoreAbstractTest {
 		Assert.assertNotNull(io);
 		io.close();
 
-		p = provider.get(new URI("https://repo1.maven.org/maven2/net/lecousin/core-parent-pom/0.15.0/xxx"));
+		p = provider.get(new URI("https://www.google.com/does_not_exist"));
 		Assert.assertTrue(p instanceof IOProvider.Readable);
 		try {
 			io = ((IOProvider.Readable)p).provideIOReadable(Task.PRIORITY_NORMAL);

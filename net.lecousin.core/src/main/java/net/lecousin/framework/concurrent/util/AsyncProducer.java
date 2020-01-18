@@ -78,4 +78,25 @@ public interface AsyncProducer<T, TError extends Exception> {
 		return result;
 	}
 	
+	/** Utility class implementing AsyncProducer holding a single data.
+	 * @param <T> type of data produced
+	 * @param <TError> type of error
+	 */
+	class SingleData<T, TError extends Exception> implements AsyncProducer<T, TError> {
+
+		public SingleData(T data) {
+			this.data = data;
+		}
+		
+		private T data;
+		
+		@Override
+		public AsyncSupplier<T, TError> produce() {
+			T d = data;
+			data = null;
+			return new AsyncSupplier<>(d, null);
+		}
+		
+	}
+	
 }

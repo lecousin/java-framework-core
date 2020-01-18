@@ -151,7 +151,7 @@ public interface IO extends IConcurrentCloseable<IOException> {
 				ByteBuffer buffer = ByteBuffer.wrap(cache.get(bufferSize, true));
 				AsyncSupplier<Integer, IOException> read = readFully ? readFullyAsync(buffer) : readAsync(buffer);
 				AsyncSupplier<ByteBuffer, IOException> production = new AsyncSupplier<>();
-				read.onDone(nb -> production.unblockSuccess(nb.intValue() <= 0 ? null : buffer), production);
+				read.onDone(nb -> production.unblockSuccess(nb.intValue() <= 0 ? null : (ByteBuffer)buffer.flip()), production);
 				return production;
 			};
 		}
