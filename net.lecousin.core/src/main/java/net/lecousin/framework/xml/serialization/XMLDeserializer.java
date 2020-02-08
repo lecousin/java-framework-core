@@ -17,6 +17,7 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.encoding.Base64Encoding;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -597,7 +598,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 			}
 			// not a reference, default to base 64 encoded string
 			IOInMemoryOrFile io = new IOInMemoryOrFile(128 * 1024, priority, "base 64 encoded from XML");
-			Base64Encoding.DecoderConsumer<IOException> decoder = new Base64Encoding.DecoderConsumer<>(
+			AsyncConsumer<Bytes.Readable, IOException> decoder = Base64Encoding.instance.createDecoderConsumer(
 				io.createConsumer(
 					() -> io.seekAsync(SeekType.FROM_BEGINNING, 0)
 						.onDone(() -> result.unblockSuccess(io), result, xmlErrorConverter::apply),
@@ -611,7 +612,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	private void readNextBase64(
-		Base64Encoding.DecoderConsumer<IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result
+		AsyncConsumer<Bytes.Readable, IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result
 	) {
 		IAsync<Exception> next = input.next();
 		if (next.isDone()) {
@@ -623,7 +624,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	private void readBase64(
-		Base64Encoding.DecoderConsumer<IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result
+		AsyncConsumer<Bytes.Readable, IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result
 	) {
 		if (Type.TEXT.equals(input.event.type)) {
 			input.event.text.trim();
@@ -647,7 +648,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	}
 	
 	private void decodeBase64(
-		Base64Encoding.DecoderConsumer<IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result,
+		AsyncConsumer<Bytes.Readable, IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result,
 		RawCharBuffer[] buffers, int index
 	) {
 		IAsync<IOException> decode = decoder.consume(buffers[index].iso8859AsReadableBytes(), null);

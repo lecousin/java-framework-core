@@ -67,12 +67,14 @@ public interface StringEncoding<T> {
 		
 		@Override
 		public String encode(Long value) throws EncodingException {
-			return new String(encoder.encode(DataUtil.getBytesLittleEndian(value.longValue())), StandardCharsets.ISO_8859_1);
+			byte[] b = new byte[8];
+			DataUtil.Write64.LE.write(b, 0, value.longValue());
+			return new String(encoder.encode(b), StandardCharsets.ISO_8859_1);
 		}
 		
 		@Override
 		public Long decode(String string) throws EncodingException {
-			return Long.valueOf(DataUtil.readLongLittleEndian(decoder.decode(string.getBytes(StandardCharsets.ISO_8859_1)), 0));
+			return Long.valueOf(DataUtil.Read64.LE.read(decoder.decode(string.getBytes(StandardCharsets.ISO_8859_1)), 0));
 		}
 		
 	}

@@ -13,9 +13,18 @@ import net.lecousin.framework.memory.ByteArrayCache;
 /** Encode and decode base 64. */
 public final class Base64Encoding implements BytesEncoder.KnownOutputSize, BytesDecoder.KnownOutputSize {
 	
-	public static final Base64Encoding instance = new Base64Encoding();
+	/** base64 instance. */
+	public static final Base64Encoding instance = new Base64Encoding((byte)'+', (byte)'/');
+	/** base64url instance. */
+	public static final Base64Encoding instanceURL = new Base64Encoding((byte)'-', (byte)'_');
 	
-	private Base64Encoding() { /* singleton */ }
+	private Base64Encoding(byte char62, byte char63) {
+		this.char62 = char62;
+		this.char63 = char63;
+	}
+	
+	private byte char62;
+	private byte char63;
 	
 	/** Error trying to decode base 64 with an invalid character. */
 	public static final class InvalidBase64Character extends EncodingException {
@@ -38,7 +47,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	}
 
 	/** Convert a base 64 character into its integer value, 64 is returned for '='. */
-	public static int decodeBase64Char(byte b) throws EncodingException {
+	public int decodeChar(byte b) throws EncodingException {
 		if (b >= 'A') {
 			if (b >= 'a') {
 				if (b <= 'z') return b - 'a' + 26;
@@ -52,19 +61,19 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 			if (b == '=') return 64;
 			throw new InvalidBase64Character(b);
 		}
-		if (b == '+') return 62;
-		if (b == '/') return 63;
+		if (b == char62) return 62;
+		if (b == char63) return 63;
 		throw new InvalidBase64Character(b);
 	}
 
 	/** Decode 4 input bytes of the inputBuffer, into the outputBuffer that must have at least 3 bytes remaining. */
-	public static int decode4BytesBase64(byte[] inputBuffer, int inputOffset, byte[] outputBuffer, int outputOffset) throws EncodingException {
-		int v1 = decodeBase64Char(inputBuffer[inputOffset]);
-		int v2 = decodeBase64Char(inputBuffer[inputOffset + 1]);
-		int v3 = decodeBase64Char(inputBuffer[inputOffset + 2]);
+	public int decode4Bytes(byte[] inputBuffer, int inputOffset, byte[] outputBuffer, int outputOffset) throws EncodingException {
+		int v1 = decodeChar(inputBuffer[inputOffset]);
+		int v2 = decodeChar(inputBuffer[inputOffset + 1]);
+		int v3 = decodeChar(inputBuffer[inputOffset + 2]);
 		outputBuffer[outputOffset] = (byte)((v1 << 2) | (v2 >>> 4));
 		if (v3 == 64) return 1;
-		int v4 = decodeBase64Char(inputBuffer[inputOffset + 3]);
+		int v4 = decodeChar(inputBuffer[inputOffset + 3]);
 		outputBuffer[outputOffset + 1] = (byte)(((v2 & 0x0F) << 4) | (v3 >>> 2));
 		if (v4 == 64) return 2;
 		outputBuffer[outputOffset + 2] = (byte)(((v3 & 0x03) << 6) | v4);
@@ -72,10 +81,10 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	}
 	
 	/** Decode the 4 input bytes of the inputBuffer, into the outputBuffer that must have at least 3 bytes remaining. */
-	public static int decode4BytesBase64(Bytes.Readable inputBuffer, byte[] outputBuffer, int outputOffset) throws EncodingException {
-		int v1 = decodeBase64Char(inputBuffer.get());
-		int v2 = decodeBase64Char(inputBuffer.get());
-		int v3 = decodeBase64Char(inputBuffer.get());
+	public int decode4Bytes(Bytes.Readable inputBuffer, byte[] outputBuffer, int outputOffset) throws EncodingException {
+		int v1 = decodeChar(inputBuffer.get());
+		int v2 = decodeChar(inputBuffer.get());
+		int v3 = decodeChar(inputBuffer.get());
 		outputBuffer[outputOffset] = (byte)((v1 << 2) | (v2 >>> 4));
 		if (v3 == 64) {
 			// eat the last = if present
@@ -83,7 +92,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 				inputBuffer.moveForward(1);
 			return 1;
 		}
-		int v4 = decodeBase64Char(inputBuffer.get());
+		int v4 = decodeChar(inputBuffer.get());
 		outputBuffer[outputOffset + 1] = (byte)(((v2 & 0x0F) << 4) | (v3 >>> 2));
 		if (v4 == 64) return 2;
 		outputBuffer[outputOffset + 2] = (byte)(((v3 & 0x03) << 6) | v4);
@@ -91,13 +100,13 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	}
 
 	/** Decode 4 input bytes of the inputBuffer, into the outputBuffer that must have at least 3 bytes remaining. */
-	public static int decode4BytesBase64(byte[] inputBuffer, int inputOffset, Bytes.Writable outputBuffer) throws EncodingException {
-		int v1 = decodeBase64Char(inputBuffer[inputOffset]);
-		int v2 = decodeBase64Char(inputBuffer[inputOffset + 1]);
-		int v3 = decodeBase64Char(inputBuffer[inputOffset + 2]);
+	public int decode4Bytes(byte[] inputBuffer, int inputOffset, Bytes.Writable outputBuffer) throws EncodingException {
+		int v1 = decodeChar(inputBuffer[inputOffset]);
+		int v2 = decodeChar(inputBuffer[inputOffset + 1]);
+		int v3 = decodeChar(inputBuffer[inputOffset + 2]);
 		outputBuffer.put((byte)((v1 << 2) | (v2 >>> 4)));
 		if (v3 == 64) return 1;
-		int v4 = decodeBase64Char(inputBuffer[inputOffset + 3]);
+		int v4 = decodeChar(inputBuffer[inputOffset + 3]);
 		outputBuffer.put((byte)(((v2 & 0x0F) << 4) | (v3 >>> 2)));
 		if (v4 == 64) return 2;
 		outputBuffer.put((byte)(((v3 & 0x03) << 6) | v4));
@@ -105,10 +114,10 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	}
 	
 	/** Decode the 4 input bytes of the inputBuffer, into the outputBuffer that must have at least 3 bytes remaining. */
-	public static int decode4BytesBase64(Bytes.Readable inputBuffer, Bytes.Writable outputBuffer) throws EncodingException {
-		int v1 = decodeBase64Char(inputBuffer.get());
-		int v2 = decodeBase64Char(inputBuffer.get());
-		int v3 = decodeBase64Char(inputBuffer.get());
+	public int decode4Bytes(Bytes.Readable inputBuffer, Bytes.Writable outputBuffer) throws EncodingException {
+		int v1 = decodeChar(inputBuffer.get());
+		int v2 = decodeChar(inputBuffer.get());
+		int v3 = decodeChar(inputBuffer.get());
 		outputBuffer.put((byte)((v1 << 2) | (v2 >>> 4)));
 		if (v3 == 64) {
 			// eat the last = if present
@@ -116,7 +125,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 				inputBuffer.moveForward(1);
 			return 1;
 		}
-		int v4 = decodeBase64Char(inputBuffer.get());
+		int v4 = decodeChar(inputBuffer.get());
 		outputBuffer.put((byte)(((v2 & 0x0F) << 4) | (v3 >>> 2)));
 		if (v4 == 64) return 2;
 		outputBuffer.put((byte)(((v3 & 0x03) << 6) | v4));
@@ -150,7 +159,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 		byte[] decoded = new byte[outLen];
 		int pos = 0;
 		for (int i = 0; i < nbBlocks; i++, pos += 3)
-			decode4BytesBase64(input, offset + i * 4, decoded, pos);
+			decode4Bytes(input, offset + i * 4, decoded, pos);
 		return decoded;
 	}
 	
@@ -182,7 +191,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 		byte[] decoded = new byte[outLen];
 		int pos = 0;
 		for (int i = 0; i < nbBlocks; i++, pos += 3)
-			decode4BytesBase64(input, decoded, pos);
+			decode4Bytes(input, decoded, pos);
 		return decoded;
 	}
 	
@@ -190,7 +199,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	public void decode(Bytes.Readable input, Bytes.Writable output, boolean end) throws EncodingException {
 		int l = Math.min(input.remaining() / 4, output.remaining() / 3);
 		for (int i = 0; i < l; ++i)
-			decode4BytesBase64(input, output);
+			decode4Bytes(input, output);
 		if (end) {
 			int remIn = input.remaining();
 			if (remIn == 0)
@@ -213,7 +222,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 			}
 			if (remDec > output.remaining())
 				return;
-			decode4BytesBase64(input, output);
+			decode4Bytes(input, output);
 		}
 	}
 	
@@ -225,126 +234,126 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	}
 	
 	/** Encode the 3 bytes from inputBuffer, into 4 bytes in the outputBuffer. */
-	public static void encode3BytesBase64(byte[] inputBuffer, int inputBufferOffset, byte[] outputBuffer, int outputBufferOffset) {
-		outputBuffer[outputBufferOffset + 0] = encodeBase64Safe((inputBuffer[inputBufferOffset + 0] & 0xFC) >> 2);
+	public void encode3Bytes(byte[] inputBuffer, int inputBufferOffset, byte[] outputBuffer, int outputBufferOffset) {
+		outputBuffer[outputBufferOffset + 0] = encodeSafe((inputBuffer[inputBufferOffset + 0] & 0xFC) >> 2);
 		outputBuffer[outputBufferOffset + 1] =
-			encodeBase64Safe(((inputBuffer[inputBufferOffset + 0] & 0x03) << 4) | ((inputBuffer[inputBufferOffset + 1] & 0xF0) >> 4));
+			encodeSafe(((inputBuffer[inputBufferOffset + 0] & 0x03) << 4) | ((inputBuffer[inputBufferOffset + 1] & 0xF0) >> 4));
 		outputBuffer[outputBufferOffset + 2] =
-			encodeBase64Safe(((inputBuffer[inputBufferOffset + 1] & 0x0F) << 2) | ((inputBuffer[inputBufferOffset + 2] & 0xC0) >> 6));
-		outputBuffer[outputBufferOffset + 3] = encodeBase64Safe(inputBuffer[inputBufferOffset + 2] & 0x3F);
+			encodeSafe(((inputBuffer[inputBufferOffset + 1] & 0x0F) << 2) | ((inputBuffer[inputBufferOffset + 2] & 0xC0) >> 6));
+		outputBuffer[outputBufferOffset + 3] = encodeSafe(inputBuffer[inputBufferOffset + 2] & 0x3F);
 	}
 	
 	/** Encode the 3 bytes from inputBuffer, into 4 bytes in the outputBuffer. */
 	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
-	public static void encode3BytesBase64(Bytes.Readable inputBuffer, byte[] outputBuffer, int outputBufferOffset) {
+	public void encode3Bytes(Bytes.Readable inputBuffer, byte[] outputBuffer, int outputBufferOffset) {
 		byte b;
-		outputBuffer[outputBufferOffset + 0] = encodeBase64Safe(((b = inputBuffer.get()) & 0xFC) >> 2);
+		outputBuffer[outputBufferOffset + 0] = encodeSafe(((b = inputBuffer.get()) & 0xFC) >> 2);
 		outputBuffer[outputBufferOffset + 1] =
-			encodeBase64Safe(((b & 0x03) << 4) | (((b = inputBuffer.get()) & 0xF0) >> 4));
+			encodeSafe(((b & 0x03) << 4) | (((b = inputBuffer.get()) & 0xF0) >> 4));
 		outputBuffer[outputBufferOffset + 2] =
-			encodeBase64Safe(((b & 0x0F) << 2) | (((b = inputBuffer.get()) & 0xC0) >> 6));
-		outputBuffer[outputBufferOffset + 3] = encodeBase64Safe(b & 0x3F);
+			encodeSafe(((b & 0x0F) << 2) | (((b = inputBuffer.get()) & 0xC0) >> 6));
+		outputBuffer[outputBufferOffset + 3] = encodeSafe(b & 0x3F);
 	}
 	
 	/** Encode the 3 bytes from inputBuffer, into 4 bytes in the outputBuffer. */
 	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
-	public static void encode3BytesBase64(Bytes.Readable inputBuffer, Bytes.Writable outputBuffer) {
+	public void encode3Bytes(Bytes.Readable inputBuffer, Bytes.Writable outputBuffer) {
 		byte b;
-		outputBuffer.put(encodeBase64Safe(((b = inputBuffer.get()) & 0xFC) >> 2));
-		outputBuffer.put(encodeBase64Safe(((b & 0x03) << 4) | (((b = inputBuffer.get()) & 0xF0) >> 4)));
-		outputBuffer.put(encodeBase64Safe(((b & 0x0F) << 2) | (((b = inputBuffer.get()) & 0xC0) >> 6)));
-		outputBuffer.put(encodeBase64Safe(b & 0x3F));
+		outputBuffer.put(encodeSafe(((b = inputBuffer.get()) & 0xFC) >> 2));
+		outputBuffer.put(encodeSafe(((b & 0x03) << 4) | (((b = inputBuffer.get()) & 0xF0) >> 4)));
+		outputBuffer.put(encodeSafe(((b & 0x0F) << 2) | (((b = inputBuffer.get()) & 0xC0) >> 6)));
+		outputBuffer.put(encodeSafe(b & 0x3F));
 	}
 
 	/** Encode 1 to 3 bytes. */
-	public static void encodeUpTo3BytesBase64(
+	public void encodeUpTo3Bytes(
 		byte[] inputBuffer, int inputBufferOffset, byte[] outputBuffer, int outputBufferOffset, int nbInput
 	) {
-		outputBuffer[outputBufferOffset + 0] = encodeBase64Safe((inputBuffer[inputBufferOffset + 0] & 0xFC) >> 2);
+		outputBuffer[outputBufferOffset + 0] = encodeSafe((inputBuffer[inputBufferOffset + 0] & 0xFC) >> 2);
 		if (nbInput == 1) {
-			outputBuffer[outputBufferOffset + 1] = encodeBase64Safe(((inputBuffer[inputBufferOffset + 0] & 0x03) << 4));
+			outputBuffer[outputBufferOffset + 1] = encodeSafe(((inputBuffer[inputBufferOffset + 0] & 0x03) << 4));
 			outputBuffer[outputBufferOffset + 2] = '=';
 			outputBuffer[outputBufferOffset + 3] = '=';
 			return;
 		}
-		outputBuffer[outputBufferOffset + 1] = encodeBase64Safe(
+		outputBuffer[outputBufferOffset + 1] = encodeSafe(
 			  ((inputBuffer[inputBufferOffset + 0] & 0x03) << 4)
 			| ((inputBuffer[inputBufferOffset + 1] & 0xF0) >> 4)
 		);
 		if (nbInput == 2) {
-			outputBuffer[outputBufferOffset + 2] = encodeBase64Safe(((inputBuffer[inputBufferOffset + 1] & 0x0F) << 2));
+			outputBuffer[outputBufferOffset + 2] = encodeSafe(((inputBuffer[inputBufferOffset + 1] & 0x0F) << 2));
 			outputBuffer[outputBufferOffset + 3] = '=';
 			return;
 		}
-		outputBuffer[outputBufferOffset + 2] = encodeBase64Safe(
+		outputBuffer[outputBufferOffset + 2] = encodeSafe(
 			  ((inputBuffer[inputBufferOffset + 1] & 0x0F) << 2)
 			| ((inputBuffer[inputBufferOffset + 2] & 0xC0) >> 6)
 		);
-		outputBuffer[outputBufferOffset + 3] = encodeBase64Safe(inputBuffer[inputBufferOffset + 2] & 0x3F);
+		outputBuffer[outputBufferOffset + 3] = encodeSafe(inputBuffer[inputBufferOffset + 2] & 0x3F);
 	}
 
 	/** Encode 1 to 3 bytes. */
 	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
-	public static void encodeUpTo3BytesBase64(Bytes.Readable inputBuffer, byte[] outputBuffer, int outputBufferOffset) {
+	public void encodeUpTo3Bytes(Bytes.Readable inputBuffer, byte[] outputBuffer, int outputBufferOffset) {
 		int nbInput = inputBuffer.remaining();
 		byte b;
-		outputBuffer[outputBufferOffset + 0] = encodeBase64Safe(((b = inputBuffer.get()) & 0xFC) >> 2);
+		outputBuffer[outputBufferOffset + 0] = encodeSafe(((b = inputBuffer.get()) & 0xFC) >> 2);
 		if (nbInput == 1) {
-			outputBuffer[outputBufferOffset + 1] = encodeBase64Safe(((b & 0x03) << 4));
+			outputBuffer[outputBufferOffset + 1] = encodeSafe(((b & 0x03) << 4));
 			outputBuffer[outputBufferOffset + 2] = '=';
 			outputBuffer[outputBufferOffset + 3] = '=';
 			return;
 		}
-		outputBuffer[outputBufferOffset + 1] = encodeBase64Safe(((b & 0x03) << 4) | (((b = inputBuffer.get()) & 0xF0) >> 4));
+		outputBuffer[outputBufferOffset + 1] = encodeSafe(((b & 0x03) << 4) | (((b = inputBuffer.get()) & 0xF0) >> 4));
 		if (nbInput == 2) {
-			outputBuffer[outputBufferOffset + 2] = encodeBase64Safe(((b & 0x0F) << 2));
+			outputBuffer[outputBufferOffset + 2] = encodeSafe(((b & 0x0F) << 2));
 			outputBuffer[outputBufferOffset + 3] = '=';
 			return;
 		}
-		outputBuffer[outputBufferOffset + 2] = encodeBase64Safe(((b & 0x0F) << 2) | (((b = inputBuffer.get()) & 0xC0) >> 6));
-		outputBuffer[outputBufferOffset + 3] = encodeBase64Safe(b & 0x3F);
+		outputBuffer[outputBufferOffset + 2] = encodeSafe(((b & 0x0F) << 2) | (((b = inputBuffer.get()) & 0xC0) >> 6));
+		outputBuffer[outputBufferOffset + 3] = encodeSafe(b & 0x3F);
 	}
 
 	/** Encode 1 to 3 bytes. */
 	@SuppressWarnings("squid:AssignmentInSubExpressionCheck")
-	public static void encodeUpTo3BytesBase64(Bytes.Readable inputBuffer, Bytes.Writable outputBuffer) {
+	public void encodeUpTo3Bytes(Bytes.Readable inputBuffer, Bytes.Writable outputBuffer) {
 		int nbInput = inputBuffer.remaining();
 		byte b;
-		outputBuffer.put(encodeBase64Safe(((b = inputBuffer.get()) & 0xFC) >> 2));
+		outputBuffer.put(encodeSafe(((b = inputBuffer.get()) & 0xFC) >> 2));
 		if (nbInput == 1) {
-			outputBuffer.put(encodeBase64Safe(((b & 0x03) << 4)));
+			outputBuffer.put(encodeSafe(((b & 0x03) << 4)));
 			outputBuffer.put((byte)'=');
 			outputBuffer.put((byte)'=');
 			return;
 		}
-		outputBuffer.put(encodeBase64Safe(((b & 0x03) << 4) | (((b = inputBuffer.get()) & 0xF0) >> 4)));
+		outputBuffer.put(encodeSafe(((b & 0x03) << 4) | (((b = inputBuffer.get()) & 0xF0) >> 4)));
 		if (nbInput == 2) {
-			outputBuffer.put(encodeBase64Safe(((b & 0x0F) << 2)));
+			outputBuffer.put(encodeSafe(((b & 0x0F) << 2)));
 			outputBuffer.put((byte)'=');
 			return;
 		}
-		outputBuffer.put(encodeBase64Safe(((b & 0x0F) << 2) | (((b = inputBuffer.get()) & 0xC0) >> 6)));
-		outputBuffer.put(encodeBase64Safe(b & 0x3F));
+		outputBuffer.put(encodeSafe(((b & 0x0F) << 2) | (((b = inputBuffer.get()) & 0xC0) >> 6)));
+		outputBuffer.put(encodeSafe(b & 0x3F));
 	}
 
 	/** Encode the given integer (from 0 to 63) into its base 64 character. */
-	public static byte encodeBase64(int v) throws EncodingException {
-		if (v < 0)
-			throw new InvalidBase64Value(v);
-		byte b = encodeBase64Safe(v);
-		if (b == 0)
-			throw new InvalidBase64Value(v);
-		return b;
-	}
-
-	/** Encode the given integer (from 0 to 63) into its base 64 character. */
-	private static byte encodeBase64Safe(int v) {
+	private byte encodeSafe(int v) {
 		if (v <= 25) return (byte)(v + 'A');
 		if (v <= 51) return (byte)(v - 26 + 'a');
 		if (v <= 61) return (byte)(v - 52 + '0');
-		if (v == 62) return (byte)'+';
-		if (v == 63) return (byte)'/';
+		if (v == 62) return char62;
+		if (v == 63) return char63;
 		return 0;
+	}
+
+	/** Encode the given integer (from 0 to 63) into its base 64 character. */
+	public byte encode(int v) throws EncodingException {
+		if (v < 0)
+			throw new InvalidBase64Value(v);
+		byte b = encodeSafe(v);
+		if (b == 0)
+			throw new InvalidBase64Value(v);
+		return b;
 	}
 	
 	@Override
@@ -361,13 +370,13 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 		byte[] output = new byte[nb];
 		int pos = 0;
 		while (len >= 3) {
-			encode3BytesBase64(input, offset, output, pos);
+			encode3Bytes(input, offset, output, pos);
 			offset += 3;
 			len -= 3;
 			pos += 4;
 		}
 		if (len > 0)
-			encodeUpTo3BytesBase64(input, offset, output, pos, len);
+			encodeUpTo3Bytes(input, offset, output, pos, len);
 		return output;
 	}
 	
@@ -380,12 +389,12 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 		byte[] output = new byte[nb];
 		int pos = 0;
 		while (len >= 3) {
-			encode3BytesBase64(input, output, pos);
+			encode3Bytes(input, output, pos);
 			len -= 3;
 			pos += 4;
 		}
 		if (len > 0)
-			encodeUpTo3BytesBase64(input, output, pos);
+			encodeUpTo3Bytes(input, output, pos);
 		return output;
 	}
 	
@@ -400,9 +409,9 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	public void encode(Bytes.Readable input, Bytes.Writable output, boolean end) {
 		int l = Math.min(input.remaining() / 3, output.remaining() / 4);
 		for (int i = 0; i < l; ++i)
-			encode3BytesBase64(input, output);
+			encode3Bytes(input, output);
 		if (end && input.hasRemaining() && output.remaining() >= 4)
-			encodeUpTo3BytesBase64(input, output);
+			encodeUpTo3Bytes(input, output);
 	}
 
 	@Override
@@ -411,11 +420,18 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	) {
 		return new EncoderConsumer<>(encodedConsumer);
 	}
+
+	/** Create an encoder. */
+	public <TError extends Exception> AsyncConsumer<Bytes.Readable, TError> createEncoderConsumer(
+		AsyncConsumer<Bytes.Readable, TError> encodedConsumer
+	) {
+		return new EncoderConsumer<>(encodedConsumer);
+	}
 	
 	/** Consume data, encode it as base 64, and gives the encoded bytes to another consumer.
 	 * @param <TError> type of error
 	 */
-	public static class EncoderConsumer<TError extends Exception> implements AsyncConsumer<Bytes.Readable, TError> {
+	public class EncoderConsumer<TError extends Exception> implements AsyncConsumer<Bytes.Readable, TError> {
 		
 		/** Constructor. */
 		public EncoderConsumer(AsyncConsumer<Bytes.Readable, TError> encodedBytesConsumer) {
@@ -442,13 +458,13 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 				}
 				int nb = data.remaining() / 3 + 1;
 				output = new RawByteBuffer(cache.get(nb * 4, true));
-				instance.encode(buf, 0, 3, output, false);
+				encode(buf, 0, 3, output, false);
 				nbBuf = 0;
 			} else {
 				int nb = data.remaining() / 3;
 				output = new RawByteBuffer(cache.get(nb * 4, true));
 			}
-			instance.encode(data, output, false);
+			encode(data, output, false);
 			nbBuf = data.remaining();
 			if (nbBuf != 0)
 				data.get(buf, 0, nbBuf);
@@ -463,7 +479,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 			if (nbBuf == 0)
 				return encodedBytesConsumer.end();
 			byte[] out = new byte[4];
-			encodeUpTo3BytesBase64(buf, 0, out, 0, nbBuf);
+			encodeUpTo3Bytes(buf, 0, out, 0, nbBuf);
 			Async<TError> result = new Async<>();
 			encodedBytesConsumer.consume(new RawByteBuffer(out), null).onDone(() -> encodedBytesConsumer.end().onDone(result), result);
 			return result;
@@ -479,7 +495,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	/** Consume data, decode it as base 64, and gives the decoded bytes to another consumer.
 	 * @param <TError> type of error
 	 */
-	public static class DecoderConsumer<TError extends Exception> implements AsyncConsumer<Bytes.Readable, TError> {
+	public class DecoderConsumer<TError extends Exception> implements AsyncConsumer<Bytes.Readable, TError> {
 		
 		/** Constructor. */
 		public DecoderConsumer(
@@ -514,7 +530,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 					}
 					nb = data.remaining() / 4;
 					output = new RawByteBuffer(cache.get((nb + 1) * 3, true));
-					decode4BytesBase64(buf, 0, output);
+					decode4Bytes(buf, 0, output);
 					nbBuf = 0;
 				} else {
 					nb = data.remaining() / 4;
@@ -522,7 +538,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 						output = new RawByteBuffer(cache.get(nb * 3, true));
 				}
 				if (nb > 0)
-					instance.decode(data, output, false);
+					decode(data, output, false);
 			} catch (EncodingException e) {
 				@SuppressWarnings("unchecked")
 				TError err = errorConverter != null ? errorConverter.apply(e) : (TError)e;

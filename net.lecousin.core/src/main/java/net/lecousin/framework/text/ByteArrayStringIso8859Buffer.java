@@ -1,8 +1,10 @@
 package net.lecousin.framework.text;
 
+import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
 
+import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.io.data.RawCharBuffer;
 
 /**
@@ -88,6 +90,30 @@ public class ByteArrayStringIso8859Buffer extends ArrayStringBuffer<ByteArrayStr
 		return ByteArrayStringIso8859.class;
 	}
 
+	/** Append an ISO-8859 character as a byte. */
+	public ByteArrayStringIso8859Buffer append(byte c) {
+		if (strings == null) {
+			strings = allocateArray(8);
+			strings[0] = createString(newArrayStringCapacity);
+			strings[0].append(c);
+			lastUsed = 0;
+			return this;
+		}
+		if (strings[lastUsed].appendNoEnlarge(c))
+			return this;
+		if (lastUsed < strings.length - 1) {
+			strings[++lastUsed] = createString(newArrayStringCapacity);
+			strings[lastUsed].append(c);
+			return this;
+		}
+		ByteArrayStringIso8859[] a = allocateArray(++lastUsed + 8);
+		System.arraycopy(strings, 0, a, 0, lastUsed);
+		a[lastUsed] = createString(newArrayStringCapacity);
+		a[lastUsed].append(c);
+		strings = a;
+		return this;
+	}
+
 	@Override
 	public ByteArrayStringIso8859 copy() {
 		byte[] copy = new byte[length()];
@@ -101,6 +127,24 @@ public class ByteArrayStringIso8859Buffer extends ArrayStringBuffer<ByteArrayStr
 		RawCharBuffer[] chars = new RawCharBuffer[lastUsed + 1];
 		for (int i = 0; i <= lastUsed; ++i)
 			chars[i] = new RawCharBuffer(strings[i].toChars());
+		return chars;
+	}
+	
+	/** Convert into an array of RawByteBuffer. */
+	public RawByteBuffer[] asRawByteBuffers() {
+		if (strings == null) return new RawByteBuffer[0];
+		RawByteBuffer[] chars = new RawByteBuffer[lastUsed + 1];
+		for (int i = 0; i <= lastUsed; ++i)
+			chars[i] = strings[i].asRawByteBuffer();
+		return chars;
+	}
+	
+	/** Convert into an array of ByteBuffer. */
+	public ByteBuffer[] asByteBuffers() {
+		if (strings == null) return new ByteBuffer[0];
+		ByteBuffer[] chars = new ByteBuffer[lastUsed + 1];
+		for (int i = 0; i <= lastUsed; ++i)
+			chars[i] = strings[i].asByteBuffer();
 		return chars;
 	}
 }

@@ -99,4 +99,17 @@ public interface AsyncProducer<T, TError extends Exception> {
 		
 	}
 	
+	/** Utility class implementing AsyncProducer but producing nothing.
+	 * @param <T> type of data produced
+	 * @param <TError> type of error
+	 */
+	class Empty<T, TError extends Exception> implements AsyncProducer<T, TError> {
+
+		@Override
+		public AsyncSupplier<T, TError> produce() {
+			return new AsyncSupplier<>(null, null);
+		}
+		
+	}
+	
 }

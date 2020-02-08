@@ -3,7 +3,6 @@ package net.lecousin.framework.core.tests.io.util;
 import java.io.EOFException;
 import java.nio.ByteBuffer;
 
-import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.IOAsInputStream;
@@ -46,379 +45,375 @@ public class TestDataUtil extends LCCoreAbstractTest {
 	
 	protected void testShort(short value, int unsigned) throws Exception {
 		byte[] buf = new byte[32];
-		DataUtil.writeShortLittleEndian(buf, 0, value);
-		Assert.assertEquals(value, DataUtil.readShortLittleEndian(buf, 0));
-		DataUtil.writeShortLittleEndian(buf, 4, value);
-		Assert.assertEquals(value, DataUtil.readShortLittleEndian(buf, 4));
-		DataUtil.writeShortBigEndian(buf, 0, value);
-		Assert.assertEquals(value, DataUtil.readShortBigEndian(buf, 0));
-		DataUtil.writeShortBigEndian(buf, 8, value);
-		Assert.assertEquals(value, DataUtil.readShortBigEndian(buf, 8));
-		DataUtil.writeUnsignedShortLittleEndian(buf, 0, value);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortLittleEndian(buf, 0));
-		DataUtil.writeUnsignedShortBigEndian(buf, 0, value);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortBigEndian(buf, 0));
-		DataUtil.writeShortLittleEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.readShortLittleEndian(buf, 1));
-		DataUtil.writeShortBigEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.readShortBigEndian(buf, 1));
-		DataUtil.writeShortBigEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.readShortBigEndian(ByteBuffer.wrap(buf, 1, 30)));
-		DataUtil.writeUnsignedShortLittleEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortLittleEndian(buf, 1));
-		DataUtil.writeUnsignedShortBigEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortBigEndian(buf, 1));
-		DataUtil.writeUnsignedShortBigEndian(ByteBuffer.wrap(buf, 0, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortBigEndian(ByteBuffer.wrap(buf, 0, 30)));
+		DataUtil.Write16.LE.write(buf, 0, value);
+		Assert.assertEquals(value, DataUtil.Read16.LE.read(buf, 0));
+		DataUtil.Write16.LE.write(buf, 4, value);
+		Assert.assertEquals(value, DataUtil.Read16.LE.read(buf, 4));
+		DataUtil.Write16.BE.write(buf, 0, value);
+		Assert.assertEquals(value, DataUtil.Read16.BE.read(buf, 0));
+		DataUtil.Write16.BE.write(buf, 8, value);
+		Assert.assertEquals(value, DataUtil.Read16.BE.read(buf, 8));
+		DataUtil.Write16U.LE.write(buf, 0, value);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(buf, 0));
+		DataUtil.Write16U.BE.write(buf, 0, value);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(buf, 0));
+		DataUtil.Write16.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read16.LE.read(buf, 1));
+		DataUtil.Write16.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read16.BE.read(buf, 1));
+		DataUtil.Write16.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read16.BE.read(ByteBuffer.wrap(buf, 1, 30)));
+		DataUtil.Write16U.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(buf, 1));
+		DataUtil.Write16U.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(buf, 1));
+		DataUtil.Write16U.BE.write(ByteBuffer.wrap(buf, 0, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(ByteBuffer.wrap(buf, 0, 30)));
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
-		DataUtil.writeShortLittleEndian(io, value);
+		DataUtil.Write16.LE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readShortLittleEndian(io));
+		Assert.assertEquals(value, DataUtil.Read16.LE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readShortLittleEndian(IOAsInputStream.get(io, false)));
+		Assert.assertEquals(value, DataUtil.Read16.LE.read(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		DataUtil.writeShortBigEndian(io, value);
+		DataUtil.Write16.BE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readShortBigEndian(io));
+		Assert.assertEquals(value, DataUtil.Read16.BE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readShortBigEndian(IOAsInputStream.get(io, false)));
+		Assert.assertEquals(value, DataUtil.Read16.BE.read(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		DataUtil.writeUnsignedShortLittleEndian(io, value);
+		DataUtil.Write16U.LE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortLittleEndian(io));
+		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortLittleEndian(IOAsInputStream.get(io, false)));
+		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		DataUtil.writeUnsignedShortBigEndian(io, value);
+		DataUtil.Write16U.BE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortBigEndian(io));
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedShortBigEndian(IOAsInputStream.get(io, false)));
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(IOAsInputStream.get(io, false)));
 		
 		// empty IO should throw EOFException
 		io.setSizeSync(0);
-		try { DataUtil.readShortLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readShortBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readUnsignedShortLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readUnsignedShortBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readShortLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readShortBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readUnsignedShortLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readUnsignedShortBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16U.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16U.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16U.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16U.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 
 		// IO with  only 1 byte should throw EOFException
 		io.setSizeSync(1);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readShortLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readShortBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedShortLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16U.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedShortBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16U.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readShortLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readShortBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedShortLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16U.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedShortBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read16U.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 
 		io.close();
 	}
 	
 	protected void testInt(int value, long unsigned) throws Exception {
 		byte[] buf = new byte[32];
-		DataUtil.writeIntegerLittleEndian(buf, 0, value);
-		Assert.assertEquals(value, DataUtil.readIntegerLittleEndian(buf, 0));
-		DataUtil.writeIntegerLittleEndian(buf, 4, value);
-		Assert.assertEquals(value, DataUtil.readIntegerLittleEndian(buf, 4));
-		DataUtil.writeIntegerBigEndian(buf, 0, value);
-		Assert.assertEquals(value, DataUtil.readIntegerBigEndian(buf, 0));
-		DataUtil.writeIntegerBigEndian(buf, 8, value);
-		Assert.assertEquals(value, DataUtil.readIntegerBigEndian(buf, 8));
-		DataUtil.writeUnsignedIntegerLittleEndian(buf, 0, value);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerLittleEndian(buf, 0));
-		DataUtil.writeUnsignedIntegerBigEndian(buf, 0, value);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerBigEndian(buf, 0));
-		DataUtil.writeIntegerLittleEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.readIntegerLittleEndian(buf, 1));
-		DataUtil.writeIntegerBigEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.readIntegerBigEndian(buf, 1));
-		DataUtil.writeUnsignedIntegerLittleEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerLittleEndian(buf, 1));
-		DataUtil.writeUnsignedIntegerBigEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerBigEndian(buf, 1));
-		DataUtil.writeUnsignedIntegerBigEndian(ByteBuffer.wrap(buf, 0, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerBigEndian(ByteBuffer.wrap(buf, 0, 30)));
+		DataUtil.Write32.LE.write(buf, 0, value);
+		Assert.assertEquals(value, DataUtil.Read32.LE.read(buf, 0));
+		DataUtil.Write32.LE.write(buf, 4, value);
+		Assert.assertEquals(value, DataUtil.Read32.LE.read(buf, 4));
+		DataUtil.Write32.BE.write(buf, 0, value);
+		Assert.assertEquals(value, DataUtil.Read32.BE.read(buf, 0));
+		DataUtil.Write32.BE.write(buf, 8, value);
+		Assert.assertEquals(value, DataUtil.Read32.BE.read(buf, 8));
+		DataUtil.Write32U.LE.write(buf, 0, value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(buf, 0));
+		DataUtil.Write32U.BE.write(buf, 0, value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(buf, 0));
+		DataUtil.Write32.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read32.LE.read(buf, 1));
+		DataUtil.Write32.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read32.BE.read(buf, 1));
+		DataUtil.Write32U.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(buf, 1));
+		DataUtil.Write32U.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(buf, 1));
+		DataUtil.Write32U.BE.write(ByteBuffer.wrap(buf, 0, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(ByteBuffer.wrap(buf, 0, 30)));
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
-		DataUtil.writeIntegerLittleEndian(io, value);
+		DataUtil.Write32.LE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readIntegerLittleEndian(io));
+		Assert.assertEquals(value, DataUtil.Read32.LE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readIntegerLittleEndian(IOAsInputStream.get(io, false)));
+		Assert.assertEquals(value, DataUtil.Read32.LE.read(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		DataUtil.writeIntegerBigEndian(io, value);
+		DataUtil.Write32.BE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readIntegerBigEndian(io));
+		Assert.assertEquals(value, DataUtil.Read32.BE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readIntegerBigEndian(IOAsInputStream.get(io, false)));
+		Assert.assertEquals(value, DataUtil.Read32.BE.read(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		DataUtil.writeUnsignedIntegerLittleEndian(io, value);
+		DataUtil.Write32U.LE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerLittleEndian(io));
+		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerLittleEndian(IOAsInputStream.get(io, false)));
+		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		DataUtil.writeUnsignedIntegerBigEndian(io, value);
+		DataUtil.Write32U.BE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerBigEndian(io));
+		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(unsigned, DataUtil.readUnsignedIntegerBigEndian(IOAsInputStream.get(io, false)));
+		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(IOAsInputStream.get(io, false)));
 		
 		// empty IO should throw EOFException
 		io.setSizeSync(0);
-		try { DataUtil.readIntegerLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readIntegerBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readUnsignedIntegerLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readUnsignedIntegerBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readIntegerLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readIntegerBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readUnsignedIntegerLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readUnsignedIntegerBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		
 		// IO with  only 1 byte should throw EOFException
 		io.setSizeSync(1);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		
 		// IO with  only 2 bytes should throw EOFException
 		io.setSizeSync(2);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		
 		// IO with  only 3 bytes should throw EOFException
 		io.setSizeSync(3);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readIntegerBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedIntegerBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read32U.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 
 		io.close();
 	}
 	
 	protected void testUnsignedInt24Bits(int value) throws Exception {
 		byte[] buf = new byte[32];
-		DataUtil.writeUnsignedInteger24BitsLittleEndian(buf, 0, value);
-		Assert.assertEquals(value, DataUtil.readUnsignedInteger24BitsLittleEndian(buf, 0));
-		DataUtil.writeUnsignedInteger24BitsBigEndian(buf, 0, value);
-		Assert.assertEquals(value, DataUtil.readUnsignedInteger24BitsBigEndian(buf, 0));
-		DataUtil.writeUnsignedInteger24BitsLittleEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.readUnsignedInteger24BitsLittleEndian(buf, 1));
-		DataUtil.writeUnsignedInteger24BitsBigEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.readUnsignedInteger24BitsBigEndian(buf, 1));
-		DataUtil.writeUnsignedInteger24BitsBigEndian(ByteBuffer.wrap(buf, 0, 30), value);
-		Assert.assertEquals(value, DataUtil.readUnsignedInteger24BitsBigEndian(ByteBuffer.wrap(buf, 0, 30)));
+		DataUtil.Write24U.LE.write(buf, 0, value);
+		Assert.assertEquals(value, DataUtil.Read24U.LE.read(buf, 0));
+		DataUtil.Write24U.BE.write(buf, 0, value);
+		Assert.assertEquals(value, DataUtil.Read24U.BE.read(buf, 0));
+		DataUtil.Write24U.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read24U.LE.read(buf, 1));
+		DataUtil.Write24U.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read24U.BE.read(buf, 1));
+		DataUtil.Write24U.BE.write(ByteBuffer.wrap(buf, 0, 30), value);
+		Assert.assertEquals(value, DataUtil.Read24U.BE.read(ByteBuffer.wrap(buf, 0, 30)));
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
-		DataUtil.writeUnsignedInteger24BitsLittleEndian(io, value);
+		DataUtil.Write24U.LE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readUnsignedInteger24BitsLittleEndian(io));
+		Assert.assertEquals(value, DataUtil.Read24U.LE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readUnsignedInteger24BitsLittleEndian(IOAsInputStream.get(io, false)));
+		Assert.assertEquals(value, DataUtil.Read24U.LE.read(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		DataUtil.writeUnsignedInteger24BitsBigEndian(io, value);
+		DataUtil.Write24U.BE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readUnsignedInteger24BitsBigEndian(io));
+		Assert.assertEquals(value, DataUtil.Read24U.BE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readUnsignedInteger24BitsBigEndian(IOAsInputStream.get(io, false)));
+		Assert.assertEquals(value, DataUtil.Read24U.BE.read(IOAsInputStream.get(io, false)));
 		
 		// empty IO should throw EOFException
 		io.setSizeSync(0);
-		try { DataUtil.readUnsignedInteger24BitsLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readUnsignedInteger24BitsBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readUnsignedInteger24BitsLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readUnsignedInteger24BitsBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		
 		// IO with  only 1 byte should throw EOFException
 		io.setSizeSync(1);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedInteger24BitsLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedInteger24BitsBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedInteger24BitsLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedInteger24BitsBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		
 		// IO with  only 2 bytes should throw EOFException
 		io.setSizeSync(2);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedInteger24BitsLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedInteger24BitsBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedInteger24BitsLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readUnsignedInteger24BitsBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read24U.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		
 		io.close();
 	}
 	
 	protected void testLong(long value) throws Exception {
 		byte[] buf = new byte[32];
-		DataUtil.writeLongLittleEndian(buf, 0, value);
-		Assert.assertEquals(value, DataUtil.readLongLittleEndian(buf, 0));
-		DataUtil.writeLongLittleEndian(buf, 4, value);
-		Assert.assertEquals(value, DataUtil.readLongLittleEndian(buf, 4));
-		DataUtil.writeLongBigEndian(buf, 0, value);
-		Assert.assertEquals(value, DataUtil.readLongBigEndian(buf, 0));
-		DataUtil.writeLongBigEndian(buf, 8, value);
-		Assert.assertEquals(value, DataUtil.readLongBigEndian(buf, 8));
-		DataUtil.writeLongLittleEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.readLongLittleEndian(buf, 1));
-		DataUtil.writeLongBigEndian(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.readLongBigEndian(buf, 1));
+		DataUtil.Write64.LE.write(buf, 0, value);
+		Assert.assertEquals(value, DataUtil.Read64.LE.read(buf, 0));
+		DataUtil.Write64.LE.write(buf, 4, value);
+		Assert.assertEquals(value, DataUtil.Read64.LE.read(buf, 4));
+		DataUtil.Write64.BE.write(buf, 0, value);
+		Assert.assertEquals(value, DataUtil.Read64.BE.read(buf, 0));
+		DataUtil.Write64.BE.write(buf, 8, value);
+		Assert.assertEquals(value, DataUtil.Read64.BE.read(buf, 8));
+		DataUtil.Write64.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read64.LE.read(buf, 1));
+		DataUtil.Write64.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read64.BE.read(buf, 1));
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
-		DataUtil.writeLongLittleEndian(io, value);
+		DataUtil.Write64.LE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readLongLittleEndian(io));
+		Assert.assertEquals(value, DataUtil.Read64.LE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readLongLittleEndian(IOAsInputStream.get(io, false)));
+		Assert.assertEquals(value, DataUtil.Read64.LE.read(IOAsInputStream.get(io, false)));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		DataUtil.writeLongBigEndian(io, value);
+		DataUtil.Write64.BE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readLongBigEndian(io));
+		Assert.assertEquals(value, DataUtil.Read64.BE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		Assert.assertEquals(value, DataUtil.readLongBigEndian(IOAsInputStream.get(io, false)));
-		
-		DataUtil.writeLongLittleEndian(buf, 0, value);
-		byte[] b = DataUtil.getBytesLittleEndian(value);
-		Assert.assertEquals(0, ArrayUtil.compare(b, 0, buf, 0, b.length));
+		Assert.assertEquals(value, DataUtil.Read64.BE.read(IOAsInputStream.get(io, false)));
 		
 		// empty IO should throw EOFException
 		io.setSizeSync(0);
-		try { DataUtil.readLongLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readLongBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readLongLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
-		try { DataUtil.readLongBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 
 		// IO with  only 1 byte should throw EOFException
 		io.setSizeSync(1);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 
 		// IO with  only 2 bytes should throw EOFException
 		io.setSizeSync(2);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 
 		// IO with  only 3 bytes should throw EOFException
 		io.setSizeSync(3);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 
 		// IO with  only 4 bytes should throw EOFException
 		io.setSizeSync(4);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 
 		// IO with  only 5 bytes should throw EOFException
 		io.setSizeSync(5);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 
 		// IO with  only 6 bytes should throw EOFException
 		io.setSizeSync(6);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 
 		// IO with  only 7 bytes should throw EOFException
 		io.setSizeSync(7);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(io); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(io); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongLittleEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.LE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		try { DataUtil.readLongBigEndian(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
+		try { DataUtil.Read64.BE.read(IOAsInputStream.get(io, false)); throw new AssertionError(); } catch (EOFException e) {}
 
 		io.close();
 	}

@@ -50,8 +50,8 @@ public class TestDriveOperationsSequence extends LCCoreAbstractTest {
 		});
 		seq.endOfOperations();
 		seq.getOutput().blockThrow(0);
-		Assert.assertEquals(1234L, DataUtil.readLongBigEndian(res, 0));
-		Assert.assertEquals(9876, DataUtil.readIntegerBigEndian(res, 10));
+		Assert.assertEquals(1234L, DataUtil.Read64.BE.read(res, 0));
+		Assert.assertEquals(9876, DataUtil.Read32.BE.read(res, 10));
 		Assert.assertEquals((byte)5, res[8]);
 		Assert.assertEquals((byte)6, res[9]);
 		io.close();

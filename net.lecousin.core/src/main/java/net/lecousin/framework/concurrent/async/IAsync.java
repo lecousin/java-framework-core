@@ -233,7 +233,9 @@ public interface IAsync<TError extends Exception> extends Cancellable {
 		});
 	}
 	
-	/** If this asynchronous unit is not successful, forward the result to the given one (this object MUST be done). */
+	/** If this asynchronous unit is not successful, forward the result to the given one (this object MUST be done).
+	 * @return true if an error or cancel event has been forwarded, false if this asynchronous unit is successful.
+	 */
 	default boolean forwardIfNotSuccessful(IAsync<TError> sp) {
 		if (hasError()) {
 			sp.error(getError());

@@ -71,14 +71,14 @@ public class TestBase64Encoding extends AbstractTestBytesEncoding {
 		Assert.assertEquals("Hello World !", new String(Base64Encoding.instance.decode(new RawByteBuffer("SGVsbG8gV29ybGQgIQ=".getBytes(StandardCharsets.UTF_8))), StandardCharsets.UTF_8));
 		
 		byte[] buf = new byte[100];
-		Assert.assertEquals(3, Base64Encoding.decode4BytesBase64("VGhp".getBytes("US-ASCII"), 0, buf, 10));
+		Assert.assertEquals(3, Base64Encoding.instance.decode4Bytes("VGhp".getBytes("US-ASCII"), 0, buf, 10));
 		Assert.assertEquals((byte)'T', buf[10]);
 		Assert.assertEquals((byte)'h', buf[11]);
 		Assert.assertEquals((byte)'i', buf[12]);
 		
 		Assert.assertArrayEquals("This is a test".getBytes(StandardCharsets.UTF_8), Base64Encoding.instance.decode("   VGhpcyBpcyBhIHRlc3Q=".getBytes(StandardCharsets.UTF_8), 3, 20));
 		
-		Assert.assertEquals(1, Base64Encoding.decode4BytesBase64("a0==".getBytes("US-ASCII"), 0, buf, 0));
+		Assert.assertEquals(1, Base64Encoding.instance.decode4Bytes("a0==".getBytes("US-ASCII"), 0, buf, 0));
 		Assert.assertEquals((byte)'k', buf[0]);
 		
 		Assert.assertEquals(0, Base64Encoding.instance.decode(new byte[0]).length);
@@ -138,15 +138,15 @@ public class TestBase64Encoding extends AbstractTestBytesEncoding {
 			// ok
 		}
 		
-		Assert.assertEquals('B', Base64Encoding.encodeBase64(1));
+		Assert.assertEquals('B', Base64Encoding.instance.encode(1));
 		try {
-			Base64Encoding.encodeBase64(-1);
+			Base64Encoding.instance.encode(-1);
 			throw new AssertionError("Error expected");
 		} catch (InvalidBase64Value e) {
 			// ok
 		}
 		try {
-			Base64Encoding.encodeBase64(65);
+			Base64Encoding.instance.encode(65);
 			throw new AssertionError("Error expected");
 		} catch (InvalidBase64Value e) {
 			// ok

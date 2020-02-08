@@ -192,10 +192,24 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 			return (ME)this;
 		}
 		T us;
-		if (s.getClass().equals(getArrayType()))
+		if (!s.getClass().equals(getArrayType())) {
+			int len = s.length();
+			if (strings != null) {
+				int remaining = strings[lastUsed].canAppendWithoutEnlarging();
+				if (len <= remaining) {
+					strings[lastUsed].append(s);
+					return (ME)this;
+				}
+			}
+			if (len < newArrayStringCapacity) {
+				us = createString(newArrayStringCapacity);
+				us.append(s);
+			} else {
+				us = createString(s);
+			}
+		} else {
 			us = (T)s;
-		else
-			us = createString(s);
+		}
 		if (strings == null) {
 			strings = allocateArray(8);
 			strings[0] = us;

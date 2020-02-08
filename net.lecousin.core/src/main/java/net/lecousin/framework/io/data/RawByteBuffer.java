@@ -74,6 +74,13 @@ public class RawByteBuffer extends RawBuffer<byte[]> implements Bytes.Readable, 
 		return ByteBuffer.wrap(array, currentOffset, length - (currentOffset - arrayOffset));
 	}
 	
+	/** Used when a ByteBuffer as been converted into a RawByteBuffer, and we want to update the ByteBuffer's position
+	 * to the position of this buffer.
+	 */
+	public void setPosition(ByteBuffer originalBuffer) {
+		originalBuffer.position(currentOffset - arrayOffset);
+	}
+	
 	@Override
 	public RawByteBuffer subBuffer(int startPosition, int length) {
 		return new RawByteBuffer(array, arrayOffset + startPosition, length);

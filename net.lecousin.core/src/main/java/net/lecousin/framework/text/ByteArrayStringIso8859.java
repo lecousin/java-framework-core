@@ -130,11 +130,18 @@ public class ByteArrayStringIso8859 extends ArrayString {
 		usableEnd = 0;
 	}
 	
-	/** Append the given character without enlarging the char array, return false if it cannot be done. */
+	/** Append the given character without enlarging the byte array, return false if it cannot be done. */
 	@Override
 	public boolean appendNoEnlarge(char c) {
 		if (end == usableEnd) return false;
 		chars[++end] = (byte)c;
+		return true;
+	}
+	
+	/** Append the given character without enlarging the byte array, return false if it cannot be done. */
+	public boolean appendNoEnlarge(byte c) {
+		if (end == usableEnd) return false;
+		chars[++end] = c;
 		return true;
 	}
 	
@@ -428,6 +435,11 @@ public class ByteArrayStringIso8859 extends ArrayString {
 	/** Wrap bytes into a ByteBuffer. */
 	public ByteBuffer asByteBuffer() {
 		return ByteBuffer.wrap(chars, start, end - start + 1);
+	}
+	
+	/** Wrap bytes into a RawByteBuffer. */
+	public RawByteBuffer asRawByteBuffer() {
+		return new RawByteBuffer(chars, start, end - start + 1);
 	}
 	
 	@Override

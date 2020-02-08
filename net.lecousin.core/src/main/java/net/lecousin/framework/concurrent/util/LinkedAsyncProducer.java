@@ -44,7 +44,7 @@ public class LinkedAsyncProducer<T, TError extends Exception> implements AsyncPr
 				}
 				return production;
 			}
-			AsyncSupplier<T, TError> result = new AsyncSupplier<T, TError>();
+			AsyncSupplier<T, TError> result = new AsyncSupplier<>();
 			production.onDone(data -> {
 				if (data == null) {
 					currentProducer = null;

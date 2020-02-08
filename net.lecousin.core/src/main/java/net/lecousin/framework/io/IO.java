@@ -140,18 +140,28 @@ public interface IO extends IConcurrentCloseable<IOException> {
 		default AsyncSupplier<Long,IOException> skipAsync(long n) { return skipAsync(n, null); }
 
 		/** Equivalent to createProducer(8192, false). */
-		default AsyncProducer<ByteBuffer, IOException> createProducer() {
-			return createProducer(8192, false);
+		default AsyncProducer<ByteBuffer, IOException> createProducer(boolean closeOnEnd) {
+			return createProducer(8192, false, closeOnEnd);
 		}
 		
 		/** Create a producer that read from this IO. */
-		default AsyncProducer<ByteBuffer, IOException> createProducer(int bufferSize, boolean readFully) {
+		default AsyncProducer<ByteBuffer, IOException> createProducer(int bufferSize, boolean readFully, boolean closeOnEnd) {
 			ByteArrayCache cache = ByteArrayCache.getInstance();
 			return () -> {
 				ByteBuffer buffer = ByteBuffer.wrap(cache.get(bufferSize, true));
 				AsyncSupplier<Integer, IOException> read = readFully ? readFullyAsync(buffer) : readAsync(buffer);
 				AsyncSupplier<ByteBuffer, IOException> production = new AsyncSupplier<>();
-				read.onDone(nb -> production.unblockSuccess(nb.intValue() <= 0 ? null : (ByteBuffer)buffer.flip()), production);
+				read.onDone(nb -> {
+					if (nb.intValue() <= 0) {
+						if (closeOnEnd)
+							closeAsync();
+						production.unblockSuccess(null);
+						return;
+					}
+					production.unblockSuccess((ByteBuffer)buffer.flip());	
+				}, production);
+				if (closeOnEnd)
+					production.onError(error -> closeAsync());
 				return production;
 			};
 		}
@@ -238,8 +248,16 @@ public interface IO extends IConcurrentCloseable<IOException> {
 			
 			/** Read this IO buffer by buffer (using readNextBufferAsync) and forward each buffer to the given consumer. */
 			@Override
-			default AsyncProducer<ByteBuffer, IOException> createProducer() {
-				return () -> readNextBufferAsync();
+			default AsyncProducer<ByteBuffer, IOException> createProducer(boolean closeOnEnd) {
+				return () -> {
+					AsyncSupplier<ByteBuffer, IOException> read = readNextBufferAsync();
+					if (closeOnEnd)
+						read.onDone(() -> {
+							if (!read.isSuccessful() || read.getResult() == null)
+								closeAsync();
+						});
+					return read;
+				};
 			}
 		}
 	}
