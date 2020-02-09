@@ -26,7 +26,7 @@ is recommended for better performances on disk operations (detection of physical
  - core [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
  [![Javadoc](https://img.shields.io/badge/javadoc-0.16.4-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.16.4)
  
- - core.loaders.maven [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.loaders.maven.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin.core.loaders%22%20AND%20a%3A%22maven%22)
+ - core.loaders.maven [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin.core.loaders/maven.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin.core.loaders%22%20AND%20a%3A%22maven%22)
  [![Javadoc](https://img.shields.io/badge/javadoc-0.16.4-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin.core.loaders/maven/0.16.4)
  
  - core.javaee [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.javaee.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core.javaee%22)

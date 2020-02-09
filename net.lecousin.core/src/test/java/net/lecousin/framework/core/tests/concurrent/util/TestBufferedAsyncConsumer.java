@@ -1,5 +1,7 @@
 package net.lecousin.framework.core.tests.concurrent.util;
 
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 import java.util.function.Consumer;
 
@@ -141,6 +143,35 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 		} catch (IllegalArgumentException e) {
 			// ok
 		}
+	}
+	
+	@Test
+	public void testPush() throws Exception {
+		AsyncConsumer<Integer, Exception> finalConsumer = new AsyncConsumer<Integer, Exception>() {
+			private int pos = 0;
+			@Override
+			public IAsync<Exception> consume(Integer data, Consumer<Integer> onDataRelease) {
+				if (data.intValue() != pos)
+					return new Async<>(new Exception("Received " + data.intValue() + ", expected was " + pos));
+				pos++;
+				return new Async<>(true);
+			}
+			
+			@Override
+			public IAsync<Exception> end() {
+				return new Async<>(true);
+			}
+			
+			@Override
+			public void error(Exception error) {
+			}
+		};
+		BufferedAsyncConsumer<Integer, Exception> buffered = new BufferedAsyncConsumer<>(20, finalConsumer);
+		List<Integer> toPush = new LinkedList<>();
+		for (int i = 0; i < 1000; ++i)
+			toPush.add(Integer.valueOf(i));
+		buffered.push(toPush).blockThrow(0);
+		buffered.consumeEnd(Integer.valueOf(1000), null).blockThrow(0);
 	}
 	
 	private void send(MutableInteger nbSent, AsyncConsumer<Integer, Exception> consumer, Async<Exception> done, int max) {

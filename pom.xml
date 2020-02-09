@@ -40,8 +40,11 @@
   		**/framework/io/FileIO.*,
   		**/framework/io/FragmentedSubIO.*,
   		**/framework/io/LinkedIO.*,
+  		**/framework/io/buffering/BufferedIO.*,
+  		**/framework/io/buffering/PreBufferedReadable.*,
   		**/framework/io/data/BytesBitsBuffer.*,
   		**/framework/io/data/SingleByteBitsBuffer.*,
+  		**/framework/io/out2in/OutputToInputBuffers.*,
   		**/framework/io/util/DataUtil.*,
   		**/framework/math/FragmentedRange*.*,
   		**/framework/xml/XMLStreamReader.*
