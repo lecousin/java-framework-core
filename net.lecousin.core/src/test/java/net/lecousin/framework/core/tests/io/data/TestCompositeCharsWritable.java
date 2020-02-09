@@ -29,7 +29,7 @@ public class TestCompositeCharsWritable extends TestCharsWritable {
 	@Override
 	protected void check(char[] expected, int expectedOffset, int bufferOffset, int len) {
 		for (int i = 0; i < len; ++i)
-			Assert.assertEquals(expected[i + expectedOffset], ((RawCharBuffer)((CompositeChars.Writable)buffer).getWrappedChars().get(0)).array[initialPos + bufferOffset + i]);
+			Assert.assertEquals(expected[i + expectedOffset], ((RawCharBuffer)((CompositeChars.Writable)buffer).getWrappedBuffers().get(0)).array[initialPos + bufferOffset + i]);
 	}
 	
 	@Test

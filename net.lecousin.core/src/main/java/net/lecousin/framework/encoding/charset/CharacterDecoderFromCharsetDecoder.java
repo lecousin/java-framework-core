@@ -66,7 +66,7 @@ public class CharacterDecoderFromCharsetDecoder implements CharacterDecoder {
 			in.get(remainingBytes, 0, nbRemaining);
 		}
 		input.goToEnd();
-		return result.getWrappedChars().size() == 1 ? result.getWrappedChars().get(0) : result;
+		return result.getWrappedBuffers().size() == 1 ? result.getWrappedBuffers().get(0) : result;
 	}
 
 	@Override

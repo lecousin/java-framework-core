@@ -188,8 +188,8 @@ public class UTF8Decoder implements CharacterDecoder {
 	
 	private Chars.Readable result() {
 		pushBuffer();
-		if (result.getWrappedChars().size() == 1)
-			return result.getWrappedChars().get(0);
+		if (result.getWrappedBuffers().size() == 1)
+			return result.getWrappedBuffers().get(0);
 		return result;
 	}
 	
