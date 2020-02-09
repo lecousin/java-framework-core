@@ -90,16 +90,12 @@ public class LocalizedProperties implements IMemoryManageable {
 		ns.path = path;
 		IOProvider.Readable provider = new IOProviderFromPathUsingClassloader(classLoader).get(path + ".languages");
 		IO.Readable input;
-		try { input = provider == null ? null : provider.provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT); }
-		catch (IOException e) {
+		try { 
+			input = provider == null ? null : provider.provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT);
+			if (input == null) throw new IOException("no file");
+		} catch (IOException e) {
 			sp.error(new IOException("Localized properties for namespace " + namespace
 				+ " cannot be loaded because the file " + path + ".languages does not exist", e));
-			logger.error(sp.getError().getMessage());
-			return sp;
-		}
-		if (input == null) {
-			sp.error(new IOException("Localized properties for namespace " + namespace
-				+ " cannot be loaded because the file " + path + ".languages does not exist"));
 			logger.error(sp.getError().getMessage());
 			return sp;
 		}

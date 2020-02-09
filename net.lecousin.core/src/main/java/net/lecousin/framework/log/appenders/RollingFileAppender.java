@@ -116,7 +116,7 @@ public class RollingFileAppender implements Appender, Closeable {
 	private LogPattern pattern;
 	private Level level;
 	private boolean closed = false;
-	private LimitAsyncOperations<FileLogOperation, Void, IOException> opStack = new LimitAsyncOperations<>(100, data -> data.execute(), null);
+	private LimitAsyncOperations<FileLogOperation, Void, IOException> opStack = new LimitAsyncOperations<>(100, FileLogOperation::execute, null);
 	
 	private static interface FileLogOperation {
 		AsyncSupplier<Void, IOException> execute();
@@ -135,9 +135,9 @@ public class RollingFileAppender implements Appender, Closeable {
 							return error("Cannot create log directory: " + dir.getAbsolutePath(), null, result);
 						try {
 							if (!file.createNewFile())
-								return error("Cannot create log file: " + file.getAbsolutePath(), null, result);
+								return cannotCreateLogFile(file, null, result);
 						} catch (Exception e) {
-							return error("Cannot create log file: " + file.getAbsolutePath(), e, result);
+							return cannotCreateLogFile(file, e, result);
 						}
 					}
 					output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
@@ -192,9 +192,9 @@ public class RollingFileAppender implements Appender, Closeable {
 								+ " to " + f.getAbsolutePath(), null, result);
 						try {
 							if (!file.createNewFile())
-								return error("Cannot create log file: " + file.getAbsolutePath(), null, result);
+								return cannotCreateLogFile(file, null, result);
 						} catch (Exception t) {
-							return error("Cannot create log file: " + file.getAbsolutePath(), t, result);
+							return cannotCreateLogFile(file, t, result);
 						}
 						output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
 						output.writeAsync(log).onDone(() -> result.unblockSuccess(null), result);
@@ -270,5 +270,9 @@ public class RollingFileAppender implements Appender, Closeable {
 		factory.getApplication().getConsole().err(error);
 		result.error(error);
 		return null;
+	}
+	
+	private Void cannotCreateLogFile(File file, Throwable cause, AsyncSupplier<Void, IOException> result) {
+		return error("Cannot create log file: " + file.getAbsolutePath(), cause, result);
 	}
 }

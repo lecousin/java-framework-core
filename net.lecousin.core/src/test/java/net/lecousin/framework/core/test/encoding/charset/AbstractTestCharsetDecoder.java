@@ -96,6 +96,7 @@ public abstract class AbstractTestCharsetDecoder extends LCCoreAbstractTest {
 			@Override
 			public IAsync<IOException> consume(Chars.Readable data, Consumer<Readable> onDataRelease) {
 				data.get(str, data.remaining());
+				if (onDataRelease != null) onDataRelease.accept(data);
 				return new Async<>(true);
 			}
 			
@@ -109,7 +110,28 @@ public abstract class AbstractTestCharsetDecoder extends LCCoreAbstractTest {
 			}
 		}).consumeEnd(new RawByteBuffer(bytes), null).blockThrow(0);
 		Assert.assertEquals(s, str.asString());
-		
+
+		CharArrayString str2 = new CharArrayString(256);
+		// using consumer
+		decoder.createConsumer(new AsyncConsumer<Chars.Readable, IOException>() {
+			@Override
+			public IAsync<IOException> consume(Chars.Readable data, Consumer<Readable> onDataRelease) {
+				data.get(str2, data.remaining());
+				if (onDataRelease != null) onDataRelease.accept(data);
+				return new Async<>(true);
+			}
+			
+			@Override
+			public IAsync<IOException> end() {
+				return new Async<>(true);
+			}
+			
+			@Override
+			public void error(IOException error) {
+			}
+		}).consumeEnd(new RawByteBuffer(bytes), b -> {}).blockThrow(0);
+		Assert.assertEquals(s, str2.asString());
+
 		StringBuilder sb = new StringBuilder();
 		decoder.decodeConsumerToString(res -> sb.append(res)).consumeEnd(new RawByteBuffer(bytes), null).blockThrow(0);
 		Assert.assertEquals(s, sb.toString());

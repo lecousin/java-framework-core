@@ -5,45 +5,18 @@ import java.nio.CharBuffer;
 import net.lecousin.framework.text.IString;
 
 /** Chars Readable implementation wrapping a String. */
-public class StringAsReadableChars implements Chars.Readable {
+public class StringAsReadableChars extends AbstractStringAsReadableDataBuffer implements Chars.Readable {
 
 	/** Constructor. */
 	public StringAsReadableChars(String str) {
-		this(str, 0, str.length());
+		super(str);
 	}
 
 	/** Constructor. */
 	public StringAsReadableChars(String str, int offset, int length) {
-		this.str = str;
-		this.offset = offset;
-		this.length = length;
+		super(str, offset, length);
 	}
 	
-	private String str;
-	private int offset;
-	private int length;
-	private int pos = 0;
-
-	@Override
-	public int length() {
-		return length;
-	}
-
-	@Override
-	public int position() {
-		return pos;
-	}
-
-	@Override
-	public void setPosition(int position) {
-		pos = position;
-	}
-
-	@Override
-	public int remaining() {
-		return length - pos;
-	}
-
 	@Override
 	public char get() {
 		return str.charAt(offset + pos++);
@@ -67,11 +40,6 @@ public class StringAsReadableChars implements Chars.Readable {
 	}
 
 	@Override
-	public StringAsReadableChars subBuffer(int startPosition, int length) {
-		return new StringAsReadableChars(str, offset + startPosition, length);
-	}
-
-	@Override
 	public CharBuffer toCharBuffer() {
 		CharBuffer b = CharBuffer.allocate(length);
 		str.getChars(offset, offset + length, b.array(), 0);
@@ -79,4 +47,8 @@ public class StringAsReadableChars implements Chars.Readable {
 		return b;
 	}
 
+	@Override
+	public StringAsReadableChars subBuffer(int startPosition, int length) {
+		return new StringAsReadableChars(str, offset + startPosition, length);
+	}
 }

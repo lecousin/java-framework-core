@@ -421,7 +421,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		deserializeCollectionValueElement(context, elementIndex, colPath, rules, false, result);
 	}
 	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({ "rawtypes", "unchecked", "java:S3776" })
 	private void deserializeCollectionValueElement(
 		CollectionContext context, int elementIndex, String colPath, List<SerializationRule> rules,
 		boolean isAttribute,
@@ -802,6 +802,7 @@ public abstract class AbstractDeserializer implements Deserializer {
 		return a;
 	}
 	
+	@SuppressWarnings("java:S3776") // complexity
 	protected void deserializeNextObjectAttribute(
 		ObjectContext context, String path, List<SerializationRule> rules, AsyncSupplier<Object, SerializationException> result
 	) {

@@ -176,8 +176,7 @@ public final class HexaDecimalEncoding implements BytesEncoder.KnownOutputSize, 
 		public IAsync<TError> consume(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease) {
 			int len = ((firstChar != -1 ? 1 : 0) + data.remaining()) / 2;
 			if (len == 0) {
-				if (data.remaining() == 1)
-					firstChar = data.get() & 0xFF;
+				firstChar = data.get() & 0xFF;
 				if (onDataRelease != null)
 					onDataRelease.accept(data);
 				return new Async<>(true);

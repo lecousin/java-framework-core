@@ -83,55 +83,51 @@ public class TypeDefinition {
 	/** Fill the generic parameters. */
 	@SuppressWarnings("rawtypes")
 	public static boolean getTypeParameters(Type superType, TypeDefinition finalType, TypeVariable[] vars, TypeDefinition[] params) {
-		if (superType instanceof ParameterizedType) {
-			Type[] args = ((ParameterizedType)superType).getActualTypeArguments();
-			Type raw = ((ParameterizedType)superType).getRawType();
-			if (!(raw instanceof Class)) throw new IllegalArgumentException("Unexpected raw type " + raw);
-			Class<?> superClass = (Class<?>)raw;
-			if (superClass.equals(finalType.getBase())) {
-				for (int i = 0; i < vars.length; ++i) {
-					for (int j = 0; j < args.length; ++j) {
-						if (args[j] instanceof TypeVariable && ((TypeVariable)args[j]).getName().equals(vars[i].getName())) {
-							params[i] = finalType.getParameters().get(j);
-							break;
-						}
-					}
-				}
+		if (superType instanceof ParameterizedType)
+			return getTypeParameters((ParameterizedType)superType, finalType, vars, params);
+		return false;
+	}
+
+	@SuppressWarnings("rawtypes")
+	private static boolean getTypeParameters(
+		ParameterizedType superType, TypeDefinition finalType, TypeVariable[] vars, TypeDefinition[] params
+	) {
+		Type[] args = superType.getActualTypeArguments();
+		Type raw = superType.getRawType();
+		if (!(raw instanceof Class)) throw new IllegalArgumentException("Unexpected raw type " + raw);
+		Class<?> superClass = (Class<?>)raw;
+		if (superClass.equals(finalType.getBase())) {
+			fillParameters(params, vars, args, finalType.getParameters());
+			return true;
+		}
+		Type superSuperClass = superClass.getGenericSuperclass();
+		if (superSuperClass != null) {
+			TypeDefinition[] superParams = new TypeDefinition[args.length];
+			if (getTypeParameters(superSuperClass, finalType, (TypeVariable[])args, superParams)) {
+				fillParameters(params, vars, args, Arrays.asList(superParams));
 				return true;
 			}
-			Type superSuperClass = superClass.getGenericSuperclass();
-			if (superSuperClass != null) {
-				TypeDefinition[] superParams = new TypeDefinition[args.length];
-				if (getTypeParameters(superSuperClass, finalType, (TypeVariable[])args, superParams)) {
-					for (int i = 0; i < vars.length; ++i) {
-						for (int j = 0; j < args.length; ++j) {
-							if (args[j] instanceof TypeVariable &&
-								((TypeVariable)args[j]).getName().equals(vars[i].getName())) {
-								params[i] = superParams[j];
-								break;
-							}
-						}
-					}
-					return true;
-				}
-			}
-			for (Type superInt : superClass.getGenericInterfaces()) {
-				TypeDefinition[] superParams = new TypeDefinition[args.length];
-				if (getTypeParameters(superInt, finalType, (TypeVariable[])args, superParams)) {
-					for (int i = 0; i < vars.length; ++i) {
-						for (int j = 0; j < args.length; ++j) {
-							if (args[j] instanceof TypeVariable &&
-								((TypeVariable)args[j]).getName().equals(vars[i].getName())) {
-								params[i] = superParams[j];
-								break;
-							}
-						}
-					}
-					return true;
-				}
+		}
+		for (Type superInt : superClass.getGenericInterfaces()) {
+			TypeDefinition[] superParams = new TypeDefinition[args.length];
+			if (getTypeParameters(superInt, finalType, (TypeVariable[])args, superParams)) {
+				fillParameters(params, vars, args, Arrays.asList(superParams));
+				return true;
 			}
 		}
 		return false;
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private static void fillParameters(TypeDefinition[] params, TypeVariable[] vars, Type[] args, List<TypeDefinition> fromParams) {
+		for (int i = 0; i < vars.length; ++i) {
+			for (int j = 0; j < args.length; ++j) {
+				if (args[j] instanceof TypeVariable && ((TypeVariable)args[j]).getName().equals(vars[i].getName())) {
+					params[i] = fromParams.get(j);
+					break;
+				}
+			}
+		}
 	}
 	
 	private Class<?> base;

@@ -26,6 +26,10 @@ public class TestHexadecimalNumber extends LCCoreAbstractTest {
 		Assert.assertEquals(0x003BF0, n.getNumber());
 		n.reset();
 		Assert.assertEquals(0, n.getNumber());
+		Assert.assertFalse(n.addChar('='));
+		Assert.assertEquals(0, n.getNumber());
+		Assert.assertFalse(n.addChar('j'));
+		Assert.assertEquals(0, n.getNumber());
 	}
 	
 }

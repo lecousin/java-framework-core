@@ -6,7 +6,6 @@ import java.util.Map;
 import net.lecousin.framework.util.ObjectUtil;
 import net.lecousin.framework.util.Pair;
 
-import org.w3c.dom.DOMException;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -254,7 +253,7 @@ public abstract class XMLNode implements Node {
 
 	@Override
 	public short compareDocumentPosition(Node other) {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "compareDocumentPosition not supported");
+		throw DOMErrors.operationNotSupported();
 	}
 	
 	@Override

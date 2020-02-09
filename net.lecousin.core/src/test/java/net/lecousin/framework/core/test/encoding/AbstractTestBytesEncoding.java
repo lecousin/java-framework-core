@@ -463,6 +463,61 @@ public abstract class AbstractTestBytesEncoding extends LCCoreAbstractTest {
 	}
 	
 	@Test
+	public void testDecoderConsumerByBlocks() {
+		int testIndex = 1;
+		for (Pair<byte[], byte[]> test : getTestCases()) {
+			try {
+				BytesDecoder decoder = createDecoder();
+				final int tIndex = testIndex;
+				final byte[] expected = test.getValue1();
+				AsyncConsumer<Bytes.Readable, Exception> consumer = new AsyncConsumer<Bytes.Readable, Exception>() {
+					private int pos = 0;
+					
+					@Override
+					public IAsync<Exception> consume(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease) {
+						while (data.hasRemaining()) {
+							Assert.assertEquals("Byte " + (pos + 1) + " for test " + tIndex, expected[pos], data.get());
+							pos++;
+						}
+						if (onDataRelease != null)
+							onDataRelease.accept(data);
+						return new Async<>(true);
+					}
+
+					@Override
+					public IAsync<Exception> end() {
+						if (pos != expected.length)
+							return new Async<>(new Exception("End called after " + pos + " bytes received, " + expected.length + " expected"));
+						return new Async<>(true);
+					}
+
+					@Override
+					public void error(Exception error) {
+					}
+				};
+				AsyncConsumer<Bytes.Readable, Exception> decoderConsumer = decoder.createDecoderConsumer(consumer, e -> e);
+				int pos = 0;
+				int len = 1;
+				while (pos < test.getValue2().length) {
+					int l = Math.min(len, test.getValue2().length - pos);
+					byte[] buf = new byte[l];
+					System.arraycopy(test.getValue2(), pos, buf, 0, l);
+					RawByteBuffer input = new RawByteBuffer(buf);
+					decoderConsumer.consume(input, null).blockThrow(0);
+					pos += l;
+					len++;
+				}
+				decoderConsumer.end().blockThrow(0);
+			} catch (Exception e) {
+				StringBuilder s = new StringBuilder("Error decoding data:\r\n");
+				DebugUtil.dumpHex(s, test.getValue2(), 0, test.getValue2().length);
+				throw new AssertionError(s.toString(), e);
+			}
+			testIndex++;
+		}
+	}
+	
+	@Test
 	public void testEncodeAndDecode() {
 		ByteArrayCache cache = ByteArrayCache.getInstance();
 		int testIndex = 1;

@@ -3,45 +3,18 @@ package net.lecousin.framework.io.data;
 import java.nio.ByteBuffer;
 
 /** Bytes Readable implementation wrapping a String that must contain only ISO-8859 characters. */
-public class StringAsIso8859ReadableBytes implements Bytes.Readable {
+public class StringAsIso8859ReadableBytes extends AbstractStringAsReadableDataBuffer implements Bytes.Readable {
 
 	/** Constructor. */
 	public StringAsIso8859ReadableBytes(String str) {
-		this(str, 0, str.length());
+		super(str);
 	}
 	
 	/** Constructor. */
 	public StringAsIso8859ReadableBytes(String str, int offset, int length) {
-		this.str = str;
-		this.offset = offset;
-		this.length = length;
+		super(str, offset, length);
 	}
 	
-	private String str;
-	private int offset;
-	private int length;
-	private int pos = 0;
-
-	@Override
-	public int length() {
-		return length;
-	}
-
-	@Override
-	public int position() {
-		return pos;
-	}
-
-	@Override
-	public void setPosition(int position) {
-		pos = position;
-	}
-
-	@Override
-	public int remaining() {
-		return length - pos;
-	}
-
 	@Override
 	public byte get() {
 		return (byte)str.charAt(offset + pos++);

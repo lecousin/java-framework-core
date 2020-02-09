@@ -45,40 +45,49 @@ public interface TypeAnnotationToRule<TAnnotation extends Annotation> {
 	}
 	
 	/** Convert annotations into rules. */
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({ "rawtypes" })
 	static void processAnnotations(Class<?> clazz, List<SerializationRule> newRules, List<SerializationRule> rules) {
 		for (Annotation a : ClassUtil.expandRepeatableAnnotations(clazz.getDeclaredAnnotations())) {
 			for (TypeAnnotationToRule toRule : getAnnotationToRules(a)) {
-				SerializationRule rule;
-				try { rule = toRule.createRule(a, clazz); }
-				catch (Exception t) {
-					LCCore.getApplication().getDefaultLogger().error(
-						"Error creating rule from annotation " + a.annotationType().getName()
-						+ " using " + toRule.getClass().getName(), t);
-					continue;
-				}
-				if (rule != null) {
-					boolean found = false;
-					for (SerializationRule r : rules)
-						if (r.isEquivalent(rule)) {
-							found = true;
-							break;
-						}
-					if (!found)
-						for (SerializationRule r : newRules)
-							if (r.isEquivalent(rule)) {
-								found = true;
-								break;
-							}
-					if (!found)
-						newRules.add(rule);
-				}
+				addRule(toRule, a, clazz, newRules, rules);
 			}
 		}
 		if (clazz.getSuperclass() != null)
 			processAnnotations(clazz.getSuperclass(), newRules, rules);
 		for (Class<?> i : clazz.getInterfaces())
 			processAnnotations(i, newRules, rules);
+	}
+	
+	/** Internal method to add rule. */
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	static void addRule(
+		TypeAnnotationToRule toRule, Annotation a, Class<?> clazz,
+		List<SerializationRule> newRules, List<SerializationRule> rules
+	) {
+		SerializationRule rule;
+		try { rule = toRule.createRule(a, clazz); }
+		catch (Exception t) {
+			LCCore.getApplication().getDefaultLogger().error(
+				"Error creating rule from annotation " + a.annotationType().getName()
+				+ " using " + toRule.getClass().getName(), t);
+			return;
+		}
+		if (rule == null)
+			return;
+		boolean found = false;
+		for (SerializationRule r : rules)
+			if (r.isEquivalent(rule)) {
+				found = true;
+				break;
+			}
+		if (!found)
+			for (SerializationRule r : newRules)
+				if (r.isEquivalent(rule)) {
+					found = true;
+					break;
+				}
+		if (!found)
+			newRules.add(rule);
 	}
 	
 	/** Search for implementations to convert the given annotation into a rule.

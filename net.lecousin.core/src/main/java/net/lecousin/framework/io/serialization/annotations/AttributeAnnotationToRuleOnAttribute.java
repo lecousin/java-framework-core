@@ -22,36 +22,12 @@ public interface AttributeAnnotationToRuleOnAttribute<TAnnotation extends Annota
 	/** Search for annotations on the given attributes, and try to convert them into
 	 * serialization rules.
 	 */
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({ "rawtypes" })
 	static List<SerializationRule> addRules(Attribute attr, boolean onGet, List<SerializationRule> rules) {
 		List<SerializationRule> newRules = new LinkedList<>();
 		for (Annotation a : ClassUtil.expandRepeatableAnnotations(attr.getAnnotations(onGet))) {
 			for (AttributeAnnotationToRuleOnAttribute toRule : getAnnotationToRules(a)) {
-				SerializationRule rule;
-				try { rule = toRule.createRule(a, attr); }
-				catch (Exception t) {
-					LCCore.getApplication().getDefaultLogger().error(
-						"Error creating rule from annotation " + a.annotationType().getName()
-						+ " on attribute " + attr.getOriginalName() + " of type "
-						+ attr.getOriginalType().getBase().getName(), t);
-					continue;
-				}
-				if (rule != null) {
-					boolean found = false;
-					for (SerializationRule r : rules)
-						if (r.isEquivalent(rule)) {
-							found = true;
-							break;
-						}
-					if (!found)
-						for (SerializationRule r : newRules)
-							if (r.isEquivalent(rule)) {
-								found = true;
-								break;
-							}
-					if (!found)
-						newRules.add(rule);
-				}
+				addRule(toRule, a, attr, rules, newRules);
 			}
 		}
 		if (newRules.isEmpty())
@@ -60,6 +36,39 @@ public interface AttributeAnnotationToRuleOnAttribute<TAnnotation extends Annota
 		newList.addAll(rules);
 		newList.addAll(newRules);
 		return newList;
+	}
+	
+	/** Internal method to add rule. */
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	static void addRule(
+		AttributeAnnotationToRuleOnAttribute toRule, Annotation a, Attribute attr,
+		List<SerializationRule> rules, List<SerializationRule> newRules
+	) {
+		SerializationRule rule;
+		try { rule = toRule.createRule(a, attr); }
+		catch (Exception t) {
+			LCCore.getApplication().getDefaultLogger().error(
+				"Error creating rule from annotation " + a.annotationType().getName()
+				+ " on attribute " + attr.getOriginalName() + " of type "
+				+ attr.getOriginalType().getBase().getName(), t);
+			return;
+		}
+		if (rule == null)
+			return;
+		boolean found = false;
+		for (SerializationRule r : rules)
+			if (r.isEquivalent(rule)) {
+				found = true;
+				break;
+			}
+		if (!found)
+			for (SerializationRule r : newRules)
+				if (r.isEquivalent(rule)) {
+					found = true;
+					break;
+				}
+		if (!found)
+			newRules.add(rule);
 	}
 	
 	/** Search for implementations to convert the given annotation into a rule.

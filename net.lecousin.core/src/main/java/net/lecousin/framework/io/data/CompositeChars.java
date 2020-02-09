@@ -1,8 +1,6 @@
 package net.lecousin.framework.io.data;
 
 import java.nio.CharBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import net.lecousin.framework.text.IString;
@@ -10,108 +8,22 @@ import net.lecousin.framework.text.IString;
 /** Composite Chars (multiple Chars as a single one).
  * @param <T> type of Chars it contains
  */
-public abstract class CompositeChars<T extends Chars> implements Chars {
+public abstract class CompositeChars<T extends Chars> extends AbstractComposite<T> implements Chars {
 
 	/** Constructor. */
 	public CompositeChars() {
-		list = new ArrayList<>();
-		init();
+		super();
 	}
 	
 	/** Constructor. */
 	@SafeVarargs
 	public CompositeChars(T... chars) {
-		list = new ArrayList<>(chars.length);
-		Collections.addAll(list, chars);
-		init();
+		super(chars);
 	}
 
 	/** Constructor. */
 	public CompositeChars(List<T> chars) {
-		list = new ArrayList<>(chars);
-		init();
-	}
-	
-	protected ArrayList<T> list;
-	protected int position;
-	protected int index;
-	protected int length;
-	
-	private void init() {
-		position = 0;
-		index = 0;
-		length = 0;
-		for (Chars c : list) {
-			c.setPosition(0);
-			length += c.remaining();
-		}
-	}
-	
-	public List<T> getWrappedChars() {
-		return list;
-	}
-	
-	/** Append a new Chars to this composite. */
-	public void add(T chars) {
-		list.add(chars);
-		chars.setPosition(0);
-		length += chars.remaining();
-	}
-	
-	@Override
-	public int length() {
-		return length;
-	}
-	
-	@Override
-	public int position() {
-		return position;
-	}
-	
-	@Override
-	public void setPosition(int position) {
-		if (position == this.position)
-			return;
-		if (position < this.position) {
-			int toMove = this.position - position;
-			if (index == list.size()) index--;
-			do {
-				T chars = list.get(index);
-				int p = chars.position();
-				if (toMove <= p) {
-					chars.setPosition(p - toMove);
-					this.position = position;
-					return;
-				}
-				toMove -= p;
-				index--;
-				chars.setPosition(0);
-			} while (true);
-		}
-		int toMove = position - this.position;
-		do {
-			T chars = list.get(index);
-			int r = chars.remaining();
-			if (toMove < r) {
-				chars.moveForward(toMove);
-				this.position = position;
-				return;
-			}
-			chars.moveForward(r);
-			toMove -= r;
-			index++;
-		} while (toMove > 0);
-		this.position = position;
-	}
-	
-	@Override
-	public int remaining() {
-		return length - position;
-	}
-	
-	@Override
-	public boolean hasRemaining() {
-		return position < length;
+		super(chars);
 	}
 	
 	/** Composite Chars.Readable. */

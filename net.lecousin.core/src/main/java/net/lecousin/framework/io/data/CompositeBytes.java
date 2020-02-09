@@ -1,118 +1,30 @@
 package net.lecousin.framework.io.data;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /** Composite Chars (multiple Chars as a single one).
  * @param <T> type of Chars it contains
  */
-public abstract class CompositeBytes<T extends Bytes> implements Bytes {
+public abstract class CompositeBytes<T extends Bytes> extends AbstractComposite<T> implements Bytes {
 
 	/** Constructor. */
 	public CompositeBytes() {
-		list = new ArrayList<>();
-		init();
+		super();
 	}
 	
 	/** Constructor. */
 	@SafeVarargs
 	public CompositeBytes(T... bytes) {
-		list = new ArrayList<>(bytes.length);
-		Collections.addAll(list, bytes);
-		init();
+		super(bytes);
 	}
 
 	/** Constructor. */
 	public CompositeBytes(List<T> bytes) {
-		list = new ArrayList<>(bytes);
-		init();
+		super(bytes);
 	}
 	
-	protected ArrayList<T> list;
-	protected int position;
-	protected int index;
-	protected int length;
-	
-	private void init() {
-		position = 0;
-		index = 0;
-		length = 0;
-		for (Bytes b : list) {
-			b.setPosition(0);
-			length += b.remaining();
-		}
-	}
-	
-	public List<T> getWrappedChars() {
-		return list;
-	}
-	
-	/** Append a new Bytes to this composite. */
-	public void add(T bytes) {
-		list.add(bytes);
-		bytes.setPosition(0);
-		length += bytes.remaining();
-	}
-	
-	@Override
-	public int length() {
-		return length;
-	}
-	
-	@Override
-	public int position() {
-		return position;
-	}
-	
-	@Override
-	public void setPosition(int position) {
-		if (position == this.position)
-			return;
-		if (position < this.position) {
-			int toMove = this.position - position;
-			if (index == list.size()) index--;
-			do {
-				T bytes = list.get(index);
-				int p = bytes.position();
-				if (toMove <= p) {
-					bytes.setPosition(p - toMove);
-					this.position = position;
-					return;
-				}
-				toMove -= p;
-				index--;
-				bytes.setPosition(0);
-			} while (true);
-		}
-		int toMove = position - this.position;
-		do {
-			T bytes = list.get(index);
-			int r = bytes.remaining();
-			if (toMove < r) {
-				bytes.moveForward(toMove);
-				this.position = position;
-				return;
-			}
-			bytes.moveForward(r);
-			toMove -= r;
-			index++;
-		} while (toMove > 0);
-		this.position = position;
-	}
-	
-	@Override
-	public int remaining() {
-		return length - position;
-	}
-	
-	@Override
-	public boolean hasRemaining() {
-		return position < length;
-	}
-	
-	/** Composite Chars.Readable. */
+	/** Composite Bytes.Readable. */
 	public static class Readable extends CompositeBytes<Bytes.Readable> implements Bytes.Readable {
 		
 		/** Constructor. */

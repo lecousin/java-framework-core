@@ -128,6 +128,7 @@ public class XMLDocument extends XMLNode implements Document {
 		return result;
 	}
 	
+	@SuppressWarnings("java:S3776") // complexity
 	private static void create(
 		XMLDocument doc, XMLStreamEventsAsync stream, AsyncSupplier<XMLDocument, Exception> result, IAsync<Exception> n
 	) {
@@ -279,7 +280,7 @@ public class XMLDocument extends XMLNode implements Document {
 
 	@Override
 	public ProcessingInstruction createProcessingInstruction(String target, String data) {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
+		throw DOMErrors.operationNotSupported();
 	}
 	
 	@Override
@@ -305,12 +306,12 @@ public class XMLDocument extends XMLNode implements Document {
 
 	@Override
 	public Attr createAttributeNS(String namespaceURI, String qualifiedName) {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
+		throw DOMErrors.operationNotSupported();
 	}
 
 	@Override
 	public EntityReference createEntityReference(String name) {
-		throw new DOMException(DOMException.NOT_SUPPORTED_ERR, "Not supported");
+		throw DOMErrors.operationNotSupported();
 	}
 
 	@Override
