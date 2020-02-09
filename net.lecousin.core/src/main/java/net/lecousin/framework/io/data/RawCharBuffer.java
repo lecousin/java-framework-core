@@ -6,7 +6,6 @@ import java.nio.CharBuffer;
 import net.lecousin.framework.text.IString;
 
 /** Utility class that contains a byte array with public attributes. */
-@SuppressWarnings("squid:ClassVariableVisibilityCheck")
 public class RawCharBuffer extends RawBuffer<char[]> implements Chars.Readable, Chars.Writable {
 
 	/** Constructor. */
@@ -36,6 +35,7 @@ public class RawCharBuffer extends RawBuffer<char[]> implements Chars.Readable, 
 			arrayOffset = currentOffset = 0;
 			length = array.length;
 			b.get(array);
+			b.position(b.position() - length);
 		}
 	}
 	
@@ -80,17 +80,23 @@ public class RawCharBuffer extends RawBuffer<char[]> implements Chars.Readable, 
 	/** Create a CharBuffer from this buffer. */
 	@Override
 	public CharBuffer toCharBuffer() {
-		CharBuffer b = CharBuffer.wrap(array, arrayOffset, length);
-		b.position(currentOffset - arrayOffset);
-		return b;
+		return CharBuffer.wrap(array, currentOffset, length - (currentOffset - arrayOffset));
 	}
 	
+	/** Used when a CharBuffer as been converted into a RawCharBuffer, and we want to update the CharBuffer's position
+	 * to the position of this buffer.
+	 */
+	public void setPosition(CharBuffer originalBuffer) {
+		originalBuffer.position(currentOffset - arrayOffset);
+	}
+
 	@Override
 	public RawCharBuffer subBuffer(int startPosition, int length) {
 		return new RawCharBuffer(array, arrayOffset + startPosition, length);
 	}
 	
-	private abstract class Iso8859Buffer implements DataBuffer {
+	/** Wraps a RawCharBuffer to convert it into a Bytes considering characters are only ISO-8859 characters. */
+	public abstract class Iso8859Buffer implements DataBuffer {
 		
 		@Override
 		public void setPosition(int position) {
@@ -117,6 +123,10 @@ public class RawCharBuffer extends RawBuffer<char[]> implements Chars.Readable, 
 			return RawCharBuffer.this.position();
 		}
 		
+		/** Return the original RawCharBuffer from which this Iso8859Buffer has been created. */
+		public RawCharBuffer getOriginalBuffer() {
+			return RawCharBuffer.this;
+		}
 	}
 
 	private class Iso8859BufferReadable extends Iso8859Buffer implements Bytes.Readable {
@@ -129,7 +139,7 @@ public class RawCharBuffer extends RawBuffer<char[]> implements Chars.Readable, 
 		@Override
 		public void get(byte[] buffer, int offset, int length) {
 			for (int i = 0; i < length; ++i)
-				buffer[i] = get();
+				buffer[offset + i] = get();
 		}
 		
 		@Override

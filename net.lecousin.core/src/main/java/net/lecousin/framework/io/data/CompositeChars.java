@@ -74,6 +74,7 @@ public abstract class CompositeChars<T extends Chars> implements Chars {
 			return;
 		if (position < this.position) {
 			int toMove = this.position - position;
+			if (index == list.size()) index--;
 			do {
 				T chars = list.get(index);
 				int p = chars.position();
@@ -213,6 +214,97 @@ public abstract class CompositeChars<T extends Chars> implements Chars {
 				int r = chars.length();
 				if (p < r) {
 					CompositeChars.Readable result = new CompositeChars.Readable();
+					int l = Math.min(length, r - p);
+					result.add(chars.subBuffer(p, l));
+					length -= l;
+					while (length > 0 && ++i < list.size()) {
+						chars = list.get(i);
+						l = Math.min(length, chars.length());
+						result.add(chars.subBuffer(0, l));
+						length -= l;
+					}
+					return result;
+				}
+				p -= r;
+				i++;
+			} while (i < list.size());
+			return new RawCharBuffer(new char[0]);
+		}
+	}
+
+	
+	/** Composite Chars.Readable. */
+	public static class Writable extends CompositeChars<Chars.Writable> implements Chars.Writable {
+		
+		/** Constructor. */
+		public Writable() {
+			super();
+		}
+		
+		/** Constructor. */
+		public Writable(Chars.Writable... chars) {
+			super(chars);
+		}
+		
+		/** Constructor. */
+		public Writable(List<Chars.Writable> chars) {
+			super(chars);
+		}
+		
+		@Override
+		public void put(char b) {
+			Chars.Writable chars = list.get(index);
+			chars.put(b);
+			position++;
+			if (!chars.hasRemaining()) index++;
+		}
+		
+		@Override
+		public void put(char[] buffer, int offset, int length) {
+			while (length > 0) {
+				Chars.Writable chars = list.get(index);
+				int r = chars.remaining();
+				if (length < r) {
+					chars.put(buffer, offset, length);
+					position += length;
+					return;
+				}
+				chars.put(buffer, offset, r);
+				position += r;
+				offset += r;
+				length -= r;
+				index++;
+			}
+		}
+
+		@Override
+		public CharBuffer toCharBuffer() {
+			char[] buf = new char[length];
+			int off = 0;
+			for (Chars.Writable chars : list) {
+				int p = chars.position();
+				chars.setPosition(0);
+				int l = chars.remaining();
+				if (!(chars instanceof Chars.Readable))
+					throw new UnsupportedOperationException("Cannot convert a write-only Chars to CharBuffer");
+				((Chars.Readable)chars).get(buf, off, l);
+				chars.setPosition(p);
+				off += l;
+			}
+			CharBuffer cb = CharBuffer.wrap(buf);
+			cb.position(this.position);
+			return cb;
+		}
+		
+		@Override
+		public Chars.Writable subBuffer(int startPosition, int length) {
+			int i = 0;
+			int p = startPosition;
+			do {
+				Chars.Writable chars = list.get(i);
+				int r = chars.length();
+				if (p < r) {
+					CompositeChars.Writable result = new CompositeChars.Writable();
 					int l = Math.min(length, r - p);
 					result.add(chars.subBuffer(p, l));
 					length -= l;

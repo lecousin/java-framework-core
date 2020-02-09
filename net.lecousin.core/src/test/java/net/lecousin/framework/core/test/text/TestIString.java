@@ -139,6 +139,21 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		check("Hebba Warbd!", s.replace('l', 'b'));
 		check("Hebba zarbd!", s.replace('W', 'z'));
 		check("Hebba zarbd!", s.replace('W', 'y'));
+		
+		s = createString("");
+		check("", s.replace("ab", "cd"));
+		s = createString("Hello World!");
+		check("Helisa World!", s.replace("lo", "isa"));
+		check("Helisa .rld!", s.replace("Wo", "."));
+		check("Elisa .rld!", s.replace("Hel", "El"));
+		check("Elisa .rabcdefgh", s.replace("ld!", "abcdefgh"));
+		s = createString("abcd012abcd012abcd012");
+		check("abcz92abcz92abcz92", s.replace("d01", "z9"));
+		check("ab8765492ab8765492ab8765492", s.replace("cz", "87654"));
+		
+		s = createString("Hello World!");
+		check("Helbonjourorld!", s.replace(3, 6, "bonjour"));
+		check("Hel1ourorld!", s.replace(3, 6, "1"));
 	}
 	
 	@Test

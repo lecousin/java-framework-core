@@ -1,84 +1,59 @@
-package net.lecousin.framework.core.tests.encoding.charset;
+package net.lecousin.framework.core.test.encoding.charset;
 
+import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.util.function.Consumer;
 
+import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.encoding.charset.CharacterDecoder;
 import net.lecousin.framework.encoding.charset.CharacterDecoderFromCharsetDecoder;
 import net.lecousin.framework.io.data.Chars;
+import net.lecousin.framework.io.data.Chars.Readable;
 import net.lecousin.framework.io.data.CompositeChars;
 import net.lecousin.framework.io.data.RawByteBuffer;
+import net.lecousin.framework.text.CharArrayString;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-public class TestDecoders extends LCCoreAbstractTest {
+public abstract class AbstractTestCharsetDecoder extends LCCoreAbstractTest {
+	
+	protected Charset charset;
+	
+	protected AbstractTestCharsetDecoder(Charset charset) {
+		this.charset = charset;
+	}
+	
+	protected abstract String[] getTestStrings();
+	
+	@Test
+	public void testStrings() {
+		for (String s : getTestStrings())
+			try { test(s, charset); }
+			catch (Throwable e) {
+				throw new AssertionError("Error with string: " + s, e);
+			}
+	}
 
-	@Test
-	public void testUSASCII_1() {
-		test("abcd012GH)I_V;", StandardCharsets.US_ASCII);
-	}
-
-	@Test
-	public void testISO8859_1() {
-		test("abcd012GH)I_V;", StandardCharsets.ISO_8859_1);
-	}
-
-	@Test
-	public void testUTF8_1() {
-		test("abcd012GH)I_V;", StandardCharsets.UTF_8);
-	}
-	
-	@Test
-	public void testUTF8_2() {
-		test("И вдаль глядел. Пред ним широко", StandardCharsets.UTF_8);
-	}
-	
-	@Test
-	public void testUTF8_3() {
-		test("Μονάχη ἔγνοια ἡ γλῶσσα μου στὶς ἀμμουδιὲς τοῦ Ὁμήρου", StandardCharsets.UTF_8);
-	}
-	
-	@Test
-	public void testUTF8_4() {
-		test("ᛋᚳᛖᚪᛚ᛫ᚦᛖᚪᚻ᛫ᛗᚪᚾᚾᚪ᛫ᚷᛖᚻᚹᛦᛚᚳ᛫ᛗᛁᚳᛚᚢᚾ᛫ᚻᛦᛏ᛫ᛞᚫᛚᚪᚾ", StandardCharsets.UTF_8);
-	}
-	
-	@Test
-	public void testUTF8_5() {
-		test("ღმერთსი შემვედრე, ნუთუ კვლა დამხსნას სოფლისა", StandardCharsets.UTF_8);
-	}
-	
-	@Test
-	public void testUTF8_6() {
-		test("ಭವ ಭವದಿ ಭತಿಸಿಹೇ ಭವತಿ ದೂರ", StandardCharsets.UTF_8);
-	}
-	
-	@Test
-	public void testUTF8_7() {
-		test("比較のとき，大文字と小文字の同一視", StandardCharsets.UTF_8);
-	}
-	
-	@Test
-	public void testUTF8_8() {
-		test("$¢ह€한𐍈", StandardCharsets.UTF_8);
-	}
-	
-	public static void test(String s, Charset charset) {
+	public static void test(String s, Charset charset) throws Exception {
 		test(s, charset, 4096);
 		test(s, charset, 16);
+		test(s, charset, 8);
 		test(s, charset, 4);
+		//test(s, charset, 2);
 	}
 	
-	public static void test(String s, Charset charset, int bufferSize) {
+	public static void test(String s, Charset charset, int bufferSize) throws Exception {
 		CharacterDecoder decoder = CharacterDecoder.get(charset, bufferSize);
 		test(s, decoder);
 		if (!(decoder instanceof CharacterDecoderFromCharsetDecoder))
 			test(s, new CharacterDecoderFromCharsetDecoder(charset.newDecoder(), bufferSize));
 	}
 	
-	public static void test(String s, CharacterDecoder decoder) {
+	public static void test(String s, CharacterDecoder decoder) throws Exception {
 		byte[] bytes = s.getBytes(decoder.getEncoding());
 		Chars.Readable chars = decoder.decode(new RawByteBuffer(bytes));
 		Chars.Readable end = decoder.flush();
@@ -114,6 +89,30 @@ public class TestDecoders extends LCCoreAbstractTest {
 		if (end != null)
 			composite.add(end);
 		check(s, composite);
+		
+		CharArrayString str = new CharArrayString(256);
+		// using consumer
+		decoder.createConsumer(new AsyncConsumer<Chars.Readable, IOException>() {
+			@Override
+			public IAsync<IOException> consume(Chars.Readable data, Consumer<Readable> onDataRelease) {
+				data.get(str, data.remaining());
+				return new Async<>(true);
+			}
+			
+			@Override
+			public IAsync<IOException> end() {
+				return new Async<>(true);
+			}
+			
+			@Override
+			public void error(IOException error) {
+			}
+		}).consumeEnd(new RawByteBuffer(bytes), null).blockThrow(0);
+		Assert.assertEquals(s, str.asString());
+		
+		StringBuilder sb = new StringBuilder();
+		decoder.decodeConsumerToString(res -> sb.append(res)).consumeEnd(new RawByteBuffer(bytes), null).blockThrow(0);
+		Assert.assertEquals(s, sb.toString());
 	}
 	
 	private static void check(String s, Chars.Readable chars) {
@@ -123,5 +122,6 @@ public class TestDecoders extends LCCoreAbstractTest {
 			Assert.assertEquals("Char " + i, s.charAt(i), chars.get());
 		}
 	}
+
 	
 }

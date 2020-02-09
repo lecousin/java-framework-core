@@ -3,7 +3,6 @@ package net.lecousin.framework.io.data;
 import java.nio.ByteBuffer;
 
 /** Utility class that contains a byte array with public attributes. */
-@SuppressWarnings("squid:ClassVariableVisibilityCheck")
 public class RawByteBuffer extends RawBuffer<byte[]> implements Bytes.Readable, Bytes.Writable {
 
 	/** Constructor. */
@@ -33,6 +32,7 @@ public class RawByteBuffer extends RawBuffer<byte[]> implements Bytes.Readable, 
 			arrayOffset = currentOffset = 0;
 			length = array.length;
 			b.get(array);
+			b.position(b.position() - length);
 		}
 	}
 	

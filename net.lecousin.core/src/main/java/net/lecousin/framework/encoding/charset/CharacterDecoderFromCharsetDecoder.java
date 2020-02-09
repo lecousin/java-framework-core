@@ -78,6 +78,8 @@ public class CharacterDecoderFromCharsetDecoder implements CharacterDecoder {
 		CharBuffer out = CharBuffer.allocate(8);
 		decoder.decode(ByteBuffer.wrap(remainingBytes, 0, nbRemaining), out, true);
 		decoder.reset();
+		remainingBytes = null;
+		nbRemaining = 0;
 		if (out.position() == 0)
 			return null;
 		return new RawCharBuffer(out.array(), 0, out.position());

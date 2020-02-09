@@ -292,13 +292,13 @@ public class ByteArrayStringIso8859 extends ArrayString {
 			int i;
 			while ((i = indexOf(search, pos)) >= 0) {
 				if (diff > 0)
-					System.arraycopy(chars, pos, chars, pos - diff, i - pos);
-				overwrite(i - diff, replace);
+					System.arraycopy(chars, this.start + pos, chars, this.start + pos - diff, i - pos);
+				overwrite(this.start + i - diff, replace);
 				diff += sl - rl;
 				pos = i + sl;
 			}
 			if (diff > 0) {
-				System.arraycopy(chars, pos, chars, pos - diff, end + 1 - pos);
+				System.arraycopy(chars, this.start + pos, chars, this.start + pos - diff, end + 1 - pos - this.start);
 				end -= diff;
 			}
 			return this;
@@ -319,9 +319,13 @@ public class ByteArrayStringIso8859 extends ArrayString {
 		i = found.size() - 1;
 		while (i >= 0) {
 			int index = found.get(i--).intValue();
-			System.arraycopy(chars, index + sl, chars, index + rl + ((rl - sl) * (i + 1)), pos - index - sl);
-			overwrite(index + ((rl - sl) * (i + 1)), replace);
-			pos = index;
+			System.arraycopy(
+				chars, this.start + index + sl,
+				chars, this.start + index + rl + ((rl - sl) * (i + 1)),
+				pos - index - sl - this.start);
+			end += rl - sl;
+			overwrite(this.start + index + ((rl - sl) * (i + 1)), replace);
+			pos = this.start + index;
 		}
 		return this;
 	}
@@ -335,15 +339,15 @@ public class ByteArrayStringIso8859 extends ArrayString {
 			return this;
 		}
 		if (l < l2) {
-			overwrite(start, replace);
-			System.arraycopy(chars, start + l2, chars, start + l, this.end - end);
+			overwrite(this.start + start, replace);
+			System.arraycopy(chars, this.start + start + l2, chars, this.start + start + l, this.end - end);
 			this.end -= l2 - l;
 			return this;
 		}
-		enlarge(Math.min(l2 - l, 16));
-		System.arraycopy(chars, start + l2, chars, start + l, this.end - end);
-		overwrite(start, replace);
-		this.end += l2 - l;
+		enlarge(Math.min(l - l2, 16));
+		System.arraycopy(chars, this.start + start + l2, chars, this.start + start + l, this.end - end);
+		overwrite(this.start + start, replace);
+		this.end += l - l2;
 		return this;
 	}
 	

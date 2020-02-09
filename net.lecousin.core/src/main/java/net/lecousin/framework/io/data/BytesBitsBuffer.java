@@ -38,7 +38,7 @@ public interface BytesBitsBuffer extends BitsBuffer {
 			public int remaining() {
 				int r = bytes.remaining() * 8;
 				switch (mask) {
-				case 0x80: return r + 8;
+				//case 0x80: return r + 8;
 				case 0x40: return r + 7;
 				case 0x20: return r + 6;
 				case 0x10: return r + 5;
@@ -96,7 +96,7 @@ public interface BytesBitsBuffer extends BitsBuffer {
 				case 0x08: return r + 5;
 				case 0x04: return r + 6;
 				case 0x02: return r + 7;
-				case 0x01: return r + 8;
+				//case 0x01: return r + 8;
 				default: return r + 0;
 				}
 			}
@@ -128,7 +128,7 @@ public interface BytesBitsBuffer extends BitsBuffer {
 			
 			@Override
 			public boolean hasRemaining() {
-				return bytes.hasRemaining() && bit >= 0;
+				return bytes.hasRemaining();
 			}
 
 			@Override
@@ -177,7 +177,7 @@ public interface BytesBitsBuffer extends BitsBuffer {
 			
 			@Override
 			public boolean hasRemaining() {
-				return bytes.hasRemaining() && bit < 8;
+				return bytes.hasRemaining();
 			}
 
 			@Override

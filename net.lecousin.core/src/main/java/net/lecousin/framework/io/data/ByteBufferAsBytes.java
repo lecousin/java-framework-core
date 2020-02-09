@@ -48,9 +48,11 @@ public class ByteBufferAsBytes implements Bytes.Readable, Bytes.Writable {
 	}
 
 	@Override
-	public RawByteBuffer subBuffer(int startPosition, int length) {
-		RawByteBuffer raw = new RawByteBuffer(buffer);
-		return raw.subBuffer(startPosition, length);
+	public ByteBufferAsBytes subBuffer(int startPosition, int length) {
+		ByteBuffer dup = buffer.duplicate();
+		dup.position(startPosition);
+		dup.limit(startPosition + length);
+		return new ByteBufferAsBytes(dup.slice());
 	}
 
 	@Override

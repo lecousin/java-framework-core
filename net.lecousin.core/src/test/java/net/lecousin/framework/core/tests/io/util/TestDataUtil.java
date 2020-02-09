@@ -6,7 +6,9 @@ import java.nio.ByteBuffer;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.IOAsInputStream;
+import net.lecousin.framework.io.IOAsOutputStream;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
+import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.io.util.DataUtil;
 
 import org.junit.Assert;
@@ -47,28 +49,78 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		byte[] buf = new byte[32];
 		DataUtil.Write16.LE.write(buf, 0, value);
 		Assert.assertEquals(value, DataUtil.Read16.LE.read(buf, 0));
+		buf = new byte[32];
 		DataUtil.Write16.LE.write(buf, 4, value);
 		Assert.assertEquals(value, DataUtil.Read16.LE.read(buf, 4));
+		buf = new byte[32];
 		DataUtil.Write16.BE.write(buf, 0, value);
 		Assert.assertEquals(value, DataUtil.Read16.BE.read(buf, 0));
+		buf = new byte[32];
 		DataUtil.Write16.BE.write(buf, 8, value);
 		Assert.assertEquals(value, DataUtil.Read16.BE.read(buf, 8));
+		buf = new byte[32];
 		DataUtil.Write16U.LE.write(buf, 0, value);
 		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(buf, 0));
+		buf = new byte[32];
 		DataUtil.Write16U.BE.write(buf, 0, value);
 		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(buf, 0));
+		
+		buf = new byte[32];
 		DataUtil.Write16.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
 		Assert.assertEquals(value, DataUtil.Read16.LE.read(buf, 1));
+		buf = new byte[32];
 		DataUtil.Write16.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
 		Assert.assertEquals(value, DataUtil.Read16.BE.read(buf, 1));
+		buf = new byte[32];
 		DataUtil.Write16.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
 		Assert.assertEquals(value, DataUtil.Read16.BE.read(ByteBuffer.wrap(buf, 1, 30)));
+		buf = new byte[32];
+		DataUtil.Write16.LE.write(buf, 0, value);
+		Assert.assertEquals(value, DataUtil.Read16.LE.read(ByteBuffer.wrap(buf, 0, 30)));
+		buf = new byte[32];
+		DataUtil.Write16U.BE.write(ByteBuffer.wrap(buf, 1, 30), unsigned);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(ByteBuffer.wrap(buf, 1, 30)));
+		buf = new byte[32];
+		DataUtil.Write16U.LE.write(buf, 0, unsigned);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(ByteBuffer.wrap(buf, 0, 30)));
+		buf = new byte[32];
 		DataUtil.Write16U.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
 		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(buf, 1));
+		buf = new byte[32];
 		DataUtil.Write16U.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
 		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(buf, 1));
+		buf = new byte[32];
 		DataUtil.Write16U.BE.write(ByteBuffer.wrap(buf, 0, 30), value);
 		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(ByteBuffer.wrap(buf, 0, 30)));
+		
+		buf = new byte[32];
+		DataUtil.Write16.LE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read16.LE.read(buf, 1));
+		buf = new byte[32];
+		DataUtil.Write16.BE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read16.BE.read(buf, 1));
+		buf = new byte[32];
+		DataUtil.Write16.BE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read16.BE.read(new RawByteBuffer(buf, 1, 30)));
+		buf = new byte[32];
+		DataUtil.Write16.LE.write(buf, 0, value);
+		Assert.assertEquals(value, DataUtil.Read16.LE.read(new RawByteBuffer(buf, 0, 30)));
+		buf = new byte[32];
+		DataUtil.Write16U.BE.write(new RawByteBuffer(buf, 1, 30), unsigned);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(new RawByteBuffer(buf, 1, 30)));
+		buf = new byte[32];
+		DataUtil.Write16U.LE.write(buf, 0, unsigned);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(new RawByteBuffer(buf, 0, 30)));
+		buf = new byte[32];
+		DataUtil.Write16U.LE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(buf, 1));
+		buf = new byte[32];
+		DataUtil.Write16U.BE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(buf, 1));
+		buf = new byte[32];
+		DataUtil.Write16U.BE.write(new RawByteBuffer(buf, 0, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(new RawByteBuffer(buf, 0, 30)));
+		
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
 		DataUtil.Write16.LE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
@@ -93,6 +145,22 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(IOAsInputStream.get(io, false)));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write16.BE.write(new IOAsOutputStream.Writable(io), value);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(value, DataUtil.Read16.BE.read(io));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write16.LE.write(new IOAsOutputStream.Writable(io), value);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(value, DataUtil.Read16.LE.read(io));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write16U.BE.write(new IOAsOutputStream.Writable(io), unsigned);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(io));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write16U.LE.write(new IOAsOutputStream.Writable(io), unsigned);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(io));
 		
 		// empty IO should throw EOFException
 		io.setSizeSync(0);
@@ -131,26 +199,60 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		byte[] buf = new byte[32];
 		DataUtil.Write32.LE.write(buf, 0, value);
 		Assert.assertEquals(value, DataUtil.Read32.LE.read(buf, 0));
+		buf = new byte[32];
 		DataUtil.Write32.LE.write(buf, 4, value);
 		Assert.assertEquals(value, DataUtil.Read32.LE.read(buf, 4));
+		buf = new byte[32];
 		DataUtil.Write32.BE.write(buf, 0, value);
 		Assert.assertEquals(value, DataUtil.Read32.BE.read(buf, 0));
+		buf = new byte[32];
 		DataUtil.Write32.BE.write(buf, 8, value);
 		Assert.assertEquals(value, DataUtil.Read32.BE.read(buf, 8));
+		buf = new byte[32];
 		DataUtil.Write32U.LE.write(buf, 0, value);
 		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(buf, 0));
+		buf = new byte[32];
 		DataUtil.Write32U.BE.write(buf, 0, value);
 		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(buf, 0));
+		
+		buf = new byte[32];
 		DataUtil.Write32.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.Read32.LE.read(buf, 1));
+		Assert.assertEquals(value, DataUtil.Read32.LE.read(ByteBuffer.wrap(buf, 1, 30)));
+		buf = new byte[32];
 		DataUtil.Write32.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.Read32.BE.read(buf, 1));
+		Assert.assertEquals(value, DataUtil.Read32.BE.read(ByteBuffer.wrap(buf, 1, 30)));
+		buf = new byte[32];
 		DataUtil.Write32U.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(buf, 1));
+		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(ByteBuffer.wrap(buf, 1, 30)));
+		buf = new byte[32];
 		DataUtil.Write32U.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(buf, 1));
+		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(ByteBuffer.wrap(buf, 1, 30)));
+		buf = new byte[32];
+		DataUtil.Write32U.LE.write(ByteBuffer.wrap(buf, 0, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(ByteBuffer.wrap(buf, 0, 30)));
+		buf = new byte[32];
 		DataUtil.Write32U.BE.write(ByteBuffer.wrap(buf, 0, 30), value);
 		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(ByteBuffer.wrap(buf, 0, 30)));
+		
+		buf = new byte[32];
+		DataUtil.Write32.LE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read32.LE.read(new RawByteBuffer(buf, 1, 30)));
+		buf = new byte[32];
+		DataUtil.Write32.BE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read32.BE.read(new RawByteBuffer(buf, 1, 30)));
+		buf = new byte[32];
+		DataUtil.Write32U.LE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(new RawByteBuffer(buf, 1, 30)));
+		buf = new byte[32];
+		DataUtil.Write32U.BE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(new RawByteBuffer(buf, 1, 30)));
+		buf = new byte[32];
+		DataUtil.Write32U.LE.write(new RawByteBuffer(buf, 0, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(new RawByteBuffer(buf, 0, 30)));
+		buf = new byte[32];
+		DataUtil.Write32U.BE.write(new RawByteBuffer(buf, 0, 30), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(new RawByteBuffer(buf, 0, 30)));
+		
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
 		DataUtil.Write32.LE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
@@ -175,6 +277,22 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(IOAsInputStream.get(io, false)));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write32.LE.write(new IOAsOutputStream.Writable(io), value);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(value, DataUtil.Read32.LE.read(io));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write32.BE.write(new IOAsOutputStream.Writable(io), value);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(value, DataUtil.Read32.BE.read(io));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write32U.LE.write(new IOAsOutputStream.Writable(io), unsigned);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(io));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write32U.BE.write(new IOAsOutputStream.Writable(io), unsigned);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(io));
 		
 		// empty IO should throw EOFException
 		io.setSizeSync(0);
@@ -251,14 +369,35 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		byte[] buf = new byte[32];
 		DataUtil.Write24U.LE.write(buf, 0, value);
 		Assert.assertEquals(value, DataUtil.Read24U.LE.read(buf, 0));
+		buf = new byte[32];
 		DataUtil.Write24U.BE.write(buf, 0, value);
 		Assert.assertEquals(value, DataUtil.Read24U.BE.read(buf, 0));
+		buf = new byte[32];
+		
 		DataUtil.Write24U.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
 		Assert.assertEquals(value, DataUtil.Read24U.LE.read(buf, 1));
+		buf = new byte[32];
 		DataUtil.Write24U.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
 		Assert.assertEquals(value, DataUtil.Read24U.BE.read(buf, 1));
+		buf = new byte[32];
+		DataUtil.Write24U.LE.write(ByteBuffer.wrap(buf, 0, 30), value);
+		Assert.assertEquals(value, DataUtil.Read24U.LE.read(ByteBuffer.wrap(buf, 0, 30)));
+		buf = new byte[32];
 		DataUtil.Write24U.BE.write(ByteBuffer.wrap(buf, 0, 30), value);
 		Assert.assertEquals(value, DataUtil.Read24U.BE.read(ByteBuffer.wrap(buf, 0, 30)));
+		
+		DataUtil.Write24U.LE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read24U.LE.read(buf, 1));
+		buf = new byte[32];
+		DataUtil.Write24U.BE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read24U.BE.read(buf, 1));
+		buf = new byte[32];
+		DataUtil.Write24U.LE.write(new RawByteBuffer(buf, 0, 30), value);
+		Assert.assertEquals(value, DataUtil.Read24U.LE.read(new RawByteBuffer(buf, 0, 30)));
+		buf = new byte[32];
+		DataUtil.Write24U.BE.write(new RawByteBuffer(buf, 0, 30), value);
+		Assert.assertEquals(value, DataUtil.Read24U.BE.read(new RawByteBuffer(buf, 0, 30)));
+		
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
 		DataUtil.Write24U.LE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
@@ -271,6 +410,14 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(value, DataUtil.Read24U.BE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(value, DataUtil.Read24U.BE.read(IOAsInputStream.get(io, false)));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write24U.LE.write(new IOAsOutputStream.Writable(io), value);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(value, DataUtil.Read24U.LE.read(io));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write24U.BE.write(new IOAsOutputStream.Writable(io), value);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(value, DataUtil.Read24U.BE.read(io));
 		
 		// empty IO should throw EOFException
 		io.setSizeSync(0);
@@ -308,16 +455,30 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		byte[] buf = new byte[32];
 		DataUtil.Write64.LE.write(buf, 0, value);
 		Assert.assertEquals(value, DataUtil.Read64.LE.read(buf, 0));
+		buf = new byte[32];
 		DataUtil.Write64.LE.write(buf, 4, value);
 		Assert.assertEquals(value, DataUtil.Read64.LE.read(buf, 4));
+		buf = new byte[32];
 		DataUtil.Write64.BE.write(buf, 0, value);
 		Assert.assertEquals(value, DataUtil.Read64.BE.read(buf, 0));
+		buf = new byte[32];
 		DataUtil.Write64.BE.write(buf, 8, value);
 		Assert.assertEquals(value, DataUtil.Read64.BE.read(buf, 8));
+		
+		buf = new byte[32];
 		DataUtil.Write64.LE.write(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.Read64.LE.read(buf, 1));
+		Assert.assertEquals(value, DataUtil.Read64.LE.read(ByteBuffer.wrap(buf, 1, 30)));
+		buf = new byte[32];
 		DataUtil.Write64.BE.write(ByteBuffer.wrap(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.Read64.BE.read(buf, 1));
+		Assert.assertEquals(value, DataUtil.Read64.BE.read(ByteBuffer.wrap(buf, 1, 30)));
+		
+		buf = new byte[32];
+		DataUtil.Write64.LE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read64.LE.read(new RawByteBuffer(buf, 1, 30)));
+		buf = new byte[32];
+		DataUtil.Write64.BE.write(new RawByteBuffer(buf, 1, 30), value);
+		Assert.assertEquals(value, DataUtil.Read64.BE.read(new RawByteBuffer(buf, 1, 30)));
+		
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
 		DataUtil.Write64.LE.write(io, value);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
@@ -330,6 +491,14 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(value, DataUtil.Read64.BE.read(io));
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		Assert.assertEquals(value, DataUtil.Read64.BE.read(IOAsInputStream.get(io, false)));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write64.LE.write(new IOAsOutputStream.Writable(io), value);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(value, DataUtil.Read64.LE.read(io));
+		io = new ByteArrayIO(32, "TestDataUtil");
+		DataUtil.Write64.BE.write(new IOAsOutputStream.Writable(io), value);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Assert.assertEquals(value, DataUtil.Read64.BE.read(io));
 		
 		// empty IO should throw EOFException
 		io.setSizeSync(0);

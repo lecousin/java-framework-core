@@ -100,6 +100,8 @@ public interface SingleByteBitsBuffer extends BitsBuffer {
 	
 	/** Writable single byte bits buffer. */
 	interface Writable extends SingleByteBitsBuffer, BitsBuffer.Writable {
+		
+		byte getByte();
 
 		/** Big-endian order. */
 		public class BigEndian implements SingleByteBitsBuffer.Writable, BitsBuffer.BigEndian {
@@ -107,6 +109,7 @@ public interface SingleByteBitsBuffer extends BitsBuffer {
 			private byte b = 0;
 			private int bit = 7;
 			
+			@Override
 			public byte getByte() {
 				return b;
 			}
@@ -150,6 +153,7 @@ public interface SingleByteBitsBuffer extends BitsBuffer {
 			private byte b = 0;
 			private int bit = 0;
 			
+			@Override
 			public byte getByte() {
 				return b;
 			}

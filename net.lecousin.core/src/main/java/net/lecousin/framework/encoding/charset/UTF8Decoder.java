@@ -28,7 +28,7 @@ public class UTF8Decoder implements CharacterDecoder {
 	private int state = 0;
 	CompositeChars.Readable result;
 	
-	private static final char INVALID_CHAR = '�';
+	public static final char INVALID_CHAR = '�';
 
 	@Override
 	public Charset getEncoding() {
@@ -193,9 +193,6 @@ public class UTF8Decoder implements CharacterDecoder {
 		return result;
 	}
 	
-	@SuppressWarnings({
-		"squid:SwitchLastCaseIsDefaultCheck", // not possible // skip checkstyle: MissingSwitchDefault
-	})
 	private void finishState(Bytes.Readable input) {
 		switch (state) {
 		case 1: case 3:
@@ -210,7 +207,7 @@ public class UTF8Decoder implements CharacterDecoder {
 		case 5:
 			finishState5(input);
 			return;
-		case 6:
+		default: //case 6:
 			finishState6(input);
 			return;
 		}
@@ -295,6 +292,8 @@ public class UTF8Decoder implements CharacterDecoder {
 	@Override
 	public Chars.Readable flush() {
 		result = null;
+		charPusher = new InitCharPusher();
+		buffer = null;
 		if (state == 0)
 			return null;
 		state = 0;
