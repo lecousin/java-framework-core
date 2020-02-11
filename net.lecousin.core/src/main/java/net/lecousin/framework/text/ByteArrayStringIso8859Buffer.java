@@ -4,8 +4,8 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
 
-import net.lecousin.framework.io.data.RawByteBuffer;
-import net.lecousin.framework.io.data.RawCharBuffer;
+import net.lecousin.framework.io.data.ByteArray;
+import net.lecousin.framework.io.data.CharArray;
 
 /**
  * Array of ByteArrayStringIso8859, allowing to add and remove characters without re-allocating a byte array.
@@ -122,18 +122,18 @@ public class ByteArrayStringIso8859Buffer extends ArrayStringBuffer<ByteArrayStr
 	}
 
 	@Override
-	public RawCharBuffer[] asCharBuffers() {
-		if (strings == null) return new RawCharBuffer[0];
-		RawCharBuffer[] chars = new RawCharBuffer[lastUsed + 1];
+	public CharArray[] asCharBuffers() {
+		if (strings == null) return new CharArray[0];
+		CharArray[] chars = new CharArray[lastUsed + 1];
 		for (int i = 0; i <= lastUsed; ++i)
-			chars[i] = new RawCharBuffer(strings[i].toChars());
+			chars[i] = new CharArray(strings[i].toChars());
 		return chars;
 	}
 	
 	/** Convert into an array of RawByteBuffer. */
-	public RawByteBuffer[] asRawByteBuffers() {
-		if (strings == null) return new RawByteBuffer[0];
-		RawByteBuffer[] chars = new RawByteBuffer[lastUsed + 1];
+	public ByteArray[] asRawByteBuffers() {
+		if (strings == null) return new ByteArray[0];
+		ByteArray[] chars = new ByteArray[lastUsed + 1];
 		for (int i = 0; i <= lastUsed; ++i)
 			chars[i] = strings[i].asRawByteBuffer();
 		return chars;

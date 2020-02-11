@@ -208,7 +208,9 @@ public interface IO extends IConcurrentCloseable<IOException> {
 			 * In addition, using readAsync needs to keep the given buffer in a variable or in the closure,
 			 * while using this method the buffer is directly given as the result of the operation.<br/>
 			 * The returned buffer is ready to be read (no need to flip), and the number of bytes read can be obtain
-			 * using the method remaining of the buffer.
+			 * using the method remaining of the buffer.<br/>
+			 * Usage of the returned ByteBuffer should take care of its read-only attribute. If not read-only,
+			 * the buffer may be reused or should be free using ByteArrayCache.
 			 */
 			AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone);
 			
@@ -217,6 +219,9 @@ public interface IO extends IConcurrentCloseable<IOException> {
 			
 			/** Retrieve a buffer of bytes in the most efficient way depending on the implementation of Buffered.<br/>
 			 * Its returns the immediately available bytes with a minimum of operations.<br/>
+			 * If the end of stream is reached, null is returned.<br/>
+			 * Usage of the returned ByteBuffer should take care of its read-only attribute. If not read-only,
+			 * the buffer may be reused or should be free using ByteArrayCache.
 			 */
 			ByteBuffer readNextBuffer() throws IOException;
 			
@@ -276,10 +281,10 @@ public interface IO extends IConcurrentCloseable<IOException> {
 			return new AsyncConsumer<ByteBuffer, IOException>() {
 
 				@Override
-				public IAsync<IOException> consume(ByteBuffer data, Consumer<ByteBuffer> onDataRelease) {
+				public IAsync<IOException> consume(ByteBuffer data) {
 					AsyncSupplier<Integer, IOException> write = writeAsync(data);
-					if (onDataRelease != null)
-						write.onDone(() -> onDataRelease.accept(data));
+					if (data.hasArray() && !data.isReadOnly())
+						write.onDone(() -> ByteArrayCache.getInstance().free(data.array()));
 					return write;
 				}
 

@@ -2,7 +2,7 @@ package net.lecousin.framework.core.tests.io.data;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.data.BytesBitsBuffer;
-import net.lecousin.framework.io.data.RawByteBuffer;
+import net.lecousin.framework.io.data.ByteArray;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -31,7 +31,7 @@ public class TestBytesBitsBuffer extends LCCoreAbstractTest {
 	
 	@SuppressWarnings("boxing")
 	private void testRead(boolean useBigEndian) {
-		BytesBitsBuffer.Readable buf = useBigEndian ? new BytesBitsBuffer.Readable.BigEndian(new RawByteBuffer(bytes)) : new BytesBitsBuffer.Readable.LittleEndian(new RawByteBuffer(bytes));
+		BytesBitsBuffer.Readable buf = useBigEndian ? new BytesBitsBuffer.Readable.BigEndian(new ByteArray(bytes)) : new BytesBitsBuffer.Readable.LittleEndian(new ByteArray(bytes));
 		for (int i = 0; i < bits.length; ++i) {
 			Assert.assertEquals(bits.length - i, buf.remaining());
 			Assert.assertTrue(buf.hasRemaining());
@@ -40,7 +40,7 @@ public class TestBytesBitsBuffer extends LCCoreAbstractTest {
 		Assert.assertEquals(0, buf.remaining());
 		Assert.assertFalse(buf.hasRemaining());
 		
-		buf = useBigEndian ? new BytesBitsBuffer.Readable.BigEndian(new RawByteBuffer(bytes)) : new BytesBitsBuffer.Readable.LittleEndian(new RawByteBuffer(bytes));
+		buf = useBigEndian ? new BytesBitsBuffer.Readable.BigEndian(new ByteArray(bytes)) : new BytesBitsBuffer.Readable.LittleEndian(new ByteArray(bytes));
 		Assert.assertEquals(bytes.length * 8, buf.remaining());
 		Assert.assertTrue(buf.hasRemaining());
 		buf.alignToNextByte();
@@ -71,7 +71,7 @@ public class TestBytesBitsBuffer extends LCCoreAbstractTest {
 	
 	private void testWrite(boolean useBigEndian) {
 		byte[] res = new byte[bytes.length];
-		BytesBitsBuffer.Writable buf = useBigEndian ? new BytesBitsBuffer.Writable.BigEndian(new RawByteBuffer(res)) : new BytesBitsBuffer.Writable.LittleEndian(new RawByteBuffer(res));
+		BytesBitsBuffer.Writable buf = useBigEndian ? new BytesBitsBuffer.Writable.BigEndian(new ByteArray.Writable(res, false)) : new BytesBitsBuffer.Writable.LittleEndian(new ByteArray.Writable(res, false));
 		for (int i = 0; i < bits.length; ++i) {
 			Assert.assertEquals(bits.length - i, buf.remaining());
 			Assert.assertTrue(buf.hasRemaining());
@@ -82,7 +82,7 @@ public class TestBytesBitsBuffer extends LCCoreAbstractTest {
 		Assert.assertArrayEquals(bytes, res);
 
 		res = new byte[bytes.length];
-		buf = useBigEndian ? new BytesBitsBuffer.Writable.BigEndian(new RawByteBuffer(res)) : new BytesBitsBuffer.Writable.LittleEndian(new RawByteBuffer(res));
+		buf = useBigEndian ? new BytesBitsBuffer.Writable.BigEndian(new ByteArray.Writable(res, false)) : new BytesBitsBuffer.Writable.LittleEndian(new ByteArray.Writable(res, false));
 		for (int i = 0; i < bytes.length; ++i) {
 			Assert.assertEquals((bytes.length - i) * 8, buf.remaining());
 			buf.alignToNextByte(true);
@@ -96,7 +96,7 @@ public class TestBytesBitsBuffer extends LCCoreAbstractTest {
 			Assert.assertEquals(useBigEndian ? 0x80 : 0x01, res[i] & 0xFF);
 
 		res = new byte[bytes.length];
-		buf = useBigEndian ? new BytesBitsBuffer.Writable.BigEndian(new RawByteBuffer(res)) : new BytesBitsBuffer.Writable.LittleEndian(new RawByteBuffer(res));
+		buf = useBigEndian ? new BytesBitsBuffer.Writable.BigEndian(new ByteArray.Writable(res, false)) : new BytesBitsBuffer.Writable.LittleEndian(new ByteArray.Writable(res, false));
 		for (int i = 0; i < bytes.length; ++i) {
 			Assert.assertEquals((bytes.length - i) * 8, buf.remaining());
 			buf.alignToNextByte(true);

@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 import net.lecousin.framework.core.test.io.data.TestBytesReadable;
 import net.lecousin.framework.io.data.CompositeBytes;
-import net.lecousin.framework.io.data.RawByteBuffer;
+import net.lecousin.framework.io.data.ByteArray;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -19,7 +19,7 @@ public class TestCompositeBytesReadable extends TestBytesReadable {
 		CompositeBytes.Readable c = new CompositeBytes.Readable();
 		for (int i = 0; i < length; i += 5) {
 			int len = Math.min(5, length - i);
-			RawByteBuffer r = new RawByteBuffer(data, initialPos + i, len);
+			ByteArray r = new ByteArray(data, initialPos + i, len);
 			c.add(r);
 		}
 		return c;
@@ -28,9 +28,9 @@ public class TestCompositeBytesReadable extends TestBytesReadable {
 	@Test
 	public void testConstructorArray() {
 		CompositeBytes.Readable c = new CompositeBytes.Readable(
-			new RawByteBuffer(new byte[10]),
-			new RawByteBuffer(new byte[5]),
-			new RawByteBuffer(new byte[3])
+			new ByteArray(new byte[10]),
+			new ByteArray(new byte[5]),
+			new ByteArray(new byte[3])
 		);
 		Assert.assertEquals(18, c.remaining());
 	}
@@ -38,9 +38,9 @@ public class TestCompositeBytesReadable extends TestBytesReadable {
 	@Test
 	public void testConstructorList() {
 		CompositeBytes.Readable c = new CompositeBytes.Readable(Arrays.asList(
-			new RawByteBuffer(new byte[10]),
-			new RawByteBuffer(new byte[5]),
-			new RawByteBuffer(new byte[3])
+			new ByteArray(new byte[10]),
+			new ByteArray(new byte[5]),
+			new ByteArray(new byte[3])
 		));
 		Assert.assertEquals(18, c.remaining());
 	}

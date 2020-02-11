@@ -238,19 +238,25 @@ public final class Application {
 	/** Return the singleton stored for this application. */
 	@SuppressWarnings("unchecked")
 	public <T> T getInstance(Class<T> clazz) {
-		return (T)instances.get(clazz);
+		synchronized (instances) {
+			return (T)instances.get(clazz);
+		}
 	}
 	
 	/** Set the singleton stored for this application. */
 	@SuppressWarnings("unchecked")
 	public <T> T setInstance(Class<T> clazz, T instance) {
-		return (T)instances.put(clazz, instance);
+		synchronized (instances) {
+			return (T)instances.put(clazz, instance);
+		}
 	}
 	
 	/** Remove the singleton stored for this application. */
 	@SuppressWarnings("unchecked")
 	public <T> T removeInstance(Class<T> clazz) {
-		return (T)instances.remove(clazz);
+		synchronized (instances) {
+			return (T)instances.remove(clazz);
+		}
 	}
 	
 	/** Get a data associated with this application. */

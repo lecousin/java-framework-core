@@ -17,6 +17,7 @@ import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
@@ -128,10 +129,9 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 	private boolean endReached = false;
 	private boolean stopReading = false;
 	private ByteBuffer current = null;
-	private boolean currentIsFirst = true;
+	private int nextBufferSize;
 	private Async<NoException> dataReady = null;
 	private TurnArray<ByteBuffer> buffersReady;
-	private TurnArray<ByteBuffer> reusableBuffers;
 	private AsyncSupplier<?,?> nextReadTask = null;
 	
 	private static class UnexpectedEnd extends IOException {
@@ -218,7 +218,6 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 				dataReady = null;
 			}
 			buffersReady = null;
-			reusableBuffers = null;
 			nextReadTask = null;
 		}
 		if (dr != null)
@@ -245,15 +244,10 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 				"maximum number of next buffers must be positive, or zero to disable it, given: " + maxNbNextBuffersReady);
 		if (nextBuffer == 0) maxNbNextBuffersReady = 0;
 		if (maxNbNextBuffersReady == 0) nextBuffer = 0;
-		/*
-		maxBufferedSize = maxNbNextBuffersReady * nextBuffer;
-		if (maxBufferedSize == 0) maxBufferedSize = firstBuffer;
-		*/
+		nextBufferSize = nextBuffer;
 		buffersReady = new TurnArray<>(maxNbNextBuffersReady + 1);
-		if (maxNbNextBuffersReady > 0)
-			reusableBuffers = new TurnArray<>(maxNbNextBuffersReady);
 		// first read
-		ByteBuffer buffer = ByteBuffer.allocate(firstBuffer);
+		ByteBuffer buffer = ByteBuffer.wrap(ByteArrayCache.getInstance().get(firstBuffer, true));
 		src.setPriority(firstBufferPriority);
 		JoinPoint<NoException> jpNextRead = new JoinPoint<>();
 		jpNextRead.addToJoin(1);
@@ -323,29 +317,6 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 			jpNextRead.joined();
 		});
 		if (nextBuffer > 0) {
-			// prepare buffers
-			final int nextBufferSize = nextBuffer;
-			final int nbNext = maxNbNextBuffersReady;
-			jpNextRead.addToJoin(1);
-			Task<Void,NoException> prepare = new Task.Cpu<Void,NoException>(
-				"Allocate buffers for pre-buffered IO " + getSourceDescription(), nextBufferPriority
-			) {
-				@Override
-				public Void run() {
-					TurnArray<ByteBuffer> buffers = reusableBuffers;
-					if (buffers == null) {
-						jpNextRead.joined();
-						return null; // already closed
-					}
-					for (int i = 0; i < nbNext; ++i) {
-						ByteBuffer b = ByteBuffer.allocate(nextBufferSize);
-						buffers.addLast(b);
-					}
-					jpNextRead.joined();
-					return null;
-				}
-			};
-			operation(prepare).start();
 			operation(firstNextReadTask.getOutput());
 			jpNextRead.start();
 			jpNextRead.thenStart(firstNextReadTask, true);
@@ -512,7 +483,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 						return n + skipped;
 					}
 					skipped += nb;
-					if (reusableBuffers == null) {
+					if (buffersReady == null || nextBufferSize == 0) {
 						// we reach the end
 						endReached = true;
 						if (size > 0 && read < size)
@@ -525,7 +496,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 					remaining = n - nb;
 				} else {
 					if (endReached) return skipped;
-					if (nextReadTask == null && reusableBuffers != null) {
+					if (nextReadTask == null && nextBufferSize > 0) {
 						// we cancelled all buffers, let's do a move
 						long n2 = src.skipSync(n);
 						skipped += n2;
@@ -572,16 +543,10 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 	
 	private void moveNextBuffer(boolean startNextRead) {
 		synchronized (this) {
-			if (!currentIsFirst && current != null /* current can be null when reading has been paused, while skipping bytes */) {
-				reusableBuffers.addLast(current);
-			}
 			current = buffersReady.pollFirst();
-			currentIsFirst = false;
 			if (!endReached &&
 				error == null &&
 				nextReadTask == null &&
-				reusableBuffers != null &&
-				!reusableBuffers.isEmpty() &&
 				startNextRead &&
 				!stopReading)
 				nextRead();
@@ -600,8 +565,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 				dr.unblock();
 			return;
 		}
-		ByteBuffer buffer = reusableBuffers.removeFirst();
-		buffer.clear();
+		ByteBuffer buffer = ByteBuffer.wrap(ByteArrayCache.getInstance().get(nextBufferSize, true));
 		nextReadTask = operation(src.readFullyAsync(buffer));
 		nextReadTask.onDone(() -> {
 			if (handleNextReadError())
@@ -649,7 +613,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 				buffer.flip();
 				if (current == null) current = buffer;
 				else buffersReady.addLast(buffer);
-				if (!endReached && !reusableBuffers.isEmpty() && !stopReading)
+				if (!endReached && !buffersReady.isFull() && !stopReading)
 					nextRead();
 			}
 			if (endReached && size > 0 && read < size && buffersReady != null && !isClosing() && !isClosed())
@@ -812,10 +776,9 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 				) {
 					@Override
 					public ByteBuffer run() {
-						ByteBuffer buf = ByteBuffer.allocate(current.remaining());
-						buf.put(current);
+						ByteBuffer buf = current.asReadOnlyBuffer();
+						current.position(current.limit());
 						moveNextBuffer(true);
-						buf.flip();
 						return buf;
 					}
 				};
@@ -841,10 +804,9 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 				if (current != null) {
 					if (!current.hasRemaining() && endReached)
 						return null;
-					ByteBuffer buf = ByteBuffer.allocate(current.remaining());
-					buf.put(current);
+					ByteBuffer buf = current.asReadOnlyBuffer();
+					current.position(current.limit());
 					moveNextBuffer(true);
-					buf.flip();
 					return buf;
 				}
 				if (endReached) return null;

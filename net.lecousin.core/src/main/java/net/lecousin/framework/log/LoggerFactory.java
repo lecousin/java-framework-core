@@ -32,6 +32,7 @@ public class LoggerFactory {
 	private Map<String, Logger> loggers = new HashMap<>(50);
 	private Logger defaultLogger;
 	private Map<String,Appender> appenders = new HashMap<>();
+	// TODO loggers should be in a hierarchy, and inherit configuration from their parent
 	
 	/** Constructor. */
 	public LoggerFactory(Application app, Appender defaultAppender) {

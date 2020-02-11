@@ -12,6 +12,7 @@ import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
@@ -269,7 +270,7 @@ public class SingleBufferReadable extends ConcurrentCloseable<IOException> imple
 				waitBufferSync();
 				continue;
 			}
-			ByteBuffer buf = ByteBuffer.allocate(s.len - s.pos);
+			ByteBuffer buf = ByteBuffer.wrap(ByteArrayCache.getInstance().get(s.len - s.pos, true));
 			buf.put(buffer, s.pos, s.len - s.pos);
 			s.pos = s.len;
 			fillNextBuffer();

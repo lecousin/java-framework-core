@@ -32,4 +32,23 @@ public interface DataBuffer {
 	
 	/** Return a new buffer wrapping this buffer starting from the given position. */
 	DataBuffer subBuffer(int startPosition, int length);
+	
+	/** Release this buffer. */
+	void free();
+	
+	/** Readable buffer. */
+	interface Readable extends DataBuffer {
+		
+		@Override
+		DataBuffer.Readable subBuffer(int startPosition, int length);
+
+	}
+	
+	/** Writable buffer. */
+	interface Writable extends DataBuffer {
+
+		@Override
+		DataBuffer.Writable subBuffer(int startPosition, int length);
+		
+	}
 }

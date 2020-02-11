@@ -21,8 +21,10 @@ import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.buffering.ByteBuffersIO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
+import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.mutable.MutableLong;
@@ -85,6 +87,7 @@ public final class IOUtil {
 	}
 	
 	/** Read fully into a byte[], and unblock the given result upon completion. */
+	@SuppressWarnings("java:S1905") // java needs to specify both types in the cast
 	public static void readFully(IO.Readable io, AsyncSupplier<byte[], IOException> result) {
 		if (io instanceof IO.KnownSize) {
 			readFullyKnownSize((IO.Readable & IO.KnownSize)io, result);
@@ -287,21 +290,23 @@ public final class IOUtil {
 	public static AsyncSupplier<ByteBuffersIO, IOException> readFullyAsync(IO.Readable io, int bufferSize) {
 		ByteBuffersIO bb = new ByteBuffersIO(false, io.getSourceDescription(), io.getPriority());
 		AsyncSupplier<ByteBuffersIO, IOException> result = new AsyncSupplier<>();
-		readFullyAsync(io, bufferSize, bb, result);
+		readFullyAsync(io, bufferSize, bb, ByteArrayCache.getInstance(), result);
 		return result;
 	}
 	
-	private static void readFullyAsync(IO.Readable io, int bufferSize, ByteBuffersIO bb, AsyncSupplier<ByteBuffersIO, IOException> result) {
-		byte[] buffer = new byte[bufferSize];
+	private static void readFullyAsync(
+		IO.Readable io, int bufferSize, ByteBuffersIO bb, ByteArrayCache cache, AsyncSupplier<ByteBuffersIO, IOException> result
+	) {
+		byte[] buffer = cache.get(bufferSize, true);
 		AsyncSupplier<Integer, IOException> read = io.readFullyAsync(ByteBuffer.wrap(buffer));
 		read.thenStart(new Task.Cpu.FromRunnable("readFully", io.getPriority(), () -> {
 			int nb = read.getResult().intValue();
 			if (nb > 0)
-				bb.addBuffer(buffer, 0, nb);
+				bb.addBuffer(new ByteArray.Writable(buffer, 0, nb, true));
 			if (nb < bufferSize)
 				result.unblockSuccess(bb);
 			else
-				readFullyAsync(io, bufferSize, bb, result);
+				readFullyAsync(io, bufferSize, bb, cache, result);
 		}), result);
 	}
 

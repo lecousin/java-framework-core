@@ -24,7 +24,8 @@ import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.buffering.IOInMemoryOrFile;
 import net.lecousin.framework.io.data.Bytes;
-import net.lecousin.framework.io.data.RawCharBuffer;
+import net.lecousin.framework.io.data.BytesFromIso8859CharArray;
+import net.lecousin.framework.io.data.CharArray;
 import net.lecousin.framework.io.serialization.AbstractDeserializer;
 import net.lecousin.framework.io.serialization.SerializationClass;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
@@ -632,7 +633,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 				readNextBase64(decoder, io, result);
 				return;
 			}
-			RawCharBuffer[] buffers = input.event.text.asCharBuffers();
+			CharArray[] buffers = input.event.text.asCharBuffers();
 			decodeBase64(decoder, io, result, buffers, 0);
 			return;
 		}
@@ -649,9 +650,9 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	private void decodeBase64(
 		AsyncConsumer<Bytes.Readable, IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result,
-		RawCharBuffer[] buffers, int index
+		CharArray[] buffers, int index
 	) {
-		IAsync<IOException> decode = decoder.consume(buffers[index].iso8859AsReadableBytes(), null);
+		IAsync<IOException> decode = decoder.consume(new BytesFromIso8859CharArray(buffers[index], true));
 		decode.thenStart(new DeserializationTask(() -> {
 			if (decode.hasError())
 				result.error(new SerializationException("Error decoding base 64", decode.getError()));

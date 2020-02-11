@@ -24,6 +24,8 @@ import org.junit.Test;
 
 public abstract class TestIOError extends LCCoreAbstractTest {
 
+	// TODO rename this class, provide other test cases
+	/** Return an IOException for all operations. */
 	public static class IOError1 extends ConcurrentCloseable<IOException> implements IO.Readable, IO.Readable.Seekable, IO.Readable.Buffered {
 
 		protected IOException error = new IOException("it's normal");

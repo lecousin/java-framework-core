@@ -1,7 +1,5 @@
 package net.lecousin.framework.core.tests.concurrent.util;
 
-import java.util.function.Consumer;
-
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
@@ -80,7 +78,7 @@ public class TestProducerToConsumer extends LCCoreAbstractTest {
 		}
 		
 		@Override
-		public IAsync<Exception> consume(Integer data, Consumer<Integer> onDataRelease) {
+		public IAsync<Exception> consume(Integer data) {
 			if (data == null)
 				return new Async<>(new NullPointerException());
 			if (data.intValue() != counter)

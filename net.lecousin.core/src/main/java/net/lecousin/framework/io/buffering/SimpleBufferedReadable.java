@@ -220,22 +220,13 @@ public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> imp
 				ByteBuffer buf;
 				try {
 					// wrap on our buffer
-					buf = ByteBuffer.wrap(state.buffer, state.pos, state.len - state.pos);
+					buf = ByteBuffer.wrap(state.buffer, state.pos, state.len - state.pos).asReadOnlyBuffer();
 					state.pos = state.len;
 					// allocate a new buffer for the next read
 					bb = ByteBuffer.allocate(state.buffer.length);
 				} catch (NullPointerException e) {
 					throw new CancelException("IO closed");
 				}
-				/*
-				ByteBuffer buf = ByteBuffer.allocate(state.len - state.pos);
-				try { buf.put(state.buffer, state.pos, state.len - state.pos); }
-				catch (NullPointerException e) {
-					throw new CancelException("IO closed");
-				}
-				state.pos = state.len;
-				buf.flip();
-				*/
 				return buf;
 			}
 		};
@@ -258,22 +249,13 @@ public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> imp
 		ByteBuffer buf;
 		try {
 			// wrap on our buffer
-			buf = ByteBuffer.wrap(state.buffer, state.pos, state.len - state.pos);
+			buf = ByteBuffer.wrap(state.buffer, state.pos, state.len - state.pos).asReadOnlyBuffer();
 			state.pos = state.len;
 			// allocate a new buffer for the next read
 			bb = ByteBuffer.allocate(state.buffer.length);
 		} catch (NullPointerException e) {
 			throw new ClosedChannelException();
 		}
-		/*
-		ByteBuffer buf = ByteBuffer.allocate(state.len - state.pos);
-		try { buf.put(state.buffer, state.pos, state.len - state.pos); }
-		catch (NullPointerException e) {
-			throw new ClosedChannelException();
-		}
-		state.pos = state.len;
-		buf.flip();
-		*/
 		return buf;
 	}
 	

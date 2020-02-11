@@ -10,7 +10,7 @@ import net.lecousin.framework.encoding.BytesDecoder;
 import net.lecousin.framework.encoding.BytesEncoder;
 import net.lecousin.framework.encoding.EncodingException;
 import net.lecousin.framework.encoding.QuotedPrintable;
-import net.lecousin.framework.io.data.RawByteBuffer;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.util.Pair;
 
 import org.junit.Assert;
@@ -83,30 +83,30 @@ public class TestQuotedPrintable extends AbstractTestBytesEncoding {
 	public void testDecodingWithTrailingSpaces() throws EncodingException {
 		byte[] encoded = "This is a test =C3=A9 This is a test =C3=A9 This is a test =C3=A9 This is a=\r\n test =C3=A9 This is a test =C3=A9 This is a test \t \r".getBytes(StandardCharsets.UTF_8);
 		byte[] expected = "This is a test é This is a test é This is a test é This is a test é This is a test é This is a test".getBytes(StandardCharsets.UTF_8);
-		RawByteBuffer output = new RawByteBuffer(new byte[2048]);
-		createDecoder().decode(new RawByteBuffer(encoded), output, true);
-		Assert.assertEquals(expected.length, output.currentOffset);
-		Assert.assertEquals(0, ArrayUtil.compare(expected, 0, output.array, 0, expected.length));
+		ByteArray.Writable output = new ByteArray.Writable(new byte[2048], false);
+		createDecoder().decode(new ByteArray(encoded), output, true);
+		Assert.assertEquals(expected.length, output.position());
+		Assert.assertEquals(0, ArrayUtil.compare(expected, 0, output.getArray(), 0, expected.length));
 	}
 	
 	@Test
 	public void testDecodeWithShortLines() throws EncodingException {
 		byte[] encoded = "This is a test =\r\nwith =\r\nshort =\r\nlines".getBytes(StandardCharsets.UTF_8);
 		byte[] expected = "This is a test with short lines".getBytes(StandardCharsets.UTF_8);
-		RawByteBuffer output = new RawByteBuffer(new byte[2048]);
-		createDecoder().decode(new RawByteBuffer(encoded), output, true);
-		Assert.assertEquals(expected.length, output.currentOffset);
-		Assert.assertEquals(0, ArrayUtil.compare(expected, 0, output.array, 0, expected.length));
+		ByteArray.Writable output = new ByteArray.Writable(new byte[2048], false);
+		createDecoder().decode(new ByteArray(encoded), output, true);
+		Assert.assertEquals(expected.length, output.position());
+		Assert.assertEquals(0, ArrayUtil.compare(expected, 0, output.getArray(), 0, expected.length));
 	}
 	
 	@Test
 	public void testDecodeWithAdditionalSpaces() throws EncodingException {
 		byte[] encoded = "This is a test =\r\n    \r\nwith =\r\nshort =\r\n     \r\nlines".getBytes(StandardCharsets.UTF_8);
 		byte[] expected = "This is a test with short lines".getBytes(StandardCharsets.UTF_8);
-		RawByteBuffer output = new RawByteBuffer(new byte[2048]);
-		createDecoder().decode(new RawByteBuffer(encoded), output, true);
-		Assert.assertEquals(expected.length, output.currentOffset);
-		Assert.assertEquals(0, ArrayUtil.compare(expected, 0, output.array, 0, expected.length));
+		ByteArray.Writable output = new ByteArray.Writable(new byte[2048], false);
+		createDecoder().decode(new ByteArray(encoded), output, true);
+		Assert.assertEquals(expected.length, output.position());
+		Assert.assertEquals(0, ArrayUtil.compare(expected, 0, output.getArray(), 0, expected.length));
 	}
 	
 }

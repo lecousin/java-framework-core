@@ -14,8 +14,8 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.encoding.Base64Encoding;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.io.data.Bytes;
-import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.io.serialization.AbstractSerializer;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext;
@@ -321,7 +321,7 @@ public class XMLSerializer extends AbstractSerializer {
 		IAsync<IOException> encode = io.createProducer(false).toConsumer(
 			Base64Encoding.instance.createEncoderConsumer(
 				ByteArrayStringIso8859.bytesConsumer(str -> output.addEscapedText(str)).convert(Bytes.Readable::toByteBuffer)
-			).convert(RawByteBuffer::new),
+			).convert(ByteArray::fromByteBuffer),
 			"Serialize IO.Readable to XML", priority);
 		if (encode.isDone()) {
 			if (encode.hasError()) return new Async<>(encode, ioErrorConverter);

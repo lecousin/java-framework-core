@@ -2,7 +2,6 @@ package net.lecousin.framework.core.test.encoding.charset;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
@@ -10,10 +9,9 @@ import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.encoding.charset.CharacterDecoder;
 import net.lecousin.framework.encoding.charset.CharacterDecoderFromCharsetDecoder;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.io.data.Chars;
-import net.lecousin.framework.io.data.Chars.Readable;
 import net.lecousin.framework.io.data.CompositeChars;
-import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.text.CharArrayString;
 
 import org.junit.Assert;
@@ -55,7 +53,7 @@ public abstract class AbstractTestCharsetDecoder extends LCCoreAbstractTest {
 	
 	public static void test(String s, CharacterDecoder decoder) throws Exception {
 		byte[] bytes = s.getBytes(decoder.getEncoding());
-		Chars.Readable chars = decoder.decode(new RawByteBuffer(bytes));
+		Chars.Readable chars = decoder.decode(new ByteArray(bytes));
 		Chars.Readable end = decoder.flush();
 		if (end != null)
 			chars = new CompositeChars.Readable(chars, end);
@@ -64,7 +62,7 @@ public abstract class AbstractTestCharsetDecoder extends LCCoreAbstractTest {
 		// byte by byte
 		CompositeChars.Readable composite = new CompositeChars.Readable();
 		for (int i = 0; i < bytes.length; ++i) {
-			chars = decoder.decode(new RawByteBuffer(bytes, i, 1));
+			chars = decoder.decode(new ByteArray(bytes, i, 1));
 			if (chars.hasRemaining())
 				composite.add(chars);
 		}
@@ -76,12 +74,12 @@ public abstract class AbstractTestCharsetDecoder extends LCCoreAbstractTest {
 		// by 3 bytes
 		composite = new CompositeChars.Readable();
 		for (int i = 0; i < bytes.length / 3; ++i) {
-			chars = decoder.decode(new RawByteBuffer(bytes, i * 3, 3));
+			chars = decoder.decode(new ByteArray(bytes, i * 3, 3));
 			if (chars.hasRemaining())
 				composite.add(chars);
 		}
 		if ((bytes.length % 3) > 0) {
-			chars = decoder.decode(new RawByteBuffer(bytes, (bytes.length / 3) * 3, bytes.length % 3));
+			chars = decoder.decode(new ByteArray(bytes, (bytes.length / 3) * 3, bytes.length % 3));
 			if (chars.hasRemaining())
 				composite.add(chars);
 		}
@@ -94,9 +92,9 @@ public abstract class AbstractTestCharsetDecoder extends LCCoreAbstractTest {
 		// using consumer
 		decoder.createConsumer(new AsyncConsumer<Chars.Readable, IOException>() {
 			@Override
-			public IAsync<IOException> consume(Chars.Readable data, Consumer<Readable> onDataRelease) {
+			public IAsync<IOException> consume(Chars.Readable data) {
 				data.get(str, data.remaining());
-				if (onDataRelease != null) onDataRelease.accept(data);
+				data.free();
 				return new Async<>(true);
 			}
 			
@@ -108,16 +106,16 @@ public abstract class AbstractTestCharsetDecoder extends LCCoreAbstractTest {
 			@Override
 			public void error(IOException error) {
 			}
-		}).consumeEnd(new RawByteBuffer(bytes), null).blockThrow(0);
+		}).consumeEnd(new ByteArray(bytes)).blockThrow(0);
 		Assert.assertEquals(s, str.asString());
 
 		CharArrayString str2 = new CharArrayString(256);
 		// using consumer
 		decoder.createConsumer(new AsyncConsumer<Chars.Readable, IOException>() {
 			@Override
-			public IAsync<IOException> consume(Chars.Readable data, Consumer<Readable> onDataRelease) {
+			public IAsync<IOException> consume(Chars.Readable data) {
 				data.get(str2, data.remaining());
-				if (onDataRelease != null) onDataRelease.accept(data);
+				data.free();
 				return new Async<>(true);
 			}
 			
@@ -129,11 +127,11 @@ public abstract class AbstractTestCharsetDecoder extends LCCoreAbstractTest {
 			@Override
 			public void error(IOException error) {
 			}
-		}).consumeEnd(new RawByteBuffer(bytes), b -> {}).blockThrow(0);
+		}).consumeEnd(new ByteArray(bytes)).blockThrow(0);
 		Assert.assertEquals(s, str2.asString());
 
 		StringBuilder sb = new StringBuilder();
-		decoder.decodeConsumerToString(res -> sb.append(res)).consumeEnd(new RawByteBuffer(bytes), null).blockThrow(0);
+		decoder.decodeConsumerToString(res -> sb.append(res)).consumeEnd(new ByteArray(bytes)).blockThrow(0);
 		Assert.assertEquals(s, sb.toString());
 	}
 	

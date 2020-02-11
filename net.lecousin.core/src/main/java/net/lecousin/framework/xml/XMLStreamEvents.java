@@ -11,9 +11,9 @@ import java.util.List;
 
 import net.lecousin.framework.encoding.charset.CharacterDecoder;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.io.data.CompositeChars;
-import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStreamLocation;
 import net.lecousin.framework.io.text.ICharacterStream;
@@ -693,7 +693,7 @@ public abstract class XMLStreamEvents {
 		protected CharArrayStringBuffer xmlEncoding = null;
 		protected CharArrayStringBuffer xmlStandalone = null;
 		
-		private RawByteBuffer firstBytes;
+		private ByteArray firstBytes;
 		private Chars.Readable chars;
 
 		public ICharacterStream.Readable.Buffered start() throws IOException, XMLException {
@@ -737,17 +737,18 @@ public abstract class XMLStreamEvents {
 		private void loadFirstBytes() throws IOException {
 			ByteBuffer buf = io.readNextBuffer();
 			if (buf != null) {
-				firstBytes = new RawByteBuffer(buf);
+				firstBytes = ByteArray.readOnlyFromByteBuffer(buf);
 				while (firstBytes.remaining() < 4) {
 					buf = io.readNextBuffer();
 					if (buf == null) break;
-					byte[] b = new byte[firstBytes.remaining() + buf.remaining()];
-					System.arraycopy(firstBytes.array, 0, b, 0, firstBytes.remaining());
-					System.arraycopy(buf.array(), buf.arrayOffset() + buf.position(), b, firstBytes.remaining(), buf.remaining());
-					firstBytes = new RawByteBuffer(b);
+					byte[] b = ByteArrayCache.getInstance().get(firstBytes.remaining() + buf.remaining(), true);
+					int l = firstBytes.remaining();
+					firstBytes.get(b, 0, l);
+					buf.get(b, l, buf.remaining());
+					firstBytes = new ByteArray(b);
 				}
 			} else {
-				firstBytes = new RawByteBuffer(new byte[0]);
+				firstBytes = new ByteArray(new byte[0]);
 			}
 		}
 		
@@ -862,12 +863,14 @@ public abstract class XMLStreamEvents {
 					if (chars.hasRemaining())
 						return chars.get();
 				}
-				byte[] b = ByteArrayCache.getInstance().get(Math.max(512, firstBytes.length * 2), true);
-				System.arraycopy(firstBytes.array, firstBytes.arrayOffset, b, 0, firstBytes.length);
-				int nb = io.readFullySync(ByteBuffer.wrap(b, firstBytes.length, b.length - firstBytes.length));
+				int l = firstBytes.length();
+				byte[] b = ByteArrayCache.getInstance().get(Math.max(512, l * 2), true);
+				firstBytes.setPosition(0);
+				firstBytes.get(b, 0, l);
+				int nb = io.readFullySync(ByteBuffer.wrap(b, l, b.length - l));
 				if (nb <= 0) throw new EOFException();
-				firstBytes = new RawByteBuffer(b, 0, firstBytes.length + nb);
-				firstBytes.setPosition(firstBytes.length - nb);
+				firstBytes = new ByteArray(b, 0, l + nb);
+				firstBytes.setPosition(l);
 				chars = tmpDecoder.decode(firstBytes);
 				if (chars.hasRemaining())
 					return chars.get();
@@ -878,12 +881,14 @@ public abstract class XMLStreamEvents {
 			}
 			if (chars.hasRemaining())
 				return chars.get();
-			byte[] b = ByteArrayCache.getInstance().get(Math.max(512, firstBytes.length * 2), true);
-			System.arraycopy(firstBytes.array, firstBytes.arrayOffset, b, 0, firstBytes.length);
-			int nb = io.readFullySync(ByteBuffer.wrap(b, firstBytes.length, b.length - firstBytes.length));
+			int l = firstBytes.length();
+			byte[] b = ByteArrayCache.getInstance().get(Math.max(512, l * 2), true);
+			firstBytes.setPosition(0);
+			firstBytes.get(b, 0, l);
+			int nb = io.readFullySync(ByteBuffer.wrap(b, l, b.length - l));
 			if (nb <= 0) throw new EOFException();
-			firstBytes = new RawByteBuffer(b, 0, firstBytes.length + nb);
-			firstBytes.setPosition(firstBytes.length - nb);
+			firstBytes = new ByteArray(b, 0, l + nb);
+			firstBytes.setPosition(l);
 			Chars.Readable newChars = tmpDecoder.decode(firstBytes);
 			if (!newChars.hasRemaining()) {
 				newChars = tmpDecoder.flush();

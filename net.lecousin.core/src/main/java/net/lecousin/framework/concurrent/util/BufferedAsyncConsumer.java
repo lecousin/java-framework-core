@@ -1,13 +1,10 @@
 package net.lecousin.framework.concurrent.util;
 
-import java.util.function.Consumer;
-
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.Triple;
 
 /**
  * AsyncConsumer with a waiting queue.
@@ -30,29 +27,29 @@ public class BufferedAsyncConsumer<T, TError extends Exception> implements Async
 	}
 	
 	protected AsyncConsumer<T, TError> consumer;
-	protected TurnArray<Pair<T, Consumer<T>>> queue;
+	protected TurnArray<T> queue;
 	protected IAsync<TError> lastOperation;
-	protected Triple<T, Consumer<T>, Async<TError>> waiting;
+	protected Pair<T, Async<TError>> waiting;
 	protected Async<TError> end;
 	protected TError error;
 	
 	@Override
-	public IAsync<TError> consume(T data, Consumer<T> onDataRelease) {
+	public IAsync<TError> consume(T data) {
 		synchronized (queue) {
 			if (error != null)
 				return new Async<>(error);
 			if (lastOperation == null) {
 				// nothing currently consumed, start it
-				lastOperation = consumer.consume(data, onDataRelease);
+				lastOperation = consumer.consume(data);
 				lastOperation.onDone(this::nextPending, this::error, c -> { /* ignore */ });
 				return new Async<>(true);
 			}
 			if (!queue.isFull()) {
-				queue.add(new Pair<>(data, onDataRelease));
+				queue.add(data);
 				return new Async<>(true);
 			}
-			waiting = new Triple<>(data, onDataRelease, new Async<>());
-			return waiting.getValue3();
+			waiting = new Pair<>(data, new Async<>());
+			return waiting.getValue2();
 		}
 	}
 	
@@ -64,12 +61,12 @@ public class BufferedAsyncConsumer<T, TError extends Exception> implements Async
 					consumer.error(error);
 					return;
 				}
-				Pair<T, Consumer<T>> next = queue.pollFirst();
+				T next = queue.pollFirst();
 				if (next != null) {
-					lastOperation = consumer.consume(next.getValue1(), next.getValue2());
+					lastOperation = consumer.consume(next);
 					if (waiting != null) {
-						queue.add(new Pair<>(waiting.getValue1(), waiting.getValue2()));
-						unblock = waiting.getValue3();
+						queue.add(waiting.getValue1());
+						unblock = waiting.getValue2();
 						waiting = null;
 					}
 					lastOperation.onDone(this::nextPending, this::error, c -> { /* ignore */ });
@@ -105,7 +102,7 @@ public class BufferedAsyncConsumer<T, TError extends Exception> implements Async
 			while (!queue.isEmpty())
 				queue.pollFirst();
 			if (waiting != null)
-				waiting.getValue3().error(error);
+				waiting.getValue2().error(error);
 			waiting = null;
 			if (lastOperation == null)
 				consumer.error(error);

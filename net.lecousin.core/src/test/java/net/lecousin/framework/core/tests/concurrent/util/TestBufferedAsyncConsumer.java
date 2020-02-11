@@ -3,7 +3,6 @@ package net.lecousin.framework.core.tests.concurrent.util;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
-import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
@@ -22,7 +21,7 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 		AsyncConsumer<Integer, Exception> finalConsumer = new AsyncConsumer<Integer, Exception>() {
 			private int pos = 0;
 			@Override
-			public IAsync<Exception> consume(Integer data, Consumer<Integer> onDataRelease) {
+			public IAsync<Exception> consume(Integer data) {
 				if (data.intValue() != pos)
 					return new Async<>(new Exception("Received " + data.intValue() + ", expected was " + pos));
 				pos++;
@@ -51,7 +50,7 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 			private int pos = 0;
 			private Random rand = new Random();
 			@Override
-			public IAsync<Exception> consume(Integer data, Consumer<Integer> onDataRelease) {
+			public IAsync<Exception> consume(Integer data) {
 				if (data.intValue() != pos)
 					return new Async<>(new Exception("Received " + data.intValue() + ", expected was " + pos));
 				pos++;
@@ -82,7 +81,7 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 		AsyncConsumer<Integer, Exception> finalConsumer = new AsyncConsumer<Integer, Exception>() {
 			private int pos = 0;
 			@Override
-			public IAsync<Exception> consume(Integer data, Consumer<Integer> onDataRelease) {
+			public IAsync<Exception> consume(Integer data) {
 				if (pos == 127)
 					return new Async<>(new IllegalArgumentException());
 				if (pos > 127)
@@ -118,7 +117,7 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 		AsyncConsumer<Integer, Exception> finalConsumer = new AsyncConsumer<Integer, Exception>() {
 			private int pos = 0;
 			@Override
-			public IAsync<Exception> consume(Integer data, Consumer<Integer> onDataRelease) {
+			public IAsync<Exception> consume(Integer data) {
 				if (data.intValue() != pos)
 					return new Async<>(new Exception("Received " + data.intValue() + ", expected was " + pos));
 				pos++;
@@ -150,7 +149,7 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 		AsyncConsumer<Integer, Exception> finalConsumer = new AsyncConsumer<Integer, Exception>() {
 			private int pos = 0;
 			@Override
-			public IAsync<Exception> consume(Integer data, Consumer<Integer> onDataRelease) {
+			public IAsync<Exception> consume(Integer data) {
 				if (data.intValue() != pos)
 					return new Async<>(new Exception("Received " + data.intValue() + ", expected was " + pos));
 				pos++;
@@ -171,7 +170,7 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 		for (int i = 0; i < 1000; ++i)
 			toPush.add(Integer.valueOf(i));
 		buffered.push(toPush).blockThrow(0);
-		buffered.consumeEnd(Integer.valueOf(1000), null).blockThrow(0);
+		buffered.consumeEnd(Integer.valueOf(1000)).blockThrow(0);
 	}
 	
 	private void send(MutableInteger nbSent, AsyncConsumer<Integer, Exception> consumer, Async<Exception> done, int max) {
@@ -180,7 +179,7 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 				consumer.end().onDone(done);
 				return;
 			}
-			IAsync<Exception> send = consumer.consume(Integer.valueOf(nbSent.get()), nbSent.get() % 2 == 0 ? null : b -> {});
+			IAsync<Exception> send = consumer.consume(Integer.valueOf(nbSent.get()));
 			nbSent.inc();
 			if (!send.isDone()) {
 				send.thenStart("test", Task.PRIORITY_NORMAL, () -> send(nbSent, consumer, done, max), done);

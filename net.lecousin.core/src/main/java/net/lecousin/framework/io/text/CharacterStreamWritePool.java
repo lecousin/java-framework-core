@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.io.data.RawCharBuffer;
+import net.lecousin.framework.io.data.CharArray;
 import net.lecousin.framework.text.IString;
 
 /** Utility class to queue write operations to a character stream.
@@ -57,12 +57,12 @@ public class CharacterStreamWritePool {
 	}
 	
 	/** Write the given characters. */
-	public IAsync<IOException> write(RawCharBuffer chars) {
-		return write(chars.array, chars.currentOffset, chars.remaining());
+	public IAsync<IOException> write(CharArray chars) {
+		return write(chars.getArray(), chars.getCurrentArrayOffset(), chars.remaining());
 	}
 	
 	/** Write the given characters. */
-	public IAsync<IOException> write(RawCharBuffer[] chars) {
+	public IAsync<IOException> write(CharArray[] chars) {
 		IAsync<IOException> last = lastWrite;
 		for (int i = 0; i < chars.length; ++i)
 			last = write(chars[i]);

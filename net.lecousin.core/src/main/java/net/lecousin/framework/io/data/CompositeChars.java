@@ -140,7 +140,7 @@ public abstract class CompositeChars<T extends Chars> extends AbstractComposite<
 				p -= r;
 				i++;
 			} while (i < list.size());
-			return new RawCharBuffer(new char[0]);
+			return new CharArray(new char[0]);
 		}
 	}
 
@@ -231,7 +231,7 @@ public abstract class CompositeChars<T extends Chars> extends AbstractComposite<
 				p -= r;
 				i++;
 			} while (i < list.size());
-			return new RawCharBuffer(new char[0]);
+			return new CharArray.Writable(new char[0], false);
 		}
 	}
 	

@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets;
 import net.lecousin.framework.core.test.encoding.charset.AbstractTestCharsetDecoder;
 import net.lecousin.framework.encoding.charset.UTF8Decoder;
 import net.lecousin.framework.io.data.Chars;
-import net.lecousin.framework.io.data.RawByteBuffer;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.text.CharArrayString;
 
 import org.junit.Assert;
@@ -74,7 +74,7 @@ public class TestUTF8 extends AbstractTestCharsetDecoder {
 	
 	private static void testInvalidChar(byte[] b, String expected, int bufferSize) {
 		UTF8Decoder decoder = new UTF8Decoder(bufferSize);
-		RawByteBuffer input = new RawByteBuffer(b);
+		ByteArray input = new ByteArray(b);
 		CharArrayString output = new CharArrayString(256);
 		while (input.hasRemaining()) {
 			Chars.Readable chars = decoder.decode(input);

@@ -8,7 +8,7 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 import java.util.List;
 
-import net.lecousin.framework.io.data.RawCharBuffer;
+import net.lecousin.framework.io.data.CharArray;
 
 /**
  * Interface adding functionalities to CharSequence.
@@ -162,12 +162,12 @@ public interface IString extends CharSequence, Appendable {
 	}
 	
 	/** Convert into an array of character buffers. */
-	RawCharBuffer[] asCharBuffers();
+	CharArray[] asCharBuffers();
 	
 	/** Encode this string into a ByteBuffer using the specified charset. */
 	@SuppressWarnings("squid:S2259") // false positive: cr cannot be null because cbs length cannot be 0
 	default ByteBuffer encode(Charset cs) throws CharacterCodingException {
-		RawCharBuffer[] cbs = asCharBuffers();
+		CharArray[] cbs = asCharBuffers();
 		if (cbs.length == 0)
 			return ByteBuffer.allocate(0);
 		int len = length();

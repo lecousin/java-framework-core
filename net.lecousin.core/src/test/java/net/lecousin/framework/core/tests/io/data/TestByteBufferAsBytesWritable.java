@@ -10,7 +10,7 @@ import org.junit.Assert;
 public class TestByteBufferAsBytesWritable extends TestBytesWritable {
 
 	public TestByteBufferAsBytesWritable(int initialPos, int length, boolean useSubBuffer) {
-		super(new ByteBufferAsBytes(ByteBuffer.wrap(new byte[initialPos + length + 10], initialPos, length).slice()), initialPos, length, useSubBuffer);
+		super((ByteBufferAsBytes.Writable)ByteBufferAsBytes.create(ByteBuffer.wrap(new byte[initialPos + length + 10], initialPos, length).slice(), false), initialPos, length, useSubBuffer);
 	}
 	
 	@Override

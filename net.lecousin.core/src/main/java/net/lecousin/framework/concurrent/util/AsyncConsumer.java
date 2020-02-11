@@ -2,7 +2,6 @@ package net.lecousin.framework.concurrent.util;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import net.lecousin.framework.concurrent.async.Async;
@@ -10,11 +9,6 @@ import net.lecousin.framework.concurrent.async.IAsync;
 
 /**
  * Consumer of data.<br/>
- * The time the data can be released/reused is distinguished from the time new data can be consumed.
- *
- * <p>In case we are in a chain of consumer, it is possible that the data can be released once processed
- * by the first consumer, but new data cannot come until end of the chain. It is also possible that
- * new data can come before the data is released (for example using a BufferedAsyncConsumer).</p>
  * 
  * @param <T> type of data
  * @param <TError> type of error
@@ -22,13 +16,10 @@ import net.lecousin.framework.concurrent.async.IAsync;
 public interface AsyncConsumer<T, TError extends Exception> {
 
 	/** Consume the given data.
-	 * Note that it is allowed for a consumer to never call the onDataRelease.<br/>
-	 * onDataRelease should be called before the result is unblock if possible.
 	 * @param data the data to consume
-	 * @param onDataRelease called when the data can be released or reused (may be null).
 	 * @return an IAsync unblocked when the method consume can be called again or the method end can be called.
 	 */
-	IAsync<TError> consume(T data, Consumer<T> onDataRelease);
+	IAsync<TError> consume(T data);
 	
 	/** End of consumption, no more data to come. */
 	IAsync<TError> end();
@@ -47,7 +38,7 @@ public interface AsyncConsumer<T, TError extends Exception> {
 					result.unblock();
 					return;
 				}
-				consume(it.next(), null).onDone(this, result);
+				consume(it.next()).onDone(this, result);
 			}
 		};
 		pushNext.run();
@@ -55,9 +46,9 @@ public interface AsyncConsumer<T, TError extends Exception> {
 	}
 	
 	/** Consume data and call end. */
-	default IAsync<TError> consumeEnd(T data, Consumer<T> onDataRelease) {
+	default IAsync<TError> consumeEnd(T data) {
 		Async<TError> result = new Async<>();
-		consume(data, onDataRelease).onDone(() -> end().onDone(result), result);
+		consume(data).onDone(() -> end().onDone(result), result);
 		return result;
 	}
 	
@@ -92,7 +83,7 @@ public interface AsyncConsumer<T, TError extends Exception> {
 		protected TError error;
 
 		@Override
-		public IAsync<TError> consume(T data, Consumer<T> onDataRelease) {
+		public IAsync<TError> consume(T data) {
 			return new Async<>(error);
 		}
 
@@ -114,10 +105,8 @@ public interface AsyncConsumer<T, TError extends Exception> {
 		return new AsyncConsumer<T2, TError>() {
 
 			@Override
-			public IAsync<TError> consume(T2 data, Consumer<T2> onDataRelease) {
-				return parent.consume(converter.apply(data), d -> {
-					if (onDataRelease != null) onDataRelease.accept(data);
-				});
+			public IAsync<TError> consume(T2 data) {
+				return parent.consume(converter.apply(data));
 			}
 
 			@Override

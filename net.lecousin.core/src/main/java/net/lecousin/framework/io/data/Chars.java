@@ -11,7 +11,7 @@ public interface Chars extends DataBuffer {
 	CharBuffer toCharBuffer();
 
 	/** Readable bytes. */
-	interface Readable extends Chars {
+	interface Readable extends Chars, DataBuffer.Readable {
 		
 		/** Return the next char. */
 		char get();
@@ -30,7 +30,7 @@ public interface Chars extends DataBuffer {
 	}
 	
 	/** Writable bytes. */
-	interface Writable extends Chars {
+	interface Writable extends Chars, DataBuffer.Writable {
 		
 		/** Set the next char. */
 		void put(char b);

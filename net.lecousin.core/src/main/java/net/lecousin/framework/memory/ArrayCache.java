@@ -19,10 +19,10 @@ public abstract class ArrayCache<T> implements IMemoryManageable {
 	private int maxBuffersBySizeUnder128KB = 20;
 	/** Maximum number of buffers of the same size to keep, when size is above 128K, default to 8. */
 	private int maxBuffersBySizeAbove128KB = 8;
-	/** Maximum total size of buffers to keep in this cache. */
+	/** Maximum total size of buffers to keep in this cache, default to 64MB. */
 	private int maxTotalSize = 64 * 1024 * 1024;
-	/** Time before a cached buffer can be removed to free memory. */
-	private long timeBeforeToRemove = 5L * 60 * 1000; // every 5 minutes
+	/** Time before a cached buffer can be removed to free memory, default 5 minutes. */
+	private long timeBeforeToRemove = 5L * 60 * 1000;
 
 	/** Maximum number of buffers of the same size to keep, when size is under 128K, default to 20. */
 	public int getMaxBuffersBySizeUnder128KB() {
@@ -111,6 +111,7 @@ public abstract class ArrayCache<T> implements IMemoryManageable {
 	/** Put an array in the cache. */
 	public void free(T array) {
 		int len = length(array);
+		if (len < 16) return;
 		synchronized (arraysBySize) {
 			if (totalSize + len > maxTotalSize) return;
 			Node<ArraysBySize<T>> node = arraysBySize.get(len);

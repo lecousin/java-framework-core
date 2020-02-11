@@ -8,7 +8,7 @@ import java.util.List;
 import net.lecousin.framework.core.test.encoding.AbstractTestBytesEncoding;
 import net.lecousin.framework.encoding.Base64Encoding;
 import net.lecousin.framework.encoding.Base64Encoding.InvalidBase64Value;
-import net.lecousin.framework.io.data.RawByteBuffer;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.encoding.BytesDecoder;
 import net.lecousin.framework.encoding.BytesEncoder;
 import net.lecousin.framework.encoding.UnexpectedEndOfEncodedData;
@@ -64,11 +64,11 @@ public class TestBase64Encoding extends AbstractTestBytesEncoding {
 	@Test
 	public void testDecoding() throws Exception {
 		byte[] out = new byte[1024];
-		RawByteBuffer output = new RawByteBuffer(out);
-		Base64Encoding.instance.decode(new RawByteBuffer("SGVsbG8gV29ybGQgIQ=".getBytes(StandardCharsets.UTF_8)), output, true);
-		Assert.assertEquals("Hello World !", new String(output.array, output.arrayOffset, output.position(), StandardCharsets.UTF_8));
+		ByteArray.Writable output = new ByteArray.Writable(out, false);
+		Base64Encoding.instance.decode(new ByteArray("SGVsbG8gV29ybGQgIQ=".getBytes(StandardCharsets.UTF_8)), output, true);
+		Assert.assertEquals("Hello World !", new String(out, 0, output.position(), StandardCharsets.UTF_8));
 		Assert.assertEquals("Hello World !", new String(Base64Encoding.instance.decode("SGVsbG8gV29ybGQgIQ=".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
-		Assert.assertEquals("Hello World !", new String(Base64Encoding.instance.decode(new RawByteBuffer("SGVsbG8gV29ybGQgIQ=".getBytes(StandardCharsets.UTF_8))), StandardCharsets.UTF_8));
+		Assert.assertEquals("Hello World !", new String(Base64Encoding.instance.decode(new ByteArray("SGVsbG8gV29ybGQgIQ=".getBytes(StandardCharsets.UTF_8))), StandardCharsets.UTF_8));
 		
 		byte[] buf = new byte[100];
 		Assert.assertEquals(3, Base64Encoding.instance.decode4Bytes("VGhp".getBytes("US-ASCII"), 0, buf, 10));
@@ -82,7 +82,7 @@ public class TestBase64Encoding extends AbstractTestBytesEncoding {
 		Assert.assertEquals((byte)'k', buf[0]);
 		
 		Assert.assertEquals(0, Base64Encoding.instance.decode(new byte[0]).length);
-		Assert.assertEquals(0, Base64Encoding.instance.decode(new RawByteBuffer(new byte[0])).length);
+		Assert.assertEquals(0, Base64Encoding.instance.decode(new ByteArray(new byte[0])).length);
 		byte[] b2 = Base64Encoding.instance.decode("a0==".getBytes("US-ASCII"));
 		Assert.assertEquals(1, b2.length);
 		Assert.assertEquals((byte)'k', b2[0]);
@@ -108,7 +108,7 @@ public class TestBase64Encoding extends AbstractTestBytesEncoding {
 			// ok
 		}
 		try {
-			Base64Encoding.instance.decode(new RawByteBuffer(new byte[] { 'a' }));
+			Base64Encoding.instance.decode(new ByteArray(new byte[] { 'a' }));
 			throw new AssertionError("Error expected");
 		} catch (UnexpectedEndOfEncodedData e) {
 			// ok
@@ -120,7 +120,7 @@ public class TestBase64Encoding extends AbstractTestBytesEncoding {
 			// ok
 		}
 		try {
-			Base64Encoding.instance.decode(new RawByteBuffer(new byte[] { 'a', 'a' }));
+			Base64Encoding.instance.decode(new ByteArray(new byte[] { 'a', 'a' }));
 			throw new AssertionError("Error expected");
 		} catch (UnexpectedEndOfEncodedData e) {
 			// ok
@@ -132,7 +132,7 @@ public class TestBase64Encoding extends AbstractTestBytesEncoding {
 			// ok
 		}
 		try {
-			Base64Encoding.instance.decode(new RawByteBuffer(new byte[] { 'a', 'a', 'a' }));
+			Base64Encoding.instance.decode(new ByteArray(new byte[] { 'a', 'a', 'a' }));
 			throw new AssertionError("Error expected");
 		} catch (UnexpectedEndOfEncodedData e) {
 			// ok

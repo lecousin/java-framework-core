@@ -2,7 +2,7 @@ package net.lecousin.framework.text;
 
 import java.util.List;
 
-import net.lecousin.framework.io.data.RawCharBuffer;
+import net.lecousin.framework.io.data.CharArray;
 
 /** A String with a maximum size.
  * Any character added beyond the maximum size is skipped.
@@ -212,7 +212,7 @@ public class CappedString implements IString {
 	}
 
 	@Override
-	public RawCharBuffer[] asCharBuffers() {
+	public CharArray[] asCharBuffers() {
 		return buffer.asCharBuffers();
 	}
 

@@ -14,8 +14,8 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.util.Pair;
-import net.lecousin.framework.util.Triple;
 
 /**
  * Implementation of IO using a list of byte array.
@@ -33,14 +33,14 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 	}
 	
 	private boolean copyBuffers;
-	private LinkedArrayList<Triple<byte[],Integer,Integer>> buffers = new LinkedArrayList<>(10);
+	private LinkedArrayList<ByteArray.Writable> buffers = new LinkedArrayList<>(10);
 	private int pos = 0;
 	private int bufferIndex = 0;
 	private int bufferPos = 0;
 	private int totalSize = 0;
 	
 	/** Must be called only when no more modification are being done. */
-	public LinkedArrayList<Triple<byte[],Integer,Integer>> getBuffers() {
+	public LinkedArrayList<ByteArray.Writable> getBuffers() {
 		return buffers;
 	}
 	
@@ -48,23 +48,24 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 	public byte[] createSingleByteArray() {
 		byte[] buf = new byte[totalSize];
 		int bufPos = 0;
-		for (Triple<byte[],Integer,Integer> t : buffers) {
-			System.arraycopy(t.getValue1(), t.getValue2().intValue(), buf, bufPos, t.getValue3().intValue());
-			bufPos += t.getValue3().intValue();
+		for (ByteArray.Writable b : buffers) {
+			int pos = b.position();
+			b.get(buf, bufPos, b.remaining());
+			b.setPosition(pos);
+			bufPos += b.remaining();
 		}
 		return buf;
 	}
 	
 	/** Append the given buffer. */
-	public synchronized void addBuffer(byte[] buf, int off, int len) {
+	public synchronized void addBuffer(ByteArray.Writable array) {
 		if (copyBuffers) {
-			byte[] b = new byte[len];
-			System.arraycopy(buf, off, b, 0, len);
-			buf = b;
-			off = 0;
+			byte[] b = new byte[array.remaining()];
+			array.get(b, 0, b.length);
+			array = new ByteArray.Writable(b, false);
 		}
-		buffers.add(new Triple<>(buf, Integer.valueOf(off), Integer.valueOf(len)));
-		totalSize += len;
+		buffers.add(array);
+		totalSize += array.remaining();
 	}
 
 	@Override
@@ -72,15 +73,15 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 		if (bufferIndex == buffers.size()) return -1;
 		int done = 0;
 		while (bufferIndex < buffers.size() && buffer.hasRemaining()) {
-			Triple<byte[],Integer,Integer> b = buffers.get(bufferIndex);
+			ByteArray.Writable b = buffers.get(bufferIndex);
 			int len = buffer.remaining();
-			if (len > b.getValue3().intValue() - bufferPos)
-				len = b.getValue3().intValue() - bufferPos;
-			buffer.put(b.getValue1(), b.getValue2().intValue() + bufferPos, len);
+			if (len > b.remaining() - bufferPos)
+				len = b.remaining() - bufferPos;
+			buffer.put(b.getArray(), b.getCurrentArrayOffset() + bufferPos, len);
 			bufferPos += len;
 			pos += len;
 			done += len;
-			if (bufferPos == b.getValue3().intValue()) {
+			if (bufferPos == b.remaining()) {
 				bufferIndex++;
 				bufferPos = 0;
 			}
@@ -97,7 +98,7 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 		if (n > 0) {
 			long rem = n;
 			while (readBufferIndex < buffers.size() && rem > 0) {
-				int l = buffers.get(readBufferIndex).getValue3().intValue() - readBufferPos;
+				int l = buffers.get(readBufferIndex).remaining() - readBufferPos;
 				if (l > rem) {
 					readBufferPos += rem;
 					//rem = 0;
@@ -122,21 +123,21 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 					break;
 				}
 				readBufferIndex--;
-				readBufferPos = buffers.get(readBufferIndex).getValue3().intValue();
+				readBufferPos = buffers.get(readBufferIndex).remaining();
 			}
 		}
 		
 		if (readBufferIndex == buffers.size()) return -1;
 		int done = 0;
 		while (readBufferIndex < buffers.size() && buffer.hasRemaining()) {
-			Triple<byte[],Integer,Integer> b = buffers.get(readBufferIndex);
+			ByteArray.Writable b = buffers.get(readBufferIndex);
 			int len = buffer.remaining();
-			if (len > b.getValue3().intValue() - readBufferPos)
-				len = b.getValue3().intValue() - readBufferPos;
-			buffer.put(b.getValue1(), b.getValue2().intValue() + readBufferPos, len);
+			if (len > b.remaining() - readBufferPos)
+				len = b.remaining() - readBufferPos;
+			buffer.put(b.getArray(), b.getCurrentArrayOffset() + readBufferPos, len);
 			readBufferPos += len;
 			done += len;
-			if (readBufferPos == b.getValue3().intValue()) {
+			if (readBufferPos == b.remaining()) {
 				readBufferIndex++;
 				readBufferPos = 0;
 			}
@@ -182,9 +183,9 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 	@Override
 	public ByteBuffer readNextBuffer() throws IOException {
 		if (bufferIndex == buffers.size()) return null;
-		Triple<byte[],Integer,Integer> b = buffers.get(bufferIndex);
-		int len = b.getValue3().intValue() - bufferPos;
-		ByteBuffer buf = ByteBuffer.wrap(b.getValue1(), b.getValue2().intValue() + bufferPos, len);
+		ByteArray.Writable b = buffers.get(bufferIndex);
+		int len = b.remaining() - bufferPos;
+		ByteBuffer buf = ByteBuffer.wrap(b.getArray(), b.getCurrentArrayOffset() + bufferPos, len).asReadOnlyBuffer();
 		pos += len;
 		bufferIndex++;
 		bufferPos = 0;
@@ -217,7 +218,7 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 		if (n > 0) {
 			long rem = n;
 			while (bufferIndex < buffers.size() && rem > 0) {
-				int l = buffers.get(bufferIndex).getValue3().intValue() - bufferPos;
+				int l = buffers.get(bufferIndex).remaining() - bufferPos;
 				if (l > rem) {
 					bufferPos += rem;
 					rem = 0;
@@ -244,7 +245,7 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 				break;
 			}
 			bufferIndex--;
-			bufferPos = buffers.get(bufferIndex).getValue3().intValue();
+			bufferPos = buffers.get(bufferIndex).remaining();
 		}
 		pos += n;
 		return n;
@@ -268,9 +269,9 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 	@Override
 	public synchronized int read() {
 		if (bufferIndex == buffers.size()) return -1;
-		Triple<byte[],Integer,Integer> buf = buffers.get(bufferIndex);
-		byte b = buf.getValue1()[buf.getValue2().intValue() + bufferPos];
-		if (++bufferPos == buf.getValue3().intValue()) {
+		ByteArray.Writable buf = buffers.get(bufferIndex);
+		byte b = buf.getForward(bufferPos);
+		if (++bufferPos == buf.remaining()) {
 			bufferIndex++;
 			bufferPos = 0;
 		}
@@ -353,7 +354,7 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 
 	@Override
 	public int writeSync(ByteBuffer buffer) {
-		addBuffer(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
+		addBuffer(ByteArray.Writable.fromByteBuffer(buffer));
 		pos = totalSize;
 		bufferIndex = buffers.size();
 		bufferPos = 0;

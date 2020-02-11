@@ -1225,9 +1225,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		int off = getBufferOffset(pos);
 		int len = b.data.length - off;
 		if (pos + len > size) len = (int)(size - pos);
-		byte[] bb = new byte[len];
-		System.arraycopy(b.data, off, bb, 0, len);
-		ByteBuffer res = ByteBuffer.wrap(bb);
+		ByteBuffer res = ByteBuffer.wrap(b.data, off, len).asReadOnlyBuffer();
 		pos += len;
 		position = pos;
 		b.lastRead = System.currentTimeMillis();

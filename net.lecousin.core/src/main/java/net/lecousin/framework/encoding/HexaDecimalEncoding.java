@@ -1,13 +1,12 @@
 package net.lecousin.framework.encoding;
 
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.io.data.Bytes;
-import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.memory.ByteArrayCache;
 
 /** Encode and decode bytes using hexadecimal digits. */
@@ -131,13 +130,12 @@ public final class HexaDecimalEncoding implements BytesEncoder.KnownOutputSize, 
 		private AsyncConsumer<Bytes.Readable, TError> encodedBytesConsumer;
 
 		@Override
-		public IAsync<TError> consume(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease) {
-			RawByteBuffer output = new RawByteBuffer(cache.get(data.remaining() * 2, true));
+		public IAsync<TError> consume(Bytes.Readable data) {
+			ByteArray.Writable output = new ByteArray.Writable(cache.get(data.remaining() * 2, true), true);
 			instance.encode(data, output, false);
-			if (onDataRelease != null)
-				onDataRelease.accept(data);
+			data.free();
 			output.flip();
-			return encodedBytesConsumer.consume(output, b -> cache.free(((RawByteBuffer)b).array));
+			return encodedBytesConsumer.consume(output);
 		}
 
 		@Override
@@ -173,15 +171,14 @@ public final class HexaDecimalEncoding implements BytesEncoder.KnownOutputSize, 
 		private int firstChar = -1;
 
 		@Override
-		public IAsync<TError> consume(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease) {
+		public IAsync<TError> consume(Bytes.Readable data) {
 			int len = ((firstChar != -1 ? 1 : 0) + data.remaining()) / 2;
 			if (len == 0) {
 				firstChar = data.get() & 0xFF;
-				if (onDataRelease != null)
-					onDataRelease.accept(data);
+				data.free();
 				return new Async<>(true);
 			}
-			RawByteBuffer output = new RawByteBuffer(cache.get(len, true));
+			ByteArray.Writable output = new ByteArray.Writable(cache.get(len, true), true);
 			try {
 				if (firstChar != -1) {
 					output.put((byte)((decodeChar((char)firstChar) << 4) | decodeChar((char)data.get())));
@@ -196,10 +193,9 @@ public final class HexaDecimalEncoding implements BytesEncoder.KnownOutputSize, 
 			}
 			if (data.hasRemaining())
 				firstChar = data.get() & 0xFF;
-			if (onDataRelease != null)
-				onDataRelease.accept(data);
+			data.free();
 			output.flip();
-			return decodedBytesConsumer.consume(output, b -> cache.free(((RawByteBuffer)b).array));
+			return decodedBytesConsumer.consume(output);
 		}
 
 		@Override

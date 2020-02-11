@@ -11,6 +11,7 @@ import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
@@ -170,7 +171,7 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable<IOExcep
 	
 	@Override
 	public ByteBuffer readNextBuffer() throws IOException {
-		ByteBuffer buf = ByteBuffer.allocate(4096);
+		ByteBuffer buf = ByteBuffer.wrap(ByteArrayCache.getInstance().get(4096, true));
 		int nb = readSync(buf);
 		if (nb <= 0) return null;
 		buf.flip();

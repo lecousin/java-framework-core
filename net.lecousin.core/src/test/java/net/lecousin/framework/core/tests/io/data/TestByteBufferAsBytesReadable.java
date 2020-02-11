@@ -8,7 +8,7 @@ import net.lecousin.framework.io.data.ByteBufferAsBytes;
 public class TestByteBufferAsBytesReadable extends TestBytesReadable {
 
 	public TestByteBufferAsBytesReadable(byte[] data, int initialPos, int length, boolean useSubBuffer) {
-		super(new ByteBufferAsBytes(ByteBuffer.wrap(data, initialPos, length).slice()), data, initialPos, length, useSubBuffer);
+		super(ByteBufferAsBytes.create(ByteBuffer.wrap(data, initialPos, length).slice(), false), data, initialPos, length, useSubBuffer);
 	}
 	
 }

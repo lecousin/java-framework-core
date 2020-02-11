@@ -68,7 +68,7 @@ public interface CharacterDecoder {
 	Charset getEncoding();
 
 	/** Decode input.
-	 * The full input is decoded, so input.remaining() is always 0 when this method returns.
+	 * The full input is decoded, and free is called if not needed anymore
 	 * 
 	 * @param input bytes to decode
 	 * @return decoded characters
@@ -86,8 +86,8 @@ public interface CharacterDecoder {
 		return new AsyncConsumer<Bytes.Readable, TError>() {
 
 			@Override
-			public IAsync<TError> consume(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease) {
-				return charsConsumer.consume(decode(data), b -> { if (onDataRelease != null) onDataRelease.accept(data); });
+			public IAsync<TError> consume(Bytes.Readable data) {
+				return charsConsumer.consume(decode(data));
 			}
 
 			@Override
@@ -96,7 +96,7 @@ public interface CharacterDecoder {
 				if (chars == null)
 					return charsConsumer.end();
 				Async<TError> result = new Async<>();
-				charsConsumer.consume(chars, null).onDone(() -> charsConsumer.end().onDone(result), result);
+				charsConsumer.consume(chars).onDone(() -> charsConsumer.end().onDone(result), result);
 				return result;
 			}
 
@@ -116,7 +116,7 @@ public interface CharacterDecoder {
 			private CharArrayStringBuffer str = new CharArrayStringBuffer();
 
 			@Override
-			public IAsync<TError> consume(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease) {
+			public IAsync<TError> consume(Bytes.Readable data) {
 				Chars.Readable chars = decode(data);
 				chars.get(str, chars.remaining());
 				return new Async<>(true);

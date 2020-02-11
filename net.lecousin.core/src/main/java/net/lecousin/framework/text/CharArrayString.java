@@ -4,7 +4,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import net.lecousin.framework.collections.LinkedArrayList;
-import net.lecousin.framework.io.data.RawCharBuffer;
+import net.lecousin.framework.io.data.CharArray;
 
 /**
  * Unprotected and mutable string.
@@ -401,13 +401,13 @@ public class CharArrayString extends ArrayString {
 	}
 	
 	/** Create a CharBuffer wrapping the current string. */
-	public RawCharBuffer asCharBuffer() {
-		return new RawCharBuffer(chars, start, end - start + 1);
+	public CharArray asCharBuffer() {
+		return new CharArray(chars, start, end - start + 1);
 	}
 	
 	@Override
-	public RawCharBuffer[] asCharBuffers() {
-		return new RawCharBuffer[] { asCharBuffer() };
+	public CharArray[] asCharBuffers() {
+		return new CharArray[] { asCharBuffer() };
 	}
 	
 	/** Return the underlying character array. */

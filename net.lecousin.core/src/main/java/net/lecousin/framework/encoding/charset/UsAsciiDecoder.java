@@ -4,8 +4,8 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.io.data.Bytes;
-import net.lecousin.framework.io.data.BytesAsIso8859Chars;
 import net.lecousin.framework.io.data.Chars;
+import net.lecousin.framework.io.data.CharsFromIso8859Bytes;
 
 /** US-ASCII decoder. */
 public class UsAsciiDecoder implements CharacterDecoder {
@@ -21,7 +21,7 @@ public class UsAsciiDecoder implements CharacterDecoder {
 	
 	@Override
 	public Chars.Readable decode(Bytes.Readable input) {
-		return new BytesAsIso8859Chars(input);
+		return new CharsFromIso8859Bytes(input, true);
 	}
 
 	@Override

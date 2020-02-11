@@ -5,15 +5,15 @@ import java.nio.CharBuffer;
 import net.lecousin.framework.text.IString;
 
 /** Chars Readable implementation wrapping a String. */
-public class StringAsReadableChars extends AbstractStringAsReadableDataBuffer implements Chars.Readable {
+public class CharsFromString extends AbstractDataBufferFromString implements Chars.Readable {
 
 	/** Constructor. */
-	public StringAsReadableChars(String str) {
+	public CharsFromString(String str) {
 		super(str);
 	}
 
 	/** Constructor. */
-	public StringAsReadableChars(String str, int offset, int length) {
+	public CharsFromString(String str, int offset, int length) {
 		super(str, offset, length);
 	}
 	
@@ -46,9 +46,14 @@ public class StringAsReadableChars extends AbstractStringAsReadableDataBuffer im
 		b.position(pos);
 		return b;
 	}
+	
+	@Override
+	public void free() {
+		// nothing to free
+	}
 
 	@Override
-	public StringAsReadableChars subBuffer(int startPosition, int length) {
-		return new StringAsReadableChars(str, offset + startPosition, length);
+	public CharsFromString subBuffer(int startPosition, int length) {
+		return new CharsFromString(str, offset + startPosition, length);
 	}
 }

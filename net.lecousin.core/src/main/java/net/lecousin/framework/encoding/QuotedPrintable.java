@@ -1,14 +1,13 @@
 package net.lecousin.framework.encoding;
 
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.io.data.Bytes;
-import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.memory.ByteArrayCache;
 
 /** Encode and decode quoted-printable as defined in RFC 2045. */
@@ -201,14 +200,15 @@ public final class QuotedPrintable {
 		private Decoder decoder;
 		
 		@Override
-		public IAsync<TError> consume(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease) {
+		public IAsync<TError> consume(Bytes.Readable data) {
 			Async<TError> result = new Async<>();
-			continueDecoding(data, onDataRelease, result);
+			continueDecoding(data, result);
 			return result;
 		}
 		
-		private void continueDecoding(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease, Async<TError> result) {
-			RawByteBuffer output = new RawByteBuffer(cache.get(bufferSize > 16 ? bufferSize : Math.max(data.remaining(), 128), true));
+		private void continueDecoding(Bytes.Readable data, Async<TError> result) {
+			ByteArray.Writable output = new ByteArray.Writable(
+				cache.get(bufferSize > 16 ? bufferSize : Math.max(data.remaining(), 128), true), true);
 			try {
 				decoder.decode(data, output, false);
 			} catch (EncodingException e) {
@@ -220,23 +220,22 @@ public final class QuotedPrintable {
 			}
 			if (output.hasRemaining() || !data.hasRemaining()) {
 				// everything has been consumed
-				if (onDataRelease != null)
-					onDataRelease.accept(data);
+				data.free();
 				output.flip();
-				decodedConsumer.consume(output, b -> cache.free(((RawByteBuffer)b).array)).onDone(result);
+				decodedConsumer.consume(output).onDone(result);
 				return;
 			}
 			// we need to call again the decoder
 			output.flip();
-			decodedConsumer.consume(output, b -> cache.free(((RawByteBuffer)b).array))
-				.onDone(() -> continueDecoding(data, onDataRelease, result), result);
+			decodedConsumer.consume(output)
+				.onDone(() -> continueDecoding(data, result), result);
 		}
 
 		@Override
 		public IAsync<TError> end() {
-			RawByteBuffer output = new RawByteBuffer(cache.get(bufferSize, true));
+			ByteArray.Writable output = new ByteArray.Writable(cache.get(bufferSize, true), true);
 			try {
-				decoder.decode(new RawByteBuffer(new byte[0]), output, true);
+				decoder.decode(new ByteArray(new byte[0]), output, true);
 			} catch (EncodingException e) {
 				@SuppressWarnings("unchecked")
 				TError err = errorConverter != null ? errorConverter.apply(e) : (TError)e;
@@ -477,38 +476,38 @@ public final class QuotedPrintable {
 		private Encoder encoder;
 		
 		@Override
-		public IAsync<TError> consume(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease) {
+		public IAsync<TError> consume(Bytes.Readable data) {
 			Async<TError> result = new Async<>();
-			continueEncoding(data, onDataRelease, result);
+			continueEncoding(data, result);
 			return result;
 		}
 		
-		private void continueEncoding(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease, Async<TError> result) {
-			RawByteBuffer output = new RawByteBuffer(cache.get(bufferSize > 16 ? bufferSize : data.remaining() + 32, true));
+		private void continueEncoding(Bytes.Readable data, Async<TError> result) {
+			ByteArray.Writable output = new ByteArray.Writable(
+				cache.get(bufferSize > 16 ? bufferSize : data.remaining() + 32, true), true);
 			encoder.encode(data, output, false);
 			if (output.hasRemaining() || !data.hasRemaining()) {
 				// everything has been consumed
-				if (onDataRelease != null)
-					onDataRelease.accept(data);
+				data.free();
 				output.flip();
-				encodedConsumer.consume(output, b -> cache.free(((RawByteBuffer)b).array)).onDone(result);
+				encodedConsumer.consume(output).onDone(result);
 				return;
 			}
 			// we need to call again the encoder
 			output.flip();
-			encodedConsumer.consume(output, b -> cache.free(((RawByteBuffer)b).array))
+			encodedConsumer.consume(output)
 				.thenStart("Encoding quoted-printable data", Task.PRIORITY_NORMAL,
-					() -> continueEncoding(data, onDataRelease, result), result);
+					() -> continueEncoding(data, result), result);
 		}
 
 		@Override
 		public IAsync<TError> end() {
-			RawByteBuffer output = new RawByteBuffer(cache.get(32, true));
-			encoder.encode(new RawByteBuffer(new byte[0]), output, true);
-			if (output.currentOffset > 0) {
+			ByteArray.Writable output = new ByteArray.Writable(cache.get(32, true), true);
+			encoder.encode(new ByteArray(new byte[0]), output, true);
+			if (output.position() > 0) {
 				Async<TError> result = new Async<>();
 				output.flip();
-				encodedConsumer.consume(output, b -> cache.free(((RawByteBuffer)b).array))
+				encodedConsumer.consume(output)
 				.onDone(() -> encodedConsumer.end().onDone(result), result);
 				return result;
 			}

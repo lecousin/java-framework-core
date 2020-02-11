@@ -210,10 +210,8 @@ public class MemoryIO extends AbstractIO
 		int bufferPos = pos % bufferSize;
 		int len = size - pos;
 		if (len > bufferSize - bufferPos) len = bufferSize - bufferPos;
-		ByteBuffer buf = ByteBuffer.allocate(len);
-		buf.put(buffers[index], bufferPos, len);
+		ByteBuffer buf = ByteBuffer.wrap(buffers[index], bufferPos, len).asReadOnlyBuffer();
 		pos += len;
-		buf.flip();
 		return buf;
 	}
 	

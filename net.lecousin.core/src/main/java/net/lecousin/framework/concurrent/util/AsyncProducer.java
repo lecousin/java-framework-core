@@ -39,7 +39,7 @@ public interface AsyncProducer<T, TError extends Exception> {
 					return;
 				}
 				AsyncSupplier<T, TError> nextProduction = produce(description, priority);
-				IAsync<TError> consumption = consumer.consume(data, null);
+				IAsync<TError> consumption = consumer.consume(data);
 				consumption.onDone(() -> nextProduction.thenStart(
 					new Task.Cpu.Parameter.FromConsumerThrows<>(description, priority, that), result), result);
 			}
@@ -67,7 +67,7 @@ public interface AsyncProducer<T, TError extends Exception> {
 				AsyncSupplier<T, TError> nextProduction = produce(description, priority);
 				AsyncSupplier<T2, TError> conversion = converter.apply(data);
 				conversion.thenStart(new Task.Cpu.Parameter.FromConsumerThrows<T2, TError>(description, priority, converted -> {
-					IAsync<TError> consumption = consumer.consume(converted, null);
+					IAsync<TError> consumption = consumer.consume(converted);
 					consumption.onDone(() -> nextProduction.thenStart(
 						new Task.Cpu.Parameter.FromConsumerThrows<>(description, priority, that), result), result);
 				}), result);

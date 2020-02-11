@@ -15,10 +15,10 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.encoding.charset.CharacterDecoder;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.data.ByteArray;
+import net.lecousin.framework.io.data.CharArray;
 import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.io.data.CompositeChars;
-import net.lecousin.framework.io.data.RawByteBuffer;
-import net.lecousin.framework.io.data.RawCharBuffer;
 import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.text.IString;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -58,9 +58,9 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		currentChars = initChars != null && initChars.hasRemaining() ? initChars : null;
 		// start decoding
 		if (initBytes != null && initBytes.hasRemaining()) {
-			RawByteBuffer rb = new RawByteBuffer(initBytes);
+			ByteArray rb = ByteArray.fromByteBuffer(initBytes);
 			AsyncSupplier<Integer,IOException> readTask = new AsyncSupplier<>(Integer.valueOf(rb.remaining()), null);
-			DecodeTask decode = new DecodeTask(readTask, rb.array, rb.currentOffset, rb.remaining());
+			DecodeTask decode = new DecodeTask(readTask, rb);
 			operation(decode).startOn(readTask, true);
 		} else {
 			if (input instanceof IO.Readable.Buffered)
@@ -129,24 +129,20 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		byte[] buf = cache.get(bufferSize, true);
 		ByteBuffer bb = ByteBuffer.wrap(buf);
 		AsyncSupplier<Integer,IOException> readTask = input.readFullyAsync(bb);
-		DecodeTask decode = new DecodeTask(readTask, buf, 0, buf.length);
+		DecodeTask decode = new DecodeTask(readTask, new ByteArray(buf));
 		operation(decode).startOn(readTask, true);
 	}
 	
 	private class DecodeTask extends Task.Cpu<Void,NoException> {
 		
-		private DecodeTask(AsyncSupplier<Integer,IOException> readTask, byte[] buf, int bufOffset, int expectedRead) {
+		private DecodeTask(AsyncSupplier<Integer,IOException> readTask, ByteArray buf) {
 			super("Decode character stream", input.getPriority());
 			this.readTask = readTask;
 			this.buf = buf;
-			this.bufOffset = bufOffset;
-			this.expectedRead = expectedRead;
 		}
 		
 		private AsyncSupplier<Integer,IOException> readTask;
-		private byte[] buf;
-		private int bufOffset;
-		private int expectedRead;
+		private ByteArray buf;
 		
 		@Override
 		@SuppressWarnings("squid:S1696") // NullPointerException
@@ -186,7 +182,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		private void decode() {
 			int nb = readTask.getResult().intValue();
 			boolean end;
-			if (nb < expectedRead) {
+			if (nb < buf.remaining()) {
 				input.closeAsync();
 				end = true;
 			} else {
@@ -195,8 +191,9 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 			if (nextReady.isCancelled()) return; // closed
 			Chars.Readable chars;
 			if (nb > 0) {
-				RawByteBuffer in = new RawByteBuffer(buf, bufOffset, nb);
-				chars = decoder.decode(in);
+				buf.setPosition(nb);
+				buf.flip();
+				chars = decoder.decode(buf);
 			} else {
 				chars = null;
 			}
@@ -352,11 +349,13 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 			synchronized (ready) {
 				full = ready.isFull();
 				pollNextBuffer();
-				if (currentChars == null && endReached) return -1;
+				if (currentChars == null && endReached)
+					return -1;
 				if (nextReady.hasError()) throw nextReady.getError();
 			}
 			if (full && !endReached) bufferize();
-			if (currentChars == null) return -2;
+			if (currentChars == null)
+				return -2;
 		}
 		char c = currentChars.get();
 		if (!currentChars.hasRemaining()) {
@@ -469,7 +468,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		if (back != -1) {
 			char c = (char)back;
 			back = -1;
-			result.unblockSuccess(new RawCharBuffer(new char[] { c }));
+			result.unblockSuccess(new CharArray(new char[] { c }));
 			return;
 		}
 		if (currentChars == null) {

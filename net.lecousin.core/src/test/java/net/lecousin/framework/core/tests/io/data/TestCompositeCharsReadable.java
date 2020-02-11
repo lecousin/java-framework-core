@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 import net.lecousin.framework.core.test.io.data.TestCharsReadable;
 import net.lecousin.framework.io.data.CompositeChars;
-import net.lecousin.framework.io.data.RawCharBuffer;
+import net.lecousin.framework.io.data.CharArray;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -19,7 +19,7 @@ public class TestCompositeCharsReadable extends TestCharsReadable {
 		CompositeChars.Readable c = new CompositeChars.Readable();
 		for (int i = 0; i < length; i += 5) {
 			int len = Math.min(5, length - i);
-			RawCharBuffer r = new RawCharBuffer(data, initialPos + i, len);
+			CharArray r = new CharArray(data, initialPos + i, len);
 			c.add(r);
 		}
 		return c;
@@ -28,9 +28,9 @@ public class TestCompositeCharsReadable extends TestCharsReadable {
 	@Test
 	public void testConstructorArray() {
 		CompositeChars.Readable c = new CompositeChars.Readable(
-			new RawCharBuffer(new char[10]),
-			new RawCharBuffer(new char[5]),
-			new RawCharBuffer(new char[3])
+			new CharArray(new char[10]),
+			new CharArray(new char[5]),
+			new CharArray(new char[3])
 		);
 		Assert.assertEquals(18, c.remaining());
 	}
@@ -38,9 +38,9 @@ public class TestCompositeCharsReadable extends TestCharsReadable {
 	@Test
 	public void testConstructorList() {
 		CompositeChars.Readable c = new CompositeChars.Readable(Arrays.asList(
-			new RawCharBuffer(new char[10]),
-			new RawCharBuffer(new char[5]),
-			new RawCharBuffer(new char[3])
+			new CharArray(new char[10]),
+			new CharArray(new char[5]),
+			new CharArray(new char[3])
 		));
 		Assert.assertEquals(18, c.remaining());
 	}

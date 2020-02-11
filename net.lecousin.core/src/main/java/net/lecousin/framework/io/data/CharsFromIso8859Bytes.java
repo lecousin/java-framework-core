@@ -5,15 +5,17 @@ import java.nio.CharBuffer;
 import net.lecousin.framework.text.ByteArrayStringIso8859;
 import net.lecousin.framework.text.IString;
 
-/** Wrap a Bytes.Readable as a Chars.Readable considering all bytes are 7-bit encoded so can be considered as US-ASCII chars. */
-public class BytesAsIso8859Chars implements Chars.Readable {
+/** Wrap a Bytes.Readable as a Chars.Readable considering all bytes are ISO-8859 chars. */
+public class CharsFromIso8859Bytes implements Chars.Readable {
 
 	/** Constructor. */
-	public BytesAsIso8859Chars(Bytes.Readable bytes) {
+	public CharsFromIso8859Bytes(Bytes.Readable bytes, boolean free) {
 		this.bytes = bytes;
+		this.free = free;
 	}
 	
 	protected Bytes.Readable bytes;
+	protected boolean free;
 
 	@Override
 	public int length() {
@@ -85,7 +87,13 @@ public class BytesAsIso8859Chars implements Chars.Readable {
 	}
 	
 	@Override
-	public BytesAsIso8859Chars subBuffer(int startPosition, int length) {
-		return new BytesAsIso8859Chars(bytes.subBuffer(startPosition, length));
+	public void free() {
+		if (free)
+			bytes.free();
+	}
+	
+	@Override
+	public CharsFromIso8859Bytes subBuffer(int startPosition, int length) {
+		return new CharsFromIso8859Bytes(bytes.subBuffer(startPosition, length), false);
 	}
 }

@@ -15,8 +15,8 @@ import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.data.CharArray;
 import net.lecousin.framework.io.data.Chars;
-import net.lecousin.framework.io.data.RawCharBuffer;
 import net.lecousin.framework.io.text.ICharacterStream;
 import net.lecousin.framework.util.ConcurrentCloseable;
 
@@ -121,9 +121,9 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 	}
 	
 	@Override
-	public RawCharBuffer[] asCharBuffers() {
-		if (strings == null) return new RawCharBuffer[0];
-		RawCharBuffer[] chars = new RawCharBuffer[lastUsed + 1];
+	public CharArray[] asCharBuffers() {
+		if (strings == null) return new CharArray[0];
+		CharArray[] chars = new CharArray[lastUsed + 1];
 		for (int i = 0; i <= lastUsed; ++i)
 			chars[i] = strings[i].asCharBuffer();
 		return chars;
@@ -264,7 +264,7 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		@Override
 		public Chars.Readable readNextBuffer() {
 			if (back != -1) {
-				Chars.Readable s = new RawCharBuffer(new char[] { (char)back });
+				Chars.Readable s = new CharArray(new char[] { (char)back });
 				back = -1;
 				return s;
 			}

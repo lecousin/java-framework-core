@@ -11,6 +11,7 @@ import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
+import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
 
@@ -329,7 +330,8 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 					if (pos >= size) return null;
 					int len = 16384;
 					if (len > size - pos) len = (int)(size - pos);
-					ByteBuffer buf = ByteBuffer.allocate(len);
+					ByteBuffer buf = ByteBuffer.wrap(ByteArrayCache.getInstance().get(len, true));
+					buf.limit(len);
 					int nb = ((IO.Readable.Seekable)io).readSync(start + pos, buf);
 					if (nb > 0)
 						pos += nb;

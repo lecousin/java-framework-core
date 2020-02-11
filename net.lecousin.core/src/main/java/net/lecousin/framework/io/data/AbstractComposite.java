@@ -111,4 +111,11 @@ public abstract class AbstractComposite<T extends DataBuffer> implements DataBuf
 		return position < length;
 	}
 	
+	@Override
+	public void free() {
+		for (T data : list)
+			data.free();
+		list = null;
+	}
+	
 }

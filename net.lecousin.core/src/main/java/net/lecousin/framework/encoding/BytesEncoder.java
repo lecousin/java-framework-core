@@ -3,8 +3,8 @@ package net.lecousin.framework.encoding;
 import java.util.function.Function;
 
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.io.data.Bytes;
-import net.lecousin.framework.io.data.RawByteBuffer;
 
 /** Encode bytes using a specific encoding. */
 public interface BytesEncoder {
@@ -29,9 +29,9 @@ public interface BytesEncoder {
 	 * @return the number of bytes read from the input buffer
 	 */
 	default int encode(byte[] input, int offset, int length, Bytes.Writable output, boolean end) throws EncodingException {
-		RawByteBuffer in = new RawByteBuffer(input, offset, length);
+		ByteArray in = new ByteArray(input, offset, length);
 		encode(in, output, end);
-		return in.currentOffset - offset;
+		return in.position();
 	}
 	
 	/**
@@ -49,7 +49,7 @@ public interface BytesEncoder {
 
 		/** Encode the given input and return the encoded bytes. */
 		default byte[] encode(byte[] input, int offset, int length) throws EncodingException {
-			return encode(new RawByteBuffer(input, offset, length));
+			return encode(new ByteArray(input, offset, length));
 		}
 		
 		/** Encode the given input and return the encoded bytes. */

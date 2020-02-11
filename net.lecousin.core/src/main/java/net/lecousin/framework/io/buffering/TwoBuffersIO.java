@@ -521,18 +521,13 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 	}
 	
 	private ByteBuffer getRemainingBuf1() {
-		ByteBuffer buf = ByteBuffer.allocate(nb1 - pos);
-		buf.put(buf1, pos, nb1 - pos);
-		buf.flip();
+		ByteBuffer buf = ByteBuffer.wrap(buf1, pos, nb1 - pos).asReadOnlyBuffer();
 		pos = nb1;
 		return buf;
 	}
 	
 	private ByteBuffer getRemainingBuf2() {
-		ByteBuffer buf = ByteBuffer.allocate(nb1 + nb2 - pos);
-		if (pos < nb1) buf.put(buf1, pos, nb1 - pos);
-		buf.put(buf2, pos - nb1, nb2 - (pos - nb1));
-		buf.flip();
+		ByteBuffer buf = ByteBuffer.wrap(buf2, pos - nb1, nb2 - (pos - nb1)).asReadOnlyBuffer();
 		pos = nb1 + nb2;
 		return buf;
 	}

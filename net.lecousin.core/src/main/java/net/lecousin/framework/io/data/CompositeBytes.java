@@ -121,7 +121,7 @@ public abstract class CompositeBytes<T extends Bytes> extends AbstractComposite<
 				p -= r;
 				i++;
 			} while (i < list.size());
-			return new RawByteBuffer(new byte[0]);
+			return new ByteArray(new byte[0]);
 		}
 	}
 
@@ -212,7 +212,7 @@ public abstract class CompositeBytes<T extends Bytes> extends AbstractComposite<
 				p -= r;
 				i++;
 			} while (i < list.size());
-			return new RawByteBuffer(new byte[0]);
+			return new ByteArray.Writable(new byte[0], false);
 		}
 	}
 	

@@ -9,7 +9,7 @@ public interface Bytes extends DataBuffer {
 	ByteBuffer toByteBuffer();
 	
 	/** Readable bytes. */
-	interface Readable extends Bytes {
+	interface Readable extends Bytes, DataBuffer.Readable {
 		
 		/** Return the next byte. */
 		byte get();
@@ -25,7 +25,7 @@ public interface Bytes extends DataBuffer {
 	}
 	
 	/** Writable bytes. */
-	interface Writable extends Bytes {
+	interface Writable extends Bytes, DataBuffer.Writable {
 		
 		/** Set the next byte. */
 		void put(byte b);

@@ -4,14 +4,13 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import net.lecousin.framework.collections.LinkedArrayList;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
-import net.lecousin.framework.io.data.RawByteBuffer;
-import net.lecousin.framework.io.data.RawCharBuffer;
+import net.lecousin.framework.io.data.ByteArray;
+import net.lecousin.framework.io.data.CharArray;
 
 /**
  * Unprotected and mutable string using a byte array to store ISO-8859 characters.
@@ -432,8 +431,8 @@ public class ByteArrayStringIso8859 extends ArrayString {
 	}
 	
 	@Override
-	public RawCharBuffer[] asCharBuffers() {
-		return new RawCharBuffer[] { new RawCharBuffer(toChars()) };
+	public CharArray[] asCharBuffers() {
+		return new CharArray[] { new CharArray(toChars()) };
 	}
 	
 	/** Wrap bytes into a ByteBuffer. */
@@ -442,8 +441,8 @@ public class ByteArrayStringIso8859 extends ArrayString {
 	}
 	
 	/** Wrap bytes into a RawByteBuffer. */
-	public RawByteBuffer asRawByteBuffer() {
-		return new RawByteBuffer(chars, start, end - start + 1);
+	public ByteArray asRawByteBuffer() {
+		return new ByteArray(chars, start, end - start + 1);
 	}
 	
 	@Override
@@ -475,16 +474,11 @@ public class ByteArrayStringIso8859 extends ArrayString {
 	) {
 		return new AsyncConsumer.Simple<ByteBuffer, TError>() {
 			@Override
-			public IAsync<TError> consume(ByteBuffer data, Consumer<ByteBuffer> onDataRelease) {
-				RawByteBuffer raw = new RawByteBuffer(data);
+			public IAsync<TError> consume(ByteBuffer data) {
+				ByteArray raw = ByteArray.fromByteBuffer(data);
 				IAsync<TError> write = consumer.apply(
-					new ByteArrayStringIso8859(raw.array, raw.arrayOffset, raw.length, raw.length));
-				if (onDataRelease != null) {
-					if (data.hasArray())
-						write.onDone(() -> onDataRelease.accept(data));
-					else
-						onDataRelease.accept(data);
-				}
+					new ByteArrayStringIso8859(raw.getArray(), raw.getCurrentArrayOffset(), raw.remaining(), raw.remaining()));
+				write.onDone(raw::free);
 				return write;
 			}
 		};

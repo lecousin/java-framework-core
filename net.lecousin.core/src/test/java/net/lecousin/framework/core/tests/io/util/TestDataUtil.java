@@ -8,7 +8,7 @@ import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.IOAsInputStream;
 import net.lecousin.framework.io.IOAsOutputStream;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
-import net.lecousin.framework.io.data.RawByteBuffer;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.io.util.DataUtil;
 
 import org.junit.Assert;
@@ -94,32 +94,32 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(ByteBuffer.wrap(buf, 0, 30)));
 		
 		buf = new byte[32];
-		DataUtil.Write16.LE.write(new RawByteBuffer(buf, 1, 30), value);
+		DataUtil.Write16.LE.write(new ByteArray.Writable(buf, 1, 30, false), value);
 		Assert.assertEquals(value, DataUtil.Read16.LE.read(buf, 1));
 		buf = new byte[32];
-		DataUtil.Write16.BE.write(new RawByteBuffer(buf, 1, 30), value);
+		DataUtil.Write16.BE.write(new ByteArray.Writable(buf, 1, 30, false), value);
 		Assert.assertEquals(value, DataUtil.Read16.BE.read(buf, 1));
 		buf = new byte[32];
-		DataUtil.Write16.BE.write(new RawByteBuffer(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.Read16.BE.read(new RawByteBuffer(buf, 1, 30)));
+		DataUtil.Write16.BE.write(new ByteArray.Writable(buf, 1, 30, false), value);
+		Assert.assertEquals(value, DataUtil.Read16.BE.read(new ByteArray(buf, 1, 30)));
 		buf = new byte[32];
 		DataUtil.Write16.LE.write(buf, 0, value);
-		Assert.assertEquals(value, DataUtil.Read16.LE.read(new RawByteBuffer(buf, 0, 30)));
+		Assert.assertEquals(value, DataUtil.Read16.LE.read(new ByteArray(buf, 0, 30)));
 		buf = new byte[32];
-		DataUtil.Write16U.BE.write(new RawByteBuffer(buf, 1, 30), unsigned);
-		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(new RawByteBuffer(buf, 1, 30)));
+		DataUtil.Write16U.BE.write(new ByteArray.Writable(buf, 1, 30, false), unsigned);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(new ByteArray(buf, 1, 30)));
 		buf = new byte[32];
 		DataUtil.Write16U.LE.write(buf, 0, unsigned);
-		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(new RawByteBuffer(buf, 0, 30)));
+		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(new ByteArray(buf, 0, 30)));
 		buf = new byte[32];
-		DataUtil.Write16U.LE.write(new RawByteBuffer(buf, 1, 30), value);
+		DataUtil.Write16U.LE.write(new ByteArray.Writable(buf, 1, 30, false), value);
 		Assert.assertEquals(unsigned, DataUtil.Read16U.LE.read(buf, 1));
 		buf = new byte[32];
-		DataUtil.Write16U.BE.write(new RawByteBuffer(buf, 1, 30), value);
+		DataUtil.Write16U.BE.write(new ByteArray.Writable(buf, 1, 30, false), value);
 		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(buf, 1));
 		buf = new byte[32];
-		DataUtil.Write16U.BE.write(new RawByteBuffer(buf, 0, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(new RawByteBuffer(buf, 0, 30)));
+		DataUtil.Write16U.BE.write(new ByteArray.Writable(buf, 0, 30, false), value);
+		Assert.assertEquals(unsigned, DataUtil.Read16U.BE.read(new ByteArray(buf, 0, 30)));
 		
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
 		DataUtil.Write16.LE.write(io, value);
@@ -235,23 +235,23 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(ByteBuffer.wrap(buf, 0, 30)));
 		
 		buf = new byte[32];
-		DataUtil.Write32.LE.write(new RawByteBuffer(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.Read32.LE.read(new RawByteBuffer(buf, 1, 30)));
+		DataUtil.Write32.LE.write(new ByteArray.Writable(buf, 1, 30, false), value);
+		Assert.assertEquals(value, DataUtil.Read32.LE.read(new ByteArray(buf, 1, 30)));
 		buf = new byte[32];
-		DataUtil.Write32.BE.write(new RawByteBuffer(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.Read32.BE.read(new RawByteBuffer(buf, 1, 30)));
+		DataUtil.Write32.BE.write(new ByteArray.Writable(buf, 1, 30, false), value);
+		Assert.assertEquals(value, DataUtil.Read32.BE.read(new ByteArray(buf, 1, 30)));
 		buf = new byte[32];
-		DataUtil.Write32U.LE.write(new RawByteBuffer(buf, 1, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(new RawByteBuffer(buf, 1, 30)));
+		DataUtil.Write32U.LE.write(new ByteArray.Writable(buf, 1, 30, false), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(new ByteArray(buf, 1, 30)));
 		buf = new byte[32];
-		DataUtil.Write32U.BE.write(new RawByteBuffer(buf, 1, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(new RawByteBuffer(buf, 1, 30)));
+		DataUtil.Write32U.BE.write(new ByteArray.Writable(buf, 1, 30, false), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(new ByteArray(buf, 1, 30)));
 		buf = new byte[32];
-		DataUtil.Write32U.LE.write(new RawByteBuffer(buf, 0, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(new RawByteBuffer(buf, 0, 30)));
+		DataUtil.Write32U.LE.write(new ByteArray.Writable(buf, 0, 30, false), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.LE.read(new ByteArray(buf, 0, 30)));
 		buf = new byte[32];
-		DataUtil.Write32U.BE.write(new RawByteBuffer(buf, 0, 30), value);
-		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(new RawByteBuffer(buf, 0, 30)));
+		DataUtil.Write32U.BE.write(new ByteArray.Writable(buf, 0, 30, false), value);
+		Assert.assertEquals(unsigned, DataUtil.Read32U.BE.read(new ByteArray(buf, 0, 30)));
 		
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
 		DataUtil.Write32.LE.write(io, value);
@@ -386,17 +386,17 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		DataUtil.Write24U.BE.write(ByteBuffer.wrap(buf, 0, 30), value);
 		Assert.assertEquals(value, DataUtil.Read24U.BE.read(ByteBuffer.wrap(buf, 0, 30)));
 		
-		DataUtil.Write24U.LE.write(new RawByteBuffer(buf, 1, 30), value);
+		DataUtil.Write24U.LE.write(new ByteArray.Writable(buf, 1, 30, false), value);
 		Assert.assertEquals(value, DataUtil.Read24U.LE.read(buf, 1));
 		buf = new byte[32];
-		DataUtil.Write24U.BE.write(new RawByteBuffer(buf, 1, 30), value);
+		DataUtil.Write24U.BE.write(new ByteArray.Writable(buf, 1, 30, false), value);
 		Assert.assertEquals(value, DataUtil.Read24U.BE.read(buf, 1));
 		buf = new byte[32];
-		DataUtil.Write24U.LE.write(new RawByteBuffer(buf, 0, 30), value);
-		Assert.assertEquals(value, DataUtil.Read24U.LE.read(new RawByteBuffer(buf, 0, 30)));
+		DataUtil.Write24U.LE.write(new ByteArray.Writable(buf, 0, 30, false), value);
+		Assert.assertEquals(value, DataUtil.Read24U.LE.read(new ByteArray(buf, 0, 30)));
 		buf = new byte[32];
-		DataUtil.Write24U.BE.write(new RawByteBuffer(buf, 0, 30), value);
-		Assert.assertEquals(value, DataUtil.Read24U.BE.read(new RawByteBuffer(buf, 0, 30)));
+		DataUtil.Write24U.BE.write(new ByteArray.Writable(buf, 0, 30, false), value);
+		Assert.assertEquals(value, DataUtil.Read24U.BE.read(new ByteArray(buf, 0, 30)));
 		
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
 		DataUtil.Write24U.LE.write(io, value);
@@ -473,11 +473,11 @@ public class TestDataUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(value, DataUtil.Read64.BE.read(ByteBuffer.wrap(buf, 1, 30)));
 		
 		buf = new byte[32];
-		DataUtil.Write64.LE.write(new RawByteBuffer(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.Read64.LE.read(new RawByteBuffer(buf, 1, 30)));
+		DataUtil.Write64.LE.write(new ByteArray.Writable(buf, 1, 30, false), value);
+		Assert.assertEquals(value, DataUtil.Read64.LE.read(new ByteArray(buf, 1, 30)));
 		buf = new byte[32];
-		DataUtil.Write64.BE.write(new RawByteBuffer(buf, 1, 30), value);
-		Assert.assertEquals(value, DataUtil.Read64.BE.read(new RawByteBuffer(buf, 1, 30)));
+		DataUtil.Write64.BE.write(new ByteArray.Writable(buf, 1, 30, false), value);
+		Assert.assertEquals(value, DataUtil.Read64.BE.read(new ByteArray(buf, 1, 30)));
 		
 		ByteArrayIO io = new ByteArrayIO(32, "TestDataUtil");
 		DataUtil.Write64.LE.write(io, value);

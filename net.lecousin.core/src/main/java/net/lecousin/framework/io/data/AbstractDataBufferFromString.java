@@ -1,15 +1,15 @@
 package net.lecousin.framework.io.data;
 
 /** Chars Readable implementation wrapping a String. */
-public abstract class AbstractStringAsReadableDataBuffer implements DataBuffer {
+public abstract class AbstractDataBufferFromString implements DataBuffer {
 
 	/** Constructor. */
-	public AbstractStringAsReadableDataBuffer(String str) {
+	public AbstractDataBufferFromString(String str) {
 		this(str, 0, str.length());
 	}
 
 	/** Constructor. */
-	public AbstractStringAsReadableDataBuffer(String str, int offset, int length) {
+	public AbstractDataBufferFromString(String str, int offset, int length) {
 		this.str = str;
 		this.offset = offset;
 		this.length = length;

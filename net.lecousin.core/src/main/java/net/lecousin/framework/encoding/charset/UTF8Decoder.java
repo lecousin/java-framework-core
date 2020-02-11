@@ -4,10 +4,10 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.io.data.Bytes;
-import net.lecousin.framework.io.data.BytesAsIso8859Chars;
+import net.lecousin.framework.io.data.CharArray;
 import net.lecousin.framework.io.data.Chars;
+import net.lecousin.framework.io.data.CharsFromIso8859Bytes;
 import net.lecousin.framework.io.data.CompositeChars;
-import net.lecousin.framework.io.data.RawCharBuffer;
 import net.lecousin.framework.memory.CharArrayCache;
 
 /** UTF-8 Decoder. */
@@ -22,7 +22,7 @@ public class UTF8Decoder implements CharacterDecoder {
 	
 	private CharArrayCache cache;
 	private int bufferSize;
-	private RawCharBuffer buffer;
+	private CharArray.Writable buffer;
 	private CharPusher charPusher;
 	private int val = 0;
 	private int state = 0;
@@ -45,12 +45,15 @@ public class UTF8Decoder implements CharacterDecoder {
 		// if previous buffer was stopped in a specific state, we need to finish previous decoding
 		if (state != 0) {
 			finishState(input);
-			if (!input.hasRemaining())
+			if (!input.hasRemaining()) {
+				input.free();
 				return result();
+			}
 		}
 		
 		// while there are at least 4 remaining bytes we are sure there is enough input to decode a full character
 		// so less conditions to check
+		boolean inputReused = false;
 		while (input.remaining() >= 4) {
 			byte b = input.get();
 			if (b >= 0) {
@@ -67,8 +70,9 @@ public class UTF8Decoder implements CharacterDecoder {
 					endOfAscii++;
 				if (endOfAscii >= 4 || endOfAscii == r) {
 					pushBuffer();
-					result.add(new BytesAsIso8859Chars(input.subBuffer(input.position() - 1, endOfAscii + 1)));
+					result.add(new CharsFromIso8859Bytes(input.subBuffer(input.position() - 1, endOfAscii + 1), false));
 					input.moveForward(endOfAscii);
+					inputReused = true;
 					continue;
 				}
 				charPusher.push((char)b);
@@ -143,6 +147,10 @@ public class UTF8Decoder implements CharacterDecoder {
 			}
 		}
 		
+		if (!inputReused)
+			input.free();
+		else
+			input.goToEnd();
 		return result();
 	}
 	
@@ -153,21 +161,19 @@ public class UTF8Decoder implements CharacterDecoder {
 	private class InitCharPusher implements CharPusher {
 		@Override
 		public void push(char c) {
-			buffer = new RawCharBuffer(cache.get(bufferSize, true));
-			buffer.array[0] = c;
-			buffer.currentOffset = 1;
+			buffer = new CharArray.Writable(cache.get(bufferSize, true), true);
+			buffer.put(c);
 			charPusher = new BufferCharPusher();
 		}
 	}
 	
 	private class BufferCharPusher implements CharPusher {
-		private int endOffset = buffer.arrayOffset + buffer.length;
-		
 		@Override
 		public void push(char c) {
-			buffer.array[buffer.currentOffset++] = c;
-			if (buffer.currentOffset == endOffset) {
-				result.add(new RawCharBuffer(buffer.array, buffer.arrayOffset, buffer.length));
+			buffer.put(c);
+			if (!buffer.hasRemaining()) {
+				buffer.flip();
+				result.add(buffer);
 				buffer = null;
 				charPusher = new InitCharPusher();
 			}
@@ -177,11 +183,10 @@ public class UTF8Decoder implements CharacterDecoder {
 	private void pushBuffer() {
 		if (buffer == null)
 			return;
-		int l = buffer.currentOffset - buffer.arrayOffset;
+		int l = buffer.position();
 		if (l > 0) {
-			result.add(new RawCharBuffer(buffer.array, buffer.arrayOffset, l));
-			buffer.length -= l;
-			buffer.arrayOffset = buffer.currentOffset;
+			result.add(buffer.subBuffer(0, l));
+			buffer.slice();
 			charPusher = new BufferCharPusher();
 		}
 	}
@@ -297,7 +302,7 @@ public class UTF8Decoder implements CharacterDecoder {
 		if (state == 0)
 			return null;
 		state = 0;
-		return new RawCharBuffer(new char[] { (char)val });
+		return new CharArray(new char[] { (char)val });
 	}
 	
 }

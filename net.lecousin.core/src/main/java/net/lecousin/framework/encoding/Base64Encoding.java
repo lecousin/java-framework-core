@@ -1,13 +1,12 @@
 package net.lecousin.framework.encoding;
 
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.io.data.Bytes;
-import net.lecousin.framework.io.data.RawByteBuffer;
 import net.lecousin.framework.memory.ByteArrayCache;
 
 /** Encode and decode base 64. */
@@ -400,7 +399,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 	
 	@Override
 	public int encode(byte[] input, int offset, int length, Bytes.Writable output, boolean end) {
-		RawByteBuffer in = new RawByteBuffer(input, offset, length);
+		ByteArray in = new ByteArray(input, offset, length);
 		encode(in, output, end);
 		return in.position();
 	}
@@ -445,33 +444,31 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 		private int nbBuf = 0;
 
 		@Override
-		public IAsync<TError> consume(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease) {
-			RawByteBuffer output;
+		public IAsync<TError> consume(Bytes.Readable data) {
+			ByteArray.Writable output;
 			if (nbBuf != 0) {
 				do {
 					buf[nbBuf++] = data.get();
 				} while (nbBuf < 3 && data.hasRemaining());
 				if (nbBuf < 3) {
-					if (onDataRelease != null)
-						onDataRelease.accept(data);
+					data.free();
 					return new Async<>(true);
 				}
 				int nb = data.remaining() / 3 + 1;
-				output = new RawByteBuffer(cache.get(nb * 4, true));
+				output = new ByteArray.Writable(cache.get(nb * 4, true), true);
 				encode(buf, 0, 3, output, false);
 				nbBuf = 0;
 			} else {
 				int nb = data.remaining() / 3;
-				output = new RawByteBuffer(cache.get(nb * 4, true));
+				output = new ByteArray.Writable(cache.get(nb * 4, true), true);
 			}
 			encode(data, output, false);
 			nbBuf = data.remaining();
 			if (nbBuf != 0)
 				data.get(buf, 0, nbBuf);
-			if (onDataRelease != null)
-				onDataRelease.accept(data);
+			data.free();
 			output.flip();
-			return encodedBytesConsumer.consume(output, b -> cache.free(((RawByteBuffer)b).array));
+			return encodedBytesConsumer.consume(output);
 		}
 
 		@Override
@@ -481,7 +478,7 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 			byte[] out = new byte[4];
 			encodeUpTo3Bytes(buf, 0, out, 0, nbBuf);
 			Async<TError> result = new Async<>();
-			encodedBytesConsumer.consume(new RawByteBuffer(out), null).onDone(() -> encodedBytesConsumer.end().onDone(result), result);
+			encodedBytesConsumer.consume(new ByteArray(out)).onDone(() -> encodedBytesConsumer.end().onDone(result), result);
 			return result;
 		}
 
@@ -515,8 +512,8 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 
 		@Override
 		@SuppressWarnings("squid:S2259") // not null
-		public IAsync<TError> consume(Bytes.Readable data, Consumer<Bytes.Readable> onDataRelease) {
-			RawByteBuffer output = null;
+		public IAsync<TError> consume(Bytes.Readable data) {
+			ByteArray.Writable output = null;
 			try {
 				int nb;
 				if (nbBuf != 0) {
@@ -524,18 +521,17 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 						buf[nbBuf++] = data.get();
 					} while (nbBuf < 4 && data.hasRemaining());
 					if (nbBuf < 4) {
-						if (onDataRelease != null)
-							onDataRelease.accept(data);
+						data.free();
 						return new Async<>(true);
 					}
 					nb = data.remaining() / 4;
-					output = new RawByteBuffer(cache.get((nb + 1) * 3, true));
+					output = new ByteArray.Writable(cache.get((nb + 1) * 3, true), true);
 					decode4Bytes(buf, 0, output);
 					nbBuf = 0;
 				} else {
 					nb = data.remaining() / 4;
 					if (nb > 0)
-						output = new RawByteBuffer(cache.get(nb * 3, true));
+						output = new ByteArray.Writable(cache.get(nb * 3, true), true);
 				}
 				if (nb > 0)
 					decode(data, output, false);
@@ -548,12 +544,11 @@ public final class Base64Encoding implements BytesEncoder.KnownOutputSize, Bytes
 			nbBuf = data.remaining();
 			if (nbBuf != 0)
 				data.get(buf, 0, nbBuf);
-			if (onDataRelease != null)
-				onDataRelease.accept(data);
+			data.free();
 			if (output == null)
 				return new Async<>(true);
 			output.flip();
-			return decodedBytesConsumer.consume(output, b -> cache.free(((RawByteBuffer)b).array));
+			return decodedBytesConsumer.consume(output);
 		}
 
 		@Override
