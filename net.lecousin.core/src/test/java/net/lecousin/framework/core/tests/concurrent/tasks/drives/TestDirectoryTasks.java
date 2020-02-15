@@ -1,4 +1,4 @@
-package net.lecousin.framework.core.tests.concurrent;
+package net.lecousin.framework.core.tests.concurrent.tasks.drives;
 
 import java.io.File;
 import java.io.IOException;

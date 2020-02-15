@@ -30,6 +30,7 @@ public class LoadLibraryExtensionPointsFile extends FullReadLines<Void> {
 	
 	@Override
 	protected void processLine(CharArrayStringBuffer line) throws IOException {
+		if (line.isEmpty()) return;
 		try {
 			Class<?> cl = Class.forName(line.asString(), true, classLoader);
 			if (ExtensionPoint.class.isAssignableFrom(cl)) {

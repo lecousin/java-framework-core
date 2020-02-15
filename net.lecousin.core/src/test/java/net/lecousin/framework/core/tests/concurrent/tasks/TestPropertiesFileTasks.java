@@ -1,4 +1,4 @@
-package net.lecousin.framework.core.tests.concurrent;
+package net.lecousin.framework.core.tests.concurrent.tasks;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +11,9 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.tasks.LoadPropertiesFileTask;
 import net.lecousin.framework.concurrent.tasks.SavePropertiesFileTask;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.io.FileIO;
+import net.lecousin.framework.io.IO;
+import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
 
 public class TestPropertiesFileTasks extends LCCoreAbstractTest {
 
@@ -31,6 +34,8 @@ public class TestPropertiesFileTasks extends LCCoreAbstractTest {
 		File file = File.createTempFile("test", "properties");
 		SavePropertiesFileTask.savePropertiesFile(props, file, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL).blockThrow(0);
 		Properties loaded = LoadPropertiesFileTask.loadPropertiesFile(file, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL, true, null).blockResult(0);
+		check(props, loaded);
+		loaded = LoadPropertiesFileTask.loadPropertiesFile((IO.Readable)new SimpleBufferedReadable(new FileIO.ReadOnly(file, Task.PRIORITY_NORMAL), 1024), StandardCharsets.UTF_8, Task.PRIORITY_NORMAL, IO.OperationType.SYNCHRONOUS, p -> {}).blockResult(0);
 		check(props, loaded);
 	}
 	

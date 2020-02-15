@@ -29,6 +29,16 @@ public class TestCharArrayStringBuffer extends TestArrayStringBuffer<CharArraySt
 		s = new CharArrayStringBuffer("${3");
 		s.searchAndReplace("${", "}", provider);
 		Assert.assertEquals("${3", s.asString());
+		Assert.assertTrue(s.equals(s));
+		CharArrayStringBuffer s2 = new CharArrayStringBuffer();
+		Assert.assertFalse(s.equals(s2));
+		s2.append("${3");
+		Assert.assertTrue(s.equals(s2));
+		s.setNewArrayStringCapacity(16);
+		s.reset();
+		Assert.assertFalse(s.equals(s2));
+		s2.reset();
+		Assert.assertTrue(s.equals(s2));
 	}
 	
 }

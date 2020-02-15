@@ -1095,7 +1095,16 @@ public final class IOUtil {
 							null, true, 0);
 						return;
 					}
-					copy(input, output, knownSize, true, sp, progress, work);
+					output.canStartWriting().onDone(() -> {
+						if (output.canStartWriting().hasError()) {
+							copyEnd(input, output, sp,
+								new IOException("Unable to open file " + dst.getAbsolutePath(),
+									input.canStart().getError()),
+								null, true, 0);
+							return;
+						}
+						copy(input, output, knownSize, true, sp, progress, work);
+					});
 				});
 				return null;
 			}

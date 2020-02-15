@@ -85,6 +85,10 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		check("Hello World!!!hijk2398hijk2398hijk2398", s);
 		s.append("-------", 3, 3);
 		check("Hello World!!!hijk2398hijk2398hijk2398", s);
+		s.append((CharSequence)null);
+		check("Hello World!!!hijk2398hijk2398hijk2398null", s);
+		s.append((CharSequence)null, 0, 0);
+		check("Hello World!!!hijk2398hijk2398hijk2398nullnull", s);
 	}
 	
 	@Test

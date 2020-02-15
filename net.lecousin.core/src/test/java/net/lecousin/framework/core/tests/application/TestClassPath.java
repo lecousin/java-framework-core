@@ -5,8 +5,10 @@ import java.io.IOException;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.libraries.classpath.DefaultApplicationClassLoader;
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 public class TestClassPath extends LCCoreAbstractTest {
@@ -26,6 +28,11 @@ public class TestClassPath extends LCCoreAbstractTest {
 		LCCore.getApplication().getLibrariesManager().scanLibraries("org.junit", false, null, cl -> false, cl -> {});
 		LCCore.getApplication().getLibrariesManager().scanLibraries("org.junit", true, null, cl -> false, cl -> {});
 		LCCore.getApplication().getLibrariesManager().scanLibraries("org.junit", true, pkg -> false, cl -> false, cl -> {});
+	}
+	
+	@Test
+	public void testGetUnknownResource() {
+		Assert.assertNull(LCCore.getApplication().getLibrariesManager().getResource("does/not/exist", Task.PRIORITY_NORMAL));
 	}
 	
 }

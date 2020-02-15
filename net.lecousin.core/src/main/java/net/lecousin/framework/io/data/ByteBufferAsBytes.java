@@ -73,8 +73,8 @@ public class ByteBufferAsBytes implements Bytes.Readable {
 	
 	@Override
 	public void free() {
-		if (free && buffer.hasArray())
-			ByteArrayCache.getInstance().free(buffer.array());
+		if (free)
+			ByteArrayCache.getInstance().free(buffer);
 		buffer = null;
 	}
 	

@@ -284,7 +284,7 @@ public interface IO extends IConcurrentCloseable<IOException> {
 				public IAsync<IOException> consume(ByteBuffer data) {
 					AsyncSupplier<Integer, IOException> write = writeAsync(data);
 					if (data.hasArray() && !data.isReadOnly())
-						write.onDone(() -> ByteArrayCache.getInstance().free(data.array()));
+						write.onDone(() -> ByteArrayCache.getInstance().free(data));
 					return write;
 				}
 

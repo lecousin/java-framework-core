@@ -191,4 +191,20 @@ public class TestCollectionsUtil extends LCCoreAbstractTest {
 		Assert.assertNull(CollectionsUtil.filterSingle((Integer i) -> false).apply(list));
 	}
 	
+	@Test
+	public void testAddAllFromIterator() {
+		LinkedList<Integer> target = new LinkedList<>();
+		List<Integer> source = createList();
+		CollectionsUtil.addAll(target, source.iterator());
+		Assert.assertEquals(source.size(), target.size());
+	}
+	
+	@Test
+	public void testContainsInstance() {
+		List<Integer> list = createList();
+		Assert.assertTrue(CollectionsUtil.containsInstance(list, list.get(0)));
+		Assert.assertTrue(CollectionsUtil.containsInstance(list, list.get(1)));
+		Assert.assertFalse(CollectionsUtil.containsInstance(list, Integer.valueOf(-1)));
+	}
+	
 }

@@ -30,6 +30,7 @@ public class FileAccess implements AutoCloseable {
 		this.path = file.getAbsolutePath();
 		this.priority = priority;
 		this.manager = Threading.getDrivesTaskManager().getTaskManager(file);
+		if (this.manager == null) this.manager = Threading.getUnmanagedTaskManager();
 		openTask = new OpenFileTask(this, mode, priority);
 	}
 	

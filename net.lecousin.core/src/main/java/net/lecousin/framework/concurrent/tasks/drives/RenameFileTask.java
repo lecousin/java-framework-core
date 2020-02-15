@@ -24,6 +24,8 @@ public class RenameFileTask extends Task.OnFile<Void,IOException> {
 		// TODO we should use the roots instead of drive
 		TaskManager t1 = Threading.getDrivesTaskManager().getTaskManager(source);
 		TaskManager t2 = Threading.getDrivesTaskManager().getTaskManager(destination);
+		if (t1 == null) t1 = Threading.getUnmanagedTaskManager();
+		if (t2 == null) t2 = Threading.getUnmanagedTaskManager();
 		if (t1 == t2)
 			return new RenameFileTask(t1, source, destination, priority).start().getOutput();
 		AsyncSupplier<Long, IOException> copy = IOUtil.copy(source, destination, priority, source.length(), null, 0, null);

@@ -59,6 +59,11 @@ public class TestMutualExclusion extends LCCoreAbstractTest {
 		mutex.onDone(() -> {});
 		mutex.getAllListeners();
 		mutex.unlock();
+		
+		mutex = new MutualExclusion<>();
+		mutex.block(1);
+		mutex.lock();
+		mutex.block(1);
 	}
 	
 }
