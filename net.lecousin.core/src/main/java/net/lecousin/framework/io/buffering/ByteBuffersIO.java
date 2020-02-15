@@ -49,9 +49,9 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 		byte[] buf = new byte[totalSize];
 		int bufPos = 0;
 		for (ByteArray.Writable b : buffers) {
-			int pos = b.position();
+			int p = b.position();
 			b.get(buf, bufPos, b.remaining());
-			b.setPosition(pos);
+			b.setPosition(p);
 			bufPos += b.remaining();
 		}
 		return buf;
@@ -149,16 +149,6 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 	public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		return IOUtil.success(Integer.valueOf(readFullySync(buffer)), ondone);
 	}
-	
-	@Override
-	public int readAsync() {
-		return read();
-	}
-
-	@Override
-	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput());
-	}
 
 	@Override
 	public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
@@ -170,6 +160,16 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 		};
 		task.start();
 		return operation(task.getOutput());
+	}
+	
+	@Override
+	public int readAsync() {
+		return read();
+	}
+
+	@Override
+	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput());
 	}
 	
 	@Override

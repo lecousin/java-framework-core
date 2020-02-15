@@ -114,6 +114,10 @@ public final class Application {
 		return artifact.getVersion();
 	}
 	
+	public String getFullName() {
+		return artifact.toString();
+	}
+	
 	public List<String> getCommandLineArguments() {
 		return Arrays.asList(commandLineArguments);
 	}
@@ -177,7 +181,7 @@ public final class Application {
 	}
 	
 	public Logger getDefaultLogger() {
-		return loggerFactory.getDefault();
+		return loggerFactory.getRoot();
 	}
 	
 	public LibrariesManager getLibrariesManager() {
@@ -485,7 +489,7 @@ public final class Application {
 		}
 		File f = new File(getProperty(PROPERTY_CONFIG_DIRECTORY));
 		if ((!f.exists() || !f.isDirectory()) && !f.mkdirs())
-			loggerFactory.getDefault().warn("Unable to create directory to save preferences: " + f.getAbsolutePath());
+			loggerFactory.getRoot().warn("Unable to create directory to save preferences: " + f.getAbsolutePath());
 		f = new File(f, "preferences");
 		getDefaultLogger().info("Saving preferences to " + f.getAbsolutePath());
 		savingPreferences = SavePropertiesFileTask.savePropertiesFile(preferences, f, StandardCharsets.UTF_8, Task.PRIORITY_RATHER_LOW);

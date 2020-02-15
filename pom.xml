@@ -32,9 +32,12 @@
   		**/maven/Launcher*
   	</sonar.coverage.exclusions>
   	<sonar.cpd.exclusions>
-  		**/framework/collections/sort/RedBlackTree*.*,
   		**/framework/collections/ArrayUtil.*,
+  		**/framework/collections/LinkedArrayList.*,
+  		**/framework/collections/TurnArray.*,
   		**/framework/collections/map/*MapRBT.*,
+  		**/framework/collections/sort/RedBlackTree*.*,
+  		**/framework/concurrent/async/AsyncSupplier.*,
   		**/framework/memory/*ArrayCache.*,
   		**/framework/io/SubIO.*,
   		**/framework/io/FileIO.*,

@@ -108,7 +108,11 @@ public class UTF8Decoder implements CharacterDecoder {
 					//          * uuuuu = wwww + 1
 					int v = ((b & 0x07) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F);
 					int uuuuu = (v & 0x7C00) >> 10;
-					// TODO if > 0x10 invalid Surrogate
+					if (uuuuu > 0x10) {
+						// invalid surrogate
+						charPusher.push(INVALID_CHAR);
+						continue;
+					}
 					int wwww = uuuuu - 1;
 					charPusher.push((char)(0xD800 | (wwww << 6) | ((v & 0x3C0) >> 4) | ((v & 0x30) >> 4)));
 					charPusher.push((char)(0xDC00 | ((v & 0xF) << 6) | (b4 & 0x3F)));
@@ -284,10 +288,14 @@ public class UTF8Decoder implements CharacterDecoder {
 			//          [1101 11yy] [yyxx xxxx] (low surrogate)
 			//          * uuuuu = wwww + 1
 			int uuuuu = (val & 0x7C00) >> 10;
-			// TODO if > 0x10 invalid Surrogate
-			int wwww = uuuuu - 1;
-			charPusher.push((char)(0xD800 | (wwww << 6) | ((val & 0x3C0) >> 4) | ((val & 0x30) >> 4)));
-			charPusher.push((char)(0xDC00 | ((val & 0xF) << 6) | (b & 0x3F)));
+			if (uuuuu > 0x10) {
+				// invalid surrogate
+				charPusher.push(INVALID_CHAR);
+			} else {
+				int wwww = uuuuu - 1;
+				charPusher.push((char)(0xD800 | (wwww << 6) | ((val & 0x3C0) >> 4) | ((val & 0x30) >> 4)));
+				charPusher.push((char)(0xDC00 | ((val & 0xF) << 6) | (b & 0x3F)));
+			}
 		} else {
 			charPusher.push(INVALID_CHAR);
 		}

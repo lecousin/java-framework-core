@@ -1,5 +1,7 @@
 package net.lecousin.framework.memory;
 
+import java.nio.ByteBuffer;
+
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
 
@@ -38,5 +40,11 @@ public class ByteArrayCache extends ArrayCache<byte[]> {
 	@Override
 	public String getDescription() {
 		return "Byte arrays cache";
+	}
+	
+	/** Free the underlying array if the given buffer has an array and is not read-only. */
+	public void free(ByteBuffer buf) {
+		if (buf.hasArray() && !buf.isReadOnly())
+			free(buf.array());
 	}
 }

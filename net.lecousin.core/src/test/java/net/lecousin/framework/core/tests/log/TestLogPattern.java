@@ -2,6 +2,7 @@ package net.lecousin.framework.core.tests.log;
 
 import java.util.Calendar;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.log.LogPattern;
 import net.lecousin.framework.log.LogPattern.Log;
@@ -21,6 +22,7 @@ public class TestLogPattern extends LCCoreAbstractTest {
 		log.message = "this is the message";
 		log.threadName = "theThread";
 		log.timestamp = System.currentTimeMillis();
+		log.app = LCCore.getApplication();
 		
 		expect("no pattern", log, "no pattern");
 		expect("no pattern%", log, "no pattern%");
@@ -55,9 +57,40 @@ public class TestLogPattern extends LCCoreAbstractTest {
 		expect("test %logger{}", log, "test test_logger");
 		expect("test %logger{x}", log, "test test_logger");
 		expect("test %logger{5}", log, "test ..ger");
+		expect("test %a", log, "test %a");
+		expect("test %ap", log, "test %ap");
+		expect("test %app", log, "test %app");
+		expect("test %appl", log, "test %appl");
+		expect("test %appli", log, "test %appli");
+		expect("test %applic", log, "test %applic");
+		expect("test %applica", log, "test %applica");
+		expect("test %applicat", log, "test %applicat");
+		expect("test %applicati", log, "test %applicati");
+		expect("test %applicatio", log, "test %applicatio");
+		expect("test %application", log, "test " + log.app.getFullName());
+		expect("test %applicatiox", log, "test %applicatiox");
+		expect("test %application{", log, "test " + log.app.getFullName() + "{");
+		expect("test %application{}", log, "test " + log.app.getFullName());
+		expect("test %application{x}", log, "test " + log.app.getFullName());
+		expect("test %application{5}", log, "test .." + log.app.getFullName().substring(log.app.getFullName().length() - 3, log.app.getFullName().length()));
+		expect("test %ar", log, "test %ar");
+		expect("test %art", log, "test %art");
+		expect("test %arti", log, "test %arti");
+		expect("test %artif", log, "test %artif");
+		expect("test %artifa", log, "test %artifa");
+		expect("test %artifac", log, "test %artifac");
+		expect("test %artifact", log, "test %artifact");
+		expect("test %artifactI", log, "test %artifactI");
+		expect("test %artifactId", log, "test " + log.app.getArtifactId());
+		expect("test %artifactIx", log, "test %artifactIx");
+		expect("test %artifactId{", log, "test " + log.app.getArtifactId() + "{");
+		expect("test %artifactId{}", log, "test " + log.app.getArtifactId());
+		expect("test %artifactId{x}", log, "test " + log.app.getArtifactId());
+		expect("test %artifactId{3}", log, "test .." + log.app.getArtifactId().substring(log.app.getArtifactId().length() - 1, log.app.getArtifactId().length()));
+		expect("test %ax", log, "test %ax");
 		expect("test: %m!", log, "test: this is the message!");
 		expect("class %C---", log, "class net.lecousin.framework.core.tests.log.TestLogPattern---");
-		expect("line %L,00", log, "line 19,00");
+		expect("line %L,00", log, "line 20,00");
 		expect("method %M", log, "method tests");
 		
 	}

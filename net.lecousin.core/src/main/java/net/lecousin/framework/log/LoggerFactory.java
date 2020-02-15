@@ -28,11 +28,9 @@ public class LoggerFactory {
 	
 	Application application;
 	LoggerThread thread;
-	private Appender defaultAppender;
 	private Map<String, Logger> loggers = new HashMap<>(50);
-	private Logger defaultLogger;
-	private Map<String,Appender> appenders = new HashMap<>();
-	// TODO loggers should be in a hierarchy, and inherit configuration from their parent
+	private Logger rootLogger;
+	private Map<String, Appender> appenders = new HashMap<>();
 	
 	/** Constructor. */
 	public LoggerFactory(Application app, Appender defaultAppender) {
@@ -41,9 +39,8 @@ public class LoggerFactory {
 		if (defaultAppender == null)
 			defaultAppender = new ConsoleAppender(app.getConsole(), app.isReleaseMode() ? Level.INFO : Level.DEBUG,
 				new LogPattern("%d{HH:mm:ss.SSS} [%level] <%logger{20}> %m"));
-		this.defaultAppender = defaultAppender;
-		defaultLogger = new Logger(this, "default", defaultAppender, null);
-		loggers.put("default", defaultLogger);
+		rootLogger = new Logger(this, null, "", defaultAppender, null);
+		loggers.put("", rootLogger);
 		
 		String url = app.getProperty(Application.PROPERTY_LOGGING_CONFIGURATION_URL);
 		if (url != null)
@@ -55,8 +52,8 @@ public class LoggerFactory {
 	}
 	
 	@SuppressWarnings("squid:S2886") // no need for synchronized
-	public Logger getDefault() {
-		return defaultLogger;
+	public Logger getRoot() {
+		return rootLogger;
 	}
 	
 	/** Return the logger for the given class. */
@@ -69,17 +66,14 @@ public class LoggerFactory {
 		Logger l = loggers.get(name);
 		if (l != null)
 			return l;
-		l = new Logger(this, name, defaultAppender, null);
+		l = rootLogger.createChild("", name, null, null);
 		loggers.put(name, l);
 		return l;
 	}
 	
 	/** Set the default appender. */
 	public synchronized void setDefault(Appender appender) {
-		for (Logger l : loggers.values())
-			if (l.appender == defaultAppender)
-				l.appender = appender;
-		defaultAppender = appender;
+		rootLogger.setAppender(appender);
 	}
 	
 	/** Return a synchronization point that will be unblocked as soon as all pending logs have been written. */
@@ -97,11 +91,11 @@ public class LoggerFactory {
 	public synchronized void configure(String name, Appender appender, Level level) {
 		Logger l = loggers.get(name);
 		if (l != null) {
-			l.appender = appender;
+			l.setAppender(appender);
 			l.setLevel(level);
 			return;
 		}
-		l = new Logger(this, name, appender, level);
+		l = rootLogger.createChild("", name, appender, level);
 		loggers.put(name, l);
 	}
 	
@@ -127,6 +121,7 @@ public class LoggerFactory {
 		configure(factory.createXMLStreamReader(new PropertiesStream(application, input)));
 	}
 	
+	@SuppressWarnings("java:S4929") // we go step by step to be able to replace properties
 	private static class PropertiesStream extends InputStream {
 		public PropertiesStream(Application app, InputStream input) throws IOException {
 			this.app = app;
@@ -192,6 +187,7 @@ public class LoggerFactory {
 				s.append((char)c);
 			} while (true);
 		}
+		
 	}
 	
 	/** Load configuration from a file. */

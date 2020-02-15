@@ -1,5 +1,8 @@
 package net.lecousin.framework.log;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.appenders.Appender;
 
@@ -17,21 +20,63 @@ public class Logger {
 		OFF;
 	}
 
-	Logger(LoggerFactory factory, String name, Appender appender, Level level) {
+	Logger(LoggerFactory factory, Logger parent, String name, Appender appender, Level level) {
 		this.factory = factory;
 		this.name = name;
 		this.appender = appender;
 		this.level = level != null ? level.ordinal() : -1;
+		this.parent = parent;
 	}
 	
 	private LoggerFactory factory;
 	private String name;
-	Appender appender;
+	private Appender appender;
 	private int level;
+	private Logger parent;
+	private Map<String, Logger> children = new HashMap<>(10);
 	
 	/** Change the level of this Logger, or null to set it to the default level of its appender. */
 	public void setLevel(Level level) {
 		this.level = level != null ? level.ordinal() : -1;
+	}
+	
+	void setAppender(Appender appender) {
+		this.appender = appender;
+	}
+	
+	private int getLevel() {
+		if (level != -1)
+			return level;
+		if (appender != null)
+			return appender.level();
+		return parent.getLevel();
+	}
+	
+	private Appender getAppender() {
+		if (appender != null)
+			return appender;
+		return parent.getAppender();
+	}
+	
+	Logger createChild(String parentPrefix, String subName, Appender appender, Level level) {
+		int i = subName.indexOf('.', 1);
+		char sep = '.';
+		if (i < 0) {
+			i = subName.indexOf('$', 1);
+			sep = '$';
+		}
+		if (i > 0) {
+			String childName = subName.substring(0, i);
+			Logger child = children.get(childName);
+			if (child == null) {
+				child = new Logger(factory, this, parentPrefix + childName, null, null);
+				children.put(childName, child);
+			}
+			return child.createChild(parentPrefix + childName + sep, subName.substring(i + 1), appender, level);
+		}
+		Logger child = new Logger(factory, this, parentPrefix + subName, appender, level);
+		children.put(subName, child);
+		return child;
 	}
 	
 	private void logMessage(Level level, String message, Throwable t) {
@@ -41,9 +86,11 @@ public class Logger {
 		log.level = level;
 		log.message = message;
 		log.trace = t;
-		if (appender.needsThreadName())
+		log.app = factory.application;
+		Appender appendr = getAppender();
+		if (appendr.needsThreadName())
 			log.threadName = Thread.currentThread().getName();
-		if (appender.needsLocation()) {
+		if (appendr.needsLocation()) {
 			StackTraceElement[] stack = new Exception().getStackTrace();
 			if (stack != null) {
 				for (int i = 0; i < stack.length; ++i) {
@@ -53,13 +100,7 @@ public class Logger {
 				}
 			}
 		}
-		factory.thread.log(appender, log);
-	}
-	
-	private int getLevel() {
-		if (level == -1)
-			return appender.level();
-		return level;
+		factory.thread.log(appendr, log);
 	}
 	
 	/** Log. */

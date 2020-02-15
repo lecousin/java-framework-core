@@ -5,20 +5,25 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
+import net.lecousin.framework.application.Application;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.util.DebugUtil;
 
 /**
- * %d{pattern} = date with the given pattern. The pattern is using the SimpleDateFormat pattern.
- * %t = thread name
- * %level = log level
- * %logger = logger name
- * %logger{20} = logger name with fixed length of 20 characters
- * %m = message
- * %C = class name
- * %M = method name
- * %L = line number
- * %f = file name 
+ * %d{pattern} = date with the given pattern. The pattern is using the SimpleDateFormat pattern.<br/>
+ * %t = thread name<br/>
+ * %level = log level<br/>
+ * %logger = logger name<br/>
+ * %logger{20} = logger name with fixed length of 20 characters<br/>
+ * %application = application full name (groupId-artifactId-version)<br/>
+ * %application{20} = application full name with fixed length of 20 characters<br/>
+ * %artifactId = application artifactId<br/>
+ * %artifactId{20} = application artifactId with fixed length of 20 characters<br/>
+ * %m = message<br/>
+ * %C = class name<br/>
+ * %M = method name<br/>
+ * %L = line number<br/>
+ * %f = file name <br/>
  *
  */
 public class LogPattern {
@@ -33,6 +38,7 @@ public class LogPattern {
 		public long timestamp;
 		public String threadName;
 		public StackTraceElement location;
+		public Application app;
 	}
 	
 	/** Constructor. */
@@ -168,6 +174,54 @@ public class LogPattern {
 		}
 	}
 	
+	private static class ApplicationSection implements Section {
+		private ApplicationSection(int fixedSize) {
+			if (fixedSize > 0 && fixedSize < 3) fixedSize = 3; 
+			this.fixedSize = fixedSize;
+		}
+		
+		private int fixedSize;
+		
+		@Override
+		public void append(StringBuilder s, Log log) {
+			String applicationName = log.app.getFullName();
+			int len = applicationName.length();
+			if (len == fixedSize || fixedSize <= 0)
+				s.append(applicationName);
+			else if (len < fixedSize) {
+				s.append(applicationName);
+				for (int i = len; i < fixedSize; ++i)
+					s.append(' ');
+			} else {
+				s.append("..").append(applicationName.substring(len - fixedSize + 2));
+			}
+		}
+	}
+	
+	private static class ArtifactIdSection implements Section {
+		private ArtifactIdSection(int fixedSize) {
+			if (fixedSize > 0 && fixedSize < 3) fixedSize = 3; 
+			this.fixedSize = fixedSize;
+		}
+		
+		private int fixedSize;
+		
+		@Override
+		public void append(StringBuilder s, Log log) {
+			String artifactId = log.app.getArtifactId();
+			int len = artifactId.length();
+			if (len == fixedSize || fixedSize <= 0)
+				s.append(artifactId);
+			else if (len < fixedSize) {
+				s.append(artifactId);
+				for (int i = len; i < fixedSize; ++i)
+					s.append(' ');
+			} else {
+				s.append("..").append(artifactId.substring(len - fixedSize + 2));
+			}
+		}
+	}
+	
 	private void parsePattern(String pattern) {
 		List<Section> sections = new LinkedList<>();
 		int pos = 0;
@@ -187,6 +241,9 @@ public class LogPattern {
 			}
 			char c = pattern.charAt(pos + 1);
 			switch (c) {
+			case 'a':
+				pos = parsePatternA(pattern, pos, len, sections);
+				break;
 			case 'd':
 				pos = parsePatternD(pattern, pos, len, sections);
 				break;
@@ -234,6 +291,75 @@ public class LogPattern {
 		}
 		// TODO concatenate successive StringSection
 		parts = sections.toArray(new Section[sections.size()]);
+	}
+	
+	private static int parsePatternA(String pattern, int pos, int len, List<Section> sections) {
+		if (pos + 10 >= len) {
+			sections.add(new StringSection(pattern.substring(pos, pos + 2)));
+			return pos + 2;
+		}
+		char c = pattern.charAt(pos + 2);
+		switch (c) {
+		case 'p':
+			// can be application
+			if (pos <= len - 12 &&
+				pattern.charAt(pos + 3) == 'p' &&
+				pattern.charAt(pos + 4) == 'l' &&
+				pattern.charAt(pos + 5) == 'i' &&
+				pattern.charAt(pos + 6) == 'c' &&
+				pattern.charAt(pos + 7) == 'a' &&
+				pattern.charAt(pos + 8) == 't' &&
+				pattern.charAt(pos + 9) == 'i' &&
+				pattern.charAt(pos + 10) == 'o' &&
+				pattern.charAt(pos + 11) == 'n') {
+				if (pos <= len - 13 && pattern.charAt(pos + 12) == '{') {
+					int i = pattern.indexOf('}', pos + 13);
+					if (i < 0) {
+						sections.add(new ApplicationSection(-1));
+						return pos + 12;
+					}
+					int size = -1;
+					try { size = Integer.parseInt(pattern.substring(pos + 13, i)); }
+					catch (Exception t) { /* ignore */ }
+					sections.add(new ApplicationSection(size));
+					return i + 1;
+				}
+				sections.add(new ApplicationSection(-1));
+				return pos + 12;
+			}
+			break;
+		case 'r':
+			// can be artifactId
+			if (pos <= len - 11 &&
+				pattern.charAt(pos + 3) == 't' &&
+				pattern.charAt(pos + 4) == 'i' &&
+				pattern.charAt(pos + 5) == 'f' &&
+				pattern.charAt(pos + 6) == 'a' &&
+				pattern.charAt(pos + 7) == 'c' &&
+				pattern.charAt(pos + 8) == 't' &&
+				pattern.charAt(pos + 9) == 'I' &&
+				pattern.charAt(pos + 10) == 'd') {
+				if (pos <= len - 12 && pattern.charAt(pos + 11) == '{') {
+					int i = pattern.indexOf('}', pos + 12);
+					if (i < 0) {
+						sections.add(new ArtifactIdSection(-1));
+						return pos + 11;
+					}
+					int size = -1;
+					try { size = Integer.parseInt(pattern.substring(pos + 12, i)); }
+					catch (Exception t) { /* ignore */ }
+					sections.add(new ArtifactIdSection(size));
+					return i + 1;
+				}
+				sections.add(new ArtifactIdSection(-1));
+				return pos + 11;
+			}
+			break;
+		default:
+			break;
+		}
+		sections.add(new StringSection(pattern.substring(pos, pos + 2)));
+		return pos + 2;
 	}
 	
 	private static int parsePatternD(String pattern, int pos, int len, List<Section> sections) {

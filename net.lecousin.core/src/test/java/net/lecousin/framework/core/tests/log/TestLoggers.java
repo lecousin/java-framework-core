@@ -126,7 +126,7 @@ public class TestLoggers extends LCCoreAbstractTest {
 		logger.trace();
 		logger.trace("test", new Exception());
 
-		factory.getDefault().info("Test log message");
+		factory.getRoot().info("Test log message");
 		
 		// test rolling
 		
