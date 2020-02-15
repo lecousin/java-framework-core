@@ -9,17 +9,17 @@ import net.lecousin.framework.io.buffering.TwoBuffersIO;
 public class TestTwoBuffersIOError extends TestIOError {
 
 	@Override
-	protected Readable getReadable(IOError1 io) throws Exception {
+	protected Readable getReadable(IOErrorAlways io) throws Exception {
 		return new TwoBuffersIO(io, 512, 512);
 	}
 
 	@Override
-	protected Buffered getReadableBuffered(IOError1 io) throws Exception {
+	protected Buffered getReadableBuffered(IOErrorAlways io) throws Exception {
 		return new TwoBuffersIO(io, 512, 512);
 	}
 
 	@Override
-	protected Seekable getReadableSeekable(IOError1 io) throws Exception {
+	protected Seekable getReadableSeekable(IOErrorAlways io) throws Exception {
 		return new TwoBuffersIO(io, 512, 512);
 	}
 

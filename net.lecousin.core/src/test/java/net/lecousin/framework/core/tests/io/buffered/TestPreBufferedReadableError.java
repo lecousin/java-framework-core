@@ -10,17 +10,17 @@ import net.lecousin.framework.io.buffering.PreBufferedReadable;
 public class TestPreBufferedReadableError extends TestIOError {
 
 	@Override
-	protected Readable getReadable(IOError1 io) throws Exception {
+	protected Readable getReadable(IOErrorAlways io) throws Exception {
 		return new PreBufferedReadable(io, 512, Task.PRIORITY_NORMAL, 512, Task.PRIORITY_NORMAL, 10);
 	}
 
 	@Override
-	protected Buffered getReadableBuffered(IOError1 io) throws Exception {
+	protected Buffered getReadableBuffered(IOErrorAlways io) throws Exception {
 		return new PreBufferedReadable(io, 512, Task.PRIORITY_NORMAL, 512, Task.PRIORITY_NORMAL, 10);
 	}
 
 	@Override
-	protected Seekable getReadableSeekable(IOError1 io) throws Exception {
+	protected Seekable getReadableSeekable(IOErrorAlways io) throws Exception {
 		return null;
 	}
 

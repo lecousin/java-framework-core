@@ -182,7 +182,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		
 		// error
 		result = new AsyncSupplier<>();
-		IOUtil.readFully(new TestIOError.IOError1(), result);
+		IOUtil.readFully(new TestIOError.IOErrorAlways(), result);
 		result.block(15000);
 		Assert.assertNotNull(result.getError());
 	}
@@ -199,7 +199,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 	
 	@Test
 	public void testErrors() throws Exception {
-		TestIOError.IOError1 io = new TestIOError.IOError1();
+		TestIOError.IOErrorAlways io = new TestIOError.IOErrorAlways();
 		AsyncSupplier<byte[], IOException> resultB;
 		
 		resultB = new AsyncSupplier<>();

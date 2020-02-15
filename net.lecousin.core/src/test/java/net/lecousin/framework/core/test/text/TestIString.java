@@ -132,6 +132,16 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		check("World!", s.substring(6, 100));
 		
 		Assert.assertEquals("World", createString("Hello World!").subSequence(6, 11).toString());
+		Assert.assertEquals("", createString("").subSequence(0, 0).toString());
+		
+		s = createString("");
+		for (int i = 0; i < 100; ++i)
+			s.append("Hello");
+		Assert.assertEquals("el", s.subSequence(491, 493).toString());
+		StringBuilder s2 = new StringBuilder();
+		for (int i = 0; i < 100; ++i)
+			s2.append("Hello");
+		Assert.assertTrue(s.equals(s2));
 	}
 	
 	@Test
@@ -174,6 +184,11 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		check("World", createString("Hello World").removeStartChars(6));
 		check("", createString("Hello World").removeStartChars(11));
 		check("", createString("Hello World").removeStartChars(12));
+		
+		Assert.assertEquals("", createString("hel").removeStartChars(10).toString());
+		Assert.assertEquals("", createString("lo").removeEndChars(10).toString());
+		Assert.assertEquals("", createString("").removeStartChars(10).toString());
+		Assert.assertEquals("", createString("").removeEndChars(10).toString());
 	}
 	
 	@Test
@@ -256,6 +271,8 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		Assert.assertEquals("Hello", createString(" \r\n\tHello").trim().asString());
 		Assert.assertEquals("Hello", createString("Hello \r\n\t").trim().asString());
 		Assert.assertEquals("Hello", createString("\n\t\r Hello\r \t \n").trim().asString());
+		
+		Assert.assertEquals("", createString("").trim().asString());
 	}
 	
 	@Test

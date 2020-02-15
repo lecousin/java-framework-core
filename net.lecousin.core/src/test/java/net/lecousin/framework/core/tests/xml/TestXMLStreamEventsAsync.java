@@ -130,7 +130,7 @@ public abstract class TestXMLStreamEventsAsync extends LCCoreAbstractTest {
 	@Test
 	public void testErrors() {
 		try {
-			parse(new TestIOError.IOError1()).start().blockThrow(0);;
+			parse(new TestIOError.IOErrorAlways()).start().blockThrow(0);;
 			throw new AssertionError("Error expected");
 		} catch (Exception err) {
 			// ok

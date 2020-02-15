@@ -223,7 +223,7 @@ public class CharArrayString extends ArrayString {
 	
 	@Override
 	public String subSequence(int start, int end) {
-		if (end <= start) throw new IllegalArgumentException("Cannot create substring from " + start + " to " + end);
+		if (end <= start) return "";
 		return new String(chars, this.start + start, end - start);
 	}
 	

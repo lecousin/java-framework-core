@@ -148,6 +148,67 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		root.e2.sub2.i = 11;
 		Assert.assertEquals(Integer.valueOf(11), ClassUtil.getFieldFromPath(root, "e2.sub2.i"));
 	}
+
+	public static class Root2 {
+		public Element2 _e1 = new Element2();
+		public Element2 _e2 = new Element2();
+
+		public Element2 getE1() {
+			return _e1;
+		}
+		public void setE1(Element2 e1) {
+			this._e1 = e1;
+		}
+		public Element2 getE2() {
+			return _e2;
+		}
+		public void setE2(Element2 e2) {
+			this._e2 = e2;
+		}
+		
+	}
+	
+	public static class Element2 {
+		public Leaf2 _sub1 = new Leaf2();
+		public Leaf2 _sub2 = new Leaf2();
+		
+		public Leaf2 getSub1() {
+			return _sub1;
+		}
+		public void setSub1(Leaf2 sub1) {
+			this._sub1 = sub1;
+		}
+		public Leaf2 getSub2() {
+			return _sub2;
+		}
+		public void setSub2(Leaf2 sub2) {
+			this._sub2 = sub2;
+		}
+
+	}
+	
+	public static class Leaf2 {
+		public int _i = 1;
+
+		public int getI() {
+			return _i;
+		}
+
+		public void setI(int i) {
+			this._i = i;
+		}
+		
+	}
+	
+	@Test
+	public void testFieldPath2() throws Exception {
+		Root2 root = new Root2();
+		Assert.assertEquals(1, root._e1._sub1._i);
+		ClassUtil.setFieldFromPath(root, "e1.sub1.i", Integer.valueOf(51));
+		Assert.assertEquals(51, root._e1._sub1._i);
+		root._e2._sub2._i = 11;
+		Assert.assertEquals(Integer.valueOf(11), ClassUtil.getFieldFromPath(root, "e2.sub2.i"));
+	}
 	
 	@Test
 	public void testGetMethods() {

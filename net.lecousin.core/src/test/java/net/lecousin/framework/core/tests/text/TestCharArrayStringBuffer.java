@@ -12,7 +12,7 @@ public class TestCharArrayStringBuffer extends TestArrayStringBuffer<CharArraySt
 
 	@Override
 	protected CharArrayStringBuffer createString(String s) {
-		return new CharArrayStringBuffer(s);
+		return s.length() > 0 ? new CharArrayStringBuffer(s) : new CharArrayStringBuffer();
 	}
 	
 	@Override

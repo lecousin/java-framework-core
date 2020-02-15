@@ -282,10 +282,7 @@ public interface IO extends IConcurrentCloseable<IOException> {
 
 				@Override
 				public IAsync<IOException> consume(ByteBuffer data) {
-					AsyncSupplier<Integer, IOException> write = writeAsync(data);
-					if (data.hasArray() && !data.isReadOnly())
-						write.onDone(() -> ByteArrayCache.getInstance().free(data));
-					return write;
+					return writeAsync(data);
 				}
 
 				@Override

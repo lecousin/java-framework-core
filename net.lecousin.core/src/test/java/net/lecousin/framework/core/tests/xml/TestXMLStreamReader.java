@@ -67,7 +67,7 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 		Assert.assertEquals("myRoot", xml.event.localName.asString());
 		
 		try {
-			XMLStreamReader.start(new TestIOError.IOError1(), 1024, 4, true).blockResult(0);
+			XMLStreamReader.start(new TestIOError.IOErrorAlways(), 1024, 4, true).blockResult(0);
 			throw new AssertionError("Error expected");
 		} catch (Exception e) {
 			// ok

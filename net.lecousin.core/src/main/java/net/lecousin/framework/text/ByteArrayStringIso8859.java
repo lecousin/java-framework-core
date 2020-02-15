@@ -246,7 +246,7 @@ public class ByteArrayStringIso8859 extends ArrayString {
 	
 	@Override
 	public String subSequence(int start, int end) {
-		if (end <= start) throw new IllegalArgumentException("Cannot create substring from " + start + " to " + end);
+		if (end <= start) return "";
 		return new String(chars, this.start + start, end - start, StandardCharsets.ISO_8859_1);
 	}
 	
