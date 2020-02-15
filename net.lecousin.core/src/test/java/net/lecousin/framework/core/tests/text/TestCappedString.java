@@ -1,6 +1,7 @@
 package net.lecousin.framework.core.tests.text;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.text.ByteArrayStringIso8859;
 import net.lecousin.framework.text.CappedString;
 import net.lecousin.framework.text.CharArrayStringBuffer;
 
@@ -27,6 +28,36 @@ public class TestCappedString extends LCCoreAbstractTest {
 			s.append('c');
 		Assert.assertEquals(20, s.length());
 		Assert.assertEquals("abbbbbbbbbbbbccccccc", s.toString());
+		
+		Assert.assertEquals('a', s.charAt(0));
+		Assert.assertEquals("ab", s.subSequence(0, 2).toString());
+		Assert.assertFalse(s.isEmpty());
+		s.setCharAt(7, 'z');
+		Assert.assertEquals("abbbbbbzbbbbbccccccc", s.toString());
+		Assert.assertEquals(7, s.indexOf('z'));
+		Assert.assertEquals(5, s.indexOf("bbzb", 1));
+		Assert.assertEquals("cc", s.substring(18).toString());
+		Assert.assertEquals("c", s.substring(18, 19).toString());
+		
+		char[] chars = new char[20];
+		s.fill(chars);
+		Assert.assertEquals(s.toString(), new String(chars));
+		
+		byte[] bytes = new byte[20];
+		s.fillIso8859Bytes(bytes);
+		Assert.assertEquals(s.toString(), new ByteArrayStringIso8859(bytes).asString());
+		
+		s.replace('b', 'd');
+		Assert.assertEquals("addddddzdddddccccccc", s.toString());
+		Assert.assertEquals("ADDDDDDZDDDDDCCCCCCC", s.toUpperCase().toString());
+		Assert.assertEquals("addddddzdddddccccccc", s.toLowerCase().toString());
+		Assert.assertEquals(2, s.split('z').size());
+		Assert.assertEquals("addddddzdddddccccccc", s.copy().toString());
+		Assert.assertTrue(s.startsWith("add"));
+		Assert.assertFalse(s.startsWith("abb"));
+		Assert.assertTrue(s.endsWith("ccc"));
+		Assert.assertFalse(s.endsWith("cdc"));
+		s.asCharBuffers();
 	}
 	
 	@Test

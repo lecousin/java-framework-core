@@ -2,6 +2,7 @@ package net.lecousin.framework.log;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -289,8 +290,35 @@ public class LogPattern {
 				break;
 			}
 		}
-		// TODO concatenate successive StringSection
+		concatenateStrings(sections);
 		parts = sections.toArray(new Section[sections.size()]);
+	}
+	
+	@SuppressWarnings("java:S1643")
+	private static void concatenateStrings(List<Section> sections) {
+		StringSection previous = null;
+		for (Iterator<Section> it = sections.iterator(); it.hasNext(); ) {
+			Section s = it.next();
+			if (s instanceof StringSection) {
+				if (previous == null) {
+					previous = (StringSection)s;
+				} else {
+					previous.str += ((StringSection)s).str;
+					it.remove();
+				}
+			} else {
+				previous = null;
+			}
+		}
+	}
+	
+	private static boolean isMatching(String pattern, int pos, int len, String toMatch, int from) {
+		if (pos > len - (from + toMatch.length()))
+			return false;
+		for (int i = 0; i < toMatch.length(); ++i)
+			if (pattern.charAt(pos + from + i) != toMatch.charAt(i))
+				return false;
+		return true;
 	}
 	
 	private static int parsePatternA(String pattern, int pos, int len, List<Section> sections) {
@@ -302,16 +330,7 @@ public class LogPattern {
 		switch (c) {
 		case 'p':
 			// can be application
-			if (pos <= len - 12 &&
-				pattern.charAt(pos + 3) == 'p' &&
-				pattern.charAt(pos + 4) == 'l' &&
-				pattern.charAt(pos + 5) == 'i' &&
-				pattern.charAt(pos + 6) == 'c' &&
-				pattern.charAt(pos + 7) == 'a' &&
-				pattern.charAt(pos + 8) == 't' &&
-				pattern.charAt(pos + 9) == 'i' &&
-				pattern.charAt(pos + 10) == 'o' &&
-				pattern.charAt(pos + 11) == 'n') {
+			if (isMatching(pattern, pos, len, "plication", 3)) {
 				if (pos <= len - 13 && pattern.charAt(pos + 12) == '{') {
 					int i = pattern.indexOf('}', pos + 13);
 					if (i < 0) {
@@ -330,15 +349,7 @@ public class LogPattern {
 			break;
 		case 'r':
 			// can be artifactId
-			if (pos <= len - 11 &&
-				pattern.charAt(pos + 3) == 't' &&
-				pattern.charAt(pos + 4) == 'i' &&
-				pattern.charAt(pos + 5) == 'f' &&
-				pattern.charAt(pos + 6) == 'a' &&
-				pattern.charAt(pos + 7) == 'c' &&
-				pattern.charAt(pos + 8) == 't' &&
-				pattern.charAt(pos + 9) == 'I' &&
-				pattern.charAt(pos + 10) == 'd') {
+			if (isMatching(pattern, pos, len, "tifactId", 3)) {
 				if (pos <= len - 12 && pattern.charAt(pos + 11) == '{') {
 					int i = pattern.indexOf('}', pos + 12);
 					if (i < 0) {
@@ -396,11 +407,7 @@ public class LogPattern {
 		}
 		if (c == 'o') {
 			// can be logger or location
-			if (pos <= len - 7 &&
-				pattern.charAt(pos + 3) == 'g' &&
-				pattern.charAt(pos + 4) == 'g' &&
-				pattern.charAt(pos + 5) == 'e' &&
-				pattern.charAt(pos + 6) == 'r') {
+			if (isMatching(pattern, pos, len, "gger", 3)) {
 				if (pos <= len - 8 && pattern.charAt(pos + 7) == '{') {
 					int i = pattern.indexOf('}', pos + 8);
 					if (i < 0) {

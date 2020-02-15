@@ -153,25 +153,16 @@ public class JoinPoint<TError extends Exception> extends Async<TError> {
 	 * nothing is done, else we force it to become unblocked, and the given callback is called if any.
 	 */
 	public synchronized void timeout(long millis, Runnable callback) {
-		if (isDone()) return;
-		Task<Void,NoException> task = new Task.Cpu<Void,NoException>("JoinPoint timeout", Task.PRIORITY_RATHER_LOW) {
-			@Override
-			public Void run() {
-				synchronized (JoinPoint.this) {
-					if (JoinPoint.this.isDone()) return null;
-					if (callback != null)
-						try { callback.run(); }
-						catch (Exception t) {
-							LCCore.getApplication().getDefaultLogger().error("Error in callback of JoinPoint timeout", t);
-						}
-					unblock();
-					return null;
+		if (callback == null)
+			listenTime(millis, this::unblock);
+		else
+			listenTime(millis, () -> {
+				try { callback.run(); }
+				catch (Exception t) {
+					LCCore.getApplication().getDefaultLogger().error("Error in callback of JoinPoint timeout", t);
 				}
-			}
-		};
-		task.executeIn(millis);
-		if (isDone()) return;
-		task.start();
+				unblock();
+			});
 	}
 	
 	/**

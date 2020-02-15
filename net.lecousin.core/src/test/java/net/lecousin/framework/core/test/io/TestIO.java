@@ -141,6 +141,18 @@ public abstract class TestIO extends LCCoreAbstractTest {
 		Assert.assertTrue(closed.get());
 		Assert.assertTrue(closed2.get());
 		Assert.assertTrue(io.isClosed());
+
+		closed.set(false);
+		closed2.set(false);
+		io.addCloseListener(() -> {
+			closed.set(true);
+		});
+		Assert.assertTrue(closed.get());
+		Assert.assertFalse(closed2.get());
+		io.addCloseListener((toto) -> {
+			closed2.set(true);
+		});
+		Assert.assertTrue(closed2.get());
 	}
 
 	protected boolean canSetPriority() { return true; }

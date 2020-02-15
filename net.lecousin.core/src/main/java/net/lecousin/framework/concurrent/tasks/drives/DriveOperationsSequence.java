@@ -81,10 +81,14 @@ public class DriveOperationsSequence extends Task<Void,IOException> {
 		void execute() throws IOException;
 	}
 	
+	/** Operation at a given position. */
+	public static interface PositionOperation extends Operation {
+		/** Return the position where to do the operation. */
+		long getPosition();
+	}
+	
 	/** Write data to a file. */
-	public abstract static class WriteOperation implements Operation {
-		/** Return the position where to write. */
-		public abstract long getPosition();
+	public abstract static class WriteOperation implements PositionOperation {
 		
 		/** Return the buffer to write. */
 		public abstract ByteBuffer getBuffer();
@@ -102,9 +106,7 @@ public class DriveOperationsSequence extends Task<Void,IOException> {
 	}
 	
 	/** Read data from a file. */
-	public abstract static class ReadOperation implements Operation {
-		/** Return the position from where to read. */
-		public abstract long getPosition();
+	public abstract static class ReadOperation implements PositionOperation {
 		
 		/** Return the buffer to fill. */
 		public abstract ByteBuffer getBuffer();
@@ -176,10 +178,10 @@ public class DriveOperationsSequence extends Task<Void,IOException> {
 		private ByteBuffer buffer;
 		
 		@Override
-		public FileAccess getFile() { return file; }
+		public long getPosition() { return position; }
 		
 		@Override
-		public long getPosition() { return position; }
+		public FileAccess getFile() { return file; }
 		
 		@Override
 		public ByteBuffer getBuffer() {

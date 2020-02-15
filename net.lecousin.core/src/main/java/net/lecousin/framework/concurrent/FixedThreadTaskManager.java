@@ -102,23 +102,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 				worker.currentTask.cancelling = reason;
 				worker.currentTask.result.cancelled(reason);
 			}
-			TaskWorker w;
-			synchronized (spare) {
-				w = spare.pollFirst();
-			}
-			if (w == null) {
-				// no more spare !
-				w = createWorker();
-				// replace the worker
-				replaceWorkerBySpare(worker, w);
-				// start the new one
-				w.thread.start();
-			} else {
-				// replace the worker
-				replaceWorkerBySpare(worker, w);
-				// wake up this spare
-				synchronized (w) { w.notify(); }
-			}
+			replaceBySpare(worker);
 			LCCore.getApplication().getDefaultLogger().error("Error in TaskWorker " + t.getName(), e);
 		}
 	}
@@ -154,20 +138,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		}
 	}
 	
-	void imBlocked(TaskWorker worker) {
-		worker.blocked = true;
-		if (Threading.traceBlockingTasks) {
-			Threading.logger.error("Task " + worker.currentTask.description + " blocked", new Exception());
-		}
-		if (transferredTo != null) {
-			// we are in the process of being transferred, we cannot launch a spare
-			Threading.logger.info("Task blocked while transferring to a new TaskManager: " + worker.currentTask.description);
-			synchronized (blocked) {
-				blocked.addLast(worker);
-			}
-			return;
-		}
-		// a thread is blocked, we need to launch a spare
+	private void replaceBySpare(TaskWorker worker) {
 		TaskWorker w;
 		synchronized (spare) {
 			w = spare.pollFirst();
@@ -185,6 +156,25 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 			// wake up this spare
 			synchronized (w) { w.notify(); }
 		}
+	}
+	
+	void imBlocked(TaskWorker worker) {
+		worker.blocked = true;
+		if (Threading.traceBlockingTasks) {
+			Threading.logger.error("Task " + worker.currentTask.description + " blocked", new Exception());
+		}
+		if (transferredTo != null) {
+			// we are in the process of being transferred, we cannot launch a spare
+			Threading.logger.info("Task blocked while transferring to a new TaskManager: " + worker.currentTask.description);
+			synchronized (blocked) {
+				blocked.addLast(worker);
+			}
+			return;
+		}
+		
+		// a thread is blocked, we need to launch a spare
+		replaceBySpare(worker);
+		
 		synchronized (blocked) {
 			blocked.addLast(worker);
 		}
