@@ -6,12 +6,12 @@ import java.nio.ByteBuffer;
 public class BytesFromIso8859String extends AbstractDataBufferFromString implements Bytes.Readable {
 
 	/** Constructor. */
-	public BytesFromIso8859String(String str) {
+	public BytesFromIso8859String(CharSequence str) {
 		super(str);
 	}
 	
 	/** Constructor. */
-	public BytesFromIso8859String(String str, int offset, int length) {
+	public BytesFromIso8859String(CharSequence str, int offset, int length) {
 		super(str, offset, length);
 	}
 	

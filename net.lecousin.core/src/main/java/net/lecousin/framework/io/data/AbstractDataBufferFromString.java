@@ -4,18 +4,18 @@ package net.lecousin.framework.io.data;
 public abstract class AbstractDataBufferFromString implements DataBuffer {
 
 	/** Constructor. */
-	public AbstractDataBufferFromString(String str) {
+	public AbstractDataBufferFromString(CharSequence str) {
 		this(str, 0, str.length());
 	}
 
 	/** Constructor. */
-	public AbstractDataBufferFromString(String str, int offset, int length) {
+	public AbstractDataBufferFromString(CharSequence str, int offset, int length) {
 		this.str = str;
 		this.offset = offset;
 		this.length = length;
 	}
 	
-	protected String str;
+	protected CharSequence str;
 	protected int offset;
 	protected int length;
 	protected int pos = 0;

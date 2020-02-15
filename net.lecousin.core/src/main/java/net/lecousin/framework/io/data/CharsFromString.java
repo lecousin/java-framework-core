@@ -8,12 +8,12 @@ import net.lecousin.framework.text.IString;
 public class CharsFromString extends AbstractDataBufferFromString implements Chars.Readable {
 
 	/** Constructor. */
-	public CharsFromString(String str) {
+	public CharsFromString(CharSequence str) {
 		super(str);
 	}
 
 	/** Constructor. */
-	public CharsFromString(String str, int offset, int length) {
+	public CharsFromString(CharSequence str, int offset, int length) {
 		super(str, offset, length);
 	}
 	
@@ -24,7 +24,15 @@ public class CharsFromString extends AbstractDataBufferFromString implements Cha
 
 	@Override
 	public void get(char[] buffer, int offset, int length) {
-		str.getChars(this.offset + pos, this.offset + pos + length, buffer, offset);
+		if (str instanceof String) {
+			((String)str).getChars(this.offset + pos, this.offset + pos + length, buffer, offset);
+		} else if (str instanceof IString) {
+			IString s = (IString)str;
+			s.substring(offset, length).fill(buffer, offset);
+		} else {
+			for (int i = 0; i < length; ++i)
+				buffer[offset + i] = str.charAt(i);
+		}
 		pos += length;
 	}
 
@@ -42,8 +50,11 @@ public class CharsFromString extends AbstractDataBufferFromString implements Cha
 	@Override
 	public CharBuffer toCharBuffer() {
 		CharBuffer b = CharBuffer.allocate(length);
-		str.getChars(offset, offset + length, b.array(), 0);
-		b.position(pos);
+		int p = pos;
+		pos = 0;
+		get(b.array(), 0, length);
+		b.position(p);
+		pos = p;
 		return b;
 	}
 	

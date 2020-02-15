@@ -46,6 +46,9 @@ public class RenameFileTask extends Task.OnFile<Void,IOException> {
 	
 	@Override
 	public Void run() throws IOException {
+		if (destination.exists())
+			throw new IOException("Unable to rename file " + source.getAbsolutePath()
+				+ " into " + destination.getAbsolutePath() + " because the destination already exists");
 		if (!source.renameTo(destination))
 			throw new IOException("Unable to rename file " + source.getAbsolutePath() + " into " + destination.getAbsolutePath());
 		return null;
