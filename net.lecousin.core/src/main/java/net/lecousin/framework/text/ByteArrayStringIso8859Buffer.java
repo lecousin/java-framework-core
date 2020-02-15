@@ -131,7 +131,7 @@ public class ByteArrayStringIso8859Buffer extends ArrayStringBuffer<ByteArrayStr
 	}
 	
 	/** Convert into an array of RawByteBuffer. */
-	public ByteArray[] asRawByteBuffers() {
+	public ByteArray[] asByteArrays() {
 		if (strings == null) return new ByteArray[0];
 		ByteArray[] chars = new ByteArray[lastUsed + 1];
 		for (int i = 0; i <= lastUsed; ++i)

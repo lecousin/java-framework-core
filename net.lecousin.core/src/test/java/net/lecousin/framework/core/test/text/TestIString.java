@@ -3,9 +3,10 @@ package net.lecousin.framework.core.test.text;
 import java.util.List;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
-import net.lecousin.framework.text.IString;
+import net.lecousin.framework.io.data.CharArray;
 import net.lecousin.framework.text.CharArrayString;
 import net.lecousin.framework.text.CharArrayStringBuffer;
+import net.lecousin.framework.text.IString;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -218,6 +219,24 @@ public abstract class TestIString extends LCCoreAbstractTest {
 			for (int j = 0; j < chars[i].length; ++j)
 				Assert.assertEquals(s.charAt(pos++), chars[i][j]);
 		Assert.assertEquals(s.length(), pos);
+	}
+	
+	@Test
+	public void testAsCharBuffers() {
+		CharArray[] arrays;
+		arrays = createString("").asCharBuffers();
+		check(arrays, "");
+		arrays = createString("toto").asCharBuffers();
+		check(arrays, "toto");
+	}
+	
+	private static void check(CharArray[] arrays, String expected) {
+		StringBuilder s = new StringBuilder();
+		for (CharArray a : arrays) {
+			while (a.hasRemaining())
+				s.append(a.get());
+		}
+		Assert.assertEquals(expected, s.toString());
 	}
 	
 	@Test
