@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.text.ParseException;
 import java.util.Map;
 
@@ -179,8 +180,11 @@ public class RollingFileAppender implements Appender, Closeable {
 					public Void run() {
 						File dir = file.getParentFile();
 						File f = new File(dir, file.getName() + '.' + maxFiles);
-						if (f.exists() && !f.delete())
-							return error("Unable to remove log file " + f.getAbsolutePath(), null, result);
+						try {
+							Files.deleteIfExists(f.toPath());
+						} catch (IOException e) {
+							return error("Unable to remove log file " + f.getAbsolutePath(), e, result);
+						}
 						for (int i = maxFiles - 1; i >= 1; --i) {
 							f = new File(dir, file.getName() + '.' + i);
 							if (f.exists() && !f.renameTo(new File(dir, file.getName() + '.' + (i + 1))))

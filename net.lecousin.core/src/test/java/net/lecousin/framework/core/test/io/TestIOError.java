@@ -613,21 +613,21 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 
 		io = getWritable(new WritableAlwaysError());
 		try {
-			io.writeSync(ByteBuffer.allocate(100));
+			io.writeSync(ByteBuffer.allocate(100000));
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
 		io.close();
 		
 		io = getWritable(new WritableAlwaysError());
 		try {
-			io.writeAsync(ByteBuffer.allocate(100)).blockResult(0);
+			io.writeAsync(ByteBuffer.allocate(100000)).blockResult(0);
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
 		io.close();
 		
 		io = getWritable(new WritableAlwaysError());
 		try {
-			io.writeAsync(ByteBuffer.allocate(100), ondone).blockResult(0);
+			io.writeAsync(ByteBuffer.allocate(100000), ondone).blockResult(0);
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
 		Assert.assertTrue(called.get());

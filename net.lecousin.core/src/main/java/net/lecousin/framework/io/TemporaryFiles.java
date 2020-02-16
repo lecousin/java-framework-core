@@ -10,6 +10,7 @@ import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectoryTask;
 
 /** Utility class to create temporary files. */
 public final class TemporaryFiles {
@@ -38,13 +39,13 @@ public final class TemporaryFiles {
 						dir = null;
 				}
 			}
-			instance = new TemporaryFiles(/*app, */dir);
+			instance = new TemporaryFiles(app, dir);
 		}
 		return instance;
 	}
 	
-	private TemporaryFiles(/*Application app, */File dir) {
-		//this.app = app;
+	private TemporaryFiles(Application app, File dir) {
+		this.app = app;
 		this.tempDir = dir;
 		try {
 			prefix = InetAddress.getLocalHost().getHostName();
@@ -58,7 +59,7 @@ public final class TemporaryFiles {
 		prefix = prefix.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
 	}
 	
-	//private Application app;
+	private Application app;
 	private File tempDir;
 	private String prefix;
 	
@@ -114,13 +115,7 @@ public final class TemporaryFiles {
 	public File createDirectorySync(String prefix) throws IOException {
 		Path path = Files.createTempDirectory(tempDir.toPath(), this.prefix + prefix);
 		File dir = path.toFile();
-		/*
-		app.toClose(new Closeable() {
-			@Override
-			public void close() {
-				new RemoveDirectoryTask(dir, null, 0, null, Task.PRIORITY_NORMAL, false).start();
-			}
-		});*/
+		app.toClose(() -> new RemoveDirectoryTask(dir, null, 0, null, Task.PRIORITY_NORMAL, false).start().getOutput());
 		return dir;
 	}
 	

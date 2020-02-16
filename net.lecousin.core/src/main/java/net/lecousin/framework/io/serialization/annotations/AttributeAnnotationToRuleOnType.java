@@ -56,22 +56,7 @@ public interface AttributeAnnotationToRuleOnType<TAnnotation extends Annotation>
 				+ attr.getOriginalType().getBase().getName(), t);
 			return;
 		}
-		if (rule != null) {
-			boolean found = false;
-			for (SerializationRule r : rules)
-				if (r.isEquivalent(rule)) {
-					found = true;
-					break;
-				}
-			if (!found)
-				for (SerializationRule r : newRules)
-					if (r.isEquivalent(rule)) {
-						found = true;
-						break;
-					}
-			if (!found)
-				newRules.add(rule);
-		}
+		SerializationRule.addRuleIfNoEquivalent(rule, newRules, rules);
 	}
 	
 	/** Search for implementations to convert the given annotation into a rule.

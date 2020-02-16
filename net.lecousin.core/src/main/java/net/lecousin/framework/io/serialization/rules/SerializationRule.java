@@ -56,4 +56,24 @@ public interface SerializationRule {
 	default void onInstantiation(TypeDefinition type, Object instance, SerializationContext context) throws SerializationException {
 	}
 	
+	/** Add the given rule to the newRules if no equivalent rule is found neither in rules or newRules. */
+	static void addRuleIfNoEquivalent(SerializationRule rule, List<SerializationRule> newRules, List<SerializationRule> rules) {
+		if (rule == null)
+			return;
+		boolean found = false;
+		for (SerializationRule r : rules)
+			if (r.isEquivalent(rule)) {
+				found = true;
+				break;
+			}
+		if (!found)
+			for (SerializationRule r : newRules)
+				if (r.isEquivalent(rule)) {
+					found = true;
+					break;
+				}
+		if (!found)
+			newRules.add(rule);
+	}
+	
 }

@@ -33,36 +33,15 @@ public class RemoveDirectoryContentTask extends Task.OnFile<Long,IOException> {
 	}
 
 	static long removeDirectoryContent(File dir, WorkProgress progress, long work, boolean calculateSize) throws IOException {
-		try {
-			if (!dir.exists())
-				return 0;
-			File[] files = dir.listFiles();
-			if (files == null)
-				throw new AccessDeniedException(dir.getAbsolutePath());
-			int nb = files.length;
-			long size = 0;
-			for (File f : files) {
-				long step = work / nb--;
-				work -= step;
-				if (f.isDirectory()) {
-					size += deleteDirectory(f, progress, step, calculateSize);
-				} else {
-					if (calculateSize) size += f.length();
-					try {
-						Files.delete(f.toPath());
-					} finally {
-						if (progress != null) progress.progress(step);
-					}
-				}
-			}
-			return size;
-		} finally {
-			if (progress != null && work > 0) progress.progress(work);
-		}
+		return remove(dir, progress, work, calculateSize, false);
 	}
 	
 	/** Remove a directory with all its content. This must be called in a task OnFile. */
-	public static long deleteDirectory(File dir, WorkProgress progress, long work, boolean calculateSize) throws IOException {
+	static long deleteDirectory(File dir, WorkProgress progress, long work, boolean calculateSize) throws IOException {
+		return remove(dir, progress, work, calculateSize, true);
+	}
+	
+	private static long remove(File dir, WorkProgress progress, long work, boolean calculateSize, boolean deleteDir) throws IOException {
 		try {
 			if (!dir.exists())
 				return 0;
@@ -70,12 +49,13 @@ public class RemoveDirectoryContentTask extends Task.OnFile<Long,IOException> {
 			if (files == null)
 				throw new AccessDeniedException(dir.getAbsolutePath());
 			long size = 0;
-			int nb = 1 + files.length;
+			int nb = files.length;
+			if (deleteDir) nb++;
 			for (File f : files) {
 				long step = work / nb--;
 				work -= step;
 				if (f.isDirectory())
-					size += deleteDirectory(f, progress, step, calculateSize);
+					size += remove(f, progress, step, calculateSize, true);
 				else {
 					if (calculateSize) size += f.length();
 					try {
@@ -86,7 +66,8 @@ public class RemoveDirectoryContentTask extends Task.OnFile<Long,IOException> {
 					if (progress != null && step > 0) progress.progress(step);
 				}
 			}
-			Files.delete(dir.toPath());
+			if (deleteDir)
+				Files.delete(dir.toPath());
 			return size;
 		} finally {
 			if (progress != null && work > 0)progress.progress(work);
