@@ -190,6 +190,71 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		
 	}
 	
+	public static class WritableAlwaysError extends ConcurrentCloseable<IOException> implements IO.Writable, IO.WritableByteStream {
+		
+		protected IOException error = new IOException("It's normal");
+
+		@Override
+		public String getSourceDescription() {
+			return getClass().getName();
+		}
+
+		@Override
+		public IO getWrappedIO() {
+			return null;
+		}
+
+		@Override
+		public void setPriority(byte priority) {
+		}
+
+		@Override
+		public TaskManager getTaskManager() {
+			return Threading.getCPUTaskManager();
+		}
+
+		@Override
+		public void write(byte b) throws IOException {
+			throw error;
+		}
+
+		@Override
+		public void write(byte[] buffer, int offset, int length) throws IOException {
+			throw error;
+		}
+
+		@Override
+		public IAsync<IOException> canStartWriting() {
+			return new Async<>(true);
+		}
+
+		@Override
+		public int writeSync(ByteBuffer buffer) throws IOException {
+			throw error;
+		}
+
+		@Override
+		public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+			return IOUtil.error(error, ondone);
+		}
+
+		@Override
+		public byte getPriority() {
+			return Task.PRIORITY_NORMAL;
+		}
+
+		@Override
+		protected IAsync<IOException> closeUnderlyingResources() {
+			return new Async<>(true);
+		}
+
+		@Override
+		protected void closeResources(Async<IOException> ondone) {
+			ondone.unblock();
+		}
+		
+	}
+	
 	/** Return an IOException after first bytes. */
 	public static class ReadableErrorAfterBeginning extends ConcurrentCloseable<IOException> implements IO.Readable, IO.Readable.Buffered {
 
@@ -339,14 +404,16 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		
 	}
 	
-	protected abstract IO.Readable getReadable(ReadableAlwaysError io) throws Exception;
+	protected abstract IO.Readable getReadable(IO.Readable io) throws Exception;
 
-	protected abstract IO.Readable.Buffered getReadableBuffered(ReadableAlwaysError io) throws Exception;
+	protected abstract IO.Readable.Buffered getReadableBuffered(IO.Readable io) throws Exception;
 
-	protected abstract IO.Readable.Seekable getReadableSeekable(ReadableAlwaysError io) throws Exception;
+	protected abstract IO.Readable.Seekable getReadableSeekable(IO.Readable.Seekable io) throws Exception;
+	
+	protected abstract IO.Writable getWritable(IO.Writable io) throws Exception;
 	
 	@Test
-	public void testsReadable() throws Exception {
+	public void testsReadableAlwaysError() throws Exception {
 		IO.Readable io = getReadable(new ReadableAlwaysError());
 		Assume.assumeNotNull(io);
 		io.close();
@@ -424,7 +491,7 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 	}
 	
 	@Test
-	public void testsReadableSeekable() throws Exception {
+	public void testsReadableSeekableAlwaysError() throws Exception {
 		IO.Readable.Seekable io = getReadableSeekable(new ReadableAlwaysError());
 		Assume.assumeNotNull(io);
 		io.close();
@@ -478,7 +545,7 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 	}
 	
 	@Test
-	public void testsReadableBuffered() throws Exception {
+	public void testsReadableBufferedAlwaysError() throws Exception {
 		IO.Readable.Buffered io = getReadableBuffered(new ReadableAlwaysError());
 		Assume.assumeNotNull(io);
 		io.close();
@@ -532,6 +599,39 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 			io.readNextBuffer();
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
+		io.close();
+	}
+	
+	@Test
+	public void testWritableAlwaysError() throws Exception {
+		IO.Writable io = getWritable(new WritableAlwaysError());
+		Assume.assumeNotNull(io);
+		io.close();
+		
+		MutableBoolean called = new MutableBoolean(false);
+		Consumer<Pair<Integer, IOException>> ondone = p -> called.set(p.getValue2() != null);
+
+		io = getWritable(new WritableAlwaysError());
+		try {
+			io.writeSync(ByteBuffer.allocate(100));
+			throw new AssertionError();
+		} catch (IOException e) { /* ok */ }
+		io.close();
+		
+		io = getWritable(new WritableAlwaysError());
+		try {
+			io.writeAsync(ByteBuffer.allocate(100)).blockResult(0);
+			throw new AssertionError();
+		} catch (IOException e) { /* ok */ }
+		io.close();
+		
+		io = getWritable(new WritableAlwaysError());
+		try {
+			io.writeAsync(ByteBuffer.allocate(100), ondone).blockResult(0);
+			throw new AssertionError();
+		} catch (IOException e) { /* ok */ }
+		Assert.assertTrue(called.get());
+		called.set(false);
 		io.close();
 	}
 	
