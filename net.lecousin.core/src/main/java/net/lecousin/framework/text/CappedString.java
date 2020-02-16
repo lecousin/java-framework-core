@@ -152,7 +152,7 @@ public class CappedString implements IString {
 	}
 	
 	@Override
-	public IString replace(int start, int end, CharSequence replace) {
+	public CappedString replace(int start, int end, CharSequence replace) {
 		buffer.replace(start, end, replace);
 		size = buffer.length();
 		if (size > maxSize) {
@@ -160,6 +160,36 @@ public class CappedString implements IString {
 			size = maxSize;
 		}
 		return this;
+	}
+	
+	@Override
+	public CappedString replace(char oldChar, CharSequence replace) {
+		return replace(new CharArrayString(oldChar), replace);
+	}
+	
+	@Override
+	public CappedString replace(char oldChar, char[] replace) {
+		return replace(new CharArrayString(oldChar), new CharArrayString(replace));
+	}
+	
+	@Override
+	public CappedString replace(CharSequence search, char replace) {
+		return replace(search, new CharArrayString(replace));
+	}
+	
+	@Override
+	public CappedString replace(CharSequence search, char[] replace) {
+		return replace(search, new CharArrayString(replace));
+	}
+	
+	@Override
+	public CappedString replace(int start, int end, char replace) {
+		return replace(start, end, new CharArrayString(replace));
+	}
+	
+	@Override
+	public CappedString replace(int start, int end, char[] replace) {
+		return replace(start, end, new CharArrayString(replace));
 	}
 
 	@Override

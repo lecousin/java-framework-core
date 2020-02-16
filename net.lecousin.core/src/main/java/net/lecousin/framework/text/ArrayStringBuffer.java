@@ -51,7 +51,11 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 	protected abstract T createString(CharSequence s);
 	
 	protected abstract T createString(CharSequence s, int startPos, int endPos);
-	
+
+	protected abstract T createString(char singleChar);
+
+	protected abstract T createString(char[] chars);
+
 	protected abstract ME createBuffer();
 	
 	protected abstract ME createBuffer(T s);
@@ -581,8 +585,34 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 	}
 	
 	/** Replace all occurrences of oldChar into replaceValue. */
+	@Override
 	public ME replace(char oldChar, CharSequence replaceValue) {
 		return replace(oldChar, createString(replaceValue));
+	}
+	
+	@Override
+	public ME replace(CharSequence search, char replace) {
+		return replace(search, createString(replace));
+	}
+	
+	@Override
+	public ME replace(char oldChar, char[] replace) {
+		return replace(oldChar, createString(replace));
+	}
+	
+	@Override
+	public ME replace(CharSequence search, char[] replace) {
+		return replace(search, createString(replace));
+	}
+	
+	@Override
+	public ME replace(int start, int end, char replace) {
+		return replace(start, end, createString(replace));
+	}
+	
+	@Override
+	public ME replace(int start, int end, char[] replace) {
+		return replace(start, end, createString(replace));
 	}
 
 	/** Replace all occurrences of oldChar into replaceValue. */
@@ -605,6 +635,8 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 	public ME replace(int start, int end, CharSequence s) {
 		if (s.getClass().equals(getArrayType()))
 			replace(start, end, (T)s);
+		else if (s.getClass().equals(getClass()))
+			replace(start, end, (ME)s);
 		else
 			replace(start, end, createString(s));
 		return (ME)this;
@@ -612,9 +644,9 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 	
 	/** Remove characters from start to end (inclusive), and replace them by the given string. */
 	@SuppressWarnings("unchecked")
-	public void replace(int start, int end, T s) {
-		if (strings == null) return;
-		if (end < start) return;
+	public ME replace(int start, int end, T s) {
+		if (strings == null) return (ME)this;
+		if (end < start) return (ME)this;
 		int firstBufferIndex = 0;
 		int firstBufferPos = 0;
 		int firstBufferLen;
@@ -622,7 +654,7 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 			firstBufferLen = strings[firstBufferIndex].length();
 			if (start < firstBufferPos + firstBufferLen) break;
 			firstBufferPos += firstBufferLen;
-			if (++firstBufferIndex > lastUsed) return;
+			if (++firstBufferIndex > lastUsed) return (ME)this;
 		} while (true);
 		int lastBufferIndex = firstBufferIndex;
 		int lastBufferPos = firstBufferPos;
@@ -645,6 +677,7 @@ public abstract class ArrayStringBuffer<T extends ArrayString, ME extends ArrayS
 			1,
 			s
 		);
+		return (ME)this;
 	}
 
 	/** Remove characters from start to end (inclusive), and replace them by the given string. */

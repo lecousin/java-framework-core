@@ -9,17 +9,17 @@ import net.lecousin.framework.io.SubIO;
 public class TestSubIOError extends TestIOError {
 
 	@Override
-	protected Readable getReadable(IOErrorAlways io) {
+	protected Readable getReadable(ReadableAlwaysError io) {
 		return new SubIO.Readable(io, 4096, "test error", true);
 	}
 
 	@Override
-	protected Buffered getReadableBuffered(IOErrorAlways io) {
+	protected Buffered getReadableBuffered(ReadableAlwaysError io) {
 		return new SubIO.Readable.Seekable.Buffered(io, 10, 4096, "test error", true);
 	}
 
 	@Override
-	protected Seekable getReadableSeekable(IOErrorAlways io) {
+	protected Seekable getReadableSeekable(ReadableAlwaysError io) {
 		return new SubIO.Readable.Seekable(io, 10, 4096, "test error", true);
 	}
 

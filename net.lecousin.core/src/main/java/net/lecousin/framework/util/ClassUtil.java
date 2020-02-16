@@ -39,7 +39,8 @@ public final class ClassUtil {
 		ArrayList<Field[]> all = new ArrayList<>();
 		Field[] fields = cl.getDeclaredFields();
 		int total = fields.length;
-		if (fields.length > 0) all.add(fields);
+		if (fields.length > 0)
+			all.add(fields);
 		while ((cl = cl.getSuperclass()) != null) {
 			fields = cl.getDeclaredFields();
 			total += fields.length;

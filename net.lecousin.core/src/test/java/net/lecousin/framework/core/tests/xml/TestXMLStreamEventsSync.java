@@ -142,7 +142,7 @@ public abstract class TestXMLStreamEventsSync extends LCCoreAbstractTest {
 	@Test
 	public void testErrors() {
 		try {
-			parse(new TestIOError.IOErrorAlways()).start();
+			parse(new TestIOError.ReadableAlwaysError()).start();
 			throw new AssertionError("Error expected");
 		} catch (Exception err) {
 			// ok

@@ -1,5 +1,6 @@
 package net.lecousin.framework.core.test.text;
 
+import net.lecousin.framework.text.ArrayString;
 import net.lecousin.framework.text.ArrayStringBuffer;
 import net.lecousin.framework.text.CharArrayString;
 import net.lecousin.framework.text.CharArrayStringBuffer;
@@ -7,10 +8,12 @@ import net.lecousin.framework.text.CharArrayStringBuffer;
 import org.junit.Assert;
 import org.junit.Test;
 
-public abstract class TestArrayStringBuffer<T extends ArrayStringBuffer<?, ?>> extends TestIString {
+public abstract class TestArrayStringBuffer<TS extends ArrayString, T extends ArrayStringBuffer<TS, T>> extends TestIString {
 
 	@Override
 	protected abstract T createString(String s);
+	
+	protected abstract TS createSimpleString(String s);
 	
 	@Test
 	public void testModifications() {
@@ -53,6 +56,15 @@ public abstract class TestArrayStringBuffer<T extends ArrayStringBuffer<?, ?>> e
 		s.removeStartChars(6);
 		Assert.assertEquals('w', s.charAt(0));
 		Assert.assertEquals(0, s.charAt(10));
+		
+		s = createString("abcdefg");
+		CharSequence cs = createSimpleString("01");
+		check("ab01fg", s.replace(2, 4, cs));
+		cs = createSimpleString("987654321");
+		check("ab987654321g", s.replace(2, 4, cs));
+		cs = createString("wxcvbn");
+		check("wxcvbn7654321g", s.replace(0, 3, cs));
+		check("wxwxcvbnn7654321g", s.replace(2, 4, cs));
 	}
 	
 }

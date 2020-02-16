@@ -12,6 +12,10 @@ public class TestIntArrayCache extends LCCoreAbstractTest {
 	@Test
 	public void test() {
 		IntArrayCache cache = IntArrayCache.getInstance();
+		cache.setMaxBuffersBySizeAbove128KB(cache.getMaxBuffersBySizeAbove128KB());
+		cache.setMaxBuffersBySizeUnder128KB(cache.getMaxBuffersBySizeUnder128KB());
+		cache.setMaxTotalSize(cache.getMaxTotalSize());
+		cache.setTimeBeforeToRemove(cache.getTimeBeforeToRemove());
 		Assert.assertTrue(cache == IntArrayCache.getInstance());
 		// clear content
 		cache.freeMemory(FreeMemoryLevel.URGENT);

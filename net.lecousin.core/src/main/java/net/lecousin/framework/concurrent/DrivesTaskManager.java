@@ -94,6 +94,25 @@ public class DrivesTaskManager {
 		}
 		return null;
 	}
+
+	/** Return the known drive partition path for the given file. */
+	public String getPartitionPath(File file) {
+		return getPartitionPath(file.getAbsolutePath());
+	}
+	
+	/** Return the known drive partition path for the given file path. */
+	public String getPartitionPath(String path) {
+		Map.Entry<String, MonoThreadTaskManager> bestMatch = null;
+		synchronized (rootManagers) {
+			for (Map.Entry<String, MonoThreadTaskManager> e : rootManagers.entrySet())
+				if (path.startsWith(e.getKey()) &&
+					(bestMatch == null || bestMatch.getKey().length() < e.getKey().length()))
+						bestMatch = e;
+			if (bestMatch != null)
+				return bestMatch.getKey();
+		}
+		return null;
+	}
 	
 	/** Interface to provide drives and partitions. */
 	public static interface DrivesProvider {

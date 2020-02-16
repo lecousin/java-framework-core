@@ -2,6 +2,7 @@ package net.lecousin.framework.concurrent.tasks.drives;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 import net.lecousin.framework.concurrent.Task;
 
@@ -18,8 +19,7 @@ public class RemoveFileTask extends Task.OnFile<Void,IOException> {
 	
 	@Override
 	public Void run() throws IOException {
-		if (!file.delete() && file.exists())
-			throw new IOException("Unable to remove file");
+		Files.deleteIfExists(file.toPath());
 		return null;
 	}
 

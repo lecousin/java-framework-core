@@ -32,7 +32,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 
 	@Test
 	public void testIOError() throws Exception {
-		ICharacterStream.Readable.Buffered s = openStream(new TestIOError.IOErrorAlways());
+		ICharacterStream.Readable.Buffered s = openStream(new TestIOError.ReadableAlwaysError());
 		try {
 			s.read();
 			throw new AssertionError();

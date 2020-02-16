@@ -9,17 +9,17 @@ import net.lecousin.framework.io.buffering.ReadableToSeekable;
 public class TestReadableToSeekableError extends TestIOError {
 
 	@Override
-	protected Readable getReadable(IOErrorAlways io) throws Exception {
+	protected Readable getReadable(ReadableAlwaysError io) throws Exception {
 		return new ReadableToSeekable(io, 512);
 	}
 
 	@Override
-	protected Buffered getReadableBuffered(IOErrorAlways io) throws Exception {
+	protected Buffered getReadableBuffered(ReadableAlwaysError io) throws Exception {
 		return new ReadableToSeekable(io, 512);
 	}
 
 	@Override
-	protected Seekable getReadableSeekable(IOErrorAlways io) throws Exception {
+	protected Seekable getReadableSeekable(ReadableAlwaysError io) throws Exception {
 		return new ReadableToSeekable(io, 512);
 	}
 

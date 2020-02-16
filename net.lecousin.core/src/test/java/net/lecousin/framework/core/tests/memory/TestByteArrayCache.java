@@ -1,17 +1,25 @@
 package net.lecousin.framework.core.tests.memory;
 
-import org.junit.Assert;
-import org.junit.Test;
+import java.nio.ByteBuffer;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.memory.IMemoryManageable.FreeMemoryLevel;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestByteArrayCache extends LCCoreAbstractTest {
 
 	@Test
 	public void test() {
 		ByteArrayCache cache = ByteArrayCache.getInstance();
+		cache.setMaxBuffersBySizeAbove128KB(cache.getMaxBuffersBySizeAbove128KB());
+		cache.setMaxBuffersBySizeUnder128KB(cache.getMaxBuffersBySizeUnder128KB());
+		cache.setMaxTotalSize(cache.getMaxTotalSize());
+		cache.setTimeBeforeToRemove(cache.getTimeBeforeToRemove());
+		cache.free(ByteBuffer.allocate(0));
+		cache.free(ByteBuffer.allocate(0).asReadOnlyBuffer());
 		Assert.assertTrue(cache == ByteArrayCache.getInstance());
 		// clear content
 		cache.freeMemory(FreeMemoryLevel.URGENT);

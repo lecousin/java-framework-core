@@ -9,17 +9,17 @@ import net.lecousin.framework.io.LinkedIO;
 public class TestLinkedIOError extends TestIOError {
 
 	@Override
-	protected Readable getReadable(IOErrorAlways io) throws Exception {
+	protected Readable getReadable(ReadableAlwaysError io) throws Exception {
 		return new LinkedIO.Readable("test error", io);
 	}
 
 	@Override
-	protected Buffered getReadableBuffered(IOErrorAlways io) throws Exception {
+	protected Buffered getReadableBuffered(ReadableAlwaysError io) throws Exception {
 		return new LinkedIO.Readable.Buffered("test error", io);
 	}
 
 	@Override
-	protected Seekable getReadableSeekable(IOErrorAlways io) throws Exception {
+	protected Seekable getReadableSeekable(ReadableAlwaysError io) throws Exception {
 		return new LinkedIO.Readable.Seekable("test error", io);
 	}
 

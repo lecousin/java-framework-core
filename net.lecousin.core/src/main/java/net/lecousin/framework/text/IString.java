@@ -96,9 +96,27 @@ public interface IString extends CharSequence, Appendable {
 	
 	/** Replace all occurrences of search into replace. */
 	IString replace(CharSequence search, CharSequence replace);
+	
+	/** Replace all occurrences of search into replace. */
+	IString replace(char oldChar, CharSequence replace);
+	
+	/** Replace all occurrences of search into replace. */
+	IString replace(char oldChar, char[] replace);
+	
+	/** Replace all occurrences of search into replace. */
+	IString replace(CharSequence search, char replace);
+	
+	/** Replace all occurrences of search into replace. */
+	IString replace(CharSequence search, char[] replace);
+
+	/** Remove characters from start to end (inclusive), and replace them by the given character. */
+	IString replace(int start, int end, char replace);
 
 	/** Remove characters from start to end (inclusive), and replace them by the given string. */
 	IString replace(int start, int end, CharSequence replace);
+
+	/** Remove characters from start to end (inclusive), and replace them by the given string. */
+	IString replace(int start, int end, char[] replace);
 	
 	/** Remove the given number of characters at the end. */
 	IString removeEndChars(int nb);

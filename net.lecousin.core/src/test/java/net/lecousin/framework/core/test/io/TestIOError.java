@@ -25,13 +25,13 @@ import org.junit.Test;
 public abstract class TestIOError extends LCCoreAbstractTest {
 
 	/** Return an IOException for all operations. */
-	public static class IOErrorAlways extends ConcurrentCloseable<IOException> implements IO.Readable, IO.Readable.Seekable, IO.Readable.Buffered {
+	public static class ReadableAlwaysError extends ConcurrentCloseable<IOException> implements IO.Readable, IO.Readable.Seekable, IO.Readable.Buffered {
 
 		protected IOException error = new IOException("it's normal");
 		
 		@Override
 		public String getSourceDescription() {
-			return "IOErrorAlways";
+			return getClass().getSimpleName();
 		}
 
 		@Override
@@ -173,35 +173,49 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 			ondone.unblock();
 		}
 		
+		public static class KnownSizeAlwaysError extends ReadableAlwaysError implements IO.KnownSize {
+
+			@Override
+			public long getSizeSync() throws IOException {
+				throw error;
+			}
+
+			@Override
+			public AsyncSupplier<Long, IOException> getSizeAsync() {
+				return new AsyncSupplier<>(null, error);
+			}
+			
+		}
+		
 	}
 	
-	protected abstract IO.Readable getReadable(IOErrorAlways io) throws Exception;
+	protected abstract IO.Readable getReadable(ReadableAlwaysError io) throws Exception;
 
-	protected abstract IO.Readable.Buffered getReadableBuffered(IOErrorAlways io) throws Exception;
+	protected abstract IO.Readable.Buffered getReadableBuffered(ReadableAlwaysError io) throws Exception;
 
-	protected abstract IO.Readable.Seekable getReadableSeekable(IOErrorAlways io) throws Exception;
+	protected abstract IO.Readable.Seekable getReadableSeekable(ReadableAlwaysError io) throws Exception;
 	
 	@Test
 	public void testsReadable() throws Exception {
-		IO.Readable io = getReadable(new IOErrorAlways());
+		IO.Readable io = getReadable(new ReadableAlwaysError());
 		Assume.assumeNotNull(io);
 		io.close();
 		
-		io = getReadable(new IOErrorAlways());
+		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.readSync(ByteBuffer.allocate(1024));
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
 		io.close();
 		
-		io = getReadable(new IOErrorAlways());
+		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.readFullySync(ByteBuffer.allocate(1024));
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
 		io.close();
 		
-		io = getReadable(new IOErrorAlways());
+		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.skipSync(10);
 			// may be ok...
@@ -212,13 +226,13 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		Consumer<Pair<Integer, IOException>> ondone = p -> called.set(p.getValue2() != null);
 		Consumer<Pair<Long, IOException>> ondoneL = p -> called.set(p.getValue2() != null);
 		
-		io = getReadable(new IOErrorAlways());
+		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.readAsync(ByteBuffer.allocate(1024)).blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException | CancelException e) { /* ok */ }
 		io.close();
-		io = getReadable(new IOErrorAlways());
+		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.readAsync(ByteBuffer.allocate(1024), ondone).blockResult(30000);
 			throw new AssertionError();
@@ -227,13 +241,13 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		called.set(false);
 		io.close();
 		
-		io = getReadable(new IOErrorAlways());
+		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.readFullyAsync(ByteBuffer.allocate(1024)).blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException | CancelException e) { /* ok */ }
 		io.close();
-		io = getReadable(new IOErrorAlways());
+		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.readFullyAsync(ByteBuffer.allocate(1024), ondone).blockResult(30000);
 			throw new AssertionError();
@@ -242,13 +256,13 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		called.set(false);
 		io.close();
 		
-		io = getReadable(new IOErrorAlways());
+		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.skipAsync(10).blockResult(30000);
 			// may be ok...
 		} catch (IOException | CancelException e) { /* ok */ }
 		io.close();
-		io = getReadable(new IOErrorAlways());
+		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.skipAsync(10, ondoneL).blockResult(30000);
 			// may be ok...
@@ -261,18 +275,18 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 	
 	@Test
 	public void testsReadableSeekable() throws Exception {
-		IO.Readable.Seekable io = getReadableSeekable(new IOErrorAlways());
+		IO.Readable.Seekable io = getReadableSeekable(new ReadableAlwaysError());
 		Assume.assumeNotNull(io);
 		io.close();
 		
-		io = getReadableSeekable(new IOErrorAlways());
+		io = getReadableSeekable(new ReadableAlwaysError());
 		try {
 			io.readSync(10, ByteBuffer.allocate(1024));
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
 		io.close();
 		
-		io = getReadableSeekable(new IOErrorAlways());
+		io = getReadableSeekable(new ReadableAlwaysError());
 		try {
 			io.readFullySync(10, ByteBuffer.allocate(1024));
 			throw new AssertionError();
@@ -282,13 +296,13 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		MutableBoolean called = new MutableBoolean(false);
 		Consumer<Pair<Integer, IOException>> ondone = p -> called.set(p.getValue2() != null);
 		
-		io = getReadableSeekable(new IOErrorAlways());
+		io = getReadableSeekable(new ReadableAlwaysError());
 		try {
 			io.readAsync(10, ByteBuffer.allocate(1024)).blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
 		io.close();
-		io = getReadableSeekable(new IOErrorAlways());
+		io = getReadableSeekable(new ReadableAlwaysError());
 		try {
 			io.readAsync(10, ByteBuffer.allocate(1024), ondone).blockResult(30000);
 			throw new AssertionError();
@@ -297,13 +311,13 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		called.set(false);
 		io.close();
 
-		io = getReadableSeekable(new IOErrorAlways());
+		io = getReadableSeekable(new ReadableAlwaysError());
 		try {
 			io.readFullyAsync(10, ByteBuffer.allocate(1024)).blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
 		io.close();
-		io = getReadableSeekable(new IOErrorAlways());
+		io = getReadableSeekable(new ReadableAlwaysError());
 		try {
 			io.readFullyAsync(10, ByteBuffer.allocate(1024), ondone).blockResult(30000);
 			throw new AssertionError();
@@ -315,7 +329,7 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 	
 	@Test
 	public void testsReadableBuffered() throws Exception {
-		IO.Readable.Buffered io = getReadableBuffered(new IOErrorAlways());
+		IO.Readable.Buffered io = getReadableBuffered(new ReadableAlwaysError());
 		Assume.assumeNotNull(io);
 		io.close();
 		
@@ -323,7 +337,7 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		Consumer<Pair<Integer, IOException>> ondone = p -> called.set(p.getValue2() != null);
 		Consumer<Pair<ByteBuffer, IOException>> ondoneBB = p -> called.set(p.getValue2() != null);
 		
-		io = getReadableBuffered(new IOErrorAlways());
+		io = getReadableBuffered(new ReadableAlwaysError());
 		try {
 			if (io.readAsync() == -2) {
 				io.canStartReading().block(20000);
@@ -333,13 +347,13 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		} catch (IOException e) { /* ok */ }
 		io.close();
 
-		io = getReadableBuffered(new IOErrorAlways());
+		io = getReadableBuffered(new ReadableAlwaysError());
 		try {
 			io.readNextBufferAsync().blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
 		io.close();
-		io = getReadableBuffered(new IOErrorAlways());
+		io = getReadableBuffered(new ReadableAlwaysError());
 		try {
 			io.readNextBufferAsync(ondoneBB).blockResult(30000);
 			throw new AssertionError();
@@ -348,13 +362,13 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		called.set(false);
 		io.close();
 
-		io = getReadableBuffered(new IOErrorAlways());
+		io = getReadableBuffered(new ReadableAlwaysError());
 		try {
 			io.readFullySyncIfPossible(ByteBuffer.allocate(1024)).blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
 		io.close();
-		io = getReadableBuffered(new IOErrorAlways());
+		io = getReadableBuffered(new ReadableAlwaysError());
 		try {
 			io.readFullySyncIfPossible(ByteBuffer.allocate(1024), ondone).blockResult(30000);
 			throw new AssertionError();
@@ -363,7 +377,7 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		called.set(false);
 		io.close();
 
-		io = getReadableBuffered(new IOErrorAlways());
+		io = getReadableBuffered(new ReadableAlwaysError());
 		try {
 			io.readNextBuffer();
 			throw new AssertionError();

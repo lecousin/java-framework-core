@@ -327,6 +327,36 @@ public class CharArrayString extends ArrayString {
 		return this;
 	}
 	
+	@Override
+	public CharArrayString replace(char oldChar, CharSequence replace) {
+		return replace(new CharArrayString(oldChar), replace);
+	}
+	
+	@Override
+	public CharArrayString replace(char oldChar, char[] replace) {
+		return replace(new CharArrayString(oldChar), new CharArrayString(replace));
+	}
+	
+	@Override
+	public CharArrayString replace(CharSequence search, char replace) {
+		return replace(search, new CharArrayString(replace));
+	}
+	
+	@Override
+	public CharArrayString replace(CharSequence search, char[] replace) {
+		return replace(search, new CharArrayString(replace));
+	}
+	
+	@Override
+	public CharArrayString replace(int start, int end, char replace) {
+		return replace(start, end, new CharArrayString(replace));
+	}
+	
+	@Override
+	public CharArrayString replace(int start, int end, char[] replace) {
+		return replace(start, end, new CharArrayString(replace));
+	}
+	
 	private void overwrite(int start, CharSequence s) {
 		for (int i = s.length() - 1; i >= 0; --i)
 			chars[start + i] = s.charAt(i);

@@ -3,16 +3,22 @@ package net.lecousin.framework.core.tests.text;
 import java.util.function.UnaryOperator;
 
 import net.lecousin.framework.core.test.text.TestArrayStringBuffer;
+import net.lecousin.framework.text.CharArrayString;
 import net.lecousin.framework.text.CharArrayStringBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-public class TestCharArrayStringBuffer extends TestArrayStringBuffer<CharArrayStringBuffer> {
+public class TestCharArrayStringBuffer extends TestArrayStringBuffer<CharArrayString, CharArrayStringBuffer> {
 
 	@Override
 	protected CharArrayStringBuffer createString(String s) {
 		return s.length() > 0 ? new CharArrayStringBuffer(s) : new CharArrayStringBuffer();
+	}
+	
+	@Override
+	protected CharArrayString createSimpleString(String s) {
+		return new CharArrayString(s);
 	}
 	
 	@Override

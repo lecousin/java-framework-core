@@ -84,6 +84,16 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 	}
 	
 	@Override
+	protected CharArrayString createString(char singleChar) {
+		return new CharArrayString(singleChar);
+	}
+	
+	@Override
+	protected CharArrayString createString(char[] chars) {
+		return new CharArrayString(chars);
+	}
+	
+	@Override
 	protected CharArrayStringBuffer createBuffer() {
 		return new CharArrayStringBuffer();
 	}
@@ -108,16 +118,6 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		char[] copy = new char[length()];
 		fill(copy, 0);
 		return new CharArrayString(copy);
-	}
-	
-	/** Remove characters from start to end (inclusive), and replace them by the given single character. */
-	public void replace(int start, int end, char c) {
-		replace(start, end, new char[] { c });
-	}
-	
-	/** Remove characters from start to end (inclusive), and replace them by the given characters. */
-	public void replace(int start, int end, char[] chars) {
-		replace(start, end, new CharArrayString(chars));
 	}
 	
 	@Override

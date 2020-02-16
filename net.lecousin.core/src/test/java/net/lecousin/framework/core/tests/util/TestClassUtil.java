@@ -1,11 +1,20 @@
 package net.lecousin.framework.core.tests.util;
 
-import org.junit.Assert;
-import org.junit.Test;
+import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.properties.Property;
 import net.lecousin.framework.util.ClassUtil;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestClassUtil extends LCCoreAbstractTest {
 
@@ -72,12 +81,33 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		public Boolean isBool4() { return bool4; }
 	}
 	
+	public static class ClassEmpty {}
+	
 	@Test
 	public void testGetAllFieldsInheritedFirst() {
-		//ArrayList<Field> fields =
-		ClassUtil.getAllFieldsInheritedFirst(Class2.class);
-		//Assert.assertEquals(3, fields.size());
-		//Assert.assertEquals("myInteger", fields.get(0).getName());
+		ArrayList<Field> fields = ClassUtil.getAllFieldsInheritedFirst(Class2.class);
+		boolean myInteger = false;
+		boolean myBoolean = false;
+		boolean ok = false;
+		for (Field f : fields) {
+			if (f.getName().equals("myInteger")) {
+				Assert.assertFalse(myInteger);
+				myInteger = true;
+			} else if (f.getName().equals("myBoolean")) {
+				Assert.assertTrue(myInteger);
+				Assert.assertFalse(myBoolean);
+				myBoolean = true;
+			} else if (f.getName().equals("ok")) {
+				Assert.assertTrue(myInteger);
+				Assert.assertFalse(ok);
+				ok = true;
+			}
+		}
+		Assert.assertTrue(myInteger);
+		Assert.assertTrue(myBoolean);
+		Assert.assertTrue(ok);
+		
+		fields = ClassUtil.getAllFieldsInheritedFirst(ClassEmpty.class);
 	}
 	
 	@Test
@@ -107,6 +137,14 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		public int toto(String s, int i) { return 1; }
 		public int toto(String s, long l) { return 2; }
 		public int toto(int i, String s) { return 3; }
+		
+		public int tutu(boolean b) { return b ? 51 : -81; }
+		public int tutu(byte b) { return b + 65; }
+		public int tutu(int i) { return i / 2; }
+		public int tutu(short s) { return s * 2; }
+		public int tutu(long l) { return (int)(l % 10); }
+		public int tutu(float f) { return (int)(f * 4); }
+		public int tutu(double d) { return (int)(d * 6.5d); }
 	}
 	
 	@Test
@@ -118,6 +156,23 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(Integer.valueOf(1), ClassUtil.getMethodFor(Class3.class, "toto", toto1).invoke(o, toto1));
 		Assert.assertEquals(Integer.valueOf(2), ClassUtil.getMethodFor(Class3.class, "toto", toto2).invoke(o, toto2));
 		Assert.assertEquals(Integer.valueOf(3), ClassUtil.getMethodFor(Class3.class, "toto", toto3).invoke(o, toto3));
+		Assert.assertNull(ClassUtil.getMethodFor(Class3.class, "toto", new Object[0]));
+		Assert.assertNull(ClassUtil.getMethodFor(Class3.class, "titi", toto1));
+		
+		Object[] tutu1 = new Object[] { Boolean.TRUE };
+		Assert.assertEquals(Integer.valueOf(51), ClassUtil.getMethodFor(Class3.class, "tutu", tutu1).invoke(o, tutu1));
+		Object[] tutu2 = new Object[] { Byte.valueOf((byte)15) };
+		Assert.assertEquals(Integer.valueOf(80), ClassUtil.getMethodFor(Class3.class, "tutu", tutu2).invoke(o, tutu2));
+		Object[] tutu3 = new Object[] { Integer.valueOf(64) };
+		Assert.assertEquals(Integer.valueOf(32), ClassUtil.getMethodFor(Class3.class, "tutu", tutu3).invoke(o, tutu3));
+		Object[] tutu4 = new Object[] { Short.valueOf((short)147) };
+		Assert.assertEquals(Integer.valueOf(294), ClassUtil.getMethodFor(Class3.class, "tutu", tutu4).invoke(o, tutu4));
+		Object[] tutu5 = new Object[] { Long.valueOf(18953) };
+		Assert.assertEquals(Integer.valueOf(3), ClassUtil.getMethodFor(Class3.class, "tutu", tutu5).invoke(o, tutu5));
+		Object[] tutu6 = new Object[] { Float.valueOf(45.256f) };
+		Assert.assertEquals(Integer.valueOf(181), ClassUtil.getMethodFor(Class3.class, "tutu", tutu6).invoke(o, tutu6));
+		Object[] tutu7 = new Object[] { Double.valueOf(187.2314d) };
+		Assert.assertEquals(Integer.valueOf(1217), ClassUtil.getMethodFor(Class3.class, "tutu", tutu7).invoke(o, tutu7));
 		
 		Assert.assertNotNull(ClassUtil.getMethod(Class3.class, "toto"));
 		Assert.assertNull(ClassUtil.getMethod(Class3.class, "titi"));
@@ -147,6 +202,21 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(51, root.e1.sub1.i);
 		root.e2.sub2.i = 11;
 		Assert.assertEquals(Integer.valueOf(11), ClassUtil.getFieldFromPath(root, "e2.sub2.i"));
+
+		try {
+			ClassUtil.getFieldFromPath(root, "e2.sub3.i");
+			throw new AssertionError("exception expected");
+		} catch (NoSuchFieldException e) {
+			// ok
+		}
+		
+		root.e2.sub2 = null;
+		try {
+			ClassUtil.getFieldFromPath(root, "e2.sub2.i");
+			throw new AssertionError("exception expected");
+		} catch (NoSuchFieldException e) {
+			// ok
+		}
 	}
 
 	public static class Root2 {
@@ -208,6 +278,14 @@ public class TestClassUtil extends LCCoreAbstractTest {
 		Assert.assertEquals(51, root._e1._sub1._i);
 		root._e2._sub2._i = 11;
 		Assert.assertEquals(Integer.valueOf(11), ClassUtil.getFieldFromPath(root, "e2.sub2.i"));
+
+		root._e2._sub2 = null;
+		try {
+			ClassUtil.getFieldFromPath(root, "e2.sub2.i");
+			throw new AssertionError("exception expected");
+		} catch (NoSuchFieldException e) {
+			// ok
+		}
 	}
 	
 	@Test
@@ -218,6 +296,60 @@ public class TestClassUtil extends LCCoreAbstractTest {
 	@Test
 	public void test() throws ClassNotFoundException {
 		Assert.assertEquals("", ClassUtil.getPackageName(getClass().getClassLoader().loadClass("NoPackageClass")));
+	}
+	
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.FIELD,ElementType.METHOD,ElementType.TYPE})
+	public @interface Annot1 {}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.FIELD,ElementType.METHOD,ElementType.TYPE})
+	public @interface Annot2 {}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.FIELD,ElementType.METHOD,ElementType.TYPE})
+	public @interface Annot3 {}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.FIELD,ElementType.METHOD,ElementType.TYPE})
+	public @interface Annot4 {}
+	
+	@Annot1
+	public interface AnnotInterface1 {
+		
+	}
+	
+	@Annot2
+	public class AnnotClass1 {
+		
+	}
+	
+	@Annot3
+	public class AnnotClass2 implements AnnotInterface1 {
+		
+	}
+	
+	@Annot4
+	public class AnnotClass3 extends AnnotClass1 implements AnnotInterface1 {
+		
+	}
+	
+	@Test
+	public void testAnnotations() {
+		List<Annotation> list = ClassUtil.getAllAnnotations(Class1.class);
+		Assert.assertEquals(0, list.size());
+		
+		list = ClassUtil.getAllAnnotations(AnnotInterface1.class);
+		Assert.assertEquals(1, list.size());
+		
+		list = ClassUtil.getAllAnnotations(AnnotClass1.class);
+		Assert.assertEquals(1, list.size());
+		
+		list = ClassUtil.getAllAnnotations(AnnotClass2.class);
+		Assert.assertEquals(2, list.size());
+		
+		list = ClassUtil.getAllAnnotations(AnnotClass3.class);
+		Assert.assertEquals(3, list.size());
 	}
 
 }

@@ -76,7 +76,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	@Test
 	public void testError() {
 		Deserializer des = createDeserializer();
-		AsyncSupplier<?, SerializationException> res = des.deserialize(new TypeDefinition(String.class), new TestIOError.IOErrorAlways(), new ArrayList<>(0));
+		AsyncSupplier<?, SerializationException> res = des.deserialize(new TypeDefinition(String.class), new TestIOError.ReadableAlwaysError(), new ArrayList<>(0));
 		res.block(15000);
 		Assert.assertNotNull(res.getError());
 	}

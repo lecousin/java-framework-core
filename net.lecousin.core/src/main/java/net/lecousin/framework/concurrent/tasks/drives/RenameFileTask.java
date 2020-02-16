@@ -2,6 +2,7 @@ package net.lecousin.framework.concurrent.tasks.drives;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
@@ -21,13 +22,13 @@ public class RenameFileTask extends Task.OnFile<Void,IOException> {
 	 * on the same drive or not.
 	 */
 	public static IAsync<IOException> rename(File source, File destination, byte priority) {
-		// TODO we should use the roots instead of drive
-		TaskManager t1 = Threading.getDrivesTaskManager().getTaskManager(source);
-		TaskManager t2 = Threading.getDrivesTaskManager().getTaskManager(destination);
-		if (t1 == null) t1 = Threading.getUnmanagedTaskManager();
-		if (t2 == null) t2 = Threading.getUnmanagedTaskManager();
-		if (t1 == t2)
-			return new RenameFileTask(t1, source, destination, priority).start().getOutput();
+		String partitionSource = Threading.getDrivesTaskManager().getPartitionPath(source);
+		String partitionDest = Threading.getDrivesTaskManager().getPartitionPath(destination);
+
+		if (Objects.equals(partitionSource, partitionDest))
+			return new RenameFileTask(Threading.getDrivesTaskManager().getTaskManager(partitionSource), source, destination, priority)
+				.start().getOutput();
+
 		AsyncSupplier<Long, IOException> copy = IOUtil.copy(source, destination, priority, source.length(), null, 0, null);
 		Async<IOException> result = new Async<>();
 		copy.onDone(() -> new RemoveFileTask(source, priority).start().getOutput().onDone(result), result);

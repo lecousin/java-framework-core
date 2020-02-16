@@ -3,6 +3,7 @@ package net.lecousin.framework.concurrent.tasks.drives;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
+import java.nio.file.Files;
 
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.progress.WorkProgress;
@@ -47,11 +48,11 @@ public class RemoveDirectoryContentTask extends Task.OnFile<Long,IOException> {
 					size += deleteDirectory(f, progress, step, calculateSize);
 				} else {
 					if (calculateSize) size += f.length();
-					if (!f.delete()) {
+					try {
+						Files.delete(f.toPath());
+					} finally {
 						if (progress != null) progress.progress(step);
-						throw new IOException("Unable to delete file " + f.getAbsolutePath());
 					}
-					if (progress != null) progress.progress(step);
 				}
 			}
 			return size;
@@ -77,15 +78,15 @@ public class RemoveDirectoryContentTask extends Task.OnFile<Long,IOException> {
 					size += deleteDirectory(f, progress, step, calculateSize);
 				else {
 					if (calculateSize) size += f.length();
-					if (!f.delete() && f.exists()) {
+					try {
+						Files.delete(f.toPath());
+					} finally {
 						if (progress != null) progress.progress(step);
-						throw new IOException("Unable to delete file " + f.getAbsolutePath());
 					}
 					if (progress != null && step > 0) progress.progress(step);
 				}
 			}
-			if (!dir.delete() && dir.exists())
-				throw new IOException("Unable to delete directory " + dir.getAbsolutePath());
+			Files.delete(dir.toPath());
 			return size;
 		} finally {
 			if (progress != null && work > 0)progress.progress(work);

@@ -48,7 +48,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 
 	@Test
 	public void testIOError() throws Exception {
-		ICharacterStream.Readable s = openStream(new TestIOError.IOErrorAlways());
+		ICharacterStream.Readable s = openStream(new TestIOError.ReadableAlwaysError());
 		try {
 			s.readSync(new char[10], 0, 10);
 			throw new AssertionError();

@@ -19,6 +19,21 @@
 			<artifactId>depsys2</artifactId>
 			<version>1</version>
 			<systemPath>file://test</systemPath>
+			<classifier>classified</classifier>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>test</groupId>
+			<artifactId>depsys3</artifactId>
+			<version>1</version>
+			<systemPath>toto:-è$*%)?*/!</systemPath>
+			<optional>false</optional>
+			<exclusions>
+				<exclusion>
+					<groupId>groupExcluded</groupId>
+					<artifactId>artifactExcluded</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 	</dependencies>
 </project>

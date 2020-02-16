@@ -133,6 +133,7 @@ public class TestDOMModifications extends TestDOM {
 			throw new AssertionError("Error expected");
 		} catch (DOMException e) {}
 		checkDocument(doc1, doc2);
+		
 		// add doc type
 		DocumentType docType1 = doc1.getImplementation().createDocumentType("test", "test", null);
 		XMLDocumentType docType2 = doc2.getImplementation().createDocumentType("test", "test", null);
@@ -154,6 +155,7 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertNull(root2.getChildNodes().item(0));
 		Assert.assertNull(doc2.getChildNodes().item(-1));
 		Assert.assertTrue(doc2.hasChildNodes());
+		
 		// add attribute
 		root1.setAttribute("a1", "v1");
 		root2.setAttribute("a1", "v1");
@@ -168,17 +170,20 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertNull(root2.getAttributes().item(10));
 		Assert.assertNull(root2.getAttributeNode("a1").getAttributes().getNamedItem("test"));
 		Assert.assertNull(root2.getAttributeNode("a1").getAttributes().item(0));
+		
 		// add attribute
 		root1.setAttribute("a2", "v2");
 		root2.setAttribute("a2", "v2");
 		checkDocument(doc1, doc2);
 		Assert.assertEquals("v2", root2.getAttribute("a2"));
+		
 		// change attribute
 		root1.setAttribute("a2", "V2");
 		root2.setAttribute("a2", "V2");
 		checkDocument(doc1, doc2);
 		Assert.assertTrue(root2.hasAttribute("a2"));
 		Assert.assertEquals("V2", root2.getAttributeNode("a2").getNodeValue());
+		
 		// remove attribute
 		root1.removeAttribute("hello");
 		root2.removeAttribute("hello");
@@ -191,20 +196,25 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertEquals("", root2.getAttributeNS("", "a1"));
 		Assert.assertNull(root2.getAttributeNode("a1"));
 		Assert.assertNull(root2.getAttributeNodeNS(null, "a1"));
+		
 		// add attribute
 		root1.setAttributeNS("http://test", "test:a3", "v3");
 		root2.setAttributeNS("http://test", "test:a3", "v3");
 		checkDocument(doc1, doc2);
+		
 		// add attribute
 		root1.setAttributeNS("http://test2", "test2:a3", "v4");
 		root2.setAttributeNS("http://test2", "test2:a3", "v4");
 		checkDocument(doc1, doc2);
+		
 		// remove attribute
 		root1.removeAttributeNS("http://test2", "a3");
 		root2.removeAttributeNS("http://test2", "a3");
 		checkDocument(doc1, doc2);
+		
 		// clone attribute
 		checkAttr((Attr)root1.getAttributeNode("a2").cloneNode(true), (Attr)root2.getAttributeNode("a2").cloneNode(true));
+		
 		// add attribute
 		root1.setAttributeNS("http://test3", "test3:b", "bb");
 		root2.setAttributeNS("http://test3", "test3:b", "bb");
@@ -212,6 +222,7 @@ public class TestDOMModifications extends TestDOM {
 		Assert.assertTrue(root1.hasAttributeNS("http://test3", "b"));
 		Assert.assertTrue(root2.hasAttributeNS("http://test3", "b"));
 		Assert.assertNotNull(root2.getAttributeNS("http://test3", "b"));
+		
 		// change prefix
 		root1.getAttributeNodeNS("http://test3", "b").setPrefix("tutu");
 		root2.getAttributeNodeNS("http://test3", "b").setPrefix("tutu");
@@ -219,32 +230,39 @@ public class TestDOMModifications extends TestDOM {
 		root1.getAttributeNodeNS("http://test3", "b").setPrefix("test3");
 		root2.getAttributeNodeNS("http://test3", "b").setPrefix("test3");
 		checkDocument(doc1, doc2);
+		
 		// change value
 		root1.getAttributeNodeNS("http://test3", "b").setValue("BB");
 		root2.getAttributeNodeNS("http://test3", "b").setValue("BB");
 		checkDocument(doc1, doc2);
+		
 		// get owner
 		Assert.assertTrue(root2.getAttributeNodeNS("http://test3", "b").getOwnerElement() == root2);
 		Assert.assertTrue(root2.getAttributeNodeNS("http://test3", "b").getOwnerDocument() == doc2);
+		
 		// get info
 		XMLAttribute a = root2.getAttributeNodeNS("http://test3", "b");
 		a.isId();
 		a.getSpecified();
 		a.getSchemaTypeInfo();
 		a.setTextContent("");
+		
 		// change value
 		root2.setAttributeNodeNS(root2.getAttributeNodeNS("http://test3", "b").cloneNode(true));
 		checkDocument(doc1, doc2);
+		
 		// remove attribute
 		root1.removeAttributeNode(root1.getAttributeNodeNS("http://test3", "b"));
 		root2.removeAttributeNode(root2.getAttributeNodeNS("http://test3", "b"));
 		checkDocument(doc1, doc2);
+		
 		// add text
 		Text text1 = doc1.createTextNode("My Text");
 		XMLText text2 = doc2.createTextNode("My Text");
 		root1.appendChild(text1);
 		root2.appendChild(text2);
 		checkDocument(doc1, doc2);
+		
 		// change text
 		text1.setData("My Text 2");
 		text2.setData("My Text 2");
@@ -253,18 +271,22 @@ public class TestDOMModifications extends TestDOM {
 		text2.setNodeValue("My Text 3");
 		checkDocument(doc1, doc2);
 		text2.getNodeName();
+		
 		// clone Text
 		checkText((Text)text1.cloneNode(true), text2.cloneNode(true));
 		text2.isElementContentWhitespace();
+		
 		// split Text
 		text1.splitText(5);
 		text2.splitText(5);
 		checkDocument(doc1, doc2);
 		Assert.assertEquals(text1.getWholeText(), text2.getWholeText());
+		
 		// replace text
 		text1.replaceWholeText("My Third Text");
 		text2.replaceWholeText("My Third Text");
 		checkDocument(doc1, doc2);
+		
 		// insert CDATA
 		CDATASection data1 = doc1.createCDATASection("The data");
 		XMLCData data2 = doc2.createCDATASection("The data");
@@ -272,8 +294,10 @@ public class TestDOMModifications extends TestDOM {
 		root2.insertBefore(data2, text2);
 		checkDocument(doc1, doc2);
 		data2.getNodeName();
+		
 		// clone CDATA
 		checkCData((CDATASection)data1.cloneNode(true), data2.cloneNode(true));
+		
 		// insert Comment
 		Comment comment1 = doc1.createComment("A comment");
 		XMLComment comment2 = doc2.createComment("A comment");
@@ -281,8 +305,10 @@ public class TestDOMModifications extends TestDOM {
 		root2.insertBefore(comment2, text2);
 		checkDocument(doc1, doc2);
 		comment2.getNodeName();
+		
 		// clone Comment
 		checkComment((Comment)comment1.cloneNode(true), comment2.cloneNode(true));
+		
 		// modify comment
 		comment1.substringData(2, 4);
 		comment2.substringData(2, 4);
@@ -309,23 +335,44 @@ public class TestDOMModifications extends TestDOM {
 		checkComment(comment1, comment2);
 		checkDocument(doc1, doc2);
 		Assert.assertEquals(comment1.getTextContent(), comment2.getTextContent());
+		
 		// remove CDATA
 		root1.removeChild(data1);
 		root2.removeChild(data2);
 		checkDocument(doc1, doc2);
+		
 		// move Comment
 		root1.appendChild(comment1);
 		root2.appendChild(comment2);
 		checkDocument(doc1, doc2);
+		
 		// replace Comment
 		Comment comment1bis = doc1.createComment("Second comment");
 		XMLComment comment2bis = doc2.createComment("Second comment");
 		root1.replaceChild(comment1bis, comment1);
 		root2.replaceChild(comment2bis, comment2);
 		checkDocument(doc1, doc2);
+		
+		// insert child before null
+		comment1bis = doc1.createComment("a comment again");
+		comment2bis = doc2.createComment("a comment again");
+		root1.insertBefore(comment1bis, null);
+		root2.insertBefore(comment2bis, null);
+		checkDocument(doc1, doc2);
+		root1.removeChild(comment1bis);
+		root2.removeChild(comment2bis);
+		checkDocument(doc1, doc2);
+		try {
+			root2.insertBefore(comment2bis, comment1bis);
+			throw new AssertionError("must throw exception when inserting before a node that does not exist");
+		} catch (DOMException e) {
+			Assert.assertEquals(DOMException.HIERARCHY_REQUEST_ERR, e.code);
+		}
+		
 		// get child
 		checkNode(root1.getFirstChild(), root2.getFirstChild());
 		checkNode(root1.getLastChild(), root2.getLastChild());
+		
 		// clone root
 		Element root1Clone = (Element)root1.cloneNode(true);
 		XMLElement root2Clone = root2.cloneNode(true);
@@ -335,6 +382,7 @@ public class TestDOMModifications extends TestDOM {
 		root2Clone = root2.cloneNode(false);
 		checkElement(root1Clone, root2Clone);
 		Assert.assertFalse(root2Clone.hasChildNodes());
+		
 		// create element
 		XMLElement e = doc2.createElementNS("http://hello", "hello:world");
 		Assert.assertEquals("http://hello", e.getNamespaceURI());

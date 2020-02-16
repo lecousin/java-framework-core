@@ -10,6 +10,7 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.StandaloneLCCore;
 import net.lecousin.framework.application.Version;
 import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.core.test.io.provider.TestURIProvider;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.Logger.Level;
@@ -29,6 +30,7 @@ public abstract class LCCoreAbstractTest {
 		LCCore.getApplication().getLoggerFactory().getLogger(Async.class).setLevel(Logger.Level.INFO);
 		StandaloneLCCore.setLogThreadingInterval(120000);
 		MemoryManager.logMemory(120000, Level.DEBUG);
+		TestURIProvider.getInstance(); // make sure it is registered
 	}
 	
 	@AfterClass

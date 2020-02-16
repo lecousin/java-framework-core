@@ -71,6 +71,18 @@ public class ByteArrayStringIso8859Buffer extends ArrayStringBuffer<ByteArrayStr
 	}
 	
 	@Override
+	protected ByteArrayStringIso8859 createString(char singleChar) {
+		return new ByteArrayStringIso8859((byte)singleChar);
+	}
+	
+	@Override
+	protected ByteArrayStringIso8859 createString(char[] chars) {
+		ByteArrayStringIso8859 s = new ByteArrayStringIso8859(chars.length);
+		s.append(chars);
+		return s;
+	}
+	
+	@Override
 	protected ByteArrayStringIso8859Buffer createBuffer() {
 		return new ByteArrayStringIso8859Buffer();
 	}

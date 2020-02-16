@@ -28,8 +28,11 @@ import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.core.test.io.provider.TestURIProvider;
 import net.lecousin.framework.io.FileIO;
+import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.io.buffering.ByteArrayIO;
 import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.io.provider.IOProviderFromURI;
 import net.lecousin.framework.util.SystemEnvironment;
@@ -160,17 +163,39 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 	public void testDependencyWithSystemPath() throws Exception {
 		AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new URI("classpath:test-maven/test-system-path.pom.xml"), Task.PRIORITY_NORMAL, pomLoader, false);
 		MavenPOM pom = load.blockResult(30000);
+		pom.getLoader();
+		pom.getDirectory();
 		List<LibraryDescriptor.Dependency> deps = pom.getAllDependenciesAnyScope();
 		Assert.assertFalse(pom.hasClasses());
 		Assert.assertNull(pom.getClasses().blockResult(15000));
-		Assert.assertEquals(2, deps.size());
+		Assert.assertEquals(3, deps.size());
 		for (LibraryDescriptor.Dependency dep : deps) {
-			if (dep.getArtifactId().equals("depsys"))
+			if (dep.getArtifactId().equals("depsys")) {
 				Assert.assertEquals("/test", dep.getKnownLocation().toString());
-			else if (dep.getArtifactId().equals("depsys2"))
+				Assert.assertEquals("test", dep.getGroupId());
+				Assert.assertTrue(dep.getVersionSpecification().isMatching(new Version("1")));
+				Assert.assertNull(dep.getClassifier());
+				Assert.assertFalse(dep.isOptional());
+				Assert.assertEquals(0, dep.getExcludedDependencies().size());
+			} else if (dep.getArtifactId().equals("depsys2")) {
 				Assert.assertEquals("file://test", dep.getKnownLocation().toString());
-			else
+				Assert.assertEquals("test", dep.getGroupId());
+				Assert.assertTrue(dep.getVersionSpecification().isMatching(new Version("1")));
+				Assert.assertEquals("classified", dep.getClassifier());
+				Assert.assertTrue(dep.isOptional());
+				Assert.assertEquals(0, dep.getExcludedDependencies().size());
+			} else if (dep.getArtifactId().equals("depsys3")) {
+				Assert.assertNull("/test", dep.getKnownLocation());
+				Assert.assertEquals("test", dep.getGroupId());
+				Assert.assertTrue(dep.getVersionSpecification().isMatching(new Version("1")));
+				Assert.assertNull(dep.getClassifier());
+				Assert.assertFalse(dep.isOptional());
+				Assert.assertEquals(1, dep.getExcludedDependencies().size());
+				Assert.assertEquals("groupExcluded", dep.getExcludedDependencies().get(0).getValue1());
+				Assert.assertEquals("artifactExcluded", dep.getExcludedDependencies().get(0).getValue2());
+			} else {
 				throw new Exception("Unexpected dependency: " + dep.getArtifactId());
+			}
 		}
 	}
 	
@@ -312,6 +337,44 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		testError("invalid-xml4");
 		testError("invalid-xml5");
 		testError("empty");
+	}
+	
+	private void testIOError(String path) throws Exception {
+		AsyncSupplier<MavenPOM, LibraryManagementException> load =
+			MavenPOM.load(new URI("test://" + path), Task.PRIORITY_NORMAL, pomLoader, false);
+		try {
+			load.blockResult(30000);
+			throw new AssertionError("Error expected for pom " + path);
+		} catch (LibraryManagementException e) {
+			// ok
+		}
+	}
+	
+	@Test
+	public void testIOErrors() throws Exception {
+		testIOError("/errors/provider/readable");
+		testIOError("/errors/provider/writable");
+		testIOError("/errors/always/readable");
+		testIOError("/errors/always/readable/knownsize");
+		testIOError("/readable/empty");
+	}
+	
+	@Test
+	public void testFromTest() throws Exception {
+		TestURIProvider.getInstance().register("/mypom", new IOProvider.Readable() {
+			@Override
+			public String getDescription() {
+				return "mypom";
+			}
+			@Override
+			public IO.Readable provideIOReadable(byte priority) throws IOException {
+				return new ByteArrayIO("<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><parent><relativePath>..</relativePath></parent></project>".getBytes(), "mypom");
+			}
+		});
+		AsyncSupplier<MavenPOM, LibraryManagementException> load =
+			MavenPOM.load(new URI("test:///mypom"), Task.PRIORITY_NORMAL, pomLoader, false);
+		MavenPOM pom = load.blockResult(5000);
+		Assert.assertNull(pom.getClasses().blockResult(0));
 	}
 	
 	@Test

@@ -1,6 +1,8 @@
 package net.lecousin.framework.core.tests.serialization;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -12,21 +14,26 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
+import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.core.test.serialization.TestSerialization;
+import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Readable;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.IO.Writable;
 import net.lecousin.framework.io.IOAsInputStream;
 import net.lecousin.framework.io.SubIO;
+import net.lecousin.framework.io.TemporaryFiles;
+import net.lecousin.framework.io.buffering.MemoryIO;
 import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
 import net.lecousin.framework.io.serialization.Deserializer;
 import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.SerializationSpecWriter;
 import net.lecousin.framework.io.serialization.Serializer;
+import net.lecousin.framework.io.serialization.TypeDefinition;
 import net.lecousin.framework.io.text.BufferedWritableCharacterStream;
 import net.lecousin.framework.xml.XMLStreamReaderAsync;
 import net.lecousin.framework.xml.XMLUtil;
@@ -35,6 +42,9 @@ import net.lecousin.framework.xml.serialization.XMLDeserializer;
 import net.lecousin.framework.xml.serialization.XMLSerializer;
 import net.lecousin.framework.xml.serialization.XMLSpecWriter;
 
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized.Parameters;
 
@@ -117,6 +127,33 @@ public class TestXMLSerialization extends TestSerialization {
 		serialization.seekSync(SeekType.FROM_BEGINNING, 0);
         validator.validate(new StreamSource(IOAsInputStream.get(new SubIO.Readable.Seekable(serialization, 0, ((IO.KnownSize)serialization).getSizeSync(), serialization.getSourceDescription(), false), false)));
 		serialization.seekSync(SeekType.FROM_BEGINNING, 0);
+	}
+	
+	@Test
+	public void testFromFile() throws Exception {
+		Assume.assumeTrue(efficient);
+		XMLSerializer ser = new XMLSerializer(null, "boolean", null);
+		File file = TemporaryFiles.get().createFileSync("test", "xml");
+		FileIO.WriteOnly out = new FileIO.WriteOnly(file, Task.PRIORITY_NORMAL);
+		ser.serialize(Boolean.TRUE, new TypeDefinition(boolean.class), out, new ArrayList<>(0)).blockThrow(0);
+		out.close();
+		Assert.assertTrue(XMLDeserializer.deserializeFile(file, boolean.class, new ArrayList<>(0), Task.PRIORITY_NORMAL).blockResult(0).booleanValue());
+	}
+	
+	@Test
+	public void testInvalidRoot() throws Exception {
+		Assume.assumeTrue(efficient);
+		XMLSerializer ser = new XMLSerializer(null, "not_the_good_one", null);
+		MemoryIO io = new MemoryIO(1024, "test");
+		ser.serialize(Boolean.TRUE, new TypeDefinition(boolean.class), io, new ArrayList<>(0)).blockThrow(0);
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		try {
+			XMLDeserializer.deserialize(io, boolean.class, new ArrayList<>(0)).blockResult(0);
+			throw new AssertionError("Error expected");
+		} catch (SerializationException e) {
+			// ok
+		}
+		io.close();
 	}
 	
 }

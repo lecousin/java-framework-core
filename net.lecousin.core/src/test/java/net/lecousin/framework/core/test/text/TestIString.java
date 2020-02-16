@@ -169,6 +169,42 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		s = createString("Hello World!");
 		check("Helbonjourorld!", s.replace(3, 6, "bonjour"));
 		check("Hel1ourorld!", s.replace(3, 6, "1"));
+		
+		s = createString("");
+		check("", s.replace('a', "b"));
+		check("", s.replace('a', "bb"));
+		s = createString("Hello world");
+		check("Hepzpzo worpzd", s.replace('l', "pz"));
+		
+		s = createString("");
+		check("", s.replace("a", 'b'));
+		check("", s.replace("aa", 'b'));
+		s = createString("abcdabcdabcd");
+		check("ab0dab0dab0d", s.replace("c", '0'));
+		check("ab1ab1ab1", s.replace("0d", '1'));
+		check("515151", s.replace("ab", '5'));
+		
+		s = createString("");
+		check("", s.replace('a', new char[] { 'b' }));
+		check("", s.replace('a', new char[] { 'b', 'b' }));
+		s = createString("Hello world");
+		check("Hepzpzo worpzd", s.replace('l', new char[] { 'p', 'z' }));
+		
+		s = createString("");
+		check("", s.replace("abcd", new char[] { 'b' }));
+		check("", s.replace("abcd", new char[] { 'b', 'g' }));
+		s = createString("abcdabcdabcd");
+		check("abzdabzdabzd", s.replace("c", new char[] { 'z' }));
+		check("abz012bz012bzd", s.replace("da", new char[] { '0', '1', '2' }));
+		check("987z012bz012bzd", s.replace("ab", new char[] { '9', '8', '7' }));
+		check("987z012bz012b987", s.replace("zd", new char[] { '9', '8', '7' }));
+		
+		s = createString("abcdabcdabcd");
+		check("abczdabcd", s.replace(3, 6, 'z'));
+		check("abc01cd", s.replace(3, 6, new char[] { '0', '1' }));
+		check("a987654321001cd", s.replace(1, 2, new char[] { '9', '8', '7', '6', '5', '4', '3', '2', '1', '0' }));
+		CharSequence cs = createString("yuiop");
+		check("a9yuiop4321001cd", s.replace(2, 5, cs));
 	}
 	
 	@Test
@@ -223,6 +259,25 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		Assert.assertTrue(createString("H").isStartOf("Hello World"));
 		Assert.assertTrue(createString("").isStartOf("Hello World"));
 		Assert.assertFalse(createString("ello").isStartOf("Hello World"));
+		
+		IString s = createString("Hello World");
+		s.append("Hello World");
+		s.append("Hello World");
+		s.append("Hello World");
+		s.append("Hello World");
+		s.append("Hello World");
+		Assert.assertTrue(s.startsWith("Hello WorldHello WorldHello WorldHello WorldHello World"));
+		Assert.assertFalse(s.startsWith("Hello WorldHello WorldHello WorldHello WorldHello Worlx"));
+		Assert.assertFalse(s.startsWith("Hello WorldHello WorldHello WorldHello WorldHello WorldHello WorldHello World"));
+		Assert.assertTrue(s.endsWith("Hello WorldHello WorldHello WorldHello WorldHello World"));
+		Assert.assertFalse(s.endsWith("Hello WorldHello WorldHello WorldHello WorldHello Worlx"));
+		Assert.assertFalse(s.endsWith("hello WorldHello WorldHello WorldHello WorldHello World"));
+		Assert.assertFalse(s.endsWith("Hello WorldHello WorldHello WorldHello WorldHello WorldHello WorldHello World"));
+		
+		Assert.assertTrue(createString("").startsWith(""));
+		Assert.assertTrue(createString("").endsWith(""));
+		Assert.assertFalse(createString("").startsWith("a"));
+		Assert.assertFalse(createString("").endsWith("a"));
 	}
 	
 	@Test
@@ -234,6 +289,8 @@ public abstract class TestIString extends LCCoreAbstractTest {
 			for (int j = 0; j < chars[i].length; ++j)
 				Assert.assertEquals(s.charAt(pos++), chars[i][j]);
 		Assert.assertEquals(s.length(), pos);
+		
+		Assert.assertEquals(0, createString("").asCharacters().length);
 	}
 	
 	@Test
@@ -290,5 +347,18 @@ public abstract class TestIString extends LCCoreAbstractTest {
 		Assert.assertEquals("abcdefgh", copy.toString());
 		s.append('z');
 		Assert.assertEquals("abcdefgh", copy.toString());
+	}
+	
+	@Test
+	public void testToString() {
+		Assert.assertEquals("", createString("").toString());
+		Assert.assertEquals("abcdef", createString("abcdef").toString());
+		IString s = createString("Hello World");
+		s.append("Hello World");
+		s.append("Hello World");
+		s.append("Hello World");
+		s.append("Hello World");
+		s.append("Hello World");
+		Assert.assertEquals("Hello WorldHello WorldHello WorldHello WorldHello WorldHello World", s.toString());
 	}
 }
