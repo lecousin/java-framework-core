@@ -174,7 +174,9 @@ public interface IString extends CharSequence, Appendable {
 	
 	/** Convert into an array of character arrays. */
 	default char[][] asCharacters() {
-		char[] chars = new char[length()];
+		int l = length();
+		if (l == 0) return new char[0][];
+		char[] chars = new char[l];
 		fill(chars);
 		return new char[][] { chars };
 	}

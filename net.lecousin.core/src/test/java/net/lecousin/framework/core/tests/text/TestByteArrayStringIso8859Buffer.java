@@ -14,7 +14,7 @@ public class TestByteArrayStringIso8859Buffer extends TestArrayStringBuffer<Byte
 
 	@Override
 	protected ByteArrayStringIso8859Buffer createString(String s) {
-		return new ByteArrayStringIso8859Buffer(s);
+		return s.length() > 0 ? new ByteArrayStringIso8859Buffer(s) : new ByteArrayStringIso8859Buffer();
 	}
 	
 	@Override

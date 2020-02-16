@@ -334,17 +334,17 @@ public class ByteArrayStringIso8859 extends ArrayString {
 		int l = replace.length();
 		int l2 = end - start + 1;
 		if (l == l2) {
-			overwrite(start, replace);
+			overwrite(this.start + start, replace);
 			return this;
 		}
 		if (l < l2) {
 			overwrite(this.start + start, replace);
-			System.arraycopy(chars, this.start + start + l2, chars, this.start + start + l, this.end - end);
+			System.arraycopy(chars, this.start + start + l2, chars, this.start + start + l, this.end - this.start - end);
 			this.end -= l2 - l;
 			return this;
 		}
 		enlarge(Math.min(l - l2, 16));
-		System.arraycopy(chars, this.start + start + l2, chars, this.start + start + l, this.end - end);
+		System.arraycopy(chars, this.start + start + l2, chars, this.start + start + l, this.end - this.start - end);
 		overwrite(this.start + start, replace);
 		this.end += l - l2;
 		return this;

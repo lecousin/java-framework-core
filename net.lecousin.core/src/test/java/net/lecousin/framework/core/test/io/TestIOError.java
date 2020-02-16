@@ -14,6 +14,7 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
+import net.lecousin.framework.io.data.ByteArray;
 import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
@@ -185,6 +186,155 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 				return new AsyncSupplier<>(null, error);
 			}
 			
+		}
+		
+	}
+	
+	/** Return an IOException after first bytes. */
+	public static class ReadableErrorAfterBeginning extends ConcurrentCloseable<IOException> implements IO.Readable, IO.Readable.Buffered {
+
+		public ReadableErrorAfterBeginning(ByteArray beginning) {
+			this.beginning = beginning;
+		}
+		
+		protected IOException error = new IOException("it's normal");
+		protected ByteArray beginning;
+		
+		@Override
+		public String getSourceDescription() {
+			return getClass().getSimpleName();
+		}
+
+		@Override
+		public IO getWrappedIO() {
+			return null;
+		}
+
+		@Override
+		public void setPriority(byte priority) {
+		}
+
+		@Override
+		public TaskManager getTaskManager() {
+			return Threading.getCPUTaskManager();
+		}
+
+		@Override
+		public int read() throws IOException {
+			if (!beginning.hasRemaining())
+				throw error;
+			return beginning.get() & 0xFF;
+		}
+
+		@Override
+		public int read(byte[] buffer, int offset, int len) throws IOException {
+			if (!beginning.hasRemaining())
+				throw error;
+			int l = Math.min(len, beginning.remaining());
+			beginning.get(buffer, offset, l);
+			return l;
+		}
+
+		@Override
+		public int readFully(byte[] buffer) throws IOException {
+			return read(buffer, 0, buffer.length);
+		}
+
+		@Override
+		public int skip(int skip) throws IOException {
+			if (!beginning.hasRemaining())
+				throw error;
+			int l = Math.min(skip, beginning.remaining());
+			beginning.moveForward(l);
+			return l;
+		}
+
+		@Override
+		public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
+			if (!beginning.hasRemaining())
+				return IOUtil.error(error, ondone);
+			ByteBuffer b = beginning.toByteBuffer();
+			beginning.goToEnd();
+			return IOUtil.success(b, ondone);
+		}
+		
+		@Override
+		public ByteBuffer readNextBuffer() throws IOException {
+			if (!beginning.hasRemaining())
+				throw error;
+			ByteBuffer b = beginning.toByteBuffer();
+			beginning.goToEnd();
+			return b;
+		}
+
+		@Override
+		public int readAsync() throws IOException {
+			return read();
+		}
+
+		@Override
+		public AsyncSupplier<Integer, IOException> readFullySyncIfPossible(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+			if (!beginning.hasRemaining())
+				return IOUtil.error(error, ondone);
+			int l = Math.min(beginning.remaining(), buffer.remaining());
+			buffer.put(beginning.getArray(), beginning.getCurrentArrayOffset(), l);
+			beginning.moveForward(l);
+			return IOUtil.success(Integer.valueOf(l), ondone);
+		}
+
+		@Override
+		public IAsync<IOException> canStartReading() {
+			return new Async<>(true);
+		}
+
+		@Override
+		public int readSync(ByteBuffer buffer) throws IOException {
+			if (!beginning.hasRemaining())
+				throw error;
+			int l = Math.min(beginning.remaining(), buffer.remaining());
+			buffer.put(beginning.getArray(), beginning.getCurrentArrayOffset(), l);
+			beginning.moveForward(l);
+			return l;
+		}
+
+		@Override
+		public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+			return readFullySyncIfPossible(buffer, ondone);
+		}
+
+		@Override
+		public int readFullySync(ByteBuffer buffer) throws IOException {
+			return readSync(buffer);
+		}
+
+		@Override
+		public AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
+			return readAsync(buffer, ondone);
+		}
+
+		@Override
+		public long skipSync(long n) throws IOException {
+			return skip((int)n);
+		}
+
+		@Override
+		public AsyncSupplier<Long, IOException> skipAsync(long n, Consumer<Pair<Long, IOException>> ondone) {
+			return IOUtil.skipAsyncUsingSync(this, n, ondone);
+		}
+
+		@Override
+		public byte getPriority() {
+			return Task.PRIORITY_NORMAL;
+		}
+
+		@Override
+		protected IAsync<IOException> closeUnderlyingResources() {
+			return new Async<>(true);
+		}
+
+		@Override
+		protected void closeResources(Async<IOException> ondone) {
+			ondone.unblock();
 		}
 		
 	}
