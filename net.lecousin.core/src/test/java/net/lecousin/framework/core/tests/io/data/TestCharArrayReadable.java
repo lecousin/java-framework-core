@@ -48,7 +48,7 @@ public class TestCharArrayReadable extends TestCharsReadable {
 		Assert.assertEquals(1, b.position());
 		rb.get();
 		rb.setPosition(b);
-		Assert.assertEquals(1, b.position());
+		Assert.assertEquals(2, b.position());
 	}
 	
 }

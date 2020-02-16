@@ -47,7 +47,7 @@ public class TestByteArrayReadable extends TestBytesReadable {
 		Assert.assertEquals(1, b.position());
 		rb.get();
 		rb.setPosition(b);
-		Assert.assertEquals(1, b.position());
+		Assert.assertEquals(2, b.position());
 	}
 	
 }
