@@ -79,7 +79,7 @@ public class ByteArray extends DataArray<byte[]> implements Bytes.Readable {
 	 * to the position of this buffer.
 	 */
 	public void setPosition(ByteBuffer originalBuffer) {
-		originalBuffer.position(currentOffset - arrayOffset);
+		originalBuffer.position(originalBuffer.limit() - remaining());
 	}
 	
 	@Override

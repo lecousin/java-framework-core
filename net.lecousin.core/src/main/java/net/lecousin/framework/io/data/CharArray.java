@@ -78,7 +78,7 @@ public class CharArray extends DataArray<char[]> implements Chars.Readable {
 	 * to the position of this buffer.
 	 */
 	public void setPosition(CharBuffer originalBuffer) {
-		originalBuffer.position(currentOffset - arrayOffset);
+		originalBuffer.position(originalBuffer.limit() - remaining());
 	}
 
 	@Override
