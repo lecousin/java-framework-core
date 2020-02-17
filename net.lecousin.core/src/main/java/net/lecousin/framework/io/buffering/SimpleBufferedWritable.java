@@ -51,8 +51,10 @@ public class SimpleBufferedWritable extends ConcurrentCloseable<IOException> imp
 			AsyncSupplier<Integer,IOException> sp;
 			synchronized (out) {
 				if (writing != null && writing.isDone()) {
-					if (writing.hasError())
+					if (writing.hasError()) {
+						pos = 0;
 						throw writing.getError();
+					}
 					writing = null;
 				}
 				if (writing == null) {
@@ -76,8 +78,10 @@ public class SimpleBufferedWritable extends ConcurrentCloseable<IOException> imp
 	private AsyncSupplier<Integer,IOException> flushBufferAsync() throws IOException {
 		synchronized (out) {
 			if (writing != null && writing.isDone()) {
-				if (writing.hasError())
+				if (writing.hasError()) {
+					pos = 0;
 					throw writing.getError();
+				}
 				writing = null;
 			}
 			if (writing == null) {

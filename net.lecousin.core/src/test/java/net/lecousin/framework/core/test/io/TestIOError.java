@@ -2,6 +2,7 @@ package net.lecousin.framework.core.test.io;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Random;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.Task;
@@ -606,33 +607,46 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 	public void testWritableAlwaysError() throws Exception {
 		IO.Writable io = getWritable(new WritableAlwaysError());
 		Assume.assumeNotNull(io);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		
 		MutableBoolean called = new MutableBoolean(false);
 		Consumer<Pair<Integer, IOException>> ondone = p -> called.set(p.getValue2() != null);
 
-		io = getWritable(new WritableAlwaysError());
-		try {
-			io.writeSync(ByteBuffer.allocate(100000));
-			throw new AssertionError();
-		} catch (IOException e) { /* ok */ }
-		io.close();
+		// generate 100K of random bytes to generate error even if the IO implies compression
+		Random rand = new Random();
+		byte[] bytes = new byte[100000];
+		rand.nextBytes(bytes);
 		
 		io = getWritable(new WritableAlwaysError());
 		try {
-			io.writeAsync(ByteBuffer.allocate(100000)).blockResult(0);
+			io.writeSync(ByteBuffer.wrap(bytes));
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		
 		io = getWritable(new WritableAlwaysError());
 		try {
-			io.writeAsync(ByteBuffer.allocate(100000), ondone).blockResult(0);
+			io.writeAsync(ByteBuffer.wrap(bytes)).blockResult(0);
+			throw new AssertionError();
+		} catch (IOException e) { /* ok */ }
+		try {
+			io.close();
+		} catch (IOException e) {}
+		
+		io = getWritable(new WritableAlwaysError());
+		try {
+			io.writeAsync(ByteBuffer.wrap(bytes), ondone).blockResult(0);
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
 		Assert.assertTrue(called.get());
 		called.set(false);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 	}
 	
 }

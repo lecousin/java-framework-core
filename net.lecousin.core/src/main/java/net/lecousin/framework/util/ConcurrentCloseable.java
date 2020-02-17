@@ -144,12 +144,11 @@ public abstract class ConcurrentCloseable<TError extends Exception> implements I
 			Async<TError> closed = new Async<>();
 			closeResources(closed);
 			closed.onDone(() -> {
-				if (jp.hasError())
-					closing.error(jp.getError());
-				else if (jp.isCancelled())
-					closing.cancel(jp.getCancelEvent());
-				else
-					closing.unblock();
+				if (jp.forwardIfNotSuccessful(closing))
+					return;
+				if (underlying != null && underlying.forwardIfNotSuccessful(closing))
+					return;
+				closing.unblock();
 			}, closing);
 		}), true);
 		jp.listenTime(60000, () -> {

@@ -84,6 +84,12 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 			throw new Exception("" + nb + " byte(s) read after the end of the file");
 		if (io instanceof IO.PositionKnown)
 			Assert.assertEquals(nbBuf * testBuf.length, ((IO.PositionKnown)io).getPosition());
+		buffer.clear();
+		nb = io.readSync(buffer);
+		if (nb > 0)
+			throw new Exception("" + nb + " byte(s) read after the end of the file");
+		if (io instanceof IO.PositionKnown)
+			Assert.assertEquals(nbBuf * testBuf.length, ((IO.PositionKnown)io).getPosition());
 		io.close();
 	}
 	
@@ -334,6 +340,8 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 			}
 		});
 		done.blockThrow(0);
+		buffer.clear();
+		Assert.assertEquals(-1, io.readAsync(buffer).blockResult(0).intValue());
 		io.close();
 	}
 	
