@@ -417,28 +417,36 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 	public void testsReadableAlwaysError() throws Exception {
 		IO.Readable io = getReadable(new ReadableAlwaysError());
 		Assume.assumeNotNull(io);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		
 		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.readSync(ByteBuffer.allocate(1024));
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		
 		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.readFullySync(ByteBuffer.allocate(1024));
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		
 		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.skipSync(10);
 			// may be ok...
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		
 		MutableBoolean called = new MutableBoolean(false);
 		Consumer<Pair<Integer, IOException>> ondone = p -> called.set(p.getValue2() != null);
@@ -449,7 +457,9 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 			io.readAsync(ByteBuffer.allocate(1024)).blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException | CancelException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException | CancelException e) {}
 		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.readAsync(ByteBuffer.allocate(1024), ondone).blockResult(30000);
@@ -457,14 +467,18 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		} catch (IOException | CancelException e) { /* ok */ }
 		Assert.assertTrue(called.get());
 		called.set(false);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException | CancelException e) {}
 		
 		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.readFullyAsync(ByteBuffer.allocate(1024)).blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException | CancelException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException | CancelException e) {}
 		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.readFullyAsync(ByteBuffer.allocate(1024), ondone).blockResult(30000);
@@ -472,14 +486,18 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		} catch (IOException | CancelException e) { /* ok */ }
 		Assert.assertTrue(called.get());
 		called.set(false);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException | CancelException e) {}
 		
 		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.skipAsync(10).blockResult(30000);
 			// may be ok...
 		} catch (IOException | CancelException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException | CancelException e) {}
 		io = getReadable(new ReadableAlwaysError());
 		try {
 			io.skipAsync(10, ondoneL).blockResult(30000);
@@ -488,28 +506,36 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		} catch (IOException | CancelException e) { /* ok */ }
 		Assert.assertTrue(called.get());
 		called.set(false);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException | CancelException e) {}
 	}
 	
 	@Test
 	public void testsReadableSeekableAlwaysError() throws Exception {
 		IO.Readable.Seekable io = getReadableSeekable(new ReadableAlwaysError());
 		Assume.assumeNotNull(io);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		
 		io = getReadableSeekable(new ReadableAlwaysError());
 		try {
 			io.readSync(10, ByteBuffer.allocate(1024));
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		
 		io = getReadableSeekable(new ReadableAlwaysError());
 		try {
 			io.readFullySync(10, ByteBuffer.allocate(1024));
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 
 		MutableBoolean called = new MutableBoolean(false);
 		Consumer<Pair<Integer, IOException>> ondone = p -> called.set(p.getValue2() != null);
@@ -519,7 +545,9 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 			io.readAsync(10, ByteBuffer.allocate(1024)).blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		io = getReadableSeekable(new ReadableAlwaysError());
 		try {
 			io.readAsync(10, ByteBuffer.allocate(1024), ondone).blockResult(30000);
@@ -527,14 +555,18 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		} catch (IOException e) { /* ok */ }
 		Assert.assertTrue(called.get());
 		called.set(false);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 
 		io = getReadableSeekable(new ReadableAlwaysError());
 		try {
 			io.readFullyAsync(10, ByteBuffer.allocate(1024)).blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		io = getReadableSeekable(new ReadableAlwaysError());
 		try {
 			io.readFullyAsync(10, ByteBuffer.allocate(1024), ondone).blockResult(30000);
@@ -542,14 +574,18 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		} catch (IOException e) { /* ok */ }
 		Assert.assertTrue(called.get());
 		called.set(false);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 	}
 	
 	@Test
 	public void testsReadableBufferedAlwaysError() throws Exception {
 		IO.Readable.Buffered io = getReadableBuffered(new ReadableAlwaysError());
 		Assume.assumeNotNull(io);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		
 		MutableBoolean called = new MutableBoolean(false);
 		Consumer<Pair<Integer, IOException>> ondone = p -> called.set(p.getValue2() != null);
@@ -563,14 +599,18 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 			}
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 
 		io = getReadableBuffered(new ReadableAlwaysError());
 		try {
 			io.readNextBufferAsync().blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		io = getReadableBuffered(new ReadableAlwaysError());
 		try {
 			io.readNextBufferAsync(ondoneBB).blockResult(30000);
@@ -578,14 +618,18 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		} catch (IOException e) { /* ok */ }
 		Assert.assertTrue(called.get());
 		called.set(false);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 
 		io = getReadableBuffered(new ReadableAlwaysError());
 		try {
 			io.readFullySyncIfPossible(ByteBuffer.allocate(1024)).blockResult(30000);
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 		io = getReadableBuffered(new ReadableAlwaysError());
 		try {
 			io.readFullySyncIfPossible(ByteBuffer.allocate(1024), ondone).blockResult(30000);
@@ -593,14 +637,18 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 		} catch (IOException e) { /* ok */ }
 		Assert.assertTrue(called.get());
 		called.set(false);
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 
 		io = getReadableBuffered(new ReadableAlwaysError());
 		try {
 			io.readNextBuffer();
 			throw new AssertionError();
 		} catch (IOException e) { /* ok */ }
-		io.close();
+		try {
+			io.close();
+		} catch (IOException e) {}
 	}
 	
 	@Test

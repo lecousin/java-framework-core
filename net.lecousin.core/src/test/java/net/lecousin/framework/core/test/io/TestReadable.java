@@ -93,7 +93,6 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testReadableBufferByBufferFullySync() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
@@ -118,7 +117,6 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 
-	@SuppressWarnings("resource")
 	@Test
 	public void testReadableBufferByBufferFullySyncBigBuffer() throws Exception {
 		IO.Readable io = createReadableFromFile(openFile(), getFileSize());
@@ -341,11 +339,10 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		});
 		done.blockThrow(0);
 		buffer.clear();
-		Assert.assertEquals(-1, io.readAsync(buffer).blockResult(0).intValue());
+		Assert.assertTrue(io.readAsync(buffer).blockResult(0).intValue() <= 0);
 		io.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testReadableSkipSync() throws Exception {
 		long size = getFileSize();
@@ -470,7 +467,6 @@ public abstract class TestReadable extends TestIO.UsingGeneratedTestFiles {
 		io.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testSkipSyncNegativeValue() throws Exception {
 		Assume.assumeTrue(nbBuf > 2);
