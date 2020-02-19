@@ -132,7 +132,7 @@ public class StandaloneLCCore implements LCCore.Environment {
 			if (logger.debug()) {
 				ThreadingLogger t = new ThreadingLogger();
 				t.start();
-				app.toClose(t);
+				app.toClose(0, t);
 			}
 		}
 	}

@@ -1,5 +1,6 @@
 package net.lecousin.framework.concurrent.tasks.drives;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -7,6 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.function.Consumer;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
@@ -22,7 +24,7 @@ import net.lecousin.framework.util.Pair;
  * This class is used as a bridge between {@link FileIO} and dedicated tasks.
  * This should not be used directly, but {@link FileIO} should be used instead.
  */
-public class FileAccess implements AutoCloseable {
+public class FileAccess implements AutoCloseable, Closeable {
 
 	/** Constructor. */
 	public FileAccess(File file, String mode, byte priority) {
@@ -32,6 +34,7 @@ public class FileAccess implements AutoCloseable {
 		this.manager = Threading.getDrivesTaskManager().getTaskManager(file);
 		if (this.manager == null) this.manager = Threading.getUnmanagedTaskManager();
 		openTask = new OpenFileTask(this, mode, priority);
+		LCCore.getApplication().toClose(0, this);
 	}
 	
 	RandomAccessFile f;
@@ -65,7 +68,9 @@ public class FileAccess implements AutoCloseable {
 	
 	@Override
 	public void close() {
-		closeAsync();
+		Task<Void,IOException> close = closeAsync();
+		LCCore.getApplication().closed(this);
+		close.getOutput().block(0);
 	}
 	
 	public long getPosition() throws IOException {

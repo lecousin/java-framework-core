@@ -43,7 +43,7 @@ public class RollingFileAppender implements Appender, Closeable {
 		this.pattern = pattern;
 		this.maxSize = maxSize;
 		this.maxFiles = maxFiles;
-		factory.getApplication().toClose(this);
+		factory.getApplication().toClose(100000, this);
 	}
 	
 	/** Constructor. */
@@ -106,7 +106,7 @@ public class RollingFileAppender implements Appender, Closeable {
 			reader.next();
 		} while (reader.hasNext());
 
-		factory.getApplication().toClose(this);
+		factory.getApplication().toClose(100000, this);
 	}
 	
 	private LoggerFactory factory;

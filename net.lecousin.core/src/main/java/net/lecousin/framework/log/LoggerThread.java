@@ -41,7 +41,7 @@ class LoggerThread {
 		thread.setName("Logger for " + app.getGroupId() + "." + app.getArtifactId() + " " + app.getVersion().toString());
 		if (app.isStopping()) return;
 		thread.start();
-		app.toClose(() -> {
+		app.toClose(100001, () -> {
 			stop = true;
 			synchronized (logs) {
 				logs.notify();
@@ -56,10 +56,16 @@ class LoggerThread {
 	private Async<Exception> flushing = null;
 
 	void log(Appender appender, Log log) {
-		Pair<Appender,Log> p = new Pair<>(appender,log);
+		Pair<Appender,Log> p = new Pair<>(appender, log);
+		int s = logs.size();
 		synchronized (logs) {
 			logs.addLast(p);
-			logs.notify();
+			if (s == 1)
+				logs.notify();
+		}
+		if (s > 5000) {
+			Async<Exception> a = new Async<>();
+			a.block(s > 10000 ? 1000 : s > 6000 ? 500 : 100);
 		}
 	}
 	

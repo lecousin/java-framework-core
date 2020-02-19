@@ -115,7 +115,7 @@ public final class TemporaryFiles {
 	public File createDirectorySync(String prefix) throws IOException {
 		Path path = Files.createTempDirectory(tempDir.toPath(), this.prefix + prefix);
 		File dir = path.toFile();
-		app.toClose(() -> new RemoveDirectoryTask(dir, null, 0, null, Task.PRIORITY_NORMAL, false).start().getOutput());
+		app.toClose(1000, () -> new RemoveDirectoryTask(dir, null, 0, null, Task.PRIORITY_NORMAL, false).start().getOutput());
 		return dir;
 	}
 	

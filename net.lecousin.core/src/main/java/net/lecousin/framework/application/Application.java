@@ -93,8 +93,7 @@ public final class Application {
 	private LoggerFactory loggerFactory;
 	private Map<Class<?>, Object> instances = new HashMap<>();
 	private Map<String, Object> data = new HashMap<>();
-	private ArrayList<Closeable> toCloseSync = new ArrayList<>();
-	private ArrayList<AsyncCloseable<?>> toCloseAsync = new ArrayList<>();
+	private LinkedList<Pair<Integer, Object>> toClose = new LinkedList<>();
 	private ArrayList<Thread> toInterrupt = new ArrayList<>();
 	private boolean stopping = false;
 	
@@ -206,23 +205,37 @@ public final class Application {
 	}
 	
 	/** Register an instance to close on application shutdown. */
-	public void toClose(Closeable c) {
-		synchronized (toCloseSync) { toCloseSync.add(c); }
+	public void toClose(int priority, Closeable c) {
+		toClose(priority, (Object)c);
 	}
 	
 	/** Register an instance to close on application shutdown. */
-	public void toClose(AsyncCloseable<?> c) {
-		synchronized (toCloseAsync) { toCloseAsync.add(c); }
+	public void toClose(int priority, AsyncCloseable<?> c) {
+		toClose(priority, (Object)c);
+	}
+	
+	private void toClose(int priority, Object c) {
+		synchronized (toClose) { toClose.add(new Pair<>(Integer.valueOf(priority), c)); }
 	}
 
 	/** Unregister an instance to close on application shutdown. */
 	public void closed(Closeable c) {
-		synchronized (toCloseSync) { toCloseSync.remove(c); }
+		closed((Object)c);
 	}
 	
 	/** Unregister an instance to close on application shutdown. */
 	public void closed(AsyncCloseable<?> c) {
-		synchronized (toCloseAsync) { toCloseAsync.remove(c); }
+		closed((Object)c);
+	}
+	
+	private void closed(Object c) {
+		synchronized (toClose) {
+			for (Iterator<Pair<Integer, Object>> it = toClose.descendingIterator(); it.hasNext(); )
+				if (it.next().getValue2() == c) {
+					it.remove();
+					break;
+				}
+		}
 	}
 	
 	/** Register a thread that must be interrupted on application shutdown. */
@@ -389,11 +402,20 @@ public final class Application {
 		stopping = true;
 
 		System.out.println(" * Closing resources");
-		for (Closeable c : new ArrayList<>(toCloseSync)) {
-			System.out.println("     - " + c);
-			try { c.close(); } catch (Exception t) {
-				System.err.println("Error closing resource " + c);
-				t.printStackTrace(System.err);
+		List<Pair<AsyncCloseable<?>,IAsync<?>>> closing = new LinkedList<>();
+		ArrayList<Pair<Integer, Object>> list = new ArrayList<>(toClose);
+		list.sort((c1, c2) -> c1.getValue1().intValue() - c2.getValue1().intValue());
+		toClose.clear();
+		for (Pair<Integer, Object> p : list) {
+			System.out.println("     - " + p.getValue2());
+			Object o = p.getValue2();
+			if (o instanceof Closeable)
+				try { ((Closeable)o).close(); } catch (Exception t) {
+					System.err.println("Error closing resource " + o);
+					t.printStackTrace(System.err);
+				}
+			else if (o instanceof AsyncCloseable) {
+				closing.add(new Pair<>((AsyncCloseable<?>)o, ((AsyncCloseable<?>)o).closeAsync()));
 			}
 		}
 		
@@ -404,12 +426,6 @@ public final class Application {
 			t.interrupt();
 		}
 
-		List<Pair<AsyncCloseable<?>,IAsync<?>>> closing = new LinkedList<>();
-		for (AsyncCloseable<?> s : new ArrayList<>(toCloseAsync)) {
-			System.out.println(" * Closing " + s);
-			closing.add(new Pair<>(s, s.closeAsync()));
-		}
-		toCloseAsync.clear();
 		long start = System.currentTimeMillis();
 		boolean allClosed = false;
 		do {

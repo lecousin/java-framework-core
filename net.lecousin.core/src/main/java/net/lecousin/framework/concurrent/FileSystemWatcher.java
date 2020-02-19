@@ -69,7 +69,7 @@ public final class FileSystemWatcher {
 			service = FileSystems.getDefault().newWatchService();
 			this.app = app;
 			start();
-			app.toClose(this);
+			app.toClose(1000, this);
 		}
 		
 		private Application app;

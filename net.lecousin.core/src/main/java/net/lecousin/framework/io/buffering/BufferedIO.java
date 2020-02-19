@@ -754,6 +754,8 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 			bufferTable = new MapBufferTable();
 		if (preLoadNextBuffer)
 			preLoadBuffer(position);
+		LCCore.getApplication().toClose(0, this);
+		this.addCloseListener(() -> LCCore.getApplication().closed(this));
 	}
 
 	/** Constructor. */
