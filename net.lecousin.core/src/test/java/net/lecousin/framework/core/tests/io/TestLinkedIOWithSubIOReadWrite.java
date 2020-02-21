@@ -43,7 +43,9 @@ public class TestLinkedIOWithSubIOReadWrite extends TestReadWrite {
 		int i = 0;
 		for (RangeLong fragment : f.fragments)
 			ios[i++] = new SubIO.ReadWrite(fio, fragment.min, fragment.getLength(), "fragment " + i, false);
-		return new LinkedIO.ReadWrite("linked IO", ios);
+		LinkedIO.ReadWrite res = new LinkedIO.ReadWrite("linked IO", ios);
+		res.addCloseListener(() -> { try { fio.close(); } catch (Exception e) {}});
+		return res;
 	}
 	
 	@Override

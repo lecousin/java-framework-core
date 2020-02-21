@@ -2,6 +2,7 @@ package net.lecousin.framework.concurrent.tasks.drives;
 
 import java.io.IOException;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.CancelException;
 
@@ -10,6 +11,7 @@ class CloseFileTask extends Task./*OnFile*/Cpu<Void,IOException> {
 	public CloseFileTask(FileAccess file) {
 		/*super(file.manager, "Close file", Task.PRIORITY_NORMAL);*/
 		super("Close file", Task.PRIORITY_NORMAL);
+		LCCore.getApplication().closed(file);
 		if (file.openTask.getStatus() < Task.STATUS_RUNNING &&
 			file.openTask.cancelIfExecutionNotStarted(new CancelException("Close file requested", null))) {
 				setDone(null, null);

@@ -36,35 +36,34 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		return openReadWrite();
 	}
 
-	@SuppressWarnings({ "resource" })
 	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testWriteThenReadFullySync() throws Exception {
-		T io = openReadWrite();
-		ByteBuffer buf = ByteBuffer.wrap(testBuf);
-		for (int i = 0; i < nbBuf; ++i) {
-			buf.position(0);
-			int nb = io.writeSync(buf);
-			if (nb != testBuf.length)
-				throw new Exception("Write only " + nb + " bytes for buffer " + i);
-			if (buf.remaining() > 0)
-				throw new Exception("Buffer not fully consumed by write operation");
-		}
-		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		byte[] b = new byte[testBuf.length];
-		buf = ByteBuffer.wrap(b);
-		for (int i = 0; i < nbBuf; ++i) {
+		try (T io = openReadWrite()) {
+			ByteBuffer buf = ByteBuffer.wrap(testBuf);
+			for (int i = 0; i < nbBuf; ++i) {
+				buf.position(0);
+				int nb = io.writeSync(buf);
+				if (nb != testBuf.length)
+					throw new Exception("Write only " + nb + " bytes for buffer " + i);
+				if (buf.remaining() > 0)
+					throw new Exception("Buffer not fully consumed by write operation");
+			}
+			io.seekSync(SeekType.FROM_BEGINNING, 0);
+			byte[] b = new byte[testBuf.length];
+			buf = ByteBuffer.wrap(b);
+			for (int i = 0; i < nbBuf; ++i) {
+				buf.clear();
+				int nb = io.readFullySync(buf);
+				if (nb != testBuf.length)
+					throw new Exception("Read only " + nb + " bytes at buffer " + i);
+				if (!ArrayUtil.equals(b, testBuf))
+					throw new Exception("Invalid read at buffer " + i + ":\r\nRead is:\r\n" + new String(b)
+						+ "\r\nExpected is:\r\n" + new String(testBuf));
+			}
 			buf.clear();
-			int nb = io.readFullySync(buf);
-			if (nb != testBuf.length)
-				throw new Exception("Read only " + nb + " bytes at buffer " + i);
-			if (!ArrayUtil.equals(b, testBuf))
-				throw new Exception("Invalid read at buffer " + i + ":\r\nRead is:\r\n" + new String(b)
-					+ "\r\nExpected is:\r\n" + new String(testBuf));
+			if (io.readSync(buf) > 0)
+				throw new Exception("More bytes than expected can be read");
 		}
-		buf.clear();
-		if (io.readSync(buf) > 0)
-			throw new Exception("More bytes than expected can be read");
-		io.close();
 	}
 	
 	@Test
@@ -72,37 +71,37 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		Assume.assumeTrue(nbBuf > 0);
 		int nbBuf = this.nbBuf;
 		if (nbBuf > 25000) nbBuf = 25000; // make test faster
-		T io = openReadWrite();
-		Assert.assertEquals(0, io.getPosition());
-		LinkedList<Integer> buffersToWrite = new LinkedList<>();
-		LinkedList<Integer> buffersToRead = new LinkedList<>();
-		for (int i = 0; i < nbBuf; ++i) buffersToWrite.add(Integer.valueOf(i));
-		IAsync<IOException> prevWrite = null;
-		IAsync<IOException> prevRead = null;
-		for (int i = 0; i < nbBuf; i += 2) {
-			prevWrite = writeBuffer(io, prevWrite, buffersToWrite, buffersToRead);
-			if (i < nbBuf - 1)
+		try (T io = openReadWrite()) {
+			Assert.assertEquals(0, io.getPosition());
+			LinkedList<Integer> buffersToWrite = new LinkedList<>();
+			LinkedList<Integer> buffersToRead = new LinkedList<>();
+			for (int i = 0; i < nbBuf; ++i) buffersToWrite.add(Integer.valueOf(i));
+			IAsync<IOException> prevWrite = null;
+			IAsync<IOException> prevRead = null;
+			for (int i = 0; i < nbBuf; i += 2) {
 				prevWrite = writeBuffer(io, prevWrite, buffersToWrite, buffersToRead);
-			prevRead = readBuffer(io, prevWrite, prevRead, buffersToRead);
-			// make some pauses to avoid stack overflow
-			if ((i % 17) == 8) {
+				if (i < nbBuf - 1)
+					prevWrite = writeBuffer(io, prevWrite, buffersToWrite, buffersToRead);
+				prevRead = readBuffer(io, prevWrite, prevRead, buffersToRead);
+				// make some pauses to avoid stack overflow
+				if ((i % 17) == 8) {
+					prevRead.blockThrow(0);
+					prevRead = null;
+					prevWrite = null;
+				}
+			}
+			if (prevWrite != null) {
+				prevWrite.blockThrow(0);
+			}
+			while (!buffersToRead.isEmpty()) {
+				prevRead = readBuffer(io, prevWrite, prevRead, buffersToRead);
 				prevRead.blockThrow(0);
 				prevRead = null;
-				prevWrite = null;
+			}
+			if (prevRead != null) {
+				prevRead.blockThrow(0);
 			}
 		}
-		if (prevWrite != null) {
-			prevWrite.blockThrow(0);
-		}
-		while (!buffersToRead.isEmpty()) {
-			prevRead = readBuffer(io, prevWrite, prevRead, buffersToRead);
-			prevRead.blockThrow(0);
-			prevRead = null;
-		}
-		if (prevRead != null) {
-			prevRead.blockThrow(0);
-		}
-		io.close();
 	}
 	
 	private <T extends IO.Readable.Seekable & IO.Writable.Seekable> IAsync<IOException> writeBuffer(
@@ -231,125 +230,123 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 		return done;
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testRandomPartialWriteSync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
-		T io = openReadWrite();
-		Assert.assertEquals(0, io.getPosition());
-		int nbBuf = this.nbBuf;
-		if (nbBuf > 5000) nbBuf = 5000 + rand.nextInt(1000); // limit size because too long
-		// write randomly
-		FragmentedRangeLong toWrite = new FragmentedRangeLong(new RangeLong(0, nbBuf * testBuf.length - 1));
-		while (!toWrite.isEmpty()) {
-			int rangeIndex = rand.nextInt(toWrite.size());
-			RangeLong range = toWrite.get(rangeIndex);
-			int startPos = range.getLength() >= testBuf.length ? rand.nextInt((int)range.getLength()) : 0;
-			int bufOffset = (int)((range.min + startPos) % testBuf.length);
-			int len = testBuf.length - bufOffset;
-			if (range.min + startPos + len - 1 > range.max) len = (int)(range.max - (range.min + startPos) + 1);
-			ByteBuffer buf = ByteBuffer.wrap(testBuf, bufOffset, len);
-			try {
-				io.writeSync(range.min + startPos, buf);
-			} catch (Exception e) {
-				throw new Exception("Error writing at " + (range.min + startPos) + ", " + len + " bytes", e);
+		try (T io = openReadWrite()) {
+			Assert.assertEquals(0, io.getPosition());
+			int nbBuf = this.nbBuf;
+			if (nbBuf > 5000) nbBuf = 5000 + rand.nextInt(1000); // limit size because too long
+			// write randomly
+			FragmentedRangeLong toWrite = new FragmentedRangeLong(new RangeLong(0, nbBuf * testBuf.length - 1));
+			while (!toWrite.isEmpty()) {
+				int rangeIndex = rand.nextInt(toWrite.size());
+				RangeLong range = toWrite.get(rangeIndex);
+				int startPos = range.getLength() >= testBuf.length ? rand.nextInt((int)range.getLength()) : 0;
+				int bufOffset = (int)((range.min + startPos) % testBuf.length);
+				int len = testBuf.length - bufOffset;
+				if (range.min + startPos + len - 1 > range.max) len = (int)(range.max - (range.min + startPos) + 1);
+				ByteBuffer buf = ByteBuffer.wrap(testBuf, bufOffset, len);
+				try {
+					io.writeSync(range.min + startPos, buf);
+				} catch (Exception e) {
+					throw new Exception("Error writing at " + (range.min + startPos) + ", " + len + " bytes", e);
+				}
+				Assert.assertEquals("Remaining data not written at position " + (range.min + startPos) + " on " + len, 0, buf.remaining());
+				Assert.assertEquals("Write at a given position should not change the IO cursor", 0, io.getPosition());
+				if (range.max == range.min + startPos + len - 1) {
+					toWrite.removeRange(range.min + startPos, range.max);
+					continue;
+				}
+				int len2 = testBuf.length;
+				if (range.min + startPos + len + len2 - 1 > range.max) len2 = (int)(range.max - (range.min + startPos + len) + 1);
+				io.writeSync(range.min + startPos + len, ByteBuffer.wrap(testBuf, 0, len2));
+				toWrite.removeRange(range.min + startPos, range.min + startPos + len + len2 - 1);
+				Assert.assertEquals("Write at a given position should not change the IO cursor", 0, io.getPosition());
 			}
-			Assert.assertEquals("Remaining data not written at position " + (range.min + startPos) + " on " + len, 0, buf.remaining());
-			Assert.assertEquals("Write at a given position should not change the IO cursor", 0, io.getPosition());
-			if (range.max == range.min + startPos + len - 1) {
-				toWrite.removeRange(range.min + startPos, range.max);
-				continue;
+			// read
+			io.seekSync(SeekType.FROM_BEGINNING, 0);
+			byte[] b = new byte[testBuf.length];
+			for (int i = 0; i < nbBuf; ++i) {
+				int nb = io.readFullySync(ByteBuffer.wrap(b));
+				if (nb != testBuf.length)
+					throw new Exception("Read only " + nb + " bytes at buffer " + i);
+				if (!ArrayUtil.equals(b, testBuf))
+					throw new Exception("Invalid read at buffer " + i + ":\r\nRead is:\r\n" + new String(b)
+						+ "\r\nExpected is:\r\n" + new String(testBuf));
 			}
-			int len2 = testBuf.length;
-			if (range.min + startPos + len + len2 - 1 > range.max) len2 = (int)(range.max - (range.min + startPos + len) + 1);
-			io.writeSync(range.min + startPos + len, ByteBuffer.wrap(testBuf, 0, len2));
-			toWrite.removeRange(range.min + startPos, range.min + startPos + len + len2 - 1);
-			Assert.assertEquals("Write at a given position should not change the IO cursor", 0, io.getPosition());
 		}
-		// read
-		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		byte[] b = new byte[testBuf.length];
-		for (int i = 0; i < nbBuf; ++i) {
-			int nb = io.readFullySync(ByteBuffer.wrap(b));
-			if (nb != testBuf.length)
-				throw new Exception("Read only " + nb + " bytes at buffer " + i);
-			if (!ArrayUtil.equals(b, testBuf))
-				throw new Exception("Invalid read at buffer " + i + ":\r\nRead is:\r\n" + new String(b)
-					+ "\r\nExpected is:\r\n" + new String(testBuf));
-		}
-		io.close();
 	}
 	
 	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testWriteSyncOneShot() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
-		T io = openReadWrite();
-		byte[] bigBuffer = new byte[nbBuf * testBuf.length];
-		for (int i = 0; i < nbBuf; ++i)
-			System.arraycopy(testBuf, 0, bigBuffer, i * testBuf.length, testBuf.length);
-		io.writeSync(0, ByteBuffer.wrap(bigBuffer));
-		// read
-		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		byte[] b = new byte[testBuf.length];
-		for (int i = 0; i < nbBuf; ++i) {
-			int nb = io.readFullySync(ByteBuffer.wrap(b));
-			if (nb != testBuf.length)
-				throw new Exception("Read only " + nb + " bytes at buffer " + i);
-			if (!ArrayUtil.equals(b, testBuf))
-				throw new Exception("Invalid read at buffer " + i + ":\r\nRead is:\r\n" + new String(b)
-					+ "\r\nExpected is:\r\n" + new String(testBuf));
+		try (T io = openReadWrite()) {
+			byte[] bigBuffer = new byte[nbBuf * testBuf.length];
+			for (int i = 0; i < nbBuf; ++i)
+				System.arraycopy(testBuf, 0, bigBuffer, i * testBuf.length, testBuf.length);
+			io.writeSync(0, ByteBuffer.wrap(bigBuffer));
+			// read
+			io.seekSync(SeekType.FROM_BEGINNING, 0);
+			byte[] b = new byte[testBuf.length];
+			for (int i = 0; i < nbBuf; ++i) {
+				int nb = io.readFullySync(ByteBuffer.wrap(b));
+				if (nb != testBuf.length)
+					throw new Exception("Read only " + nb + " bytes at buffer " + i);
+				if (!ArrayUtil.equals(b, testBuf))
+					throw new Exception("Invalid read at buffer " + i + ":\r\nRead is:\r\n" + new String(b)
+						+ "\r\nExpected is:\r\n" + new String(testBuf));
+			}
 		}
-		io.close();
 	}
 	
 	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testWriteAsyncOneShot() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
-		T io = openReadWrite();
-		byte[] bigBuffer = new byte[nbBuf * testBuf.length];
-		for (int i = 0; i < nbBuf; ++i)
-			System.arraycopy(testBuf, 0, bigBuffer, i * testBuf.length, testBuf.length);
-		Assert.assertEquals(bigBuffer.length, io.writeAsync(0, ByteBuffer.wrap(bigBuffer)).blockResult(60000).intValue());
-		// read
-		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		byte[] b = new byte[testBuf.length];
-		for (int i = 0; i < nbBuf; ++i) {
-			int nb = io.readFullySync(ByteBuffer.wrap(b));
-			if (nb != testBuf.length)
-				throw new Exception("Read only " + nb + " bytes at buffer " + i);
-			if (!ArrayUtil.equals(b, testBuf))
-				throw new Exception("Invalid read at buffer " + i + ":\r\nRead is:\r\n" + new String(b)
-					+ "\r\nExpected is:\r\n" + new String(testBuf));
+		try (T io = openReadWrite()) {
+			byte[] bigBuffer = new byte[nbBuf * testBuf.length];
+			for (int i = 0; i < nbBuf; ++i)
+				System.arraycopy(testBuf, 0, bigBuffer, i * testBuf.length, testBuf.length);
+			Assert.assertEquals(bigBuffer.length, io.writeAsync(0, ByteBuffer.wrap(bigBuffer)).blockResult(60000).intValue());
+			// read
+			io.seekSync(SeekType.FROM_BEGINNING, 0);
+			byte[] b = new byte[testBuf.length];
+			for (int i = 0; i < nbBuf; ++i) {
+				int nb = io.readFullySync(ByteBuffer.wrap(b));
+				if (nb != testBuf.length)
+					throw new Exception("Read only " + nb + " bytes at buffer " + i);
+				if (!ArrayUtil.equals(b, testBuf))
+					throw new Exception("Invalid read at buffer " + i + ":\r\nRead is:\r\n" + new String(b)
+						+ "\r\nExpected is:\r\n" + new String(testBuf));
+			}
 		}
-		io.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testDichotomicWriteSeekSyncThenReverseReadSeekSync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
-		T io = openReadWrite();
-		// make the file have its final size to be able to use SEEK_END
-		io.writeSync(nbBuf * testBuf.length - 1, ByteBuffer.wrap(testBuf, 0, 1));
-		// write
-		dichotomicWriteSync(io, 0, nbBuf - 1, SeekType.FROM_BEGINNING);
-		// read
-		byte[] b = new byte[testBuf.length];
-		for (int bufIndex = nbBuf - 1; bufIndex >= 0; bufIndex--) {
-			if ((bufIndex % 3) == 0)
-				io.seekSync(SeekType.FROM_BEGINNING, bufIndex * testBuf.length);
-			else if ((bufIndex % 3) == 1)
-				io.seekSync(SeekType.FROM_CURRENT, bufIndex * testBuf.length - io.getPosition());
-			else
-				io.seekSync(SeekType.FROM_END, (nbBuf - bufIndex) * testBuf.length);
-			int nb = io.readFullySync(ByteBuffer.wrap(b));
-			if (nb != testBuf.length)
-				throw new AssertionError("Only " + nb + " byte(s) read at buffer " + bufIndex);
-			if (!ArrayUtil.equals(testBuf, b))
-				throw new AssertionError("Invalid read at buffer " + bufIndex + ":\r\nRead is:\r\n" + new String(b)
-						+ "\r\nExpected is:\r\n" + new String(testBuf));
+		try (T io = openReadWrite()) {
+			// make the file have its final size to be able to use SEEK_END
+			io.writeSync(nbBuf * testBuf.length - 1, ByteBuffer.wrap(testBuf, 0, 1));
+			// write
+			dichotomicWriteSync(io, 0, nbBuf - 1, SeekType.FROM_BEGINNING);
+			// read
+			byte[] b = new byte[testBuf.length];
+			for (int bufIndex = nbBuf - 1; bufIndex >= 0; bufIndex--) {
+				if ((bufIndex % 3) == 0)
+					io.seekSync(SeekType.FROM_BEGINNING, bufIndex * testBuf.length);
+				else if ((bufIndex % 3) == 1)
+					io.seekSync(SeekType.FROM_CURRENT, bufIndex * testBuf.length - io.getPosition());
+				else
+					io.seekSync(SeekType.FROM_END, (nbBuf - bufIndex) * testBuf.length);
+				int nb = io.readFullySync(ByteBuffer.wrap(b));
+				if (nb != testBuf.length)
+					throw new AssertionError("Only " + nb + " byte(s) read at buffer " + bufIndex);
+				if (!ArrayUtil.equals(testBuf, b))
+					throw new AssertionError("Invalid read at buffer " + bufIndex + ":\r\nRead is:\r\n" + new String(b)
+							+ "\r\nExpected is:\r\n" + new String(testBuf));
+			}
 		}
-		io.close();
 	}
 	
 	private <T extends IO.Readable.Seekable & IO.Writable.Seekable>
@@ -389,22 +386,22 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	@Test
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable> void testSeekAsyncWriteOddEvenThenReadReverse() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
-		T io = openReadWrite();
-		// make the file have its final size to be able to use SEEK_END
-		io.writeSync(nbBuf * testBuf.length - 1, ByteBuffer.wrap(testBuf, 0, 1));
-		// write odd buffers
-		IAsync<IOException> prev = null;
-		int index = 0;
-		for (int i = 1; i < nbBuf; i += 2)
-			prev = writeBufferSeekAsync(io, i, index++, prev);
-		// write even buffers
-		for (int i = 0; i < nbBuf; i += 2)
-			prev = writeBufferSeekAsync(io, i, index++, prev);
-		// read reverse
-		for (int i = nbBuf - 1; i >= 0; --i)
-			prev = readReverseSeekAsync(io, i, prev);
-		prev.blockThrow(0);
-		io.close();
+		try (T io = openReadWrite()) {
+			// make the file have its final size to be able to use SEEK_END
+			io.writeSync(nbBuf * testBuf.length - 1, ByteBuffer.wrap(testBuf, 0, 1));
+			// write odd buffers
+			IAsync<IOException> prev = null;
+			int index = 0;
+			for (int i = 1; i < nbBuf; i += 2)
+				prev = writeBufferSeekAsync(io, i, index++, prev);
+			// write even buffers
+			for (int i = 0; i < nbBuf; i += 2)
+				prev = writeBufferSeekAsync(io, i, index++, prev);
+			// read reverse
+			for (int i = nbBuf - 1; i >= 0; --i)
+				prev = readReverseSeekAsync(io, i, prev);
+			prev.blockThrow(0);
+		}
 	}
 	
 	private <T extends IO.Readable.Seekable & IO.Writable.Seekable>

@@ -773,6 +773,11 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	protected int firstBufferSize;
 	protected int bufferSize;
 	
+	@Override
+	public String toString() {
+		return "BufferedIO[" + (io != null ? io.getSourceDescription() : null) + "]";
+	}
+	
 	private void load(Buffer b) {
 		long pos = b.index == 0 ? 0 : (firstBufferSize + bufferSize * (b.index - 1));
 		int len = size - pos < b.data.length ? (int)(size - pos) : b.data.length;

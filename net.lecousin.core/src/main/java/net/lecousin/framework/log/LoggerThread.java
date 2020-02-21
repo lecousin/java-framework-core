@@ -55,17 +55,21 @@ class LoggerThread {
 	private boolean stop = false;
 	private Async<Exception> flushing = null;
 
+	@SuppressWarnings({"java:S3358", "java:S2142"})
 	void log(Appender appender, Log log) {
 		Pair<Appender,Log> p = new Pair<>(appender, log);
-		int s = logs.size();
 		synchronized (logs) {
 			logs.addLast(p);
-			if (s == 1)
-				logs.notify();
+			logs.notify();
 		}
+		int s = logs.size();
 		if (s > 5000) {
-			Async<Exception> a = new Async<>();
-			a.block(s > 10000 ? 1000 : s > 6000 ? 500 : 100);
+			// pause the thread to let time to logging
+			try {
+				Thread.sleep(s > 10000 ? 400 : s > 7500 ? 200 : 100);
+			} catch (InterruptedException e) {
+				// ignore
+			}
 		}
 	}
 	

@@ -57,6 +57,11 @@ public class FileAccess implements AutoCloseable, Closeable {
 	public byte getPriority() { return priority; }
 	
 	public void setPriority(byte priority) { this.priority = priority; }
+	
+	@Override
+	public String toString() {
+		return "FileAccess[" + file.getAbsolutePath() + "]";
+	}
 
 	public void open() throws IOException {
 		openTask.getOutput().blockException(0);
@@ -68,9 +73,7 @@ public class FileAccess implements AutoCloseable, Closeable {
 	
 	@Override
 	public void close() {
-		Task<Void,IOException> close = closeAsync();
-		LCCore.getApplication().closed(this);
-		close.getOutput().block(0);
+		closeAsync().getOutput().block(0);
 	}
 	
 	public long getPosition() throws IOException {

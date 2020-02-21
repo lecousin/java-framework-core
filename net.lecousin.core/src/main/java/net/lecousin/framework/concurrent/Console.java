@@ -16,30 +16,40 @@ public class Console implements Closeable {
 	
 	/** Print the given line. */
 	public synchronized void out(String line) {
-		toPrint.addLast(line);
-		stream.addLast(out);
-		this.notify();
+		add(line, out);
 	}
 	
 	/** Print the given error. */
 	public synchronized void out(Throwable t) {
-		toPrint.addLast(t);
-		stream.addLast(out);
-		this.notify();
+		add(t, out);
 	}
 	
 	/** Print the given line. */
 	public synchronized void err(String line) {
-		toPrint.addLast(line);
-		stream.addLast(err);
-		this.notify();
+		add(line, err);
 	}
 
 	/** Print the given error. */
 	public synchronized void err(Throwable t) {
-		toPrint.addLast(t);
-		stream.addLast(err);
-		this.notify();
+		add(t, err);
+	}
+	
+	@SuppressWarnings({"java:S3358", "java:S2142"})
+	private void add(Object o, PrintStream s) {
+		synchronized (this) {
+			toPrint.addLast(o);
+			stream.addLast(s);
+			this.notify();
+		}
+		int nb = toPrint.size();
+		if (nb > 5000) {
+			// pause the thread to let time to logging
+			try {
+				Thread.sleep(nb > 10000 ? 400 : nb > 7500 ? 200 : 100);
+			} catch (InterruptedException e) {
+				// ignore
+			}
+		}
 	}
 
 	/** Instantiate for the given application. */

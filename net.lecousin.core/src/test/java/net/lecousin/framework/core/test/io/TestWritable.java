@@ -66,68 +66,68 @@ public abstract class TestWritable extends TestIO.UsingTestData {
 	
 	@Test
 	public void testWriteBufferByBufferSync() throws Exception {
-		IO.Writable io = createWritable();
-		if (io instanceof IO.PositionKnown)
-			Assert.assertEquals(0, ((IO.PositionKnown)io).getPosition());
-		for (int i = 0; i < nbBuf; ++i) {
-			ByteBuffer b = ByteBuffer.wrap(testBuf);
-			io.writeSync(b);
-			Assert.assertEquals(0, b.remaining());
+		try (IO.Writable io = createWritable()) {
 			if (io instanceof IO.PositionKnown)
-				Assert.assertEquals(testBuf.length * (i + 1), ((IO.PositionKnown)io).getPosition());
+				Assert.assertEquals(0, ((IO.PositionKnown)io).getPosition());
+			for (int i = 0; i < nbBuf; ++i) {
+				ByteBuffer b = ByteBuffer.wrap(testBuf);
+				io.writeSync(b);
+				Assert.assertEquals(0, b.remaining());
+				if (io instanceof IO.PositionKnown)
+					Assert.assertEquals(testBuf.length * (i + 1), ((IO.PositionKnown)io).getPosition());
+			}
+			flush(io);
 		}
-		flush(io);
-		io.close();
 		check();
 	}
 	
 	@Test
 	public void testWriteBufferByBufferAsync() throws Exception {
 		Assume.assumeTrue(nbBuf > 0);
-		IO.Writable io = createWritable();
-		MutableInteger i = new MutableInteger(0);
-		Mutable<AsyncSupplier<Integer,IOException>> write = new Mutable<>(null);
-		Mutable<ByteBuffer> buf = new Mutable<>(null);
-		Async<Exception> sp = new Async<>();
-		Runnable listener = new Runnable() {
-			@Override
-			public void run() {
-				do {
-					if (write.get().hasError()) {
-						sp.error(write.get().getError());
-						return;
-					}
-					if (write.get().getResult().intValue() != testBuf.length) {
-						sp.error(new Exception("Invalid write: returned " + write.get().getResult().intValue() + " on " + testBuf.length));
-						return;
-					}
-					if (buf.get().remaining() > 0) {
-						sp.error(new Exception("Write operation did not fully consumed buffer"));
-						return;
-					}
-					if (io instanceof IO.PositionKnown)
-						try { Assert.assertEquals(testBuf.length * (i.get() + 1), ((IO.PositionKnown)io).getPosition()); }
-						catch (Throwable e) {
-							sp.error(IO.error(e));
+		try (IO.Writable io = createWritable()) {
+			MutableInteger i = new MutableInteger(0);
+			Mutable<AsyncSupplier<Integer,IOException>> write = new Mutable<>(null);
+			Mutable<ByteBuffer> buf = new Mutable<>(null);
+			Async<Exception> sp = new Async<>();
+			Runnable listener = new Runnable() {
+				@Override
+				public void run() {
+					do {
+						if (write.get().hasError()) {
+							sp.error(write.get().getError());
 							return;
 						}
-					if (i.inc() == nbBuf) {
-						sp.unblock();
-						return;
-					}
-					buf.set(ByteBuffer.wrap(testBuf));
-					write.set(io.writeAsync(buf.get()));
-				} while (write.get().isDone());
-				write.get().onDone(this);
-			}
-		};
-		buf.set(ByteBuffer.wrap(testBuf));
-		write.set(io.writeAsync(buf.get()));
-		write.get().onDone(listener);
-		
-		sp.blockThrow(0);
-		flush(io);
-		io.close();
+						if (write.get().getResult().intValue() != testBuf.length) {
+							sp.error(new Exception("Invalid write: returned " + write.get().getResult().intValue() + " on " + testBuf.length));
+							return;
+						}
+						if (buf.get().remaining() > 0) {
+							sp.error(new Exception("Write operation did not fully consumed buffer"));
+							return;
+						}
+						if (io instanceof IO.PositionKnown)
+							try { Assert.assertEquals(testBuf.length * (i.get() + 1), ((IO.PositionKnown)io).getPosition()); }
+							catch (Throwable e) {
+								sp.error(IO.error(e));
+								return;
+							}
+						if (i.inc() == nbBuf) {
+							sp.unblock();
+							return;
+						}
+						buf.set(ByteBuffer.wrap(testBuf));
+						write.set(io.writeAsync(buf.get()));
+					} while (write.get().isDone());
+					write.get().onDone(this);
+				}
+			};
+			buf.set(ByteBuffer.wrap(testBuf));
+			write.set(io.writeAsync(buf.get()));
+			write.get().onDone(listener);
+			
+			sp.blockThrow(0);
+			flush(io);
+		}
 		check();
 	}	
 

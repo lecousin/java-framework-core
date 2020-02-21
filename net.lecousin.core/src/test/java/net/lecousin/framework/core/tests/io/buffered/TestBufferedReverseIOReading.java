@@ -29,7 +29,7 @@ public class TestBufferedReverseIOReading extends TestReadableByteStream {
 	
 	@Override
 	protected ReadableByteStream createReadableByteStreamFromFile(ReadOnly file, long fileSize) {
-		BufferedReverseIOReading io = new BufferedReverseIOReading(openFile(), 512);
+		BufferedReverseIOReading io = new BufferedReverseIOReading(file, 512);
 		goBackward(io);
 		return io;
 	}

@@ -39,7 +39,6 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 	
 	private FragmentedFile f;
 
-	@SuppressWarnings("resource")
 	@Override
 	protected IO.Readable.Seekable createReadableSeekableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
 		// this test may be very slow, let's add a buffered layer
@@ -49,9 +48,7 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		for (RangeLong fragment : f.fragments)
 			ios[i++] = new SizeNotKnown(new SubIO.Readable.Seekable(buffered, fragment.min, fragment.getLength(), "fragment " + i, false));
 		LinkedIO.Readable.Seekable res = new LinkedIO.Readable.Seekable.DeterminedSize("linked IO", ios);
-		res.addCloseListener(() -> {
-			buffered.closeAsync();
-		});
+		res.addCloseListener(() -> { try { buffered.close(); } catch (Exception e) {}});
 		return res;
 	}
 	

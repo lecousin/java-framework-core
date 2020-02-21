@@ -14,6 +14,7 @@ public class TestEmptyReadable extends TestReadable {
 
 	@Override
 	protected EmptyReadable createReadableFromFile(ReadOnly file, long fileSize) {
+		file.closeAsync();
 		return new EmptyReadable("test empty", file.getPriority());
 	}
 	

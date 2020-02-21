@@ -87,148 +87,148 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 	
 	@Test
 	public void testReadableBufferedByteByByteAsync() throws Exception {
-		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
-		MutableInteger i = new MutableInteger(0);
-		MutableInteger j = new MutableInteger(0);
-		Async<Exception> sp = new Async<>();
-		Runnable run = new Runnable() {
-			@Override
-			public void run() {
-				if (i.get() >= nbBuf) {
-					int c;
-					try { c = io.readAsync(); }
-					catch (Exception e) {
-						sp.error(e);
+		try (IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize)) {
+			MutableInteger i = new MutableInteger(0);
+			MutableInteger j = new MutableInteger(0);
+			Async<Exception> sp = new Async<>();
+			Runnable run = new Runnable() {
+				@Override
+				public void run() {
+					if (i.get() >= nbBuf) {
+						int c;
+						try { c = io.readAsync(); }
+						catch (Exception e) {
+							sp.error(e);
+							return;
+						}
+						if (c == -1) {
+							sp.unblock();
+							return;
+						}
+						if (c == -2) {
+							io.canStartReading().thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
+							return;
+						}
+						sp.error(new Exception("Remaining byte(s) at the end of the file"));
 						return;
 					}
-					if (c == -1) {
-						sp.unblock();
+					if (nbBuf > 1000 && (i.get() % 100) == 99) {
+						// make the test faster
+						int skipBuf = 50;
+						if (i.get() + skipBuf > nbBuf) skipBuf = nbBuf - i.get();
+						i.add(skipBuf);
+						j.set(0);
+						io.skipAsync(skipBuf * testBuf.length).thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), sp, e -> e);
 						return;
 					}
-					if (c == -2) {
-						io.canStartReading().thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
-						return;
+					while (j.get() < testBuf.length) {
+						int c;
+						try { c = io.readAsync(); }
+						catch (Exception e) {
+							sp.error(e);
+							return;
+						}
+						if (c == -2) {
+							io.canStartReading().thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
+							return;
+						}
+						if (c == -1) {
+							sp.error(new Exception("Unexpected end at offset " + (testBuf.length*i.get()+j.get())));
+							return;
+						}
+						if (c != testBuf[j.get()]) {
+							sp.error(new Exception("Byte " + c + " read instead of " + (testBuf[j.get()] & 0xFF) + " at offset " + (testBuf.length*i.get()+j.get())));
+							return;
+						}
+						j.inc();
 					}
-					sp.error(new Exception("Remaining byte(s) at the end of the file"));
-					return;
-				}
-				if (nbBuf > 1000 && (i.get() % 100) == 99) {
-					// make the test faster
-					int skipBuf = 50;
-					if (i.get() + skipBuf > nbBuf) skipBuf = nbBuf - i.get();
-					i.add(skipBuf);
 					j.set(0);
-					io.skipAsync(skipBuf * testBuf.length).thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), sp, e -> e);
-					return;
+					i.inc();
+					new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this).start();
 				}
-				while (j.get() < testBuf.length) {
-					int c;
-					try { c = io.readAsync(); }
-					catch (Exception e) {
-						sp.error(e);
-						return;
-					}
-					if (c == -2) {
-						io.canStartReading().thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
-						return;
-					}
-					if (c == -1) {
-						sp.error(new Exception("Unexpected end at offset " + (testBuf.length*i.get()+j.get())));
-						return;
-					}
-					if (c != testBuf[j.get()]) {
-						sp.error(new Exception("Byte " + c + " read instead of " + (testBuf[j.get()] & 0xFF) + " at offset " + (testBuf.length*i.get()+j.get())));
-						return;
-					}
-					j.inc();
-				}
-				j.set(0);
-				i.inc();
-				new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this).start();
-			}
-		};
-		new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), run).start();
-		sp.blockException(0);
-		io.close();
+			};
+			new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), run).start();
+			sp.blockException(0);
+		}
 	}
 	
 	@Test
 	public void testReadableBufferedNextBufferAsync() throws Exception {
-		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
-		Async<Exception> done = new Async<>();
-		MutableInteger pos = new MutableInteger(0);
-		Mutable<AsyncSupplier<ByteBuffer,IOException>> read = new Mutable<>(null);
-		MutableBoolean onDoneBefore = new MutableBoolean(false);
-		Consumer<Pair<ByteBuffer,IOException>> ondone = param -> onDoneBefore.set(true);
-		read.set(io.readNextBufferAsync(ondone));
-		read.get().onDone(new Runnable() {
-			@Override
-			public void run() {
-				do {
-					if (!onDoneBefore.get()) {
-						done.error(new Exception("Method readNextBufferAsync didn't call ondone before listeners"));
-						return;
-					}
-					onDoneBefore.set(false);
-					AsyncSupplier<ByteBuffer,IOException> res = read.get();
-					if (res.hasError()) {
-						done.error(res.getError());
-						return;
-					}
-					int p = pos.get();
-					ByteBuffer buffer = res.getResult();
-					if (p == testBuf.length * nbBuf) {
-						if (buffer != null) {
-							done.error(new Exception("" + buffer.remaining() + " byte(s) read after the end of the file"));
+		try (IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize)) {
+			Async<Exception> done = new Async<>();
+			MutableInteger pos = new MutableInteger(0);
+			Mutable<AsyncSupplier<ByteBuffer,IOException>> read = new Mutable<>(null);
+			MutableBoolean onDoneBefore = new MutableBoolean(false);
+			Consumer<Pair<ByteBuffer,IOException>> ondone = param -> onDoneBefore.set(true);
+			read.set(io.readNextBufferAsync(ondone));
+			read.get().onDone(new Runnable() {
+				@Override
+				public void run() {
+					do {
+						if (!onDoneBefore.get()) {
+							done.error(new Exception("Method readNextBufferAsync didn't call ondone before listeners"));
 							return;
 						}
-						done.unblock();
-						return;
-					}
-					if (buffer == null) {
-						done.error(new Exception("Method readNextBufferAsync returned a null buffer, but this is not the end of the file: offset " + p));
-						return;
-					}
-					int nb = buffer.remaining();
-					if (nb == 0) {
-						done.error(new Exception("Method readNextBufferAsync returned an empty buffer at offset " + p));
-						return;
-					}
-					int i = 0;
-					while (i < nb) {
-						int start = (p+i) % testBuf.length;
-						int len = nb - i;
-						if (len > testBuf.length - start) len = testBuf.length - start;
-						for (int j = 0; j < len; ++j) {
-							byte b = buffer.get();
-							if (b != testBuf[start+j]) {
-								done.error(new Exception("Invalid byte " + b + " at offset " + (p + i + start + j) + ", expected is " + testBuf[start+j]));
+						onDoneBefore.set(false);
+						AsyncSupplier<ByteBuffer,IOException> res = read.get();
+						if (res.hasError()) {
+							done.error(res.getError());
+							return;
+						}
+						int p = pos.get();
+						ByteBuffer buffer = res.getResult();
+						if (p == testBuf.length * nbBuf) {
+							if (buffer != null) {
+								done.error(new Exception("" + buffer.remaining() + " byte(s) read after the end of the file"));
 								return;
 							}
+							done.unblock();
+							return;
 						}
-						i += len;
-					}
-					pos.set(p + nb);
-	
-					read.set(io.readNextBufferAsync(ondone));
-				} while (read.get().isDone());
-				read.get().onDone(this);
-			}
-		});
-		done.blockThrow(0);
-		io.close();
+						if (buffer == null) {
+							done.error(new Exception("Method readNextBufferAsync returned a null buffer, but this is not the end of the file: offset " + p));
+							return;
+						}
+						int nb = buffer.remaining();
+						if (nb == 0) {
+							done.error(new Exception("Method readNextBufferAsync returned an empty buffer at offset " + p));
+							return;
+						}
+						int i = 0;
+						while (i < nb) {
+							int start = (p+i) % testBuf.length;
+							int len = nb - i;
+							if (len > testBuf.length - start) len = testBuf.length - start;
+							for (int j = 0; j < len; ++j) {
+								byte b = buffer.get();
+								if (b != testBuf[start+j]) {
+									done.error(new Exception("Invalid byte " + b + " at offset " + (p + i + start + j) + ", expected is " + testBuf[start+j]));
+									return;
+								}
+							}
+							i += len;
+						}
+						pos.set(p + nb);
+		
+						read.set(io.readNextBufferAsync(ondone));
+					} while (read.get().isDone());
+					read.get().onDone(this);
+				}
+			});
+			done.blockThrow(0);
+		}
 	}
 	
 	@Test
 	public void testReadableBufferedNextBuffer() throws Exception {
-		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
 		LinkedList<ByteBuffer> buffers = new LinkedList<>();
-		do {
-			ByteBuffer buf = io.readNextBuffer();
-			if (buf == null) break;
-			buffers.add(buf);
-		} while (buffers.size() < nbBuf * testBuf.length);
-		io.close();
+		try (IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize)) {
+			do {
+				ByteBuffer buf = io.readNextBuffer();
+				if (buf == null) break;
+				buffers.add(buf);
+			} while (buffers.size() < nbBuf * testBuf.length);
+		}
 		int pos = 0;
 		do {
 			ByteBuffer buf = buffers.isEmpty() ? null : buffers.removeFirst();
@@ -260,14 +260,14 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 
 	@Test
 	public void testReadableBufferedReadFullySyncIfPossible() throws Exception {
-		IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize);
-		byte[] buf = new byte[testBuf.length];
-		Async<Exception> sp = new Async<>();
-		new Task.Cpu.FromRunnable("Test readFullySyncIfPossible", Task.PRIORITY_NORMAL, () -> {
-			nextSyncIfPossible(io, 0, buf, sp);
-		}).start();
-		sp.blockThrow(0);
-		io.close();
+		try (IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize)) {
+			byte[] buf = new byte[testBuf.length];
+			Async<Exception> sp = new Async<>();
+			new Task.Cpu.FromRunnable("Test readFullySyncIfPossible", Task.PRIORITY_NORMAL, () -> {
+				nextSyncIfPossible(io, 0, buf, sp);
+			}).start();
+			sp.blockThrow(0);
+		}
 	}
 	
 	private void nextSyncIfPossible(IO.Readable.Buffered io, int index, byte[] buf, Async<Exception> sp) {

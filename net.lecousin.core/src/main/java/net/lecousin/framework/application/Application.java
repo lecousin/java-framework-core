@@ -217,6 +217,16 @@ public final class Application {
 	private void toClose(int priority, Object c) {
 		synchronized (toClose) { toClose.add(new Pair<>(Integer.valueOf(priority), c)); }
 	}
+	
+	/** For debugging purpose only, return the list of resources to close when the application will shutdown. */
+	public List<Object> getResourcesToClose() {
+		LinkedList<Object> list = new LinkedList<>();
+		synchronized (toClose) {
+			for (Pair<Integer, Object> p : toClose)
+				list.add(p.getValue2());
+		}
+		return list;
+	}
 
 	/** Unregister an instance to close on application shutdown. */
 	public void closed(Closeable c) {
@@ -401,13 +411,17 @@ public final class Application {
 		System.out.println("Stopping application");
 		stopping = true;
 
-		System.out.println(" * Closing resources");
+		System.out.println(" * Closing resources (" + toClose.size() + ")");
 		List<Pair<AsyncCloseable<?>,IAsync<?>>> closing = new LinkedList<>();
 		ArrayList<Pair<Integer, Object>> list = new ArrayList<>(toClose);
 		list.sort((c1, c2) -> c1.getValue1().intValue() - c2.getValue1().intValue());
 		toClose.clear();
 		for (Pair<Integer, Object> p : list) {
-			System.out.println("     - " + p.getValue2());
+			try {
+				System.out.println("     - " + p.getValue2());
+			} catch (Exception e) {
+				// ignore
+			}
 			Object o = p.getValue2();
 			if (o instanceof Closeable)
 				try { ((Closeable)o).close(); } catch (Exception t) {
@@ -432,7 +446,11 @@ public final class Application {
 			for (Iterator<Pair<AsyncCloseable<?>,IAsync<?>>> it = closing.iterator(); it.hasNext(); ) {
 				Pair<AsyncCloseable<?>,IAsync<?>> s = it.next();
 				if (s.getValue2().isDone()) {
-					System.out.println(" * Closed: " + s.getValue1());
+					try {
+						System.out.println(" * Closed: " + s.getValue1());
+					} catch (Exception e) {
+						// ignore
+					}
 					it.remove();
 				}
 			}

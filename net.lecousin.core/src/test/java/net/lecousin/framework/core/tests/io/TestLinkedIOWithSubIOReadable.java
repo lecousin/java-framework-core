@@ -38,7 +38,9 @@ public class TestLinkedIOWithSubIOReadable extends TestReadable {
 		int i = 0;
 		for (RangeLong fragment : f.fragments)
 			ios[i++] = new SubIO.Readable.Seekable(file, fragment.min, fragment.getLength(), "fragment " + i, false);
-		return new LinkedIO.Readable.DeterminedSize("linked IO", ios);
+		LinkedIO.Readable.DeterminedSize io = new LinkedIO.Readable.DeterminedSize("linked IO", ios);
+		io.addCloseListener(() -> { try { file.close(); } catch (Exception e) {}});
+		return io;
 	}
 	
 	@Override

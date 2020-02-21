@@ -33,7 +33,6 @@ public class TestLinkedIOWithSubIOReadableBuffered extends TestReadableBuffered 
 	private FragmentedFile f;
 
 	
-	@SuppressWarnings("resource")
 	@Override
 	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception {
 		BufferedIO bio = new BufferedIO(file, file.getSizeSync(), 4096, 4096, true);
@@ -41,7 +40,9 @@ public class TestLinkedIOWithSubIOReadableBuffered extends TestReadableBuffered 
 		int i = 0;
 		for (RangeLong fragment : f.fragments)
 			ios[i++] = new SubIO.Readable.Seekable.Buffered(bio, fragment.min, fragment.getLength(), "fragment " + i, false);
-		return new LinkedIO.Readable.Buffered.DeterminedSize("linked IO", ios);
+		LinkedIO.Readable.Buffered.DeterminedSize io = new LinkedIO.Readable.Buffered.DeterminedSize("linked IO", ios);
+		io.addCloseListener(() -> { try { bio.close(); } catch (Exception e) {}});
+		return io;
 	}
 	
 	@Override
