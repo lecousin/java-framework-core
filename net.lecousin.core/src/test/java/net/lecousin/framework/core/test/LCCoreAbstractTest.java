@@ -78,8 +78,6 @@ public abstract class LCCoreAbstractTest {
 
 		@Override
 		protected void finished(Description description) {
-			System.out.println("[Test-End]       " + description);
-			System.out.println("------------------------------------");
 			currentTest = null;
 		}
 	};
