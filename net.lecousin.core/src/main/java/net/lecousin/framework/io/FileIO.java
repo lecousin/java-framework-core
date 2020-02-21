@@ -379,7 +379,7 @@ public abstract class FileIO extends ConcurrentCloseable<IOException> implements
 	
 	@Override
 	protected void closeResources(Async<IOException> ondone) {
-		file.closeAsync().getOutput().onDone(ondone);
+		file.closeAsync().onDone(ondone);
 	}
 	
 	protected int readSync(ByteBuffer buffer) throws IOException {

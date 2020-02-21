@@ -9,11 +9,7 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 
 import org.junit.AfterClass;
-import org.junit.AssumptionViolatedException;
 import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.rules.TestWatcher;
-import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 
 @RunWith(LCConcurrentRunner.class)
@@ -47,40 +43,6 @@ public abstract class LCCoreAbstractTest {
 			s.append(" - ").append(o).append("\r\n");
 		System.err.println(s.toString());
 	}
-	
-	@Rule
-	public final TestStatusToConsole statusToConsole = new TestStatusToConsole();
-	
-	public static class TestStatusToConsole extends TestWatcher {
-		
-		public Description currentTest;
-		
-		@Override
-		protected void starting(Description description) {
-			currentTest = description;
-			System.out.println("[Test-Start]     " + description);
-		}
-		
-		@Override
-		protected void succeeded(Description description) {
-			System.out.println("[Test-Succeeded] " + description);
-		}
-
-		@Override
-		protected void failed(Throwable e, Description description) {
-			System.out.println("[Test-Failed]    " + description);
-		}
-
-		@Override
-		protected void skipped(AssumptionViolatedException e, Description description) {
-			System.out.println("[Test-Skipped]   " + description);
-		}
-
-		@Override
-		protected void finished(Description description) {
-			currentTest = null;
-		}
-	};
 	
 	public static void assertException(Runnable toRun, Class<? extends Exception> expectedError) {
 		try {

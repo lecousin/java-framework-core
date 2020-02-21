@@ -12,8 +12,10 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -67,13 +69,40 @@ public class FileAccess implements AutoCloseable, Closeable {
 		openTask.getOutput().blockException(0);
 	}
 	
-	public Task<Void,IOException> closeAsync() {
-		return new CloseFileTask(this);
+	public IAsync<IOException> closeAsync() {
+		LCCore.getApplication().closed(this);
+		if (openTask.getStatus() < Task.STATUS_RUNNING &&
+			openTask.cancelIfExecutionNotStarted(new CancelException("Close file requested", null))) {
+				return new Async<>(true);
+			}
+		Async<IOException> result = new Async<>();
+		openTask.getOutput().onDone(() -> {
+			if (f != null) {
+				try {
+					f.close();
+				} catch (Exception e) {
+					result.error(IO.error(e));
+				}
+			}
+			result.unblock();
+		});
+		return result;
 	}
 	
 	@Override
 	public void close() {
-		closeAsync().getOutput().block(0);
+		LCCore.getApplication().closed(this);
+		if (openTask.getStatus() < Task.STATUS_RUNNING &&
+			openTask.cancelIfExecutionNotStarted(new CancelException("Close file requested", null))) {
+				return;
+			}
+		if (!openTask.isDone())
+			openTask.getOutput().block(0);
+		if (f != null) {
+			try { f.close(); }
+			catch (Exception e) { /* ignore */ }
+			f = null;
+		}
 	}
 	
 	public long getPosition() throws IOException {
