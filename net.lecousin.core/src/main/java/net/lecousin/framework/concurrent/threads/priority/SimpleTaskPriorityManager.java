@@ -18,7 +18,7 @@ public class SimpleTaskPriorityManager implements TaskPriorityManager {
 	public SimpleTaskPriorityManager() {
 		ready = new TurnArray[Task.Priority.NB];
 		for (byte i = 0; i < Task.Priority.NB; ++i)
-			ready[i] = new TurnArray<>(64);
+			ready[i] = new TurnArray<>(128);
 		background = new TurnArray<>(32);
 	}
 
@@ -31,7 +31,7 @@ public class SimpleTaskPriorityManager implements TaskPriorityManager {
 	@Override
 	public final synchronized void add(Task<?, ?> task) {
 		int p = task.getPriority().getValue();
-		if (p == Task.Priority.BACKGROUND.getValue()) {
+		if (p == Task.BACKGROUND_VALUE) {
 			background.add(task);
 		} else {
 			ready[p].addLast(task);
@@ -43,7 +43,7 @@ public class SimpleTaskPriorityManager implements TaskPriorityManager {
 	@Override
 	public final synchronized boolean remove(Task<?, ?> task) {
 		int p = task.getPriority().getValue();
-		if (p == Task.Priority.BACKGROUND.getValue())
+		if (p == Task.BACKGROUND_VALUE)
 			return background.removeInstance(task);
 		return ready[p].removeInstance(task);
 	}
@@ -54,57 +54,46 @@ public class SimpleTaskPriorityManager implements TaskPriorityManager {
 		"squid:S3776" // complexity
 	})
 	public final Task<?, ?> peekNextOrWait() {
-		Task<?,?> t;
-		do {
-			if (nextPriority < Task.Priority.NB) {
-				t = ready[nextPriority].pollFirst();
-				if (t == null) {
-					nextPriority++;
-					continue;
-				}
+		while (nextPriority < Task.Priority.NB) {
+			Task<?,?> t = ready[nextPriority].pollFirst();
+			if (t != null) {
 				if (t.getRepetitionDelay() <= 0)
 					lastIdle = -1;
-				break;
+				return t;
 			}
-			// for background tasks, we wait for at least 1 second of idle
-			if (lastIdle < 0)
-				lastIdle = System.currentTimeMillis();
-			long wait = lastIdle + 1000 - System.currentTimeMillis();
-			if (wait > 50) {
-				if (!stopping)
-					ThreadUtil.wait(this, wait);
-				return null;
-			}
-			t = background.pollFirst();
-			if (t == null) {
-				if (!stopping)
-					ThreadUtil.wait(this, 0);
-				return null;
-			}
-			break;
-		} while (true);
-		return t;
+			nextPriority++;
+		}
+		// for background tasks, we wait for at least 1 second of idle
+		if (lastIdle < 0)
+			lastIdle = System.currentTimeMillis();
+		long wait = lastIdle + 1000 - System.currentTimeMillis();
+		if (wait > 50) {
+			if (!stopping)
+				ThreadUtil.wait(this, wait);
+			return null;
+		}
+		Task<?,?> t = background.pollFirst();
+		if (t != null)
+			return t;
+		if (!stopping)
+			ThreadUtil.wait(this, 0);
+		return null;
 	}
 	
 	@Override
 	public final Task<?, ?> peekNext() {
-		Task<?,?> t;
-		do {
-			if (nextPriority < Task.Priority.NB) {
-				t = ready[nextPriority].pollFirst();
-				if (t == null) {
-					nextPriority++;
-					continue;
-				}
+		while (nextPriority < Task.Priority.NB) {
+			Task<?,?> t = ready[nextPriority].pollFirst();
+			if (t != null) {
 				if (t.getRepetitionDelay() <= 0)
 					lastIdle = -1;
-				break;
+				return t;
 			}
-			if (lastIdle < 0)
-				lastIdle = System.currentTimeMillis();
-			return null;
-		} while (true);
-		return t;
+			nextPriority++;
+		}
+		if (lastIdle < 0)
+			lastIdle = System.currentTimeMillis();
+		return null;
 	}
 	
 	@Override

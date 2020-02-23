@@ -85,10 +85,9 @@ public abstract class TaskExecutor {
 			currentTask.status = Task.STATUS_RUNNING;
 			currentTask.nextExecution = 0;
 		}
-		long start = System.nanoTime();
 		currentTask.execute();
 		if (Threading.traceTaskTime)
-			Threading.getLogger().debug("Task done in " + (System.nanoTime() - start) + "ns: " + currentTask.getDescription());
+			Threading.getLogger().debug("Task done in " + (System.nanoTime() - currentTaskStart) + "ns: " + currentTask.getDescription());
 		Task<?,?> t = currentTask;
 		currentTask = null;
 		t.rescheduleIfNeeded();

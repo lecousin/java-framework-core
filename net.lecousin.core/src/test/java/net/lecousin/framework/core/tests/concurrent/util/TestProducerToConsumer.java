@@ -20,7 +20,7 @@ public class TestProducerToConsumer extends LCCoreAbstractTest {
 
 	@Test
 	public void testShortProductionAndIntegerConsumption() throws Exception {
-		new ShortProducer(100).toConsumer(s -> new AsyncSupplier<>(Integer.valueOf(s.intValue()), null), new IntegerConsumer(100), "test production of short and consumprtion of int", Task.Priority.NORMAL).blockThrow(0);
+		new ShortProducer(100).toConsumer(s -> new AsyncSupplier<>(Integer.valueOf(s.intValue()), null), new IntegerConsumer(100), "test production of short and consumption of int", Task.Priority.NORMAL).blockThrow(0);
 	}
 	
 	@Test

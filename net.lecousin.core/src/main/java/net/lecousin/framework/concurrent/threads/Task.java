@@ -24,6 +24,8 @@ import net.lecousin.framework.util.Pair;
 @SuppressWarnings("squid:S1192") // string Task appears several times
 public final class Task<T,TError extends Exception> implements Cancellable {
 
+	public static final int BACKGROUND_VALUE = 100;
+	
 	/** Priority of a task. */
 	public enum Priority {
 		URGENT(0),
@@ -32,7 +34,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 		NORMAL(3),
 		RATHER_LOW(4),
 		LOW(5),
-		BACKGROUND(100);
+		BACKGROUND(BACKGROUND_VALUE);
 		
 		public static final int NB = 6;
 		
@@ -137,8 +139,6 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	private long executeEvery;
 	long nextExecution;
 	private long maxBlockingTimeInNanoBeforeToLog = 100000000;
-	
-	private JoinPoint<TError> taskJoin = null;
 	
 	// hold synchronization points
 	private List<IAsync<?>> holdSP = null;
@@ -532,38 +532,13 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 			checkSP();
 			return;
 		}
-		if (taskJoin == null) {
-			status = STATUS_DONE;
-			try { if (ondone != null) ondone.accept(new Pair<>(res, null)); }
-			catch (Exception t) {
-				app.getDefaultLogger().error("Error while calling ondone on task " + description, t);
-			}
-			result.unblockSuccess(res);
-			checkSP();
-			return;
+		status = STATUS_DONE;
+		try { if (ondone != null) ondone.accept(new Pair<>(res, null)); }
+		catch (Exception t) {
+			app.getDefaultLogger().error("Error while calling ondone on task " + description, t);
 		}
-		status = STATUS_EXECUTED;
-		taskJoin.onDone(() -> {
-			status = STATUS_DONE;
-			if (taskJoin.isCancelled()) {
-				cancelling = taskJoin.getCancelEvent();
-				result.cancelled(cancelling);
-			} else if (taskJoin.hasError()) {
-				if (ondone != null) ondone.accept(new Pair<>(null, taskJoin.getError()));
-				result.unblockError(taskJoin.getError());
-			} else {
-				if (ondone != null) ondone.accept(new Pair<>(res, null));
-				result.unblockSuccess(res);
-			}
-			taskJoin = null;
-			checkSP();
-		});
-		if (app.isDebugMode()) {
-			taskJoin.listenTime(30000, () ->
-				app.getDefaultLogger().warn("Task " + description
-					+ " is done, but still waiting for other works to be done after 30s.")
-			);
-		}
+		result.unblockSuccess(res);
+		checkSP();
 	}
 
 	/** Called by a task executor, just after execute method finished. */
@@ -586,7 +561,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 		if (holdSP == null) return;
 		for (IAsync<?> sp : holdSP)
 			if (!sp.isDone())
-				sp.cancel(new CancelException("Task " + description + " done without unblock this synchronization point"));
+				sp.cancel(new CancelException("Task " + description + " done without unblocking this synchronization point"));
 		holdSP = null;
 	}
 	
