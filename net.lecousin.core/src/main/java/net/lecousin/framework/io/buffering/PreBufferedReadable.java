@@ -6,6 +6,8 @@ import java.nio.channels.ClosedChannelException;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.collections.TurnArray;
+import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
@@ -395,33 +397,35 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 				sp = dataReady;
 			}
 		}
-		Task<Integer,IOException> t = Task.cpu(
-			"Async read on pre-buffered IO " + getSourceDescription(), getPriority(),
-			() -> {
-				synchronized (PreBufferedReadable.this) {
-					if (error != null) throw error;
-					if (buffersReady == null) {
-						if (endReached) return Integer.valueOf(-1); // case of empty readable
-						throw IO.cancelClosed();
+		Task<Integer,IOException> t = Task.cpu("Async read on pre-buffered IO " + getSourceDescription(), getPriority(),
+			new Executable<Integer,IOException>() {
+				@Override
+				public Integer execute() throws IOException, CancelException {
+					synchronized (PreBufferedReadable.this) {
+						if (error != null) throw error;
+						if (buffersReady == null) {
+							if (endReached) return Integer.valueOf(-1); // case of empty readable
+							throw IO.cancelClosed();
+						}
+						if (current == null) {
+							if (endReached) return Integer.valueOf(-1);
+							if (isClosing() || isClosed()) throw IO.cancelClosed();
+							throw new IOException("Unexpected error: current buffer is null but end is not reached");
+						}
 					}
-					if (current == null) {
-						if (endReached) return Integer.valueOf(-1);
-						if (isClosing() || isClosed()) throw IO.cancelClosed();
-						throw new IOException("Unexpected error: current buffer is null but end is not reached");
+					int nb = buffer.remaining();
+					if (current.remaining() > nb) {
+						int limit = current.limit();
+						current.limit(limit - (current.remaining() - nb));
+						buffer.put(current);
+						current.limit(limit);
+						return Integer.valueOf(nb);
 					}
-				}
-				int nb = buffer.remaining();
-				if (current.remaining() > nb) {
-					int limit = current.limit();
-					current.limit(limit - (current.remaining() - nb));
+					nb = current.remaining();
 					buffer.put(current);
-					current.limit(limit);
+					moveNextBuffer(true);
 					return Integer.valueOf(nb);
 				}
-				nb = current.remaining();
-				buffer.put(current);
-				moveNextBuffer(true);
-				return Integer.valueOf(nb);
 			}, ondone);
 		operation(t);
 		if (sp == null) {

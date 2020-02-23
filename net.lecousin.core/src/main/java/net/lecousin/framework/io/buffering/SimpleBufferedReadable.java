@@ -6,6 +6,7 @@ import java.nio.channels.ClosedChannelException;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
@@ -209,24 +210,27 @@ public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> imp
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		AtomicState s = state;
 		if (s.pos == s.len && s.buffer == null) return IOUtil.success(null, ondone);
-		return operation(Task.cpu("Read next buffer", getPriority(), () -> {
-			AtomicState st = state;
-			if (st.pos == st.len) {
-				if (st.buffer == null) return null;
-				fill();
-				if (state.pos == state.len) return null;
+		return operation(Task.cpu("Read next buffer", getPriority(), new Executable<ByteBuffer, IOException>() {
+			@Override
+			public ByteBuffer execute() throws CancelException, IOException {
+				AtomicState st = state;
+				if (st.pos == st.len) {
+					if (st.buffer == null) return null;
+					fill();
+					if (state.pos == state.len) return null;
+				}
+				ByteBuffer buf;
+				try {
+					// wrap on our buffer
+					buf = ByteBuffer.wrap(state.buffer, state.pos, state.len - state.pos).asReadOnlyBuffer();
+					state.pos = state.len;
+					// allocate a new buffer for the next read
+					bb = ByteBuffer.allocate(state.buffer.length);
+				} catch (NullPointerException e) {
+					throw new CancelException("IO closed");
+				}
+				return buf;
 			}
-			ByteBuffer buf;
-			try {
-				// wrap on our buffer
-				buf = ByteBuffer.wrap(state.buffer, state.pos, state.len - state.pos).asReadOnlyBuffer();
-				state.pos = state.len;
-				// allocate a new buffer for the next read
-				bb = ByteBuffer.allocate(state.buffer.length);
-			} catch (NullPointerException e) {
-				throw new CancelException("IO closed");
-			}
-			return buf;
 		}, ondone).start()).getOutput();
 	}
 	
@@ -304,26 +308,29 @@ public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> imp
 		}
 		AsyncSupplier<Integer,IOException> currentRead = readTask;
 		if (currentRead == null) return IOUtil.success(Long.valueOf(0), ondone);
-		Task<Long, IOException> task = Task.cpu("Skipping bytes", io.getPriority(), () -> {
-			if (currentRead.isCancelled()) return Long.valueOf(0);
-			if (!currentRead.isSuccessful()) {
-				if (currentRead.isCancelled()) throw currentRead.getCancelEvent();
-				throw currentRead.getError();
+		Task<Long, IOException> task = Task.cpu("Skipping bytes", io.getPriority(), new Executable<Long, IOException>() {
+			@Override
+			public Long execute() throws CancelException, IOException {
+				if (currentRead.isCancelled()) return Long.valueOf(0);
+				if (!currentRead.isSuccessful()) {
+					if (currentRead.isCancelled()) throw currentRead.getCancelEvent();
+					throw currentRead.getError();
+				}
+				int avail = currentRead.getResult().intValue();
+				if (avail < 0) avail = 0;
+				if (n <= state.len - state.pos + avail) {
+					int i = state.len - state.pos;
+					fill();
+					return Long.valueOf(skipSync(n - i) + i);
+				}
+				long res = io.skipSync(n - ((state.len - state.pos) + avail));
+				res += state.len - state.pos;
+				res += avail;
+				state.len = state.pos = 0;
+				readBuffer.clear();
+				readTask = io.readAsync(readBuffer);
+				return Long.valueOf(res);
 			}
-			int avail = currentRead.getResult().intValue();
-			if (avail < 0) avail = 0;
-			if (n <= state.len - state.pos + avail) {
-				int i = state.len - state.pos;
-				fill();
-				return Long.valueOf(skipSync(n - i) + i);
-			}
-			long res = io.skipSync(n - ((state.len - state.pos) + avail));
-			res += state.len - state.pos;
-			res += avail;
-			state.len = state.pos = 0;
-			readBuffer.clear();
-			readTask = io.readAsync(readBuffer);
-			return Long.valueOf(res);
 		}, ondone);
 		operation(task).startOn(readTask, true);
 		return task.getOutput();

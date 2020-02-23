@@ -3,6 +3,7 @@ package net.lecousin.framework.concurrent.tasks.drives;
 import java.io.IOException;
 import java.util.List;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
@@ -23,10 +24,13 @@ public final class DriveOperationsSequence {
 		List<Object> resultCollector,
 		@SuppressWarnings("unchecked") Executable<?, IOException>... operations
 	) {
-		return new Task<>(manager, description, priority, () -> {
-			for (Executable<?, IOException> op : operations)
-				resultCollector.add(op.execute());
-			return null;
+		return new Task<>(manager, description, priority, new Executable<Void, IOException>() {
+			@Override
+			public Void execute() throws IOException, CancelException {
+				for (Executable<?, IOException> op : operations)
+					resultCollector.add(op.execute());
+				return null;
+			}
 		}, null);
 	}
 	
