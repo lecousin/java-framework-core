@@ -67,10 +67,10 @@ public interface AsyncProducer<T, TError extends Exception> {
 				}
 				AsyncSupplier<T, TError> nextProduction = produce(description, priority);
 				AsyncSupplier<T2, TError> conversion = converter.apply(data);
-				conversion.thenStart(Task.cpu(description, priority, new Executable.FromConsumerThrows<T2, TError>(converted -> {
+				conversion.thenStart(description, priority, converted -> {
 					IAsync<TError> consumption = consumer.consume(converted);
 					consumption.onDone(() -> nextProduction.thenStart(description, priority, that, result), result);
-				})), result);
+				}, result);
 			}
 		};
 		produce().thenStart(description, priority, consume, result);
