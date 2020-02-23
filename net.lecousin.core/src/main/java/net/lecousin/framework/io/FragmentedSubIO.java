@@ -6,10 +6,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.math.RangeLong;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
@@ -185,12 +186,12 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable<IOException> i
 	}
 	
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return io.getPriority();
 	}
 	
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		io.setPriority(priority);
 	}
 	

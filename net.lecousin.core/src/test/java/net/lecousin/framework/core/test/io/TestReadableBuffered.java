@@ -9,9 +9,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.FileIO.ReadOnly;
 import net.lecousin.framework.io.IO;
@@ -106,7 +107,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 							return;
 						}
 						if (c == -2) {
-							io.canStartReading().thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
+							io.canStartReading().thenStart("Test readAsync", io.getPriority(), this, true);
 							return;
 						}
 						sp.error(new Exception("Remaining byte(s) at the end of the file"));
@@ -118,7 +119,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 						if (i.get() + skipBuf > nbBuf) skipBuf = nbBuf - i.get();
 						i.add(skipBuf);
 						j.set(0);
-						io.skipAsync(skipBuf * testBuf.length).thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), sp, e -> e);
+						io.skipAsync(skipBuf * testBuf.length).thenStart(Task.cpu("Test readAsync", io.getPriority(), new Executable.FromRunnable(this)), sp, e -> e);
 						return;
 					}
 					while (j.get() < testBuf.length) {
@@ -129,7 +130,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 							return;
 						}
 						if (c == -2) {
-							io.canStartReading().thenStart(new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this), true);
+							io.canStartReading().thenStart("Test readAsync", io.getPriority(), this, true);
 							return;
 						}
 						if (c == -1) {
@@ -144,10 +145,10 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 					}
 					j.set(0);
 					i.inc();
-					new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), this).start();
+					Task.cpu("Test readAsync", io.getPriority(), new Executable.FromRunnable(this)).start();
 				}
 			};
-			new Task.Cpu.FromRunnable("Test readAsync", io.getPriority(), run).start();
+			Task.cpu("Test readAsync", io.getPriority(), new Executable.FromRunnable(run)).start();
 			sp.blockException(0);
 		}
 	}
@@ -263,8 +264,9 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		try (IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize)) {
 			byte[] buf = new byte[testBuf.length];
 			Async<Exception> sp = new Async<>();
-			new Task.Cpu.FromRunnable("Test readFullySyncIfPossible", Task.PRIORITY_NORMAL, () -> {
+			Task.cpu("Test readFullySyncIfPossible", Task.Priority.NORMAL, () -> {
 				nextSyncIfPossible(io, 0, buf, sp);
+				return null;
 			}).start();
 			sp.blockThrow(0);
 		}
@@ -317,10 +319,10 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 				continue;
 			}
 			int i = index;
-			r.thenStart(new Task.Cpu.FromRunnable("Test readFullySyncIfPossible", Task.PRIORITY_NORMAL, () -> {
+			r.thenStart(Task.cpu("Test readFullySyncIfPossible", Task.Priority.NORMAL, () -> {
 				if (!ondoneCalled.get()) {
 					sp.error(new Exception("ondone not called"));
-					return;
+					return null;
 				}
 				if (i == nbBuf) {
 					if (r.getResult().intValue() > 0)
@@ -336,19 +338,20 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 							sp.error(e);
 						}
 					}
-					return;
+					return null;
 				}
 				if (r.getResult().intValue() != buf.length) {
 					sp.error(new Exception("Only " + r.getResult().intValue() + " bytes read on " + buf.length));
-					return;
+					return null;
 				}
 				try {
 					Assert.assertArrayEquals(testBuf, buf);
 				} catch (Throwable t) {
 					sp.error(new Exception(t));
-					return;
+					return null;
 				}
 				nextSyncIfPossible(io, i + 1, buf, sp);
+				return null;
 			}), sp, e -> e);
 			return;
 		} while (true);

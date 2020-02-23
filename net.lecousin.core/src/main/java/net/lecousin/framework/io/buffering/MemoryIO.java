@@ -5,12 +5,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -26,7 +27,7 @@ public class MemoryIO extends AbstractIO
 
 	/** Constructor. */
 	public MemoryIO(int bufferSize, String description) {
-		super(description, Task.PRIORITY_NORMAL);
+		super(description, Task.Priority.NORMAL);
 		this.bufferSize = bufferSize;
 	}
 	
@@ -175,32 +176,29 @@ public class MemoryIO extends AbstractIO
 
 	@Override
 	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput());
+		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone));
 	}
 	
 	@Override
 	public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(IOUtil.readAsyncUsingSync(this, pos, buffer, ondone).getOutput());
+		return operation(IOUtil.readAsyncUsingSync(this, pos, buffer, ondone));
 	}
 	
 	@Override
 	public AsyncSupplier<Integer, IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(IOUtil.readFullyAsyncUsingSync(this, buffer, ondone).getOutput());
+		return operation(IOUtil.readFullyAsyncUsingSync(this, buffer, ondone));
 	}
 	
 	@Override
 	public AsyncSupplier<Integer, IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(IOUtil.readFullyAsyncUsingSync(this, pos, buffer, ondone).getOutput());
+		return operation(IOUtil.readFullyAsyncUsingSync(this, pos, buffer, ondone));
 	}
 
 	@Override
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		if (pos == size) return IOUtil.success(null, ondone);
-		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu.FromSupplierThrows<>(
-			"Read next buffer", getPriority(), ondone, this::readNextBuffer);
-		task.start();
-		operation(task);
-		return task.getOutput();
+		return operation(Task.cpu("Read next buffer", getPriority(),
+			new Executable.FromSupplierThrows<>(this::readNextBuffer), ondone).start()).getOutput();
 	}
 	
 	@Override
@@ -380,12 +378,12 @@ public class MemoryIO extends AbstractIO
 	
 	@Override
 	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone)).getOutput();
+		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone));
 	}
 	
 	@Override
 	public AsyncSupplier<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(IOUtil.writeAsyncUsingSync(this, pos, buffer, ondone)).getOutput();
+		return operation(IOUtil.writeAsyncUsingSync(this, pos, buffer, ondone));
 	}
 	
 	@Override
@@ -413,8 +411,8 @@ public class MemoryIO extends AbstractIO
 	}
 	
 	@Override
-	public AsyncSupplier<Void, IOException> setSizeAsync(long newSize) {
-		return operation(IOUtil.setSizeAsyncUsingSync(this, newSize, priority)).getOutput();
+	public IAsync<IOException> setSizeAsync(long newSize) {
+		return operation(IOUtil.setSizeAsyncUsingSync(this, newSize, priority));
 	}
 	
 	/** Create a MemoryIO and fill it with the content of the given Readable.

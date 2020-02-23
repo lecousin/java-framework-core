@@ -14,9 +14,10 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import net.lecousin.framework.application.libraries.classpath.DefaultLibrariesManager;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
@@ -57,7 +58,7 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 		}
 		IO.Readable io = null;
 		try {
-			io = zipProvider.provideIOReadable(Task.PRIORITY_URGENT);
+			io = zipProvider.provideIOReadable(Task.Priority.URGENT);
 			IO i = io;
 			do {
 				if (i instanceof FileIO) {
@@ -132,7 +133,7 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 	}
 
 	@Override
-	public IO.Readable loadResourceAsIO(String name, byte priority) throws IOException {
+	public IO.Readable loadResourceAsIO(String name, Priority priority) throws IOException {
 		ZipFile zipFile = getZip();
 		ZipEntry entry = zipFile.getEntry(name);
 		if (entry == null) throw new FileNotFoundException(name + " in zip file " + zipProvider.getDescription());
@@ -153,7 +154,7 @@ public class ZipClassLoader extends AbstractClassLoader implements IMemoryManage
 	}
 	
 	@Override
-	protected IO.Readable openResourcePointer(Object pointer, byte priority) throws IOException {
+	protected IO.Readable openResourcePointer(Object pointer, Priority priority) throws IOException {
 		ZipFile zipFile = getZip();
 		ZipEntry entry = (ZipEntry)pointer;
 		return new IOFromInputStream.KnownSize(

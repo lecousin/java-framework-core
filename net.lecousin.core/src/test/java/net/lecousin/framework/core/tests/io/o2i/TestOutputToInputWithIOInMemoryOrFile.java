@@ -2,7 +2,7 @@ package net.lecousin.framework.core.tests.io.o2i;
 
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestOutputToInput;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -28,7 +28,7 @@ public class TestOutputToInputWithIOInMemoryOrFile extends TestOutputToInput {
 	@SuppressWarnings("resource")
 	@Override
 	protected IO.OutputToInput createOutputToInput() {
-		return new OutputToInput(new IOInMemoryOrFile(1 * 1024 * 1024, Task.PRIORITY_NORMAL, "test"), "test");
+		return new OutputToInput(new IOInMemoryOrFile(1 * 1024 * 1024, Task.Priority.NORMAL, "test"), "test");
 	}
 	
 }

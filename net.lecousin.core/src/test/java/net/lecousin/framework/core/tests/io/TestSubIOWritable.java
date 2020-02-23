@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestWritable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -33,7 +33,7 @@ public class TestSubIOWritable extends TestWritable {
 	@Override
 	protected IO.Writable createWritable() throws IOException {
 		file = createFile();
-		FileIO.WriteOnly f = new FileIO.WriteOnly(file, Task.PRIORITY_NORMAL);
+		FileIO.WriteOnly f = new FileIO.WriteOnly(file, Task.Priority.NORMAL);
 		f.setSizeSync(testBuf.length * (nbBuf + 100));
 		f.seekSync(SeekType.FROM_BEGINNING, testBuf.length * 25);
 		return new SubIO.Writable(f, testBuf.length * 25, testBuf.length * nbBuf, "test subio writable", true);

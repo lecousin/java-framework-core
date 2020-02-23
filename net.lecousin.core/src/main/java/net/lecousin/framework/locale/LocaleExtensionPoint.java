@@ -3,9 +3,9 @@ package net.lecousin.framework.locale;
 import java.nio.charset.StandardCharsets;
 
 import net.lecousin.framework.application.ApplicationClassLoader;
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.plugins.CustomExtensionPoint;
@@ -30,16 +30,12 @@ public class LocaleExtensionPoint implements CustomExtensionPoint {
 		IO.Readable io, T classLoader, IAsync<?>... startOn
 	) {
 		Async<Exception> sp = new Async<>();
-		Task<Void,Exception> task = new Task.Cpu<Void,Exception>("Loading locale file", Task.PRIORITY_NORMAL) {
-			@Override
-			public Void run() {
-				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
-				LoadLibraryLocaleFile load = new LoadLibraryLocaleFile(stream, classLoader);
-				load.start().onDone(sp);
-				return null;
-			}
-		};
-		task.startOn(false, startOn);
+		Task.cpu("Loading locale file", Task.Priority.NORMAL, () -> {
+			BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
+			LoadLibraryLocaleFile load = new LoadLibraryLocaleFile(stream, classLoader);
+			load.start().onDone(sp);
+			return null;
+		}).startOn(false, startOn);
 		return sp;
 	}
 	

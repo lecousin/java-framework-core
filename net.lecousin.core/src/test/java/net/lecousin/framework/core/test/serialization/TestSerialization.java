@@ -20,9 +20,9 @@ import java.util.Map;
 import java.util.Random;
 import java.util.function.Supplier;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.core.test.io.TestIOError;
 import net.lecousin.framework.io.FileIO;
@@ -1137,7 +1137,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	
 	protected FileIO.ReadWrite serializeInFile(Object o, TypeDefinition type) throws Exception {
 		File tmp = File.createTempFile("test", "serialization");
-		FileIO.ReadWrite io = new FileIO.ReadWrite(tmp, Task.PRIORITY_NORMAL);
+		FileIO.ReadWrite io = new FileIO.ReadWrite(tmp, Task.Priority.NORMAL);
 		Serializer s = createSerializer();
 		IAsync<SerializationException> res = s.serialize(o, type, io, new ArrayList<>(0));
 		res.blockThrow(0);

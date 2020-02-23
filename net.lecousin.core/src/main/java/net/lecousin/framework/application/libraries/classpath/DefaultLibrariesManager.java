@@ -19,12 +19,14 @@ import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.application.libraries.LibraryManagementException;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
@@ -53,7 +55,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	public DefaultApplicationClassLoader start(Application app) {
 		this.app = app;
 		acl = new DefaultApplicationClassLoader(app, additionalClassPath);
-		new Start().start();
+		Task.cpu("Start DefaultLibrariesManager", Task.Priority.IMPORTANT, new Start()).start();
 		return acl;
 	}
 	
@@ -76,17 +78,13 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			return null;
 		}
 		IOFromInputStream io = new IOFromInputStream(
-			input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
+			input, url.toString(), Threading.getUnmanagedTaskManager(), Task.Priority.IMPORTANT);
 		return new BufferedReadableCharacterStream(io, StandardCharsets.UTF_8, 256, 32);
 	}
 	
-	private class Start extends Task.Cpu<Void, NoException> {
-		private Start() {
-			super("Start DefaultLibrariesManager", Task.PRIORITY_IMPORTANT);
-		}
-		
+	private class Start implements Executable<Void, NoException> {
 		@Override
-		public Void run() {
+		public Void execute() {
 			String cp = System.getProperty("java.class.path");
 			app.getDefaultLogger().info("Starting DefaultLibrariesManager with classpath = " + cp);
 			URL[] addcp = acl.getURLs();
@@ -111,7 +109,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			
 			LinkedList<IAsync<Exception>> tasks = new LinkedList<>();
 			tasks.add(sp);
-			sp.thenStart(new Start2(tasks), true);
+			sp.thenStart(Task.cpu("Start DefaultLibrariesManager - step 2", Task.Priority.IMPORTANT, new Start2(tasks)), true);
 			return null;
 		}
 
@@ -136,35 +134,32 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		}
 	}
 	
-	private class Start2 extends Task.Cpu<Void, NoException> {
+	private class Start2 implements Executable<Void, NoException> {
 		private Start2(LinkedList<IAsync<Exception>> tasks) {
-			super("Start DefaultLibrariesManager - step 2", Task.PRIORITY_IMPORTANT);
 			this.tasks = tasks;
 		}
 		
 		private LinkedList<IAsync<Exception>> tasks;
 		
 		@Override
-		public Void run() {
+		public Void execute() {
 			for (CustomExtensionPoint custom : ExtensionPoints.getCustomExtensionPoints()) {
 				String path = custom.getPluginConfigurationFilePath();
 				if (path == null) continue;
-				CustomExtensionPointLoader loader = new CustomExtensionPointLoader(custom, path);
+				Task<Void, Exception> loader = Task.cpu(
+					"Loading libraries' file " + path + " for extension point " + custom.getClass().getName(),
+					Task.Priority.NORMAL, new CustomExtensionPointLoader(custom, path));
 				tasks.getLast().thenStart(loader, false);
 				tasks.add(loader.getOutput());
 			}
 			
 			Async<Exception> plugins = new Async<>();
-			tasks.getLast().thenStart(
-				new Task.Cpu.FromRunnable("Load plugins from libraries", Task.PRIORITY_NORMAL, () -> loadPlugins(plugins)), false);
+			tasks.getLast().thenStart("Load plugins from libraries", Task.Priority.NORMAL, () -> loadPlugins(plugins), false);
 			tasks.add(plugins);
-			tasks.getLast().thenStart(new Task.Cpu<Void, NoException>("Finalize libraries loading", Task.PRIORITY_NORMAL) {
-				@Override
-				public Void run() {
-					ExtensionPoints.allPluginsLoaded();
-					started.unblock();
-					return null;
-				}
+			tasks.getLast().thenStart("Finalize libraries loading", Task.Priority.NORMAL, () -> {
+				ExtensionPoints.allPluginsLoaded();
+				started.unblock();
+				return null;
 			}, false);
 			
 			JoinPoint.from(tasks).onDone(
@@ -201,7 +196,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	}
 	
 	@Override
-	public IO.Readable getResource(String path, byte priority) {
+	public IO.Readable getResource(String path, Priority priority) {
 		URL url = acl.getResource(path);
 		if (url == null) {
 			app.getDefaultLogger().info("Resource not found: " + path);
@@ -215,7 +210,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		}
 		TaskManager tm = null;
 		if ("file".equals(url.getProtocol()))
-			tm = Threading.getDrivesTaskManager().getTaskManager(url.getFile());
+			tm = Threading.getDrivesManager().getTaskManager(url.getFile());
 		if (tm == null)
 			tm = Threading.getUnmanagedTaskManager();
 		return new IOFromInputStream(in, path, tm, priority);
@@ -226,9 +221,8 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		return classPath;
 	}
 	
-	private class CustomExtensionPointLoader extends Task.Cpu<Void, Exception> {
+	private class CustomExtensionPointLoader implements Executable<Void, Exception> {
 		public CustomExtensionPointLoader(CustomExtensionPoint ep, String filePath) {
-			super("Loading libraries' file " + filePath + " for extension point " + ep.getClass().getName(), Task.PRIORITY_NORMAL);
 			this.ep = ep;
 			this.filePath = filePath;
 		}
@@ -237,7 +231,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		private String filePath;
 		
 		@Override
-		public Void run() throws Exception {
+		public Void execute() throws Exception {
 			app.getDefaultLogger().info("Loading plugin files for custom extension point " + ep.getClass().getName() + ": " + filePath);
 			Enumeration<URL> urls = acl.getResources(filePath);
 			while (urls.hasMoreElements()) {
@@ -245,7 +239,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 				app.getDefaultLogger().info(" - Plugin file found: " + url.toString());
 				InputStream input = url.openStream();
 				IOFromInputStream io = new IOFromInputStream(
-					input, url.toString(), Threading.getUnmanagedTaskManager(), Task.PRIORITY_IMPORTANT);
+					input, url.toString(), Threading.getUnmanagedTaskManager(), Task.Priority.IMPORTANT);
 				ep.loadPluginConfiguration(io, acl).blockThrow(0);
 			}
 			return null;

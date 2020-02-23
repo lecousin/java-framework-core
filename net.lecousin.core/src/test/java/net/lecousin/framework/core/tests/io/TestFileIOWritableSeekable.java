@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestWritableSeekable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -30,7 +30,7 @@ public class TestFileIOWritableSeekable extends TestWritableSeekable {
 	@Override
 	protected FileIO.WriteOnly createWritableSeekable() throws IOException {
 		file = createFile();
-		return new FileIO.WriteOnly(file, Task.PRIORITY_NORMAL);
+		return new FileIO.WriteOnly(file, Task.Priority.NORMAL);
 	}
 	
 	@Override

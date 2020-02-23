@@ -12,8 +12,8 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.StandaloneLCCore;
 import net.lecousin.framework.application.Version;
 import net.lecousin.framework.application.libraries.artifacts.LoadedLibrary;
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
@@ -61,18 +61,18 @@ public class TestApplication extends LCCoreAbstractTest {
 	public void testResource() throws Exception {
 		Application app = LCCore.getApplication();
 		
-		IO.Readable io = app.getLibrariesManager().getResource("xml-test-suite/mine/001.xml", Task.PRIORITY_NORMAL);
+		IO.Readable io = app.getLibrariesManager().getResource("xml-test-suite/mine/001.xml", Task.Priority.NORMAL);
 		Assert.assertFalse(null == io);
 		io.close();
 		
-		io = app.getLibrariesManager().getResource("xml-test-suite/mine/doesntexist", Task.PRIORITY_NORMAL);
+		io = app.getLibrariesManager().getResource("xml-test-suite/mine/doesntexist", Task.Priority.NORMAL);
 		Assert.assertTrue(null == io);
 		
-		io = app.getResource("xml-test-suite/mine/001.xml", Task.PRIORITY_NORMAL);
+		io = app.getResource("xml-test-suite/mine/001.xml", Task.Priority.NORMAL);
 		Assert.assertFalse(null == io);
 		io.close();
 		
-		io = app.getResource("xml-test-suite/mine/doesntexist", Task.PRIORITY_NORMAL);
+		io = app.getResource("xml-test-suite/mine/doesntexist", Task.Priority.NORMAL);
 		Assert.assertTrue(null == io);
 	}
 	

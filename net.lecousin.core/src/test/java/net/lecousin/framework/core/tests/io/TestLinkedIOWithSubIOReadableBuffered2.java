@@ -3,7 +3,7 @@ package net.lecousin.framework.core.tests.io;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestFragmented;
 import net.lecousin.framework.core.test.io.TestFragmented.FragmentedFile;
 import net.lecousin.framework.core.test.io.TestReadableBuffered;
@@ -44,7 +44,7 @@ public class TestLinkedIOWithSubIOReadableBuffered2 extends TestReadableBuffered
 			ios[i++] = 
 				new PreBufferedReadable(
 					new SubIO.Readable.Seekable(bio, fragment.min, fragment.getLength(), "fragment " + i, false),
-					fragment.getLength(), 512, Task.PRIORITY_NORMAL, 4096, Task.PRIORITY_NORMAL, 5);
+					fragment.getLength(), 512, Task.Priority.NORMAL, 4096, Task.Priority.NORMAL, 5);
 		LinkedIO.Readable.Buffered.DeterminedSize io = new LinkedIO.Readable.Buffered.DeterminedSize("linked IO", ios);
 		io.addCloseListener(() -> { try { bio.close(); } catch (Exception e) {}});
 		return io;

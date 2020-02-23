@@ -8,11 +8,12 @@ import java.nio.file.Path;
 import org.junit.Assert;
 import org.junit.Test;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.tasks.drives.CreateDirectoryTask;
+import net.lecousin.framework.concurrent.tasks.drives.CreateDirectory;
 import net.lecousin.framework.concurrent.tasks.drives.DirectoryReader;
-import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectoryContentTask;
-import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectoryTask;
+import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectoryContent;
+import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectory;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.progress.FakeWorkProgress;
 
@@ -23,25 +24,25 @@ public class TestDirectoryTasks extends LCCoreAbstractTest {
 		Path root = Files.createTempDirectory("test");
 		File dir = new File(root.toFile(), "toto");
 		Assert.assertFalse(dir.exists());
-		new CreateDirectoryTask(dir, true, true, Task.PRIORITY_NORMAL).start().getOutput().blockThrow(0);
+		CreateDirectory.task(dir, true, true, Task.Priority.NORMAL).start().getOutput().blockThrow(0);
 		Assert.assertTrue(dir.exists());
 		try {
-			new CreateDirectoryTask(dir, true, true, Task.PRIORITY_NORMAL).start().getOutput().blockThrow(0);
+			CreateDirectory.task(dir, true, true, Task.Priority.NORMAL).start().getOutput().blockThrow(0);
 			throw new AssertionError("CreateDirectoryTask should throw an exception when the directory already exists");
 		} catch (IOException e) {
 			// ok
 		}
-		new RemoveDirectoryTask(dir, null, 0, null, Task.PRIORITY_NORMAL, false).start().getOutput().blockThrow(0);
+		RemoveDirectory.task(dir, null, 0, null, Task.Priority.NORMAL, false).start().getOutput().blockThrow(0);
 		Assert.assertFalse(dir.exists());
 
-		new CreateDirectoryTask(dir, false, true, Task.PRIORITY_NORMAL).start().getOutput().blockThrow(0);
+		CreateDirectory.task(dir, false, true, Task.Priority.NORMAL).start().getOutput().blockThrow(0);
 		Assert.assertTrue(dir.exists());
 		File subDir = new File(dir, "titi/tata");
 		Assert.assertFalse(subDir.exists());
-		new CreateDirectoryTask(subDir, true, true, Task.PRIORITY_NORMAL).start().getOutput().blockThrow(0);
+		CreateDirectory.task(subDir, true, true, Task.Priority.NORMAL).start().getOutput().blockThrow(0);
 		Assert.assertTrue(subDir.exists());
 		Assert.assertTrue(new File(dir, "titi").exists());
-		new RemoveDirectoryContentTask(dir, null, 0, Task.PRIORITY_NORMAL, false).start().getOutput().blockThrow(0);
+		RemoveDirectoryContent.task(dir, null, 0, Task.Priority.NORMAL, false).start().getOutput().blockThrow(0);
 		Assert.assertTrue(dir.exists());
 		Assert.assertFalse(subDir.exists());
 		Assert.assertFalse(new File(dir, "titi").exists());
@@ -59,21 +60,21 @@ public class TestDirectoryTasks extends LCCoreAbstractTest {
 		
 		DirectoryReader.Request request = new DirectoryReader.Request();
 		request.readCreation().readIsSymbolicLink().readLastAccess().readLastModified().readSize();
-		DirectoryReader reader = new DirectoryReader(root.toFile(), Task.PRIORITY_NORMAL, request);
+		DirectoryReader reader = new DirectoryReader(root.toFile(), request, null);
 		Assert.assertEquals(root.toFile(), reader.getDirectory());
-		reader.start().getOutput().blockThrow(0);
+		Task.file(root.toFile(), "test", Priority.NORMAL, reader, null).start().getOutput().blockThrow(0);
 		
-		DirectoryReader.ListSubDirectories lister = new DirectoryReader.ListSubDirectories(root.toFile(), Task.PRIORITY_NORMAL);
-		lister.start().getOutput().blockThrow(0);
+		DirectoryReader.ListSubDirectories.task(root.toFile(), Task.Priority.NORMAL)
+		.start().getOutput().blockThrow(0);
 		
-		new RemoveDirectoryContentTask(root.toFile(), null, 0, Task.PRIORITY_NORMAL, false).start().getOutput().blockThrow(0);
+		RemoveDirectoryContent.task(root.toFile(), null, 0, Task.Priority.NORMAL, false).start().getOutput().blockThrow(0);
 		request = new DirectoryReader.Request();
-		reader = new DirectoryReader(root.toFile(), Task.PRIORITY_NORMAL, request);
-		reader.start().getOutput().blockThrow(0);
+		reader = new DirectoryReader(root.toFile(), request, null);
+		Task.file(root.toFile(), "test", Priority.NORMAL, reader, null).start().getOutput().blockThrow(0);
 		
 		request = new DirectoryReader.Request();
-		reader = new DirectoryReader(root.toFile(), Task.PRIORITY_NORMAL, request, new FakeWorkProgress());
-		reader.start().getOutput().blockThrow(0);
+		reader = new DirectoryReader(root.toFile(), request, new FakeWorkProgress());
+		Task.file(root.toFile(), "test", Priority.NORMAL, reader, null).start().getOutput().blockThrow(0);
 	}
 	
 }

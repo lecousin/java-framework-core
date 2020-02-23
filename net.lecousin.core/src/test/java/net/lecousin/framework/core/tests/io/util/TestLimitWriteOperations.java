@@ -3,7 +3,7 @@ package net.lecousin.framework.core.tests.io.util;
 import java.io.File;
 import java.nio.ByteBuffer;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.util.LimitWriteOperations;
@@ -17,7 +17,7 @@ public class TestLimitWriteOperations extends LCCoreAbstractTest {
 	public void test() throws Exception {
 		File tmp = File.createTempFile("test", "lwo");
 		tmp.deleteOnExit();
-		FileIO.WriteOnly io = new FileIO.WriteOnly(tmp, Task.PRIORITY_NORMAL);
+		FileIO.WriteOnly io = new FileIO.WriteOnly(tmp, Task.Priority.NORMAL);
 		LimitWriteOperations writeOps = new LimitWriteOperations(io, 3, null);
 		for (int i = 0; i < 500; ++i) {
 			byte[] data = new byte[100];
@@ -28,7 +28,7 @@ public class TestLimitWriteOperations extends LCCoreAbstractTest {
 		}
 		writeOps.flush().blockThrow(0);
 		io.close();
-		FileIO.ReadOnly in = new FileIO.ReadOnly(tmp, Task.PRIORITY_NORMAL);
+		FileIO.ReadOnly in = new FileIO.ReadOnly(tmp, Task.Priority.NORMAL);
 		byte[] buf = new byte[100];
 		for (int i = 0; i < 500; ++i) {
 			Assert.assertEquals("buffer " + i, 100, in.readFullySync(ByteBuffer.wrap(buf)));

@@ -5,9 +5,10 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.core.test.io.TestFragmented;
 import net.lecousin.framework.core.test.io.TestFragmented.FragmentedFile;
 import net.lecousin.framework.core.test.io.TestReadableSeekable;
@@ -126,12 +127,12 @@ public class TestLinkedIOWithSubIOReadableSeekable2 extends TestReadableSeekable
 		}
 
 		@Override
-		public byte getPriority() {
+		public Priority getPriority() {
 			return io.getPriority();
 		}
 
 		@Override
-		public void setPriority(byte priority) {
+		public void setPriority(Priority priority) {
 			io.setPriority(priority);
 		}
 

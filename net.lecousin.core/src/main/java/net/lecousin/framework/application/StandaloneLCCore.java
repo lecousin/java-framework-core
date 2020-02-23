@@ -1,9 +1,6 @@
 package net.lecousin.framework.application;
 
 import java.io.Closeable;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -12,10 +9,10 @@ import java.util.Map;
 
 import net.lecousin.framework.LCCoreVersion;
 import net.lecousin.framework.application.libraries.LibrariesManager;
-import net.lecousin.framework.concurrent.DrivesTaskManager.DrivesProvider;
-import net.lecousin.framework.concurrent.StandaloneTaskPriorityManager;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.DrivesThreadingManager.DrivesProvider;
+import net.lecousin.framework.concurrent.threads.Threading;
+import net.lecousin.framework.concurrent.threads.priority.SimpleTaskPriorityManager;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.memory.MemoryManager;
 import net.lecousin.framework.util.AsyncCloseable;
@@ -91,7 +88,7 @@ public class StandaloneLCCore implements LCCore.Environment {
 		// start multi-threading system
 		Threading.init(
 			app.getThreadFactory(),
-			StandaloneTaskPriorityManager.class,
+			SimpleTaskPriorityManager.class,
 			nbCPUThreads,
 			drivesProvider,
 			nbUnmanagedThreads
@@ -99,6 +96,10 @@ public class StandaloneLCCore implements LCCore.Environment {
 		
 		// debugging
 		if (app.isDebugMode()) {
+			Threading.MONITOR_CONFIG_CPU.checkLocksOnBlockedTasks = true;
+			Threading.MONITOR_CONFIG_DRIVE.checkLocksOnBlockedTasks = true;
+			Threading.MONITOR_CONFIG_UNMANAGED.checkLocksOnBlockedTasks = true;
+
 			final Logger logger = app.getLoggerFactory().getLogger("Threading Status");
 			class ThreadingLogger extends Thread implements Closeable {
 				ThreadingLogger() {
@@ -260,25 +261,6 @@ public class StandaloneLCCore implements LCCore.Environment {
 		StringBuilder s = new StringBuilder(2048);
 		MemoryManager.logMemory(s);
 		System.out.println(s.toString());
-		
-		OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
-		try {
-			ClassLoader.getSystemClassLoader().loadClass("com.sun.management.OperatingSystemMXBean");
-			if ("com.sun.management.OperatingSystemMXBean".equals(os.getClass().getName())) {
-				Method getProcessCpuTime = os.getClass().getMethod("getProcessCpuTime");
-				Long cpuUsage = (Long)getProcessCpuTime.invoke(os);
-				System.out.println("JVM used "
-					+ String.format("%.5f", Double.valueOf(cpuUsage.longValue() * 1.d / 1000000000)) + "s. of CPU, while running "
-					+ String.format("%.5f", Double.valueOf((end - startTime) * 1.d / 1000000000)) + "s. with "
-					+ os.getAvailableProcessors() + " processors ("
-					+ String.format("%.2f",
-						Double.valueOf(cpuUsage.longValue() * 100.d / ((end - startTime) * os.getAvailableProcessors())))
-					+ "%)");
-				return;
-			}
-		} catch (Exception t) {
-			// ignore and log generic line
-		}
 		System.out.println("JVM has run during " + String.format("%.5f", Double.valueOf((end - startTime) * 1.d / 1000000000)) + "s.");
 	}
 }

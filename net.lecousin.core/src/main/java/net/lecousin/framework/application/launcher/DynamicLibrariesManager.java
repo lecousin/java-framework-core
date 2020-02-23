@@ -40,12 +40,14 @@ import net.lecousin.framework.application.libraries.classpath.LoadLibraryExtensi
 import net.lecousin.framework.application.libraries.classpath.LoadLibraryPluginsFile;
 import net.lecousin.framework.collections.CollectionsUtil;
 import net.lecousin.framework.collections.Tree;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.tasks.drives.FullReadFileTask;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Readable;
@@ -133,21 +135,18 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	}
 	
 	private void loadSplashFile(File splashFile) {
-		FullReadFileTask read = new FullReadFileTask(splashFile, Task.PRIORITY_URGENT);
+		Task<byte[], IOException> read = FullReadFileTask.create(splashFile, Task.Priority.URGENT);
 		read.start();
-		Task<Void,NoException> load = new Task.Cpu<Void,NoException>("Loading splash image", Task.PRIORITY_URGENT) {
-			@Override
-			public Void run() {
-				ImageIcon img = new ImageIcon(read.getResult());
-				if (splash == null) return null;
-				synchronized (splash) {
-					while (!splash.isReady())
-						if (!ThreadUtil.wait(splash, 0)) return null;
-				}
-				splash.setLogo(img, true);
-				return null;
+		Task<Void,NoException> load = Task.cpu("Loading splash image", Task.Priority.URGENT, () -> {
+			ImageIcon img = new ImageIcon(read.getResult());
+			if (splash == null) return null;
+			synchronized (splash) {
+				while (!splash.isReady())
+					if (!ThreadUtil.wait(splash, 0)) return null;
 			}
-		};
+			splash.setLogo(img, true);
+			return null;
+		});
 		read.ondone(load, false);
 	}
 	
@@ -158,14 +157,14 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		AsyncSupplier<List<LibraryDescriptor>, LibraryManagementException> devProjects = loadDevProjects(stepDevProjects);
 
 		// get application project
-		devProjects.thenStart("Load application libraries", Task.PRIORITY_IMPORTANT,
+		devProjects.thenStart("Load application libraries", Task.Priority.IMPORTANT,
 			() -> loadDevApp(devProjects, stepDependencies, stepVersionConflicts, stepLoad), canStartApp);
 	}
 	
 	private AsyncSupplier<List<LibraryDescriptor>, LibraryManagementException> loadDevProjects(long stepDevProjects) {
 		JoinPoint<LibraryManagementException> jpDevProjects = new JoinPoint<>();
 		ArrayList<AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException>> devProjects = new ArrayList<>(devPaths.size());
-		new Task.Cpu.FromRunnable("Load development projects", Task.PRIORITY_IMPORTANT, () -> {
+		Task.cpu("Load development projects", Task.Priority.IMPORTANT, () -> {
 			int nb = devPaths.size();
 			long w = stepDevProjects;
 			for (File dir : devPaths) {
@@ -173,7 +172,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 				w -= step;
 				AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> load =
 					CollectionsUtil.<LibraryDescriptorLoader>filterSingle(loader -> loader.detect(dir))
-					.andThen(loader -> loader != null ? loader.loadProject(dir, Task.PRIORITY_IMPORTANT) : null)
+					.andThen(loader -> loader != null ? loader.loadProject(dir, Task.Priority.IMPORTANT) : null)
 					.apply(loaders);
 				if (load == null) {
 					app.getDefaultLogger().error("Unknown type of project: " + dir.getAbsolutePath());
@@ -188,6 +187,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			jpDevProjects.start();
 			// free memory
 			devPaths = null;
+			return null;
 		}).start();
 
 		AsyncSupplier<List<LibraryDescriptor>, LibraryManagementException> result = new AsyncSupplier<>();
@@ -248,7 +248,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		}
 		AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> load = loaders.get(loaderIndex).loadLibrary(
 			app.getGroupId(), app.getArtifactId(), new SingleVersion(app.getVersion()),
-			Task.PRIORITY_IMPORTANT, new ArrayList<>(0));
+			Task.Priority.IMPORTANT, new ArrayList<>(0));
 		load.onDone(() -> {
 			if (!load.isSuccessful() || load.getResult() == null) {
 				searchApplication(loaderIndex + 1, stepDependencies, stepVersionConflicts, stepLoad);
@@ -289,7 +289,9 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		JoinPoint<NoException> treeDone = new JoinPoint<>();
 		buildDependenciesTree(descr, tree, artifacts, new ArrayList<>(0), treeDone, addPlugins, splash, stepDependencies);
 		treeDone.start();
-		ResolveVersionConflicts resolveConflicts = new ResolveVersionConflicts(artifacts, descr.getLoader(), splash, stepVersionConflicts);
+		Task<Map<String, LibraryDescriptor>, LibraryManagementException> resolveConflicts =
+			Task.cpu("Resolve library version conflicts", Task.Priority.IMPORTANT,
+					new ResolveVersionConflicts(artifacts, descr.getLoader(), splash, stepVersionConflicts));
 		resolveConflicts.startOn(treeDone, true);
 		resolveConflicts.getOutput().onDone(() -> {
 			app.getDefaultLogger().debug("Dependencies analyzed, loading and initializing libraries");
@@ -300,17 +302,15 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			lib.descr = descr;
 			libraries.put(descr.getGroupId() + ':' + descr.getArtifactId(), lib);
 			appLib = lib;
-			new LoadLibrary(lib, resolveConflicts.getResult(), addPlugins, splash, stepLoad).start();
-			lib.load.thenStart(new Task.Cpu<Void, NoException>("Finishing to initialize", Task.PRIORITY_IMPORTANT) {
-				@Override
-				public Void run() {
-					if (canStartApp.hasError()) return null;
-					app.getDefaultLogger().debug("Libraries initialized.");
-					ExtensionPoints.allPluginsLoaded();
-					canStartApp.unblock();
-					return null;
-				}
-			}, canStartApp);
+			Task.cpu("Load library " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), Task.Priority.IMPORTANT,
+				new LoadLibrary(lib, resolveConflicts.getResult(), addPlugins, splash, stepLoad)).start();
+			lib.load.thenStart(Task.cpu("Finishing to initialize", Task.Priority.IMPORTANT, () -> {
+				if (canStartApp.hasError()) return null;
+				app.getDefaultLogger().debug("Libraries initialized.");
+				ExtensionPoints.allPluginsLoaded();
+				canStartApp.unblock();
+				return null;
+			}), canStartApp);
 		}, canStartApp);
 	}
 
@@ -411,7 +411,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			else
 				node.setDescriptor(descr.getLoader().loadLibrary(
 					dep.getGroupId(), dep.getArtifactId(), depV,
-					Task.PRIORITY_RATHER_IMPORTANT, descr.getDependenciesAdditionalRepositories()));
+					Task.Priority.RATHER_IMPORTANT, descr.getDependenciesAdditionalRepositories()));
 		}
 		return node;
 	}
@@ -454,12 +454,11 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		}
 	}
 	
-	private class ResolveVersionConflicts extends Task.Cpu<Map<String, LibraryDescriptor>, LibraryManagementException> {
+	private class ResolveVersionConflicts implements Executable<Map<String, LibraryDescriptor>, LibraryManagementException> {
 		private ResolveVersionConflicts(
 			Map<String, Map<String, List<Tree.Node<DependencyNode>>>> artifacts,
 			LibraryDescriptorLoader resolver, WorkProgress progress, long work
 		) {
-			super("Resolve library version conflicts", Task.PRIORITY_IMPORTANT);
 			this.artifacts = artifacts;
 			this.resolver = resolver;
 			this.progress = progress;
@@ -472,7 +471,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		private long work;
 		
 		@Override
-		public Map<String, LibraryDescriptor> run() throws LibraryManagementException {
+		public Map<String, LibraryDescriptor> execute() throws LibraryManagementException {
 			if (progress != null) progress.setText("Resolving dependencies versions");
 			app.getDefaultLogger().debug("Resolving version conflicts");
 			Map<String, LibraryDescriptor> versions = new HashMap<>();
@@ -533,12 +532,11 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		}
 	}
 	
-	private class LoadLibrary extends Task.Cpu<Void, NoException> {
+	private class LoadLibrary implements Executable<Void, NoException> {
 		private LoadLibrary(
 			Lib lib, Map<String, LibraryDescriptor> versions, List<LibraryDescriptor> addPlugins,
 			WorkProgress progress, long work
 		) {
-			super("Load library " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), Task.PRIORITY_IMPORTANT);
 			this.lib = lib;
 			this.versions = versions;
 			this.addPlugins = addPlugins;
@@ -553,7 +551,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		private long work;
 		
 		@Override
-		public Void run() {
+		public Void execute() {
 			if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(
 				"Loading " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString());
 			
@@ -585,7 +583,8 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 						+ " loaded from " + file.getAbsolutePath());
 					lib.library = new LoadedLibrary(new Artifact(lib.descr.getGroupId(), lib.descr.getArtifactId(),
 						lib.descr.getVersion()), appClassLoader.add(file, null));
-					jp.thenStart(new Init(lib), lib.load);
+					jp.thenStart(Task.cpu("Initialize library " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(),
+						Task.Priority.IMPORTANT, new Init(lib)), lib.load);
 				} else {
 					if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug("No classes in " + lib.descr.getGroupId()
 						+ ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString());
@@ -610,14 +609,14 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 				l.descr = d;
 				libraries.put(key, l);
 			}
-			new LoadLibrary(l, versions, null, progress, work).start();
+			Task.cpu("Load library " + l.descr.getGroupId() + ':' + l.descr.getArtifactId(), Task.Priority.IMPORTANT,
+				new LoadLibrary(l, versions, null, progress, work)).start();
 			jp.addToJoin(l.load);
 		}
 	}
 	
-	private class Init extends Task.Cpu<Void, NoException> {
+	private class Init implements Executable<Void, NoException> {
 		private Init(Lib lib) {
-			super("Initialize library " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), Task.PRIORITY_IMPORTANT);
 			this.lib = lib;
 		}
 		
@@ -625,7 +624,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		private IAsync<Exception> previousStep = null;
 		
 		@Override
-		public Void run() {
+		public Void execute() {
 			if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(
 				"Initializing " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':'
 				+ lib.descr.getVersionString());
@@ -660,7 +659,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			IO.Readable io;
 			try {
 				io = ((AbstractClassLoader)lib.library.getClassLoader())
-					.open("META-INF/net.lecousin/extensionpoints", Task.PRIORITY_IMPORTANT);
+					.open("META-INF/net.lecousin/extensionpoints", Task.Priority.IMPORTANT);
 			} catch (FileNotFoundException e) {
 				// ignore
 				io = null;
@@ -670,8 +669,8 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 				return false;
 			}
 			if (io != null) {
-				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.PRIORITY_IMPORTANT, 1024,
-					Task.PRIORITY_RATHER_IMPORTANT, 8);
+				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.Priority.IMPORTANT, 1024,
+					Task.Priority.RATHER_IMPORTANT, 8);
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(bio, StandardCharsets.UTF_8, 256, 32);
 				ep = new LoadLibraryExtensionPointsFile(stream, lib.library.getClassLoader()).start();
 				jp.addToJoin(ep, error -> new LibraryManagementException("Error loading extension points from " + lib, error));
@@ -687,7 +686,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 				if (path == null) continue;
 				IO.Readable io = null;
 				try {
-					io = ((AbstractClassLoader)lib.library.getClassLoader()).open(path, Task.PRIORITY_IMPORTANT);
+					io = ((AbstractClassLoader)lib.library.getClassLoader()).open(path, Task.Priority.IMPORTANT);
 				} catch (FileNotFoundException e) {
 					// ignore
 				} catch (Exception t) {
@@ -709,7 +708,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			IO.Readable io = null;
 			try {
 				io = ((AbstractClassLoader)lib.library.getClassLoader())
-					.open("META-INF/net.lecousin/plugins", Task.PRIORITY_IMPORTANT);
+					.open("META-INF/net.lecousin/plugins", Task.Priority.IMPORTANT);
 			} catch (FileNotFoundException e) {
 				// ignore
 			} catch (Exception t) {
@@ -718,8 +717,8 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 				return false;
 			}
 			if (io != null) {
-				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.PRIORITY_IMPORTANT, 1024,
-					Task.PRIORITY_RATHER_IMPORTANT, 8);
+				PreBufferedReadable bio = new PreBufferedReadable(io, 512, Task.Priority.IMPORTANT, 1024,
+					Task.Priority.RATHER_IMPORTANT, 8);
 				BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(bio, StandardCharsets.UTF_8, 256, 32);
 				LoadLibraryPluginsFile task = new LoadLibraryPluginsFile(stream, lib.library.getClassLoader());
 				Async<Exception> sp = new Async<>();
@@ -741,7 +740,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 
 	@Override
 	public AsyncSupplier<LoadedLibrary, LibraryManagementException> loadNewLibrary(
-		String groupId, String artifactId, VersionSpecification version, boolean optional, byte priority,
+		String groupId, String artifactId, VersionSpecification version, boolean optional, Priority priority,
 		WorkProgress progress, long work
 	) {
 		// TODO lock to load only one library
@@ -797,13 +796,17 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 					}
 					buildDependenciesTree(l.descr, tree, artifacts, exclusions, treeDone, null, null, 0);
 					treeDone.start();
-					ResolveVersionConflicts resolveConflicts =
-						new ResolveVersionConflicts(artifacts, l.descr.getLoader(), null, 0);
+					Task<Map<String, LibraryDescriptor>, LibraryManagementException> resolveConflicts =
+						Task.cpu("Resolve library version conflicts", Task.Priority.IMPORTANT,
+						new ResolveVersionConflicts(artifacts, l.descr.getLoader(), null, 0));
 					resolveConflicts.startOn(treeDone, true);
 					resolveConflicts.getOutput().onDone(() -> {
 						app.getDefaultLogger().debug("Dependencies analyzed, loading and initializing libraries");
 
-						LoadLibrary load = new LoadLibrary(l, resolveConflicts.getResult(), null, progress, work);
+						Task<Void, NoException> load = Task.cpu(
+							"Load library " + l.descr.getGroupId() + ':' + l.descr.getArtifactId(),
+							Task.Priority.IMPORTANT,
+							new LoadLibrary(l, resolveConflicts.getResult(), null, progress, work));
 						load.start();
 						l.load.onDone(result, () -> l.library);
 					}, result);
@@ -823,7 +826,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	}
 
 	@Override
-	public IO.Readable getResource(String groupId, String artifactId, String path, byte priority) {
+	public IO.Readable getResource(String groupId, String artifactId, String path, Priority priority) {
 		if (groupId != null && artifactId != null) {
 			LoadedLibrary lib = getLibrary(groupId, artifactId);
 			if (lib == null)
@@ -834,12 +837,12 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	}
 	
 	@Override
-	public Readable getResource(String path, byte priority) {
+	public Readable getResource(String path, Priority priority) {
 		return appClassLoader.getResourceIO(path, priority);
 	}
 
 	/** Open a resource from the given class loader. */
-	public IO.Readable getResourceFrom(ClassLoader cl, String path, byte priority) {
+	public IO.Readable getResourceFrom(ClassLoader cl, String path, Priority priority) {
 		IOProvider.Readable provider = new IOProviderFromPathUsingClassloader(cl).get(path);
 		if (provider == null)
 			return null;
@@ -946,13 +949,10 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	}
 	*/
 	
-	Task.Cpu<IAsync<Exception>, ApplicationBootstrapException> startApp() {
-		Task.Cpu<IAsync<Exception>, ApplicationBootstrapException> task =
-			new Task.Cpu<IAsync<Exception>, ApplicationBootstrapException>(
-				app.getGroupId() + ':' + app.getArtifactId() + ':' + app.getVersion().toString(), Task.PRIORITY_NORMAL
-			) {
-			@Override
-			public IAsync<Exception> run() throws ApplicationBootstrapException {
+	Task<IAsync<Exception>, ApplicationBootstrapException> startApp() {
+		Task<IAsync<Exception>, ApplicationBootstrapException> task =
+			Task.cpu(app.getGroupId() + ':' + app.getArtifactId() + ':' + app.getVersion().toString(), Task.Priority.NORMAL,
+			() -> {
 				if (splash != null) splash.setText("Starting application " + appCfg.getName());
 				@SuppressWarnings("rawtypes")
 				Class cl;
@@ -984,8 +984,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 					splash = null
 				);
 				return start;
-			}
-		};
+		});
 		task.start();
 		return task;
 	}

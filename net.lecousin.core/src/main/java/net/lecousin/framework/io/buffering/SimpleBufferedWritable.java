@@ -4,13 +4,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -180,44 +180,40 @@ public class SimpleBufferedWritable extends ConcurrentCloseable<IOException> imp
 	private void writeAsync(
 		ByteBuffer buf, int done, AsyncSupplier<Integer,IOException> result, Consumer<Pair<Integer,IOException>> ondone
 	) {
-		Task<Void,NoException> task = new Task.Cpu<Void,NoException>("Write async to SimpleBufferedWritable", out.getPriority()) {
-			@Override
-			public Void run() {
-				int d = done;
-				do {
-					int len = buf.remaining();
-					if (len > buffer.length - pos) len = buffer.length - pos;
-					buf.get(buffer, pos, len);
-					pos += len;
-					d += len;
-					if (pos == buffer.length) {
-						AsyncSupplier<Integer,IOException> flush;
-						try { flush = flushBufferAsync(); }
-						catch (IOException e) {
-							IOUtil.error(e, result, ondone);
-							return null;
-						}
-						if (flush != null) {
-							int dd = d;
-							flush.onDone(() -> {
-								if (!flush.isSuccessful()) {
-									IOUtil.error(flush.getError(), result , ondone);
-									return;
-								}
-								writeAsync(buf, dd, result, ondone);
-							});
-							return null;
-						}
-					}
-					if (buf.remaining() == 0) {
-						if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(d), null));
-						result.unblockSuccess(Integer.valueOf(d));
+		operation(Task.cpu("Write async to SimpleBufferedWritable", out.getPriority(), () -> {
+			int d = done;
+			do {
+				int len = buf.remaining();
+				if (len > buffer.length - pos) len = buffer.length - pos;
+				buf.get(buffer, pos, len);
+				pos += len;
+				d += len;
+				if (pos == buffer.length) {
+					AsyncSupplier<Integer,IOException> flush;
+					try { flush = flushBufferAsync(); }
+					catch (IOException e) {
+						IOUtil.error(e, result, ondone);
 						return null;
 					}
-				} while (true);
-			}
-		};
-		operation(task.start());
+					if (flush != null) {
+						int dd = d;
+						flush.onDone(() -> {
+							if (!flush.isSuccessful()) {
+								IOUtil.error(flush.getError(), result , ondone);
+								return;
+							}
+							writeAsync(buf, dd, result, ondone);
+						});
+						return null;
+					}
+				}
+				if (buf.remaining() == 0) {
+					if (ondone != null) ondone.accept(new Pair<>(Integer.valueOf(d), null));
+					result.unblockSuccess(Integer.valueOf(d));
+					return null;
+				}
+			} while (true);
+		}).start());
 	}
 
 	@Override
@@ -227,10 +223,10 @@ public class SimpleBufferedWritable extends ConcurrentCloseable<IOException> imp
 	public IO getWrappedIO() { return out; }
 	
 	@Override
-	public byte getPriority() { return out.getPriority(); }
+	public Priority getPriority() { return out.getPriority(); }
 	
 	@Override
-	public void setPriority(byte priority) { out.setPriority(priority); }
+	public void setPriority(Priority priority) { out.setPriority(priority); }
 	
 	@Override
 	public TaskManager getTaskManager() { return Threading.getCPUTaskManager(); }

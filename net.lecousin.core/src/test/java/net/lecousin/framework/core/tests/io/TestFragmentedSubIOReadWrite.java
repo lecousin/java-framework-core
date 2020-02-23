@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestFragmented;
 import net.lecousin.framework.core.test.io.TestFragmented.FragmentedFile;
 import net.lecousin.framework.core.test.io.TestReadWrite;
@@ -35,7 +35,7 @@ public class TestFragmentedSubIOReadWrite extends TestReadWrite {
 	protected FragmentedSubIO.ReadWrite openReadWrite() throws Exception {
 		File tmpFile = File.createTempFile("test", "fragmentedsubio.rw");
 		tmpFile.deleteOnExit();
-		FileIO.ReadWrite fio = new FileIO.ReadWrite(tmpFile, Task.PRIORITY_NORMAL);
+		FileIO.ReadWrite fio = new FileIO.ReadWrite(tmpFile, Task.Priority.NORMAL);
 		fio.setSizeSync(f.file.length());
 		return new FragmentedSubIO.ReadWrite(fio, f.fragments, true, "fragmented IO");
 	}

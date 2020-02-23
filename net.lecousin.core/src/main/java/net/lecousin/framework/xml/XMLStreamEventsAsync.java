@@ -4,16 +4,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 import net.lecousin.framework.collections.CollectionsUtil;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.text.CharArrayStringBuffer;
 import net.lecousin.framework.xml.XMLStreamEvents.Event.Type;
 
 /** Base class for asynchronous implementations of XMLStreamEvents. */
 public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
+	
+	protected static final String TASK_DESCR = "Parse XML";
 
 	/** Start reading the XML to provide the first event.
 	 * If the first tag is a processing instruction XML it reads it and goes to the next event.
@@ -21,7 +25,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 	public abstract IAsync<Exception> start();
 	
 	/** Return the priority used for tasks. */
-	public abstract byte getPriority();
+	public abstract Priority getPriority();
 	
 	/** Move forward to the next event.
 	 * If the next event can be read synchronously, the result is unblocked, else the caller has to wait for it.
@@ -43,13 +47,13 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 					sp.unblock();
 					return;
 				}
-				new Next(sp) {
+				Task.cpu(TASK_DESCR, getPriority(), new Next(sp) {
 					@Override
 					protected void onNext() {
 						if (Type.START_ELEMENT.equals(event.type)) sp.unblock();
 						else nextStartElement().onDone(sp);
 					}
-				}.start();
+				}).start();
 			},
 			sp
 		);
@@ -89,7 +93,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 					result.unblockSuccess(Boolean.FALSE);
 				else if (Type.START_ELEMENT.equals(event.type) && event.context.size() > 1 && event.context.get(1) == parent)
 					result.unblockSuccess(Boolean.TRUE);
-				else new ParsingTask(() -> nextInnerElement(parent).forward(result)).start();
+				else task(() -> nextInnerElement(parent).forward(result)).start();
 			}, result
 		);
 		return result;
@@ -115,7 +119,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				if (n.hasError()) result.error(n.getError());
 				else if (!n.getResult().booleanValue()) result.unblockSuccess(Boolean.FALSE);
 				else if (event.text.equals(childName)) result.unblockSuccess(Boolean.TRUE);
-				else new ParsingTask(() -> nextInnerElement(parent, childName).forward(result)).start();
+				else task(() -> nextInnerElement(parent, childName).forward(result)).start();
 			}, result
 		);
 		return result;
@@ -155,7 +159,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 					if (event.isClosed) {
 						next = next();
 					} else {
-						closeElement().thenStart(new ParsingTask(() -> readInnerText(innerText, result)), result);
+						closeElement().thenStart(task(() -> readInnerText(innerText, result)), result);
 						return;
 					}
 				} else if (Type.END_ELEMENT.equals(event.type)) {
@@ -171,21 +175,21 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		next.onDone(() -> {
 			if (Type.START_ELEMENT.equals(event.type)) {
 				if (event.isClosed) {
-					new ParsingTask(() -> readInnerText(innerText, result)).start();
+					task(() -> readInnerText(innerText, result)).start();
 					return;
 				}
-				closeElement().thenStart(new ParsingTask(() -> readInnerText(innerText, result)), result);
+				closeElement().thenStart(task(() -> readInnerText(innerText, result)), result);
 				return;
 			}
 			if (Type.COMMENT.equals(event.type)) {
-				new ParsingTask(() -> readInnerText(innerText, result)).start();
+				task(() -> readInnerText(innerText, result)).start();
 			} else if (Type.TEXT.equals(event.type)) {
 				innerText.append(event.text);
-				new ParsingTask(() -> readInnerText(innerText, result)).start();
+				task(() -> readInnerText(innerText, result)).start();
 			} else if (Type.END_ELEMENT.equals(event.type)) {
 				result.unblockSuccess(innerText);
 			} else {
-				new ParsingTask(() -> readInnerText(innerText, result)).start();
+				task(() -> readInnerText(innerText, result)).start();
 			}
 		}, result);
 	}
@@ -218,7 +222,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				result.unblock();
 				return;
 			}
-			new ParsingTask(() -> closeElement(ctx).onDone(result)).start();
+			task(() -> closeElement(ctx).onDone(result)).start();
 		}, result);
 		return result;
 	}
@@ -238,7 +242,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 		next.onDone(() -> {
 			if (n.hasError()) result.error(n.getError());
 			else if (Type.START_ELEMENT.equals(event.type) && event.text.equals(elementName)) result.unblock();
-			else new ParsingTask(() -> searchElement(elementName).onDone(result)).start();
+			else task(() -> searchElement(elementName).onDone(result)).start();
 		}, result);
 		return result;
 	}
@@ -266,7 +270,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 			if (n.hasError()) result.error(n.getError());
 			else if (!n.getResult().booleanValue()) result.unblockSuccess(Boolean.FALSE);
 			else if (ii == innerElements.length - 1) result.unblockSuccess(Boolean.TRUE);
-			else new ParsingTask(() -> goInto(event.context.getFirst(), ii + 1, innerElements).forward(result)).start();
+			else task(() -> goInto(event.context.getFirst(), ii + 1, innerElements).forward(result)).start();
 		}, result);
 		return result;
 	}
@@ -298,7 +302,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 			}
 			read.onDone(value -> {
 				texts.put(name,  value.asString());
-				new ParsingTask(() -> readInnerElementsText(parent, texts, result)).start();
+				task(() -> readInnerElementsText(parent, texts, result)).start();
 			}, result);
 			return;
 		} while (true);
@@ -308,7 +312,7 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				return;
 			}
 			String name = event.text.asString();
-			new ParsingTask(() -> {
+			task(() -> {
 				AsyncSupplier<CharArrayStringBuffer, Exception> read = readInnerText();
 				if (read.isDone()) {
 					if (!check(read, result)) return;
@@ -318,51 +322,35 @@ public abstract class XMLStreamEventsAsync extends XMLStreamEvents {
 				}
 				read.onDone(value -> {
 					texts.put(name,  value.asString());
-					new ParsingTask(() -> readInnerElementsText(parent, texts, result)).start();
+					task(() -> readInnerElementsText(parent, texts, result)).start();
 				}, result);
 			}).start();
 		}, result);
 	}
-
-	/** Shortcut class to create a task. */
-	protected class ParsingTask extends Task.Cpu<Void, NoException> {
-		public ParsingTask(Runnable r) {
-			super("Parse XML", XMLStreamEventsAsync.this.getPriority());
-			this.r = r;
-		}
-		
-		private Runnable r;
-		
-		@Override
-		public Void run() {
-			r.run();
-			return null;
-		}
-	}
 	
+	protected Task<Void, NoException> task(Runnable run) {
+		return Task.cpu(TASK_DESCR, getPriority(), new Executable.FromRunnable(run));
+	}
+
 	/** Shortcut to create a task going to the next event, and call onNext if an event is successfully found. */
-	protected class Next extends ParsingTask {
+	protected class Next implements Executable<Void, NoException> {
 		public Next(Async<Exception> sp) {
-			super(null);
 			this.sp = sp;
 		}
 		
 		protected Async<Exception> sp;
 		
 		@Override
-		public Void run() {
+		public Void execute() {
 			IAsync<Exception> next = next();
 			if (next.isDone()) {
 				if (next.hasError()) sp.error(next.getError());
 				else onNext();
 				return null;
 			}
-			next.thenStart(new Task.Cpu<Void, NoException>("Parse XML", XMLStreamEventsAsync.this.getPriority()) {
-				@Override
-				public Void run() {
-					onNext();
-					return null;
-				}
+			next.thenStart(TASK_DESCR, XMLStreamEventsAsync.this.getPriority(), () -> {
+				onNext();
+				return null;
 			}, sp);
 			return null;
 		}

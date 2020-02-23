@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestInputStream;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -31,13 +31,13 @@ public class TestIOAsInputStream extends TestInputStream {
 	@SuppressWarnings("resource")
 	@Override
 	protected InputStream openStream() {
-		return IOAsInputStream.get(new FileIO.ReadOnly(testFile, Task.PRIORITY_NORMAL), false);
+		return IOAsInputStream.get(new FileIO.ReadOnly(testFile, Task.Priority.NORMAL), false);
 	}
 	
 	@Override
 	protected IO getIOForCommonTests() {
 		Assume.assumeTrue(nbBuf < 5000);
-		return new FileIO.ReadOnly(testFile, Task.PRIORITY_NORMAL);
+		return new FileIO.ReadOnly(testFile, Task.Priority.NORMAL);
 	}
 	
 }

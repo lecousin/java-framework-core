@@ -7,7 +7,7 @@ import java.net.URLStreamHandler;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.util.ReadableAsURLConnection;
 
@@ -20,7 +20,7 @@ public class Handler extends URLStreamHandler {
 
 	@Override
 	protected URLConnection openConnection(URL u) throws IOException {
-		IO.Readable io = LCCore.isStarted() ? LCCore.getApplication().getResource(u.getPath(), Task.PRIORITY_NORMAL) : null;
+		IO.Readable io = LCCore.isStarted() ? LCCore.getApplication().getResource(u.getPath(), Task.Priority.NORMAL) : null;
 		if (io != null) return new ReadableAsURLConnection(io, u, true);
 		URL url = Handler.class.getClassLoader().getResource(u.getPath());
 		if (url == null) throw new IOException("Resource not found in classpath: " + u.getPath());

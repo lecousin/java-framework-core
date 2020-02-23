@@ -7,8 +7,12 @@ import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
+import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.Executable;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.util.FileInfo;
 import net.lecousin.framework.progress.WorkProgress;
 
@@ -16,38 +20,34 @@ import net.lecousin.framework.progress.WorkProgress;
  * Read the content of a directory (files and sub-directories).
  * For each element contained in the directory, information such as size or dates can be retrieved.
  */
-public class DirectoryReader extends Task.OnFile<DirectoryReader.Result,AccessDeniedException> {
+public class DirectoryReader implements Executable<DirectoryReader.Result,AccessDeniedException> {
+	
+	/** Create task. */
+	public static Task<DirectoryReader.Result,AccessDeniedException> task(
+		TaskManager taskManager, File dir, Priority priority, Request request, WorkProgress progress
+	) {
+		Task<DirectoryReader.Result,AccessDeniedException> task = new Task<>(
+			taskManager, "Reading directory " + dir.getAbsolutePath(), priority,
+			new DirectoryReader(dir, request, progress), null);
+		if (progress != null)
+			WorkProgress.linkTo(progress, task.getOutput());
+		return task;
+	}
+	
+	/** Create task. */
+	public static Task<DirectoryReader.Result,AccessDeniedException> task(
+		File dir, Priority priority, Request request, WorkProgress progress
+	) {
+		return task(Threading.getDrivesManager().getTaskManager(dir), dir, priority, request, progress);
+	}
 	
 	/** Constructor. */
-	public DirectoryReader(TaskManager taskManager, File dir, byte priority, Request request, WorkProgress progress) {
-		super(taskManager, "Reading directory " + dir.getAbsolutePath(), priority);
+	public DirectoryReader(File dir, Request request, WorkProgress progress) {
 		this.dir = dir;
 		this.request = request;
 		this.progress = progress;
-		if (progress != null)
-			WorkProgress.linkTo(progress, this);
 	}
 
-	/** Constructor. */
-	public DirectoryReader(File dir, byte priority, Request request, WorkProgress progress) {
-		super(dir, "Reading directory " + dir.getAbsolutePath(), priority);
-		this.dir = dir;
-		this.request = request;
-		this.progress = progress;
-		if (progress != null)
-			WorkProgress.linkTo(progress, this);
-	}
-
-	/** Constructor. */
-	public DirectoryReader(TaskManager taskManager, File dir, byte priority, Request request) {
-		this(taskManager, dir, priority, request, null);
-	}
-	
-	/** Constructor. */
-	public DirectoryReader(File dir, byte priority, Request request) {
-		this(dir, priority, request, null);
-	}
-	
 	protected File dir;
 	protected Request request;
 	protected WorkProgress progress;
@@ -113,7 +113,7 @@ public class DirectoryReader extends Task.OnFile<DirectoryReader.Result,AccessDe
 	}
 
 	@Override
-	public Result run() throws AccessDeniedException {
+	public Result execute() throws AccessDeniedException {
 		File[] list = dir.listFiles();
 		if (list == null)
 			throw new AccessDeniedException("Directory " + dir.getAbsolutePath());
@@ -144,7 +144,7 @@ public class DirectoryReader extends Task.OnFile<DirectoryReader.Result,AccessDe
 		BasicFileAttributes attr;
 		try { attr = Files.readAttributes(f.path, BasicFileAttributes.class); }
 		catch (IOException e) {
-			getApplication().getDefaultLogger().error("Cannot get basic file attributes on " + f.file.getAbsolutePath(), e);
+			LCCore.getApplication().getDefaultLogger().error("Cannot get basic file attributes on " + f.file.getAbsolutePath(), e);
 			return;
 		}
 		if (attr.isDirectory()) {
@@ -171,17 +171,22 @@ public class DirectoryReader extends Task.OnFile<DirectoryReader.Result,AccessDe
 	}
 	
 	/** Task to list only sub-directories. */
-	public static class ListSubDirectories extends Task.OnFile<ArrayList<File>,AccessDeniedException> {
+	public static class ListSubDirectories implements Executable<ArrayList<File>,AccessDeniedException> {
+		
+		/** Create task. */
+		public static Task<ArrayList<File>,AccessDeniedException> task(File dir, Priority priority) {
+			return Task.file(dir, "Listing sub directories", priority, new ListSubDirectories(dir), null);
+		}
+		
 		/** Constructor. */
-		public ListSubDirectories(File dir, byte priority) {
-			super(dir, "Listing sub directories", priority);
+		public ListSubDirectories(File dir) {
 			this.dir = dir;
 		}
 		
 		private File dir;
 		
 		@Override
-		public ArrayList<File> run() throws AccessDeniedException {
+		public ArrayList<File> execute() throws AccessDeniedException {
 			String[] names = dir.list();
 			if (names == null) throw new AccessDeniedException("Directory " + dir.getAbsolutePath());
 			ArrayList<File> result = new ArrayList<>();

@@ -4,7 +4,7 @@ import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -30,8 +30,7 @@ public abstract class TestCharacterStreamWritableBuffered extends LCCoreAbstract
 	
 	private void testWrite(String s, Charset charset) throws Exception {
 		File tmp = TemporaryFiles.get().createFileSync("test", "writablecs");
-		@SuppressWarnings("resource")
-		ICharacterStream.Writable.Buffered cs = open(new FileIO.WriteOnly(tmp, Task.PRIORITY_NORMAL), charset);
+		ICharacterStream.Writable.Buffered cs = open(new FileIO.WriteOnly(tmp, Task.Priority.NORMAL), charset);
 		char[] chars = s.toCharArray();
 		for (int i = 0; i < chars.length; ++i) {
 			if ((i % 2) == 0)

@@ -3,9 +3,9 @@ package net.lecousin.framework.io.bit;
 import java.io.EOFException;
 import java.io.IOException;
 
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.IO;
 
 /**

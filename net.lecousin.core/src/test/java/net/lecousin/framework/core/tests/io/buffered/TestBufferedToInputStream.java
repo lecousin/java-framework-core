@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestInputStream;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -31,7 +31,7 @@ public class TestBufferedToInputStream extends TestInputStream {
 
 	@Override
 	protected InputStream openStream() {
-		FileIO.ReadOnly io = new FileIO.ReadOnly(testFile, Task.PRIORITY_NORMAL);
+		FileIO.ReadOnly io = new FileIO.ReadOnly(testFile, Task.Priority.NORMAL);
 		SimpleBufferedReadable bio = new SimpleBufferedReadable(io, 4096);
 		return new BufferedToInputStream(bio, nbBuf == 0);
 	}
@@ -39,7 +39,7 @@ public class TestBufferedToInputStream extends TestInputStream {
 	@Override
 	protected IO getIOForCommonTests() {
 		Assume.assumeTrue(nbBuf < 5000);
-		return new FileIO.ReadOnly(testFile, Task.PRIORITY_NORMAL);
+		return new FileIO.ReadOnly(testFile, Task.Priority.NORMAL);
 	}
 	
 }

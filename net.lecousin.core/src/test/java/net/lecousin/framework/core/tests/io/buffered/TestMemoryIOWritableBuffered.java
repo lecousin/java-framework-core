@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestWritableBuffered;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -38,7 +38,7 @@ public class TestMemoryIOWritableBuffered extends TestWritableBuffered {
 	@Override
 	protected void flush(IO.Writable io) throws Exception {
 		MemoryIO mio = (MemoryIO)io;
-		FileIO.WriteOnly fio = new FileIO.WriteOnly(file, Task.PRIORITY_NORMAL);
+		FileIO.WriteOnly fio = new FileIO.WriteOnly(file, Task.Priority.NORMAL);
 		mio.writeAsyncTo(fio).blockException(0);
 		fio.close();
 	}

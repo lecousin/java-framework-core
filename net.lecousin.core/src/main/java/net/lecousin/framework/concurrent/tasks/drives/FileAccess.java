@@ -9,13 +9,14 @@ import java.nio.channels.FileChannel;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -29,13 +30,13 @@ import net.lecousin.framework.util.Pair;
 public class FileAccess implements AutoCloseable, Closeable {
 
 	/** Constructor. */
-	public FileAccess(File file, String mode, byte priority) {
+	public FileAccess(File file, String mode, Priority priority) {
 		this.file = file;
 		this.path = file.getAbsolutePath();
 		this.priority = priority;
-		this.manager = Threading.getDrivesTaskManager().getTaskManager(file);
+		this.manager = Threading.getDrivesManager().getTaskManager(file);
 		if (this.manager == null) this.manager = Threading.getUnmanagedTaskManager();
-		openTask = new OpenFileTask(this, mode, priority);
+		openTask = OpenFile.launch(this, mode, priority);
 		LCCore.getApplication().toClose(0, this);
 	}
 	
@@ -43,8 +44,8 @@ public class FileAccess implements AutoCloseable, Closeable {
 	FileChannel channel;
 	File file;
 	String path;
-	byte priority;
-	OpenFileTask openTask;
+	Priority priority;
+	Task<Void, IOException> openTask;
 	long size;
 	TaskManager manager;
 	
@@ -56,9 +57,9 @@ public class FileAccess implements AutoCloseable, Closeable {
 	
 	public RandomAccessFile getDirectAccess() { return f; }
 	
-	public byte getPriority() { return priority; }
+	public Priority getPriority() { return priority; }
 	
-	public void setPriority(byte priority) { this.priority = priority; }
+	public void setPriority(Priority priority) { this.priority = priority; }
 	
 	@Override
 	public String toString() {
@@ -71,10 +72,8 @@ public class FileAccess implements AutoCloseable, Closeable {
 	
 	public IAsync<IOException> closeAsync() {
 		LCCore.getApplication().closed(this);
-		if (openTask.getStatus() < Task.STATUS_RUNNING &&
-			openTask.cancelIfExecutionNotStarted(new CancelException("Close file requested", null))) {
-				return new Async<>(true);
-			}
+		if (openTask.cancelIfExecutionNotStarted(new CancelException("Close file requested", null)))
+			return new Async<>(true);
 		Async<IOException> result = new Async<>();
 		openTask.getOutput().onDone(() -> {
 			if (f != null) {
@@ -92,10 +91,8 @@ public class FileAccess implements AutoCloseable, Closeable {
 	@Override
 	public void close() {
 		LCCore.getApplication().closed(this);
-		if (openTask.getStatus() < Task.STATUS_RUNNING &&
-			openTask.cancelIfExecutionNotStarted(new CancelException("Close file requested", null))) {
-				return;
-			}
+		if (openTask.cancelIfExecutionNotStarted(new CancelException("Close file requested", null)))
+			return;
 		if (!openTask.isDone())
 			openTask.getOutput().block(0);
 		if (f != null) {
@@ -127,68 +124,74 @@ public class FileAccess implements AutoCloseable, Closeable {
 	}
 	
 	public void setSize(long newSize) throws IOException {
-		SetFileSizeTask t = new SetFileSizeTask(this, newSize, priority);
-		t.getOutput().blockException(0);
+		SetFileSize.launch(this, newSize, priority).getOutput().blockException(0);
 	}
 	
-	public Task<Void,IOException> setSizeAsync(long newSize) {
-		return new SetFileSizeTask(this, newSize, priority);
+	public AsyncSupplier<Void, IOException> setSizeAsync(long newSize) {
+		return SetFileSize.launch(this, newSize, priority).getOutput();
 	}
 	
 	public int read(long pos, ByteBuffer buffer) throws IOException {
 		try {
-			return new ReadFileTask(this, pos, buffer, false, priority, null).getOutput().blockResult(0).intValue();
+			return ReadFile.launch(this, pos, buffer, false, priority, null).getOutput().blockResult(0).intValue();
 		} catch (CancelException e) {
 			throw IO.error(e);
 		}
 	}
 	
-	public Task<Integer,IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return new ReadFileTask(this, pos, buffer, false, priority, ondone);
+	public AsyncSupplier<Integer,IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		return ReadFile.launch(this, pos, buffer, false, priority, ondone).getOutput();
 	}
 	
 	public int readFully(long pos, ByteBuffer buffer) throws IOException {
 		try {
-			return new ReadFileTask(this, pos, buffer, true, priority, null).getOutput().blockResult(0).intValue();
+			return ReadFile.launch(this, pos, buffer, true, priority, null).getOutput().blockResult(0).intValue();
 		} catch (CancelException e) {
 			throw IO.error(e);
 		}
 	}
 	
-	public Task<Integer,IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return new ReadFileTask(this, pos, buffer, true, priority, ondone);
+	public AsyncSupplier<Integer,IOException> readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		return ReadFile.launch(this, pos, buffer, true, priority, ondone).getOutput();
 	}
 	
 	public long seek(SeekType type, long move, boolean allowAfterEnd) throws IOException {
-		SeekFileTask task = new SeekFileTask(this, type, move, allowAfterEnd, true, priority, null);
-		task.getOutput().blockException(0);
-		return task.getResult().longValue();
+		try {
+			return SeekFile.launch(this, type, move, allowAfterEnd, true, priority, null).getOutput().blockResult(0).longValue();
+		} catch (Exception e) {
+			throw IO.error(e);
+		}
 	}
 	
-	public Task<Long,IOException> seekAsync(
+	public AsyncSupplier<Long,IOException> seekAsync(
 		SeekType type, long move, boolean allowAfterEnd, Consumer<Pair<Long,IOException>> ondone
 	) {
-		return new SeekFileTask(this, type, move, allowAfterEnd, true, priority, ondone);
+		return SeekFile.launch(this, type, move, allowAfterEnd, true, priority, ondone).getOutput();
 	}
 	
 	public long skip(long move) throws IOException {
-		SeekFileTask task = new SeekFileTask(this, SeekType.FROM_CURRENT, move, false, false, priority, null);
-		task.getOutput().blockException(0);
-		return task.getResult().longValue();
+		try {
+			return SeekFile.launch(this, SeekType.FROM_CURRENT, move, false, false, priority, null)
+				.getOutput().blockResult(0).longValue();
+		} catch (Exception e) {
+			throw IO.error(e);
+		}
 	}
 	
-	public Task<Long,IOException> skipAsync(long move, Consumer<Pair<Long,IOException>> ondone) {
-		return new SeekFileTask(this, SeekType.FROM_CURRENT, move, false, false, priority, ondone);
+	public AsyncSupplier<Long,IOException> skipAsync(long move, Consumer<Pair<Long,IOException>> ondone) {
+		return SeekFile.launch(this, SeekType.FROM_CURRENT, move, false, false, priority, ondone).getOutput();
 	}
 	
 	public int write(long pos, ByteBuffer buffer) throws IOException {
-		WriteFileTask task = new WriteFileTask(this, pos, buffer, priority, null);
-		task.getOutput().blockException(0);
-		return task.getResult().intValue();
+		try {
+			return WriteFile.launch(this, pos, buffer, priority, null).getOutput().blockResult(0).intValue();
+		} catch (Exception e) {
+			throw IO.error(e);
+		}
 	}
 	
-	public Task<Integer,IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return new WriteFileTask(this, pos, buffer, priority, ondone);
+	public AsyncSupplier<Integer,IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
+		return WriteFile.launch(this, pos, buffer, priority, ondone).getOutput();
 	}
 	
 }

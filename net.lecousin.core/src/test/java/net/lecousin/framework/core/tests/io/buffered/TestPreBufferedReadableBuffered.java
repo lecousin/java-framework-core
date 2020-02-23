@@ -3,7 +3,7 @@ package net.lecousin.framework.core.tests.io.buffered;
 import java.io.File;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestReadableBuffered;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.FileIO;
@@ -32,7 +32,7 @@ public class TestPreBufferedReadableBuffered extends TestReadableBuffered {
 	
 	@Override
 	protected IO.Readable.Buffered createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception {
-		return new PreBufferedReadable(file, bufferSize1, Task.PRIORITY_IMPORTANT, bufferSize2, Task.PRIORITY_IMPORTANT, nbBuffers);
+		return new PreBufferedReadable(file, bufferSize1, Task.Priority.IMPORTANT, bufferSize2, Task.Priority.IMPORTANT, nbBuffers);
 	}
 
 }

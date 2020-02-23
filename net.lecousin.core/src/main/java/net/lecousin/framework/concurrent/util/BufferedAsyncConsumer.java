@@ -1,9 +1,9 @@
 package net.lecousin.framework.concurrent.util;
 
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.util.Pair;
 
 /**
@@ -54,12 +54,12 @@ public class BufferedAsyncConsumer<T, TError extends Exception> implements Async
 	}
 	
 	private void nextPending() {
-		new Task.Cpu.FromRunnable("Consume next buffer", Task.PRIORITY_NORMAL, () -> {
+		Task.cpu("Consume next buffer", Task.Priority.NORMAL, () -> {
 			Async<TError> unblock = null;
 			synchronized (queue) {
 				if (error != null) {
 					consumer.error(error);
-					return;
+					return null;
 				}
 				T next = queue.pollFirst();
 				if (next != null) {
@@ -78,6 +78,7 @@ public class BufferedAsyncConsumer<T, TError extends Exception> implements Async
 			}
 			if (unblock != null)
 				unblock.unblock();
+			return null;
 		}).start();
 	}
 

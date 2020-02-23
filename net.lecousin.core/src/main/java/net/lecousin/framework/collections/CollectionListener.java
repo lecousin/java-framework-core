@@ -5,7 +5,9 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Executable;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.Pair;
 
@@ -47,13 +49,13 @@ public interface CollectionListener<T> {
 	public static class Keep<T> implements CollectionListener<T> {
 		
 		/** Constructor. */
-		public Keep(Collection<T> implementation, byte listenersCallPriority) {
+		public Keep(Collection<T> implementation, Priority listenersCallPriority) {
 			col = implementation;
 			priority = listenersCallPriority;
 		}
 		
 		protected Collection<T> col;
-		protected byte priority;
+		protected Priority priority;
 		protected Throwable error = null;
 		protected LinkedList<Pair<CollectionListener<T>, Task<Void,NoException>>> listeners = new LinkedList<>();
 		
@@ -67,11 +69,11 @@ public interface CollectionListener<T> {
 			}
 			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
 				synchronized (l) {
-					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
+					Task<Void, NoException> task = Task.cpu(
 						"Call CollectionListener.elementsReady", priority,
-						() -> l.getValue1().elementsReady(elements)
+						new Executable.FromRunnable(() -> l.getValue1().elementsReady(elements))
 					);
-					task.startOnDone(l.getValue2());
+					task.startAfter(l.getValue2());
 					l.setValue2(task);
 				}
 			}
@@ -86,11 +88,11 @@ public interface CollectionListener<T> {
 			}
 			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
 				synchronized (l) {
-					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
+					Task<Void, NoException> task = Task.cpu(
 						"Call CollectionListener.elementsAdded", priority,
-						() -> l.getValue1().elementsAdded(elements)
+						new Executable.FromRunnable(() -> l.getValue1().elementsAdded(elements))
 					);
-					task.startOnDone(l.getValue2());
+					task.startAfter(l.getValue2());
 					l.setValue2(task);
 				}
 			}
@@ -105,11 +107,11 @@ public interface CollectionListener<T> {
 			}
 			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
 				synchronized (l) {
-					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
+					Task<Void, NoException> task = Task.cpu(
 						"Call CollectionListener.elementsRemoved", priority,
-						() -> l.getValue1().elementsRemoved(elements)
+						new Executable.FromRunnable(() -> l.getValue1().elementsRemoved(elements))
 					);
-					task.startOnDone(l.getValue2());
+					task.startAfter(l.getValue2());
 					l.setValue2(task);
 				}
 			}
@@ -123,11 +125,11 @@ public interface CollectionListener<T> {
 			}
 			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
 				synchronized (l) {
-					Task<Void, NoException> task = new Task.Cpu.FromRunnable(
+					Task<Void, NoException> task = Task.cpu(
 						"Call CollectionListener.elementsChanged", priority,
-						() -> l.getValue1().elementsChanged(elements)
+						new Executable.FromRunnable(() -> l.getValue1().elementsChanged(elements))
 					);
-					task.startOnDone(l.getValue2());
+					task.startAfter(l.getValue2());
 					l.setValue2(task);
 				}
 			}
@@ -142,10 +144,10 @@ public interface CollectionListener<T> {
 			}
 			for (Pair<CollectionListener<T>, Task<Void,NoException>> l : list) {
 				synchronized (l) {
-					Task<Void, NoException> task = new Task.Cpu.FromRunnable("Call CollectionListener.error", priority,
-						() -> l.getValue1().error(error)
+					Task<Void, NoException> task = Task.cpu("Call CollectionListener.error", priority,
+						new Executable.FromRunnable(() -> l.getValue1().error(error))
 					);
-					task.startOnDone(l.getValue2());
+					task.startAfter(l.getValue2());
 					l.setValue2(task);
 				}
 			}

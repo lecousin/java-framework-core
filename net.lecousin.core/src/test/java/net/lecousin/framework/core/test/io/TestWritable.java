@@ -9,8 +9,8 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import net.lecousin.framework.collections.ArrayUtil;
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -40,7 +40,7 @@ public abstract class TestWritable extends TestIO.UsingTestData {
 	
 	public static void checkFile(File file, byte[] testBuf, int nbBuf, long offset) throws Exception {
 		@SuppressWarnings("resource")
-		FileIO.ReadOnly io = new FileIO.ReadOnly(file, Task.PRIORITY_NORMAL);
+		FileIO.ReadOnly io = new FileIO.ReadOnly(file, Task.Priority.NORMAL);
 		io.seekSync(SeekType.FROM_BEGINNING, offset);
 		byte[] b = new byte[testBuf.length];
 		for (int i = 0; i < nbBuf; ++i) {

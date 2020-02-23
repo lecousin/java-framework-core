@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.LinkedList;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.encoding.number.DecimalNumber;
 import net.lecousin.framework.encoding.number.HexadecimalNumber;
 import net.lecousin.framework.encoding.number.NumberEncoding;
@@ -36,7 +36,7 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 			this.io = (IO.Readable.Buffered)io;
 		else
 			this.io = new PreBufferedReadable(io, 1024, io.getPriority(), charactersBuffersSize,
-				(byte)(io.getPriority() - 1), maxBuffers);
+				io.getPriority().less(), maxBuffers);
 		this.defaultEncoding = defaultEncoding;
 		this.charactersBuffersSize = charactersBuffersSize;
 		this.maxBuffers = maxBuffers;
@@ -61,24 +61,26 @@ public class XMLStreamReader extends XMLStreamEventsSync {
 		IO.Readable.Buffered io, int charactersBufferSize, int maxBuffers, boolean addPositionInErrors
 	) {
 		AsyncSupplier<XMLStreamReader, Exception> result = new AsyncSupplier<>();
-		new Task.Cpu.FromRunnable("Start reading XML " + io.getSourceDescription(), io.getPriority(), () -> {
+		Task.cpu("Start reading XML " + io.getSourceDescription(), io.getPriority(), () -> {
 			XMLStreamReader reader = new XMLStreamReader(io, charactersBufferSize, maxBuffers);
 			try {
 				Starter start = new Starter(io, reader.defaultEncoding, reader.charactersBuffersSize,
 					reader. maxBuffers, addPositionInErrors);
 				reader.stream = start.start();
 				reader.stream.canStartReading().thenStart(
-				new Task.Cpu.FromRunnable("Start reading XML " + io.getSourceDescription(), io.getPriority(), () -> {
+				Task.cpu("Start reading XML " + io.getSourceDescription(), io.getPriority(), () -> {
 					try {
 						reader.next();
 						result.unblockSuccess(reader);
 					} catch (Exception e) {
 						result.unblockError(e);
 					}
+					return null;
 				}), true);
 			} catch (Exception e) {
 				result.unblockError(e);
 			}
+			return null;
 		}).startOn(io.canStartReading(), true);
 		return result;
 	}

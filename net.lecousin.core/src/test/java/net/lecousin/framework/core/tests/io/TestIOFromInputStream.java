@@ -4,8 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -33,7 +33,7 @@ public class TestIOFromInputStream extends TestReadable {
 		File f = file.getFile();
 		file.close();
 		FileInputStream in = new FileInputStream(f);
-		return new IOFromInputStream(in, f.getAbsolutePath(), Threading.getDrivesTaskManager().getTaskManager(f), Task.PRIORITY_NORMAL);
+		return new IOFromInputStream(in, f.getAbsolutePath(), Threading.getDrivesManager().getTaskManager(f), Task.Priority.NORMAL);
 	}
 	
 }

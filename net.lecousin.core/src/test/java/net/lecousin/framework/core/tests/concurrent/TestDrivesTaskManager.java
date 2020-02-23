@@ -1,38 +1,40 @@
 package net.lecousin.framework.core.tests.concurrent;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.junit.Assert;
-import org.junit.Test;
-
-import net.lecousin.framework.concurrent.DrivesTaskManager;
-import net.lecousin.framework.concurrent.DrivesTaskManager.DrivesProvider;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
-import net.lecousin.framework.concurrent.async.CancelException;
-import net.lecousin.framework.concurrent.tasks.drives.CreateDirectoryTask;
+import net.lecousin.framework.concurrent.tasks.drives.CreateDirectory;
+import net.lecousin.framework.concurrent.threads.DrivesThreadingManager;
+import net.lecousin.framework.concurrent.threads.DrivesThreadingManager.DrivesProvider;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.TemporaryFiles;
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.Triple;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestDrivesTaskManager extends LCCoreAbstractTest {
 
 	@Test
 	public void simpleTests() {
-		Object res1 = Threading.getDrivesTaskManager().getResource(new File("."));
-		Object res2 = Threading.getDrivesTaskManager().getResource(new File(".").getAbsolutePath());
+		Object res1 = Threading.getDrivesManager().getResource(new File("."));
+		Object res2 = Threading.getDrivesManager().getResource(new File(".").getAbsolutePath());
 		Assert.assertEquals(res1, res2);
 		
-		Threading.getDrivesTaskManager().getResources();
+		Threading.getDrivesManager().getResources();
 	}
 	
 	@Test
 	public void testDrivesProvider() throws Exception {
-		DrivesTaskManager tm = Threading.getDrivesTaskManager();
+		DrivesThreadingManager tm = Threading.getDrivesManager();
 		File tmpDir = TemporaryFiles.get().createDirectorySync("testDrivesTM");
 		File dir = new File(tmpDir, "test");
 		Object fakeDrive1 = new Object();
@@ -44,16 +46,16 @@ public class TestDrivesTaskManager extends LCCoreAbstractTest {
 		tm.setDrivesProvider(new DrivesProvider() {
 			@Override
 			public void provide(
-				Consumer<Pair<Object, List<File>>> onNewDrive,
-				Consumer<Pair<Object, List<File>>> onDriveRemoved,
+				Consumer<Triple<Object, List<File>, Boolean>> onNewDrive,
+				Consumer<Object> onDriveRemoved,
 				Consumer<Pair<Object, File>> onNewPartition,
 				Consumer<Pair<Object, File>> onPartitionRemoved
 			) {
-				onNewDrive.accept(new Pair<>(fakeDrive1, Collections.singletonList(tmpDir)));
+				onNewDrive.accept(new Triple<>(fakeDrive1, Collections.singletonList(tmpDir), Boolean.FALSE));
 				onNewPartition.accept(new Pair<>(fakeDrive1, dir));
 				onPartitionRemoved.accept(new Pair<>(fakeDrive1, dir));
 				spDrive2Appear.onDone(() -> {
-					onNewDrive.accept(new Pair<>(fakeDrive2, Collections.singletonList(tmpDir)));
+					onNewDrive.accept(new Triple<>(fakeDrive2, Collections.singletonList(tmpDir), Boolean.FALSE));
 					spDrive2AppearDone.unblock();
 				});
 				spDrive1Disappear.onDone(() -> {
@@ -63,7 +65,7 @@ public class TestDrivesTaskManager extends LCCoreAbstractTest {
 			}
 		});
 		
-		CreateDirectoryTask task = new CreateDirectoryTask(dir, false, true, Task.PRIORITY_NORMAL);
+		Task<Void, IOException> task = CreateDirectory.task(dir, false, true, Task.Priority.NORMAL);
 		task.executeIn(60000).start();
 		Assert.assertEquals(fakeDrive1, task.getTaskManager().getResource());
 		spDrive2Appear.unblock();
@@ -74,7 +76,7 @@ public class TestDrivesTaskManager extends LCCoreAbstractTest {
 		task.getOutput().block(0);
 		Assert.assertEquals(fakeDrive2, task.getTaskManager().getResource());
 		task.cancel(new CancelException("Test is ok"));
-		task = new CreateDirectoryTask(dir, false, true, Task.PRIORITY_NORMAL);
+		task = CreateDirectory.task(dir, false, true, Task.Priority.NORMAL);
 		Assert.assertEquals(fakeDrive2, task.getTaskManager().getResource());
 	}
 	

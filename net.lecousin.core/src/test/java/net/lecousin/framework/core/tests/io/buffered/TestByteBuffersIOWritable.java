@@ -4,8 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestWritable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -36,7 +36,7 @@ public class TestByteBuffersIOWritable extends TestWritable {
 	@Override
 	protected IO.Writable createWritable() throws IOException {
 		this.file = createFile();
-		return new ByteBuffersIO(true, "Test ByteBuffersIO as Writable", Task.PRIORITY_NORMAL);
+		return new ByteBuffersIO(true, "Test ByteBuffersIO as Writable", Task.Priority.NORMAL);
 	}
 	
 	@SuppressWarnings("resource")
@@ -44,7 +44,7 @@ public class TestByteBuffersIOWritable extends TestWritable {
 	protected void flush(IO.Writable io) throws Exception {
 		ByteBuffersIO bio = (ByteBuffersIO)io;
 		bio.seekSync(SeekType.FROM_BEGINNING, 0);
-		FileIO.WriteOnly out = new FileIO.WriteOnly(file, Task.PRIORITY_NORMAL);
+		FileIO.WriteOnly out = new FileIO.WriteOnly(file, Task.Priority.NORMAL);
 		try {
 			IOUtil.copy(bio, out, bio.getSizeSync(), false, null, 0).blockResult(0);
 		} catch (CancelException e) {

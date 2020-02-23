@@ -6,17 +6,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
-import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableInteger;
+import net.lecousin.framework.util.Runnables.FunctionThrows;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -62,8 +63,8 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 		});
 		if (result.get() != null)
 			throw result.get();
-		ok.listen(Listener.from((Consumer<Integer>)null, null, null));
-		ok.listen(Listener.from((Runnable)null, null, null));
+		ok.listen(Listener.from((Consumer<Integer>)null, null, null, "Test"));
+		ok.listen(Listener.from((Runnable)null, null, null, "Test"));
 		
 		result.set(new AssertionError("Listener not called"));
 		failed.listen(new Listener<Integer, Exception>() {
@@ -301,32 +302,26 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 		}
 		
 		aw = new AsyncSupplier<>();
-		aw.listen(Listener.from((Consumer<Integer>)null, null, null));
-		aw.listen(Listener.from((Runnable)null, null, null));
-		aw.listen(Listener.from(() -> {}, null, null));
+		aw.listen(Listener.from((Consumer<Integer>)null, null, null, "Test"));
+		aw.listen(Listener.from((Runnable)null, null, null, "Test"));
+		aw.listen(Listener.from(() -> {}, null, null, "Test"));
 		for (Object o : aw.getAllListeners())
 			o.toString();
 		
-		Task.Parameter<Integer, Long, NoException> converter = new Task.Cpu.Parameter.FromFunctionThrows<Integer, Long, NoException>(
-			"converter", Task.PRIORITY_NORMAL,
-			i -> Long.valueOf(i.longValue())
-		);
 		AsyncSupplier<Integer, NoException> awi = new AsyncSupplier<>();
-		AsyncSupplier<Long, NoException> awl = awi.thenStart(converter, true);
+		FunctionThrows<Integer, Long, NoException> converter = i -> Long.valueOf(i.longValue());
+		AsyncSupplier<Long, NoException> awl = awi.thenStart("converter", Task.Priority.NORMAL, converter, true);
 		awi.unblockSuccess(Integer.valueOf(51));
 		Assert.assertEquals(51L, awl.blockResult(5000).longValue());
-		converter = new Task.Cpu.Parameter.FromFunctionThrows<Integer, Long, NoException>(
-			"converter", Task.PRIORITY_NORMAL,
-			i -> Long.valueOf(i.longValue())
-		);		
 		awi = new AsyncSupplier<>();
-		awl = awi.thenStart(converter, false);
+		awl = awi.thenStart("converter", Task.Priority.NORMAL, converter, false);
 		awi.unblockSuccess(Integer.valueOf(51));
 		Assert.assertEquals(51L, awl.blockResult(5000).longValue());
 		
 		awi = new AsyncSupplier<>();
 		okResult.set(0);
-		awi.thenDoOrStart(i -> okResult.set(i.intValue()), "test", Task.PRIORITY_NORMAL);
+		Async<NoException> onErrorOrCancel = new Async<>();
+		awi.thenDoOrStart("test", Task.Priority.NORMAL, i -> okResult.set(i.intValue()), onErrorOrCancel);
 		Assert.assertEquals(0, okResult.get());
 		awi.unblockSuccess(Integer.valueOf(51));
 		while (okResult.get() != 51) {
@@ -336,7 +331,7 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 		awi = new AsyncSupplier<>();
 		okResult.set(0);
 		awi.unblockSuccess(Integer.valueOf(51));
-		awi.thenDoOrStart(i -> okResult.set(i.intValue()), "test", Task.PRIORITY_NORMAL);
+		awi.thenDoOrStart("test", Task.Priority.NORMAL, i -> okResult.set(i.intValue()), onErrorOrCancel);
 		Assert.assertEquals(51, okResult.get());
 		
 		

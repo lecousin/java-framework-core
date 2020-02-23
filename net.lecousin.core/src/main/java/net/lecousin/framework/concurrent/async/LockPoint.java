@@ -2,8 +2,8 @@ package net.lecousin.framework.concurrent.async;
 
 import java.util.ArrayList;
 
-import net.lecousin.framework.concurrent.BlockedThreadHandler;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.threads.TaskExecutor;
+import net.lecousin.framework.concurrent.threads.Threading;
 
 /**
  * A LockPoint is similar to a mutual exclusion, but can be locked and unlocked by any thread.<br/>
@@ -31,22 +31,20 @@ public class LockPoint<TError extends Exception> extends AbstractLock<TError> {
 			return;
 		if (error != null)
 			return;
-		Thread t;
-		BlockedThreadHandler blockedHandler;
+		TaskExecutor executor;
 		do {
 			synchronized (this) {
 				if (!locked) {
 					locked = true;
 					return;
 				}
-				t = Thread.currentThread();
-				blockedHandler = Threading.getBlockedThreadHandler(t);
-				if (blockedHandler != null) break;
+				executor = Threading.getTaskExecutor();
+				if (executor != null) break;
 				try { this.wait(0); }
 				catch (InterruptedException e) { /* continue anyway */ }
 			}
 		} while (true);
-		blockedHandler.blocked(this, 0);
+		executor.blocked(this, 0);
 	}
 	
 	/** Release the lock. */

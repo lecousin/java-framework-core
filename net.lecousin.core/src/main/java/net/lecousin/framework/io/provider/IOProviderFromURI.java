@@ -7,7 +7,8 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
 
@@ -53,7 +54,7 @@ public class IOProviderFromURI implements IOProviderFrom<URI> {
 			}
 			
 			@Override
-			public IO.Readable provideIOReadable(byte priority) throws IOException {
+			public IO.Readable provideIOReadable(Priority priority) throws IOException {
 				InputStream in = from.toURL().openStream();
 				return new IOFromInputStream(in, from.toString(), Threading.getUnmanagedTaskManager(), priority);
 			}

@@ -16,10 +16,10 @@ import java.util.Set;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.collections.ArrayUtil;
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -91,7 +91,7 @@ public class LocalizedProperties implements IMemoryManageable {
 		IOProvider.Readable provider = new IOProviderFromPathUsingClassloader(classLoader).get(path + ".languages");
 		IO.Readable input;
 		try { 
-			input = provider == null ? null : provider.provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT);
+			input = provider == null ? null : provider.provideIOReadable(Task.Priority.RATHER_IMPORTANT);
 			if (input == null) throw new IOException("no file");
 		} catch (IOException e) {
 			sp.error(new IOException("Localized properties for namespace " + namespace
@@ -100,9 +100,9 @@ public class LocalizedProperties implements IMemoryManageable {
 			return sp;
 		}
 		AsyncSupplier<CharArrayStringBuffer, IOException> read = IOUtil.readFullyAsString(
-			input, StandardCharsets.US_ASCII, Task.PRIORITY_RATHER_IMPORTANT);
+			input, StandardCharsets.US_ASCII, Task.Priority.RATHER_IMPORTANT);
 		Namespace toLoad = ns;
-		read.thenStart(new Task.Cpu.FromRunnable("Read localized properties namespace file", Task.PRIORITY_RATHER_IMPORTANT, () -> {
+		read.thenStart("Read localized properties namespace file", Task.Priority.RATHER_IMPORTANT, () -> {
 			List<Namespace.Language> languages = parseLanguages(read.getResult());
 			languages.sort(languageComparator);
 			toLoad.languages = languages.toArray(new Namespace.Language[languages.size()]);
@@ -120,7 +120,8 @@ public class LocalizedProperties implements IMemoryManageable {
 			}
 			sp.unblock();
 			logger.info("Namespace " + namespace + " loaded with " + languages.size() + " languages from " + path);
-		}), sp);
+			return null;
+		}, sp);
 		input.closeAfter(sp);
 		sp.onError(error -> logger.error("Error loading localized properties namespace file " + path + ".languages", error));
 		return sp;
@@ -172,7 +173,7 @@ public class LocalizedProperties implements IMemoryManageable {
 		String path = ns.path + '.' + String.join("-", lang.tag);
 		IOProvider.Readable provider = new IOProviderFromPathUsingClassloader(ns.classLoader).get(path);
 		IO.Readable input;
-		try { input = provider != null ? provider.provideIOReadable(Task.PRIORITY_RATHER_IMPORTANT) : null; }
+		try { input = provider != null ? provider.provideIOReadable(Task.Priority.RATHER_IMPORTANT) : null; }
 		catch (IOException e) {
 			lang.loading.error(new IOException("Localized properties file " + path + " does not exist", e));
 			logger.error(lang.loading.getError().getMessage());
@@ -184,12 +185,12 @@ public class LocalizedProperties implements IMemoryManageable {
 			return;
 		}
 		if (!(input instanceof IO.Readable.Buffered))
-			input = new PreBufferedReadable(input, 4096, Task.PRIORITY_RATHER_IMPORTANT, 4096, Task.PRIORITY_RATHER_IMPORTANT, 16);
+			input = new PreBufferedReadable(input, 4096, Task.Priority.RATHER_IMPORTANT, 4096, Task.Priority.RATHER_IMPORTANT, 16);
 		IO.Readable.Buffered in = (IO.Readable.Buffered)input;
 		BufferedReadableCharacterStream cs = new BufferedReadableCharacterStream(in, StandardCharsets.UTF_8, 3000, 16);
 		lang.properties = new HashMap<>();
 		PropertiesReader<Map<String,String>> reader = new PropertiesReader<Map<String,String>>(
-			"Localized properties " + path, cs, Task.PRIORITY_RATHER_IMPORTANT, IO.OperationType.ASYNCHRONOUS
+			"Localized properties " + path, cs, Task.Priority.RATHER_IMPORTANT, IO.OperationType.ASYNCHRONOUS
 		) {
 			@Override
 			protected void processProperty(CharArrayStringBuffer key, CharArrayStringBuffer value) {
@@ -283,11 +284,12 @@ public class LocalizedProperties implements IMemoryManageable {
 				AsyncSupplier<String, NoException> l = ((ILocalizableString)values[i]).localize(languageTag);
 				Serializable[] newValues = new Serializable[values.length];
 				System.arraycopy(values, 0, newValues, 0, values.length);
-				int ii = i;
-				l.thenStart(new Task.Cpu.FromRunnable(() -> {
+				final int ii = i;
+				l.thenStart("Localization", Task.Priority.NORMAL, () -> {
 					newValues[ii] = l.getResult();
 					localize(languageTag, key, content, newValues, result);
-				}, "Localization", Task.PRIORITY_NORMAL), true);
+					return null;
+				}, true);
 				return;
 			}
 		result.unblockSuccess(setCase(replaceValues(content, values), key));

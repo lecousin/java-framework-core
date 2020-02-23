@@ -3,7 +3,7 @@ package net.lecousin.framework.core.tests.io.buffered;
 import java.io.File;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -29,7 +29,7 @@ public class TestByteBuffersIOReadable extends TestReadable {
 	
 	@Override
 	protected ByteBuffersIO createReadableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
-		ByteBuffersIO io = new ByteBuffersIO(true, "test", Task.PRIORITY_NORMAL);
+		ByteBuffersIO io = new ByteBuffersIO(true, "test", Task.Priority.NORMAL);
 		IOUtil.copy(file, io, fileSize, false, null, 0).blockThrow(0);
 		file.close();
 		io.seekSync(SeekType.FROM_BEGINNING, 0);

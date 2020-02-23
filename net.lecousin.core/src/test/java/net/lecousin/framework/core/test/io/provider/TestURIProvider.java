@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.core.test.io.TestIOError;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.provider.IOProvider;
@@ -35,7 +36,7 @@ public class TestURIProvider implements IOProviderFrom<URI> {
 			}
 			
 			@Override
-			public IO.Readable provideIOReadable(byte priority) throws IOException {
+			public IO.Readable provideIOReadable(Priority priority) throws IOException {
 				throw new IOException("It's normal: " + getDescription());
 			}
 		});
@@ -47,7 +48,7 @@ public class TestURIProvider implements IOProviderFrom<URI> {
 			}
 			
 			@Override
-			public IO.Writable provideIOWritable(byte priority) throws IOException {
+			public IO.Writable provideIOWritable(Priority priority) throws IOException {
 				throw new IOException("It's normal: " + getDescription());
 			}
 		});
@@ -59,7 +60,7 @@ public class TestURIProvider implements IOProviderFrom<URI> {
 			}
 			
 			@Override
-			public IO.Readable provideIOReadable(byte priority) throws IOException {
+			public IO.Readable provideIOReadable(Priority priority) throws IOException {
 				return new TestIOError.ReadableAlwaysError();
 			}
 		});
@@ -72,7 +73,7 @@ public class TestURIProvider implements IOProviderFrom<URI> {
 			
 			@SuppressWarnings("unchecked")
 			@Override
-			public TestIOError.ReadableAlwaysError.KnownSizeAlwaysError provideIOReadableKnownSize(byte priority) throws IOException {
+			public TestIOError.ReadableAlwaysError.KnownSizeAlwaysError provideIOReadableKnownSize(Priority priority) throws IOException {
 				return new TestIOError.ReadableAlwaysError.KnownSizeAlwaysError();
 			}
 		});
@@ -87,9 +88,10 @@ public class TestURIProvider implements IOProviderFrom<URI> {
 			
 			@SuppressWarnings("unchecked")
 			@Override
-			public EmptyReadable provideIOReadableKnownSize(byte priority) throws IOException {
+			public EmptyReadable provideIOReadableKnownSize(Priority priority) throws IOException {
 				return new EmptyReadable("empty", priority);
 			}
+			
 		});
 	}
 	

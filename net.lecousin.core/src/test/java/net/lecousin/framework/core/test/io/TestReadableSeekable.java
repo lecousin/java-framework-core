@@ -7,18 +7,13 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.function.Consumer;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.collections.LinkedArrayList;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
-import net.lecousin.framework.concurrent.async.Async;
-import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -26,6 +21,10 @@ import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.util.Pair;
+
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
 public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFiles {
 
@@ -292,16 +291,12 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			JoinPoint<Exception> jp = new JoinPoint<>();
 			jp.addToJoin(nbConc);
 			for (int t = 0; t < nbConc; ++t) {
-				Task<Void,NoException> task = new Task.Cpu<Void,NoException>("Test Concurrent access to IO.Readable.Seekable",Task.PRIORITY_NORMAL) {
-					@Override
-					public Void run() {
-						Async<Exception> sp = _testSeekableBufferByBufferFullyAsync(io);
-						jp.addToJoin(sp);
-						jp.joined();
-						return null;
-					}
-				};
-				task.start();
+				Task.cpu("Test Concurrent access to IO.Readable.Seekable",Task.Priority.NORMAL, () -> {
+					Async<Exception> sp = _testSeekableBufferByBufferFullyAsync(io);
+					jp.addToJoin(sp);
+					jp.joined();
+					return null;
+				}).start();
 			}
 			jp.start();
 			jp.blockThrow(0);

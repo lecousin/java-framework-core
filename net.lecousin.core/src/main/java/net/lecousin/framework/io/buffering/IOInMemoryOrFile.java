@@ -6,13 +6,15 @@ import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -35,7 +37,7 @@ public class IOInMemoryOrFile extends AbstractIO
 	implements IO.Readable.Seekable, IO.Writable.Seekable, IO.KnownSize, IO.Resizable {
 
 	/** Constructor. */
-	public IOInMemoryOrFile(int maxSizeInMemory, byte priority, String sourceDescription) {
+	public IOInMemoryOrFile(int maxSizeInMemory, Priority priority, String sourceDescription) {
 		super(sourceDescription, priority);
 		int nbBuffers = maxSizeInMemory / BUFFER_SIZE;
 		if ((maxSizeInMemory % BUFFER_SIZE) > 0) nbBuffers++;
@@ -228,10 +230,10 @@ public class IOInMemoryOrFile extends AbstractIO
 	public AsyncSupplier<Integer,IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		if (pos < 0) pos = 0;
 		if (pos > size) {
-			AsyncSupplier<Void, IOException> resize = setSizeAsync(pos);
+			IAsync<IOException> resize = setSizeAsync(pos);
 			AsyncSupplier<Integer,IOException> result = new AsyncSupplier<>();
 			long p = pos;
-			IOUtil.listenOnDone(resize, res -> writeAsync(p, buffer, ondone).forward(result), result, ondone);
+			IOUtil.listenOnDone(resize, () -> writeAsync(p, buffer, ondone).forward(result), result, ondone);
 			return operation(result);
 		}
 		int len = buffer.remaining();
@@ -239,13 +241,13 @@ public class IOInMemoryOrFile extends AbstractIO
 			// some data will go to memory
 			if (pos + len <= maxSizeInMemory) {
 				// all go to memory
-				Task<Integer,IOException> task = new WriteInMemory((int)pos, buffer, len, ondone);
+				Task<Integer,IOException> task = writeInMemory((int)pos, len, buffer, ondone);
 				if (pos + len > size) size = pos + len;
 				task.start();
 				return operation(task.getOutput());
 			}
 			// some other will go to file
-			Task<Integer,IOException> mem = new WriteInMemory((int)pos, buffer, (int)(maxSizeInMemory - pos), null);
+			Task<Integer,IOException> mem = writeInMemory((int)pos, (int)(maxSizeInMemory - pos), buffer, null);
 			mem.start();
 			AsyncSupplier<Integer, IOException> memReady;
 			if (file == null) {
@@ -348,15 +350,18 @@ public class IOInMemoryOrFile extends AbstractIO
 	}
 	
 	@Override
-	public AsyncSupplier<Void, IOException> setSizeAsync(long newSize) {
-		if (newSize == size) return new AsyncSupplier<>(null, null);
+	public IAsync<IOException> setSizeAsync(long newSize) {
+		if (newSize == size) return new Async<>(true);
 		if (newSize < size)
 			return shrinkSizeAsync(newSize);
 		return enlargeSizeAsync(newSize);
 	}
 	
-	@SuppressWarnings("squid:S4042") // use of File.delete
-	private AsyncSupplier<Void, IOException> shrinkSizeAsync(long newSize) {
+	@SuppressWarnings({
+		"squid:S4042", // use of File.delete
+		"squid:S1604" // cannot use lambda
+	})
+	private IAsync<IOException> shrinkSizeAsync(long newSize) {
 		if (newSize <= maxSizeInMemory) {
 			// only memory remaining
 			if (file != null) {
@@ -368,11 +373,9 @@ public class IOInMemoryOrFile extends AbstractIO
 				});
 				file = null;
 			}
-			Task.Cpu<Void, IOException> task = new Task.Cpu<Void, IOException>(
-				"Shrink memory of IOInMemoryOrFile", getPriority()
-			) {
+			return operation(Task.cpu("Shrink memory of IOInMemoryOrFile", getPriority(), new Executable<Void, IOException>() {
 				@Override
-				public Void run() {
+				public Void execute() {
 					int nbBuf = (int)(newSize / BUFFER_SIZE);
 					if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
 					if (memory.length > nbBuf) {
@@ -384,45 +387,39 @@ public class IOInMemoryOrFile extends AbstractIO
 					if (pos > size) pos = size;
 					return null;
 				}
-			};
-			operation(task);
-			task.start();
-			return task.getOutput();
+			}).start()).getOutput();
 		}
-		AsyncSupplier<Void, IOException> result = new AsyncSupplier<>();
-		AsyncSupplier<Void, IOException> resize = operation(file.setSizeAsync(newSize - maxSizeInMemory));
+		Async<IOException> result = new Async<>();
+		IAsync<IOException> resize = operation(file.setSizeAsync(newSize - maxSizeInMemory));
 		resize.onDone(() -> {
 			size = newSize;
 			if (pos > size) pos = size;
-			result.unblockSuccess(null);
+			result.unblock();
 		}, result);
 		return result;
 	}
 	
-	private AsyncSupplier<Void, IOException> enlargeSizeAsync(long newSize) {
-		AsyncSupplier<Void, IOException> taskMemory = null;
+	@SuppressWarnings("squid:S1604") // cannot use lambda
+	private IAsync<IOException> enlargeSizeAsync(long newSize) {
+		IAsync<IOException> taskMemory = null;
 		if (size < maxSizeInMemory) {
 			// we need to enlarge memory
-			Task.Cpu<Void, IOException> task = new Task.Cpu<Void, IOException>(
-					"Enlarge memory of IOInMemoryOrFile", getPriority()
-				) {
-					@Override
-					public Void run() {
-						int nbBuf = (int)(newSize / BUFFER_SIZE);
-						if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
-						if (nbBuf > memory.length) {
-							byte[][] n = new byte[nbBuf][];
-							System.arraycopy(memory, 0, n, 0, memory.length);
-							memory = n;
-							for (int i = 0; i < memory.length; ++i)
-								if (memory[i] == null)
-									memory[i] = new byte[BUFFER_SIZE];
-						}
-						return null;
+			taskMemory = operation(Task.cpu("Enlarge memory of IOInMemoryOrFile", getPriority(), new Executable<Void, IOException>() {
+				@Override
+				public Void execute() {
+					int nbBuf = (int)(newSize / BUFFER_SIZE);
+					if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
+					if (nbBuf > memory.length) {
+						byte[][] n = new byte[nbBuf][];
+						System.arraycopy(memory, 0, n, 0, memory.length);
+						memory = n;
+						for (int i = 0; i < memory.length; ++i)
+							if (memory[i] == null)
+								memory[i] = new byte[BUFFER_SIZE];
 					}
-			};
-			task.start();
-			taskMemory = operation(task.getOutput());
+					return null;
+				}
+			}).start()).getOutput();
 		}
 		AsyncSupplier<Void, IOException> taskFile;
 		if (newSize > maxSizeInMemory) {
@@ -436,10 +433,10 @@ public class IOInMemoryOrFile extends AbstractIO
 		} else {
 			taskFile = null;
 		}
-		AsyncSupplier<Void, IOException> result = new AsyncSupplier<>();
+		Async<IOException> result = new Async<>();
 		JoinPoint.fromSimilarError(taskMemory, taskFile).onDone(() -> {
 			size = newSize;
-			result.unblockSuccess(null);
+			result.unblock();
 		}, result);
 		return result;
 	}
@@ -516,10 +513,7 @@ public class IOInMemoryOrFile extends AbstractIO
 			// some data are in memory
 			if (pos + len > maxSizeInMemory)
 				len = (int)(maxSizeInMemory - pos);
-			ReadInMemory task = new ReadInMemory((int)pos, len, buffer, ondone);
-			operation(task);
-			task.start();
-			return task.getOutput();
+			return operation(readInMemory((int)pos, len, buffer, ondone).start()).getOutput();
 		}
 		// data in file
 		AsyncSupplier<Integer,IOException> task;
@@ -552,17 +546,17 @@ public class IOInMemoryOrFile extends AbstractIO
 		if (pos == size) return IOUtil.success(Integer.valueOf(0), ondone);
 		int len = buffer.remaining();
 		if (pos + len > size) len = (int)(size - pos);
-		ReadInMemory mem = null;
+		Task<Integer, IOException> mem = null;
 		if (pos < maxSizeInMemory) {
 			// some data are in memory
 			if (pos + len > maxSizeInMemory) {
 				// not all
-				mem = new ReadInMemory((int)pos, (int)(maxSizeInMemory - pos), buffer, null);
+				mem = readInMemory((int)pos, (int)(maxSizeInMemory - pos), buffer, null);
 				pos = maxSizeInMemory;
 				len -= (int)(maxSizeInMemory - pos);
 				operation(mem.start());
 			} else {
-				mem = operation(new ReadInMemory((int)pos, len, buffer, ondone));
+				mem = operation(readInMemory((int)pos, len, buffer, ondone));
 				mem.start();
 				return mem.getOutput();
 			}
@@ -580,7 +574,7 @@ public class IOInMemoryOrFile extends AbstractIO
 				sp.unblockSuccess(r);
 			}, sp, ondone);
 		}, sp, ondone);
-		ReadInMemory mm = mem;
+		Task<Integer, IOException> mm = mem;
 		sp.onCancel(event -> {
 			mm.cancel(event);
 			if (fil.get() != null) fil.get().unblockCancel(event);
@@ -614,9 +608,14 @@ public class IOInMemoryOrFile extends AbstractIO
 		return operation(task);
 	}
 
-	private class ReadInMemory extends Task.Cpu<Integer,IOException> {
-		private ReadInMemory(int pos, int len, ByteBuffer buf, Consumer<Pair<Integer,IOException>> ondone) {
-			super("IOInMemoryOrFile: reading in memory", priority, ondone);
+	private Task<Integer, IOException> readInMemory(
+		int pos, int len, ByteBuffer buf, Consumer<Pair<Integer,IOException>> ondone
+	) {
+		return Task.cpu("IOInMemoryOrFile: reading in memory", priority, new ReadInMemory(pos, len, buf), ondone);
+	}
+	
+	private class ReadInMemory implements Executable<Integer,IOException> {
+		private ReadInMemory(int pos, int len, ByteBuffer buf) {
 			this.pos = pos;
 			this.len = len;
 			this.buf = buf;
@@ -627,7 +626,7 @@ public class IOInMemoryOrFile extends AbstractIO
 		private ByteBuffer buf;
 		
 		@Override
-		public Integer run() throws IOException {
+		public Integer execute() throws IOException {
 			if (memory == null) throw new IOException("IOInMemoryOrFile is already closed: " + getSourceDescription());
 			Integer result = Integer.valueOf(len);
 			do {
@@ -645,9 +644,14 @@ public class IOInMemoryOrFile extends AbstractIO
 		}
 	}
 	
-	private class WriteInMemory extends Task.Cpu<Integer,IOException> {
-		private WriteInMemory(int pos, ByteBuffer buf, int len, Consumer<Pair<Integer,IOException>> ondone) {
-			super("IOInMemoryOrFile: writing in memory", priority, ondone);
+	private Task<Integer, IOException> writeInMemory(
+			int pos, int len, ByteBuffer buf, Consumer<Pair<Integer,IOException>> ondone
+		) {
+			return Task.cpu("IOInMemoryOrFile: writing in memory", priority, new WriteInMemory(pos, len, buf), ondone);
+		}
+	
+	private class WriteInMemory implements Executable<Integer,IOException> {
+		private WriteInMemory(int pos, int len, ByteBuffer buf) {
 			this.pos = pos;
 			this.len = len;
 			this.buf = buf;
@@ -658,7 +662,7 @@ public class IOInMemoryOrFile extends AbstractIO
 		private ByteBuffer buf;
 		
 		@Override
-		public Integer run() throws IOException {
+		public Integer execute() throws IOException {
 			if (memory == null) throw new IOException("IOInMemoryOrFile is already closed: " + getSourceDescription());
 			Integer result = Integer.valueOf(len);
 			do {

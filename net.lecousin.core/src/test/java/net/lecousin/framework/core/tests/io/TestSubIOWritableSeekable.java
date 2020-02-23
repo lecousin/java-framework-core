@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestWritableSeekable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.FileIO;
@@ -54,7 +54,7 @@ public class TestSubIOWritableSeekable extends TestWritableSeekable {
 	@Override
 	protected SubIO.Writable.Seekable createWritableSeekable() throws IOException {
 		file = createFile();
-		FileIO.ReadWrite fio = new FileIO.ReadWrite(file, Task.PRIORITY_NORMAL);
+		FileIO.ReadWrite fio = new FileIO.ReadWrite(file, Task.Priority.NORMAL);
 		long size = nbBuf * testBuf.length;
 		fio.setSizeSync(size + (nbBufSkippedStart + nbBufSkippedEnd) * testBuf.length);
 		return new SubIO.Writable.Seekable(fio, nbBufSkippedStart * testBuf.length, size, "test subio", true);

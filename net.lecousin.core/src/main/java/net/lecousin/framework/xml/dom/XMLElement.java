@@ -8,11 +8,9 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.text.IString;
 import net.lecousin.framework.util.ObjectUtil;
 import net.lecousin.framework.util.Pair;
@@ -608,13 +606,10 @@ public class XMLElement extends XMLNode implements Element {
 						break;
 					}
 					Async<Exception> sp = new Async<>();
-					child.thenStart(new Task.Cpu<Void, NoException>("Parsing XML to DOM", stream.getPriority()) {
-						@Override
-						public Void run() {
-							appendChild(child.getResult());
-							parseContent(stream, null).onDone(sp);
-							return null;
-						}
+					child.thenStart("Parsing XML to DOM", stream.getPriority(), () -> {
+						appendChild(child.getResult());
+						parseContent(stream, null).onDone(sp);
+						return null;
 					}, sp);
 					return sp;
 				}
@@ -642,12 +637,9 @@ public class XMLElement extends XMLNode implements Element {
 			}
 			// blocked
 			Async<Exception> sp = new Async<>();
-			next.thenStart(new Task.Cpu<Void, NoException>("Parsing XML to DOM", stream.getPriority()) {
-				@Override
-				public Void run() {
-					parseContent(stream, next).onDone(sp);
-					return null;
-				}
+			next.thenStart("Parsing XML to DOM", stream.getPriority(), () -> {
+				parseContent(stream, next).onDone(sp);
+				return null;
 			}, sp);
 			return sp;
 		} while (true);

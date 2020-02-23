@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SingleBufferReadable;
@@ -37,8 +37,8 @@ public class TestXMLStreamReaderAsync extends TestXMLStreamEventsAsync {
 	@Override
 	protected XMLStreamReaderAsync parse(String resource) {
 		if (efficient)
-			return new XMLStreamReaderAsync(LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL), 512, 8);
-		IO.Readable io = LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL);
+			return new XMLStreamReaderAsync(LCCore.getApplication().getResource(resource, Task.Priority.NORMAL), 512, 8);
+		IO.Readable io = LCCore.getApplication().getResource(resource, Task.Priority.NORMAL);
 		SingleBufferReadable bio = new SingleBufferReadable(io, 2, false);
 		return new XMLStreamReaderAsync(bio, 1, 64);
 	}

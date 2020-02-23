@@ -3,7 +3,7 @@ package net.lecousin.framework.core.tests.io.o2i;
 import java.io.File;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadableBuffered;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -28,7 +28,7 @@ public class TestOutputToInputBuffersAsReadableBuffered extends TestReadableBuff
 	
 	@Override
 	protected OutputToInputBuffers createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception {
-		OutputToInputBuffers o2i = new OutputToInputBuffers(true, -3, Task.PRIORITY_NORMAL);
+		OutputToInputBuffers o2i = new OutputToInputBuffers(true, -3, Task.Priority.NORMAL);
 		IOUtil.copy(file, o2i, fileSize, false, null, 0).blockException(0);
 		o2i.endOfData();
 		file.closeAsync();

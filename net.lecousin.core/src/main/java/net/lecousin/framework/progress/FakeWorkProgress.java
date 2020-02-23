@@ -1,7 +1,7 @@
 package net.lecousin.framework.progress;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 
 /** Implementation of WorkProgress without really increasing any progression. */

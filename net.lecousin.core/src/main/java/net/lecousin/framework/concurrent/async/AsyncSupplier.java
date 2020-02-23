@@ -10,10 +10,14 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.BlockedThreadHandler;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.Executable;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.TaskExecutor;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.log.Logger;
+import net.lecousin.framework.util.Runnables.ConsumerThrows;
+import net.lecousin.framework.util.Runnables.FunctionThrows;
 import net.lecousin.framework.util.ThreadUtil;
 
 /**
@@ -57,7 +61,8 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 		static <T, TError extends Exception> Listener<T, TError> from(
 			Consumer<T> onReady,
 			Consumer<TError> onError,
-			Consumer<CancelException> onCancel
+			Consumer<CancelException> onCancel,
+			String name
 		) {
 			return new Listener<T, TError>() {
 				@Override
@@ -77,7 +82,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 				
 				@Override
 				public String toString() {
-					return "" + onReady + " / " + onError + " / " + onCancel;
+					return name != null ? name : ("" + onReady + " / " + onError + " / " + onCancel);
 				}
 			};
 		}
@@ -86,7 +91,8 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 		static <T, TError extends Exception> Listener<T, TError> from(
 			Runnable onReady,
 			Consumer<TError> onError,
-			Consumer<CancelException> onCancel
+			Consumer<CancelException> onCancel,
+			String name
 		) {
 			return from(new Consumer<T>() {
 				@Override
@@ -98,7 +104,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 				public String toString() {
 					return onReady != null ? onReady.toString() : "null";
 				}
-			}, onError, onCancel);
+			}, onError, onCancel, name);
 		}
 	}
 	
@@ -146,12 +152,12 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 	
 	/** Forward the result, error, or cancellation to the given AsyncSupplier. */
 	public final void forward(AsyncSupplier<T,TError> sp) {
-		listen(Listener.from(sp::unblockSuccess, sp::error, sp::cancel));
+		listen(Listener.from(sp::unblockSuccess, sp::error, sp::cancel, sp.toString()));
 	}
 	
 	/** Forward the result, error, or cancellation to the given AsyncSupplier. */
 	public final <TError2 extends Exception> void forward(AsyncSupplier<T, TError2> sp, Function<TError, TError2> errorConverter) {
-		listen(Listener.from(sp::unblockSuccess, e -> sp.unblockError(errorConverter.apply(e)), sp::cancel));
+		listen(Listener.from(sp::unblockSuccess, e -> sp.unblockError(errorConverter.apply(e)), sp::cancel, sp.toString()));
 	}
 	
 	@Override
@@ -181,34 +187,34 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 
 	@Override
 	public final void onDone(Async<TError> sp) {
-		listen(Listener.from(r -> sp.unblock(), sp::error, sp::cancel));
+		listen(Listener.from(r -> sp.unblock(), sp::error, sp::cancel, sp.toString()));
 	}
 
 	/** Call one of the given listener depending on result. */ 
 	public final void onDone(Consumer<T> onready, Consumer<TError> onerror, Consumer<CancelException> oncancel) {
-		listen(Listener.from(onready, onerror, oncancel));
+		listen(Listener.from(onready, onerror, oncancel, null));
 	}
 
 	/** Call one of the given listener on success. */ 
 	public final void onDone(Consumer<T> onready) {
-		listen(Listener.from(onready, null, null));
+		listen(Listener.from(onready, null, null, null));
 	}
 	
 	/** Call onready on success, or forward error/cancellation to onErrorAndCancel. */
 	public final void onDone(Consumer<T> onready, IAsync<TError> onErrorAndCancel) {
-		listen(Listener.from(onready, onErrorAndCancel::error, onErrorAndCancel::cancel));
+		listen(Listener.from(onready, onErrorAndCancel::error, onErrorAndCancel::cancel, null));
 	}
 
 	@Override
 	public final void onDone(Runnable onready, IAsync<TError> onErrorAndCancel) {
-		listen(Listener.from(onready, onErrorAndCancel::error, onErrorAndCancel::cancel));
+		listen(Listener.from(onready, onErrorAndCancel::error, onErrorAndCancel::cancel, null));
 	}
 	
 	/** Call onready on success, or forward error/cancellation to onErrorAndCancel. */
 	public final <TError2 extends Exception> void onDone(
 		Consumer<T> onready, IAsync<TError2> onErrorAndCancel, Function<TError, TError2> errorConverter
 	) {
-		listen(Listener.from(onready, err -> onErrorAndCancel.error(errorConverter.apply(err)), onErrorAndCancel::cancel));
+		listen(Listener.from(onready, err -> onErrorAndCancel.error(errorConverter.apply(err)), onErrorAndCancel::cancel, null));
 	}
 		
 	/** Create an AsyncSupplier from the given one, adapting the error. */
@@ -219,16 +225,21 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 	}
 	
 	/** Start the given task when this asynchronous unit is unblocked. */
-	public <T2> AsyncSupplier<T2, TError> thenStart(Task.Parameter<T, T2, TError> task, boolean evenIfErrorOrCancel) {
+	public <T2> AsyncSupplier<T2, TError> thenStart(
+		String taskDescription, Task.Priority priority,
+		FunctionThrows<T, T2, TError> fct, boolean evenIfErrorOrCancel
+	) {
+		Executable.FromFunctionThrows<T, T2, TError> executable = new Executable.FromFunctionThrows<>(fct);
+		Task<T2, TError> task = Task.cpu(taskDescription, priority, executable);
 		if (evenIfErrorOrCancel)
 			onDone(() -> {
-				task.setParameter(getResult());
+				executable.setInput(getResult());
 				task.start();
 			});
 		else
 			onDone(
 				res -> {
-					task.setParameter(res);
+					executable.setInput(res);
 					task.start();
 				},
 				task::setError,
@@ -238,37 +249,110 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 	}
 	
 	/** Start the given task when this asynchronous unit is unblocked. */
-	public <T2> AsyncSupplier<T2, TError> thenStart(Task.Parameter<T, T2, TError> task, IAsync<TError> onErrorOrCancel) {
+	public <T2> AsyncSupplier<T2, TError> thenStart(
+		String taskDescription, Task.Priority priority,
+		FunctionThrows<T, T2, TError> fct, IAsync<TError> onErrorOrCancel
+	) {
+		Executable.FromFunctionThrows<T, T2, TError> executable = new Executable.FromFunctionThrows<>(fct);
+		Task<T2, TError> task = Task.cpu(taskDescription, priority, executable);
 		onDone(() -> {
-			task.setParameter(getResult());
+			executable.setInput(getResult());
 			task.start();
 		}, onErrorOrCancel);
 		return task.getOutput();
 	}
 	
-	/** Call consumer in a new CPU task on done. */
-	public void thenStart(Consumer<T> consumer, String taskDescription, byte taskPriority, IAsync<TError> onErrorOrCancel) {
-		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, () -> consumer.accept(getResult())), onErrorOrCancel);
+
+	
+	/** Start the given task when this asynchronous unit is unblocked. */
+	public IAsync<TError> thenStart(
+		String taskDescription, Task.Priority priority,
+		ConsumerThrows<T, TError> consumer, boolean evenIfErrorOrCancel
+	) {
+		Executable.FromConsumerThrows<T, TError> executable = new Executable.FromConsumerThrows<>(consumer);
+		Task<Void, TError> task = Task.cpu(taskDescription, priority, executable);
+		if (evenIfErrorOrCancel)
+			onDone(() -> {
+				executable.setInput(getResult());
+				task.start();
+			});
+		else
+			onDone(
+				res -> {
+					executable.setInput(res);
+					task.start();
+				},
+				task::setError,
+				task::cancel
+			);
+		return task.getOutput();
 	}
 	
-	/** Call consumer immediately (in current thread) if done, or start a CPU task on done. */
-	public boolean thenDoOrStart(Consumer<T> consumer, String taskDescription, byte taskPriority) {
-		if (isDone()) {
-			consumer.accept(getResult());
-			return true;
-		}
-		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, () -> consumer.accept(getResult())), true);
-		return false;
+	/** Start the given task when this asynchronous unit is unblocked. */
+	public IAsync<TError> thenStart(
+		String taskDescription,
+		ConsumerThrows<T, TError> consumer, boolean evenIfErrorOrCancel
+	) {
+		Executable.FromConsumerThrows<T, TError> executable = new Executable.FromConsumerThrows<>(consumer);
+		Task<Void, TError> task = Task.cpu(taskDescription, executable);
+		if (evenIfErrorOrCancel)
+			onDone(() -> {
+				executable.setInput(getResult());
+				task.start();
+			});
+		else
+			onDone(
+				res -> {
+					executable.setInput(res);
+					task.start();
+				},
+				task::setError,
+				task::cancel
+			);
+		return task.getOutput();
 	}
 	
+	/** Start the given task when this asynchronous unit is unblocked. */
+	public IAsync<TError> thenStart(
+		String taskDescription, Task.Priority priority,
+		ConsumerThrows<T, TError> consumer, IAsync<TError> onErrorOrCancel
+	) {
+		Executable.FromConsumerThrows<T, TError> executable = new Executable.FromConsumerThrows<>(consumer);
+		Task<Void, TError> task = Task.cpu(taskDescription, priority, executable);
+		onDone(() -> {
+			executable.setInput(getResult());
+			task.start();
+		}, onErrorOrCancel);
+		return task.getOutput();
+	}
+	
+	/** Start the given task when this asynchronous unit is unblocked. */
+	public IAsync<TError> thenStart(
+		String taskDescription,
+		ConsumerThrows<T, TError> consumer, IAsync<TError> onErrorOrCancel
+	) {
+		Executable.FromConsumerThrows<T, TError> executable = new Executable.FromConsumerThrows<>(consumer);
+		Task<Void, TError> task = Task.cpu(taskDescription, executable);
+		onDone(() -> {
+			executable.setInput(getResult());
+			task.start();
+		}, onErrorOrCancel);
+		return task.getOutput();
+	}
+	
+
 	/** Call consumer immediately (in current thread) if done, or start a CPU task on done. */
-	public boolean thenDoOrStart(Consumer<T> consumer, String taskDescription, byte taskPriority, IAsync<TError> onErrorOrCancel) {
+	public boolean thenDoOrStart(String taskDescription, Task.Priority taskPriority, Consumer<T> consumer, IAsync<TError> onErrorOrCancel) {
 		if (isDone()) {
 			if (!forwardIfNotSuccessful(onErrorOrCancel))
 				consumer.accept(getResult());
 			return true;
 		}
-		thenStart(new Task.Cpu.FromRunnable(taskDescription, taskPriority, () -> consumer.accept(getResult())), onErrorOrCancel);
+		Executable.FromConsumer<T> executable = new Executable.FromConsumer<>(consumer);
+		onDone(() -> {
+			executable.setInput(getResult());
+			Task.cpu(taskDescription, taskPriority, executable).start();
+		}, onErrorOrCancel);
 		return false;
 	}
 	
@@ -409,13 +493,11 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 	@Override
 	@SuppressWarnings("squid:S2274")
 	public final void block(long timeout) {
-		Thread t;
-		BlockedThreadHandler blockedHandler;
+		TaskExecutor executor;
 		synchronized (this) {
 			if (unblocked && listenersInline == null) return;
-			t = Thread.currentThread();
-			blockedHandler = Threading.getBlockedThreadHandler(t);
-			if (blockedHandler == null) {
+			executor = Threading.getTaskExecutor();
+			if (executor == null) {
 				if (timeout <= 0) {
 					while (!unblocked || listenersInline != null)
 						if (!ThreadUtil.wait(this, 0)) return;
@@ -424,8 +506,8 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 				}
 			}
 		}
-		if (blockedHandler != null)
-			blockedHandler.blocked(this, timeout);
+		if (executor != null)
+			executor.blocked(this, timeout);
 	}
 	
 	/** Block until this AsyncSupplier is unblocked or the given timeout expired,
@@ -433,22 +515,20 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 	 * @param timeout in milliseconds. 0 or negative value means infinite.
 	 */
 	public final T blockResult(long timeout) throws TError, CancelException {
-		Thread t;
-		BlockedThreadHandler blockedHandler;
+		TaskExecutor executor;
 		synchronized (this) {
 			if (unblocked && listenersInline == null) {
 				if (error != null) throw error;
 				if (cancel != null) throw cancel;
 				return result;
 			}
-			t = Thread.currentThread();
-			blockedHandler = Threading.getBlockedThreadHandler(t);
-			if (blockedHandler == null)
+			executor = Threading.getTaskExecutor();
+			if (executor == null)
 				while (!unblocked || listenersInline != null)
 					if (!ThreadUtil.wait(this, timeout < 0 ? 0 : timeout)) return null;
 		}
-		if (blockedHandler != null)
-			blockedHandler.blocked(this, timeout);
+		if (executor != null)
+			executor.blocked(this, timeout);
 		if (error != null) throw error;
 		if (cancel != null) throw cancel;
 		return result;

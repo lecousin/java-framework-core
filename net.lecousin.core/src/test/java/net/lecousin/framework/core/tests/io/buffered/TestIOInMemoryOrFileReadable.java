@@ -3,7 +3,7 @@ package net.lecousin.framework.core.tests.io.buffered;
 import java.io.File;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -36,7 +36,7 @@ public class TestIOInMemoryOrFileReadable extends TestReadable {
 	
 	@Override
 	protected IOInMemoryOrFile createReadableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
-		IOInMemoryOrFile io = new IOInMemoryOrFile(2*1024*1024, Task.PRIORITY_NORMAL, "test");
+		IOInMemoryOrFile io = new IOInMemoryOrFile(2*1024*1024, Task.Priority.NORMAL, "test");
 		IOUtil.copy(file, io, fileSize, false, null, 0).blockThrow(0);
 		file.close();
 		io.seekSync(SeekType.FROM_BEGINNING, 0);

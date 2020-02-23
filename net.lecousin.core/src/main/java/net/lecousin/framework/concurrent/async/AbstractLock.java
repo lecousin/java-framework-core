@@ -3,6 +3,8 @@ package net.lecousin.framework.concurrent.async;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import net.lecousin.framework.concurrent.CancelException;
+
 /** Base class for locks.
  * @param <TError> type of exception
  */

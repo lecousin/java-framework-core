@@ -8,10 +8,10 @@ import java.util.function.Consumer;
 import org.junit.Assert;
 import org.junit.Test;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.mutable.MutableInteger;
 
@@ -266,12 +266,9 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenStartOkThenCancel() {
-		sp.thenStart(new Task.Cpu<Void, Exception>("test", Task.PRIORITY_NORMAL) {
-			@Override
-			public Void run() throws CancelException {
-				throw new CancelException("test");
-			}
-		}, sp2);
+		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> {
+			throw new CancelException("test");
+		}), sp2);
 		sp.unblock();
 		sp2.block(0);
 		Assert.assertTrue(sp2.isCancelled());
@@ -280,7 +277,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenStartOk() {
-		sp.thenStart(new Task.Cpu.FromRunnable("test", Task.PRIORITY_NORMAL, () -> { ok.inc(); sp2.unblock(); }), error::inc);
+		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
 		sp.unblock();
 		sp2.block(10000);
 		Assert.assertEquals(1, ok.get());
@@ -290,7 +287,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenStartError() {
-		sp.thenStart(new Task.Cpu.FromRunnable("test", Task.PRIORITY_NORMAL, () -> { ok.inc(); sp2.unblock(); }), error::inc);
+		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(1, error.get());
@@ -299,7 +296,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenStartCancel() {
-		sp.thenStart(new Task.Cpu.FromRunnable("test", Task.PRIORITY_NORMAL, () -> { ok.inc(); sp2.unblock(); }), error::inc);
+		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(1, error.get());
@@ -308,7 +305,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenStartEvenOnErrorOk() {
-		sp.thenStart("test", Task.PRIORITY_NORMAL, () -> { ok.inc(); sp2.unblock(); }, true);
+		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, true);
 		sp.unblock();
 		sp2.block(10000);
 		Assert.assertEquals(1, ok.get());
@@ -318,7 +315,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenStartEvenOnErrorError() {
-		sp.thenStart("test", Task.PRIORITY_NORMAL, () -> { ok.inc(); sp2.unblock(); }, true);
+		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, true);
 		sp.error(new Exception());
 		sp2.block(10000);
 		Assert.assertEquals(1, ok.get());
@@ -328,7 +325,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenStartEvenOnErrorCancel() {
-		sp.thenStart("test", Task.PRIORITY_NORMAL, () -> { ok.inc(); sp2.unblock(); }, true);
+		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, true);
 		sp.cancel(new CancelException("test"));
 		sp2.block(10000);
 		Assert.assertEquals(1, ok.get());
@@ -339,7 +336,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenStartRunnableOk() {
 		Async<Exception> sp3 = new Async<>();
-		sp.thenStart("test", Task.PRIORITY_NORMAL, () -> { ok.inc(); sp2.unblock(); }, sp3);
+		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, sp3);
 		sp.unblock();
 		sp2.block(10000);
 		Assert.assertEquals(1, ok.get());
@@ -350,7 +347,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenStartRunnableError() {
 		Async<Exception> sp3 = new Async<>();
-		sp.thenStart("test", Task.PRIORITY_NORMAL, () -> { ok.inc(); sp2.unblock(); }, sp3);
+		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, sp3);
 		sp.error(new Exception());
 		sp3.block(10000);
 		Assert.assertEquals(0, ok.get());
@@ -360,7 +357,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenStartRunnableCancel() {
 		Async<Exception> sp3 = new Async<>();
-		sp.thenStart("test", Task.PRIORITY_NORMAL, () -> { ok.inc(); sp2.unblock(); }, sp3);
+		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, sp3);
 		sp.cancel(new CancelException("test"));
 		sp3.block(10000);
 		Assert.assertEquals(0, ok.get());
@@ -369,7 +366,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenDoOrStartRunnableOkAsync() {
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); });
 		Assert.assertEquals(0, ok.get());
 		sp.unblock();
 		sp2.block(0);
@@ -382,14 +379,14 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, ok.get());
 		sp.unblock();
 		Assert.assertEquals(0, ok.get());
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); });
 		Assert.assertEquals(51, ok.get());
 		Assert.assertTrue(sp2.isSuccessful());
 	}
 	
 	@Test
 	public void testThenDoOrStartRunnableErrorAsync() {
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); });
 		Assert.assertEquals(0, ok.get());
 		sp.error(new Exception());
 		sp2.block(0);
@@ -401,14 +398,14 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, ok.get());
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); });
 		Assert.assertEquals(51, ok.get());
 		Assert.assertTrue(sp2.isSuccessful());
 	}
 	
 	@Test
 	public void testThenDoOrStartRunnableCancelAsync() {
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); });
 		Assert.assertEquals(0, ok.get());
 		sp.cancel(new CancelException("test"));
 		sp2.block(0);
@@ -420,7 +417,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, ok.get());
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); });
 		Assert.assertEquals(51, ok.get());
 		Assert.assertTrue(sp2.isSuccessful());
 	}
@@ -428,7 +425,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenDoOrStartRunnableWithOnErrorOrCancelOkAsync() {
 		Async<Exception> sp3 = new Async<>();
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3);
 		Assert.assertEquals(0, ok.get());
 		sp.unblock();
 		sp2.block(0);
@@ -442,7 +439,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, ok.get());
 		sp.unblock();
 		Assert.assertEquals(0, ok.get());
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3);
 		Assert.assertEquals(51, ok.get());
 		Assert.assertTrue(sp2.isSuccessful());
 		Assert.assertFalse(sp3.isDone());
@@ -451,7 +448,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenDoOrStartRunnableWithOnErrorOrCancelErrorAsync() {
 		Async<Exception> sp3 = new Async<>();
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3);
 		Assert.assertEquals(0, ok.get());
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
@@ -464,7 +461,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, ok.get());
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3);
 		Assert.assertEquals(0, ok.get());
 		Assert.assertTrue(sp3.hasError());
 	}
@@ -472,7 +469,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenDoOrStartRunnableeWithOnErrorOrCancelCancelAsync() {
 		Async<Exception> sp3 = new Async<>();
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3);
 		Assert.assertEquals(0, ok.get());
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
@@ -485,7 +482,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, ok.get());
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3);
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3);
 		Assert.assertEquals(0, ok.get());
 		Assert.assertTrue(sp3.isCancelled());
 	}
@@ -493,7 +490,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenDoOrStartRunnableWithOnErrorOrCancelAndErrorConverterOkAsync() {
 		Async<IOException> sp3 = new Async<>();
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3, e -> new IOException());
 		Assert.assertEquals(0, ok.get());
 		sp.unblock();
 		sp2.block(0);
@@ -507,7 +504,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, ok.get());
 		sp.unblock();
 		Assert.assertEquals(0, ok.get());
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3, e -> new IOException());
 		Assert.assertEquals(51, ok.get());
 		Assert.assertTrue(sp2.isSuccessful());
 		Assert.assertFalse(sp3.isDone());
@@ -516,7 +513,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenDoOrStartRunnableWithOnErrorOrCancelAndErrorConverterErrorAsync() {
 		Async<IOException> sp3 = new Async<>();
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3, e -> new IOException());
 		Assert.assertEquals(0, ok.get());
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
@@ -529,7 +526,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, ok.get());
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3, e -> new IOException());
 		Assert.assertEquals(0, ok.get());
 		Assert.assertTrue(sp3.hasError());
 	}
@@ -537,7 +534,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenDoOrStartRunnableeWithOnErrorOrCancelAndErrorConverterCancelAsync() {
 		Async<IOException> sp3 = new Async<>();
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3, e -> new IOException());
 		Assert.assertEquals(0, ok.get());
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
@@ -550,7 +547,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		Assert.assertEquals(0, ok.get());
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
-		sp.thenDoOrStart(() -> { ok.set(51); sp2.unblock(); }, "test", Task.PRIORITY_NORMAL, sp3, e -> new IOException());
+		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3, e -> new IOException());
 		Assert.assertEquals(0, ok.get());
 		Assert.assertTrue(sp3.isCancelled());
 	}
@@ -563,10 +560,11 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testUnblockAsynchronously() {
-		new Task.Cpu.FromRunnable(() -> {
+		Task.cpu("test", Task.Priority.NORMAL, () -> {
 			sp.unblock();
 			sp2.blockPause(5000);
-		}, "test", Task.PRIORITY_NORMAL).start();
+			return null;
+		}).start();
 		sp.block(0);
 		try { Thread.sleep(100); } catch (InterruptedException e) {}
 		sp2.unblock();

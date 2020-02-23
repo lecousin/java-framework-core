@@ -5,7 +5,7 @@ import java.io.IOException;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.libraries.classpath.DefaultApplicationClassLoader;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
 import org.junit.Assert;
@@ -32,7 +32,7 @@ public class TestClassPath extends LCCoreAbstractTest {
 	
 	@Test
 	public void testGetUnknownResource() {
-		Assert.assertNull(LCCore.getApplication().getLibrariesManager().getResource("does/not/exist", Task.PRIORITY_NORMAL));
+		Assert.assertNull(LCCore.getApplication().getLibrariesManager().getResource("does/not/exist", Task.Priority.NORMAL));
 	}
 	
 }

@@ -7,11 +7,13 @@ import java.nio.charset.Charset;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.encoding.charset.CharacterDecoder;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
@@ -60,8 +62,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		if (initBytes != null && initBytes.hasRemaining()) {
 			ByteArray rb = ByteArray.fromByteBuffer(initBytes);
 			AsyncSupplier<Integer,IOException> readTask = new AsyncSupplier<>(Integer.valueOf(rb.remaining()), null);
-			DecodeTask decode = new DecodeTask(readTask, rb);
-			operation(decode).startOn(readTask, true);
+			operation(decodeTask(readTask, rb)).startOn(readTask, true);
 		} else {
 			if (input instanceof IO.Readable.Buffered)
 				((IO.Readable.Buffered)input).canStartReading().onDone(this::bufferize);
@@ -116,12 +117,12 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 	}
 	
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return input.getPriority();
 	}
 	
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		input.setPriority(priority);
 	}
 	
@@ -129,14 +130,16 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		byte[] buf = cache.get(bufferSize, true);
 		ByteBuffer bb = ByteBuffer.wrap(buf);
 		AsyncSupplier<Integer,IOException> readTask = input.readFullyAsync(bb);
-		DecodeTask decode = new DecodeTask(readTask, new ByteArray(buf));
-		operation(decode).startOn(readTask, true);
+		operation(decodeTask(readTask, new ByteArray(buf))).startOn(readTask, true);
 	}
 	
-	private class DecodeTask extends Task.Cpu<Void,NoException> {
+	private Task<Void, NoException> decodeTask(AsyncSupplier<Integer,IOException> readTask, ByteArray buf) {
+		return Task.cpu("Decode character stream", input.getPriority(), new Decode(readTask, buf));
+	}
+	
+	private class Decode implements Executable<Void,NoException> {
 		
-		private DecodeTask(AsyncSupplier<Integer,IOException> readTask, ByteArray buf) {
-			super("Decode character stream", input.getPriority());
+		private Decode(AsyncSupplier<Integer,IOException> readTask, ByteArray buf) {
 			this.readTask = readTask;
 			this.buf = buf;
 		}
@@ -146,7 +149,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		
 		@Override
 		@SuppressWarnings("squid:S1696") // NullPointerException
-		public Void run() {
+		public Void execute() {
 			if (nextReady.isCancelled()) return null; // closed
 			if (readTask.isCancelled()) {
 				if (decoder == null)
@@ -374,14 +377,14 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		if (len <= 0)
 			return new AsyncSupplier<>(Integer.valueOf(0), null);
 		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
-		operation(new ReadAsyncTask(buf, off, len, result)).startOn(canStartReading(), true);
+		operation(Task.cpu("BufferedReadableCharacterStream.readAsync", input.getPriority(), new ReadAsync(buf, off, len, result)))
+		.startOn(canStartReading(), true);
 		return result;
 	}
 	
-	private class ReadAsyncTask extends Task.Cpu<Void, NoException> {
+	private class ReadAsync implements Executable<Void, NoException> {
 		
-		private ReadAsyncTask(char[] buf, int offset, int length, AsyncSupplier<Integer, IOException> result) {
-			super("BufferedReadableCharacterStream.readAsync", input.getPriority());
+		private ReadAsync(char[] buf, int offset, int length, AsyncSupplier<Integer, IOException> result) {
 			this.buf = buf;
 			this.offset = offset;
 			this.length = length;
@@ -394,7 +397,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		private AsyncSupplier<Integer, IOException> readResult;
 		
 		@Override
-		public Void run() {
+		public Void execute() {
 			int done = 0;
 			
 			if (back != -1) {
@@ -487,9 +490,8 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 			}
 			if (full && !endReached) bufferize();
 			if (currentChars == null) {
-				canStartReading().thenStart(
-				new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readNextBufferAsync", getPriority(),
-					() -> readNextBufferAsync(result)), result);
+				canStartReading().thenStart("BufferedReadableCharacterStream.readNextBufferAsync", getPriority(),
+					() -> readNextBufferAsync(result), result);
 				return;
 			}
 		}
@@ -515,8 +517,8 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 	@Override
 	public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, IString string) {
 		AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
-		new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readUntil", getPriority(),
-			() -> readUntil(endChar, string, result)).start();
+		Task.cpu("BufferedReadableCharacterStream.readUntil", getPriority(),
+			new Executable.FromRunnable(() -> readUntil(endChar, string, result))).start();
 		return result;
 	}
 	
@@ -559,8 +561,8 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 				if (full && !endReached) bufferize();
 				if (currentChars == null) {
 					canStartReading().thenStart(
-					new Task.Cpu.FromRunnable("BufferedReadableCharacterStream.readUntil", getPriority(),
-						() -> readUntil(endChar, string, result)), result);
+					Task.cpu("BufferedReadableCharacterStream.readUntil", getPriority(),
+						new Executable.FromRunnable(() -> readUntil(endChar, string, result))), result);
 					return;
 				}
 			}

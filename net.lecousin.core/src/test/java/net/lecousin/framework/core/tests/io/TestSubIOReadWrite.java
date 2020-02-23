@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.Collection;
 import java.util.LinkedList;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestReadWrite;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.FileIO;
@@ -54,7 +54,7 @@ public class TestSubIOReadWrite extends TestReadWrite {
 	protected SubIO.ReadWrite openReadWrite() throws Exception {
 		File tmpFile = File.createTempFile("test", "fileio.rw");
 		tmpFile.deleteOnExit();
-		FileIO.ReadWrite fio = new FileIO.ReadWrite(tmpFile, Task.PRIORITY_NORMAL);
+		FileIO.ReadWrite fio = new FileIO.ReadWrite(tmpFile, Task.Priority.NORMAL);
 		long size = nbBuf * testBuf.length;
 		fio.setSizeSync(size + (nbBufSkippedStart + nbBufSkippedEnd) * testBuf.length);
 		return new SubIO.ReadWrite(fio, nbBufSkippedStart * testBuf.length, size, "test subio", true);

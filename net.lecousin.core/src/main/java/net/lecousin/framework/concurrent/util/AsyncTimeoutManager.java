@@ -5,9 +5,11 @@ import java.util.LinkedList;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.exception.NoException;
 
 /** Watch for asynchronous operaions timeout. */
@@ -30,7 +32,7 @@ public final class AsyncTimeoutManager {
 	private AsyncTimeoutManager() {
 	}
 	
-	private TimeoutTask task = null;
+	private Task<Void, NoException> task = null;
 	private long taskTime = 0;
 	private LinkedList<Waiting> waiting = new LinkedList<>();
 	
@@ -61,7 +63,7 @@ public final class AsyncTimeoutManager {
 	private void updateTask(long expiration) {
 		if (task == null) {
 			taskTime = expiration;
-			task = new TimeoutTask();
+			task = Task.cpu("Watch asynchronous operations timeout", Priority.LOW, new TimeoutTask());
 			task.executeAt(expiration);
 			task.start();
 		} else if (expiration < taskTime) {
@@ -86,13 +88,10 @@ public final class AsyncTimeoutManager {
 		}
 	}
 	
-	private class TimeoutTask extends Task.Cpu<Void, NoException> {
-		private TimeoutTask() {
-			super("Watch asynchronous operations timeout", Task.PRIORITY_LOW);
-		}
+	private class TimeoutTask implements Executable<Void, NoException> {
 		
 		@Override
-		public Void run() throws NoException, CancelException {
+		public Void execute() throws NoException, CancelException {
 			long next = -1;
 			LinkedList<Runnable> toRun = new LinkedList<>();
 			long now = System.currentTimeMillis();
@@ -109,7 +108,7 @@ public final class AsyncTimeoutManager {
 				}
 				taskTime = next;
 				if (next != -1)
-					executeAgainAt(next);
+					task.executeAgainAt(next);
 			}
 			for (Runnable r : toRun)
 				r.run();

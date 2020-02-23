@@ -4,11 +4,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.Pair;
@@ -19,7 +20,7 @@ import net.lecousin.framework.util.Pair;
 public class EmptyReadable extends AbstractIO implements IO.Readable, IO.KnownSize, IO.Readable.Buffered, IO.Readable.Seekable {
 
 	/** Constructor. */
-	public EmptyReadable(String description, byte priority) {
+	public EmptyReadable(String description, Priority priority) {
 		super(description, priority);
 	}
 

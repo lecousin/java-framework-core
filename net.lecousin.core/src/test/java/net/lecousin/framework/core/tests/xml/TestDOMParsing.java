@@ -7,8 +7,8 @@ import java.util.Collection;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
@@ -172,7 +172,7 @@ public class TestDOMParsing extends TestDOM {
 		InputStream in = getClass().getClassLoader().getResourceAsStream(filepath);
 		Document doc = factory.newDocumentBuilder().parse(new InputSource(in));
 		InputStream in2 = getClass().getClassLoader().getResourceAsStream(filepath);
-		IO.Readable io = new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL);
+		IO.Readable io = new IOFromInputStream(in2, filepath, Threading.getDrivesManager().getTaskManager(new File(".")), Task.Priority.NORMAL);
 		XMLStreamReader xml = new XMLStreamReader(io, 1024, 4);
 		xml.start();
 		XMLDocument doc2 = XMLDocument.create(xml);
@@ -191,7 +191,7 @@ public class TestDOMParsing extends TestDOM {
 		InputStream in = getClass().getClassLoader().getResourceAsStream(filepath);
 		Document doc = factory.newDocumentBuilder().parse(new InputSource(in));
 		InputStream in2 = getClass().getClassLoader().getResourceAsStream(filepath);
-		IO.Readable io = new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL);
+		IO.Readable io = new IOFromInputStream(in2, filepath, Threading.getDrivesManager().getTaskManager(new File(".")), Task.Priority.NORMAL);
 		XMLStreamReaderAsync xml = new XMLStreamReaderAsync(io, 1024, 4);
 		xml.start().blockException(0);
 		XMLDocument doc2 = XMLDocument.create(xml).blockResult(0);

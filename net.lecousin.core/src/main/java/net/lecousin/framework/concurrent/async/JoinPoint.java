@@ -4,9 +4,8 @@ import java.util.Collection;
 import java.util.function.Function;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.ThreadingDebugHelper;
+import net.lecousin.framework.concurrent.Executable;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -24,7 +23,7 @@ public class JoinPoint<TError extends Exception> extends Async<TError> {
 
 	/** Constructor. */
 	public JoinPoint() {
-		if (Threading.debugSynchronization) ThreadingDebugHelper.register(this);
+		// nothing
 	}
 	
 	private int nbToJoin = 0;
@@ -62,7 +61,6 @@ public class JoinPoint<TError extends Exception> extends Async<TError> {
 			else
 				joined();
 		});
-		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
 	}
 	
 	/**
@@ -84,7 +82,6 @@ public class JoinPoint<TError extends Exception> extends Async<TError> {
 			else
 				joined();
 		});
-		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
 	}
 	
 	/**
@@ -104,7 +101,6 @@ public class JoinPoint<TError extends Exception> extends Async<TError> {
 	public synchronized void addToJoinNoException(IAsync<?> sp) {
 		nbToJoin++;
 		sp.onDone(this::joined);
-		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
 	}
 	
 	/** Similar to addToJoin, but in case the synchronization point is cancelled,
@@ -117,14 +113,12 @@ public class JoinPoint<TError extends Exception> extends Async<TError> {
 			else
 				joined();
 		});
-		if (Threading.debugSynchronization) ThreadingDebugHelper.registerJoin(this, sp);
 	}
 	
 	/**
 	 * Start this JoinPoint, so as soon as the number of waited events becomes zero, this JoinPoint becomes unblocked.
 	 */
 	public synchronized void start() {
-		if (Threading.debugSynchronization) ThreadingDebugHelper.started(this);
 		started = true;
 		if (nbToJoin == 0) unblock();
 	}
@@ -171,21 +165,17 @@ public class JoinPoint<TError extends Exception> extends Async<TError> {
 	 */
 	public synchronized void listenTime(long timeout, Runnable callback) {
 		if (isDone()) return;
-		Task<Void,NoException> task = new Task.Cpu<Void,NoException>("JoinPoint timeout", Task.PRIORITY_RATHER_LOW) {
-			@Override
-			public Void run() {
-				synchronized (JoinPoint.this) {
-					if (JoinPoint.this.isDone()) return null;
-					if (callback != null)
-						try { callback.run(); }
-						catch (Exception t) {
-							LCCore.getApplication().getDefaultLogger()
-								.error("Error in callback of JoinPoint time listener", t);
-						}
-					return null;
-				}
+		Task<Void,NoException> task = Task.cpu("JoinPoint timeout", Task.Priority.RATHER_LOW, new Executable.FromRunnable(() -> {
+			synchronized (JoinPoint.this) {
+				if (JoinPoint.this.isDone()) return;
+				if (callback != null)
+					try { callback.run(); }
+					catch (Exception t) {
+						LCCore.getApplication().getDefaultLogger()
+							.error("Error in callback of JoinPoint time listener", t);
+					}
 			}
-		};
+		}));
 		task.executeIn(timeout);
 		if (isDone()) return;
 		task.start();

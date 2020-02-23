@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -32,7 +32,7 @@ public class TestPositionKnownWrapper extends TestReadable {
 	@Override
 	protected IO.Readable createReadableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
 		File f = file.getFile();
-		IOFromInputStream io = new IOFromInputStream(new FileInputStream(f), f.getAbsolutePath(), file.getTaskManager(), Task.PRIORITY_NORMAL);
+		IOFromInputStream io = new IOFromInputStream(new FileInputStream(f), f.getAbsolutePath(), file.getTaskManager(), Task.Priority.NORMAL);
 		file.closeAsync();
 		return new PositionKnownWrapper.Readable(io);
 	}

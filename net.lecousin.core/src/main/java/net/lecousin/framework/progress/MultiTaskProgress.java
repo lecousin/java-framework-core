@@ -3,7 +3,7 @@ package net.lecousin.framework.progress;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.JoinPoint;
 
 /** Implementation of WorkProgress, composed of sub-WorkProgress. */

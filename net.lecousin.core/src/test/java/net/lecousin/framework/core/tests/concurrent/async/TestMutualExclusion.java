@@ -1,6 +1,6 @@
 package net.lecousin.framework.core.tests.concurrent.async;
 
-import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.MutualExclusion;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 

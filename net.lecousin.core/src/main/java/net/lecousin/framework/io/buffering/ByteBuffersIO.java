@@ -5,12 +5,14 @@ import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.collections.LinkedArrayList;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -27,7 +29,7 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 	 *     if false the buffer are kept but any modification of them outside of this class may lead to unexpected behavior.
 	 * @param description description
 	 */
-	public ByteBuffersIO(boolean copyBuffers, String description, byte priority) {
+	public ByteBuffersIO(boolean copyBuffers, String description, Priority priority) {
 		super(description, priority);
 		this.copyBuffers = copyBuffers;
 	}
@@ -152,14 +154,8 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 
 	@Override
 	public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		Task<Integer, IOException> task = new Task.Cpu<Integer, IOException>("readAsync on ByteBuffersIO", this.getPriority(), ondone) {
-			@Override
-			public Integer run() {
-				return Integer.valueOf(readSync(pos, buffer));
-			}
-		};
-		task.start();
-		return operation(task.getOutput());
+		return operation(Task.cpu("readAsync on ByteBuffersIO", this.getPriority(),
+			() -> Integer.valueOf(readSync(pos, buffer)), ondone).start()).getOutput();
 	}
 	
 	@Override
@@ -169,15 +165,13 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 
 	@Override
 	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone).getOutput());
+		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone));
 	}
 	
 	@Override
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
-		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu.FromSupplierThrows<>(
-			"Read next buffer", getPriority(), ondone, this::readNextBuffer);
-		task.start();
-		return operation(task.getOutput());
+		return operation(Task.cpu("Read next buffer", getPriority(),
+			new Executable.FromSupplierThrows<>(this::readNextBuffer), ondone).start()).getOutput();
 	}
 	
 	@Override
@@ -366,7 +360,7 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 	@Override
 	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		if (!copyBuffers) return IOUtil.success(Integer.valueOf(writeSync(buffer)), ondone);
-		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone).getOutput());
+		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone));
 	}
 	
 }

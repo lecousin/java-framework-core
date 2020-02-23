@@ -8,8 +8,9 @@ import java.util.List;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.libraries.LibraryManagementException;
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -61,7 +62,7 @@ public class MavenRemoteRepository implements MavenRepository {
 			url.equals(this.url);
 	}
 	
-	private IO.Readable download(String path, byte priority) {
+	private IO.Readable download(String path, Priority priority) {
 		if (logger.info())
 			logger.info("Downloading " + url + path);
 		IO.Readable io;
@@ -79,7 +80,7 @@ public class MavenRemoteRepository implements MavenRepository {
 	}
 	
 	@Override
-	public AsyncSupplier<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, byte priority) {
+	public AsyncSupplier<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, Priority priority) {
 		String path = groupId.replace('.', '/') + '/' + artifactId + "/maven-metadata.xml";
 		IO.Readable io = download(path, priority);
 		if (io == null) return new AsyncSupplier<>(null, null);
@@ -90,7 +91,7 @@ public class MavenRemoteRepository implements MavenRepository {
 			bio = new SimpleBufferedReadable(io, 8192);
 		AsyncSupplier<XMLStreamReader, Exception> start = XMLStreamReader.start(bio, 5000, 4, false);
 		AsyncSupplier<List<String>, NoException> result = new AsyncSupplier<>();
-		start.thenStart(new Task.Cpu.FromRunnable("Read maven-metadata.xml", priority, () -> {
+		start.thenStart(Task.cpu("Read maven-metadata.xml", priority, () -> {
 			try {
 				XMLStreamReader xml = start.getResult();
 				while (!Type.START_ELEMENT.equals(xml.event.type)) xml.next();
@@ -98,7 +99,7 @@ public class MavenRemoteRepository implements MavenRepository {
 					if (logger.error())
 						logger.error(url + path + " does not contain element versioning/versions");
 					result.unblockSuccess(null);
-					return;
+					return null;
 				}
 				ElementContext parent = xml.event.context.getFirst();
 				List<String> versions = new LinkedList<>();
@@ -111,6 +112,7 @@ public class MavenRemoteRepository implements MavenRepository {
 					logger.error("Error parsing " + url + path, e);
 				result.unblockSuccess(null);
 			}
+			return null;
 		}), () -> {
 			if (logger.error())
 				logger.error("Error loading " + url + path, start.getError());
@@ -122,7 +124,7 @@ public class MavenRemoteRepository implements MavenRepository {
 	
 	@Override
 	public AsyncSupplier<MavenPOM, LibraryManagementException> load(
-		String groupId, String artifactId, String version, MavenPOMLoader pomLoader, byte priority
+		String groupId, String artifactId, String version, MavenPOMLoader pomLoader, Priority priority
 	) {
 		String path = groupId.replace('.', '/') + '/' + artifactId + '/' + version + '/' + artifactId + '-' + version + ".pom";
 		if (logger.info())
@@ -137,7 +139,7 @@ public class MavenRemoteRepository implements MavenRepository {
 	@Override
 	public File loadFileSync(String groupId, String artifactId, String version, String classifier, String type) {
 		try {
-			return loadFile(groupId, artifactId, version, classifier, type, Task.PRIORITY_IMPORTANT).blockResult(0);
+			return loadFile(groupId, artifactId, version, classifier, type, Task.Priority.IMPORTANT).blockResult(0);
 		} catch (Exception e) {
 			return null;
 		}
@@ -145,7 +147,7 @@ public class MavenRemoteRepository implements MavenRepository {
 	
 	@Override
 	public AsyncSupplier<File, IOException> loadFile(
-		String groupId, String artifactId, String version, String classifier, String type, byte priority
+		String groupId, String artifactId, String version, String classifier, String type, Priority priority
 	) {
 		String path = groupId.replace('.', '/') + '/' + artifactId + '/' + version
 			+ '/' + MavenPOM.getFilename(artifactId, version, classifier, type);
@@ -153,10 +155,10 @@ public class MavenRemoteRepository implements MavenRepository {
 		if (io == null) return new AsyncSupplier<>(null, null);
 		AsyncSupplier<File, IOException> file = TemporaryFiles.get().createFileAsync("remote-maven", ".downloaded");
 		AsyncSupplier<File, IOException> result = new AsyncSupplier<>();
-		file.thenDoOrStart(f -> {
+		file.thenDoOrStart("Download file from maven", priority, f -> {
 			FileIO.WriteOnly out = new FileIO.WriteOnly(f, priority);
 			IOUtil.copy(io, out, -1, true, null, 0).onDone(() -> result.unblockSuccess(f), result);
-		}, "Download file from maven", priority, result);
+		}, result);
 		result.onErrorOrCancel(io::closeAsync);
 		return result;
 	}

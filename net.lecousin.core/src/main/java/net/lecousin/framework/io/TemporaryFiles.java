@@ -8,9 +8,10 @@ import java.nio.file.Path;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectoryTask;
+import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectory;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 
 /** Utility class to create temporary files. */
 public final class TemporaryFiles {
@@ -87,46 +88,31 @@ public final class TemporaryFiles {
 	
 	/** Create a temporary file. */
 	public AsyncSupplier<File, IOException> createFileAsync(String prefix, String suffix) {
-		return new Task.OnFile<File, IOException>(tempDir, "Create temporary file", Task.PRIORITY_NORMAL) {
-			@Override
-			public File run() throws IOException {
-				return createFileSync(prefix, suffix);
-			}
-		}.start().getOutput();
+		return Task.file(tempDir, "Create temporary file", Priority.NORMAL, () -> createFileSync(prefix, suffix)).start().getOutput();
 	}
 	
 	/** Create and open a temporary file. */
 	public FileIO.ReadWrite createAndOpenFileSync(String prefix, String suffix) throws IOException {
 		File f = createFileSync(prefix, suffix);
-		return new FileIO.ReadWrite(f, Task.PRIORITY_NORMAL);
+		return new FileIO.ReadWrite(f, Task.Priority.NORMAL);
 	}
 
 	/** Create and open a temporary file. */
 	public AsyncSupplier<FileIO.ReadWrite, IOException> createAndOpenFileAsync(String prefix, String suffix) {
-		return new Task.OnFile<FileIO.ReadWrite, IOException>(tempDir, "Create temporary file", Task.PRIORITY_NORMAL) {
-			@Override
-			public FileIO.ReadWrite run() throws IOException {
-				return createAndOpenFileSync(prefix, suffix);
-			}
-		}.start().getOutput();
+		return Task.file(tempDir, "Create temporary file", Priority.NORMAL, () -> createAndOpenFileSync(prefix, suffix)).start().getOutput();
 	}
 	
 	/** Create a temporary directory. */
 	public File createDirectorySync(String prefix) throws IOException {
 		Path path = Files.createTempDirectory(tempDir.toPath(), this.prefix + prefix);
 		File dir = path.toFile();
-		app.toClose(1000, () -> new RemoveDirectoryTask(dir, null, 0, null, Task.PRIORITY_NORMAL, false).start().getOutput());
+		app.toClose(1000, () -> RemoveDirectory.task(dir, null, 0, null, Priority.NORMAL, false).start().getOutput());
 		return dir;
 	}
 	
 	/** Create a temporary directory. */
 	public AsyncSupplier<File, IOException> createDirectoryAsync(String prefix) {
-		return new Task.OnFile<File, IOException>(tempDir, "Create temporary directory", Task.PRIORITY_NORMAL) {
-			@Override
-			public File run() throws IOException {
-				return createDirectorySync(prefix);
-			}
-		}.start().getOutput();
+		return Task.file(tempDir, "Create temporary directory", Priority.NORMAL, () -> createDirectorySync(prefix)).start().getOutput();
 	}
 	
 }

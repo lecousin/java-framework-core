@@ -5,13 +5,14 @@ import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.tasks.drives.DirectoryReader;
-import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.util.FileInfo;
 import net.lecousin.framework.progress.WorkProgress;
 
@@ -35,7 +36,7 @@ public abstract class DirectoryWalker<T> {
 		this.root = root;
 		this.rootObject = rootObject;
 		this.request = request;
-		this.taskManager = Threading.getDrivesTaskManager().getTaskManager(root);
+		this.taskManager = Threading.getDrivesManager().getTaskManager(root);
 	}
 	
 	private File root;
@@ -44,7 +45,7 @@ public abstract class DirectoryWalker<T> {
 	private TaskManager taskManager;
 	
 	/** Start the directory analysis. */
-	public IAsync<IOException> start(byte priority, WorkProgress progress, long work) {
+	public IAsync<IOException> start(Priority priority, WorkProgress progress, long work) {
 		JoinPoint<IOException> jp = new JoinPoint<>();
 		jp.addToJoin(1);
 		processDirectory("", root, rootObject, jp, priority, progress, work);
@@ -59,49 +60,48 @@ public abstract class DirectoryWalker<T> {
 	
 	protected abstract void fileFound(T parent, FileInfo file, String path);
 	
-	private void processDirectory(String path, File dir, T object, JoinPoint<IOException> jp, byte priority, WorkProgress prog, long work) {
-		DirectoryReader reader = new DirectoryReader(taskManager, dir, priority, request) {
+	private void processDirectory(String path, File dir, T object, JoinPoint<IOException> jp, Priority priority, WorkProgress prog, long work) {
+		DirectoryReader reader = new DirectoryReader(dir, request, null) {
 			@Override
-			public Result run() throws AccessDeniedException {
+			public Result execute() throws AccessDeniedException {
 				if (prog != null) prog.setSubText(path);
-				return super.run();
+				return super.execute();
 			}
 		};
-		reader.start();
-		reader.getOutput().thenStart(new Task.Cpu<Void, NoException>("DirectoryWalker", priority) {
-			@Override
-			public Void run() {
-				if (reader.hasError()) {
-					accessDenied(dir, path);
-					if (prog != null) prog.progress(work);
-					jp.joined();
-					return null;
-				}
-				DirectoryReader.Result result = reader.getResult();
-				ArrayList<Triple<File, T, String>> dirs = new ArrayList<>(result.getNbDirectories());
-				for (FileInfo f : result.getFiles()) {
-					String p = path.isEmpty() ? f.file.getName() : path + '/' + f.file.getName();
-					if (f.isDirectory) {
-						T o = directoryFound(object, f, p);
-						if (o != null)
-							dirs.add(new Triple<>(f.file, o, p));
-					} else {
-						fileFound(object, f, p);
-					}
-				}
-				jp.addToJoin(dirs.size());
-				int steps = dirs.size() + 1;
-				long step = work / steps--;
-				long w = work - step;
-				if (prog != null) prog.progress(step);
-				for (Triple<File, T, String> t : dirs) {
-					step = w / steps--;
-					w -= step;
-					processDirectory(t.getValue3(), t.getValue1(), t.getValue2(), jp, priority, prog, step);
-				}
+		AsyncSupplier<DirectoryReader.Result, AccessDeniedException> read = 
+			new Task<>(taskManager, "Reading directory " + dir.getAbsolutePath(), priority, reader, null)
+			.start().getOutput();
+		read.thenStart("DirectoryWalker", priority, () -> {
+			if (read.hasError()) {
+				accessDenied(dir, path);
+				if (prog != null) prog.progress(work);
 				jp.joined();
 				return null;
 			}
+			DirectoryReader.Result result = read.getResult();
+			ArrayList<Triple<File, T, String>> dirs = new ArrayList<>(result.getNbDirectories());
+			for (FileInfo f : result.getFiles()) {
+				String p = path.isEmpty() ? f.file.getName() : path + '/' + f.file.getName();
+				if (f.isDirectory) {
+					T o = directoryFound(object, f, p);
+					if (o != null)
+						dirs.add(new Triple<>(f.file, o, p));
+				} else {
+					fileFound(object, f, p);
+				}
+			}
+			jp.addToJoin(dirs.size());
+			int steps = dirs.size() + 1;
+			long step = work / steps--;
+			long w = work - step;
+			if (prog != null) prog.progress(step);
+			for (Triple<File, T, String> t : dirs) {
+				step = w / steps--;
+				w -= step;
+				processDirectory(t.getValue3(), t.getValue1(), t.getValue2(), jp, priority, prog, step);
+			}
+			jp.joined();
+			return null;
 		}, true);
 	}
 	

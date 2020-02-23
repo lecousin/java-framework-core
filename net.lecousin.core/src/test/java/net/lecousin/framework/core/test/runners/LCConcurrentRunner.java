@@ -1,7 +1,8 @@
 package net.lecousin.framework.core.test.runners;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.exception.NoException;
 
@@ -57,12 +58,7 @@ public class LCConcurrentRunner extends BlockJUnit4ClassRunner {
 			
 			@Override
 	        public void schedule(Runnable childStatement) {
-				jp.addToJoin(new Task.Cpu.FromRunnable("Execute JUnit test", Task.PRIORITY_LOW, childStatement) {
-					@Override
-					public long getMaxBlockingTimeInNanoBeforeToLog() {
-						return Long.MAX_VALUE;
-					}
-				}.start());
+				jp.addToJoin(Task.cpu("Execute JUnit test", Task.Priority.LOW, new Executable.FromRunnable(childStatement)).setMaxBlockingTimeInNanoBeforeToLog(Long.MAX_VALUE).start());
 	        }
 	
 			@Override

@@ -5,15 +5,16 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.mutable.MutableLong;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -48,12 +49,12 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 	private static final String WRITE_ASYNC_TASK_DESCRIPTION = "LinkedIO.writeAsync";
 	
 	@Override
-	public byte getPriority() {
-		return ios.isEmpty() ? Task.PRIORITY_NORMAL : ios.get(0).getPriority();
+	public Priority getPriority() {
+		return ios.isEmpty() ? Task.Priority.NORMAL : ios.get(0).getPriority();
 	}
 	
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		for (IO io : ios) io.setPriority(priority);
 	}
 	
@@ -963,7 +964,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 	}
 
 	protected AsyncSupplier<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
-		return operation(IOUtil.seekAsyncUsingSync((IO.Readable.Seekable)this, type, move, ondone).getOutput());
+		return operation(IOUtil.seekAsyncUsingSync((IO.Readable.Seekable)this, type, move, ondone));
 	}
 
 	// skip checkstyle: OverloadMethodsDeclarationOrder
@@ -1000,10 +1001,11 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 				if (!seek.isDone()) {
 					AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 					int ii = i;
-					seek.thenStart(new Task.Cpu.FromRunnable("LinkedIO.readAsync", getPriority(), () -> {
+					seek.thenStart("LinkedIO.readAsync", getPriority(), () -> {
 						sizes.set(ii, seek.getResult());
 						readAsync(pos, buffer, ondone).forward(result);
-					}), result);
+						return null;
+					}, result);
 					return operation(result);
 				}
 				if (seek.hasError())
@@ -1108,14 +1110,15 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 		if (s == null) {
 			AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
 			if (!seek.isDone()) {
-				seek.thenStart(new Task.Cpu.FromRunnable(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
+				seek.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
 					if (seek.hasError())
 						IOUtil.error(seek.getError(), result, ondone);
 					else {
 						sizes.set(ioIndex, seek.getResult());
 						writeAsync(buffer, done, result, ondone);
 					}
-				}), true);
+					return null;
+				}, true);
 				return;
 			}
 			s = seek.getResult();
@@ -1146,21 +1149,22 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 		AsyncSupplier<Integer, IOException> result, Consumer<Pair<Integer, IOException>> ondone
 	) {
 		AsyncSupplier<Integer, IOException> write = io.writeAsync(buffer);
-		write.thenStart(new Task.Cpu.FromRunnable(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
+		write.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
 			buffer.limit(limit);
 			if (write.hasError()) {
 				IOUtil.error(write.getError(), result, ondone);
-				return;
+				return null;
 			}
 			int nb = write.getResult().intValue();
 			posInIO += nb;
 			pos += nb;
 			if (!buffer.hasRemaining() || ioIndex == ios.size() - 1) {
 				IOUtil.success(Integer.valueOf(done + nb), result, ondone);
-				return;
+				return null;
 			}
 			writeAsync(buffer, done + nb, result, ondone);
-		}), true);
+			return null;
+		}, true);
 	}
 
 	protected AsyncSupplier<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
@@ -1174,10 +1178,11 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 				if (!seek.isDone()) {
 					AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 					int ii = i;
-					seek.thenStart(new Task.Cpu.FromRunnable(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
+					seek.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
 						sizes.set(ii, seek.getResult());
 						writeAsync(pos, buffer, ondone).forward(result);
-					}), result);
+						return null;
+					}, result);
 					return result;
 				}
 				s = seek.getResult();
@@ -1204,10 +1209,11 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 		if (s == null) {
 			AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
 			if (!seek.isDone()) {
-				seek.thenStart(new Task.Cpu.FromRunnable(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
+				seek.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
 					sizes.set(i, seek.getResult());
 					writeAsync(i, p, pos, done, buffer, result, ondone);
-				}), result);
+					return null;
+				}, result);
 				return;
 			}
 			s = seek.getResult();
@@ -1230,9 +1236,10 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 				IOUtil.success(Integer.valueOf(done + nb), result, ondone);
 				return;
 			}
-			new Task.Cpu.FromRunnable(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () ->
-				writeAsync(i + 1, p + ioSize, p + ioSize, done + nb, buffer, result, ondone)
-			).start();
+			Task.cpu(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
+				writeAsync(i + 1, p + ioSize, p + ioSize, done + nb, buffer, result, ondone);
+				return null;
+			}).start();
 		});
 	}
 	

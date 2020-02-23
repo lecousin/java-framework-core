@@ -19,9 +19,8 @@ import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptorLoader;
 import net.lecousin.framework.collections.Tree;
 import net.lecousin.framework.collections.Tree.Node;
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.log.Logger;
 
 /**
@@ -37,7 +36,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 	}
 	
 	@Override
-	public AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> loadProject(File dir, byte priority) {
+	public AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> loadProject(File dir, Priority priority) {
 		URI pomFile = new File(dir, "pom.xml").toURI();
 		try {
 			return loadPOM(pomFile, false, priority);
@@ -47,7 +46,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 	}
 
 	/** Load a POM file. */
-	public synchronized AsyncSupplier<MavenPOM, LibraryManagementException> loadPOM(URI pomFile, boolean fromRepository, byte priority) {
+	public synchronized AsyncSupplier<MavenPOM, LibraryManagementException> loadPOM(URI pomFile, boolean fromRepository, Priority priority) {
 		if (logger == null)
 			logger = LCCore.getApplication().getLoggerFactory().getLogger(MavenPOMLoader.class);
 		pomFile = pomFile.normalize();
@@ -94,7 +93,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 	@Override
 	public synchronized AsyncSupplier<MavenPOM, LibraryManagementException> loadLibrary(
 		String groupId, String artifactId, VersionSpecification version,
-		byte priority, List<LibrariesRepository> additionalRepositories
+		Priority priority, List<LibrariesRepository> additionalRepositories
 	) {
 		if (logger == null)
 			logger = LCCore.getApplication().getLoggerFactory().getLogger(MavenPOMLoader.class);
@@ -131,7 +130,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 	
 	@SuppressWarnings("squid:S00107") // number of arguments
 	private void loadFromRepository(
-		String groupId, String artifactId, VersionSpecification version, byte priority,
+		String groupId, String artifactId, VersionSpecification version, Priority priority,
 		List<MavenRepository> repos, int repoIndex, Map<Version, AsyncSupplier<MavenPOM, LibraryManagementException>> artifact,
 		AsyncSupplier<MavenPOM, LibraryManagementException> result
 	) {
@@ -149,7 +148,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 				+ " in " + repo.toString());
 		
 		repo.getAvailableVersions(groupId, artifactId, priority)		
-		.thenStart(new Task.Cpu.Parameter.FromConsumerThrows<List<String>, NoException>("Search artifact", priority, versions -> {
+		.thenStart("Search artifact", priority, versions -> {
 			if (versions == null || versions.isEmpty()) {
 				if (debug)
 					logger.debug("No version found for artifact " + Artifact.toString(groupId, artifactId, version.toString())
@@ -189,7 +188,7 @@ public class MavenPOMLoader implements LibraryDescriptorLoader {
 						+ " found in " + repo.toString());
 				result.unblockSuccess(load.getResult());
 			});
-		}), true);
+		}, true);
 	}
 	
 	/** Add a repository. */

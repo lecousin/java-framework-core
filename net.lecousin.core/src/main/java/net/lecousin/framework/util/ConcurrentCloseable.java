@@ -6,11 +6,12 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.event.Event;
 
 /** Implement most of the functionalities expected by an IConcurrentCloseable.
@@ -26,7 +27,7 @@ public abstract class ConcurrentCloseable<TError extends Exception> implements I
 	private Async<TError> waitForClose = null;
 
 	/** Return the priority. */
-	public abstract byte getPriority();
+	public abstract Priority getPriority();
 	
 	protected abstract IAsync<TError> closeUnderlyingResources();
 	
@@ -120,7 +121,7 @@ public abstract class ConcurrentCloseable<TError extends Exception> implements I
 			closing = new Async<>();
 		}
 		// from now, no more operation is accepted
-		byte prio = getPriority();
+		Priority prio = getPriority();
 		JoinPoint<TError> jp = new JoinPoint<>();
 		List<IAsync<?>> pending;
 		synchronized (pendingOperations) {
@@ -133,7 +134,7 @@ public abstract class ConcurrentCloseable<TError extends Exception> implements I
 		if (underlying != null)
 			jp.addToJoinNoException(underlying);
 		jp.start();
-		jp.thenStart(new Task.Cpu.FromRunnable("Closing resources", prio, () -> {
+		jp.thenStart(Task.cpu("Closing resources", prio, () -> {
 			synchronized (this) {
 				open = false;
 			}
@@ -150,6 +151,7 @@ public abstract class ConcurrentCloseable<TError extends Exception> implements I
 					return;
 				closing.unblock();
 			}, closing);
+			return null;
 		}), true);
 		jp.listenTime(60000, () -> {
 			StringBuilder s = new StringBuilder();
@@ -196,7 +198,7 @@ public abstract class ConcurrentCloseable<TError extends Exception> implements I
 		return op;
 	}
 	
-	protected <TE extends Exception, TR, T extends Task<TR,TE>> T operation(T task) {
+	protected <TE extends Exception, TR> Task<TR,TE> operation(Task<TR,TE> task) {
 		operation(task.getOutput());
 		return task;
 	}

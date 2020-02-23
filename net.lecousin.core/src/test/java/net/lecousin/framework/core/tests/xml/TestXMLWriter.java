@@ -9,7 +9,7 @@ import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.io.IOUtil;
@@ -95,7 +95,7 @@ public class TestXMLWriter extends LCCoreAbstractTest {
 		writer.closeElement();
 		writer.end().blockThrow(0);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		String xml = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL).blockResult(0).asString();
+		String xml = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.Priority.NORMAL).blockResult(0).asString();
 		io.close();
 		Assert.assertEquals("<?xml version=\"1.1\" encoding=\"UTF-8\"?>\n" +
 			"<t2:root xmlns=\"http://test1\" xmlns:t2=\"http://test2\" xmlns:t3=\"http://test3\">\n" +
@@ -132,7 +132,7 @@ public class TestXMLWriter extends LCCoreAbstractTest {
 		writer.write((Element)root.getChildNodes().item(0)).blockThrow(0);
 		writer.end().blockThrow(0);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		String xml = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL).blockResult(0).asString();
+		String xml = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.Priority.NORMAL).blockResult(0).asString();
 		io.close();
 		Assert.assertEquals(xmlSource, xml);
 		
@@ -145,7 +145,7 @@ public class TestXMLWriter extends LCCoreAbstractTest {
 		writer.write((Element)root.getChildNodes().item(0)).blockThrow(0);
 		writer.end().blockThrow(0);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		xml = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL).blockResult(0).asString();
+		xml = IOUtil.readFullyAsString(io, StandardCharsets.UTF_8, Task.Priority.NORMAL).blockResult(0).asString();
 		io.close();
 		Assert.assertEquals(xmlSource, xml);
 	}

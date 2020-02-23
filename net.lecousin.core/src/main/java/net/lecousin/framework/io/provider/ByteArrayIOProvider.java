@@ -1,5 +1,6 @@
 package net.lecousin.framework.io.provider;
 
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
 
@@ -30,7 +31,7 @@ public class ByteArrayIOProvider implements IOProvider.ReadWrite.Seekable.KnownS
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.KnownSize>
-	T provideIOReadWriteSeekableKnownSize(byte priority) {
+	T provideIOReadWriteSeekableKnownSize(Priority priority) {
 		return (T)new ByteArrayIO(array, bytesUsed, description);
 	}
 

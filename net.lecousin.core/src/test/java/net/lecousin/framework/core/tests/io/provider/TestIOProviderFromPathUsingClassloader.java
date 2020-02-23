@@ -5,7 +5,7 @@ import java.io.File;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.application.libraries.classloader.AppClassLoader;
 import net.lecousin.framework.application.libraries.classloader.DirectoryClassLoader;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.io.provider.IOProviderFromPathUsingClassloader;
@@ -20,10 +20,10 @@ public class TestIOProviderFromPathUsingClassloader extends LCCoreAbstractTest {
 		IOProviderFromPathUsingClassloader provider = new IOProviderFromPathUsingClassloader(getClass().getClassLoader());
 		IOProvider.Readable iop = provider.get("META-INF/net.lecousin/plugins");
 		iop.getDescription();
-		iop.provideIOReadable(Task.PRIORITY_NORMAL).close();
+		iop.provideIOReadable(Task.Priority.NORMAL).close();
 		
 		iop = provider.get("/META-INF/net.lecousin/plugins");
-		iop.provideIOReadable(Task.PRIORITY_NORMAL).close();
+		iop.provideIOReadable(Task.Priority.NORMAL).close();
 
 		iop = provider.get("/does/not/exist");
 		Assert.assertNull(iop);

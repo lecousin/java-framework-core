@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.Collection;
 import java.util.LinkedList;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestReadable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.FileIO;
@@ -50,7 +50,7 @@ public class TestPreBufferedReadable extends TestReadable {
 	
 	@Override
 	protected IO.Readable.Buffered createReadableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
-		return new PreBufferedReadable(file, bufferSize1, Task.PRIORITY_IMPORTANT, bufferSize2, Task.PRIORITY_IMPORTANT, nbBuffers);
+		return new PreBufferedReadable(file, bufferSize1, Task.Priority.IMPORTANT, bufferSize2, Task.Priority.IMPORTANT, nbBuffers);
 	}
 
 }

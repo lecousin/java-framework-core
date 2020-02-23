@@ -4,7 +4,7 @@ import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -28,13 +28,12 @@ public abstract class TestCharacterStreamWritable extends LCCoreAbstractTest {
 		testWrite("Hello World !", StandardCharsets.UTF_16);
 	}
 	
-	@SuppressWarnings("resource")
 	private void testWrite(String s, Charset charset) throws Exception {
 		File tmp = TemporaryFiles.get().createFileSync("test", "writablecs");
-		ICharacterStream.Writable cs = open(new FileIO.WriteOnly(tmp, Task.PRIORITY_NORMAL), charset);
+		ICharacterStream.Writable cs = open(new FileIO.WriteOnly(tmp, Task.Priority.NORMAL), charset);
 		// basic tests
-		cs.setPriority(Task.PRIORITY_IMPORTANT);
-		Assert.assertEquals(Task.PRIORITY_IMPORTANT, cs.getPriority());
+		cs.setPriority(Task.Priority.IMPORTANT);
+		Assert.assertEquals(Task.Priority.IMPORTANT, cs.getPriority());
 		cs.getDescription();
 		Assert.assertEquals(charset, cs.getEncoding());
 		// write
@@ -45,7 +44,7 @@ public abstract class TestCharacterStreamWritable extends LCCoreAbstractTest {
 		tmp.delete();
 
 		tmp = TemporaryFiles.get().createFileSync("test", "writablecs");
-		cs = open(new FileIO.WriteOnly(tmp, Task.PRIORITY_NORMAL), charset);
+		cs = open(new FileIO.WriteOnly(tmp, Task.Priority.NORMAL), charset);
 		cs.writeAsync(s).blockThrow(0);
 		flush(cs);
 		cs.close();

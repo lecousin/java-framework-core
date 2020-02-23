@@ -1,7 +1,7 @@
 package net.lecousin.framework.core.tests.concurrent;
 
-import net.lecousin.framework.concurrent.CPUTaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
 import org.junit.Assert;
@@ -11,7 +11,7 @@ public class TestCPUTaskManager extends LCCoreAbstractTest {
 
 	@Test
 	public void test() {
-		CPUTaskManager cpu = (CPUTaskManager)Threading.getCPUTaskManager();
+		TaskManager cpu = Threading.getCPUTaskManager();
 		
 		Assert.assertEquals(Threading.CPU, Threading.getCPUTaskManager().getResource());
 		

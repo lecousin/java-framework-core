@@ -4,12 +4,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -298,30 +298,25 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 						return new AsyncSupplier<>(null, null);
 					}
 					AsyncSupplier<ByteBuffer, IOException> result = new AsyncSupplier<>();
-					Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Read next buffer", getPriority()) {
-						@Override
-						public Void run() {
-							int len = 16384;
-							if (len > size - pos) len = (int)(size - pos);
-							ByteBuffer buf = ByteBuffer.allocate(len);
-							AsyncSupplier<Integer, IOException> read =
-								((IO.Readable.Seekable)io).readAsync(start + pos, buf);
-							read.onDone(() -> {
-								if (read.hasError()) {
-									if (ondone != null) ondone.accept(new Pair<>(null, read.getError()));
-									result.error(read.getError());
-									return;
-								}
-								if (read.getResult().intValue() > 0)
-									pos += read.getResult().intValue();
-								buf.flip();
-								if (ondone != null) ondone.accept(new Pair<>(buf, null));
-								result.unblockSuccess(buf);
-							});
-							return null;
-						}
-					};
-					task.start();
+					Task.cpu("Read next buffer", getPriority(), () -> {
+						int len = 16384;
+						if (len > size - pos) len = (int)(size - pos);
+						ByteBuffer buf = ByteBuffer.allocate(len);
+						AsyncSupplier<Integer, IOException> read = ((IO.Readable.Seekable)io).readAsync(start + pos, buf);
+						read.onDone(() -> {
+							if (read.hasError()) {
+								if (ondone != null) ondone.accept(new Pair<>(null, read.getError()));
+								result.error(read.getError());
+								return;
+							}
+							if (read.getResult().intValue() > 0)
+								pos += read.getResult().intValue();
+							buf.flip();
+							if (ondone != null) ondone.accept(new Pair<>(buf, null));
+							result.unblockSuccess(buf);
+						});
+						return null;
+					}).start();
 					return result;
 				}
 				
@@ -571,10 +566,10 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 	public TaskManager getTaskManager() { return io.getTaskManager(); }
 	
 	@Override
-	public byte getPriority() { return io != null ? io.getPriority() : Task.PRIORITY_NORMAL; }
+	public Priority getPriority() { return io != null ? io.getPriority() : Priority.NORMAL; }
 	
 	@Override
-	public void setPriority(byte priority) { if (io != null) io.setPriority(priority); }
+	public void setPriority(Priority priority) { if (io != null) io.setPriority(priority); }
 	
 	@Override
 	protected IAsync<IOException> closeUnderlyingResources() {
@@ -756,7 +751,7 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 	}
 	
 	protected AsyncSupplier<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
-		return IOUtil.seekAsyncUsingSync((IO.Seekable)this, type, move, ondone).getOutput();
+		return IOUtil.seekAsyncUsingSync((IO.Seekable)this, type, move, ondone);
 	}
 
 	

@@ -4,7 +4,6 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.data.Chars;
@@ -132,13 +131,14 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 			if (c == -2) {
 				int i = iBuf;
 				int j = iChar;
-				s.canStartReading().thenStart(new Task.Cpu.FromRunnable("readAsync", Task.PRIORITY_NORMAL, () -> {
+				s.canStartReading().thenStart("readAsync", () -> {
 					try {
 						continueReadAsync(s, i, j, sp);
 					} catch (Exception e) {
 						sp.error(e);
 					}
-				}), true);
+					return null;
+				}, true);
 				return;
 			}
 			if (c != (char)(testBuf[iChar]&0xFF))

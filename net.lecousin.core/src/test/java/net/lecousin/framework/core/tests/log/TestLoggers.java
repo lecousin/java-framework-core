@@ -9,8 +9,8 @@ import java.util.Calendar;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectoryContentTask;
+import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectoryContent;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.core.tests.log.Loggers.Logger1;
 import net.lecousin.framework.core.tests.log.Loggers.Logger2;
@@ -36,7 +36,7 @@ public class TestLoggers extends LCCoreAbstractTest {
 		Application app = LCCore.getApplication();
 		File dir = new File(app.getProperty(Application.PROPERTY_LOG_DIRECTORY));
 		// clean
-		new RemoveDirectoryContentTask(dir, null, 0, Task.PRIORITY_NORMAL, false).start().getOutput().blockThrow(0);
+		RemoveDirectoryContent.task(dir, null, 0, Task.Priority.NORMAL, false).start().getOutput().blockThrow(0);
 		// configure
 		LoggerFactory factory = app.getLoggerFactory();
 		factory.configure("classpath:log/test-logging.xml");

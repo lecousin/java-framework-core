@@ -10,9 +10,9 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.core.test.io.TestIOError;
 import net.lecousin.framework.io.FileIO;
@@ -39,10 +39,10 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		ByteArrayIO io;
 		io = new ByteArrayIO(data, "test");
 		File file = IOUtil.toTempFile(io).blockResult(0);
-		Assert.assertArrayEquals(data, IOUtil.readFully(file, Task.PRIORITY_NORMAL).blockResult(0));
+		Assert.assertArrayEquals(data, IOUtil.readFully(file, Task.Priority.NORMAL).blockResult(0));
 		io.close();
 
-		Assert.assertArrayEquals(data, IOUtil.readFully(file, Task.PRIORITY_NORMAL).blockResult(0));
+		Assert.assertArrayEquals(data, IOUtil.readFully(file, Task.Priority.NORMAL).blockResult(0));
 		
 		byte[] buf = new byte[150];
 		
@@ -102,7 +102,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		ByteArrayIO io;
 		
 		io = new ByteArrayIO(data, "test");
-		Assert.assertEquals(expected, IOUtil.readFullyAsString(io, StandardCharsets.UTF_16, Task.PRIORITY_NORMAL).blockResult(0).asString());
+		Assert.assertEquals(expected, IOUtil.readFullyAsString(io, StandardCharsets.UTF_16, Task.Priority.NORMAL).blockResult(0).asString());
 		io.close();
 		
 		io = new ByteArrayIO(data, "test");
@@ -119,33 +119,33 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		byte[] data = string.getBytes(StandardCharsets.UTF_16);
 
 		File tmp1 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
-		IOUtil.copy(new ByteArrayIO(data, "test"), new FileIO.WriteOnly(tmp1, Task.PRIORITY_NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
+		IOUtil.copy(new ByteArrayIO(data, "test"), new FileIO.WriteOnly(tmp1, Task.Priority.NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
 		
 		File tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
-		IOUtil.copy(tmp1, tmp2, Task.PRIORITY_NORMAL, -1, new FakeWorkProgress(), 100, null).blockThrow(0);
+		IOUtil.copy(tmp1, tmp2, Task.Priority.NORMAL, -1, new FakeWorkProgress(), 100, null).blockThrow(0);
 		Assert.assertEquals(string, IOUtil.readFullyAsStringSync(tmp2, StandardCharsets.UTF_16));
 		tmp2.delete();
 		
 		tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
 		InputStream in = new FileInputStream(tmp1);
-		IOUtil.copy(new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.PRIORITY_NORMAL), new FileIO.WriteOnly(tmp2, Task.PRIORITY_NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
+		IOUtil.copy(new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.Priority.NORMAL), new FileIO.WriteOnly(tmp2, Task.Priority.NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
 		Assert.assertEquals(string, IOUtil.readFullyAsStringSync(tmp2, StandardCharsets.UTF_16));
 		tmp2.delete();
 		
 		tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
 		in = new FileInputStream(tmp1);
-		IOUtil.copy(new IOFromInputStream(in, "test", Threading.getDrivesTaskManager().getTaskManager(tmp2), Task.PRIORITY_NORMAL), new FileIO.WriteOnly(tmp2, Task.PRIORITY_NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
+		IOUtil.copy(new IOFromInputStream(in, "test", Threading.getDrivesManager().getTaskManager(tmp2), Task.Priority.NORMAL), new FileIO.WriteOnly(tmp2, Task.Priority.NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
 		Assert.assertEquals(string, IOUtil.readFullyAsStringSync(tmp2, StandardCharsets.UTF_16));
 		tmp2.delete();
 
 		tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
 		OutputStream out = new FileOutputStream(tmp2);
-		IOUtil.copy(new SimpleBufferedReadable(new FileIO.ReadOnly(tmp1, Task.PRIORITY_NORMAL), 10), new IOFromOutputStream(out, "test", Threading.getCPUTaskManager(), Task.PRIORITY_NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
+		IOUtil.copy(new SimpleBufferedReadable(new FileIO.ReadOnly(tmp1, Task.Priority.NORMAL), 10), new IOFromOutputStream(out, "test", Threading.getCPUTaskManager(), Task.Priority.NORMAL), -1, true, new FakeWorkProgress(), 100).blockThrow(0);
 		Assert.assertEquals(string, IOUtil.readFullyAsStringSync(tmp2, StandardCharsets.UTF_16));
 		tmp2.delete();
 		
 		tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
-		IOUtil.copy(new FileIO.ReadOnly(tmp1, Task.PRIORITY_NORMAL), new FileIO.WriteOnly(tmp2, Task.PRIORITY_NORMAL), tmp1.length(), true, new FakeWorkProgress(), 100).blockThrow(0);
+		IOUtil.copy(new FileIO.ReadOnly(tmp1, Task.Priority.NORMAL), new FileIO.WriteOnly(tmp2, Task.Priority.NORMAL), tmp1.length(), true, new FakeWorkProgress(), 100).blockThrow(0);
 		Assert.assertEquals(string, IOUtil.readFullyAsStringSync(tmp2, StandardCharsets.UTF_16));
 		tmp2.delete();
 		
@@ -155,7 +155,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		for (int i = 0; i < 10; ++i)
 			out.write(new byte[64 * 1024]);
 		tmp2 = TemporaryFiles.get().createFileSync("test", "ioutilcopy");
-		IOUtil.copy(new FileIO.ReadOnly(tmp1, Task.PRIORITY_NORMAL), new FileIO.WriteOnly(tmp2, Task.PRIORITY_NORMAL), tmp1.length(), true, new FakeWorkProgress(), 100).blockThrow(0);
+		IOUtil.copy(new FileIO.ReadOnly(tmp1, Task.Priority.NORMAL), new FileIO.WriteOnly(tmp2, Task.Priority.NORMAL), tmp1.length(), true, new FakeWorkProgress(), 100).blockThrow(0);
 		tmp1.delete();
 		tmp2.delete();
 	}
@@ -166,7 +166,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		for (int i = 0; i < b.length; ++i)
 			b[i] = (byte)(i % 167);
 		File f = IOUtil.toTempFile(b).blockResult(0);
-		b = IOUtil.readFully(f, Task.PRIORITY_NORMAL).blockResult(0);
+		b = IOUtil.readFully(f, Task.Priority.NORMAL).blockResult(0);
 		for (int i = 0; i < b.length; ++i)
 			Assert.assertEquals((byte)(i % 167), b[i]);
 		f.delete();
@@ -176,7 +176,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 	public void testReadFullyUnknownSize() throws Exception {
 		ByteArrayInputStream in = new ByteArrayInputStream(new byte[] {0, 1, 2, 3, 4, 5, 6, 7});
 		AsyncSupplier<byte[], IOException> result = new AsyncSupplier<>();
-		IOUtil.readFully(new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.PRIORITY_NORMAL), result);
+		IOUtil.readFully(new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.Priority.NORMAL), result);
 		byte[] res = result.blockResult(15000);
 		Assert.assertEquals(8, res.length);
 		
@@ -190,7 +190,7 @@ public class TestIOUtil extends LCCoreAbstractTest {
 	@Test
 	public void testReadFullyAsync() throws Exception {
 		ByteArrayInputStream in = new ByteArrayInputStream(new byte[] {0, 1, 2, 3, 4, 5, 6, 7});
-		IO.Readable io = new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.PRIORITY_NORMAL);
+		IO.Readable io = new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.Priority.NORMAL);
 		AsyncSupplier<ByteBuffersIO, IOException> result = IOUtil.readFullyAsync(io, 2);
 		ByteBuffersIO bbio = result.blockResult(30000);
 		Assert.assertEquals(8, bbio.getSizeSync());

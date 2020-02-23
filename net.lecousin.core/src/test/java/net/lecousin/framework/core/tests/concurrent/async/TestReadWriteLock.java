@@ -1,7 +1,7 @@
 package net.lecousin.framework.core.tests.concurrent.async;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.ReadWriteLockPoint;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
 import org.junit.Test;
@@ -14,9 +14,9 @@ public class TestReadWriteLock extends LCCoreAbstractTest {
 		lock.startRead();
 		lock.startRead();
 		lock.endRead();
-		new Task.Cpu.FromRunnable("Test", Task.PRIORITY_IMPORTANT, () -> { lock.endRead(); }).executeIn(500).start();
+		Task.cpu("Test", Task.Priority.IMPORTANT, () -> { lock.endRead(); return null; }).executeIn(500).start();
 		lock.startWrite();
-		new Task.Cpu.FromRunnable("Test", Task.PRIORITY_IMPORTANT, () -> { lock.endWrite(); }).executeIn(500).start();
+		Task.cpu("Test", Task.Priority.IMPORTANT, () -> { lock.endWrite(); return null; }).executeIn(500).start();
 		lock.startRead();
 		lock.endRead();
 	}

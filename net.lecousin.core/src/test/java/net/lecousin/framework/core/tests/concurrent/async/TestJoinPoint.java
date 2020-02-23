@@ -3,12 +3,11 @@ package net.lecousin.framework.core.tests.concurrent.async;
 import java.io.IOException;
 import java.util.Collections;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.async.CancelException;
-import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.mutable.MutableInteger;
@@ -20,7 +19,6 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 
 	@Test
 	public void test() {
-		Threading.debugSynchronization = true;
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		Assert.assertEquals(0, jp.getToJoin());
 		jp.addToJoin(1);
@@ -58,12 +56,7 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		Assert.assertTrue(jp.hasError());
 		
 		jp = new JoinPoint<>();
-		Task<Integer, Exception> task = new Task.Cpu<Integer, Exception>("Test", Task.PRIORITY_NORMAL) {
-			@Override
-			public Integer run() {
-				return Integer.valueOf(51);
-			}
-		};
+		Task<Integer, Exception> task = Task.cpu("Test", Task.Priority.NORMAL, () -> Integer.valueOf(51));
 		jp.addToJoin(task);
 		Assert.assertEquals(1, jp.getToJoin());
 		Assert.assertFalse(jp.isDone());
@@ -84,8 +77,6 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		task.cancel(new CancelException("test"));
 		Assert.assertTrue(jp.isDone());
 		Assert.assertTrue(jp.isDone());
-		
-		Threading.debugSynchronization = false;
 	}
 	
 	@Test
@@ -126,8 +117,9 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		jp.addToJoin(as);
 		MutableInteger timedout = new MutableInteger(0);
 		jp.timeout(1, timedout::inc);
-		new Task.Cpu.FromRunnable("test", Task.PRIORITY_NORMAL, () -> {
+		Task.cpu("test", Task.Priority.NORMAL, () -> {
 			as.unblockSuccess(Integer.valueOf(11));
+			return null;
 		}).executeIn(5000).start();
 		jp.start();
 		jp.block(10000);
@@ -142,8 +134,9 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		jp.addToJoin(as);
 		MutableInteger timedout = new MutableInteger(0);
 		jp.listenTime(1, timedout::inc);
-		new Task.Cpu.FromRunnable("test", Task.PRIORITY_NORMAL, () -> {
+		Task.cpu("test", Task.Priority.NORMAL, () -> {
 			as.unblockSuccess(Integer.valueOf(11));
+			return null;
 		}).executeIn(2500).start();
 		jp.start();
 		jp.block(10000);

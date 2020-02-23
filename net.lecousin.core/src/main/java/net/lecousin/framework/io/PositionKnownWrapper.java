@@ -4,10 +4,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.event.ListenableLongProperty;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
@@ -207,10 +208,10 @@ public abstract class PositionKnownWrapper<IOType extends IO> extends Concurrent
 	public IO getWrappedIO() { return io; }
 	
 	@Override
-	public byte getPriority() { return io.getPriority(); }
+	public Priority getPriority() { return io.getPriority(); }
 	
 	@Override
-	public void setPriority(byte priority) { io.setPriority(priority); }
+	public void setPriority(Priority priority) { io.setPriority(priority); }
 	
 	@Override
 	public TaskManager getTaskManager() { return io.getTaskManager(); }

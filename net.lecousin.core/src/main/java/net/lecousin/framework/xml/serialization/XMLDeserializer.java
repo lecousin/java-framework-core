@@ -14,9 +14,12 @@ import java.util.List;
 import java.util.function.Function;
 
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.encoding.Base64Encoding;
 import net.lecousin.framework.io.FileIO;
@@ -81,7 +84,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	/** Deserialize from a file accessible from the classpath. */
 	public static <T> AsyncSupplier<T, SerializationException> deserializeResource(
-		String resourcePath, Class<T> type, List<SerializationRule> rules, byte priority
+		String resourcePath, Class<T> type, List<SerializationRule> rules, Priority priority
 	) {
 		IO.Readable io = LCCore.getApplication().getResource(resourcePath, priority);
 		if (io == null) return new AsyncSupplier<>(null, new SerializationException("Resource not found: " + resourcePath));
@@ -92,7 +95,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 	
 	/** Deserialize from a file. */
 	public static <T> AsyncSupplier<T, SerializationException> deserializeFile(
-		File file, Class<T> type, List<SerializationRule> rules, byte priority
+		File file, Class<T> type, List<SerializationRule> rules, Priority priority
 	) {
 		IO.Readable io = new FileIO.ReadOnly(file, priority);
 		AsyncSupplier<T, SerializationException> result = deserialize(io, type, rules);
@@ -278,20 +281,21 @@ public class XMLDeserializer extends AbstractDeserializer {
 			return result;
 		}
 		AsyncSupplier<Pair<Object, Boolean>, SerializationException> result = new AsyncSupplier<>();
-		read.thenStart(new DeserializationTask(() -> {
+		read.thenStart(Task.cpu(taskDescription, priority, () -> {
 			if (!read.getResult().booleanValue()) {
 				colValueContext.removeFirst();
 				result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
-				return;
+				return null;
 			}
 			AsyncSupplier<Object, SerializationException> element =
 				deserializeValue(context, context.getElementType(), colPath + '[' + elementIndex + ']', rules);
 			if (element.isDone()) {
 				if (element.hasError()) result.error(element.getError());
 				else result.unblockSuccess(new Pair<>(element.getResult(), Boolean.TRUE));
-				return;
+				return null;
 			}
 			element.onDone(() -> result.unblockSuccess(new Pair<>(element.getResult(), Boolean.TRUE)), result);
+			return null;
 		}), result, xmlErrorConverter);
 		return result;
 	}
@@ -522,18 +526,19 @@ public class XMLDeserializer extends AbstractDeserializer {
 					return result;
 				}
 			} else {
-				next.thenStart(new DeserializationTask(() -> {
+				next.thenStart(Task.cpu(taskDescription, priority, () -> {
 					if (!next.getResult().booleanValue()) {
 						ctx.endOfAttributes = true;
 						result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
-						return;
+						return null;
 					}
 					if (!input.event.text.equals(colAttr.getName())) {
 						ctx.onNextAttribute = true;
 						result.unblockSuccess(new Pair<>(null, Boolean.FALSE));
-						return;
+						return null;
 					}
 					readColElement(context, colPath + '[' + elementIndex + ']', rules, result);
+					return null;
 				}), result, xmlErrorConverter);
 				return result;
 			}
@@ -587,14 +592,14 @@ public class XMLDeserializer extends AbstractDeserializer {
 			return new AsyncSupplier<>(null, null);
 		IAsync<Exception> next = input.next();
 		AsyncSupplier<IO.Readable, SerializationException> result = new AsyncSupplier<>();
-		next.thenStart(new DeserializationTask(() -> {
+		next.thenStart(Task.cpu(taskDescription, priority, () -> {
 			if (Type.TEXT.equals(input.event.type)) {
 				// it may be a reference
 				String ref = input.event.text.asString();
 				for (StreamReferenceHandler h : streamReferenceHandlers)
 					if (h.isReference(ref)) {
 						h.getStreamFromReference(ref).forward(result);
-						return;
+						return null;
 					}
 			}
 			// not a reference, default to base 64 encoded string
@@ -608,44 +613,48 @@ public class XMLDeserializer extends AbstractDeserializer {
 				err -> new IOException("Base 64 encoding error in XML", err)
 			);
 			readBase64(decoder, io, result);
+			return null;
 		}), result, xmlErrorConverter);
 		return result;
 	}
 	
-	private void readNextBase64(
+	private Void readNextBase64(
 		AsyncConsumer<Bytes.Readable, IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result
 	) {
 		IAsync<Exception> next = input.next();
 		if (next.isDone()) {
 			if (next.hasError()) result.error(xmlErrorConverter.apply(next.getError()));
 			else readBase64(decoder, io, result);
-			return;
+			return null;
 		}
-		next.thenStart(new DeserializationTask(() -> readBase64(decoder, io, result)), result, xmlErrorConverter);
+		next.thenStart(Task.cpu(taskDescription, priority, () -> readBase64(decoder, io, result)), result, xmlErrorConverter);
+		return null;
 	}
 	
-	private void readBase64(
+	private Void readBase64(
 		AsyncConsumer<Bytes.Readable, IOException> decoder, IOInMemoryOrFile io, AsyncSupplier<IO.Readable, SerializationException> result
 	) {
 		if (Type.TEXT.equals(input.event.type)) {
 			input.event.text.trim();
 			if (input.event.text.isEmpty()) {
 				readNextBase64(decoder, io, result);
-				return;
+				return null;
 			}
 			CharArray[] buffers = input.event.text.asCharBuffers();
 			decodeBase64(decoder, io, result, buffers, 0);
-			return;
+			return null;
 		}
 		if (Type.START_ELEMENT.equals(input.event.type)) {
-			input.closeElement().thenStart(new DeserializationTask(() -> readNextBase64(decoder, io, result)), result, xmlErrorConverter);
-			return;
+			input.closeElement().thenStart(Task.cpu(taskDescription, priority,
+				() -> readNextBase64(decoder, io, result)), result, xmlErrorConverter);
+			return null;
 		}
 		if (Type.END_ELEMENT.equals(input.event.type)) {
 			decoder.end();
-			return;
+			return null;
 		}
 		readNextBase64(decoder, io, result);
+		return null;
 	}
 	
 	private void decodeBase64(
@@ -653,14 +662,15 @@ public class XMLDeserializer extends AbstractDeserializer {
 		CharArray[] buffers, int index
 	) {
 		IAsync<IOException> decode = decoder.consume(new BytesFromIso8859CharArray(buffers[index], true));
-		decode.thenStart(new DeserializationTask(() -> {
+		decode.thenStart(taskDescription, priority, () -> {
 			if (decode.hasError())
 				result.error(new SerializationException("Error decoding base 64", decode.getError()));
 			else if (index == buffers.length - 1)
 				readNextBase64(decoder, io, result);
 			else
 				decodeBase64(decoder, io, result, buffers, index + 1);
-		}), true);
+			return null;
+		}, true);
 	}
 
 	@Override
@@ -730,10 +740,12 @@ public class XMLDeserializer extends AbstractDeserializer {
 					if (!input.event.text.trim().isEmpty())
 						result.error(new SerializationException("Unexpected text: " + input.event.text));
 					else
-						new DeserializationTask(() -> nextInnerElement(parent).forward(result)).start();
+						Task.cpu(taskDescription, priority,
+							new Executable.FromRunnable(() -> nextInnerElement(parent).forward(result))).start();
 				} else if (Type.COMMENT.equals(input.event.type)) {
 					// ok, skip it
-					new DeserializationTask(() -> nextInnerElement(parent).forward(result)).start();
+					Task.cpu(taskDescription, priority,
+						new Executable.FromRunnable(() -> nextInnerElement(parent).forward(result))).start();
 				} else {
 					result.error(new SerializationException("Unexpected XML " + input.event.type));
 				}

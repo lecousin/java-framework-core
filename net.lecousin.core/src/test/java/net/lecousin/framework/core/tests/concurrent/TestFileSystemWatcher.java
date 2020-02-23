@@ -10,8 +10,8 @@ import org.junit.Test;
 import net.lecousin.framework.concurrent.FileSystemWatcher;
 import net.lecousin.framework.concurrent.FileSystemWatcher.PathEventListener;
 import net.lecousin.framework.concurrent.async.WaitingDataQueueSynchronizationPoint;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.tasks.drives.RemoveFileTask;
+import net.lecousin.framework.concurrent.tasks.drives.RemoveFile;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.util.Triple;
 
@@ -60,7 +60,7 @@ public class TestFileSystemWatcher extends LCCoreAbstractTest {
 		} while (event != null);
 		Assert.assertFalse(queue.isDone());
 		
-		new RemoveFileTask(file.toFile(), Task.PRIORITY_NORMAL).start().getOutput().blockThrow(0);
+		RemoveFile.task(file.toFile(), Task.Priority.NORMAL).start().getOutput().blockThrow(0);
 		do {
 			event = queue.waitForData(5000);
 			Assert.assertNotNull(event);

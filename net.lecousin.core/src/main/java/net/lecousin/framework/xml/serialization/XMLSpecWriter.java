@@ -262,11 +262,12 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 			return new Async<>(output.closeElement(), ioErrorConverter); // collection
 		}
 		Async<SerializationException> sp = new Async<>();
-		val.thenStart(new SpecTask(() -> {
+		val.thenStart(taskDescription, priority, () -> {
 			output.closeElement(); // sequence
 			output.closeElement(); // complexType
 			output.closeElement().onDone(sp, ioErrorConverter); // collection
-		}), sp);
+			return null;
+		}, sp);
 		return sp;
 	}
 	
@@ -319,12 +320,13 @@ public class XMLSpecWriter extends AbstractSerializationSpecWriter {
 			return new Async<>(output.closeElement(), ioErrorConverter); // value
 		}
 		Async<SerializationException> sp = new Async<>();
-		type.thenStart(new SpecTask(() -> {
+		type.thenStart(taskDescription, priority, () -> {
 			typesContext.removeFirst();
 			if (ctx.sequenceStarted) output.closeElement();
 			output.closeElement(); // complexType
 			output.closeElement().onDone(sp, ioErrorConverter); // value
-		}), sp);
+			return null;
+		}, sp);
 		return sp;
 	}
 

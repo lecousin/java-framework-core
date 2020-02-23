@@ -3,7 +3,7 @@ package net.lecousin.framework.application.libraries.classpath;
 import java.io.IOException;
 
 import net.lecousin.framework.application.ApplicationClassLoader;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.FullReadLines;
@@ -22,7 +22,7 @@ public class LoadLibraryExtensionPointsFile extends FullReadLines<Void> {
 		BufferedReadableCharacterStream stream, T classLoader
 	) {
 		super("Initializing extension points: " + stream.getDescription(), stream,
-				Task.PRIORITY_IMPORTANT, null);
+				Task.Priority.IMPORTANT, null);
 		this.classLoader = classLoader;
 	}
 	

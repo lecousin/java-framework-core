@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.mutable.MutableInteger;
 import net.lecousin.framework.text.IString;
@@ -14,10 +15,10 @@ import net.lecousin.framework.util.IConcurrentCloseable;
 public interface ICharacterStream extends IConcurrentCloseable<IOException> {
 	
 	/** Return the priority. */
-	byte getPriority();
+	Priority getPriority();
 	
 	/** Change the priority (see Task priorities). */
-	void setPriority(byte priority);
+	void setPriority(Priority priority);
 
 	/** Description. */
 	String getDescription();

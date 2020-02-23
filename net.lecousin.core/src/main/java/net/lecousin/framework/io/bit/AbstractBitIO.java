@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.IO;
 
@@ -25,7 +26,7 @@ public abstract class AbstractBitIO<T extends IO> extends AbstractIO implements 
 	}
 	
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		super.setPriority(priority);
 		io.setPriority(priority);
 	}

@@ -9,6 +9,7 @@ import net.lecousin.framework.application.VersionSpecification;
 import net.lecousin.framework.application.libraries.LibraryManagementException;
 import net.lecousin.framework.collections.Tree;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 
 /**
  * Loader of library descriptors.
@@ -19,12 +20,12 @@ public interface LibraryDescriptorLoader {
 	boolean detect(File dir);
 	
 	/** Load a library descriptor from the given directory. */
-	AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> loadProject(File dir, byte priority);
+	AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> loadProject(File dir, Priority priority);
 	
 	/** Search and load the library descriptor for the given group id, artifact id and version specification. */
 	AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> loadLibrary(
 		String groupId, String artifactId, VersionSpecification version,
-		byte priority, List<LibrariesRepository> additionalRepositories
+		Priority priority, List<LibrariesRepository> additionalRepositories
 	);
 	
 	/** Tree node to build a dependency tree. */

@@ -7,12 +7,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
@@ -29,30 +27,12 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 /** Implements most of the logic of a serializer. */
 public abstract class AbstractSerializer implements Serializer {
 
-	protected byte priority;
+	protected Priority priority;
+	protected final String taskDescription = "Serialization using " + getClass().getName();
 	
 	protected abstract IAsync<SerializationException> initializeSerialization(IO.Writable output);
 	
 	protected abstract IAsync<SerializationException> finalizeSerialization();
-	
-	/** Utility class to create tasks along the process. */
-	protected class SerializationTask extends Task.Cpu<Void, NoException> {
-		public SerializationTask(Runnable r) {
-			super("Serialization", priority);
-			this.r = r;
-		}
-		
-		private Runnable r;
-		
-		@Override
-		public Void run() throws CancelException {
-			try { r.run(); }
-			catch (Exception t) {
-				throw new CancelException("Error thrown by serialization", t);
-			}
-			return null;
-		}
-	}
 	
 	@Override
 	public IAsync<SerializationException> serialize(
@@ -61,10 +41,8 @@ public abstract class AbstractSerializer implements Serializer {
 		priority = output.getPriority();
 		IAsync<SerializationException> init = initializeSerialization(output);
 		Async<SerializationException> result = new Async<>();
-		init.thenStart(new SerializationTask(() -> {
-			IAsync<SerializationException> sp = serializeValue(null, object, typeDef, "", rules);
-			sp.onDone(() -> finalizeSerialization().onDone(result), result);
-		}), result);
+		init.thenStart(taskDescription, priority, () -> serializeValue(null, object, typeDef, "", rules)
+			.onDone(() -> finalizeSerialization().onDone(result), result), result);
 		return result;
 	}
 	
@@ -210,7 +188,7 @@ public abstract class AbstractSerializer implements Serializer {
 			if (start.hasError()) return start;
 			serializeAttribute(attributes, 0, context, path, rules, result);
 		} else {
-			start.thenStart(new SerializationTask(() -> serializeAttribute(attributes, 0, context, path, rules, result)), result);
+			start.thenStart(taskDescription, priority, () -> serializeAttribute(attributes, 0, context, path, rules, result), result);
 		}
 		return result;
 	}
@@ -253,14 +231,11 @@ public abstract class AbstractSerializer implements Serializer {
 				return;
 			}
 			int nextIndex = attributeIndex + 1;
-			sp.thenStart(new Task.Cpu<Void, NoException>("Serialization", priority) {
-				@Override
-				public Void run() {
-					if (sp.hasError()) result.error(sp.getError());
-					else if (sp.isCancelled()) result.cancel(sp.getCancelEvent());
-					else serializeAttribute(attributes, nextIndex, context, containerPath, rules, result);
-					return null;
-				}
+			sp.thenStart(taskDescription, priority, () -> {
+				if (sp.hasError()) result.error(sp.getError());
+				else if (sp.isCancelled()) result.cancel(sp.getCancelEvent());
+				else serializeAttribute(attributes, nextIndex, context, containerPath, rules, result);
+				return null;
 			}, true);
 			return;
 		} while (true);
@@ -348,8 +323,8 @@ public abstract class AbstractSerializer implements Serializer {
 			serializeCollectionElement(context, context.getIterator(), 0, path, rules, result);
 			return result;
 		}
-		start.thenStart(new SerializationTask(() ->
-			serializeCollectionElement(context, context.getIterator(), 0, path, rules, result)), result);
+		start.thenStart(taskDescription, priority, () ->
+			serializeCollectionElement(context, context.getIterator(), 0, path, rules, result), result);
 		return result;
 	}
 	
@@ -390,8 +365,8 @@ public abstract class AbstractSerializer implements Serializer {
 				if (start.hasError()) value.error(start.getError());
 				else serializeValue(context, element, context.getElementType(), elementPath, rules).onDone(value);
 			} else {
-				start.thenStart(new SerializationTask(() ->
-					serializeValue(context, element, context.getElementType(), elementPath, rules).onDone(value)), value);
+				start.thenStart(taskDescription, priority, () ->
+					serializeValue(context, element, context.getElementType(), elementPath, rules).onDone(value), value);
 			}
 			
 			Async<SerializationException> next = new Async<>();
@@ -400,8 +375,8 @@ public abstract class AbstractSerializer implements Serializer {
 				if (value.hasError()) next.error(value.getError());
 				else endCollectionValueElement(context, element, elementIndex, elementPath, rules).onDone(next);
 			} else {
-				value.thenStart(new SerializationTask(() ->
-					endCollectionValueElement(context, element, currentIndex, elementPath, rules).onDone(next)), next);
+				value.thenStart(taskDescription, priority, () ->
+					endCollectionValueElement(context, element, currentIndex, elementPath, rules).onDone(next), next);
 			}
 			
 			if (next.isDone()) {
@@ -410,10 +385,11 @@ public abstract class AbstractSerializer implements Serializer {
 				elementIndex++;
 				continue;
 			}
-			next.thenStart(new SerializationTask(() -> {
+			next.thenStart(taskDescription, priority, () -> {
 				if (next.hasError()) result.error(next.getError());
 				else serializeCollectionElement(context, it, currentIndex + 1, colPath, rules, result);
-			}), result);
+				return null;
+			}, result);
 			return;
 		} while (true);
 	}

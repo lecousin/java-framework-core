@@ -2,8 +2,8 @@ package net.lecousin.framework.core.tests.util;
 
 import java.io.File;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.tasks.drives.DirectoryReader;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.TemporaryFiles;
 import net.lecousin.framework.io.util.FileInfo;
@@ -88,7 +88,7 @@ public class TestDirectoryWalker extends LCCoreAbstractTest {
 			}
 		};
 		
-		walker.start(Task.PRIORITY_NORMAL, null, 0).blockThrow(0);
+		walker.start(Task.Priority.NORMAL, null, 0).blockThrow(0);
 		if (error.get() != null)
 			throw error.get();
 		Assert.assertTrue(d1Found.get());

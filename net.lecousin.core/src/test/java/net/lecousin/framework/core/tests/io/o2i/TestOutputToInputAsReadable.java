@@ -3,7 +3,7 @@ package net.lecousin.framework.core.tests.io.o2i;
 import java.io.File;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestOutputToInput;
 import net.lecousin.framework.core.test.io.TestReadable;
@@ -34,7 +34,7 @@ public class TestOutputToInputAsReadable extends TestReadable {
 		file.close();
 		File f = File.createTempFile("test", "outputtoinput");
 		f.deleteOnExit();
-		FileIO.ReadWrite fio = new FileIO.ReadWrite(f, Task.PRIORITY_NORMAL);
+		FileIO.ReadWrite fio = new FileIO.ReadWrite(f, Task.Priority.NORMAL);
 		BufferedIO.ReadWrite bio = new BufferedIO.ReadWrite(fio, 0, 4096, 4096, false);
 		OutputToInput o2i = new OutputToInput(bio, "test");
 		TestOutputToInput.writeBg(o2i, nbBuf, testBuf);

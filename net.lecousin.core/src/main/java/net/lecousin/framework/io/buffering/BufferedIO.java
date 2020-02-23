@@ -15,15 +15,17 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.map.LongMap;
 import net.lecousin.framework.collections.map.LongMapRBT;
 import net.lecousin.framework.collections.sort.OldestList;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.async.ReadWriteLockPoint;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -101,12 +103,13 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		}
 		
 		private MemoryManagement() {
-			background = new Background();
+			background = Task.cpu("BufferedIO Memory Management", Priority.LOW, new Background());
+			background.executeEvery(30000, 45000);
 			background.start();
 			MemoryManager.register(this);
 		}
 		
-		private Background background;
+		private Task<Void, NoException> background;
 		private Buffer head = null;
 		private Buffer tail = null;
 		private long usedMemory = 0;
@@ -135,9 +138,9 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 						freeBuffers(25, true);
 					else
 						freeBuffers(10, true);
-					background.executeNextOccurenceNow(Task.PRIORITY_RATHER_IMPORTANT);
+					background.executeNextOccurenceNow(Priority.RATHER_IMPORTANT);
 				} else if (usedMemory > memoryThreshold) {
-					background.executeNextOccurenceNow(Task.PRIORITY_NORMAL);
+					background.executeNextOccurenceNow(Priority.NORMAL);
 				}
 			}
 		}
@@ -148,7 +151,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 					b.lastWrite = System.currentTimeMillis();
 					toBeWritten += b.data.length;
 					if (toBeWritten >= toBeWrittenThreshold)
-						background.executeNextOccurenceNow(Task.PRIORITY_RATHER_IMPORTANT);
+						background.executeNextOccurenceNow(Priority.RATHER_IMPORTANT);
 				} else {
 					b.lastWrite = System.currentTimeMillis();
 				}
@@ -277,7 +280,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		
 		@Override
 		public void freeMemory(FreeMemoryLevel level) {
-			background.executeNextOccurenceNow(Task.PRIORITY_RATHER_IMPORTANT);
+			background.executeNextOccurenceNow(Priority.RATHER_IMPORTANT);
 			switch (level) {
 			default:
 			case EXPIRED_ONLY:
@@ -295,15 +298,10 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 			}
 		}
 		
-		private class Background extends Task.Cpu<Void,NoException> {
-			public Background() {
-				super("BufferedIO Memory Management", Task.PRIORITY_LOW);
-				executeEvery(30000, 45000);
-			}
-			
+		private class Background implements Executable<Void,NoException> {
 			@Override
-			public Void run() {
-				setPriority(Task.PRIORITY_LOW);
+			public Void execute() {
+				background.setPriority(Task.Priority.LOW);
 				long now = System.currentTimeMillis();
 				int old1 = 0;
 				int old2 = 0;
@@ -836,7 +834,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		if (sp == null)
 			doFlush(b, jp, list, filter, recurs);
 		else
-			sp.thenStart(new Task.Cpu.FromRunnable("BufferedIO.flush", getPriority(), () -> doFlush(b, jp, list, filter, 0)), true);
+			sp.thenStart("BufferedIO.flush", getPriority(), () -> doFlush(b, jp, list, filter, 0), true);
 	}
 	
 	private void doFlush(Buffer b, JoinPoint<IOException> jp, LinkedList<Buffer> list, Predicate<Buffer> filter, int recurs) {
@@ -854,7 +852,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 			jp.joined();
 		});
 		if (recurs > 250) {
-			new Task.Cpu.FromRunnable("BufferedIO.flush", getPriority(), () -> flushNext(list, filter, jp, 0)).start();
+			Task.cpu("BufferedIO.flush", getPriority(), new Executable.FromRunnable(() -> flushNext(list, filter, jp, 0))).start();
 			return;
 		}
 		flushNext(list, filter, jp, recurs + 1);
@@ -863,14 +861,15 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	protected void preLoadBuffer(long pos) {
 		if (closing) return;
 		if (pos == size) return;
-		operation(new Task.Cpu.FromRunnable("Pre-load next buffer in BufferedIO", io.getPriority(), () -> {
-			if (closing) return;
+		operation(Task.cpu("Pre-load next buffer in BufferedIO", io.getPriority(), () -> {
+			if (closing) return null;
 			long bufferIndex = getBufferIndex(pos);
 			AsyncSupplier<Buffer, NoException> b = bufferTable.needBufferAsync(bufferIndex, false);
 			b.onDone(() -> {
 				b.getResult().lastRead = System.currentTimeMillis();
 				b.getResult().usage.endRead();
 			});
+			return null;
 		})).start();		
 	}
 	
@@ -891,12 +890,12 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	}
 	
 	@Override
-	public byte getPriority() {
-		return io != null ? io.getPriority() : Task.PRIORITY_NORMAL;
+	public Priority getPriority() {
+		return io != null ? io.getPriority() : Task.Priority.NORMAL;
 	}
 	
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		io.setPriority(priority);
 	}
 	
@@ -1152,8 +1151,8 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	) {
 		getBuffer.onDone(() -> {
 			Buffer b = getBuffer.getResult();
-			b.loaded.thenStart(new Task.Cpu.FromRunnable("BufferedIO.readAsync", io.getPriority(), () -> {
-				if (!checkLoaded(b, result, ondone)) return;
+			b.loaded.thenStart("BufferedIO.readAsync", io.getPriority(), () -> {
+				if (!checkLoaded(b, result, ondone)) return null;
 				int off = getBufferOffset(pos);
 				int len = buffer.remaining();
 				long s = size;
@@ -1174,7 +1173,8 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 				Integer nb = Integer.valueOf(len);
 				if (ondone != null) ondone.accept(new Pair<>(nb, null));
 				result.unblockSuccess(nb);
-			}), true);
+				return null;
+			}, true);
 		});
 	}
 	
@@ -1204,12 +1204,13 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	) {
 		getBuffer.onDone(() -> {
 			Buffer b = getBuffer.getResult();
-			b.loaded.thenStart(new Task.Cpu.FromRunnable("BufferedIO.readNextBufferAsync", io.getPriority(), () -> {
-				if (!checkLoaded(b, result, ondone)) return;
+			b.loaded.thenStart("BufferedIO.readNextBufferAsync", io.getPriority(), () -> {
+				if (!checkLoaded(b, result, ondone)) return null;
 				ByteBuffer res = getBufferContent(b);
 				if (ondone != null) ondone.accept(new Pair<>(res, null));
 				result.unblockSuccess(res);
-			}), true);
+				return null;
+			}, true);
 		});
 	}
 	
@@ -1512,8 +1513,8 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		) {
 			getBuffer.onDone(() -> {
 				Buffer b = getBuffer.getResult();
-				b.loaded.thenStart(new Task.Cpu.FromRunnable("BufferedIO.writeAsync", io.getPriority(), () -> {
-					if (!checkLoaded(b, result, ondone)) return;
+				b.loaded.thenStart("BufferedIO.writeAsync", io.getPriority(), () -> {
+					if (!checkLoaded(b, result, ondone)) return null;
 					int off = getBufferOffset(pos);
 					int len = buffer.remaining();
 					if (len > b.data.length - off) len = b.data.length - off;
@@ -1531,7 +1532,8 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 							bufferIndex, pos + len == size && getBufferOffset(pos + len) == 0);
 						writeAsync(pos + len, buffer, getNextBuffer, ondone, result, done + len);
 					}
-				}), true);
+					return null;
+				}, true);
 			});
 		}
 		
@@ -1595,22 +1597,23 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 			}
 			if (nbBuffersAfter > nbBuffersBefore) {
 				Async<IOException> sp = new Async<>();
-				((IO.Resizable)io).setSizeAsync(newSize).thenStart(
-				new Task.Cpu.FromRunnable("BufferedIO.setSizeAsync", io.getPriority(), () -> {
+				((IO.Resizable)io).setSizeAsync(newSize).thenStart("BufferedIO.setSizeAsync", io.getPriority(), () -> {
 					size = newSize;
 					bufferTable.setSize(nbBuffersAfter);
 					if (position > size) position = size;
 					sp.unblock();
-				}), sp);
+					return null;
+				}, sp);
 				return sp;
 			}
 			Async<IOException> sp = new Async<>();
-			new Task.Cpu.FromRunnable("BufferedIO.setSizeAsync", io.getPriority(), () -> {
+			Task.cpu("BufferedIO.setSizeAsync", io.getPriority(), () -> {
 				bufferTable.setSize(nbBuffersAfter);
 				((IO.Resizable)io).setSizeAsync(newSize).onDone(sp);
 				size = newSize;
 				if (position > size) position = size;
 				sp.unblock();
+				return null;
 			}).start();
 			return sp;
 		}

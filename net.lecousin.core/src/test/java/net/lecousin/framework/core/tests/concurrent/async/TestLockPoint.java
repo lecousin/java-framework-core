@@ -1,8 +1,8 @@
 package net.lecousin.framework.core.tests.concurrent.async;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.LockPoint;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
@@ -46,10 +46,11 @@ public class TestLockPoint extends LCCoreAbstractTest {
 		LockPoint<Exception> lp2 = new LockPoint<>();
 		lp2.lock();
 		Async<Exception> sp = new Async<>();
-		new Task.Cpu.FromRunnable(() -> {
+		Task.cpu("test", Task.Priority.NORMAL, () -> {
 			sp.unblock();
 			lp2.blockPause(5000);
-		}, "test", Task.PRIORITY_NORMAL).start();
+			return null;
+		}).start();
 		sp.block(0);
 		try { Thread.sleep(100); } catch (InterruptedException e) {}
 		lp2.unlock();
@@ -57,10 +58,11 @@ public class TestLockPoint extends LCCoreAbstractTest {
 		LockPoint<Exception> lp3 = new LockPoint<>();
 		lp3.lock();
 		Async<Exception> sp3 = new Async<>();
-		new Task.Cpu.FromRunnable(() -> {
+		Task.cpu("test", Task.Priority.NORMAL, () -> {
 			sp3.unblock();
 			lp3.block(5000);
-		}, "test", Task.PRIORITY_NORMAL).start();
+			return null;
+		}).start();
 		sp3.block(0);
 		try { Thread.sleep(100); } catch (InterruptedException e) {}
 		lp3.unlock();

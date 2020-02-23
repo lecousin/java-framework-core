@@ -4,14 +4,15 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -30,11 +31,12 @@ public class BufferedReverseIOReading extends ConcurrentCloseable<IOException> i
 		io.getSizeAsync().listen(new Listener<Long, IOException>() {
 			@Override
 			public void ready(Long result) {
-				operation(new Task.Cpu.FromRunnable("Read last buffer", io.getPriority(), () -> {
+				operation(Task.cpu("Read last buffer", io.getPriority(), () -> {
 					synchronized (BufferedReverseIOReading.this) {
 						fileSize = bufferPosInFile = result.longValue();
 						readBufferBack();
 					}
+					return null;
 				}).start().getOutput());
 			}
 			
@@ -80,10 +82,10 @@ public class BufferedReverseIOReading extends ConcurrentCloseable<IOException> i
 	}
 	
 	@Override
-	public byte getPriority() { return io.getPriority(); }
+	public Priority getPriority() { return io.getPriority(); }
 	
 	@Override
-	public void setPriority(byte priority) { io.setPriority(priority); }
+	public void setPriority(Priority priority) { io.setPriority(priority); }
 	
 	@Override
 	public IO getWrappedIO() { return io; }
@@ -264,7 +266,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable<IOException> i
 		}
 		ByteBuffer buf = ByteBuffer.wrap(buffer, start, len);
 		currentRead = io.readFullyAsync(bufferPosInFile - len, buf);
-		currentRead.thenStart(operation(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
+		currentRead.thenStart(operation(Task.cpu("New buffer ready", io.getPriority(), () -> {
 			synchronized (BufferedReverseIOReading.this) {
 				if (!currentRead.isSuccessful()) {
 					error = currentRead.getError();
@@ -276,6 +278,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable<IOException> i
 				currentRead = null;
 			}
 			canRead.unblock();
+			return null;
 		})), true);
 	}
 	
@@ -307,7 +310,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable<IOException> i
 			len = (int)(fileSize - (bufferPosInFile + (maxInBuffer - minInBuffer)));
 		ByteBuffer buf = ByteBuffer.wrap(buffer, start, len);
 		currentRead = io.readFullyAsync(bufferPosInFile + (maxInBuffer - minInBuffer), buf);
-		currentRead.thenStart(operation(new Task.Cpu.FromRunnable("New buffer ready", io.getPriority(), () -> {
+		currentRead.thenStart(operation(Task.cpu("New buffer ready", io.getPriority(), () -> {
 			synchronized (BufferedReverseIOReading.this) {
 				if (!currentRead.isSuccessful()) {
 					error = currentRead.getError();
@@ -318,6 +321,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable<IOException> i
 				currentRead = null;
 			}
 			canRead.unblock();
+			return null;
 		})), true);
 	}
 

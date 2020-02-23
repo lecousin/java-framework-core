@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.OutputStream;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestOutputStream;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -33,7 +33,7 @@ public class TestIOAsOutputStreamWithFileIO extends TestOutputStream {
 	protected OutputStream createStream() throws Exception {
 		File file = File.createTempFile("test", "outputstream");
 		file.deleteOnExit();
-		FileIO.ReadWrite io = new FileIO.ReadWrite(file, Task.PRIORITY_NORMAL);
+		FileIO.ReadWrite io = new FileIO.ReadWrite(file, Task.Priority.NORMAL);
 		return IOAsOutputStream.get(io);
 	}
 	

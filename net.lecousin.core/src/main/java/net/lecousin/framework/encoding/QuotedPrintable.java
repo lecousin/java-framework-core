@@ -2,7 +2,6 @@ package net.lecousin.framework.encoding;
 
 import java.util.function.Function;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
@@ -496,8 +495,7 @@ public final class QuotedPrintable {
 			// we need to call again the encoder
 			output.flip();
 			encodedConsumer.consume(output)
-				.thenStart("Encoding quoted-printable data", Task.PRIORITY_NORMAL,
-					() -> continueEncoding(data, result), result);
+				.thenStart("Encoding quoted-printable data", () -> continueEncoding(data, result), result);
 		}
 
 		@Override

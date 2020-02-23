@@ -20,13 +20,13 @@ import java.util.concurrent.ThreadFactory;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.application.libraries.classpath.DefaultLibrariesManager;
 import net.lecousin.framework.concurrent.Console;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskMonitoring;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
-import net.lecousin.framework.concurrent.tasks.LoadPropertiesFileTask;
-import net.lecousin.framework.concurrent.tasks.SavePropertiesFileTask;
+import net.lecousin.framework.concurrent.tasks.PropertiesFileLoader;
+import net.lecousin.framework.concurrent.tasks.PropertiesFileSaver;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.provider.IOProvider;
@@ -74,7 +74,6 @@ public final class Application {
 		this.threadFactory = threadFactory;
 		this.librariesManager = librariesManager;
 		console = new Console(this);
-		if (debugMode) TaskMonitoring.checkLocksOfBlockingTasks = true;
 	}
 	
 	private long startTime;
@@ -193,7 +192,7 @@ public final class Application {
 	}
 	
 	/** Get a resource from the class loader as an IO.Readable. */
-	public IO.Readable getResource(String filename, byte priority) {
+	public IO.Readable getResource(String filename, Priority priority) {
 		IOProvider.Readable provider = appClassLoader.getIOProvider(filename);
 		if (provider == null)
 			return null;
@@ -362,21 +361,18 @@ public final class Application {
 		loading.addToJoin(loadPref);
 		
 		// init locale
-		Task.Cpu<Void, NoException> loadLocale = new Task.Cpu<Void, NoException>("Initialize localization", Task.PRIORITY_RATHER_IMPORTANT) {
-			@Override
-			public Void run() {
-				String lang = app.getPreference(PROPERTY_LANGUAGE_TAG);
-				if (lang == null) lang = app.getProperty(PROPERTY_LANGUAGE_TAG);
-				if (lang != null) {
-					app.locale = Locale.forLanguageTag(lang);
-				} else {
-					app.locale = Locale.getDefault();
-				}
-				app.languageTag = app.locale.toLanguageTag().split("-");
-				app.localizedProperties = new LocalizedProperties(app);
-				return null;
+		Task<Void, NoException> loadLocale = Task.cpu("Initialize localization", Task.Priority.RATHER_IMPORTANT, () -> {
+			String lang = app.getPreference(PROPERTY_LANGUAGE_TAG);
+			if (lang == null) lang = app.getProperty(PROPERTY_LANGUAGE_TAG);
+			if (lang != null) {
+				app.locale = Locale.forLanguageTag(lang);
+			} else {
+				app.locale = Locale.getDefault();
 			}
-		};
+			app.languageTag = app.locale.toLanguageTag().split("-");
+			app.localizedProperties = new LocalizedProperties(app);
+			return null;
+		});
 		loadLocale.startOn(loadPref, true);
 		loading.addToJoin(loadLocale.getOutput());
 		
@@ -505,8 +501,8 @@ public final class Application {
 			return loadingPreferences;
 		}
 		getDefaultLogger().info("Loading preferences from " + f.getAbsolutePath());
-		loadingPreferences = LoadPropertiesFileTask.loadPropertiesFile(
-			f, StandardCharsets.UTF_8, Task.PRIORITY_IMPORTANT,
+		loadingPreferences = PropertiesFileLoader.loadPropertiesFile(
+			f, StandardCharsets.UTF_8, Task.Priority.IMPORTANT,
 			false,
 			props -> preferences = props
 		);
@@ -526,7 +522,7 @@ public final class Application {
 			loggerFactory.getRoot().warn("Unable to create directory to save preferences: " + f.getAbsolutePath());
 		f = new File(f, "preferences");
 		getDefaultLogger().info("Saving preferences to " + f.getAbsolutePath());
-		savingPreferences = SavePropertiesFileTask.savePropertiesFile(preferences, f, StandardCharsets.UTF_8, Task.PRIORITY_RATHER_LOW);
+		savingPreferences = PropertiesFileSaver.savePropertiesFile(preferences, f, StandardCharsets.UTF_8, Task.Priority.RATHER_LOW);
 	}
 	
 }

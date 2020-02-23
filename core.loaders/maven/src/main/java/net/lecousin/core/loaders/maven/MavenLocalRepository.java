@@ -7,8 +7,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 import net.lecousin.framework.application.libraries.LibraryManagementException;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -28,12 +30,11 @@ public class MavenLocalRepository implements MavenRepository {
 	private boolean snapshotsEnabled;
 	
 	@Override
-	public AsyncSupplier<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, byte priority) {
-		Task<List<String>, NoException> task = new Task.OnFile<List<String>, NoException>(
-			dir, "Search artifact versions in local Maven repository", priority
-		) {
+	@SuppressWarnings("java:S1604")
+	public AsyncSupplier<List<String>, NoException> getAvailableVersions(String groupId, String artifactId, Priority priority) {
+		return Task.file(dir, "Search artifact versions in local Maven repository", priority, new Executable<List<String>, NoException>() {
 			@Override
-			public List<String> run() {
+			public List<String> execute() {
 				File d = new File(dir, groupId.replace('.', '/'));
 				if (!d.exists()) return null;
 				d = new File(d, artifactId);
@@ -49,14 +50,13 @@ public class MavenLocalRepository implements MavenRepository {
 				}
 				return versions;
 			}
-		};
-		task.start();
-		return task.getOutput();
+		}).start().getOutput();
 	}
 	
 	@Override
+	@SuppressWarnings("java:S1604")
 	public AsyncSupplier<MavenPOM, LibraryManagementException> load(
-		String groupId, String artifactId, String version, MavenPOMLoader pomLoader, byte priority
+		String groupId, String artifactId, String version, MavenPOMLoader pomLoader, Priority priority
 	) {
 		if (version.toLowerCase().endsWith("-SNAPSHOT")) {
 			if (!snapshotsEnabled)
@@ -66,28 +66,24 @@ public class MavenLocalRepository implements MavenRepository {
 				return new AsyncSupplier<>(null, null);
 		}
 		AsyncSupplier<MavenPOM, LibraryManagementException> result = new AsyncSupplier<>();
-		Task<Void, NoException> task = new Task.OnFile<Void, NoException>(dir, "Search Maven POM in local repository", priority) {
-			@Override
-			public Void run() {
-				File d = new File(dir, groupId.replace('.', '/'));
+		Task.file(dir, "Search Maven POM in local repository", priority, () -> {
+			File d = new File(dir, groupId.replace('.', '/'));
+			if (d.exists()) {
+				d = new File(d, artifactId);
 				if (d.exists()) {
-					d = new File(d, artifactId);
+					d = new File(d, version);
 					if (d.exists()) {
-						d = new File(d, version);
-						if (d.exists()) {
-							File pom = new File(d, artifactId + '-' + version + ".pom");
-							if (pom.exists()) {
-								pomLoader.loadPOM(pom.toURI(), true, priority).forward(result);
-								return null;
-							}
+						File pom = new File(d, artifactId + '-' + version + ".pom");
+						if (pom.exists()) {
+							pomLoader.loadPOM(pom.toURI(), true, priority).forward(result);
+							return null;
 						}
 					}
 				}
-				result.unblockSuccess(null);
-				return null;
 			}
-		};
-		task.start();
+			result.unblockSuccess(null);
+			return null;
+		}).start();
 		return result;
 	}
 	
@@ -105,15 +101,16 @@ public class MavenLocalRepository implements MavenRepository {
 	}
 	
 	@Override
+	@SuppressWarnings("java:S1604")
 	public AsyncSupplier<File, IOException> loadFile(
-		String groupId, String artifactId, String version, String classifier, String type, byte priority
+		String groupId, String artifactId, String version, String classifier, String type, Priority priority
 	) {
-		return new Task.OnFile<File, IOException>(dir, "Search file in Maven repository", priority) {
+		return Task.file(dir, "Search file in Maven repository", priority, new Executable<File, IOException>() {
 			@Override
-			public File run() {
+			public File execute() {
 				return loadFileSync(groupId, artifactId, version, classifier, type);
 			}
-		}.start().getOutput();
+		}).start().getOutput();
 	}
 	
 	@Override

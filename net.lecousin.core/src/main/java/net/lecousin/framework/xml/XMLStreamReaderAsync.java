@@ -5,9 +5,9 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.LinkedList;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.encoding.number.DecimalNumber;
 import net.lecousin.framework.encoding.number.HexadecimalNumber;
 import net.lecousin.framework.encoding.number.NumberEncoding;
@@ -36,7 +36,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			this.io = (IO.Readable.Buffered)io;
 		else
 			this.io = new PreBufferedReadable(io, 1024, io.getPriority(), charactersBuffersSize,
-				(byte)(io.getPriority() - 1), maxBuffers);
+				io.getPriority().less(), maxBuffers);
 		this.defaultEncoding = defaultEncoding;
 		this.charactersBuffersSize = charactersBuffersSize;
 		this.maxBuffers = maxBuffers;
@@ -57,7 +57,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	@Override
 	public IAsync<Exception> start() {
 		Async<Exception> sp = new Async<>();
-		io.canStartReading().thenStart(new Task.Cpu.FromRunnable(() -> {
+		io.canStartReading().thenStart("Start parsing XML", io.getPriority(), () -> {
 			try {
 				Starter start = new Starter(io, defaultEncoding, charactersBuffersSize, maxBuffers, false);
 				stream = start.start();
@@ -65,7 +65,8 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			} catch (Exception e) {
 				sp.error(e);
 			}
-		}, "Start parsing XML", io.getPriority()), true);
+			return null;
+		}, true);
 		return sp;
 	}
 	
@@ -81,7 +82,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 	/* Public utility methods */
 
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return io.getPriority();
 	}
 	
@@ -94,7 +95,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 			return nextStartElement();
 		}
 		Async<Exception> sp = new Async<>();
-		start.thenStart(new ParsingTask(() -> {
+		start.thenStart(task(() -> {
 			if (Type.START_ELEMENT.equals(event.type)) sp.unblock();
 			else nextStartElement().onDone(sp);
 		}), sp);
@@ -147,7 +148,7 @@ public class XMLStreamReaderAsync extends XMLStreamEventsAsync {
 				return;
 			}
 			if (c == -2) {
-				stream.canStartReading().thenStart(new ParsingTask(() -> nextChar(sp)), true);
+				stream.canStartReading().thenStart(task(() -> nextChar(sp)), true);
 				return;
 			}
 			boolean continu;

@@ -3,11 +3,11 @@ package net.lecousin.framework.io.text;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.text.IString;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -59,12 +59,12 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 	}
 	
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return stream.getPriority();
 	}
 	
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		stream.setPriority(priority);
 	}
 	
@@ -124,30 +124,25 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 	public AsyncSupplier<Integer, IOException> readAsync(char[] buf, int offset, int length) {
 		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 		AsyncSupplier<Integer, IOException> read = stream.readAsync(buf, offset, length);
-		read.thenStart(operation(new Task.Cpu<Void, NoException>(
-			"Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority()
-		) {
-			@Override
-			public Void run() {
-				if (read.hasError())
-					result.error(read.getError());
-				else if (read.isCancelled())
-					result.cancel(read.getCancelEvent());
-				else {
-					int nb = read.getResult().intValue();
-					for (int i = 0; i < nb; ++i)
-						if (buf[offset + i] == '\n') {
-							line++;
-							lastLinePos = pos;
-							pos = 0;
-						} else if (buf[offset + i] != '\r') {
-							pos++;
-						}
-					result.unblockSuccess(read.getResult());
-				}
-				return null;
+		read.thenStart(operation(Task.cpu("Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority(), () -> {
+			if (read.hasError())
+				result.error(read.getError());
+			else if (read.isCancelled())
+				result.cancel(read.getCancelEvent());
+			else {
+				int nb = read.getResult().intValue();
+				for (int i = 0; i < nb; ++i)
+					if (buf[offset + i] == '\n') {
+						line++;
+						lastLinePos = pos;
+						pos = 0;
+					} else if (buf[offset + i] != '\r') {
+						pos++;
+					}
+				result.unblockSuccess(read.getResult());
 			}
-		}), true);
+			return null;
+		})), true);
 		return result;
 	}
 	
@@ -156,14 +151,15 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 		AsyncSupplier<Chars.Readable, IOException> result = new AsyncSupplier<>();
 		AsyncSupplier<Chars.Readable, IOException> read = stream.readNextBufferAsync();
 		read.thenStart(
-		new Task.Cpu.FromRunnable("Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority(), () -> {
+		Task.cpu("Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority(), () -> {
 			Chars.Readable str = read.getResult();
 			if (str == null) {
 				result.unblockSuccess(null);
-				return;
+				return null;
 			}
 			processLocation(str);
 			result.unblockSuccess(str);
+			return null;
 		}), result);
 		return result;
 	}
@@ -217,10 +213,11 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 		int start = string.length();
 		AsyncSupplier<Boolean, IOException> read = stream.readUntilAsync(endChar, string);
 		AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
-		read.thenStart(new Task.Cpu.FromRunnable("BufferedReadableCharacterStreamLocation.readUntilAsync", stream.getPriority(), () -> {
+		read.thenStart("BufferedReadableCharacterStreamLocation.readUntilAsync", stream.getPriority(), () -> {
 			processLocation(start, string);
 			result.unblockSuccess(read.getResult());
-		}), result);
+			return null;
+		}, result);
 		return result;
 	}
 	

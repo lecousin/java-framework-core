@@ -1,5 +1,6 @@
 package net.lecousin.framework.io.provider;
 
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.SubIO;
 
@@ -28,7 +29,7 @@ public interface SubIOProvider {
 		}
 		
 		@Override
-		public IO.Readable.Seekable provideIOReadableSeekable(byte priority) {
+		public IO.Readable.Seekable provideIOReadableSeekable(Priority priority) {
 			return new SubIO.Readable.Seekable(src, start, size, description, false);
 		}
 		

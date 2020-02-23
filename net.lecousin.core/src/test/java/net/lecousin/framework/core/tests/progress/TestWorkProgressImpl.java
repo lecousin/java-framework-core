@@ -1,7 +1,7 @@
 package net.lecousin.framework.core.tests.progress;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.progress.WorkProgress;
@@ -146,9 +146,9 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		WorkProgress.link(sub1, main, 200);
 		WorkProgress.link(sub2, main, 500);
 		WorkProgress.link(sub3, main, 250);
-		Task<?,?> task1 = new Task.Cpu.FromRunnable("task1", Task.PRIORITY_NORMAL, () -> {});
-		Task<?,?> task2 = new Task.Cpu.FromRunnable("task2", Task.PRIORITY_NORMAL, () -> {});
-		Task<?,?> task3 = new Task.Cpu.FromRunnable("task3", Task.PRIORITY_NORMAL, () -> {});
+		Task<?,?> task1 = Task.cpu("task1", Task.Priority.NORMAL, () -> null);
+		Task<?,?> task2 = Task.cpu("task2", Task.Priority.NORMAL, () -> null);
+		Task<?,?> task3 = Task.cpu("task3", Task.Priority.NORMAL, () -> null);
 		WorkProgress.linkTo(sub1, task1);
 		WorkProgress.linkTo(sub2, task2);
 		WorkProgress.linkTo(sub3, task3);
@@ -185,12 +185,7 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		main = new WorkProgressImpl(1000);
 		sub1 = new WorkProgressImpl(1000);
 		WorkProgress.link(sub1, main, 200);
-		task1 = new Task.Cpu<Void,Exception>("task1", Task.PRIORITY_NORMAL) {
-			@Override
-			public Void run() throws Exception, CancelException {
-				throw new Exception("Test error");
-			}
-		};
+		task1 = testTask(() -> { throw new Exception("Test error"); });
 		WorkProgress.linkTo(sub1, task1);
 		Assert.assertFalse(main.getSynch().hasError());
 		Assert.assertFalse(sub1.getSynch().hasError());
@@ -203,12 +198,7 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		main = new WorkProgressImpl(1000);
 		sub1 = new WorkProgressImpl(1000);
 		WorkProgress.link(sub1, main, 200);
-		task1 = new Task.Cpu<Void,Exception>("task1", Task.PRIORITY_NORMAL) {
-			@Override
-			public Void run() throws Exception, CancelException {
-				throw new CancelException("Test cancel");
-			}
-		};
+		task1 = testTask(() -> { throw new CancelException("Test cancel"); });
 		WorkProgress.linkTo(sub1, task1);
 		Assert.assertFalse(main.getSynch().hasError());
 		Assert.assertFalse(sub1.getSynch().hasError());

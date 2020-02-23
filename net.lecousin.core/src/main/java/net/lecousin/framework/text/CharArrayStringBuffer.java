@@ -9,11 +9,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.data.CharArray;
 import net.lecousin.framework.io.data.Chars;
@@ -142,7 +144,7 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 	/** Base class for CharacterStream implementations. */
 	@SuppressWarnings("squid:S2694") // not static because inherited classes are not static
 	protected abstract class AbstractCS extends ConcurrentCloseable<IOException> implements ICharacterStream {
-		protected byte priority = Task.PRIORITY_NORMAL;
+		protected Priority priority = Task.getCurrentPriority();
 		
 		@Override
 		protected IAsync<IOException> closeUnderlyingResources() {
@@ -155,12 +157,12 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		}
 
 		@Override
-		public byte getPriority() {
+		public Priority getPriority() {
 			return priority;
 		}
 		
 		@Override
-		public void setPriority(byte priority) {
+		public void setPriority(Priority priority) {
 			this.priority = priority;
 		}
 		
@@ -247,13 +249,14 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		}
 		
 		@Override
+		@SuppressWarnings("java:S1604") // cannot use lambda
 		public AsyncSupplier<Integer, IOException> readAsync(char[] buf, int offset, int length) {
-			return new Task.Cpu<Integer, IOException>("UnprotectedStringBuffer.readAsync", priority) {
+			return Task.cpu("UnprotectedStringBuffer.readAsync", priority, new Executable<Integer, IOException>() {
 				@Override
-				public Integer run() {
+				public Integer execute() {
 					return Integer.valueOf(readSync(buf, offset, length));
 				}
-			}.start().getOutput();
+			}).start().getOutput();
 		}
 		
 		@Override
@@ -315,11 +318,15 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		@Override
 		public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, IString string) {
 			AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
-			new Task.Cpu.FromRunnable("UnprotectedStringBuffer.readUntilAsync", getPriority(), () -> {
-				try {
-					result.unblockSuccess(Boolean.valueOf(readUntil(endChar, string)));
-				} catch (IOException e) {
-					result.error(e);
+			Task.cpu("UnprotectedStringBuffer.readUntilAsync", getPriority(), new Executable<Void, NoException>() {
+				@Override
+				public Void execute() {
+					try {
+						result.unblockSuccess(Boolean.valueOf(readUntil(endChar, string)));
+					} catch (IOException e) {
+						result.error(e);
+					}
+					return null;
 				}
 			}).start();
 			return result;
@@ -355,14 +362,15 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		}
 		
 		@Override
+		@SuppressWarnings("java:S1604") // cannot use lambda
 		public IAsync<IOException> writeAsync(char[] c, int offset, int length) {
-			return new Task.Cpu<Void, IOException>("UnprotectedStringBuffer.writeAsync", priority) {
+			return Task.cpu("UnprotectedStringBuffer.writeAsync", priority, new Executable<Void, IOException>() {
 				@Override
-				public Void run() throws IOException, CancelException {
+				public Void execute() {
 					append(c, offset, length);
 					return null;
 				}
-			}.start().getOutput();
+			}).start().getOutput();
 		}
 
 		@Override
@@ -379,7 +387,7 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 	}
 	
 	/** Encode this string with the given charset and write the result on the given writable IO. */
-	public Async<IOException> encode(Charset charset, IO.Writable output, byte priority) {
+	public Async<IOException> encode(Charset charset, IO.Writable output, Priority priority) {
 		if (strings == null) return new Async<>(true);
 		Async<IOException> result = new Async<>();
 		CharsetEncoder encoder = charset.newEncoder();
@@ -388,24 +396,24 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 	}
 	
 	private void encode(
-		int index, CharsetEncoder encoder, IO.Writable output, byte priority,
+		int index, CharsetEncoder encoder, IO.Writable output, Priority priority,
 		IAsync<IOException> prevWrite, Async<IOException> result
 	) {
-		new Task.Cpu.FromRunnable("Encode string into bytes", priority, () -> {
+		Task.cpu("Encode string into bytes", priority, () -> {
 			try {
 				ByteBuffer bytes = encoder.encode(strings[index].asCharBuffer().toCharBuffer());
 				if (prevWrite == null || prevWrite.isDone()) {
 					if (prevWrite != null && prevWrite.hasError()) {
 						result.error(prevWrite.getError());
-						return;
+						return null;
 					}
 					IAsync<IOException> write = output.writeAsync(bytes);
 					if (index == lastUsed) {
 						write.onDone(result);
-						return;
+						return null;
 					}
 					encode(index + 1, encoder, output, priority, write, result);
-					return;
+					return null;
 				}
 				prevWrite.onDone(() -> {
 					IAsync<IOException> write = output.writeAsync(bytes);
@@ -418,6 +426,7 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 			} catch (IOException e) {
 				result.error(e);
 			}
+			return null;
 		}).start();
 	}
 

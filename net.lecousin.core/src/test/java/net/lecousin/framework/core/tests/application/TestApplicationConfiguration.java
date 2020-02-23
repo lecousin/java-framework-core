@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import net.lecousin.framework.application.ApplicationConfiguration;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IOFromInputStream;
@@ -35,8 +35,8 @@ public class TestApplicationConfiguration extends LCCoreAbstractTest {
 		tmp.deleteOnExit();
 		InputStream input = getClass().getClassLoader().getResourceAsStream("app/lc-project.xml");
 		IOUtil.copy(
-			new IOFromInputStream(input, "lc-project.xml", Threading.getUnmanagedTaskManager(), Task.PRIORITY_NORMAL),
-			new FileIO.WriteOnly(tmp, Task.PRIORITY_NORMAL),
+			new IOFromInputStream(input, "lc-project.xml", Threading.getUnmanagedTaskManager(), Task.Priority.NORMAL),
+			new FileIO.WriteOnly(tmp, Task.Priority.NORMAL),
 			-1, true, null, 0).blockThrow(15000);
 		try {
 			ApplicationConfiguration cfg = ApplicationConfiguration.load(tmp);

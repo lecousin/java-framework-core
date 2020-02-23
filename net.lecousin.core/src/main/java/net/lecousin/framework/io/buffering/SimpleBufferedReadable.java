@@ -5,12 +5,13 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -73,10 +74,10 @@ public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> imp
 	public String getSourceDescription() { return io.getSourceDescription(); }
 	
 	@Override
-	public byte getPriority() { return io.getPriority(); }
+	public Priority getPriority() { return io.getPriority(); }
 	
 	@Override
-	public void setPriority(byte priority) { io.setPriority(priority); }
+	public void setPriority(Priority priority) { io.setPriority(priority); }
 	
 	@Override
 	protected IAsync<IOException> closeUnderlyingResources() {
@@ -190,7 +191,7 @@ public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> imp
 
 	@Override
 	public AsyncSupplier<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone)).getOutput();
+		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone));
 	}
 
 	@Override
@@ -204,34 +205,29 @@ public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> imp
 	}
 
 	@Override
+	@SuppressWarnings("java:S1696") // catch NPE because of concurrency
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		AtomicState s = state;
 		if (s.pos == s.len && s.buffer == null) return IOUtil.success(null, ondone);
-		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>("Read next buffer", getPriority(), ondone) {
-			@Override
-			@SuppressWarnings("squid:S1696") // catch null because concurrent operations
-			public ByteBuffer run() throws IOException, CancelException {
-				AtomicState s = state;
-				if (s.pos == s.len) {
-					if (s.buffer == null) return null;
-					fill();
-					if (state.pos == state.len) return null;
-				}
-				ByteBuffer buf;
-				try {
-					// wrap on our buffer
-					buf = ByteBuffer.wrap(state.buffer, state.pos, state.len - state.pos).asReadOnlyBuffer();
-					state.pos = state.len;
-					// allocate a new buffer for the next read
-					bb = ByteBuffer.allocate(state.buffer.length);
-				} catch (NullPointerException e) {
-					throw new CancelException("IO closed");
-				}
-				return buf;
+		return operation(Task.cpu("Read next buffer", getPriority(), () -> {
+			AtomicState st = state;
+			if (st.pos == st.len) {
+				if (st.buffer == null) return null;
+				fill();
+				if (state.pos == state.len) return null;
 			}
-		};
-		operation(task.start());
-		return task.getOutput();
+			ByteBuffer buf;
+			try {
+				// wrap on our buffer
+				buf = ByteBuffer.wrap(state.buffer, state.pos, state.len - state.pos).asReadOnlyBuffer();
+				state.pos = state.len;
+				// allocate a new buffer for the next read
+				bb = ByteBuffer.allocate(state.buffer.length);
+			} catch (NullPointerException e) {
+				throw new CancelException("IO closed");
+			}
+			return buf;
+		}, ondone).start()).getOutput();
 	}
 	
 	@Override
@@ -308,30 +304,27 @@ public class SimpleBufferedReadable extends ConcurrentCloseable<IOException> imp
 		}
 		AsyncSupplier<Integer,IOException> currentRead = readTask;
 		if (currentRead == null) return IOUtil.success(Long.valueOf(0), ondone);
-		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Skipping bytes", io.getPriority(), ondone) {
-			@Override
-			public Long run() throws IOException, CancelException {
-				if (currentRead.isCancelled()) return Long.valueOf(0);
-				if (!currentRead.isSuccessful()) {
-					if (currentRead.isCancelled()) throw currentRead.getCancelEvent();
-					throw currentRead.getError();
-				}
-				int avail = currentRead.getResult().intValue();
-				if (avail < 0) avail = 0;
-				if (n <= state.len - state.pos + avail) {
-					int i = state.len - state.pos;
-					fill();
-					return Long.valueOf(skipSync(n - i) + i);
-				}
-				long res = io.skipSync(n - ((state.len - state.pos) + avail));
-				res += state.len - state.pos;
-				res += avail;
-				state.len = state.pos = 0;
-				readBuffer.clear();
-				readTask = io.readAsync(readBuffer);
-				return Long.valueOf(res);
+		Task<Long, IOException> task = Task.cpu("Skipping bytes", io.getPriority(), () -> {
+			if (currentRead.isCancelled()) return Long.valueOf(0);
+			if (!currentRead.isSuccessful()) {
+				if (currentRead.isCancelled()) throw currentRead.getCancelEvent();
+				throw currentRead.getError();
 			}
-		};
+			int avail = currentRead.getResult().intValue();
+			if (avail < 0) avail = 0;
+			if (n <= state.len - state.pos + avail) {
+				int i = state.len - state.pos;
+				fill();
+				return Long.valueOf(skipSync(n - i) + i);
+			}
+			long res = io.skipSync(n - ((state.len - state.pos) + avail));
+			res += state.len - state.pos;
+			res += avail;
+			state.len = state.pos = 0;
+			readBuffer.clear();
+			readTask = io.readAsync(readBuffer);
+			return Long.valueOf(res);
+		}, ondone);
 		operation(task).startOn(readTask, true);
 		return task.getOutput();
 	}

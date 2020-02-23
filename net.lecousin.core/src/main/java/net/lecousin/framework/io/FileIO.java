@@ -5,12 +5,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.tasks.drives.FileAccess;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
@@ -20,7 +21,7 @@ import net.lecousin.framework.util.Pair;
  */
 public abstract class FileIO extends ConcurrentCloseable<IOException> implements IO.KnownSize {
 
-	protected FileIO(File file, String mode, byte priority) {
+	protected FileIO(File file, String mode, Priority priority) {
 		this.file = new FileAccess(file, mode, priority);
 		this.file.getStartingTask().start();
 	}
@@ -48,24 +49,24 @@ public abstract class FileIO extends ConcurrentCloseable<IOException> implements
 	}
 	
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return file.getPriority();
 	}
 	
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		file.setPriority(priority);
 	}
 	
 	@Override
 	public TaskManager getTaskManager() {
-		return Threading.getDrivesTaskManager().getTaskManager(file.getFile());
+		return Threading.getDrivesManager().getTaskManager(file.getFile());
 	}
 	
 	/** FileIO in read-only mode. */
 	public static class ReadOnly extends FileIO implements IO.Readable.Seekable {
 		/** Constructor. */
-		public ReadOnly(File file, byte priority) {
+		public ReadOnly(File file, Priority priority) {
 			super(file, "r", priority);
 		}
 		
@@ -146,7 +147,7 @@ public abstract class FileIO extends ConcurrentCloseable<IOException> implements
 	public static class WriteOnly extends FileIO implements IO.Writable.Seekable, IO.Resizable {
 		
 		/** Constructor. */
-		public WriteOnly(File file, byte priority) {
+		public WriteOnly(File file, Priority priority) {
 			super(file, "rw", priority);
 		}
 		
@@ -206,7 +207,7 @@ public abstract class FileIO extends ConcurrentCloseable<IOException> implements
 	public static class ReadWrite extends FileIO implements IO.Readable.Seekable, IO.Writable.Seekable, IO.Resizable, IO.KnownSize {
 		
 		/** Constructor. */
-		public ReadWrite(File file, byte priority) {
+		public ReadWrite(File file, Priority priority) {
 			super(file, "rw", priority);
 		}
 		
@@ -333,7 +334,7 @@ public abstract class FileIO extends ConcurrentCloseable<IOException> implements
 			if (res.getValue1() != null)
 				position = res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
-		}).getOutput());
+		}));
 	}
 	
 	protected long skipSync(long n) throws IOException {
@@ -347,7 +348,7 @@ public abstract class FileIO extends ConcurrentCloseable<IOException> implements
 			if (res.getValue1() != null)
 				position += res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
-		}).getOutput());
+		}));
 	}
 	
 	@Override
@@ -367,9 +368,9 @@ public abstract class FileIO extends ConcurrentCloseable<IOException> implements
 		if (position > size) position = size;
 	}
 	
-	protected AsyncSupplier<Void,IOException> setSizeAsync(long size) {
+	protected AsyncSupplier<Void, IOException> setSizeAsync(long size) {
 		if (position > size) position = size;
-		return operation(file.setSizeAsync(size).getOutput());
+		return operation(file.setSizeAsync(size));
 	}
 	
 	@Override
@@ -397,11 +398,11 @@ public abstract class FileIO extends ConcurrentCloseable<IOException> implements
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				position += res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
-		}).getOutput());
+		}));
 	}
 	
 	protected AsyncSupplier<Integer,IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(file.readAsync(pos, buffer, ondone).getOutput());
+		return operation(file.readAsync(pos, buffer, ondone));
 	}
 	
 	protected int readFullySync(ByteBuffer buffer) throws IOException {
@@ -419,12 +420,12 @@ public abstract class FileIO extends ConcurrentCloseable<IOException> implements
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				position += res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
-		}).getOutput());
+		}));
 	}
 	
 	protected AsyncSupplier<Integer,IOException>
 	readFullyAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(file.readFullyAsync(pos, buffer, ondone).getOutput());
+		return operation(file.readFullyAsync(pos, buffer, ondone));
 	}
 	
 	protected int writeSync(ByteBuffer buffer) throws IOException {
@@ -443,11 +444,11 @@ public abstract class FileIO extends ConcurrentCloseable<IOException> implements
 			if (res.getValue1() != null && res.getValue1().intValue() > 0)
 				position += res.getValue1().intValue();
 			if (ondone != null) ondone.accept(res);
-		}).getOutput());
+		}));
 	}
 	
 	protected AsyncSupplier<Integer,IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(file.writeAsync(pos, buffer, ondone).getOutput());
+		return operation(file.writeAsync(pos, buffer, ondone));
 	}
 
 }

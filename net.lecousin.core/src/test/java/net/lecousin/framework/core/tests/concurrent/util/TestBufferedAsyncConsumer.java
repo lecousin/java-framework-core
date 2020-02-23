@@ -4,9 +4,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.concurrent.util.BufferedAsyncConsumer;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -55,7 +55,7 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 					return new Async<>(new Exception("Received " + data.intValue() + ", expected was " + pos));
 				pos++;
 				Async<Exception> result = new Async<>();
-				new Task.Cpu.FromRunnable("test", Task.PRIORITY_NORMAL, () -> result.unblock())
+				testTask(() -> result.unblock())
 				.executeIn(rand.nextInt(100)).start();
 				return result;
 			}
@@ -182,7 +182,7 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 			IAsync<Exception> send = consumer.consume(Integer.valueOf(nbSent.get()));
 			nbSent.inc();
 			if (!send.isDone()) {
-				send.thenStart("test", Task.PRIORITY_NORMAL, () -> send(nbSent, consumer, done, max), done);
+				send.thenStart("test", Task.Priority.NORMAL, () -> send(nbSent, consumer, done, max), done);
 				return;
 			} else if (send.hasError()) {
 				done.error(send.getError());

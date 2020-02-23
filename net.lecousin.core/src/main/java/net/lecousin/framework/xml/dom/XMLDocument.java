@@ -4,11 +4,9 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.xml.XMLException;
 import net.lecousin.framework.xml.XMLStreamEventsAsync;
 import net.lecousin.framework.xml.XMLStreamEventsSync;
@@ -171,25 +169,19 @@ public class XMLDocument extends XMLNode implements Document {
 						doc.root = root.getResult();
 						break;
 					}
-					root.thenStart(new Task.Cpu<Void, NoException>("Parsing XML root element", stream.getPriority()) {
-						@Override
-						public Void run() {
-							doc.root = root.getResult();
-							create(doc, stream, result, null);
-							return null;
-						}
+					root.thenStart("Parsing XML root element", stream.getPriority(), () -> {
+						doc.root = root.getResult();
+						create(doc, stream, result, null);
+						return null;
 					}, result);
 					return;
 				default: break;
 				}
 				continue;
 			}
-			next.thenStart(new Task.Cpu<Void, NoException>("Parsing XML", stream.getPriority()) {
-				@Override
-				public Void run() {
-					create(doc, stream, result, next);
-					return null;
-				}
+			next.thenStart("Parsing XML", stream.getPriority(), () -> {
+				create(doc, stream, result, next);
+				return null;
 			}, true);
 			return;
 		} while (true);

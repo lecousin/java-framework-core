@@ -7,10 +7,10 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
 
@@ -44,12 +44,12 @@ public class WritableCharacterStream extends ConcurrentCloseable<IOException> im
 	}
 	
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return output.getPriority();
 	}
 	
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		output.setPriority(priority);
 	}
 	
@@ -73,20 +73,17 @@ public class WritableCharacterStream extends ConcurrentCloseable<IOException> im
 	@Override
 	public IAsync<IOException> writeAsync(char[] c, int offset, int length) {
 		Async<IOException> result = new Async<>();
-		operation(new Task.Cpu<Void, NoException>("Encoding characters", getPriority()) {
-			@Override
-			public Void run() {
-				CharBuffer cb = CharBuffer.wrap(c, offset, length);
-				ByteBuffer bb;
-				try { bb = encoder.encode(cb); }
-				catch (CharacterCodingException e) {
-					result.error(e);
-					return null;
-				}
-				output.writeAsync(bb).onDone(result);
+		operation(Task.cpu("Encoding characters", getPriority(), () -> {
+			CharBuffer cb = CharBuffer.wrap(c, offset, length);
+			ByteBuffer bb;
+			try { bb = encoder.encode(cb); }
+			catch (CharacterCodingException e) {
+				result.error(e);
 				return null;
 			}
-		}).start();
+			output.writeAsync(bb).onDone(result);
+			return null;
+		})).start();
 		return result;
 	}
 	

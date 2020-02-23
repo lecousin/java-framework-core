@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestWritableBuffered;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -32,7 +32,7 @@ public class TestSimpleBufferedWritableBuffered extends TestWritableBuffered {
 	@Override
 	protected IO.Writable.Buffered createWritableBuffered() throws IOException {
 		file = createFile();
-		FileIO.WriteOnly fileIO = new FileIO.WriteOnly(file, Task.PRIORITY_NORMAL);
+		FileIO.WriteOnly fileIO = new FileIO.WriteOnly(file, Task.Priority.NORMAL);
 		return new SimpleBufferedWritable(fileIO, 4096);
 	}
 

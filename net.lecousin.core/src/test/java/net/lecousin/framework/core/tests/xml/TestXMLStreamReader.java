@@ -4,7 +4,7 @@ import java.io.EOFException;
 import java.io.IOException;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIOError;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
@@ -20,7 +20,7 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 
 	@Override
 	protected XMLStreamReader parse(String resource) {
-		return new XMLStreamReader(LCCore.getApplication().getResource(resource, Task.PRIORITY_NORMAL), 512, 4);
+		return new XMLStreamReader(LCCore.getApplication().getResource(resource, Task.Priority.NORMAL), 512, 4);
 	}
 	
 	@Override
@@ -56,7 +56,7 @@ public class TestXMLStreamReader extends TestXMLStreamEventsSync {
 	
 	@Test
 	public void testStart() throws Exception {
-		IO.Readable io = LCCore.getApplication().getResource("xml-test-suite/mine/001.xml", Task.PRIORITY_NORMAL);
+		IO.Readable io = LCCore.getApplication().getResource("xml-test-suite/mine/001.xml", Task.Priority.NORMAL);
 		SimpleBufferedReadable bio = new SimpleBufferedReadable(io, 1024);
 		XMLStreamReader.start(bio, 1024, 4, true).blockResult(0);
 		bio.close();

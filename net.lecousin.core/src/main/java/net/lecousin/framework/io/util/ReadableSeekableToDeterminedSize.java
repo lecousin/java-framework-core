@@ -4,10 +4,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.CloseableListenable;
 import net.lecousin.framework.util.Pair;
@@ -85,12 +86,12 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	}
 
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return io.getPriority();
 	}
 
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		io.setPriority(priority);
 	}
 
@@ -175,14 +176,8 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 
 	@Override
 	public AsyncSupplier<Long, IOException> getSizeAsync() {
-		Task<Long,IOException> task = new Task<Long,IOException>(io.getTaskManager(), io.getSourceDescription(), io.getPriority()) {
-			@Override
-			public Long run() throws IOException {
-				return Long.valueOf(getSizeSync());
-			}
-		};
-		task.start();
-		return task.getOutput();
+		return new Task<>(io.getTaskManager(), io.getSourceDescription(), io.getPriority(),
+			() -> Long.valueOf(getSizeSync()), null).start().getOutput();
 	}
 	
 	

@@ -9,8 +9,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.Executable;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -59,7 +61,7 @@ public class TurnArray<T> implements Deque<T> {
 	/** Index of next element to insert, or -1 if the array is full. */
 	private int end = 0;
 	private int minSize;
-	private DecreaseTask decreaseTask = null;
+	private Task<Void, NoException> decreaseTask = null;
 	
 	public synchronized boolean isFull() {
 		return end == -1;
@@ -332,19 +334,13 @@ public class TurnArray<T> implements Deque<T> {
 		if (decreaseTask != null) return;
 		if (!Threading.isInitialized()) return;
 		if (array.length > minSize && size() < array.length - (array.length >> 1))
-			decreaseTask = new DecreaseTask();
+			decreaseTask = Task.cpu("Decrease TurnArray size", Priority.LOW, new DecreaseSize()).start();
 	}
 	
-	private class DecreaseTask extends Task.Cpu<Void,NoException> {
-		public DecreaseTask() {
-			super("Decrease Queue_ArrayRound size", Task.PRIORITY_LOW);
-			super.start();
-		}
-		
+	private class DecreaseSize implements Executable<Void, NoException> {
 		@Override
-		public Void run() {
+		public Void execute() {
 			synchronized (TurnArray.this) {
-				if (decreaseTask != this) return null;
 				decreaseTask = null;
 				decrease();
 			}

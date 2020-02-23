@@ -3,8 +3,9 @@ package net.lecousin.framework.core.test.io;
 import java.io.File;
 import java.io.IOException;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.text.ICharacterStream;
 
@@ -31,9 +32,9 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		super.basicTests(io);
 		ICharacterStream.Readable stream = openStream(openFile());
 		stream.getEncoding();
-		byte p = io.getPriority();
-		io.setPriority(Task.PRIORITY_LOW);
-		Assert.assertEquals(Task.PRIORITY_LOW, io.getPriority());
+		Priority p = io.getPriority();
+		io.setPriority(Task.Priority.LOW);
+		Assert.assertEquals(Task.Priority.LOW, io.getPriority());
 		io.setPriority(p);
 		Assert.assertEquals(p, io.getPriority());
 		stream.close();
@@ -42,7 +43,7 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 	@Test
 	public void basicStreamTests() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());
-		s.setPriority(Task.PRIORITY_IMPORTANT);
+		s.setPriority(Task.Priority.IMPORTANT);
 		s.close();
 	}
 
@@ -76,7 +77,6 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		s.close();
 	}
 	
-	@SuppressWarnings({ "resource" })
 	@Test
 	public void testBufferByBufferFully() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());
@@ -95,7 +95,6 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		s.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testBufferByBuffer() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());
@@ -118,7 +117,6 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		s.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testBufferByBufferAsync() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());
@@ -142,7 +140,6 @@ public abstract class TestCharacterStreamReadable extends TestIO.UsingGeneratedT
 		s.close();
 	}
 	
-	@SuppressWarnings("resource")
 	@Test
 	public void testBufferByBufferFullyAsync() throws Exception {
 		ICharacterStream.Readable s = openStream(openFile());

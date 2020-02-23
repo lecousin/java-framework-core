@@ -1,9 +1,10 @@
 package net.lecousin.framework.core.tests.concurrent.util;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.concurrent.util.AsyncProducer;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -14,22 +15,22 @@ public class TestProducerToConsumer extends LCCoreAbstractTest {
 
 	@Test
 	public void testIntegerProductionAndIntegerConsumption() throws Exception {
-		new IntegerProducer(100).toConsumer(new IntegerConsumer(100), "test production of integers", Task.PRIORITY_NORMAL).blockThrow(0);
+		new IntegerProducer(100).toConsumer(new IntegerConsumer(100), "test production of integers", Task.Priority.NORMAL).blockThrow(0);
 	}
 
 	@Test
 	public void testShortProductionAndIntegerConsumption() throws Exception {
-		new ShortProducer(100).toConsumer(s -> new AsyncSupplier<>(Integer.valueOf(s.intValue()), null), new IntegerConsumer(100), "test production of short and consumprtion of int", Task.PRIORITY_NORMAL).blockThrow(0);
+		new ShortProducer(100).toConsumer(s -> new AsyncSupplier<>(Integer.valueOf(s.intValue()), null), new IntegerConsumer(100), "test production of short and consumprtion of int", Task.Priority.NORMAL).blockThrow(0);
 	}
 	
 	@Test
 	public void testEmptyProducer() throws Exception {
-		new AsyncProducer.Empty<Integer, Exception>().toConsumer(new IntegerConsumer(0), "test empty production of integers", Task.PRIORITY_NORMAL).blockThrow(0);
+		new AsyncProducer.Empty<Integer, Exception>().toConsumer(new IntegerConsumer(0), "test empty production of integers", Task.Priority.NORMAL).blockThrow(0);
 	}
 	
 	@Test
 	public void testSingleIntegerProducer() throws Exception {
-		new AsyncProducer.SingleData<Integer, Exception>(Integer.valueOf(0)).toConsumer(new IntegerConsumer(1), "test production of 1 integer", Task.PRIORITY_NORMAL).blockThrow(0);
+		new AsyncProducer.SingleData<Integer, Exception>(Integer.valueOf(0)).toConsumer(new IntegerConsumer(1), "test production of 1 integer", Task.Priority.NORMAL).blockThrow(0);
 	}
 	
 	private static class IntegerProducer implements AsyncProducer<Integer, Exception> {
@@ -43,9 +44,9 @@ public class TestProducerToConsumer extends LCCoreAbstractTest {
 		
 		@Override
 		public AsyncSupplier<Integer, Exception> produce() {
-			return new Task.Cpu.FromSupplierThrows<Integer, Exception>("produce an integer", Task.PRIORITY_NORMAL,
+			return Task.cpu("produce an integer", Task.Priority.NORMAL, new Executable.FromSupplierThrows<>(
 				() -> counter == max ? null : Integer.valueOf(counter++)
-			).start().getOutput();
+			)).start().getOutput();
 		}
 		
 	}
@@ -61,9 +62,9 @@ public class TestProducerToConsumer extends LCCoreAbstractTest {
 		
 		@Override
 		public AsyncSupplier<Short, Exception> produce() {
-			return new Task.Cpu.FromSupplierThrows<Short, Exception>("produce a short", Task.PRIORITY_NORMAL,
+			return Task.cpu("produce a short", Task.Priority.NORMAL, new Executable.FromSupplierThrows<>(
 				() -> counter == max ? null : Short.valueOf(counter++)
-			).start().getOutput();
+			)).start().getOutput();
 		}
 		
 	}

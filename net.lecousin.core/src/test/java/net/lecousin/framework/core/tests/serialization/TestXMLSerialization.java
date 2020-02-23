@@ -14,9 +14,9 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.core.test.serialization.TestSerialization;
 import net.lecousin.framework.io.FileIO;
@@ -134,10 +134,10 @@ public class TestXMLSerialization extends TestSerialization {
 		Assume.assumeTrue(efficient);
 		XMLSerializer ser = new XMLSerializer(null, "boolean", null);
 		File file = TemporaryFiles.get().createFileSync("test", "xml");
-		FileIO.WriteOnly out = new FileIO.WriteOnly(file, Task.PRIORITY_NORMAL);
+		FileIO.WriteOnly out = new FileIO.WriteOnly(file, Task.Priority.NORMAL);
 		ser.serialize(Boolean.TRUE, new TypeDefinition(boolean.class), out, new ArrayList<>(0)).blockThrow(0);
 		out.close();
-		Assert.assertTrue(XMLDeserializer.deserializeFile(file, boolean.class, new ArrayList<>(0), Task.PRIORITY_NORMAL).blockResult(0).booleanValue());
+		Assert.assertTrue(XMLDeserializer.deserializeFile(file, boolean.class, new ArrayList<>(0), Task.Priority.NORMAL).blockResult(0).booleanValue());
 	}
 	
 	@Test

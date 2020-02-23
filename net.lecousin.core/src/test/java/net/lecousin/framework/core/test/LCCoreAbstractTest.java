@@ -6,7 +6,10 @@ import java.util.Iterator;
 import java.util.List;
 
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.Executable;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
+import net.lecousin.framework.exception.NoException;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -66,6 +69,14 @@ public abstract class LCCoreAbstractTest {
 			}
 		}
 		return list;
+	}
+	
+	public static Task<Void, NoException> testTask(Runnable run) {
+		return Task.cpu("Test", Task.Priority.NORMAL, new Executable.FromRunnable(run));
+	}
+	
+	public static <T, E extends Exception> Task<T, E> testTask(Executable<T, E> exec) {
+		return Task.cpu("Test", Task.Priority.NORMAL, exec);
 	}
 	
 }

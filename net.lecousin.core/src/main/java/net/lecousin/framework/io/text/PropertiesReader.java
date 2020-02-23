@@ -1,5 +1,6 @@
 package net.lecousin.framework.io.text;
 
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.text.CharArrayStringBuffer;
 
@@ -12,14 +13,14 @@ public abstract class PropertiesReader<T> extends FullReadLines<T> {
 	public PropertiesReader(
 		char commentChar, String description,
 		ICharacterStream.Readable.Buffered stream,
-		byte priority, IO.OperationType closeStreamAtEnd
+		Priority priority, IO.OperationType closeStreamAtEnd
 	) {
 		super(description, stream, priority, closeStreamAtEnd);
 		this.commentChar = commentChar;
 	}
 	
 	/** Constructor with default comment character #. */
-	public PropertiesReader(String description, ICharacterStream.Readable.Buffered stream, byte priority, IO.OperationType closeStreamAtEnd) {
+	public PropertiesReader(String description, ICharacterStream.Readable.Buffered stream, Priority priority, IO.OperationType closeStreamAtEnd) {
 		this('#', description, stream, priority, closeStreamAtEnd);
 	}
 	

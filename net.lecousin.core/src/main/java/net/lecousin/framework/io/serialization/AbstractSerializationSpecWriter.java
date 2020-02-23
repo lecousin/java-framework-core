@@ -6,10 +6,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.serialization.SerializationClass.Attribute;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
@@ -24,41 +23,27 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 /** Generate serialization specification. */
 public abstract class AbstractSerializationSpecWriter implements SerializationSpecWriter {
 
-	protected byte priority;
+	protected Priority priority;
+	protected final String taskDescription = "Write specification using " + getClass().getName();
 	
 	protected abstract IAsync<SerializationException> initializeSpecWriter(IO.Writable output);
 	
 	protected abstract IAsync<SerializationException> finalizeSpecWriter();
-	
-	/** Utility to create tasks. */
-	protected class SpecTask extends Task.Cpu<Void, NoException> {
-		public SpecTask(Runnable r) {
-			super("Write Specification", priority);
-			this.r = r;
-		}
-		
-		private Runnable r;
-		
-		@Override
-		public Void run() {
-			r.run();
-			return null;
-		}
-	}
 	
 	@Override
 	public IAsync<SerializationException> writeSpecification(Class<?> type, IO.Writable output, List<SerializationRule> rules) {
 		priority = output.getPriority();
 		IAsync<SerializationException> init = initializeSpecWriter(output);
 		Async<SerializationException> result = new Async<>();
-		init.thenStart(new SpecTask(() -> {
+		init.thenStart(taskDescription, priority, () -> {
 			IAsync<SerializationException> sp;
 			if (type != null)
 				sp = specifyValue(null, new TypeDefinition(type), rules);
 			else
 				sp = specifyAnyValue(null);
 			sp.onDone(() -> finalizeSpecWriter().onDone(result), result);
-		}), result);
+			return null;
+		}, result);
 		return result;
 	}
 	
@@ -258,7 +243,7 @@ public abstract class AbstractSerializationSpecWriter implements SerializationSp
 			else specifyTypeAttribute(context, attributes, index + 1, rules, sp);
 			return;
 		}
-		s.thenStart(new SpecTask(() -> specifyTypeAttribute(context, attributes, index + 1, rules, sp)), sp);
+		s.thenStart(taskDescription, priority, () -> specifyTypeAttribute(context, attributes, index + 1, rules, sp), sp);
 	}
 	
 	protected abstract IAsync<SerializationException> specifyTypeAttribute(

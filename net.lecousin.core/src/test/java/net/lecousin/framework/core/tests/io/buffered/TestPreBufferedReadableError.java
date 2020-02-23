@@ -1,6 +1,6 @@
 package net.lecousin.framework.core.tests.io.buffered;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIOError;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.PreBufferedReadable;
@@ -9,12 +9,12 @@ public class TestPreBufferedReadableError extends TestIOError {
 
 	@Override
 	protected IO.Readable getReadable(IO.Readable io) throws Exception {
-		return new PreBufferedReadable(io, 512, Task.PRIORITY_NORMAL, 512, Task.PRIORITY_NORMAL, 10);
+		return new PreBufferedReadable(io, 512, Task.Priority.NORMAL, 512, Task.Priority.NORMAL, 10);
 	}
 
 	@Override
 	protected IO.Readable.Buffered getReadableBuffered(IO.Readable io) throws Exception {
-		return new PreBufferedReadable(io, 512, Task.PRIORITY_NORMAL, 512, Task.PRIORITY_NORMAL, 10);
+		return new PreBufferedReadable(io, 512, Task.Priority.NORMAL, 512, Task.Priority.NORMAL, 10);
 	}
 
 	@Override

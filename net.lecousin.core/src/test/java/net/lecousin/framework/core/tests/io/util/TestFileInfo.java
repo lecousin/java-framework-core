@@ -2,12 +2,13 @@ package net.lecousin.framework.core.tests.io.util;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 
 import net.lecousin.framework.adapter.AdapterRegistry;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.tasks.drives.GetFileInfoTask;
+import net.lecousin.framework.concurrent.tasks.drives.GetFileInfo;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.util.FileInfo;
@@ -24,7 +25,7 @@ public class TestFileInfo extends LCCoreAbstractTest {
 		FileOutputStream out = new FileOutputStream(f);
 		out.write(new byte[] { 1, 2, 3 });
 		out.close();
-		GetFileInfoTask task = new GetFileInfoTask(f, Task.PRIORITY_NORMAL);
+		Task<FileInfo, IOException> task = GetFileInfo.task(f, Task.Priority.NORMAL);
 		FileInfo info = task.start().getOutput().blockResult(0);
 		Assert.assertFalse(info.isDirectory);
 		Assert.assertEquals(3, info.size);
@@ -38,7 +39,7 @@ public class TestFileInfo extends LCCoreAbstractTest {
 		Assert.assertEquals(2, buf[1]);
 		Assert.assertEquals(3, buf[2]);
 		in.close();
-		GetFileInfoTask task2 = new GetFileInfoTask(f, Task.PRIORITY_NORMAL);
+		Task<FileInfo, IOException> task2 = GetFileInfo.task(f, Task.Priority.NORMAL);
 		FileInfo info2 = task2.start().getOutput().blockResult(0);
 		Assert.assertTrue(info.equals(info2));
 		Assert.assertEquals(info.hashCode(), info2.hashCode());

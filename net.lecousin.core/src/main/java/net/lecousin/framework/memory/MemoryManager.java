@@ -12,7 +12,8 @@ import java.util.List;
 import javax.management.NotificationEmitter;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.Logger.Level;
@@ -37,12 +38,12 @@ public class MemoryManager {
 			logMemory(Level.DEBUG);
 
 		// after 15 minutes the application is running, every 5 minutes, ask to clean expired cached data
-		Task<Void,NoException> cleanExpiredData = new Task.Cpu.FromRunnable(
-			"Free memory for expired cached data", Task.PRIORITY_BACKGROUND, () -> {
+		Task<Void,NoException> cleanExpiredData = Task.cpu("Free memory for expired cached data", Priority.BACKGROUND, () -> {
 			if (logger.debug()) logger.debug("Free expired cached data");
 			freeMemory(FreeMemoryLevel.EXPIRED_ONLY);
 			if (logger.debug())
 				logManageableContent();
+			return null;
 		});
 		cleanExpiredData.executeEvery(5L * 60 * 1000, 15L * 60 * 1000);
 		cleanExpiredData.start();
@@ -73,7 +74,7 @@ public class MemoryManager {
 		}
 		
 		// check memory
-		Task<Void,NoException> checkMemory = new Task.Cpu.FromRunnable("Check memory", Task.PRIORITY_BACKGROUND, MemoryManager::checkMemory);
+		Task<Void,NoException> checkMemory = Task.cpu("Check memory", Priority.BACKGROUND, MemoryManager::checkMemory);
 		checkMemory.executeEvery(1L * 60 * 1000, 2L * 60 * 1000);
 		checkMemory.start();
 
@@ -148,7 +149,7 @@ public class MemoryManager {
 		}
 	}
 	
-	private static void checkMemory() {
+	private static Void checkMemory() {
 		if (logger.debug())
 			logManageableContent();
 		if (System.currentTimeMillis() - lastGC[0] > 120000) {
@@ -183,6 +184,7 @@ public class MemoryManager {
 					logMemory(Level.DEBUG);
 			}*/
 		}
+		return null;
 	}
 	
 	private static void freeMemoryBasedOnLastGarbageTime() {
@@ -209,13 +211,10 @@ public class MemoryManager {
 	
 	/** Log memory usage to the console at regular interval. */
 	public static void logMemory(long interval, Level level) {
-		Task<Void,NoException> task = new Task.Cpu<Void,NoException>("Logging memory", Task.PRIORITY_BACKGROUND) {
-			@Override
-			public Void run() {
-				logMemory(level);
-				return null;
-			}
-		};
+		Task<Void,NoException> task = Task.cpu("Logging memory", Priority.BACKGROUND, () -> {
+			logMemory(level);
+			return null;
+		});
 		task.executeEvery(interval, interval);
 		task.start();
 	}

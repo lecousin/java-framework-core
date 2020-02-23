@@ -2,9 +2,9 @@ package net.lecousin.framework.progress;
 
 import java.util.List;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.event.SimpleListenable;
 import net.lecousin.framework.mutable.MutableLong;
 

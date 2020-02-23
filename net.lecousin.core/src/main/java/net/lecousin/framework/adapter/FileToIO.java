@@ -2,7 +2,7 @@ package net.lecousin.framework.adapter;
 
 import java.io.File;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 
@@ -28,7 +28,7 @@ public final class FileToIO {
 		
 		@Override
 		public IO.Readable.Seekable adapt(File input) {
-			return new FileIO.ReadOnly(input, Task.PRIORITY_NORMAL);
+			return new FileIO.ReadOnly(input, Priority.NORMAL);
 		}
 	}
 	
@@ -47,7 +47,7 @@ public final class FileToIO {
 		
 		@Override
 		public IO.Writable.Seekable adapt(File input) {
-			return new FileIO.ReadWrite(input, Task.PRIORITY_NORMAL);
+			return new FileIO.ReadWrite(input, Priority.NORMAL);
 		}
 	}
 	

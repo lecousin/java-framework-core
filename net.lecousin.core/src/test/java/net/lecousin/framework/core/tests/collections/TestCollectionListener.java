@@ -9,8 +9,8 @@ import org.junit.Test;
 
 import net.lecousin.framework.collections.CollectionListener;
 import net.lecousin.framework.collections.CollectionListener.Keep;
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.mutable.Mutable;
 
@@ -18,7 +18,7 @@ public class TestCollectionListener extends LCCoreAbstractTest {
 
 	@Test
 	public void testKeep() {
-		CollectionListener.Keep<Integer> keep = new Keep<>(new ArrayList<>(), Task.PRIORITY_NORMAL);
+		CollectionListener.Keep<Integer> keep = new Keep<>(new ArrayList<>(), Task.Priority.NORMAL);
 		ArrayList<Integer> col = new ArrayList<>();
 		ArrayList<Integer> changed = new ArrayList<>();
 		Mutable<Async<Exception>> s = new Mutable<>(new Async<>());

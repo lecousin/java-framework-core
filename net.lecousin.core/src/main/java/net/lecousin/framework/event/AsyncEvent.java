@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.exception.NoException;
 
 /**
@@ -15,8 +15,8 @@ import net.lecousin.framework.exception.NoException;
 public class AsyncEvent implements SimpleListenable {
 
 	private LinkedList<Runnable> listeners = new LinkedList<>();
-	private Fire next = null;
-	private Fire current = null;
+	private Task<Void, NoException> next = null;
+	private Task<Void, NoException> current = null;
 	
 	@Override
 	public void addListener(Runnable listener) {
@@ -40,33 +40,27 @@ public class AsyncEvent implements SimpleListenable {
 	/** Fire the event, and call the listeners in a separate task. */
 	public void fire() {
 		synchronized (listeners) {
-			if (next == null) next = new Fire();
-		}
-	}
-	
-	private class Fire extends Task.Cpu<Void, NoException> {
-		private Fire() {
-			super("Fire AsyncEvent listeners", Task.PRIORITY_NORMAL);
-			if (current != null)
-				current.getOutput().thenStart(this, true);
-			else
-				start();
-		}
-		
-		@Override
-		public Void run() {
-			ArrayList<Runnable> list;
-			synchronized (listeners) {
-				current = this;
-				next = null;
-				list = new ArrayList<>(listeners);
+			if (next == null) {
+				next = Task.cpu("Fire AsyncEvent listeners", () -> {
+					ArrayList<Runnable> list;
+					synchronized (listeners) {
+						current = next;
+						next = null;
+						list = new ArrayList<>(listeners);
+					}
+					for (Runnable listener : list)
+						try { listener.run(); }
+						catch (Exception t) {
+							LCCore.getApplication().getDefaultLogger()
+							.error("Listener of AsyncEvent thrown an exception", t);
+						}
+					return null;
+				});
+				if (current != null)
+					current.getOutput().thenStart(next, true);
+				else
+					next.start();
 			}
-			for (Runnable listener : list)
-				try { listener.run(); }
-				catch (Exception t) {
-					LCCore.getApplication().getDefaultLogger().error("Listener of AsyncEvent thrown an exception", t);
-				}
-			return null;
 		}
 	}
 	

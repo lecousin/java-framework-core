@@ -8,6 +8,7 @@ import java.util.function.Predicate;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.IO;
 
 /** Allows to load libraries and get information about loaded ones. */
@@ -23,7 +24,7 @@ public interface LibrariesManager {
 	IAsync<LibraryManagementException> onLibrariesLoaded();
 	
 	/** Open a resource or return null if it does not exist. */
-	IO.Readable getResource(String path, byte priority);
+	IO.Readable getResource(String path, Priority priority);
 
 	/** Return the list of libraries loaded. Each File may be a file in case of a JAR, or a directory. */
 	List<File> getLibrariesLocations();

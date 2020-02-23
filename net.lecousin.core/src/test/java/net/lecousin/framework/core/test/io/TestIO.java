@@ -8,8 +8,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -99,7 +100,7 @@ public abstract class TestIO extends LCCoreAbstractTest {
 		}
 		
 		protected FileIO.ReadOnly openFile() {
-			return new FileIO.ReadOnly(testFile, Task.PRIORITY_IMPORTANT);
+			return new FileIO.ReadOnly(testFile, Task.Priority.IMPORTANT);
 		}
 		
 		protected long getFileSize() {
@@ -160,9 +161,9 @@ public abstract class TestIO extends LCCoreAbstractTest {
 	protected void basicTests(IO io) throws Exception {
 		// priority
 		if (canSetPriority()) {
-			byte p = io.getPriority();
-			io.setPriority(Task.PRIORITY_LOW);
-			Assert.assertEquals(Task.PRIORITY_LOW, io.getPriority());
+			Priority p = io.getPriority();
+			io.setPriority(Task.Priority.LOW);
+			Assert.assertEquals(Task.Priority.LOW, io.getPriority());
 			io.setPriority(p);
 			Assert.assertEquals(p, io.getPriority());
 		}

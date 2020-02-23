@@ -7,11 +7,11 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
 
@@ -61,12 +61,12 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable<IOExcep
 	}
 	
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return output.getPriority();
 	}
 	
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		output.setPriority(priority);
 	}
 	
@@ -83,30 +83,27 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable<IOExcep
 	private Async<IOException> flushing = null;
 
 	private void encodeAndWrite() {
-		new Task.Cpu<Void,NoException>("Encoding characters", output.getPriority()) {
-			@Override
-			public Void run() {
-				encodedBuffer.clear();
-				CoderResult result = encoder.encode(cb2, encodedBuffer, false);
-				if (result.isError()) {
-					flushing.error(new IOException("Encoding error"));
-					return null;
-				}
-				encodedBuffer.flip();
-				AsyncSupplier<Integer,IOException> writing = output.writeAsync(encodedBuffer);
-				writing.onDone(() -> {
-					if (!writing.isSuccessful())
-						flushing.error(writing.getError());
-					else if (result.isOverflow())
-						encodeAndWrite();
-					else {
-						cb2.clear();
-						flushing.unblock();
-					}
-				});
+		Task.cpu("Encoding characters", output.getPriority(), () -> {
+			encodedBuffer.clear();
+			CoderResult result = encoder.encode(cb2, encodedBuffer, false);
+			if (result.isError()) {
+				flushing.error(new IOException("Encoding error"));
 				return null;
 			}
-		}.start();
+			encodedBuffer.flip();
+			AsyncSupplier<Integer,IOException> writing = output.writeAsync(encodedBuffer);
+			writing.onDone(() -> {
+				if (!writing.isSuccessful())
+					flushing.error(writing.getError());
+				else if (result.isOverflow())
+					encodeAndWrite();
+				else {
+					cb2.clear();
+					flushing.unblock();
+				}
+			});
+			return null;
+		}).start();
 		operation(flushing);
 	}
 	
@@ -277,8 +274,7 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable<IOExcep
 				result.unblock();
 			return;
 		}
-		flushBufferAsync().thenStart(new Task.Cpu.FromRunnable(
-			"BufferedWritableCharacterStream.writeAsync", output.getPriority(),
-			() -> writeAsync(c, off + l, len - l, result)), result);
+		flushBufferAsync().thenStart("BufferedWritableCharacterStream.writeAsync", output.getPriority(),
+			() -> writeAsync(c, off + l, len - l, result), result);
 	}
 }

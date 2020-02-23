@@ -5,6 +5,7 @@ import java.io.IOException;
 
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.text.CharArrayStringBuffer;
 import net.lecousin.framework.util.ConcurrentCloseable;
 
@@ -59,7 +60,7 @@ public class TextLineStream extends ConcurrentCloseable<IOException> {
 	}
 
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return input.getPriority();
 	}
 }

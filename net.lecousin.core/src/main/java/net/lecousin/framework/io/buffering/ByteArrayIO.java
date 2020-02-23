@@ -6,12 +6,13 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.AbstractIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -31,14 +32,14 @@ public class ByteArrayIO extends AbstractIO
 	
 	/** Constructor. */
 	public ByteArrayIO(int initialSize, String description) {
-		super(description, Task.PRIORITY_NORMAL);
+		super(description, Task.Priority.NORMAL);
 		array = new byte[initialSize];
 		pos = size = 0;
 	}
 	
 	/** Constructor. */
 	public ByteArrayIO(byte[] data, String description) {
-		super(description, Task.PRIORITY_NORMAL);
+		super(description, Task.Priority.NORMAL);
 		array = data;
 		pos = 0;
 		size = data.length;
@@ -46,7 +47,7 @@ public class ByteArrayIO extends AbstractIO
 	
 	/** Constructor. */
 	public ByteArrayIO(byte[] data, int bytesUsed, String description) {
-		super(description, Task.PRIORITY_NORMAL);
+		super(description, Task.Priority.NORMAL);
 		array = data;
 		pos = 0;
 		size = bytesUsed;
@@ -157,26 +158,14 @@ public class ByteArrayIO extends AbstractIO
 
 	@Override
 	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		Task<Integer, IOException> task = new Task.Cpu<Integer, IOException>("readAsync on ByteArrayIO", priority, ondone) {
-			@Override
-			public Integer run() {
-				return Integer.valueOf(readFullySync(buffer));
-			}
-		};
-		task.start();
-		return operation(task.getOutput());
+		return operation(Task.cpu("readAsync on ByteArrayIO", priority,
+			() -> Integer.valueOf(readFullySync(buffer)), ondone).start()).getOutput();
 	}
 	
 	@Override
 	public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		Task<Integer, IOException> task = new Task.Cpu<Integer, IOException>("readAsync on ByteArrayIO", priority, ondone) {
-			@Override
-			public Integer run() {
-				return Integer.valueOf(readFullySync(pos, buffer));
-			}
-		};
-		task.start();
-		return operation(task.getOutput());
+		return operation(Task.cpu("readAsync on ByteArrayIO", priority,
+			() -> Integer.valueOf(readFullySync(pos, buffer)), ondone).start()).getOutput();
 	}
 	
 	@Override
@@ -192,11 +181,8 @@ public class ByteArrayIO extends AbstractIO
 	@Override
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		if (pos == size) return IOUtil.success(null, ondone);
-		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu.FromSupplierThrows<>(
-			"Read remaining bytes from ByteArrayIO", getPriority(), ondone, this::readNextBuffer
-		);
-		operation(task.start());
-		return operation(task.getOutput());
+		return operation(Task.cpu("Read remaining bytes from ByteArrayIO", getPriority(),
+			new Executable.FromSupplierThrows<>(this::readNextBuffer), ondone).start()).getOutput();
 	}
 	
 	@Override
@@ -270,26 +256,14 @@ public class ByteArrayIO extends AbstractIO
 	
 	@Override
 	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		Task<Integer, IOException> task = new Task.Cpu<Integer, IOException>("writeAsync on ByteArrayIO", priority, ondone) {
-			@Override
-			public Integer run() {
-				return Integer.valueOf(writeSync(buffer));
-			}
-		};
-		task.start();
-		return operation(task.getOutput());
+		return operation(Task.cpu("writeAsync on ByteArrayIO", priority,
+			() -> Integer.valueOf(writeSync(buffer)), ondone).start()).getOutput();
 	}
 	
 	@Override
 	public AsyncSupplier<Integer, IOException> writeAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		Task<Integer, IOException> task = new Task.Cpu<Integer, IOException>("writeAsync on ByteArrayIO", priority, ondone) {
-			@Override
-			public Integer run() {
-				return Integer.valueOf(writeSync(pos, buffer));
-			}
-		};
-		task.start();
-		return operation(task.getOutput());
+		return operation(Task.cpu("writeAsync on ByteArrayIO", priority,
+			() -> Integer.valueOf(writeSync(pos, buffer)), ondone).start()).getOutput();
 	}
 	
 	@Override
@@ -308,16 +282,15 @@ public class ByteArrayIO extends AbstractIO
 	}
 	
 	@Override
-	public AsyncSupplier<Void, IOException> setSizeAsync(long newSize) {
-		Task<Void, IOException> task = new Task.Cpu<Void, IOException>("setSizeAsync on ByteArrayIO", priority) {
+	@SuppressWarnings("squid:S1604") // cannot use lambda
+	public IAsync<IOException> setSizeAsync(long newSize) {
+		return operation(Task.cpu("setSizeAsync on ByteArrayIO", priority, new Executable<Void, IOException>() {
 			@Override
-			public Void run() {
+			public Void execute() {
 				setSizeSync(newSize);
 				return null;
 			}
-		};
-		task.start();
-		return operation(task.getOutput());
+		}).start()).getOutput();
 	}
 	
 	@Override

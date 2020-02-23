@@ -6,14 +6,14 @@ import java.nio.channels.ClosedChannelException;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -35,33 +35,29 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 
 	/** Constructor. */
 	public PreBufferedReadable(
-		IO.Readable src, int firstBuffer, byte firstBufferPriority, int nextBuffer, byte nextBufferPriority, int maxNbNextBuffersReady
+		IO.Readable src, int firstBuffer, Priority firstBufferPriority, int nextBuffer, Priority nextBufferPriority, int maxNbNextBuffersReady
 	) {
 		this.src = src;
 		this.priority = firstBufferPriority;
 		if (src instanceof IO.KnownSize) {
 			AsyncSupplier<Long,IOException> getSize = ((IO.KnownSize)src).getSizeAsync();
-			Task<Void,NoException> start = new Task.Cpu<Void,NoException>(
-				"Start PreBufferedReadable after size is known", firstBufferPriority
-			) {
-				@Override
-				public Void run() {
-					if (getSize.hasError()) {
-						PreBufferedReadable.this.error = getSize.getError();
-						synchronized (PreBufferedReadable.this) {
-							if (dataReady != null) {
-								dataReady.unblock();
-								dataReady = null;
-							}
+			Task<Void,NoException> start = Task.cpu(
+				"Start PreBufferedReadable after size is known", firstBufferPriority, () -> {
+				if (getSize.hasError()) {
+					PreBufferedReadable.this.error = getSize.getError();
+					synchronized (PreBufferedReadable.this) {
+						if (dataReady != null) {
+							dataReady.unblock();
+							dataReady = null;
 						}
-						return null;
 					}
-					if (getSize.isCancelled()) return null;
-					size = getSize.getResult().longValue();
-					startWithKnownSize(firstBuffer, firstBufferPriority, nextBuffer, nextBufferPriority, maxNbNextBuffersReady);
 					return null;
 				}
-			};
+				if (getSize.isCancelled()) return null;
+				size = getSize.getResult().longValue();
+				startWithKnownSize(firstBuffer, firstBufferPriority, nextBuffer, nextBufferPriority, maxNbNextBuffersReady);
+				return null;
+			});
 			operation(start).startOn(getSize, true);
 		} else {
 			start(firstBuffer, firstBufferPriority, nextBuffer, nextBufferPriority, maxNbNextBuffersReady);
@@ -70,7 +66,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 	
 	/** Constructor. */
 	public <T extends IO.Readable.Seekable & IO.KnownSize> PreBufferedReadable(
-		T src, int firstBuffer, byte firstBufferPriority, int nextBuffer, byte nextBufferPriority, int maxNbNextBuffersReady
+		T src, int firstBuffer, Priority firstBufferPriority, int nextBuffer, Priority nextBufferPriority, int maxNbNextBuffersReady
 	) throws IOException {
 		this.src = src;
 		this.priority = firstBufferPriority;
@@ -81,7 +77,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 	
 	/** Constructor. */
 	public PreBufferedReadable(
-		IO.Readable src, long size, int firstBuffer, byte firstBufferPriority, int nextBuffer, byte nextBufferPriority,
+		IO.Readable src, long size, int firstBuffer, Priority firstBufferPriority, int nextBuffer, Priority nextBufferPriority,
 		int maxNbNextBuffersReady
 	) {
 		this.src = src;
@@ -92,7 +88,8 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 	
 	/** Constructor. */
 	public <T extends IO.Readable.Seekable & IO.KnownSize> PreBufferedReadable(
-		T src, long size, int firstBuffer, byte firstBufferPriority, int nextBuffer, byte nextBufferPriority, int maxNbNextBuffersReady
+		T src, long size, int firstBuffer, Priority firstBufferPriority,
+		int nextBuffer, Priority nextBufferPriority, int maxNbNextBuffersReady
 	) throws IOException {
 		this.src = src;
 		this.priority = firstBufferPriority;
@@ -102,7 +99,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 	}
 	
 	private void startWithKnownSize(
-		int firstBuffer, byte firstBufferPriority, int nextBuffer, byte nextBufferPriority, int maxNbNextBuffersReady
+		int firstBuffer, Priority firstBufferPriority, int nextBuffer, Priority nextBufferPriority, int maxNbNextBuffersReady
 	) {
 		if (size == read) {
 			synchronized (PreBufferedReadable.this) {
@@ -113,7 +110,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 				}
 			}
 		} else if (size - read <= firstBuffer) {
-			start((int)(size - read), firstBufferPriority, 0, (byte)0, 0);
+			start((int)(size - read), firstBufferPriority, 0, null, 0);
 		} else if (size - read <= firstBuffer + nextBuffer) {
 			start(firstBuffer, firstBufferPriority, (int)(size - read - firstBuffer), nextBufferPriority, 1);
 		} else {
@@ -122,7 +119,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 	}
 	
 	private IO.Readable src;
-	private byte priority;
+	private Priority priority;
 	private IOException error = null;
 	private long size = -1;
 	private long read = 0;
@@ -227,16 +224,16 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 	}
 	
 	@Override
-	public byte getPriority() { return priority; }
+	public Priority getPriority() { return priority; }
 	
 	@Override
-	public void setPriority(byte priority) { this.priority = priority; }
+	public void setPriority(Priority priority) { this.priority = priority; }
 	
 	@SuppressWarnings({
 		"squid:S2259", // false positive: firstNextReadTask cannot be null if nextBuffer > 0
 		"squid:S3776" // complexity
 	})
-	private void start(int firstBuffer, byte firstBufferPriority, int nextBuffer, byte nextBufferPriority, int maxNbNextBuffersReady) {
+	private void start(int firstBuffer, Priority firstBufferPriority, int nextBuffer, Priority nextBufferPriority, int maxNbNextBuffersReady) {
 		if (nextBuffer < 0)
 			throw new IllegalArgumentException("next buffer size must be positive, or zero to disable it, given: " + nextBuffer);
 		if (maxNbNextBuffersReady < 0)
@@ -259,7 +256,20 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 		
 		Task<Void,NoException> firstNextReadTask = null;
 		if (nextBuffer > 0) {
-			firstNextReadTask = new FirstNextReadTask(nextBufferPriority);
+			firstNextReadTask = Task.cpu("First next read of pre-buffered IO " + getSourceDescription(), nextBufferPriority, () -> {
+				Async<NoException> dr = null;
+				synchronized (PreBufferedReadable.this) {
+					nextReadTask = null;
+					if (error == null && !endReached && !stopReading && !isClosing() && !isClosed())
+						nextRead();
+					else if (dataReady != null) {
+						dr = dataReady;
+						dataReady = null;
+					}
+				}
+				if (dr != null) dr.unblock();
+				return null;
+			});
 			nextReadTask = firstNextReadTask.getOutput();
 		}
 		
@@ -320,28 +330,6 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 			operation(firstNextReadTask.getOutput());
 			jpNextRead.start();
 			jpNextRead.thenStart(firstNextReadTask, true);
-		}
-	}
-	
-	private class FirstNextReadTask extends Task.Cpu<Void, NoException> {
-		private FirstNextReadTask(byte nextBufferPriority) {
-			super("First next read of pre-buffered IO " + getSourceDescription(), nextBufferPriority);
-		}
-		
-		@Override
-		public Void run() {
-			Async<NoException> dr = null;
-			synchronized (PreBufferedReadable.this) {
-				nextReadTask = null;
-				if (error == null && !endReached && !stopReading && !isClosing() && !isClosed())
-					nextRead();
-				else if (dataReady != null) {
-					dr = dataReady;
-					dataReady = null;
-				}
-			}
-			if (dr != null) dr.unblock();
-			return null;
 		}
 	}
 	
@@ -407,11 +395,9 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 				sp = dataReady;
 			}
 		}
-		Task<Integer,IOException> t = new Task.Cpu<Integer,IOException>(
-			"Async read on pre-buffered IO " + getSourceDescription(), getPriority(), ondone
-		) {
-			@Override
-			public Integer run() throws IOException, CancelException {
+		Task<Integer,IOException> t = Task.cpu(
+			"Async read on pre-buffered IO " + getSourceDescription(), getPriority(),
+			() -> {
 				synchronized (PreBufferedReadable.this) {
 					if (error != null) throw error;
 					if (buffersReady == null) {
@@ -436,8 +422,7 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 				buffer.put(current);
 				moveNextBuffer(true);
 				return Integer.valueOf(nb);
-			}
-		};
+			}, ondone);
 		operation(t);
 		if (sp == null) {
 			t.start();
@@ -528,16 +513,8 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 		synchronized (this) {
 			if (error != null) return IOUtil.error(error, ondone);
 			if (n <= 0) return IOUtil.success(Long.valueOf(0), ondone);
-			Task<Long,IOException> t = new Task.Cpu<Long,IOException>(
-				"Skipping data from pre-buffered IO " + getSourceDescription(), priority, ondone
-			) {
-				@Override
-				public Long run() throws IOException {
-					return Long.valueOf(skipSync(n));
-				}
-			};
-			operation(t.start());
-			return t.getOutput();
+			return operation(Task.cpu("Skipping data from pre-buffered IO " + getSourceDescription(), priority,
+				() -> Long.valueOf(skipSync(n)), ondone).start()).getOutput();
 		}
 	}
 	
@@ -771,19 +748,12 @@ public class PreBufferedReadable extends ConcurrentCloseable<IOException> implem
 			if (current != null) {
 				if (!current.hasRemaining() && endReached)
 					return IOUtil.success(null, ondone);
-				Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu<ByteBuffer, IOException>(
-					"Read next buffer", getPriority(), ondone
-				) {
-					@Override
-					public ByteBuffer run() {
-						ByteBuffer buf = current.asReadOnlyBuffer();
-						current.position(current.limit());
-						moveNextBuffer(true);
-						return buf;
-					}
-				};
-				operation(task.start());
-				return task.getOutput();
+				return operation(Task.cpu("Read next buffer", getPriority(), () -> {
+					ByteBuffer buf = current.asReadOnlyBuffer();
+					current.position(current.limit());
+					moveNextBuffer(true);
+					return buf;
+				}, ondone).start()).getOutput();
 			}
 			if (endReached) return IOUtil.success(null, ondone);
 			if (isClosing() || isClosed()) return new AsyncSupplier<>(null, null, IO.cancelClosed());

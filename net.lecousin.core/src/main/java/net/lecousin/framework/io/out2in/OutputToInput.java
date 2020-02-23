@@ -5,13 +5,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.LockPoint;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
@@ -50,10 +51,10 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 	}
 	
 	@Override
-	public byte getPriority() { return io != null ? io.getPriority() : Task.PRIORITY_NORMAL; }
+	public Priority getPriority() { return io != null ? io.getPriority() : Priority.NORMAL; }
 	
 	@Override
-	public void setPriority(byte priority) { io.setPriority(priority); }
+	public void setPriority(Priority priority) { io.setPriority(priority); }
 	
 	@Override
 	public String getSourceDescription() {
@@ -113,27 +114,24 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 	@Override
 	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
-		operation(new Task.Cpu<Void, NoException>("OutputToInput.writeAsync", getPriority()) {
-			@Override
-			public Void run() {
-				lockIO.lock();
-				AsyncSupplier<Integer, IOException> write = ((IO.Writable.Seekable)io).writeAsync(writePos, buffer, param -> {
-					if (param.getValue1() != null) {
-						writePos += param.getValue1().intValue();
-						lockIO.unlock();
-						lock.unlock();
-						if (ondone != null) ondone.accept(param);
-					} else {
-						lockIO.unlock();
-						if (ondone != null) ondone.accept(param);
-						lock.error(param.getValue2());
-					}
-				});
-				write.onCancel(lock::cancel);
-				write.forward(result);
-				return null;
-			}
-		}).start();
+		operation(Task.cpu("OutputToInput.writeAsync", getPriority(), () -> {
+			lockIO.lock();
+			AsyncSupplier<Integer, IOException> write = ((IO.Writable.Seekable)io).writeAsync(writePos, buffer, param -> {
+				if (param.getValue1() != null) {
+					writePos += param.getValue1().intValue();
+					lockIO.unlock();
+					lock.unlock();
+					if (ondone != null) ondone.accept(param);
+				} else {
+					lockIO.unlock();
+					if (ondone != null) ondone.accept(param);
+					lock.error(param.getValue2());
+				}
+			});
+			write.onCancel(lock::cancel);
+			write.forward(result);
+			return null;
+		})).start();
 		return operation(result);
 	}
 	
@@ -208,44 +206,33 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			return result;
 		}
 		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
-		new Task.Cpu<Void, NoException>("OutputToInput.readAsync", io.getPriority()) {
-			@Override
-			public Void run() {
-				lockIO.lock();
-				AsyncSupplier<Integer, IOException> read = ((IO.Readable.Seekable)io).readAsync(pos, buffer, ondone);
-				read.onDone(() -> {
-					lockIO.unlock();
-					read.forward(result);
-				});
-				return null;
-			}
-		}.start();
+		Task.cpu("OutputToInput.readAsync", io.getPriority(), () -> {
+			lockIO.lock();
+			AsyncSupplier<Integer, IOException> read = ((IO.Readable.Seekable)io).readAsync(pos, buffer, ondone);
+			read.onDone(() -> {
+				lockIO.unlock();
+				read.forward(result);
+			});
+			return null;
+		}).start();
 		return operation(result);
 	}
 	
-	private <T> Task.Cpu<T, IOException> taskSyncToAsync(
+	private <T> Task<T, IOException> taskSyncToAsync(
 		String description, AsyncSupplier<T, IOException> result, Consumer<Pair<T,IOException>> ondone, SupplierThrows<T, IOException> sync
 	) {
-		return new Task.Cpu<T, IOException>(description, io.getPriority()) {
-			@Override
-			public T run() throws IOException {
-				try {
-					T res = sync.get();
-					if (ondone != null) ondone.accept(new Pair<>(res, null));
-					result.unblockSuccess(res);
-					return res;
-				} catch (IOException e) {
-					if (ondone != null) ondone.accept(new Pair<>(null, e));
-					result.unblockError(e);
-					throw e;
-				}
+		return Task.cpu(description, io.getPriority(), () -> {
+			try {
+				T res = sync.get();
+				if (ondone != null) ondone.accept(new Pair<>(res, null));
+				result.unblockSuccess(res);
+				return res;
+			} catch (IOException e) {
+				if (ondone != null) ondone.accept(new Pair<>(null, e));
+				result.unblockError(e);
+				throw e;
 			}
-			
-			@Override
-			public long getMaxBlockingTimeInNanoBeforeToLog() {
-				return 1000L * 1000000; // 1s
-			}
-		};
+		}).setMaxBlockingTimeInNanoBeforeToLog(1000L * 1000000); // 1s
 	}
 	
 	@Override
@@ -369,7 +356,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 				return IOUtil.success(Long.valueOf(readPos), ondone);
 			}
 			AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
-			lock.thenStart(operation(new Task.Cpu.FromRunnable("OutputToInput.seekAsync", io.getPriority(), () -> {
+			lock.thenStart(operation(Task.cpu("OutputToInput.seekAsync", io.getPriority(), () -> {
 				try {
 					Long nb = Long.valueOf(seekSync(type, move));
 					if (ondone != null) ondone.accept(new Pair<>(nb, null));
@@ -378,6 +365,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 					if (ondone != null) ondone.accept(new Pair<>(null, e));
 					result.unblockError(e);
 				}
+				return null;
 			})), true);
 			return result;
 		default:

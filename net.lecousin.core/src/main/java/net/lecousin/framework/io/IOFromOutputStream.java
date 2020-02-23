@@ -5,10 +5,11 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.util.Pair;
 
 /**
@@ -17,7 +18,7 @@ import net.lecousin.framework.util.Pair;
 public class IOFromOutputStream extends AbstractIO implements IO.Writable {
 
 	/** Constructor. */
-	public IOFromOutputStream(OutputStream stream, String sourceDescription, TaskManager manager, byte priority) {
+	public IOFromOutputStream(OutputStream stream, String sourceDescription, TaskManager manager, Priority priority) {
 		super(sourceDescription, priority);
 		this.stream = stream;
 		this.manager = manager;
@@ -61,7 +62,7 @@ public class IOFromOutputStream extends AbstractIO implements IO.Writable {
 	
 	@Override
 	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
-		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone)).getOutput();
+		return operation(IOUtil.writeAsyncUsingSync(this, buffer, ondone));
 	}
 	
 	@Override

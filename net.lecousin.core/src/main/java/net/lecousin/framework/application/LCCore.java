@@ -4,7 +4,7 @@ import java.io.Closeable;
 
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.memory.MemoryManager;
 import net.lecousin.framework.mutable.MutableBoolean;
@@ -106,13 +106,10 @@ public final class LCCore {
 		initEnvironment();
 		
 		instance.start();
-		new Task.Cpu<Void,Exception>("Initializing framework tools", Task.PRIORITY_NORMAL) {
-			@Override
-			public Void run() {
-				MemoryManager.init();
-				return null;
-			}
-		}.start();
+		Task.cpu("Initializing framework tools", () -> {
+			MemoryManager.init();
+			return null;
+		}).start();
 	}
 	
 	static synchronized void start(Application app) {

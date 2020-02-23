@@ -22,8 +22,8 @@ import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.application.libraries.artifacts.LibrariesRepository;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptorLoader;
 import net.lecousin.framework.collections.CollectionsUtil;
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.util.CommandLine;
 import net.lecousin.framework.util.SystemEnvironment;
 import net.lecousin.framework.util.Triple;
@@ -329,7 +329,7 @@ public class Launcher {
 	}
 	
 	private static IAsync<Exception> launchApplication(DynamicLibrariesManager librariesManager) {
-		Task.Cpu<IAsync<Exception>, ApplicationBootstrapException> startApp = librariesManager.startApp();
+		Task<IAsync<Exception>, ApplicationBootstrapException> startApp = librariesManager.startApp();
 		startApp.getOutput().block(0);
 		if (!startApp.isSuccessful()) {
 			if (startApp.isCancelled()) {

@@ -4,15 +4,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.util.ConcurrentCloseable;
 import net.lecousin.framework.util.Pair;
@@ -23,23 +24,23 @@ import net.lecousin.framework.util.Pair;
 public class BroadcastIO extends ConcurrentCloseable<IOException> implements IO.Writable {
 
 	/** Constructor. */
-	public BroadcastIO(IO.Writable[] ios, byte priority, boolean closeIOs) {
+	public BroadcastIO(IO.Writable[] ios, Priority priority, boolean closeIOs) {
 		this.ios = ios;
 		this.closeIOs = closeIOs;
 		setPriority(priority);
 	}
 	
 	private IO.Writable[] ios;
-	private byte priority;
+	private Priority priority;
 	private boolean closeIOs;
 	
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return priority;
 	}
 	
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		this.priority = priority;
 		for (int i = 0; i < ios.length; ++i)
 			ios[i].setPriority(priority);
@@ -127,9 +128,10 @@ public class BroadcastIO extends ConcurrentCloseable<IOException> implements IO.
 	@Override
 	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer, IOException>> ondone) {
 		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
-		new Task.Cpu.FromRunnable("BroadcastIO.writeAsync", priority, () -> {
+		Task.cpu("BroadcastIO.writeAsync", priority, () -> {
 			int nb = buffer.remaining();
 			write(buffer, nb).onDone(() -> result.unblockSuccess(Integer.valueOf(nb)), result);
+			return null;
 		}).start();
 		return result;
 	}

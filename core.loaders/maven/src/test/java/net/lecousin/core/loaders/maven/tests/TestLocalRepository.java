@@ -24,9 +24,10 @@ import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptor;
 import net.lecousin.framework.application.libraries.artifacts.LibraryDescriptorLoader.DependencyNode;
 import net.lecousin.framework.collections.Tree;
 import net.lecousin.framework.collections.Tree.Node;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.core.test.io.provider.TestURIProvider;
 import net.lecousin.framework.io.FileIO;
@@ -71,7 +72,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		Assert.assertTrue(pomLoader.detect(new File(".")));
 		
 		try {
-			pomLoader.loadLibrary("does", "not", new SingleVersion(new Version("1")), Task.PRIORITY_NORMAL, new ArrayList<>(0)).blockResult(15000);
+			pomLoader.loadLibrary("does", "not", new SingleVersion(new Version("1")), Task.Priority.NORMAL, new ArrayList<>(0)).blockResult(15000);
 			throw new AssertionError("Error expected");
 		} catch (LibraryManagementException e) {
 			// ok
@@ -117,7 +118,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 	
 	@Test
 	public void testJUnitVersion() throws Exception {
-		List<String> versions = repo.getAvailableVersions("junit", "junit", Task.PRIORITY_NORMAL).blockResult(0);
+		List<String> versions = repo.getAvailableVersions("junit", "junit", Task.Priority.NORMAL).blockResult(0);
 		Assert.assertNotNull(versions);
 		if (!versions.contains(junit.runner.Version.id()))
 			throw new AssertionError("Available versions of junit does not contain " + junit.runner.Version.id() + ": " + versions.toString());
@@ -125,15 +126,15 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 	
 	@Test
 	public void testUnknownArtifactVersion() throws Exception {
-		List<String> versions = repo.getAvailableVersions("junit", "doesnotexist", Task.PRIORITY_NORMAL).blockResult(0);
+		List<String> versions = repo.getAvailableVersions("junit", "doesnotexist", Task.Priority.NORMAL).blockResult(0);
 		Assert.assertTrue(versions == null || versions.isEmpty());
-		versions = repo.getAvailableVersions("doesnotexist", "doesnotexist", Task.PRIORITY_NORMAL).blockResult(0);
+		versions = repo.getAvailableVersions("doesnotexist", "doesnotexist", Task.Priority.NORMAL).blockResult(0);
 		Assert.assertTrue(versions == null || versions.isEmpty());
 	}
 	
 	@Test
 	public void testLoadJUnit() throws Exception {
-		MavenPOM pom = repo.load("junit", "junit", junit.runner.Version.id(), pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
+		MavenPOM pom = repo.load("junit", "junit", junit.runner.Version.id(), pomLoader, Task.Priority.NORMAL).blockResult(0);
 		Assert.assertEquals("junit", pom.getGroupId());
 		Assert.assertEquals("junit", pom.getArtifactId());
 		Assert.assertEquals(junit.runner.Version.id(), pom.getVersionString());
@@ -148,20 +149,20 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 	@Test
 	public void testLoadUnknownArtifact() throws Exception {
 		try {
-			MavenPOM pom = repo.load("junit", "doesnotexist", junit.runner.Version.id(), pomLoader, Task.PRIORITY_NORMAL).blockResult(0);
+			MavenPOM pom = repo.load("junit", "doesnotexist", junit.runner.Version.id(), pomLoader, Task.Priority.NORMAL).blockResult(0);
 			if (pom != null)
 				throw new AssertionError("should fail");
 		} catch (Exception e) {
 			// ok
 		}
 		
-		AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("/doesnotexist.pom").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+		AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("/doesnotexist.pom").toURI(), Task.Priority.NORMAL, pomLoader, false);
 		Assert.assertTrue(load.hasError() && load.getError().getCause() instanceof FileNotFoundException);
 	}
 	
 	@Test
 	public void testDependencyWithSystemPath() throws Exception {
-		AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new URI("classpath:test-maven/test-system-path.pom.xml"), Task.PRIORITY_NORMAL, pomLoader, false);
+		AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new URI("classpath:test-maven/test-system-path.pom.xml"), Task.Priority.NORMAL, pomLoader, false);
 		MavenPOM pom = load.blockResult(30000);
 		pom.getLoader();
 		pom.getDirectory();
@@ -201,7 +202,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 	
 	@Test
 	public void testMyPOM() throws Exception {
-		AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+		AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./pom.xml").toURI(), Task.Priority.NORMAL, pomLoader, false);
 		MavenPOM pom = load.blockResult(30000);
 		Assert.assertEquals(pom.getArtifactId(), "maven");
 		
@@ -209,7 +210,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		Assert.assertNotNull(classes);
 		Assert.assertEquals(new File("./target/classes").getAbsolutePath(), classes.getAbsolutePath());
 		
-		AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> load2 = pomLoader.loadProject(new File("."), Task.PRIORITY_NORMAL);
+		AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> load2 = pomLoader.loadProject(new File("."), Task.Priority.NORMAL);
 		LibraryDescriptor lib = load2.blockResult(30000);
 		Assert.assertEquals(lib.getArtifactId(), "maven");
 		lib.getDependencies();
@@ -222,13 +223,13 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		outFile.deleteOnExit();
 		try {
 			new File("./target/test-out").mkdir();
-			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.PRIORITY_NORMAL);
+			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.Priority.NORMAL);
 			IOUtil.copy(
-				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-output-dir.pom.xml"))).provideIOReadable(Task.PRIORITY_NORMAL),
+				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-output-dir.pom.xml"))).provideIOReadable(Task.Priority.NORMAL),
 				out,
 				-1, true, null, 0).blockThrow(15000);
 			
-			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-output-dir.pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-output-dir.pom.xml").toURI(), Task.Priority.NORMAL, pomLoader, false);
 			MavenPOM pom = load.blockResult(30000);
 			
 			File classes = pom.getClasses().blockResult(30000);
@@ -247,13 +248,13 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		outFile.deleteOnExit();
 		try {
 			new File("./target/test-out").mkdir();
-			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.PRIORITY_NORMAL);
+			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.Priority.NORMAL);
 			IOUtil.copy(
-				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-repositories.pom.xml"))).provideIOReadable(Task.PRIORITY_NORMAL),
+				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-repositories.pom.xml"))).provideIOReadable(Task.Priority.NORMAL),
 				out,
 				-1, true, null, 0).blockThrow(15000);
 			
-			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-repositories.pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-repositories.pom.xml").toURI(), Task.Priority.NORMAL, pomLoader, false);
 			MavenPOM pom = load.blockResult(30000);
 			
 			List<LibrariesRepository> repos = pom.getDependenciesAdditionalRepositories();
@@ -271,13 +272,13 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		outFile.deleteOnExit();
 		try {
 			new File("./target/test-out").mkdir();
-			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.PRIORITY_NORMAL);
+			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.Priority.NORMAL);
 			IOUtil.copy(
-				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-additional-fields.pom.xml"))).provideIOReadable(Task.PRIORITY_NORMAL),
+				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-additional-fields.pom.xml"))).provideIOReadable(Task.Priority.NORMAL),
 				out,
 				-1, true, null, 0).blockThrow(15000);
 			
-			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-additional-fields.pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-additional-fields.pom.xml").toURI(), Task.Priority.NORMAL, pomLoader, false);
 			load.blockResult(30000);
 		} finally {
 			outFile.delete();
@@ -291,13 +292,13 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		outFile.deleteOnExit();
 		try {
 			new File("./target/test-out").mkdir();
-			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.PRIORITY_NORMAL);
+			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.Priority.NORMAL);
 			IOUtil.copy(
-				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-properties.pom.xml"))).provideIOReadable(Task.PRIORITY_NORMAL),
+				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/test-properties.pom.xml"))).provideIOReadable(Task.Priority.NORMAL),
 				out,
 				-1, true, null, 0).blockThrow(15000);
 			
-			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-properties.pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-properties.pom.xml").toURI(), Task.Priority.NORMAL, pomLoader, false);
 			load.blockResult(30000);
 		} finally {
 			outFile.delete();
@@ -310,13 +311,13 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 		outFile.deleteOnExit();
 		try {
 			new File("./target/test-out").mkdir();
-			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.PRIORITY_NORMAL);
+			FileIO.WriteOnly out = new FileIO.WriteOnly(outFile, Task.Priority.NORMAL);
 			IOUtil.copy(
-				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/error/test-" + errorName + ".pom.xml"))).provideIOReadable(Task.PRIORITY_NORMAL),
+				((IOProvider.Readable)IOProviderFromURI.getInstance().get(new URI("classpath:test-maven/error/test-" + errorName + ".pom.xml"))).provideIOReadable(Task.Priority.NORMAL),
 				out,
 				-1, true, null, 0).blockThrow(15000);
 			
-			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-error-" + errorName + ".pom.xml").toURI(), Task.PRIORITY_NORMAL, pomLoader, false);
+			AsyncSupplier<MavenPOM, LibraryManagementException> load = MavenPOM.load(new File("./test-error-" + errorName + ".pom.xml").toURI(), Task.Priority.NORMAL, pomLoader, false);
 			try {
 				load.blockResult(30000);
 				throw new AssertionError("Error expected for pom " + errorName);
@@ -341,7 +342,7 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 	
 	private void testIOError(String path) throws Exception {
 		AsyncSupplier<MavenPOM, LibraryManagementException> load =
-			MavenPOM.load(new URI("test://" + path), Task.PRIORITY_NORMAL, pomLoader, false);
+			MavenPOM.load(new URI("test://" + path), Task.Priority.NORMAL, pomLoader, false);
 		try {
 			load.blockResult(30000);
 			throw new AssertionError("Error expected for pom " + path);
@@ -367,12 +368,12 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 				return "mypom";
 			}
 			@Override
-			public IO.Readable provideIOReadable(byte priority) throws IOException {
+			public IO.Readable provideIOReadable(Priority priority) throws IOException {
 				return new ByteArrayIO("<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><parent><relativePath>..</relativePath></parent></project>".getBytes(), "mypom");
 			}
 		});
 		AsyncSupplier<MavenPOM, LibraryManagementException> load =
-			MavenPOM.load(new URI("test:///mypom"), Task.PRIORITY_NORMAL, pomLoader, false);
+			MavenPOM.load(new URI("test:///mypom"), Task.Priority.NORMAL, pomLoader, false);
 		MavenPOM pom = load.blockResult(5000);
 		Assert.assertNull(pom.getClasses().blockResult(0));
 	}
@@ -380,49 +381,49 @@ public class TestLocalRepository extends LCCoreAbstractTest {
 	@Test
 	public void testLoadFile() throws Exception {
 		Assert.assertNotNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, null));
-		Assert.assertNotNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+		Assert.assertNotNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, null, Task.Priority.NORMAL).blockResult(30000));
 
 		Assert.assertNull(repo.loadFileSync("junitXX", "junit", junit.runner.Version.id(), null, null));
-		Assert.assertNull(repo.loadFile("junitXX", "junit", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+		Assert.assertNull(repo.loadFile("junitXX", "junit", junit.runner.Version.id(), null, null, Task.Priority.NORMAL).blockResult(30000));
 
 		Assert.assertNull(repo.loadFileSync("junit", "junitXX", junit.runner.Version.id(), null, null));
-		Assert.assertNull(repo.loadFile("junit", "junitXX", junit.runner.Version.id(), null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+		Assert.assertNull(repo.loadFile("junit", "junitXX", junit.runner.Version.id(), null, null, Task.Priority.NORMAL).blockResult(30000));
 
 		Assert.assertNull(repo.loadFileSync("junit", "junit", "XX", null, null));
-		Assert.assertNull(repo.loadFile("junit", "junit", "XX", null, null, Task.PRIORITY_NORMAL).blockResult(30000));
+		Assert.assertNull(repo.loadFile("junit", "junit", "XX", null, null, Task.Priority.NORMAL).blockResult(30000));
 
 		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "XX", null));
-		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "XX", null, Task.PRIORITY_NORMAL).blockResult(30000));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "XX", null, Task.Priority.NORMAL).blockResult(30000));
 
 		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "test-jar"));
-		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "test-jar", Task.PRIORITY_NORMAL).blockResult(30000));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "test-jar", Task.Priority.NORMAL).blockResult(30000));
 
 		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "t", "test-jar"));
-		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "test-jar", Task.PRIORITY_NORMAL).blockResult(30000));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "test-jar", Task.Priority.NORMAL).blockResult(30000));
 
 		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "ejb-client"));
-		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "ejb-client", Task.PRIORITY_NORMAL).blockResult(30000));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "ejb-client", Task.Priority.NORMAL).blockResult(30000));
 
 		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "t", "ejb-client"));
-		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "ejb-client", Task.PRIORITY_NORMAL).blockResult(30000));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "ejb-client", Task.Priority.NORMAL).blockResult(30000));
 
 		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "t", "ejb"));
-		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "ejb", Task.PRIORITY_NORMAL).blockResult(30000));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "ejb", Task.Priority.NORMAL).blockResult(30000));
 
 		repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "java-source");
-		repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "java-source", Task.PRIORITY_NORMAL).blockResult(30000);
+		repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "java-source", Task.Priority.NORMAL).blockResult(30000);
 
 		repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "t", "java-source");
-		repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "java-source", Task.PRIORITY_NORMAL).blockResult(30000);
+		repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "java-source", Task.Priority.NORMAL).blockResult(30000);
 
 		repo.loadFileSync("junit", "junit", junit.runner.Version.id(), null, "javadoc");
-		repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "javadoc", Task.PRIORITY_NORMAL).blockResult(30000);
+		repo.loadFile("junit", "junit", junit.runner.Version.id(), null, "javadoc", Task.Priority.NORMAL).blockResult(30000);
 
 		repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "t", "javadoc");
-		repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "javadoc", Task.PRIORITY_NORMAL).blockResult(30000);
+		repo.loadFile("junit", "junit", junit.runner.Version.id(), "t", "javadoc", Task.Priority.NORMAL).blockResult(30000);
 
 		Assert.assertNull(repo.loadFileSync("junit", "junit", junit.runner.Version.id(), "", "unknown"));
-		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "", "unknown", Task.PRIORITY_NORMAL).blockResult(30000));
+		Assert.assertNull(repo.loadFile("junit", "junit", junit.runner.Version.id(), "", "unknown", Task.Priority.NORMAL).blockResult(30000));
 	}
 	
 }

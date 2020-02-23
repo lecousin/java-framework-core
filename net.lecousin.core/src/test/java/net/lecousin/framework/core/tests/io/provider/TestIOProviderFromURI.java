@@ -3,7 +3,7 @@ package net.lecousin.framework.core.tests.io.provider;
 import java.io.File;
 import java.net.URI;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.provider.IOProvider;
@@ -38,14 +38,14 @@ public class TestIOProviderFromURI extends LCCoreAbstractTest {
 		Assert.assertNotNull(p);
 		p.getDescription();
 		Assert.assertTrue(p instanceof IOProvider.Readable);
-		IO.Readable io = ((IOProvider.Readable)p).provideIOReadable(Task.PRIORITY_NORMAL);
+		IO.Readable io = ((IOProvider.Readable)p).provideIOReadable(Task.Priority.NORMAL);
 		Assert.assertNotNull(io);
 		io.close();
 
 		p = provider.get(new URI("https://www.google.com/does_not_exist"));
 		Assert.assertTrue(p instanceof IOProvider.Readable);
 		try {
-			io = ((IOProvider.Readable)p).provideIOReadable(Task.PRIORITY_NORMAL);
+			io = ((IOProvider.Readable)p).provideIOReadable(Task.Priority.NORMAL);
 			throw new AssertionError("should throw an exception");
 		} catch (Exception e) {
 			// ok

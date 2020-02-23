@@ -9,9 +9,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.BlockedThreadHandler;
-import net.lecousin.framework.concurrent.Threading;
-import net.lecousin.framework.concurrent.ThreadingDebugHelper;
+import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.threads.TaskExecutor;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.util.ThreadUtil;
 
@@ -72,7 +72,6 @@ public class Async<TError extends Exception> implements IAsync<TError>, Future<V
 	/** Unblock this synchronization point without error. */
 	@SuppressWarnings("squid:S3776") // complexity
 	public final void unblock() {
-		if (Threading.debugSynchronization) ThreadingDebugHelper.unblocked(this);
 		ArrayList<Runnable> listeners;
 		synchronized (this) {
 			if (unblocked) return;
@@ -129,13 +128,11 @@ public class Async<TError extends Exception> implements IAsync<TError>, Future<V
 	@Override
 	@SuppressWarnings("squid:S2274")
 	public final void block(long timeout) {
-		Thread t;
-		BlockedThreadHandler blockedHandler;
+		TaskExecutor executor;
 		synchronized (this) {
 			if (unblocked && listenersInline == null) return;
-			t = Thread.currentThread();
-			blockedHandler = Threading.getBlockedThreadHandler(t);
-			if (blockedHandler == null) {
+			executor = Threading.getTaskExecutor();
+			if (executor == null) {
 				if (timeout <= 0) {
 					while (!unblocked || listenersInline != null)
 						if (!ThreadUtil.wait(this, 0)) return;
@@ -144,8 +141,8 @@ public class Async<TError extends Exception> implements IAsync<TError>, Future<V
 				}
 			}
 		}
-		if (blockedHandler != null)
-			blockedHandler.blocked(this, timeout);
+		if (executor != null)
+			executor.blocked(this, timeout);
 	}
 	
 	@Override

@@ -3,7 +3,7 @@ package net.lecousin.framework.application.libraries.classpath;
 import java.io.IOException;
 
 import net.lecousin.framework.application.ApplicationClassLoader;
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
 import net.lecousin.framework.io.text.FullReadLines;
 import net.lecousin.framework.plugins.ExtensionPoints;
@@ -17,7 +17,7 @@ public class LoadLibraryPluginsFile extends FullReadLines<Void> {
 	
 	/** Constructor. */
 	public <T extends ClassLoader & ApplicationClassLoader> LoadLibraryPluginsFile(BufferedReadableCharacterStream stream, T classLoader) {
-		super("Initializing plugins: " + stream.getDescription(), stream, Task.PRIORITY_IMPORTANT, null);
+		super("Initializing plugins: " + stream.getDescription(), stream, Task.Priority.IMPORTANT, null);
 		this.classLoader = classLoader;
 	}
 	

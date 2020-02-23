@@ -5,8 +5,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestWritable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -35,7 +35,7 @@ public class TestIOFromOutputStream extends TestWritable {
 	protected IO.Writable createWritable() throws IOException {
 		file = createFile();
 		FileOutputStream out = new FileOutputStream(file);
-		return new IOFromOutputStream(out, file.getAbsolutePath(), Threading.getDrivesTaskManager().getTaskManager(file), Task.PRIORITY_NORMAL);
+		return new IOFromOutputStream(out, file.getAbsolutePath(), Threading.getDrivesManager().getTaskManager(file), Task.Priority.NORMAL);
 	}
 	
 	@Override

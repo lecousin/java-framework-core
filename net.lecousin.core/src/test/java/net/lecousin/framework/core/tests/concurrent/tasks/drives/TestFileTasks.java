@@ -3,8 +3,8 @@ package net.lecousin.framework.core.tests.concurrent.tasks.drives;
 import java.io.File;
 import java.io.IOException;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.tasks.drives.RenameFileTask;
+import net.lecousin.framework.concurrent.tasks.drives.RenameFile;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.TemporaryFiles;
 
@@ -20,12 +20,12 @@ public class TestFileTasks extends LCCoreAbstractTest {
 		dst.delete();
 		Assert.assertTrue(src.exists());
 		Assert.assertFalse(dst.exists());
-		RenameFileTask.rename(src, dst, Task.PRIORITY_NORMAL).blockThrow(0);
+		RenameFile.rename(src, dst, Task.Priority.NORMAL).blockThrow(0);
 		Assert.assertFalse(src.exists());
 		Assert.assertTrue(dst.exists());
 
 		try {
-			RenameFileTask.rename(dst, new File("//////!?*"), Task.PRIORITY_NORMAL).blockThrow(0);
+			RenameFile.rename(dst, new File("//////!?*"), Task.Priority.NORMAL).blockThrow(0);
 			throw new AssertionError("must throw an error");
 		} catch (IOException e) {
 			// ok
@@ -35,7 +35,7 @@ public class TestFileTasks extends LCCoreAbstractTest {
 		File dst2 = TemporaryFiles.get().createFileSync("test", "renamed2");
 		Assert.assertTrue(dst2.exists());
 		try {
-			RenameFileTask.rename(dst, dst2, Task.PRIORITY_NORMAL).blockThrow(0);
+			RenameFile.rename(dst, dst2, Task.Priority.NORMAL).blockThrow(0);
 			throw new AssertionError("must throw an error");
 		} catch (IOException e) {
 			// ok

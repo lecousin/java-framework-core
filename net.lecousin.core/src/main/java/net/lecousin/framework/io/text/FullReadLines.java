@@ -1,7 +1,8 @@
 package net.lecousin.framework.io.text;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.text.CharArrayStringBuffer;
 
@@ -11,7 +12,7 @@ import net.lecousin.framework.text.CharArrayStringBuffer;
 public abstract class FullReadLines<T> {
 
 	/** Constructor. */
-	public FullReadLines(String description, ICharacterStream.Readable.Buffered stream, byte priority, IO.OperationType closeStreamAtEnd) {
+	public FullReadLines(String description, ICharacterStream.Readable.Buffered stream, Priority priority, IO.OperationType closeStreamAtEnd) {
 		this.description = description;
 		this.priority = priority;
 		this.stream = stream;
@@ -19,7 +20,7 @@ public abstract class FullReadLines<T> {
 	}
 	
 	protected String description;
-	protected byte priority;
+	protected Priority priority;
 	private ICharacterStream.Readable.Buffered stream;
 	private IO.OperationType closeStreamAtEnd;
 	
@@ -37,17 +38,17 @@ public abstract class FullReadLines<T> {
 	private CharArrayStringBuffer line = null;
 	
 	private void resume(AsyncSupplier<T, Exception> result) {
-		stream.canStartReading().thenStart(new Task.Cpu.FromRunnable(description, priority, () -> scan(result)), true);
+		stream.canStartReading().thenStart(Task.cpu(description, priority, () -> scan(result)), true);
 	}
 	
-	private void scan(AsyncSupplier<T, Exception> result) {
+	private Void scan(AsyncSupplier<T, Exception> result) {
 		do {
 			if (line == null) line = new CharArrayStringBuffer();
 			int c;
 			try { c = stream.readAsync(); }
 			catch (Exception e) {
 				error(e, result);
-				return;
+				return null;
 			}
 			if (c == -1) {
 				if (line.length() > 0)
@@ -55,14 +56,14 @@ public abstract class FullReadLines<T> {
 						processLine(line);
 					} catch (Exception e) {
 						error(e, result);
-						return;
+						return null;
 					}
 				finish(result);
-				return;
+				return null;
 			}
 			if (c == -2) {
 				resume(result);
-				return;
+				return null;
 			}
 			if (c == '\r') continue;
 			if (c == '\n') {
@@ -70,7 +71,7 @@ public abstract class FullReadLines<T> {
 					processLine(line);
 				} catch (Exception e) {
 					error(e, result);
-					return;
+					return null;
 				}
 				line = null;
 				continue;

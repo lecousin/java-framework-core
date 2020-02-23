@@ -4,12 +4,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
-import net.lecousin.framework.exception.NoException;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.memory.ByteArrayCache;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -53,12 +53,12 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable<IOExcep
 	}
 
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return io.getPriority();
 	}
 
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		io.setPriority(priority);
 	}
 
@@ -141,31 +141,27 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable<IOExcep
 	@Override
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		AsyncSupplier<ByteBuffer, IOException> result = new AsyncSupplier<>();
-		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Read next buffer", getPriority()) {
-			@Override
-			public Void run() {
-				ByteBuffer buf = ByteBuffer.allocate(4096);
-				AsyncSupplier<Integer, IOException> read = readAsync(buf);
-				read.onDone(() -> {
-					if (read.hasError()) {
-						if (ondone != null) ondone.accept(new Pair<>(null, read.getError()));
-						result.unblockError(read.getError());
-						return;
-					}
-					int nb = read.getResult().intValue();
-					if (nb <= 0) {
-						if (ondone != null) ondone.accept(new Pair<>(null, null));
-						result.unblockSuccess(null);
-						return;
-					}
-					buf.flip();
-					if (ondone != null) ondone.accept(new Pair<>(buf, null));
-					result.unblockSuccess(buf);
-				});
-				return null;
-			}
-		};
-		operation(task).start();
+		operation(Task.cpu("Read next buffer", getPriority(), () -> {
+			ByteBuffer buf = ByteBuffer.allocate(4096);
+			AsyncSupplier<Integer, IOException> read = readAsync(buf);
+			read.onDone(() -> {
+				if (read.hasError()) {
+					if (ondone != null) ondone.accept(new Pair<>(null, read.getError()));
+					result.unblockError(read.getError());
+					return;
+				}
+				int nb = read.getResult().intValue();
+				if (nb <= 0) {
+					if (ondone != null) ondone.accept(new Pair<>(null, null));
+					result.unblockSuccess(null);
+					return;
+				}
+				buf.flip();
+				if (ondone != null) ondone.accept(new Pair<>(buf, null));
+				result.unblockSuccess(buf);
+			});
+			return null;
+		}).start());
 		return result;
 	}
 	

@@ -8,7 +8,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.io.IO;
@@ -346,9 +345,7 @@ public class XMLWriter {
 		if (open.isDone())
 			return writeAttributes(element);
 		Async<IOException> sp = new Async<>();
-		open.thenStart(new Task.Cpu.FromRunnable(DOM_TASK_DESCRIPTION, output.getPriority(), () ->
-			writeAttributes(element).onDone(sp)
-		), sp);
+		open.thenStart(DOM_TASK_DESCRIPTION, output.getPriority(), () -> writeAttributes(element).onDone(sp), sp);
 		return sp;
 	}
 	
@@ -372,13 +369,14 @@ public class XMLWriter {
 			}
 			Async<IOException> result = new Async<>();
 			int nextIndex = attrIndex + 1;
-			sp.thenStart(new Task.Cpu.FromRunnable(DOM_TASK_DESCRIPTION, output.getPriority(), () -> {
+			sp.thenStart(DOM_TASK_DESCRIPTION, output.getPriority(), () -> {
 				if (nextIndex == attrs.getLength()) {
 					writeChildren(element).onDone(result);
-					return;
+					return null;
 				}
 				writeAttribute(element, attrs, nextIndex).onDone(result);
-			}), result);
+				return null;
+			}, result);
 			return result;
 		} while (true);
 	}
@@ -393,9 +391,7 @@ public class XMLWriter {
 			return writeChild(children, 0);
 		}
 		Async<IOException> sp = new Async<>();
-		open.thenStart(new Task.Cpu.FromRunnable(DOM_TASK_DESCRIPTION, output.getPriority(), () ->
-			writeChild(children, 0).onDone(sp)
-		), sp);
+		open.thenStart(DOM_TASK_DESCRIPTION, output.getPriority(), () -> writeChild(children, 0).onDone(sp), sp);
 		return sp;
 	}
 	
@@ -421,13 +417,14 @@ public class XMLWriter {
 			}
 			Async<IOException> result = new Async<>();
 			int nextIndex = childIndex + 1;
-			sp.thenStart(new Task.Cpu.FromRunnable(DOM_TASK_DESCRIPTION, output.getPriority(), () -> {
+			sp.thenStart(DOM_TASK_DESCRIPTION, output.getPriority(), () -> {
 				if (nextIndex == children.getLength()) {
 					closeElement().onDone(result);
-					return;
+					return null;
 				}
 				writeChild(children, nextIndex).onDone(result);
-			}), result);
+				return null;
+			}, result);
 			return result;
 		} while (true);
 	}

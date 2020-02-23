@@ -9,8 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.encoding.Base64Encoding;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.SimpleBufferedWritable;
@@ -273,7 +275,7 @@ public class XMLSerializer extends AbstractSerializer {
 			return new Async<>(output.closeElement(), ioErrorConverter);
 		}
 		Async<SerializationException> sp = new Async<>();
-		s.thenStart(new SerializationTask(() -> output.closeElement().onDone(sp, ioErrorConverter)), sp);
+		s.thenStart(taskDescription, priority, new Executable.FromRunnable(() -> output.closeElement().onDone(sp, ioErrorConverter)), sp);
 		return sp;
 	}
 	
@@ -308,10 +310,11 @@ public class XMLSerializer extends AbstractSerializer {
 			}
 			return;
 		}
-		value.thenStart(new SerializationTask(() -> {
+		value.thenStart(taskDescription, priority, () -> {
 			output.closeElement();
 			serializeCollectionAttributeElement(context, it, elementIndex + 1, colPath, rules, result);
-		}), result);
+			return null;
+		}, result);
 	}
 
 	@Override
@@ -328,8 +331,8 @@ public class XMLSerializer extends AbstractSerializer {
 			return new Async<>(output.closeElement(), ioErrorConverter);
 		}
 		Async<SerializationException> sp = new Async<>();
-		encode.thenStart(new SerializationTask(() -> output.closeElement()
-			.onDone(sp, ioErrorConverter)),
+		encode.thenStart(Task.cpu(taskDescription, priority,
+			new Executable.FromRunnable(() -> output.closeElement().onDone(sp, ioErrorConverter))),
 			sp, ioErrorConverter);
 		return sp;
 	}

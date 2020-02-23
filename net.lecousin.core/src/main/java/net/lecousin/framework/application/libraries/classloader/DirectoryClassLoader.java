@@ -10,6 +10,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import net.lecousin.framework.application.libraries.classpath.DefaultLibrariesManager;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 
@@ -55,7 +56,7 @@ public class DirectoryClassLoader extends AbstractClassLoader {
 	}
 	
 	@Override
-	public IO.Readable loadResourceAsIO(String name, byte priority) throws IOException {
+	public IO.Readable loadResourceAsIO(String name, Priority priority) throws IOException {
 		File file = new File(dir, name);
 		if (!file.exists()) throw new FileNotFoundException(file.getAbsolutePath());
 		return new FileIO.ReadOnly(file, priority);
@@ -77,7 +78,7 @@ public class DirectoryClassLoader extends AbstractClassLoader {
 	}
 	
 	@Override
-	protected IO.Readable openResourcePointer(Object pointer, byte priority) {
+	protected IO.Readable openResourcePointer(Object pointer, Priority priority) {
 		return new FileIO.ReadOnly((File)pointer, priority);
 	}
 	

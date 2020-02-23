@@ -3,7 +3,7 @@ package net.lecousin.framework.core.tests.io;
 import java.io.File;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -27,10 +27,9 @@ public class TestReadableToSeekableReadable extends TestReadable {
 		super(testFile, testBuf, nbBuf);
 	}
 	
-	@SuppressWarnings("resource")
 	@Override
 	protected IO.Readable.Seekable createReadableFromFile(ReadOnly file, long fileSize) throws Exception {
-		PreBufferedReadable ioBuf = new PreBufferedReadable(file, 256, Task.PRIORITY_IMPORTANT, 2048, Task.PRIORITY_IMPORTANT, 10);
+		PreBufferedReadable ioBuf = new PreBufferedReadable(file, 256, Task.Priority.IMPORTANT, 2048, Task.Priority.IMPORTANT, 10);
 		return new ReadableToSeekable(ioBuf, 4096);
 	}
 	

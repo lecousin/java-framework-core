@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestOutputToInput;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -32,7 +32,7 @@ public class TestOutputToInputWithFileIO extends TestOutputToInput {
 	protected IO.OutputToInput createOutputToInput() throws IOException {
 		File file = File.createTempFile("test", "outputtoinput");
 		file.deleteOnExit();
-		return new OutputToInput(new FileIO.ReadWrite(file, Task.PRIORITY_NORMAL), "test");
+		return new OutputToInput(new FileIO.ReadWrite(file, Task.Priority.NORMAL), "test");
 	}
 	
 }

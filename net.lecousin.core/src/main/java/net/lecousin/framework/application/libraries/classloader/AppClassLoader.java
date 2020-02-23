@@ -14,8 +14,9 @@ import java.util.function.Predicate;
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.collections.CompoundCollection;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOAsInputStream;
 import net.lecousin.framework.io.IOFromInputStream;
@@ -74,7 +75,7 @@ public class AppClassLoader implements ApplicationClassLoader {
 		}
 		
 		@Override
-		public IO.Readable provideIOReadable(byte priority) throws IOException {
+		public IO.Readable provideIOReadable(Priority priority) throws IOException {
 			return parent.loadResourceAsIO(jar, priority);
 		}
 	}
@@ -125,7 +126,7 @@ public class AppClassLoader implements ApplicationClassLoader {
 	}
 
 	/** Load a resource. */
-	public IO.Readable getResourceIO(String name, byte priority) {
+	public IO.Readable getResourceIO(String name, Priority priority) {
 		if (name.isEmpty()) return null;
 		if (name.charAt(0) == '/') name = name.substring(1);
 		IO.Readable io = null;
@@ -163,14 +164,14 @@ public class AppClassLoader implements ApplicationClassLoader {
 		IO.Readable io = null;
     	// try with the first one
     	if (first != null)
-   			try { io = first.open(name, Task.PRIORITY_RATHER_IMPORTANT); }
+   			try { io = first.open(name, Task.Priority.RATHER_IMPORTANT); }
     		catch (IOException e) { /* not there */ }
     	// then, try on other libraries
     	if (io == null) {
         	for (int i = 0; i < libs.size(); i++) {
         		AbstractClassLoader cl = libs.get(i);
         		if (cl == first) continue;
-       			try { io = cl.open(name, Task.PRIORITY_RATHER_IMPORTANT); }
+       			try { io = cl.open(name, Task.Priority.RATHER_IMPORTANT); }
        			catch (IOException e) { /* not there */ }
         		if (io != null) break;
         	}

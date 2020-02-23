@@ -2,7 +2,7 @@ package net.lecousin.framework.core.tests.io.buffered;
 
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadWrite;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -26,7 +26,7 @@ public class TestIOInMemoryOrFileReadWrite extends TestReadWrite {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected IOInMemoryOrFile openReadWrite() {
-		return new IOInMemoryOrFile(testBuf.length*(nbBuf/2)-testBuf.length/2, Task.PRIORITY_NORMAL, "test file");
+		return new IOInMemoryOrFile(testBuf.length*(nbBuf/2)-testBuf.length/2, Task.Priority.NORMAL, "test file");
 	}
 	
 }

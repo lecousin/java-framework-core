@@ -17,6 +17,7 @@ import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.collections.CompoundCollection;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.provider.IOProvider;
@@ -51,14 +52,14 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	protected abstract byte[] loadFile(String name) throws IOException;
 	
 	/** Load a resource as IO.Readable. */
-	protected abstract IO.Readable loadResourceAsIO(String name, byte priority) throws IOException;
+	protected abstract IO.Readable loadResourceAsIO(String name, Priority priority) throws IOException;
 	
 	/** Search a resource. */
 	protected abstract URL loadResourceURL(String name);
 	
 	protected abstract Object getResourcePointer(String path);
 	
-	protected abstract IO.Readable openResourcePointer(Object pointer, byte priority) throws IOException;
+	protected abstract IO.Readable openResourcePointer(Object pointer, Priority priority) throws IOException;
 	
 	protected abstract void scan(String rootPackage, boolean includeSubPackages,
 		Predicate<String> packageFilter, Predicate<String> classFilter, Consumer<Class<?>> classScanner);
@@ -183,7 +184,7 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 		if (pointer == null) return null;
 		return new IOProvider.Readable() {
 			@Override
-			public IO.Readable provideIOReadable(byte priority) throws IOException {
+			public IO.Readable provideIOReadable(Priority priority) throws IOException {
 				return pointer.getValue2().openResourcePointer(pointer.getValue1(), priority);
 			}
 
@@ -195,7 +196,7 @@ public abstract class AbstractClassLoader extends ClassLoader implements Applica
 	}
 	
 	/** Open a resource. */
-	public final IO.Readable open(String path, byte priority) throws IOException {
+	public final IO.Readable open(String path, Priority priority) throws IOException {
 		Pair<Object, AbstractClassLoader> pointer = getPointer(path);
 		if (pointer == null) throw new FileNotFoundException(path);
 		return pointer.getValue2().openResourcePointer(pointer.getValue1(), priority);

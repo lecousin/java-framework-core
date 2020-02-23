@@ -5,11 +5,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.TaskManager;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.concurrent.util.AsyncProducer;
 import net.lecousin.framework.memory.ByteArrayCache;
@@ -35,10 +36,10 @@ public interface IO extends IConcurrentCloseable<IOException> {
 	}
 	
 	/** Return the priority of asynchronous operations. */
-	byte getPriority();
+	Priority getPriority();
 
 	/** Set the priority of asynchronous operations. */
-	void setPriority(byte priority);
+	void setPriority(Priority priority);
 	
 	/** Return the TaskManager used for asynchronous operations. */
 	TaskManager getTaskManager();

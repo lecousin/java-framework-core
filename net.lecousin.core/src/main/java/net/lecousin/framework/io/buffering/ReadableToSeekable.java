@@ -6,15 +6,16 @@ import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
-import net.lecousin.framework.concurrent.tasks.drives.RemoveFileTask;
+import net.lecousin.framework.concurrent.tasks.drives.RemoveFile;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -76,7 +77,7 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 		jp.addToJoin(buffered.closeAsync());
 		jp.addToJoin(io.closeAsync());
 		jp.start();
-		jp.thenStart(new RemoveFileTask(file, Task.PRIORITY_LOW), true);
+		jp.thenStart(RemoveFile.task(file, Priority.LOW), true);
 		return jp;
 	}
 	
@@ -100,12 +101,12 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 	}
 	
 	@Override
-	public byte getPriority() {
+	public Priority getPriority() {
 		return io.getPriority();
 	}
 	
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		io.setPriority(priority);
 	}
 	
@@ -232,21 +233,18 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 				sp.unblockSuccess(null);
 				return;
 			}
-			operation(new Task.Cpu<Void,NoException>("Bufferize in ReadableToSeekable", io.getPriority()) {
-				@Override
-				public Void run() {
-					synchronized (ReadableToSeekable.this) {
-						if (buffering.isDone())
-							nextBuffer();
-					}
-					AsyncSupplier<Boolean,IOException> next = bufferizeTo(pos);
-					if (next == null)
-						sp.unblockSuccess(null);
-					else
-						next.onDone(result -> sp.unblockSuccess(null), sp);
-					return null;
+			operation(Task.cpu("Bufferize in ReadableToSeekable", io.getPriority(), () -> {
+				synchronized (ReadableToSeekable.this) {
+					if (buffering.isDone())
+						nextBuffer();
 				}
-			}.start());
+				AsyncSupplier<Boolean,IOException> next = bufferizeTo(pos);
+				if (next == null)
+					sp.unblockSuccess(null);
+				else
+					next.onDone(res -> sp.unblockSuccess(null), sp);
+				return null;
+			}).start());
 		}, sp);
 		return operation(sp);
 	}
@@ -374,36 +372,33 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		AsyncSupplier<ByteBuffer,IOException> result = new AsyncSupplier<>();
 		AsyncSupplier<Boolean,IOException> bufferize = bufferizeTo(pos);
-		Task.Cpu<Void, NoException> task = new Task.Cpu<Void, NoException>("Read next buffer", getPriority()) {
-			@Override
-			public Void run() {
-				if (bufferize != null) {
-					if (bufferize.isCancelled()) {
-						result.unblockCancel(bufferize.getCancelEvent());
-						return null;
-					}
-					if (!bufferize.isSuccessful()) {
-						IOUtil.error(bufferize.getError(), result, ondone);
-						return null;
-					}
+		Task<Void, NoException> task = Task.cpu("Read next buffer", getPriority(), () -> {
+			if (bufferize != null) {
+				if (bufferize.isCancelled()) {
+					result.unblockCancel(bufferize.getCancelEvent());
+					return null;
 				}
-				ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
-				AsyncSupplier<Integer,IOException> read = buffered.readAsync(pos, buffer);
-				IOUtil.listenOnDone(read, res -> {
-					int nb = res.intValue();
-					if (nb > 0) {
-						ReadableToSeekable.this.pos = pos + nb;
-						buffer.flip();
-						if (ondone != null) ondone.accept(new Pair<>(buffer, null));
-						result.unblockSuccess(buffer);
-					} else {
-						if (ondone != null) ondone.accept(new Pair<>(null, null));
-						result.unblockSuccess(null);
-					}
-				}, result, ondone);
-				return null;
+				if (!bufferize.isSuccessful()) {
+					IOUtil.error(bufferize.getError(), result, ondone);
+					return null;
+				}
 			}
-		};
+			ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+			AsyncSupplier<Integer,IOException> read = buffered.readAsync(pos, buffer);
+			IOUtil.listenOnDone(read, res -> {
+				int nb = res.intValue();
+				if (nb > 0) {
+					ReadableToSeekable.this.pos = pos + nb;
+					buffer.flip();
+					if (ondone != null) ondone.accept(new Pair<>(buffer, null));
+					result.unblockSuccess(buffer);
+				} else {
+					if (ondone != null) ondone.accept(new Pair<>(null, null));
+					result.unblockSuccess(null);
+				}
+			}, result, ondone);
+			return null;
+		});
 		operation(task);
 		if (bufferize == null)
 			task.start();
@@ -464,19 +459,9 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 	
 	@Override
 	public AsyncSupplier<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
-		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Seeking in non-seekable", io.getPriority(), ondone) {
-			@Override
-			public Long run() throws IOException {
-				return Long.valueOf(seekSync(type, move));
-			}
-			
-			@Override
-			public long getMaxBlockingTimeInNanoBeforeToLog() {
-				return Long.MAX_VALUE;
-			}
-		};
-		operation(task.start());
-		return task.getOutput();
+		return operation(Task.cpu("Seeking in non-seekable", io.getPriority(),
+			() -> Long.valueOf(seekSync(type, move)), ondone)
+			.setMaxBlockingTimeInNanoBeforeToLog(Long.MAX_VALUE).start()).getOutput();
 	}
 	
 	@Override
@@ -539,19 +524,8 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 	
 	@Override
 	public AsyncSupplier<Long,IOException> skipAsync(long move, Consumer<Pair<Long,IOException>> ondone) {
-		Task<Long,IOException> task = new Task.Cpu<Long,IOException>("Seeking in non-seekable", io.getPriority(), ondone) {
-			@Override
-			public Long run() throws IOException {
-				return Long.valueOf(skipSync(move));
-			}
-			
-			@Override
-			public long getMaxBlockingTimeInNanoBeforeToLog() {
-				return Long.MAX_VALUE;
-			}
-		};
-		operation(task.start());
-		return task.getOutput();
+		return operation(Task.cpu("Seeking in non-seekable", io.getPriority(),
+			() -> Long.valueOf(skipSync(move)), ondone).setMaxBlockingTimeInNanoBeforeToLog(Long.MAX_VALUE).start()).getOutput();
 	}
 
 }

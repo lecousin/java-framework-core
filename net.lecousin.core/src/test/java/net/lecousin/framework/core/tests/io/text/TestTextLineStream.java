@@ -2,7 +2,7 @@ package net.lecousin.framework.core.tests.io.text;
 
 import java.nio.charset.StandardCharsets;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
 import net.lecousin.framework.io.text.BufferedReadableCharacterStream;
@@ -27,7 +27,7 @@ public class TestTextLineStream extends LCCoreAbstractTest {
 		Assert.assertEquals(line2, lines.nextLine().asString());
 		Assert.assertEquals(line3, lines.nextLine().asString());
 		Assert.assertEquals(null, lines.nextLine());
-		Assert.assertEquals(Task.PRIORITY_NORMAL, lines.getPriority());
+		Assert.assertEquals(Task.Priority.NORMAL, lines.getPriority());
 		lines.close();
 	}
 	

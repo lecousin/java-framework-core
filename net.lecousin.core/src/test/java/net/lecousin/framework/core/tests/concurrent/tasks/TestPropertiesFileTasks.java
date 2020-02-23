@@ -7,9 +7,9 @@ import java.util.Properties;
 import org.junit.Assert;
 import org.junit.Test;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.tasks.LoadPropertiesFileTask;
-import net.lecousin.framework.concurrent.tasks.SavePropertiesFileTask;
+import net.lecousin.framework.concurrent.tasks.PropertiesFileLoader;
+import net.lecousin.framework.concurrent.tasks.PropertiesFileSaver;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
@@ -32,10 +32,10 @@ public class TestPropertiesFileTasks extends LCCoreAbstractTest {
 	
 	protected void testSaveAndLoad(Properties props) throws Exception {
 		File file = File.createTempFile("test", "properties");
-		SavePropertiesFileTask.savePropertiesFile(props, file, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL).blockThrow(0);
-		Properties loaded = LoadPropertiesFileTask.loadPropertiesFile(file, StandardCharsets.UTF_8, Task.PRIORITY_NORMAL, true, null).blockResult(0);
+		PropertiesFileSaver.savePropertiesFile(props, file, StandardCharsets.UTF_8, Task.Priority.NORMAL).blockThrow(0);
+		Properties loaded = PropertiesFileLoader.loadPropertiesFile(file, StandardCharsets.UTF_8, Task.Priority.NORMAL, true, null).blockResult(0);
 		check(props, loaded);
-		loaded = LoadPropertiesFileTask.loadPropertiesFile((IO.Readable)new SimpleBufferedReadable(new FileIO.ReadOnly(file, Task.PRIORITY_NORMAL), 1024), StandardCharsets.UTF_8, Task.PRIORITY_NORMAL, IO.OperationType.SYNCHRONOUS, p -> {}).blockResult(0);
+		loaded = PropertiesFileLoader.loadPropertiesFile((IO.Readable)new SimpleBufferedReadable(new FileIO.ReadOnly(file, Task.Priority.NORMAL), 1024), StandardCharsets.UTF_8, Task.Priority.NORMAL, IO.OperationType.SYNCHRONOUS, p -> {}).blockResult(0);
 		check(props, loaded);
 	}
 	

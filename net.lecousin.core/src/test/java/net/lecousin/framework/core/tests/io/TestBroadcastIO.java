@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestWritable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -34,10 +34,10 @@ public class TestBroadcastIO extends TestWritable {
 		f1 = createFile();
 		f2 = createFile();
 		f3 = createFile();
-		FileIO.WriteOnly io1 = new FileIO.WriteOnly(f1, Task.PRIORITY_NORMAL);
-		FileIO.WriteOnly io2 = new FileIO.WriteOnly(f2, Task.PRIORITY_NORMAL);
-		FileIO.WriteOnly io3 = new FileIO.WriteOnly(f3, Task.PRIORITY_NORMAL);
-		return new BroadcastIO(new IO.Writable[] { io1,  io2,  io3 }, Task.PRIORITY_NORMAL, true);
+		FileIO.WriteOnly io1 = new FileIO.WriteOnly(f1, Task.Priority.NORMAL);
+		FileIO.WriteOnly io2 = new FileIO.WriteOnly(f2, Task.Priority.NORMAL);
+		FileIO.WriteOnly io3 = new FileIO.WriteOnly(f3, Task.Priority.NORMAL);
+		return new BroadcastIO(new IO.Writable[] { io1,  io2,  io3 }, Task.Priority.NORMAL, true);
 	}
 	
 	@Override

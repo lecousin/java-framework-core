@@ -19,8 +19,8 @@ import javax.swing.JWindow;
 import javax.swing.RepaintManager;
 import javax.swing.border.LineBorder;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.event.AsyncEvent;
 import net.lecousin.framework.event.SimpleListenableContainer;

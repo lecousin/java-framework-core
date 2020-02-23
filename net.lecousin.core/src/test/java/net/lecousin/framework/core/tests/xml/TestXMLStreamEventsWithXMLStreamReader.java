@@ -10,8 +10,8 @@ import java.util.LinkedList;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
@@ -214,7 +214,7 @@ public abstract class TestXMLStreamEventsWithXMLStreamReader<EVENTS extends XMLS
 		else
 			reader = factory.createXMLStreamReader(in);
 		InputStream in2 = getClass().getClassLoader().getResourceAsStream(filepath);
-		IO.Readable io = new IOFromInputStream(in2, filepath, Threading.getDrivesTaskManager().getTaskManager(new File(".")), Task.PRIORITY_NORMAL);
+		IO.Readable io = new IOFromInputStream(in2, filepath, Threading.getDrivesManager().getTaskManager(new File(".")), Task.Priority.NORMAL);
 		EVENTS xml = start(io);
 		reader.next();
 		check(reader, xml, new LinkedList<>());

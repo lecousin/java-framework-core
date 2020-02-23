@@ -2,6 +2,7 @@ package net.lecousin.framework.io.provider;
 
 import java.io.File;
 
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 
@@ -20,20 +21,20 @@ public class FileIOProvider implements IOProvider.ReadWrite.Seekable.KnownSize.R
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T extends IO.Readable.Seekable & IO.KnownSize> T provideIOReadableSeekableKnownSize(byte priority) {
+	public <T extends IO.Readable.Seekable & IO.KnownSize> T provideIOReadableSeekableKnownSize(Priority priority) {
 		return (T)new FileIO.ReadOnly(file, priority);
 	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T extends IO.Writable.Seekable & IO.Resizable> T provideIOWritableSeekableResizable(byte priority) {
+	public <T extends IO.Writable.Seekable & IO.Resizable> T provideIOWritableSeekableResizable(Priority priority) {
 		return (T)new FileIO.WriteOnly(file, priority);
 	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T extends IO.Readable.Seekable & IO.Writable.Seekable & IO.Resizable>
-	T provideIOReadWriteSeekableResizable(byte priority) {
+	T provideIOReadWriteSeekableResizable(Priority priority) {
 		return (T)new FileIO.ReadWrite(file, priority);
 	}
 	

@@ -4,12 +4,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
+import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.memory.ByteArrayCache;
@@ -132,7 +134,7 @@ public class SingleBufferReadable extends ConcurrentCloseable<IOException> imple
 
 	@Override
 	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone)).getOutput();
+		return operation(IOUtil.readAsyncUsingSync(this, buffer, ondone));
 	}
 	
 	@Override
@@ -196,12 +198,12 @@ public class SingleBufferReadable extends ConcurrentCloseable<IOException> imple
 	}
 
 	@Override
-	public byte getPriority() {
-		return io != null ? io.getPriority() : Task.PRIORITY_NORMAL;
+	public Priority getPriority() {
+		return io != null ? io.getPriority() : Priority.NORMAL;
 	}
 
 	@Override
-	public void setPriority(byte priority) {
+	public void setPriority(Priority priority) {
 		io.setPriority(priority);
 	}
 
@@ -253,10 +255,10 @@ public class SingleBufferReadable extends ConcurrentCloseable<IOException> imple
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		AtomicState s = state;
 		if (s.pos == s.len && s.eof) return IOUtil.success(null, ondone);
-		Task.Cpu<ByteBuffer, IOException> task = new Task.Cpu.FromSupplierThrows<>(
-			"Read next buffer", getPriority(), ondone, this::readNextBuffer);
-		operation(task).startOn(reading, true);
-		return task.getOutput();
+		Task<ByteBuffer, IOException> task = Task.cpu("Read next buffer", getPriority(),
+			new Executable.FromSupplierThrows<>(this::readNextBuffer), ondone);
+		task.startOn(reading, true);
+		return operation(task).getOutput();
 	}
 	
 	@Override

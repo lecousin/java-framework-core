@@ -5,7 +5,8 @@ import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
 
-import net.lecousin.framework.concurrent.Threading;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOFromInputStream;
 import net.lecousin.framework.util.ClassUtil;
@@ -41,7 +42,7 @@ public class IOProviderFromPathUsingClassloader implements IOProviderFrom.Readab
 		String p = path;
 		return new IOProvider.Readable() {
 			@Override
-			public IO.Readable provideIOReadable(byte priority) throws FileNotFoundException {
+			public IO.Readable provideIOReadable(Priority priority) throws FileNotFoundException {
 				InputStream in = loader.getResourceAsStream(p);
 				if (in == null)
 					throw new FileNotFoundException(p);

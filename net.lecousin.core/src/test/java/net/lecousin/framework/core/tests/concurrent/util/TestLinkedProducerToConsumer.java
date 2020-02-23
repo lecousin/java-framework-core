@@ -1,9 +1,10 @@
 package net.lecousin.framework.core.tests.concurrent.util;
 
-import net.lecousin.framework.concurrent.Task;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
 import net.lecousin.framework.concurrent.util.AsyncProducer;
 import net.lecousin.framework.concurrent.util.LinkedAsyncProducer;
@@ -19,7 +20,7 @@ public class TestLinkedProducerToConsumer extends LCCoreAbstractTest {
 			new IntegerProducer(0, 15),
 			new IntegerProducer(16, 48),
 			new IntegerProducer(49, 100)
-		).toConsumer(new IntegerConsumer(100), "test production of integers", Task.PRIORITY_NORMAL).blockThrow(0);
+		).toConsumer(new IntegerConsumer(100), "test production of integers", Task.Priority.NORMAL).blockThrow(0);
 	}
 
 	private static class IntegerProducer implements AsyncProducer<Integer, Exception> {
@@ -34,9 +35,9 @@ public class TestLinkedProducerToConsumer extends LCCoreAbstractTest {
 		
 		@Override
 		public AsyncSupplier<Integer, Exception> produce() {
-			return new Task.Cpu.FromSupplierThrows<Integer, Exception>("produce an integer", Task.PRIORITY_NORMAL,
+			return Task.cpu("produce an integer", Task.Priority.NORMAL, new Executable.FromSupplierThrows<>(
 				() -> pos > max ? null : Integer.valueOf(pos++)
-			).start().getOutput();
+			)).start().getOutput();
 		}
 		
 	}

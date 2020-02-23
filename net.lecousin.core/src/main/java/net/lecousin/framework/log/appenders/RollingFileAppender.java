@@ -13,11 +13,10 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import net.lecousin.framework.concurrent.Task;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.util.LimitAsyncOperations;
-import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -127,31 +126,28 @@ public class RollingFileAppender implements Appender, Closeable {
 		@Override
 		public AsyncSupplier<Void, IOException> execute() {
 			AsyncSupplier<Void, IOException> result = new AsyncSupplier<>();
-			new Task.OnFile<Void, NoException>(file, "Open log file", Task.PRIORITY_RATHER_LOW) {
-				@Override
-				public Void run() {
-					if (!file.exists()) {
-						File dir = file.getParentFile();
-						if (!dir.exists() && !dir.mkdirs())
-							return error("Cannot create log directory: " + dir.getAbsolutePath(), null, result);
-						try {
-							if (!file.createNewFile())
-								return cannotCreateLogFile(file, null, result);
-						} catch (Exception e) {
-							return cannotCreateLogFile(file, e, result);
-						}
+			Task.file(file, "Open log file", Task.Priority.RATHER_LOW, () -> {
+				if (!file.exists()) {
+					File dir = file.getParentFile();
+					if (!dir.exists() && !dir.mkdirs())
+						return error("Cannot create log directory: " + dir.getAbsolutePath(), null, result);
+					try {
+						if (!file.createNewFile())
+							return cannotCreateLogFile(file, null, result);
+					} catch (Exception e) {
+						return cannotCreateLogFile(file, e, result);
 					}
-					output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
-					output.seekAsync(SeekType.FROM_END, 0).onDone(() -> 
-						output.writeAsync(
-							ByteBuffer.wrap(("\nStart logging with max size = " + maxSize
-								+ " and max files = " + maxFiles + "\n\n")
-							.getBytes(StandardCharsets.UTF_8)))
-						.onDone(() -> result.unblockSuccess(null), result),
-					result);
-					return null;
 				}
-			}.start();
+				output = new FileIO.WriteOnly(file, Task.Priority.RATHER_LOW);
+				output.seekAsync(SeekType.FROM_END, 0).onDone(() -> 
+					output.writeAsync(
+						ByteBuffer.wrap(("\nStart logging with max size = " + maxSize
+							+ " and max files = " + maxFiles + "\n\n")
+						.getBytes(StandardCharsets.UTF_8)))
+					.onDone(() -> result.unblockSuccess(null), result),
+				result);
+				return null;
+			}).start();
 			return result;
 		}
 	}
@@ -175,36 +171,33 @@ public class RollingFileAppender implements Appender, Closeable {
 				return result;
 			}
 			if (fileSize >= maxSize) {
-				output.closeAsync().thenStart(new Task.OnFile<Void, NoException>(file, "Roll log file", Task.PRIORITY_RATHER_LOW) {
-					@Override
-					public Void run() {
-						File dir = file.getParentFile();
-						File f = new File(dir, file.getName() + '.' + maxFiles);
-						try {
-							Files.deleteIfExists(f.toPath());
-						} catch (IOException e) {
-							return error("Unable to remove log file " + f.getAbsolutePath(), e, result);
-						}
-						for (int i = maxFiles - 1; i >= 1; --i) {
-							f = new File(dir, file.getName() + '.' + i);
-							if (f.exists() && !f.renameTo(new File(dir, file.getName() + '.' + (i + 1))))
-								return error("Unable to rename log file " + f.getAbsolutePath(), null, result);
-						}
-						f = new File(dir, file.getName() + ".1");
-						if (!file.renameTo(f))
-							return error("Cannot rename log file from " + file.getAbsolutePath()
-								+ " to " + f.getAbsolutePath(), null, result);
-						try {
-							if (!file.createNewFile())
-								return cannotCreateLogFile(file, null, result);
-						} catch (Exception t) {
-							return cannotCreateLogFile(file, t, result);
-						}
-						output = new FileIO.WriteOnly(file, Task.PRIORITY_RATHER_LOW);
-						output.writeAsync(log).onDone(() -> result.unblockSuccess(null), result);
-						return null;
+				output.closeAsync().thenStart(Task.file(file, "Roll log file", Task.Priority.RATHER_LOW, () -> {
+					File dir = file.getParentFile();
+					File f = new File(dir, file.getName() + '.' + maxFiles);
+					try {
+						Files.deleteIfExists(f.toPath());
+					} catch (IOException e) {
+						return error("Unable to remove log file " + f.getAbsolutePath(), e, result);
 					}
-				}, result);
+					for (int i = maxFiles - 1; i >= 1; --i) {
+						f = new File(dir, file.getName() + '.' + i);
+						if (f.exists() && !f.renameTo(new File(dir, file.getName() + '.' + (i + 1))))
+							return error("Unable to rename log file " + f.getAbsolutePath(), null, result);
+					}
+					f = new File(dir, file.getName() + ".1");
+					if (!file.renameTo(f))
+						return error("Cannot rename log file from " + file.getAbsolutePath()
+							+ " to " + f.getAbsolutePath(), null, result);
+					try {
+						if (!file.createNewFile())
+							return cannotCreateLogFile(file, null, result);
+					} catch (Exception t) {
+						return cannotCreateLogFile(file, t, result);
+					}
+					output = new FileIO.WriteOnly(file, Task.Priority.RATHER_LOW);
+					output.writeAsync(log).onDone(() -> result.unblockSuccess(null), result);
+					return null;
+				}), result);
 				return result;
 			}
 			output.writeAsync(log).onDone(() -> result.unblockSuccess(null), result);

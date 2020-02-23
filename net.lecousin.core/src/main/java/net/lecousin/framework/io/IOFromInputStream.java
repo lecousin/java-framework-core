@@ -5,19 +5,19 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import net.lecousin.framework.concurrent.Task;
-import net.lecousin.framework.concurrent.TaskManager;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
-import net.lecousin.framework.concurrent.async.CancelException;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.util.Pair;
 
 /** Implements Readable from an InputStream. */
 public class IOFromInputStream extends AbstractIO implements IO.Readable {
 
 	/** Constructor. */
-	public IOFromInputStream(InputStream stream, String sourceDescription, TaskManager manager, byte priority) {
+	public IOFromInputStream(InputStream stream, String sourceDescription, TaskManager manager, Priority priority) {
 		super(sourceDescription, priority);
 		this.stream = stream;
 		this.manager = manager;
@@ -29,7 +29,7 @@ public class IOFromInputStream extends AbstractIO implements IO.Readable {
 	/** Add the capability to get the size to IOFromInputStream. */
 	public static class KnownSize extends IOFromInputStream implements IO.KnownSize {
 		/** Constructor. */
-		public KnownSize(InputStream stream, long size, String sourceDescription, TaskManager manager, byte priority) {
+		public KnownSize(InputStream stream, long size, String sourceDescription, TaskManager manager, Priority priority) {
 			super(stream, sourceDescription, manager, priority);
 			this.size = size;
 		}
@@ -110,49 +110,39 @@ public class IOFromInputStream extends AbstractIO implements IO.Readable {
 	
 	@Override
 	public AsyncSupplier<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		Task<Integer,IOException> t = new Task<Integer,IOException>(manager, "Read from InputStream", priority, ondone) {
-			@Override
-			public Integer run() throws IOException, CancelException {
-				try {
-					int nb = stream.read(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
-					if (nb >= 0)
-						buffer.position(buffer.position() + nb);
-					return Integer.valueOf(nb);
-				} catch (IOException e) {
-					if (isClosing() || isClosed()) throw IO.cancelClosed();
-					throw e;
-				}
+		return operation(new Task<Integer,IOException>(manager, "Read from InputStream", priority, () -> {
+			try {
+				int nb = stream.read(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
+				if (nb >= 0)
+					buffer.position(buffer.position() + nb);
+				return Integer.valueOf(nb);
+			} catch (IOException e) {
+				if (isClosing() || isClosed()) throw IO.cancelClosed();
+				throw e;
 			}
-		};
-		operation(t.start());
-		return t.getOutput();
+		}, ondone).start()).getOutput();
 	}
 	
 	@Override
 	public AsyncSupplier<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		Task<Integer,IOException> t = new Task<Integer,IOException>(manager, "Read from InputStream", priority, ondone) {
-			@Override
-			public Integer run() throws IOException, CancelException {
-				int total = 0;
-				do {
-					try {
-						int nb = stream.read(
-							buffer.array(),
-							buffer.arrayOffset() + buffer.position() + total,
-							buffer.remaining() - total);
-						if (nb <= 0) break;
-						total += nb;
-					} catch (IOException e) {
-						if (isClosing() || isClosed()) throw IO.cancelClosed();
-						throw e;
-					}
-				} while (total < buffer.remaining());
-				buffer.position(buffer.position() + total);
-				return Integer.valueOf(total);
-			}
-		};
-		operation(t.start());
-		return t.getOutput();
+		return operation(new Task<Integer,IOException>(manager, "Read from InputStream", priority, () -> {
+			int total = 0;
+			do {
+				try {
+					int nb = stream.read(
+						buffer.array(),
+						buffer.arrayOffset() + buffer.position() + total,
+						buffer.remaining() - total);
+					if (nb <= 0) break;
+					total += nb;
+				} catch (IOException e) {
+					if (isClosing() || isClosed()) throw IO.cancelClosed();
+					throw e;
+				}
+			} while (total < buffer.remaining());
+			buffer.position(buffer.position() + total);
+			return Integer.valueOf(total);
+		}, ondone).start()).getOutput();
 	}
 	
 	
@@ -163,23 +153,18 @@ public class IOFromInputStream extends AbstractIO implements IO.Readable {
 			return new AsyncSupplier<>(Long.valueOf(0), null);
 		}
 		// InputStream does not comply to our restrictions, and may end up after the end of the stream, so we cannot use the skip method
-		Task<Long,IOException> t = new Task<Long,IOException>(manager, "Skip from InputStream", priority, ondone) {
-			@Override
-			public Long run() throws IOException, CancelException {
-				long total = 0;
-				byte[] b = new byte[n > 65536 ? 65536 : (int)n];
-				do {
-					int l = n - total > 65536 ? 65536 : (int)(n - total);
-					if (isClosing() || isClosed()) throw IO.cancelClosed();
-					int nb = stream.read(b, 0, l);
-					if (nb <= 0) break;
-					total += nb;
-				} while (total < n);
-				return Long.valueOf(total);
-			}
-		};
-		operation(t.start());
-		return t.getOutput();
+		return operation(new Task<Long,IOException>(manager, "Skip from InputStream", priority, () -> {
+			long total = 0;
+			byte[] b = new byte[n > 65536 ? 65536 : (int)n];
+			do {
+				int l = n - total > 65536 ? 65536 : (int)(n - total);
+				if (isClosing() || isClosed()) throw IO.cancelClosed();
+				int nb = stream.read(b, 0, l);
+				if (nb <= 0) break;
+				total += nb;
+			} while (total < n);
+			return Long.valueOf(total);
+		}, ondone).start()).getOutput();
 	}
 	
 }
