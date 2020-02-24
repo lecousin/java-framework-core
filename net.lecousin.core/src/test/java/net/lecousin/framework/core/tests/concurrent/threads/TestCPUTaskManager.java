@@ -1,4 +1,4 @@
-package net.lecousin.framework.core.tests.concurrent;
+package net.lecousin.framework.core.tests.concurrent.threads;
 
 import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.concurrent.threads.Threading;

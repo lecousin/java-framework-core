@@ -16,6 +16,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.application.Application;
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.threads.Task;
@@ -25,6 +26,16 @@ import net.lecousin.framework.log.appenders.ConsoleAppender;
 
 /** Provide logger for an application. */
 public class LoggerFactory {
+	
+	/** Retrieve a logger from the current application's LoggerFactory. */
+	public static Logger get(Class<?> clazz) {
+		return LCCore.getApplication().getLoggerFactory().getLogger(clazz);
+	}
+	
+	/** Retrieve a logger from the current application's LoggerFactory. */
+	public static Logger get(String name) {
+		return LCCore.getApplication().getLoggerFactory().getLogger(name);
+	}
 	
 	Application application;
 	LoggerThread thread;

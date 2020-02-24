@@ -286,22 +286,8 @@ public interface IAsync<TError extends Exception> extends Cancellable {
 	/** Start the given runnable as a task when this asynchronous unit is successfully unblocked, else the error or cancel
 	 * event are forwarded to the given asynchronous unit.
 	 */
-	default void thenStart(String description, Executable<?, ?> executable, boolean evenErrorOrCancel) {
-		thenStart(Task.cpu(description, executable), evenErrorOrCancel);
-	}
-	
-	/** Start the given runnable as a task when this asynchronous unit is successfully unblocked, else the error or cancel
-	 * event are forwarded to the given asynchronous unit.
-	 */
 	default void thenStart(String description, Priority priority, Executable<?, ?> executable, IAsync<TError> onErrorOrCancel) {
 		thenStart(Task.cpu(description, priority, executable), onErrorOrCancel);
-	}
-
-	/** Start the given runnable as a task when this asynchronous unit is successfully unblocked, else the error or cancel
-	 * event are forwarded to the given asynchronous unit.
-	 */
-	default void thenStart(String description, Executable<?, ?> executable, IAsync<TError> onErrorOrCancel) {
-		thenStart(Task.cpu(description, executable), onErrorOrCancel);
 	}
 	
 	/** Start the given runnable as a task when this asynchronous unit is successfully unblocked, else the error or cancel
@@ -314,22 +300,8 @@ public interface IAsync<TError extends Exception> extends Cancellable {
 	/** Start the given runnable as a task when this asynchronous unit is successfully unblocked, else the error or cancel
 	 * event are forwarded to the given asynchronous unit.
 	 */
-	default void thenStart(String description, Runnable runnable, boolean evenErrorOrCancel) {
-		thenStart(Task.cpu(description, new Executable.FromRunnable(runnable)), evenErrorOrCancel);
-	}
-	
-	/** Start the given runnable as a task when this asynchronous unit is successfully unblocked, else the error or cancel
-	 * event are forwarded to the given asynchronous unit.
-	 */
 	default void thenStart(String description, Priority priority, Runnable runnable, IAsync<TError> onErrorOrCancel) {
 		thenStart(Task.cpu(description, priority, new Executable.FromRunnable(runnable)), onErrorOrCancel);
-	}
-
-	/** Start the given runnable as a task when this asynchronous unit is successfully unblocked, else the error or cancel
-	 * event are forwarded to the given asynchronous unit.
-	 */
-	default void thenStart(String description, Runnable runnable, IAsync<TError> onErrorOrCancel) {
-		thenStart(Task.cpu(description, new Executable.FromRunnable(runnable)), onErrorOrCancel);
 	}
 
 	/** Start the given task when this synchronization point is successfully unblocked, else the error or cancel
@@ -355,16 +327,6 @@ public interface IAsync<TError extends Exception> extends Cancellable {
 		return false;
 	}
 	
-	/** Call runnable immediately (in current thread) if done, or start a CPU task on done with current priority. */
-	default boolean thenDoOrStart(String taskDescription, Runnable runnable) {
-		if (isDone()) {
-			runnable.run();
-			return true;
-		}
-		thenStart(Task.cpu(taskDescription, new Executable.FromRunnable(runnable)), true);
-		return false;
-	}
-	
 	/** Call runnable immediately (in current thread) if done, or start a CPU task on done. */
 	default boolean thenDoOrStart(String taskDescription, Task.Priority taskPriority, Runnable runnable, IAsync<TError> onErrorOrCancel) {
 		if (isDone()) {
@@ -373,17 +335,6 @@ public interface IAsync<TError extends Exception> extends Cancellable {
 			return true;
 		}
 		thenStart(Task.cpu(taskDescription, taskPriority, new Executable.FromRunnable(runnable)), onErrorOrCancel);
-		return false;
-	}
-	
-	/** Call runnable immediately (in current thread) if done, or start a CPU task on done with current priority. */
-	default boolean thenDoOrStart(String taskDescription, Runnable runnable, IAsync<TError> onErrorOrCancel) {
-		if (isDone()) {
-			if (!forwardIfNotSuccessful(onErrorOrCancel))
-				runnable.run();
-			return true;
-		}
-		thenStart(Task.cpu(taskDescription, new Executable.FromRunnable(runnable)), onErrorOrCancel);
 		return false;
 	}
 	
@@ -400,21 +351,6 @@ public interface IAsync<TError extends Exception> extends Cancellable {
 			return true;
 		}
 		thenStart(Task.cpu(taskDescription, taskPriority, new Executable.FromRunnable(runnable)), onErrorOrCancel, errorConverter);
-		return false;
-	}
-	
-	/** Call runnable immediately (in current thread) if done, or start a CPU task on done with current priority. */
-	default <TError2 extends Exception> boolean thenDoOrStart(
-		String taskDescription, Runnable runnable, 
-		IAsync<TError2> onErrorOrCancel, Function<TError, TError2> errorConverter
-	) {
-		if (isDone()) {
-			if (hasError()) onErrorOrCancel.error(errorConverter.apply(getError()));
-			else if (isCancelled()) onErrorOrCancel.cancel(getCancelEvent());
-			else runnable.run();
-			return true;
-		}
-		thenStart(Task.cpu(taskDescription, new Executable.FromRunnable(runnable)), onErrorOrCancel, errorConverter);
 		return false;
 	}
 	

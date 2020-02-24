@@ -4,21 +4,28 @@ import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import org.junit.Assert;
-import org.junit.Test;
-
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.FileSystemWatcher;
 import net.lecousin.framework.concurrent.FileSystemWatcher.PathEventListener;
 import net.lecousin.framework.concurrent.async.WaitingDataQueueSynchronizationPoint;
+import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectory;
 import net.lecousin.framework.concurrent.tasks.drives.RemoveFile;
 import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.util.Triple;
 
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.BlockJUnit4ClassRunner;
+
+@RunWith(BlockJUnit4ClassRunner.class)
 public class TestFileSystemWatcher extends LCCoreAbstractTest {
 
 	@Test
-	public void test() throws Exception {
+	public void testAddModifyAndDelete() throws Exception {
 		Path dir = Files.createTempDirectory("test");
 		WaitingDataQueueSynchronizationPoint<Triple<Path, String, Integer>, Exception> queue = new WaitingDataQueueSynchronizationPoint<>();
 		PathEventListener listener = new PathEventListener() {
@@ -71,6 +78,47 @@ public class TestFileSystemWatcher extends LCCoreAbstractTest {
 		Assert.assertEquals(dir, event.getValue1());
 		Assert.assertTrue(event.getValue2().startsWith("test") && event.getValue2().endsWith("file"));
 		Assert.assertFalse(queue.isDone());
+		
+		stop.run();
+	}
+	
+	@Test
+	public void testListenerErrors() throws Exception {
+		Path dir = Files.createTempDirectory("test");
+		PathEventListener listener = new PathEventListener() {
+			@Override
+			public void fileRemoved(Path parent, String childName) {
+				throw new RuntimeException("test of error");
+			}
+			@Override
+			public void fileModified(Path parent, String childName) {
+				throw new RuntimeException("test of error");
+			}
+			@Override
+			public void fileCreated(Path parent, String childName) {
+				throw new RuntimeException("test of error");
+			}
+		};
+		Runnable stop = FileSystemWatcher.watch(dir, listener);
+
+		LCCore.getApplication().getLoggerFactory().getLogger(FileSystemWatcher.class).setLevel(Level.ERROR);
+		Path file = Files.createTempFile(dir, "test", "file");
+		FileOutputStream out = new FileOutputStream(file.toFile());
+		out.write(new byte[] { 1, 2, 3 });
+		out.close();
+		RemoveFile.task(file.toFile(), Task.Priority.NORMAL).start().getOutput().blockThrow(0);
+
+		LCCore.getApplication().getLoggerFactory().getLogger(FileSystemWatcher.class).setLevel(Level.OFF);
+		file = Files.createTempFile(dir, "test", "file");
+		out = new FileOutputStream(file.toFile());
+		out.write(new byte[] { 1, 2, 3 });
+		out.close();
+		RemoveFile.task(file.toFile(), Task.Priority.NORMAL).start().getOutput().blockThrow(0);
+
+		LCCore.getApplication().getLoggerFactory().getLogger(FileSystemWatcher.class).setLevel(Level.DEBUG);
+		
+		// remove directory
+		RemoveDirectory.task(dir.toFile(), null, 0, null, Priority.NORMAL, false).start().getOutput().blockThrow(0);
 		
 		stop.run();
 	}

@@ -10,13 +10,17 @@ import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
+import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.Logger.Level;
+import net.lecousin.framework.log.LoggerFactory;
 import net.lecousin.framework.mutable.Mutable;
+import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.mutable.MutableInteger;
+import net.lecousin.framework.util.Runnables.ConsumerThrows;
 import net.lecousin.framework.util.Runnables.FunctionThrows;
 
 import org.junit.Assert;
@@ -481,6 +485,138 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 		as1.error(new Exception("test conversion"));
 		Assert.assertTrue(as2.hasError());
 		Assert.assertEquals("test conversion", as2.getError().getMessage());
+	}
+	
+	@SuppressWarnings("boxing")
+	@Test
+	public void testThenStart() throws Exception {
+		AsyncSupplier<Void, NoException> as = new AsyncSupplier<>();
+		
+		MutableBoolean b1 = new MutableBoolean(false);
+		FunctionThrows<Void, Integer, NoException> f1 = v -> { b1.set(true); return 1; };
+		AsyncSupplier<Integer, NoException> r1 = as.thenStart("f1", null, f1, true);
+		
+		MutableBoolean b2 = new MutableBoolean(false);
+		FunctionThrows<Void, Integer, NoException> f2 = v -> { b2.set(true); return 2; };
+		AsyncSupplier<Integer, NoException> r2 = as.thenStart("f2", null, f2, false);
+		
+		MutableBoolean b3 = new MutableBoolean(false);
+		FunctionThrows<Void, Integer, NoException> f3 = v -> { b3.set(true); return 3; };
+		AsyncSupplier<Integer, NoException> r3 = as.thenStart("f3", null, f3, new Async<>());
+		
+		MutableBoolean b4 = new MutableBoolean(false);
+		ConsumerThrows<Void, NoException> f4 = v -> { b4.set(true); };
+		IAsync<NoException> r4 = as.thenStart("f4", null, f4, true);
+		
+		MutableBoolean b5 = new MutableBoolean(false);
+		ConsumerThrows<Void, NoException> f5 = v -> { b5.set(true); };
+		IAsync<NoException> r5 = as.thenStart("f5", null, f5, false);
+		
+		MutableBoolean b6 = new MutableBoolean(false);
+		ConsumerThrows<Void, NoException> f6 = v -> { b6.set(true); };
+		IAsync<NoException> r6 = as.thenStart("f6", null, f6, new Async<>());
+		
+		as.unblockSuccess(null);
+		
+		Assert.assertEquals(1, r1.blockResult(0).intValue());
+		Assert.assertTrue(b1.get());
+		
+		Assert.assertEquals(2, r2.blockResult(0).intValue());
+		Assert.assertTrue(b2.get());
+		
+		Assert.assertEquals(3, r3.blockResult(0).intValue());
+		Assert.assertTrue(b3.get());
+		
+		r4.blockThrow(0);
+		Assert.assertTrue(b4.get());
+		
+		r5.blockThrow(0);
+		Assert.assertTrue(b5.get());
+		
+		r6.blockThrow(0);
+		Assert.assertTrue(b6.get());
+	}
+	
+	@Test
+	public void testListenerError() {
+		AsyncSupplier<Void, Exception> as;
+		AsyncSupplier.Listener<Void, Exception> listener1 = new AsyncSupplier.Listener<Void, Exception>() {
+
+			@Override
+			public void ready(Void result) {
+				throw new RuntimeException("test error");
+			}
+
+			@Override
+			public void error(Exception error) {
+				throw new RuntimeException("test error");
+			}
+
+			@Override
+			public void cancelled(CancelException event) {
+				throw new RuntimeException("test error");
+			}
+			
+		};
+		AsyncSupplier.Listener<Void, Exception> listener2 = new AsyncSupplier.Listener<Void, Exception>() {
+
+			@Override
+			public void ready(Void result) {
+			}
+
+			@Override
+			public void error(Exception error) {
+			}
+
+			@Override
+			public void cancelled(CancelException event) {
+			}
+			
+		};
+		
+		// success with debug
+		LoggerFactory.get(AsyncSupplier.class).setLevel(Level.DEBUG);
+		as = new AsyncSupplier<>();
+		as.listen(listener1);
+		as.listen(listener2);
+		as.unblockSuccess(null);
+		
+		// success without debug
+		LoggerFactory.get(AsyncSupplier.class).setLevel(Level.ERROR);
+		as = new AsyncSupplier<>();
+		as.listen(listener1);
+		as.listen(listener2);
+		as.unblockSuccess(null);
+		
+		// error with debug
+		LoggerFactory.get(AsyncSupplier.class).setLevel(Level.DEBUG);
+		as = new AsyncSupplier<>();
+		as.listen(listener1);
+		as.listen(listener2);
+		as.unblockError(new Exception(""));
+		
+		// error without debug
+		LoggerFactory.get(AsyncSupplier.class).setLevel(Level.ERROR);
+		as = new AsyncSupplier<>();
+		as.listen(listener1);
+		as.listen(listener2);
+		as.unblockError(new Exception(""));
+		
+		// cancel with debug
+		LoggerFactory.get(AsyncSupplier.class).setLevel(Level.DEBUG);
+		as = new AsyncSupplier<>();
+		as.listen(listener1);
+		as.listen(listener2);
+		as.unblockCancel(null);
+		
+		// cancel without debug
+		LoggerFactory.get(AsyncSupplier.class).setLevel(Level.ERROR);
+		as = new AsyncSupplier<>();
+		as.listen(listener1);
+		as.listen(listener2);
+		as.unblockCancel(null);
+
+		LoggerFactory.get(AsyncSupplier.class).setLevel(null);
 	}
 	
 }

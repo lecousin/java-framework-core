@@ -12,6 +12,7 @@ import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.mutable.MutableInteger;
 
@@ -52,6 +53,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testOnDoneError() {
 		sp.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(1, error.get());
@@ -62,6 +64,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testOnDoneCancel() throws Exception {
 		sp.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -77,6 +80,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnDoneOk2SP() {
 		sp.onDone(onOk, sp2);
 		sp2.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.unblock();
 		Assert.assertEquals(1, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -88,6 +92,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnDoneErrorTransferWithErrorOrCancel() {
 		sp.onDone(onOk, sp2);
 		sp2.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(1, error.get());
@@ -99,6 +104,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnDoneErrorTransfer() {
 		sp.onDone(sp2);
 		sp2.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(1, error.get());
@@ -110,6 +116,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnDoneCancelTransferWithErrorOrCancel() {
 		sp.onDone(onOk, sp2);
 		sp2.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -121,6 +128,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnDoneCancelTransfer() {
 		sp.onDone(sp2);
 		sp2.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -132,6 +140,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnDoneOkTransfer() {
 		sp.onDone(sp2);
 		sp2.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.unblock();
 		Assert.assertEquals(1, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -143,6 +152,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnDoneOkWithErrorOrCancel() {
 		sp.onDone(onOk, sp2);
 		sp2.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.unblock();
 		Assert.assertEquals(1, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -154,6 +164,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnDoneOkRunnable() {
 		sp.onDone(sp2::unblock);
 		sp2.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.unblock();
 		Assert.assertEquals(1, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -165,6 +176,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnDoneErrorRunnable() {
 		sp.onDone(sp2::unblock);
 		sp2.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.error(new Exception());
 		Assert.assertEquals(1, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -176,6 +188,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnDoneCancelRunnable() {
 		sp.onDone(sp2::unblock);
 		sp2.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(1, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -186,6 +199,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testCancelWithErrorConverter() {
 		sp.onDone(sp2, e -> e);
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		Assert.assertTrue(sp2.isCancelled());
 		testListenersToString();
@@ -194,6 +208,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testErrorWithConverter() {
 		sp.onDone(sp2, e -> e);
+		testListenersToString();
 		sp.error(new Exception("test"));
 		Assert.assertTrue(sp2.hasError());
 		testListenersToString();
@@ -204,6 +219,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		sp.onSuccess(onOk);
 		sp.onError(onError);
 		sp.onCancel(onCancel);
+		testListenersToString();
 		sp.unblock();
 		Assert.assertEquals(1, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -216,10 +232,12 @@ public class TestAsync extends LCCoreAbstractTest {
 		sp.onSuccess(onOk);
 		sp.onError(onError);
 		sp.onCancel(onCancel);
+		testListenersToString();
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(1, error.get());
 		Assert.assertEquals(0, cancel.get());
+		testListenersToString();
 	}
 	
 	@Test
@@ -227,16 +245,19 @@ public class TestAsync extends LCCoreAbstractTest {
 		sp.onSuccess(onOk);
 		sp.onError(onError);
 		sp.onCancel(onCancel);
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(0, error.get());
 		Assert.assertEquals(1, cancel.get());
+		testListenersToString();
 	}
 	
 	@Test
 	public void testToAsyncSupplierOk() {
 		AsyncSupplier<Void, Exception> aw = sp.toAsyncSupplier();
 		aw.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.unblock();
 		Assert.assertEquals(1, ok.get());
 		Assert.assertEquals(0, error.get());
@@ -248,20 +269,24 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testToAsyncSupplierError() {
 		AsyncSupplier<Void, Exception> aw = sp.toAsyncSupplier();
 		aw.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(1, error.get());
 		Assert.assertEquals(0, cancel.get());
+		testListenersToString();
 	}
 
 	@Test
 	public void testToAsyncSupplierCancel() {
 		AsyncSupplier<Void, Exception> aw = sp.toAsyncSupplier();
 		aw.onDone(onOk, onError, onCancel);
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(0, error.get());
 		Assert.assertEquals(1, cancel.get());
+		testListenersToString();
 	}
 	
 	@Test
@@ -269,6 +294,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> {
 			throw new CancelException("test");
 		}), sp2);
+		testListenersToString();
 		sp.unblock();
 		sp2.block(0);
 		Assert.assertTrue(sp2.isCancelled());
@@ -278,6 +304,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenStartOk() {
 		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
+		testListenersToString();
 		sp.unblock();
 		sp2.block(10000);
 		Assert.assertEquals(1, ok.get());
@@ -288,6 +315,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenStartError() {
 		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
+		testListenersToString();
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(1, error.get());
@@ -297,6 +325,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenStartCancel() {
 		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
 		Assert.assertEquals(1, error.get());
@@ -306,6 +335,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenStartEvenOnErrorOk() {
 		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, true);
+		testListenersToString();
 		sp.unblock();
 		sp2.block(10000);
 		Assert.assertEquals(1, ok.get());
@@ -316,6 +346,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenStartEvenOnErrorError() {
 		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, true);
+		testListenersToString();
 		sp.error(new Exception());
 		sp2.block(10000);
 		Assert.assertEquals(1, ok.get());
@@ -326,6 +357,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testThenStartEvenOnErrorCancel() {
 		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, true);
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		sp2.block(10000);
 		Assert.assertEquals(1, ok.get());
@@ -337,6 +369,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testThenStartRunnableOk() {
 		Async<Exception> sp3 = new Async<>();
 		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, sp3);
+		testListenersToString();
 		sp.unblock();
 		sp2.block(10000);
 		Assert.assertEquals(1, ok.get());
@@ -348,26 +381,31 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testThenStartRunnableError() {
 		Async<Exception> sp3 = new Async<>();
 		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, sp3);
+		testListenersToString();
 		sp.error(new Exception());
 		sp3.block(10000);
 		Assert.assertEquals(0, ok.get());
 		Assert.assertTrue(sp3.hasError());
+		testListenersToString();
 	}
 	
 	@Test
 	public void testThenStartRunnableCancel() {
 		Async<Exception> sp3 = new Async<>();
 		sp.thenStart("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); }, sp3);
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		sp3.block(10000);
 		Assert.assertEquals(0, ok.get());
 		Assert.assertTrue(sp3.isCancelled());
+		testListenersToString();
 	}
 	
 	@Test
 	public void testThenDoOrStartRunnableOkAsync() {
 		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); });
 		Assert.assertEquals(0, ok.get());
+		testListenersToString();
 		sp.unblock();
 		sp2.block(0);
 		Assert.assertEquals(51, ok.get());
@@ -378,19 +416,23 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testThenDoOrStartRunnableOkSync() {
 		Assert.assertEquals(0, ok.get());
 		sp.unblock();
+		testListenersToString();
 		Assert.assertEquals(0, ok.get());
 		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); });
 		Assert.assertEquals(51, ok.get());
 		Assert.assertTrue(sp2.isSuccessful());
+		testListenersToString();
 	}
 	
 	@Test
 	public void testThenDoOrStartRunnableErrorAsync() {
 		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); });
 		Assert.assertEquals(0, ok.get());
+		testListenersToString();
 		sp.error(new Exception());
 		sp2.block(0);
 		Assert.assertEquals(51, ok.get());
+		testListenersToString();
 	}
 	
 	@Test
@@ -407,9 +449,11 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testThenDoOrStartRunnableCancelAsync() {
 		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); });
 		Assert.assertEquals(0, ok.get());
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		sp2.block(0);
 		Assert.assertEquals(51, ok.get());
+		testListenersToString();
 	}
 	
 	@Test
@@ -427,10 +471,12 @@ public class TestAsync extends LCCoreAbstractTest {
 		Async<Exception> sp3 = new Async<>();
 		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3);
 		Assert.assertEquals(0, ok.get());
+		testListenersToString();
 		sp.unblock();
 		sp2.block(0);
 		Assert.assertEquals(51, ok.get());
 		Assert.assertFalse(sp3.isDone());
+		testListenersToString();
 	}
 	
 	@Test
@@ -450,9 +496,11 @@ public class TestAsync extends LCCoreAbstractTest {
 		Async<Exception> sp3 = new Async<>();
 		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3);
 		Assert.assertEquals(0, ok.get());
+		testListenersToString();
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
 		Assert.assertTrue(sp3.hasError());
+		testListenersToString();
 	}
 	
 	@Test
@@ -471,9 +519,11 @@ public class TestAsync extends LCCoreAbstractTest {
 		Async<Exception> sp3 = new Async<>();
 		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3);
 		Assert.assertEquals(0, ok.get());
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
 		Assert.assertTrue(sp3.isCancelled());
+		testListenersToString();
 	}
 	
 	@Test
@@ -492,10 +542,12 @@ public class TestAsync extends LCCoreAbstractTest {
 		Async<IOException> sp3 = new Async<>();
 		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3, e -> new IOException());
 		Assert.assertEquals(0, ok.get());
+		testListenersToString();
 		sp.unblock();
 		sp2.block(0);
 		Assert.assertEquals(51, ok.get());
 		Assert.assertFalse(sp3.isDone());
+		testListenersToString();
 	}
 	
 	@Test
@@ -515,9 +567,11 @@ public class TestAsync extends LCCoreAbstractTest {
 		Async<IOException> sp3 = new Async<>();
 		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3, e -> new IOException());
 		Assert.assertEquals(0, ok.get());
+		testListenersToString();
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
 		Assert.assertTrue(sp3.hasError());
+		testListenersToString();
 	}
 	
 	@Test
@@ -536,9 +590,11 @@ public class TestAsync extends LCCoreAbstractTest {
 		Async<IOException> sp3 = new Async<>();
 		sp.thenDoOrStart("test", Task.Priority.NORMAL, () -> { ok.set(51); sp2.unblock(); }, sp3, e -> new IOException());
 		Assert.assertEquals(0, ok.get());
+		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
 		Assert.assertTrue(sp3.isCancelled());
+		testListenersToString();
 	}
 	
 	@Test
@@ -576,6 +632,7 @@ public class TestAsync extends LCCoreAbstractTest {
 		sp.onError(e -> {});
 		sp.onErrorOrCancel(() -> ok.set(51));
 		Assert.assertEquals(0, ok.get());
+		testListenersToString();
 		sp.error(new Exception());
 		Assert.assertEquals(51, ok.get());
 		testListenersToString();
@@ -585,6 +642,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnErrorOrCancelWithOk() {
 		sp.onErrorOrCancel(() -> ok.set(51));
 		Assert.assertEquals(0, ok.get());
+		testListenersToString();
 		sp.unblock();
 		Assert.assertEquals(0, ok.get());
 		testListenersToString();
@@ -594,6 +652,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	public void testOnDoneAsyncSupplierWithSupplier() {
 		AsyncSupplier<Integer, Exception> as = new AsyncSupplier<>();
 		sp.onDone(as, () -> Integer.valueOf(567));
+		testListenersToString();
 		sp.unblock();
 		Assert.assertTrue(as.isDone());
 		Assert.assertEquals(567, as.getResult().intValue());
@@ -669,6 +728,16 @@ public class TestAsync extends LCCoreAbstractTest {
 	private void testListenersToString() {
 		for (Object o : sp.getAllListeners())
 			o.toString();
+	}
+	
+	@Test
+	public void testBlockPauseWithWarning() {
+		Async<Exception> a = new Async<>();
+		Task.cpu("unblock", Priority.IMPORTANT, () -> {
+			a.unblock();
+			return null;
+		}).executeIn(5).start();
+		a.blockPause(1);
 	}
 	
 }

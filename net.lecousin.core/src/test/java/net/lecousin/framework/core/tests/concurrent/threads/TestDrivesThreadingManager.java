@@ -1,4 +1,4 @@
-package net.lecousin.framework.core.tests.concurrent;
+package net.lecousin.framework.core.tests.concurrent.threads;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,7 +21,7 @@ import net.lecousin.framework.util.Triple;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class TestDrivesTaskManager extends LCCoreAbstractTest {
+public class TestDrivesThreadingManager extends LCCoreAbstractTest {
 
 	@Test
 	public void simpleTests() {

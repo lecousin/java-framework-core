@@ -495,7 +495,7 @@ public final class QuotedPrintable {
 			// we need to call again the encoder
 			output.flip();
 			encodedConsumer.consume(output)
-				.thenStart("Encoding quoted-printable data", () -> continueEncoding(data, result), result);
+				.thenStart("Encoding quoted-printable data", null, () -> continueEncoding(data, result), result);
 		}
 
 		@Override

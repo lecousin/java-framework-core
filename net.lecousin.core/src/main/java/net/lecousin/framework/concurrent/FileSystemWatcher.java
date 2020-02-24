@@ -151,9 +151,7 @@ public final class FileSystemWatcher {
 	            }
 			}
 			app.closed(this);
-			stop = true;
-			try { service.close(); }
-			catch (Exception e) { /* ignore */ }
+			close();
 		}
 		
 		@Override

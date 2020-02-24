@@ -142,6 +142,25 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		jp.block(10000);
 		Assert.assertTrue(jp.isDone());
 		Assert.assertEquals(1, timedout.get());
+		
+		// test unblock on timeout without callback
+		jp = new JoinPoint<>();
+		jp.timeout(1, null);
+		jp.block(200);
+		Assert.assertTrue(jp.isDone());
+		
+		// test callback error
+		jp = new JoinPoint<>();
+		jp.timeout(1, () -> { throw new RuntimeException("test error"); });
+		jp.block(200);
+		Assert.assertTrue(jp.isDone());
+		
+		jp = new JoinPoint<>();
+		jp.listenTime(1, () -> { throw new RuntimeException("test error"); });
+		jp.listenTime(1, null);
+		jp.timeout(10, null);
+		jp.block(200);
+		Assert.assertTrue(jp.isDone());
 	}
 	
 	@Test
@@ -152,6 +171,24 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		Assert.assertEquals(0, i.get());
 		as.error(new Exception());
 		Assert.assertEquals(1, i.get());
+		
+		as = new AsyncSupplier<>();
+		JoinPoint.joinOnDoneThenDo(i::inc, as);
+		as.error(new Exception());
+		Assert.assertEquals(2, i.get());
+	}
+	
+	@Test
+	public void testJoinAlreadyJoined() {
+		JoinPoint<Exception> jp = new JoinPoint<>();
+		jp.joined();
+		jp.addToJoin(1);
+		jp.cancel(true);
+		jp.joined();
+		jp = new JoinPoint<>();
+		jp.addToJoin(1);
+		jp.error(new Exception("test error"));
+		jp.joined();
 	}
 	
 }

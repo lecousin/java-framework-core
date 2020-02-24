@@ -131,7 +131,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 			if (c == -2) {
 				int i = iBuf;
 				int j = iChar;
-				s.canStartReading().thenStart("readAsync", () -> {
+				s.canStartReading().thenStart("readAsync", null, () -> {
 					try {
 						continueReadAsync(s, i, j, sp);
 					} catch (Exception e) {

@@ -290,30 +290,6 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 	
 	/** Start the given task when this asynchronous unit is unblocked. */
 	public IAsync<TError> thenStart(
-		String taskDescription,
-		ConsumerThrows<T, TError> consumer, boolean evenIfErrorOrCancel
-	) {
-		Executable.FromConsumerThrows<T, TError> executable = new Executable.FromConsumerThrows<>(consumer);
-		Task<Void, TError> task = Task.cpu(taskDescription, executable);
-		if (evenIfErrorOrCancel)
-			onDone(() -> {
-				executable.setInput(getResult());
-				task.start();
-			});
-		else
-			onDone(
-				res -> {
-					executable.setInput(res);
-					task.start();
-				},
-				task::setError,
-				task::cancel
-			);
-		return task.getOutput();
-	}
-	
-	/** Start the given task when this asynchronous unit is unblocked. */
-	public IAsync<TError> thenStart(
 		String taskDescription, Task.Priority priority,
 		ConsumerThrows<T, TError> consumer, IAsync<TError> onErrorOrCancel
 	) {
@@ -326,19 +302,6 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 		return task.getOutput();
 	}
 	
-	/** Start the given task when this asynchronous unit is unblocked. */
-	public IAsync<TError> thenStart(
-		String taskDescription,
-		ConsumerThrows<T, TError> consumer, IAsync<TError> onErrorOrCancel
-	) {
-		Executable.FromConsumerThrows<T, TError> executable = new Executable.FromConsumerThrows<>(consumer);
-		Task<Void, TError> task = Task.cpu(taskDescription, executable);
-		onDone(() -> {
-			executable.setInput(getResult());
-			task.start();
-		}, onErrorOrCancel);
-		return task.getOutput();
-	}
 	
 
 	/** Call consumer immediately (in current thread) if done, or start a CPU task on done. */
@@ -370,7 +333,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(Async.class);
+		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(AsyncSupplier.class);
 		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
@@ -416,7 +379,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(Async.class);
+		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(AsyncSupplier.class);
 		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
@@ -466,7 +429,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(Async.class);
+		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(AsyncSupplier.class);
 		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
