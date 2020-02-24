@@ -302,9 +302,7 @@ public abstract class TaskManager {
 		getDebugDescription(s);
 		for (TaskExecutor w : getActiveExecutors())
 			w.debug(s, "Active");
-		for (TaskExecutor w : getInactiveExecutors())
-			try { w.debug(s, "Inactive"); }
-			catch (Exception t) { /* ignore, because we don't want to do it in a synchronized block, so NPE can happen */ }
+		s.append("\n - ").append(getInactiveExecutors().size()).append(" thread(s) inactive");
 		for (TaskExecutor w : blocked)
 			try { w.debug(s, "Blocked"); }
 			catch (Exception t) { /* ignore, because we don't want to do it in a synchronized block, so NPE can happen */ }

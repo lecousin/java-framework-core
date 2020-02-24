@@ -105,7 +105,7 @@ public abstract class TaskExecutor {
 
 	/** Describe what this executor is doing for debugging purpose. */
 	public void debug(StringBuilder s, String type) {
-		s.append("\r\n - ").append(type).append(' ').append(thread.getName()).append(": ");
+		s.append("\n - ").append(type).append(' ').append(thread.getName()).append(": ");
 		Task<?,?> c = currentTask;
 		if (c == null)
 			s.append("waiting");

@@ -49,10 +49,12 @@ import net.lecousin.framework.io.serialization.annotations.Transient;
 import net.lecousin.framework.io.serialization.annotations.TypeInstantiation;
 import net.lecousin.framework.io.serialization.annotations.TypeSerializationMethod;
 import net.lecousin.framework.io.serialization.annotations.TypeSerializer;
+import net.lecousin.framework.log.Logger;
+import net.lecousin.framework.log.LoggerFactory;
 import net.lecousin.framework.math.IntegerUnit.Unit;
+import net.lecousin.framework.math.TimeUnit;
 import net.lecousin.framework.text.CharArrayString;
 import net.lecousin.framework.text.CharArrayStringBuffer;
-import net.lecousin.framework.math.TimeUnit;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Factory;
 import net.lecousin.framework.util.Pair;
@@ -65,6 +67,8 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	protected abstract Serializer createSerializer();
 	protected abstract Deserializer createDeserializer();
 	protected abstract SerializationSpecWriter createSpecWriter();
+	
+	protected Logger logger = LoggerFactory.get(TestSerialization.class);
 	
 	@Test
 	public void testBasics() {
@@ -1269,14 +1273,14 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	protected void print(IO.Readable.Seekable io, Object o) throws Exception {
 		String content = IOUtil.readFullyAsStringSync(io, StandardCharsets.UTF_8);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		System.out.println("Serialization result for " + (o == null ? "null" : o.getClass().getName()) + "\r\n" + content);
+		logger.trace("Serialization result for " + (o == null ? "null" : o.getClass().getName()) + "\r\n" + content);
 	}
 	
 	protected void printSpec(IO.Readable.Seekable io, Class<?> type) throws Exception {
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
 		String content = IOUtil.readFullyAsStringSync(io, StandardCharsets.UTF_8);
 		io.seekSync(SeekType.FROM_BEGINNING, 0);
-		System.out.println("Serialization specification for " + type.getName() + "\r\n" + content);
+		logger.trace("Serialization specification for " + type.getName() + "\r\n" + content);
 	}
 	
 	@SuppressWarnings("unused")
