@@ -267,7 +267,7 @@ public class IOInMemoryOrFile extends AbstractIO
 			res -> {
 				fil.set(file.writeAsync(0, buffer));
 				IOUtil.listenOnDone(fil.get(), result -> {
-					Integer r = Integer.valueOf(mem.getResult().intValue() + result.intValue());
+					Integer r = Integer.valueOf(mem.getOutput().getResult().intValue() + result.intValue());
 					if (ondone != null) ondone.accept(new Pair<>(r, null));
 					sp.unblockSuccess(r);
 				}, sp, ondone);

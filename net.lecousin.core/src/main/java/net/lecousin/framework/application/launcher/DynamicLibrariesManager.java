@@ -138,7 +138,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		Task<byte[], IOException> read = FullReadFileTask.create(splashFile, Task.Priority.URGENT);
 		read.start();
 		Task<Void,NoException> load = Task.cpu("Loading splash image", Task.Priority.URGENT, () -> {
-			ImageIcon img = new ImageIcon(read.getResult());
+			ImageIcon img = new ImageIcon(read.getOutput().getResult());
 			if (splash == null) return null;
 			synchronized (splash) {
 				while (!splash.isReady())
@@ -303,7 +303,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			libraries.put(descr.getGroupId() + ':' + descr.getArtifactId(), lib);
 			appLib = lib;
 			Task.cpu("Load library " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), Task.Priority.IMPORTANT,
-				new LoadLibrary(lib, resolveConflicts.getResult(), addPlugins, splash, stepLoad)).start();
+				new LoadLibrary(lib, resolveConflicts.getOutput().getResult(), addPlugins, splash, stepLoad)).start();
 			lib.load.thenStart(Task.cpu("Finishing to initialize", Task.Priority.IMPORTANT, () -> {
 				if (canStartApp.hasError()) return null;
 				app.getDefaultLogger().debug("Libraries initialized.");
@@ -806,7 +806,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 						Task<Void, NoException> load = Task.cpu(
 							"Load library " + l.descr.getGroupId() + ':' + l.descr.getArtifactId(),
 							Task.Priority.IMPORTANT,
-							new LoadLibrary(l, resolveConflicts.getResult(), null, progress, work));
+							new LoadLibrary(l, resolveConflicts.getOutput().getResult(), null, progress, work));
 						load.start();
 						l.load.onDone(result, () -> l.library);
 					}, result);

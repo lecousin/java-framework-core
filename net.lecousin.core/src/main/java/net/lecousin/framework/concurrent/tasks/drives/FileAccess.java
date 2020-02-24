@@ -104,7 +104,7 @@ public class FileAccess implements AutoCloseable, Closeable {
 	
 	public long getPosition() throws IOException {
 		if (!openTask.isDone()) return 0;
-		if (!openTask.isSuccessful()) throw openTask.getError();
+		if (!openTask.isSuccessful()) throw openTask.getOutput().getError();
 		return channel.position();
 	}
 	
@@ -118,7 +118,7 @@ public class FileAccess implements AutoCloseable, Closeable {
 			if (openTask.isSuccessful())
 				sp.unblockSuccess(Long.valueOf(size));
 			else
-				sp.unblockError(openTask.getError());
+				sp.unblockError(openTask.getOutput().getError());
 		};
 		openTask.getOutput().onDone(ready);
 	}

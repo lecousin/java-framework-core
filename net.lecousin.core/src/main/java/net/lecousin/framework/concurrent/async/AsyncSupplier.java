@@ -242,7 +242,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 					executable.setInput(res);
 					task.start();
 				},
-				task::setError,
+				err -> task.setDone(null, err),
 				task::cancel
 			);
 		return task.getOutput();
@@ -282,7 +282,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 					executable.setInput(res);
 					task.start();
 				},
-				task::setError,
+				err -> task.setDone(null, err),
 				task::cancel
 			);
 		return task.getOutput();

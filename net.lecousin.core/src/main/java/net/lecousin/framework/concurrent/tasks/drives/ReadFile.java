@@ -47,7 +47,7 @@ class ReadFile implements Executable<Integer,IOException> {
 	@Override
 	public Integer execute() throws IOException, CancelException {
 		if (!file.openTask.isSuccessful())
-			throw file.openTask.getError();
+			throw file.openTask.getOutput().getError();
 		int nbRead = 0;
 		if (pos >= 0)
 			try { file.channel.position(pos); }

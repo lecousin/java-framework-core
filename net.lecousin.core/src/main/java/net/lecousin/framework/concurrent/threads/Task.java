@@ -151,10 +151,6 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 		return description;
 	}
 	
-	public void setDescription(String descr) {
-		description = descr;
-	}
-	
 	public Application getApplication() {
 		return app;
 	}
@@ -180,10 +176,6 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	
 	// --- status, cancel, error, result ---
 	
-	
-	public byte getStatus() {
-		return status;
-	}
 	
 	public boolean isDone() {
 		return status == STATUS_DONE && result.isDone();
@@ -239,19 +231,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	@Override
 	public CancelException getCancelEvent() { return cancelling != null ? cancelling : result.getCancelEvent(); }
 
-	/** Set this task's error (MUST NOT be started). */
-	public void setError(TError error) {
-		status = STATUS_DONE;
-		result.unblockError(error);
-	}
-	
-	public boolean hasError() { return result.hasError(); }
-	
-	public TError getError() { return result.getError(); }
-	
-	public T getResult() { return result.getResult(); }
-	
-	public Output getOutput() { return result; }
+	public AsyncSupplier<T, TError> getOutput() { return result; }
 	
 	/** Set this task as done with the given result or error. */
 	public void setDone(T result, TError error) {
@@ -478,8 +458,13 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	}
 
 	void cancelledBecauseExecutorDied(CancelException reason) {
-		cancelling = reason;
+		if (cancelling != null)
+			reason = cancelling;
+		else
+			cancelling = reason;
 		result.cancel(reason);
+		status = STATUS_DONE;
+		result.cancelled(reason);
 	}
 	
 	
@@ -571,13 +556,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	}
 	
 	/** Synchronization point holding the result or error of this task. */
-	public final class Output extends AsyncSupplier<T, TError> {
-		private Output() {}
-		
-		public Task<T,TError> getTask() {
-			return Task.this;
-		}
-		
+	private final class Output extends AsyncSupplier<T, TError> {
 		@Override
 		public void unblockCancel(CancelException reason) {
 			Task.this.cancel(reason);
@@ -589,7 +568,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 		
 		@Override
 		public String toString() {
-			return "Task synchronization point [" + description + "]";
+			return "Task result [" + description + "]";
 		}
 	}
 	
@@ -629,6 +608,34 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 		File file, String description, Priority priority, Executable<T, TError> executable
 	) {
 		return new Task<>(Threading.getDrivesManager().getTaskManager(file), description, priority, executable, null);
+	}
+	
+	/** Create a task using a pool of threads. */
+	public static <T, TError extends Exception> Task<T, TError> unmanaged(
+		String description, Priority priority, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
+	) {
+		return new Task<>(Threading.getUnmanagedTaskManager(), description, priority, executable, ondone);
+	}
+	
+	/** Create a task using a pool of threads. */
+	public static <T, TError extends Exception> Task<T, TError> unmanaged(
+		String description, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
+	) {
+		return new Task<>(Threading.getUnmanagedTaskManager(), description, null, executable, ondone);
+	}
+	
+	/** Create a task using a pool of threads. */
+	public static <T, TError extends Exception> Task<T, TError> unmanaged(
+		String description, Priority priority, Executable<T, TError> executable
+	) {
+		return new Task<>(Threading.getUnmanagedTaskManager(), description, priority, executable, null);
+	}
+	
+	/** Create a task using a pool of threads. */
+	public static <T, TError extends Exception> Task<T, TError> unmanaged(
+		String description, Executable<T, TError> executable
+	) {
+		return new Task<>(Threading.getUnmanagedTaskManager(), description, null, executable, null);
 	}
 	
 }

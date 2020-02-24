@@ -42,18 +42,26 @@ public final class TaskManagerMonitor {
 	TaskManagerMonitor(TaskManager manager, Configuration config) {
 		this.manager = manager;
 		this.config = config;
-		Monitor monitor = new Monitor();
-		Thread t = manager.threadFactory.newThread(monitor);
+		thread = new Monitor();
+		Thread t = manager.threadFactory.newThread(thread);
 		t.setName(manager.getName() + " - Task Monitoring");
 		t.start();
-		LCCore.get().toClose(monitor);
+		LCCore.get().toClose(thread);
 	}
 	
 	private TaskManager manager;
 	private Configuration config;
+	private Monitor thread;
 	
 	public Configuration getConfiguration() {
 		return config;
+	}
+	
+	/** Check tasks now. */
+	public void checkNow() {
+		synchronized (thread.lock) {
+			thread.lock.notify();
+		}
 	}
 	
 	private class Monitor implements Runnable, Closeable {
@@ -117,8 +125,7 @@ public final class TaskManagerMonitor {
 				if (executor.aside) return -1;
 				StringBuilder s = new StringBuilder(2048);
 				startMessage(s, executor, ms);
-				s.append("Task ").append(task).append(" is running since ").append(ms)
-				 .append(" ! put the thread aside and start a new thread, current stack:\r\n");
+				s.append(" ! put the thread aside and start a new thread, current stack:");
 				DebugUtil.createStackTrace(s, executor.thread.getStackTrace());
 				appendLocks(s, executor.thread);
 				Threading.getLogger().warn(s.toString());
@@ -127,7 +134,7 @@ public final class TaskManagerMonitor {
 			}
 			StringBuilder s = new StringBuilder(2048);
 			startMessage(s, executor, ms);
-			s.append(" ! kill the thread! current stack:\r\n");
+			s.append(" ! kill the thread! current stack:");
 			DebugUtil.createStackTrace(s, executor.thread.getStackTrace());
 			appendLocks(s, executor.thread);
 			Threading.getLogger().error(s.toString());

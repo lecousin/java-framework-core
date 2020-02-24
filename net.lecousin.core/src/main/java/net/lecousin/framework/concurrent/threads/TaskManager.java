@@ -46,8 +46,8 @@ public abstract class TaskManager {
 	
 	public final Object getResource() { return resource; }
 	
-	public TaskManagerMonitor.Configuration getMonitorConfiguration() {
-		return monitor.getConfiguration();
+	public TaskManagerMonitor getMonitor() {
+		return monitor;
 	}
 	
 	/** Start the threads of this task manager. */
@@ -251,7 +251,7 @@ public abstract class TaskManager {
 		executorAside(executor);
 	}
 	
-	@SuppressWarnings({"deprecation", "squid:CallToDeprecatedMethod"})
+	@SuppressWarnings({"deprecation", "squid:CallToDeprecatedMethod", "java:S1181"})
 	void killExecutor(TaskExecutor executor) {
 		synchronized (aside) {
 			if (!aside.remove(executor)) return;
@@ -261,9 +261,14 @@ public abstract class TaskManager {
 		s.append("Task stopped at \r\n");
 		DebugUtil.createStackTrace(s, stack);
 		Threading.getLogger().error(s.toString());
-		executor.thread.stop();
-		if (executor.getCurrentTask() != null)
-			executor.getCurrentTask().cancel(new CancelException("Task was running since a too long time"));
+		Task<?, ?> task = executor.getCurrentTask();
+		if (task != null)
+			task.cancel(new CancelException("Task was running since a too long time"));
+		try {
+			executor.thread.stop();
+		} catch (Throwable e) {
+			// ignore
+		}		
 	}
 	
 	protected abstract void executorUncaughtException(TaskExecutor executor);

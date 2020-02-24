@@ -337,11 +337,11 @@ public class Launcher {
 				startApp.getCancelEvent().printStackTrace(System.err);
 			} else {
 				System.err.println("Error while starting application:");
-				startApp.getError().printStackTrace(System.err);
+				startApp.getOutput().getError().printStackTrace(System.err);
 			}
 			return null;
 		}
-		return startApp.getResult();
+		return startApp.getOutput().getResult();
 	}
 	
 	private static void start(final SplashScreen splash, final String[] args) {
