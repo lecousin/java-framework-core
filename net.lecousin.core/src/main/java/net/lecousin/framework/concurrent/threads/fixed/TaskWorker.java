@@ -78,9 +78,6 @@ class TaskWorker extends TaskExecutor {
 			if (isAside())
 				break;
 		}
-		StringBuilder s = new StringBuilder();
-		printStats(s);
-		System.out.print(s.toString());
 	}
 	
 	@Override
@@ -88,21 +85,5 @@ class TaskWorker extends TaskExecutor {
 		blockedTime += endWait - startWait;
 		workingTime -= endBlock - startBlock;
 		waitingTime += endBlock - startBlock;
-	}
-	
-	public void printStats(StringBuilder s) {
-		 s.append(thread.getName());
-		while (s.length() < 30) s.append(' ');
-		s.append(": ");
-		s.append(tasksDone);
-		while (s.length() < 45) s.append(' ');
-		s.append(" tasks done in ");
-		s.append(((double)workingTime) / 1000000000);
-		while (s.length() < 80) s.append(' ');
-		s.append(" waited ");
-		s.append(((double)waitingTime) / 1000000000);
-		s.append(" blocked ");
-		s.append(((double)blockedTime) / 1000000000);
-		s.append("\r\n");
 	}
 }

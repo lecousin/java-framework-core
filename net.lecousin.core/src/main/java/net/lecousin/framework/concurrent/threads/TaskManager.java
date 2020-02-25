@@ -306,7 +306,8 @@ public abstract class TaskManager {
 	public final void debug(StringBuilder s) {
 		getDebugDescription(s);
 		for (TaskExecutor w : getActiveExecutors())
-			w.debug(s, "Active");
+			try { w.debug(s, "Active"); }
+			catch (Exception t) { /* ignore, because we don't want to do it in a synchronized block, so NPE can happen */ }
 		s.append("\n - ").append(getInactiveExecutors().size()).append(" thread(s) inactive");
 		for (TaskExecutor w : blocked)
 			try { w.debug(s, "Blocked"); }
@@ -318,7 +319,4 @@ public abstract class TaskManager {
 	
 	protected abstract void getDebugDescription(StringBuilder s);
 
-	/** Print statistics to the given StringBuilder. */
-	public abstract void printStats(StringBuilder s);
-	
 }

@@ -69,14 +69,17 @@ A thread pool is also available for long running tasks that cannot be split,
 or tasks using a library with functionalities that may use several physical resources.
 They will be executed in separate threads so they won't block other tasks.
 
+A monitoring of tasks executed is done so if a task is exceeding a maximum time, it is put aside to run a new thread
+and continue executing other tasks. After a second maximum time, the thread is killed.
+
 A task should not, but is allowed to block. In this case the blocked thread is interrupted and a new thread
 is automatically launched to process other tasks for the same physical resource. Once the task is unblocked,
 the thread is resumed as soon as another thread is available and can be stopped. For this, synchronized
 sections should be avoided as much as possible (or be very short), instead a _synchronization point_ should
 be used.
 
-Different kinds of _synchronization point_ are available in the package net.lecousin.framework.concurrent.synch,
-such as JoinPoint, SynchronizationPoint, AsyncWork... They allow to wait for one or more asynchronous operations
+Different kinds of _synchronization point_ are available in the package net.lecousin.framework.concurrent.async,
+such as JoinPoint, Async, AsyncSupplier... They allow to wait for one or more asynchronous operations
 to finish (successfully or not), by listening to them.
 
 By default, the order tasks are executed is based on tasks' priority,
@@ -85,6 +88,10 @@ This may be changed by providing a new implementation of TaskPriorityManager.
 
 The multi-threading system handles CPU and drives tasks, for network asynchronous operations you can
 use the library [net.lecousin.framework.network.core](https://github.com/lecousin/java-framework-network-core "java-framework-network-core").
+
+For a better management of drives, you can use the library
+[net.lecousin.framework.system](https://github.com/lecousin/java-framework-system "java-framework-system")
+which will detect drives, their type and capabilities.
 
 ## IO Model
 
@@ -100,7 +107,19 @@ and it can resize the IO can be defined as follow:
 
 	public <T extends IO.Writable.Seekable & IO.Resizable> myMethod(T io) { ... }
 
-In addition, the model add asynchronous operations (non-blocking).
+In addition, the model add asynchronous operations (non-blocking) to improve multi-threading.
+
+Various kind of I/O are available:
+ - FileIO for files
+ - LinkedIO to aggregate several IO into a single one
+ - SubIO to extract a part as an IO
+ - buffered implementation such as BufferedIO, PreBufferedReadable, ByteArrayIO, IOInMomoryOrFile...
+ - OutputToInput allowing to see on one side a writable IO (a producer of data), and on antoher side
+ a readable IO to consume the data
+  - and more...
+
+The package net.lecousin.framework.io.util provides also utilities such as AsyncProducer and AsyncConsumer,
+BroadcastIO, LimitWriteOperations to queue writing operations...
 
 See the javadoc of package net.lecousin.framework.io for more information. 
  
@@ -132,3 +151,8 @@ memory becomes low, it will ask the implementations to free some memory.
 
 In addition, when an application is idle (doing almost nothing) since several minutes, the MemoryManager may
 decide to ask to free some memory to reduce the memory footprint of the application when it is idle.
+
+## Utilities
+
+Various other utilities are also available, such as collections, encoding, XML parsing, more flexible
+strings...

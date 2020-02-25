@@ -15,7 +15,6 @@ import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
-import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.data.CharArray;
 import net.lecousin.framework.io.data.Chars;
@@ -318,16 +317,13 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		@Override
 		public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, IString string) {
 			AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
-			Task.cpu("UnprotectedStringBuffer.readUntilAsync", getPriority(), new Executable<Void, NoException>() {
-				@Override
-				public Void execute() {
-					try {
-						result.unblockSuccess(Boolean.valueOf(readUntil(endChar, string)));
-					} catch (IOException e) {
-						result.error(e);
-					}
-					return null;
+			Task.cpu("UnprotectedStringBuffer.readUntilAsync", getPriority(), () -> {
+				try {
+					result.unblockSuccess(Boolean.valueOf(readUntil(endChar, string)));
+				} catch (IOException e) {
+					result.error(e);
 				}
+				return null;
 			}).start();
 			return result;
 		}

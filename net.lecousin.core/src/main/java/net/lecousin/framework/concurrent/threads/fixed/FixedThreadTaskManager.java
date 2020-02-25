@@ -41,7 +41,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 	
 	@Override
 	protected void threadingStarted() {
-		Task.cpu("Close old spare threads for " + getName(), Task.Priority.BACKGROUND, new CloseOldSpace())
+		Task.cpu("Close old spare threads for " + getName(), Task.Priority.BACKGROUND, new CloseOldSpare())
 		.executeEvery(60000, 6L * 60000).start();
 	}
 	
@@ -98,12 +98,6 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 	
 	protected abstract TaskWorker[] getWorkers();
 	
-	protected void addSpare(TaskWorker worker) {
-		synchronized (spare) {
-			spare.addLast(worker);
-		}
-	}
-	
 	AsyncSupplier<TaskWorker,NoException> getPauseToDo() {
 		if (pausesToDo.isEmpty()) return null;
 		synchronized (pausesToDo) {
@@ -154,7 +148,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		if (pause.getResult() != null) { // can be null if we are stopping and just want to unblock this thread
 			replaceWorkerBySpare(pause.getResult(), (TaskWorker)executor);
 			synchronized (spare) {
-				spare.addLast(pause.getResult());
+				spare.addFirst(pause.getResult());
 			}
 		}
 	}
@@ -183,39 +177,21 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 		s.append("Task Manager: ").append(getName()).append(" (").append(nbThreads).append(" threads)");
 	}
 	
-	@Override
-	public void printStats(StringBuilder s) {
-		try {
-			s.append("Task Manager: ").append(getName()).append(" (").append(nbThreads).append(" threads):\r\n");
-			for (TaskWorker w : getWorkers()) {
-				s.append(" - Worker ");
-				w.printStats(s);
-			}
-			for (TaskWorker w : spare) {
-				s.append(" - Spare ");
-				w.printStats(s);
-			}
-			for (TaskExecutor w : getBlockedExecutors()) {
-				s.append(" - Blocked ");
-				((TaskWorker)w).printStats(s);
-			}
-		} catch (Exception t) {
-			/* ignore, because we don't want to do it in a synchronized block, so NPE can happen */
-		}
-	}
-
-	private class CloseOldSpace implements Executable<Void, NoException> {
+	private class CloseOldSpare implements Executable<Void, NoException> {
 		@Override
 		public Void execute() {
 			synchronized (spare) {
 				if (spare.size() <= nbThreads) return null;
+				int maxToStop = (spare.size() - nbThreads) / 3 + 1;
+				int nbStop = 0;
 				for (Iterator<TaskWorker> it = spare.iterator(); it.hasNext(); ) {
 					TaskWorker t = it.next();
 					if (t.lastUsed > 5 * 60000) {
 						Threading.getLogger().info("Spare thread not used since more than 5 minutes => stop it");
 						t.forceStop(true);
 						spare.removeInstance(t);
-						return null;
+						if (++nbStop >= maxToStop)
+							return null;
 					}
 				}
 			}

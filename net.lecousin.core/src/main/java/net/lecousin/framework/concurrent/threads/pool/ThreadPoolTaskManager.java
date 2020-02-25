@@ -41,6 +41,10 @@ public class ThreadPoolTaskManager extends TaskManager {
 	long tasksTime = 0;
 	private long threadCounter = 1;
 	
+	private String newThreadName() {
+		return "ThreadPool " + getName() + " - " + (threadCounter++);
+	}
+	
 	TaskPriorityManager getPriorityManager() {
 		return taskPriorityManager;
 	}
@@ -56,11 +60,8 @@ public class ThreadPoolTaskManager extends TaskManager {
 	}
 	
 	@Override
-	@SuppressWarnings("squid:S106") // print to console
 	protected void finishAndStopActiveAndInactiveExecutors() {
-		StringBuilder s = new StringBuilder();
-		printStats(s);
-		System.out.println(s.toString());
+		// nothing to do
 	}
 	
 	@Override
@@ -83,7 +84,7 @@ public class ThreadPoolTaskManager extends TaskManager {
 	protected void add(Task<?, ?> t) {
 		synchronized (taskPriorityManager) {
 			if (active.size() < maxThreads)
-				active.add(new TaskWorker(t, this, "ThreadPool " + getName() + " - " + (threadCounter++)));
+				active.add(new TaskWorker(t, this, newThreadName()));
 			else
 				taskPriorityManager.add(t);
 		}
@@ -95,7 +96,7 @@ public class ThreadPoolTaskManager extends TaskManager {
 			active.remove(executor);
 			Task<?,?> task = taskPriorityManager.peekNext();
 			if (task != null)
-				active.add(new TaskWorker(task, this, "ThreadPool " + getName() + " - " + (threadCounter++)));
+				active.add(new TaskWorker(task, this, newThreadName()));
 		}
 	}
 	
@@ -105,7 +106,7 @@ public class ThreadPoolTaskManager extends TaskManager {
 			active.remove(executor);
 			Task<?,?> task = taskPriorityManager.peekNext();
 			if (task != null)
-				active.add(new TaskWorker(task, this, "ThreadPool " + getName() + " - " + (threadCounter++)));
+				active.add(new TaskWorker(task, this, newThreadName()));
 		}
 	}
 	
@@ -122,7 +123,7 @@ public class ThreadPoolTaskManager extends TaskManager {
 			active.remove(executor);
 			Task<?,?> task = taskPriorityManager.peekNext();
 			if (task != null)
-				active.add(new TaskWorker(task, this, "ThreadPool " + getName() + " - " + (threadCounter++)));
+				active.add(new TaskWorker(task, this, newThreadName()));
 		}
 	}
 	
@@ -144,10 +145,4 @@ public class ThreadPoolTaskManager extends TaskManager {
 		 .append(active.size()).append('/').append(maxThreads).append(" active threads");
 	}
 
-	@Override
-	public void printStats(StringBuilder s) {
-		s.append("Thread pool ").append(getName()).append(": ");
-		s.append(tasksDone).append(" tasks done in ").append(((double)tasksTime) / 1000000000).append("s.");
-	}
-	
 }

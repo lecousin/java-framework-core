@@ -54,6 +54,7 @@ public final class Threading {
 	 * @param nbUnmanagedThreads number of threads to use for unmanaged tasks.
 	 *     If 0 or negative, maximum 100 threads will be used.
 	 */
+	@SuppressWarnings("java:S107") // number of parameters
 	public static void init(
 		ThreadFactory threadFactory,
 		Class<? extends TaskPriorityManager> taskPriorityManagerClass,
@@ -298,14 +299,6 @@ public final class Threading {
 			tm.debug(s);
 			s.append("\r\n");
 		}
-		return s.toString();
-	}
-	
-	/** Print statistics. */
-	public static String printStats() {
-		StringBuilder s = new StringBuilder();
-		for (TaskManager tm : resources.values())
-			tm.printStats(s);
 		return s.toString();
 	}
 	

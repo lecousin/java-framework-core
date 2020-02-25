@@ -302,8 +302,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			lib.descr = descr;
 			libraries.put(descr.getGroupId() + ':' + descr.getArtifactId(), lib);
 			appLib = lib;
-			Task.cpu("Load library " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), Task.Priority.IMPORTANT,
-				new LoadLibrary(lib, resolveConflicts.getOutput().getResult(), addPlugins, splash, stepLoad)).start();
+			loadLibrary(lib, resolveConflicts.getOutput().getResult(), addPlugins, splash, stepLoad).start();
 			lib.load.thenStart(Task.cpu("Finishing to initialize", Task.Priority.IMPORTANT, () -> {
 				if (canStartApp.hasError()) return null;
 				app.getDefaultLogger().debug("Libraries initialized.");
@@ -532,6 +531,14 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		}
 	}
 	
+	private Task<Void, NoException> loadLibrary(
+		Lib lib, Map<String, LibraryDescriptor> versions, List<LibraryDescriptor> addPlugins,
+		WorkProgress progress, long work
+	) {
+		return Task.cpu("Load library " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId(), Task.Priority.IMPORTANT,
+			new LoadLibrary(lib, versions, addPlugins, progress, work));
+	}
+	
 	private class LoadLibrary implements Executable<Void, NoException> {
 		private LoadLibrary(
 			Lib lib, Map<String, LibraryDescriptor> versions, List<LibraryDescriptor> addPlugins,
@@ -609,8 +616,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 				l.descr = d;
 				libraries.put(key, l);
 			}
-			Task.cpu("Load library " + l.descr.getGroupId() + ':' + l.descr.getArtifactId(), Task.Priority.IMPORTANT,
-				new LoadLibrary(l, versions, null, progress, work)).start();
+			loadLibrary(l, versions, null, progress, work).start();
 			jp.addToJoin(l.load);
 		}
 	}
@@ -803,10 +809,8 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 					resolveConflicts.getOutput().onDone(() -> {
 						app.getDefaultLogger().debug("Dependencies analyzed, loading and initializing libraries");
 
-						Task<Void, NoException> load = Task.cpu(
-							"Load library " + l.descr.getGroupId() + ':' + l.descr.getArtifactId(),
-							Task.Priority.IMPORTANT,
-							new LoadLibrary(l, resolveConflicts.getOutput().getResult(), null, progress, work));
+						Task<Void, NoException> load =
+							loadLibrary(l, resolveConflicts.getOutput().getResult(), null, progress, work);
 						load.start();
 						l.load.onDone(result, () -> l.library);
 					}, result);
