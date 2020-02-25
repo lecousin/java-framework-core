@@ -15,15 +15,11 @@ import net.lecousin.framework.util.DebugUtil;
 public final class TaskManagerMonitor {
 	
 	/** Configuration. */
-	@SuppressWarnings({
-		"squid:ClassVariableVisibilityCheck",
-		"squid:S1444" // field not final
-	})
 	public static class Configuration {
-		public int taskExecutionMillisecondsBeforeToWarn;
-		public int taskExecutionMillisecondsBeforeToPutAside;
-		public int taskExecutionMillisecondsBeforeToKill;
-		public boolean checkLocksOnBlockedTasks;
+		private int taskExecutionMillisecondsBeforeToWarn;
+		private int taskExecutionMillisecondsBeforeToPutAside;
+		private int taskExecutionMillisecondsBeforeToKill;
+		private boolean checkLocksOnBlockedTasks;
 		
 		/** Constructor. */
 		public Configuration(
@@ -36,6 +32,16 @@ public final class TaskManagerMonitor {
 			this.taskExecutionMillisecondsBeforeToPutAside = taskExecutionMillisecondsBeforeToPutAside;
 			this.taskExecutionMillisecondsBeforeToKill = taskExecutionMillisecondsBeforeToKill;
 			this.checkLocksOnBlockedTasks = checkLocksOnBlockedTasks;
+		}
+
+		/** Make a copy of this configuration. */
+		public Configuration duplicate() {
+			return new Configuration(
+				taskExecutionMillisecondsBeforeToWarn,
+				taskExecutionMillisecondsBeforeToPutAside,
+				taskExecutionMillisecondsBeforeToKill,
+				checkLocksOnBlockedTasks
+			);
 		}
 	}
 	
@@ -57,9 +63,10 @@ public final class TaskManagerMonitor {
 		return config;
 	}
 	
-	/** Check tasks now. */
-	public void checkNow() {
+	void setConfiguration(Configuration config) {
 		synchronized (thread.lock) {
+			this.config = config;
+			thread.wait = 0;
 			thread.lock.notify();
 		}
 	}
@@ -68,11 +75,12 @@ public final class TaskManagerMonitor {
 		
 		private Object lock = new Object();
 		private boolean closed = false;
+		private long wait;
 		
 		@Override
 		@SuppressWarnings("squid:S2142") // InterruptedException
 		public void run() {
-			long wait = config.taskExecutionMillisecondsBeforeToWarn;
+			wait = config.taskExecutionMillisecondsBeforeToWarn;
 			while (!closed) {
 				synchronized (lock) {
 					if (wait > 0)

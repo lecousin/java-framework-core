@@ -9,15 +9,15 @@ import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
 
 /** Task to read all bytes from a file. */
-public class FullReadFileTask implements Executable<byte[],IOException> {
+public class ReadFullFile implements Executable<byte[],IOException> {
 
 	/** Create task. */
 	public static Task<byte[],IOException> create(File file, Priority priority) {
-		return Task.file(file, "Read full content of " + file.getAbsolutePath(), priority, new FullReadFileTask(file), null);
+		return Task.file(file, "Read full content of " + file.getAbsolutePath(), priority, new ReadFullFile(file), null);
 	}
 	
 	/** Constructor. */
-	public FullReadFileTask(File file) {
+	public ReadFullFile(File file) {
 		this.file = file;
 	}
 	

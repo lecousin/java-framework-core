@@ -25,10 +25,12 @@ public class DrivesThreadingManager {
 	DrivesThreadingManager(
 		ThreadFactory threadFactory,
 		Class<? extends TaskPriorityManager> taskPriorityManagerClass,
-		DrivesProvider drivesProvider
+		DrivesProvider drivesProvider,
+		TaskManagerMonitor.Configuration driveMonitoring
 	) {
 		this.threadFactory = threadFactory;
 		this.taskPriorityManagerClass = taskPriorityManagerClass;
+		this.driveMonitoring = driveMonitoring;
 		rootResources = new HashMap<>();
 		rootManagers = new HashMap<>();
 		managers = new HashMap<>();
@@ -47,7 +49,7 @@ public class DrivesThreadingManager {
 					prio = new SimpleTaskPriorityManager();
 				}
 				TaskManager tm = new MonoThreadTaskManager(
-					DRIVE + path, resource, threadFactory, prio, Threading.MONITOR_CONFIG_DRIVE);
+					DRIVE + path, resource, threadFactory, prio, driveMonitoring);
 				tm.start();
 				rootResources.put(path, resource);
 				rootManagers.put(path, tm);
@@ -64,6 +66,7 @@ public class DrivesThreadingManager {
 	private Map<String, Object> rootResources;
 	private Map<String, TaskManager> rootManagers;
 	private Map<Object, TaskManager> managers;
+	private TaskManagerMonitor.Configuration driveMonitoring;
 	
 	/** Return the associated resource for the given file. */
 	public Object getResource(File file) {
@@ -129,6 +132,14 @@ public class DrivesThreadingManager {
 		return null;
 	}
 	
+	void setMonitoringConfiguration(TaskManagerMonitor.Configuration config) {
+		synchronized (rootManagers) {
+			driveMonitoring = config;
+			for (TaskManager tm : rootManagers.values())
+				tm.getMonitor().setConfiguration(config);
+		}
+	}
+	
 	/** Interface to provide drives and partitions. */
 	public static interface DrivesProvider {
 		/** Register listeners. */
@@ -171,10 +182,10 @@ public class DrivesThreadingManager {
 		TaskManager tm;
 		if (multiThread)
 			tm = new MultiThreadTaskManager(
-				DRIVE + drive.toString(), drive, 2, threadFactory, prio, Threading.MONITOR_CONFIG_DRIVE);
+				DRIVE + drive.toString(), drive, 2, threadFactory, prio, driveMonitoring);
 		else
 			tm = new MonoThreadTaskManager(
-				DRIVE + drive.toString(), drive, threadFactory, prio, Threading.MONITOR_CONFIG_DRIVE);
+				DRIVE + drive.toString(), drive, threadFactory, prio, driveMonitoring);
 		tm.start();
 		synchronized (managers) {
 			managers.put(drive, tm);

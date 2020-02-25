@@ -47,6 +47,9 @@ public final class LCCore {
 		/** Return the libraries manager. */
 		LibrariesManager getSystemLibraries();
 		
+		/** Return true if the current thread is allowed to change system configuration. */
+		boolean currentThreadIsSystem();
+		
 		/** Return a system logger, that may be used during initialization of the environment. */
 		Logger getSystemLogger(String name);
 

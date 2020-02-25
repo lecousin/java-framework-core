@@ -45,7 +45,7 @@ import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
-import net.lecousin.framework.concurrent.tasks.drives.FullReadFileTask;
+import net.lecousin.framework.concurrent.tasks.drives.ReadFullFile;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.exception.NoException;
@@ -135,7 +135,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	}
 	
 	private void loadSplashFile(File splashFile) {
-		Task<byte[], IOException> read = FullReadFileTask.create(splashFile, Task.Priority.URGENT);
+		Task<byte[], IOException> read = ReadFullFile.create(splashFile, Task.Priority.URGENT);
 		read.start();
 		Task<Void,NoException> load = Task.cpu("Loading splash image", Task.Priority.URGENT, () -> {
 			ImageIcon img = new ImageIcon(read.getOutput().getResult());

@@ -11,6 +11,7 @@ import net.lecousin.framework.LCCoreVersion;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.threads.DrivesThreadingManager.DrivesProvider;
+import net.lecousin.framework.concurrent.threads.TaskManagerMonitor;
 import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.concurrent.threads.priority.SimpleTaskPriorityManager;
 import net.lecousin.framework.log.Logger;
@@ -47,7 +48,25 @@ public class StandaloneLCCore implements LCCore.Environment {
 	private int nbCPUThreads = -1;
 	private int nbUnmanagedThreads = -1;
 	private DrivesProvider drivesProvider = null;
-	
+	private TaskManagerMonitor.Configuration cpuMonitorConfig = new TaskManagerMonitor.Configuration(
+		60 * 1000, // 1 minute
+		5 * 60 * 1000, // 5 minutes
+		15 * 60 * 1000, // 15 minutes
+		false
+	);
+	private TaskManagerMonitor.Configuration driveMonitorConfig = new TaskManagerMonitor.Configuration(
+		30 * 1000, // 30 seconds
+		1 * 60 * 1000, // 1 minute
+		15 * 60 * 1000, // 15 minutes
+		false
+	);
+	private TaskManagerMonitor.Configuration unmanagedMonitorConfig = new TaskManagerMonitor.Configuration(
+		60 * 1000, // 1 minute
+		5 * 60 * 1000, // 5 minutes
+		15 * 60 * 1000, // 15 minutes
+		false
+	);
+
 	@Override
 	public void add(Application app) {
 		if (this.app == null)
@@ -75,6 +94,24 @@ public class StandaloneLCCore implements LCCore.Environment {
 		if (Threading.isInitialized()) throw new IllegalStateException(ERROR_ALREADY_INITIALIZED);
 		drivesProvider = provider;
 	}
+
+	/** Set the monitoring configuration for CPU tasks. */
+	public void setCpuMonitorConfig(TaskManagerMonitor.Configuration config) {
+		if (Threading.isInitialized()) throw new IllegalStateException(ERROR_ALREADY_INITIALIZED);
+		cpuMonitorConfig = config;
+	}
+
+	/** Set the monitoring configuration for drive tasks. */
+	public void setDriveMonitorConfig(TaskManagerMonitor.Configuration config) {
+		if (Threading.isInitialized()) throw new IllegalStateException(ERROR_ALREADY_INITIALIZED);
+		driveMonitorConfig = config;
+	}
+
+	/** Set the monitoring configuration for unmanaged tasks. */
+	public void setUnmanagedMonitorConfig(TaskManagerMonitor.Configuration config) {
+		if (Threading.isInitialized()) throw new IllegalStateException(ERROR_ALREADY_INITIALIZED);
+		unmanagedMonitorConfig = config;
+	}
 	
 	private static long logThreadingInterval = 30000;
 	
@@ -90,16 +127,15 @@ public class StandaloneLCCore implements LCCore.Environment {
 			app.getThreadFactory(),
 			SimpleTaskPriorityManager.class,
 			nbCPUThreads,
+			cpuMonitorConfig,
 			drivesProvider,
-			nbUnmanagedThreads
+			driveMonitorConfig,
+			nbUnmanagedThreads,
+			unmanagedMonitorConfig
 		);
 		
 		// debugging
 		if (app.isDebugMode()) {
-			Threading.MONITOR_CONFIG_CPU.checkLocksOnBlockedTasks = true;
-			Threading.MONITOR_CONFIG_DRIVE.checkLocksOnBlockedTasks = true;
-			Threading.MONITOR_CONFIG_UNMANAGED.checkLocksOnBlockedTasks = true;
-
 			final Logger logger = app.getLoggerFactory().getLogger("Threading Status");
 			class ThreadingLogger extends Thread implements Closeable {
 				ThreadingLogger() {
@@ -151,6 +187,11 @@ public class StandaloneLCCore implements LCCore.Environment {
 	@Override
 	public LibrariesManager getSystemLibraries() {
 		return app.getLibrariesManager();
+	}
+	
+	@Override
+	public boolean currentThreadIsSystem() {
+		return true;
 	}
 	
 	@Override

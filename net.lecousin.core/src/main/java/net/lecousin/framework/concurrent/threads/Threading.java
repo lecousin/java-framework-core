@@ -38,27 +38,6 @@ public final class Threading {
 		return logger;
 	}
 	
-	public static final TaskManagerMonitor.Configuration MONITOR_CONFIG_CPU = new TaskManagerMonitor.Configuration(
-		60 * 1000, // 1 minute
-		5 * 60 * 1000, // 5 minutes
-		15 * 60 * 1000, // 15 minutes
-		false
-	);
-	
-	public static final TaskManagerMonitor.Configuration MONITOR_CONFIG_DRIVE = new TaskManagerMonitor.Configuration(
-		30 * 1000, // 30 seconds
-		1 * 60 * 1000, // 1 minute
-		15 * 60 * 1000, // 15 minutes
-		false
-	);
-	
-	public static final TaskManagerMonitor.Configuration MONITOR_CONFIG_UNMANAGED = new TaskManagerMonitor.Configuration(
-		60 * 1000, // 1 minute
-		5 * 60 * 1000, // 5 minutes
-		15 * 60 * 1000, // 15 minutes
-		false
-	);
-	
 	public static boolean traceBlockingTasks = System.getProperty("lc.traceBlockingTasks") != null;
 	public static boolean traceTaskTime = System.getProperty("lc.traceTaskTime") != null;
 	
@@ -79,38 +58,38 @@ public final class Threading {
 		ThreadFactory threadFactory,
 		Class<? extends TaskPriorityManager> taskPriorityManagerClass,
 		int nbCPUThreads,
+		TaskManagerMonitor.Configuration cpuMonitoring,
 		DrivesProvider drivesProvider,
-		int nbUnmanagedThreads
+		TaskManagerMonitor.Configuration driveMonitoring,
+		int nbUnmanagedThreads,
+		TaskManagerMonitor.Configuration unmanagedMonitoring
 	) {
 		if (isInitialized()) throw new IllegalStateException("Threading has been already initialized.");
 		logger = LCCore.get().getThreadingLogger();
 		TaskScheduler.init();
-		TaskPriorityManager prio;
+		TaskPriorityManager prioCpu;
+		TaskPriorityManager prioDrive;
 		try {
-			prio = taskPriorityManagerClass.newInstance();
+			prioCpu = taskPriorityManagerClass.newInstance();
+			prioDrive = taskPriorityManagerClass.newInstance();
 		} catch (Exception e) {
 			Threading.getLogger().error("Unable to instantiate " + taskPriorityManagerClass.getName());
-			prio = new SimpleTaskPriorityManager();
+			prioCpu = new SimpleTaskPriorityManager();
+			prioDrive = new SimpleTaskPriorityManager();
 		}
 		cpuManager = new MultiThreadTaskManager(
 			"CPU",
 			Threading.CPU,
 			nbCPUThreads > 0 ? nbCPUThreads : Runtime.getRuntime().availableProcessors(),
 			threadFactory,
-			prio,
-			MONITOR_CONFIG_CPU
+			prioCpu,
+			cpuMonitoring
 		);
 		cpuManager.start();
 		resources.put(CPU, cpuManager);
-		drivesManager = new DrivesThreadingManager(threadFactory, taskPriorityManagerClass, drivesProvider);
-		try {
-			prio = taskPriorityManagerClass.newInstance();
-		} catch (Exception e) {
-			Threading.getLogger().error("Unable to instantiate " + taskPriorityManagerClass.getName());
-			prio = new SimpleTaskPriorityManager();
-		}
+		drivesManager = new DrivesThreadingManager(threadFactory, taskPriorityManagerClass, drivesProvider, driveMonitoring);
 		unmanagedManager = new ThreadPoolTaskManager(
-			"Unmanaged tasks manager", UNMANAGED, nbUnmanagedThreads, threadFactory, prio, MONITOR_CONFIG_UNMANAGED);
+			"Unmanaged tasks manager", UNMANAGED, nbUnmanagedThreads, threadFactory, prioDrive, unmanagedMonitoring);
 		resources.put(UNMANAGED, unmanagedManager);
 		LCCore.get().toClose(new StopMultiThreading());
 		synchronized (resources) {
@@ -264,6 +243,24 @@ public final class Threading {
 	public static Task<?, ?> currentTask() {
 		TaskExecutor executor = executors.get(Thread.currentThread());
 		return executor != null ? executor.getCurrentTask() : null;
+	}
+	
+	/** Set the monitoring configuration for CPU tasks. */
+	public static void setCpuMonitorConfiguration(TaskManagerMonitor.Configuration config) {
+		if (!LCCore.get().currentThreadIsSystem()) throw new IllegalThreadStateException();
+		cpuManager.getMonitor().setConfiguration(config);
+	}
+	
+	/** Set the monitoring configuration for drives tasks. */
+	public static void setDrivesMonitorConfiguration(TaskManagerMonitor.Configuration config) {
+		if (!LCCore.get().currentThreadIsSystem()) throw new IllegalThreadStateException();
+		drivesManager.setMonitoringConfiguration(config);
+	}
+	
+	/** Set the monitoring configuration for unmanaged tasks. */
+	public static void setUnmanagedMonitorConfiguration(TaskManagerMonitor.Configuration config) {
+		if (!LCCore.get().currentThreadIsSystem()) throw new IllegalThreadStateException();
+		unmanagedManager.getMonitor().setConfiguration(config);
 	}
 	
 	/** Wait for the given tasks to be done. */

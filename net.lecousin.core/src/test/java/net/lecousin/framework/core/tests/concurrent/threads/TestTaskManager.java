@@ -1,6 +1,7 @@
 package net.lecousin.framework.core.tests.concurrent.threads;
 
 import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.TaskManagerMonitor.Configuration;
 import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 
@@ -15,16 +16,19 @@ public class TestTaskManager extends LCCoreAbstractTest {
 			Thread.sleep(60000);
 			return null;
 		});
-		Threading.getUnmanagedTaskManager().getMonitor().getConfiguration().taskExecutionMillisecondsBeforeToWarn = 1;
-		Threading.getUnmanagedTaskManager().getMonitor().getConfiguration().taskExecutionMillisecondsBeforeToPutAside = 1000;
-		Threading.getUnmanagedTaskManager().getMonitor().getConfiguration().taskExecutionMillisecondsBeforeToKill = 3000;
+		Configuration previousConfig = Threading.getUnmanagedTaskManager().getMonitor().getConfiguration();
+		Configuration newConfig = new Configuration(1, 1000, 3000, false);
+		Threading.setUnmanagedMonitorConfiguration(newConfig);
 		task.start();
-		Threading.getUnmanagedTaskManager().getMonitor().checkNow();
 		task.getOutput().block(0);
+		Assert.assertTrue(task.isCancelling());
 		Assert.assertTrue(task.isCancelled());
-		Threading.getUnmanagedTaskManager().getMonitor().getConfiguration().taskExecutionMillisecondsBeforeToWarn = 60 * 1000;
-		Threading.getUnmanagedTaskManager().getMonitor().getConfiguration().taskExecutionMillisecondsBeforeToPutAside = 5 * 60 * 1000;
-		Threading.getUnmanagedTaskManager().getMonitor().getConfiguration().taskExecutionMillisecondsBeforeToKill = 15 * 60 * 1000;
+		Assert.assertNotNull(task.getCancelEvent());
+		Assert.assertFalse(task.isSuccessful());
+		Assert.assertTrue(task.isDone());
+		Assert.assertTrue(task.isStarted());
+		Assert.assertFalse(task.isRunning());
+		Threading.setUnmanagedMonitorConfiguration(previousConfig);
 	}
 	
 }

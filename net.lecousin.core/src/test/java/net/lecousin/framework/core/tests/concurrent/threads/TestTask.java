@@ -63,6 +63,7 @@ public class TestTask extends LCCoreAbstractTest {
 				break;
 			p = less;
 		} while (true);
+		p = Priority.BACKGROUND;
 		do {
 			Priority more = p.more();
 			if (more.getValue() == p.getValue())
