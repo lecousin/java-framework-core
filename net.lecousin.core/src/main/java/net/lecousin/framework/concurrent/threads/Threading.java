@@ -40,6 +40,7 @@ public final class Threading {
 	
 	public static boolean traceBlockingTasks = System.getProperty("lc.traceBlockingTasks") != null;
 	public static boolean traceTaskTime = System.getProperty("lc.traceTaskTime") != null;
+	public static long debugListenersTakingMoreThanMilliseconds = 20;
 	
 	/**
 	 * Initialize multi-threading.
@@ -300,6 +301,12 @@ public final class Threading {
 			s.append("\r\n");
 		}
 		return s.toString();
+	}
+	
+	/** Signal a call to a listener and log it if it took a too long time. */
+	public static void debugListenerCall(Object listener, long nanoseconds) {
+		if (nanoseconds > debugListenersTakingMoreThanMilliseconds * 1000000)
+			logger.debug("Listener took " + (nanoseconds / 1000000.0d) + "ms: " + listener);
 	}
 	
 }

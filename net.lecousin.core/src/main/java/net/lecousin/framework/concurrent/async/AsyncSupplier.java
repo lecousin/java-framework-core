@@ -9,7 +9,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.threads.Task;
@@ -333,7 +332,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(AsyncSupplier.class);
+		Logger log = Threading.getLogger();
 		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
@@ -341,12 +340,11 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
 			else
 				for (int i = 0; i < listeners.size(); ++i) {
+					Listener<T, TError> listener = listeners.get(i); 
 					long start = System.nanoTime();
-					try { listeners.get(i).ready(result); }
-					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
-					long time = System.nanoTime() - start;
-					if (time > 1000000) // more than 1ms
-						log.debug("Listener ready took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
+					try { listener.ready(result); }
+					catch (Exception t) { logListenerError(log, listener, t); }
+					Threading.debugListenerCall(listener, System.nanoTime() - start);
 				}
 			listeners = getNextListeners(listeners);
 		} while (listeners != null);
@@ -379,7 +377,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(AsyncSupplier.class);
+		Logger log = Threading.getLogger();
 		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
@@ -393,18 +391,17 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 					}
 			else
 				for (int i = 0; i < listeners.size(); ++i) {
+					Listener<T, TError> listener = listeners.get(i);
 					long start = System.nanoTime();
-					try { listeners.get(i).error(error); }
+					try { listener.error(error); }
 					catch (Exception t) {
-						logListenerError(log, listeners.get(i), t);
-						try { listeners.get(i).cancelled(new CancelException("Error in listener", t)); }
+						logListenerError(log, listener, t);
+						try { listener.cancelled(new CancelException("Error in listener", t)); }
 						catch (Exception t2) { log.error(
 							"Exception thrown while cancelling inline listener of AsyncSupplier after error: "
-							+ listeners.get(i), t2); }
+							+ listener, t2); }
 					}
-					long time = System.nanoTime() - start;
-					if (time > 1000000) // more than 1ms
-						log.debug("Listener error took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
+					Threading.debugListenerCall(listener, System.nanoTime() - start);
 				}
 			listeners = getNextListeners(listeners);
 		} while (listeners != null);
@@ -429,7 +426,7 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(AsyncSupplier.class);
+		Logger log = Threading.getLogger();
 		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
@@ -437,12 +434,11 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
 			else
 				for (int i = 0; i < listeners.size(); ++i) {
+					Listener<T, TError> listener = listeners.get(i);
 					long start = System.nanoTime();
-					try { listeners.get(i).cancelled(event); }
-					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
-					long time = System.nanoTime() - start;
-					if (time > 1000000) // more than 1ms
-						log.debug("Listener cancelled took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
+					try { listener.cancelled(event); }
+					catch (Exception t) { logListenerError(log, listener, t); }
+					Threading.debugListenerCall(listener, System.nanoTime() - start);
 				}
 			listeners = getNextListeners(listeners);
 		} while (listeners != null);

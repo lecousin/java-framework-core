@@ -8,7 +8,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
-import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.threads.TaskExecutor;
 import net.lecousin.framework.concurrent.threads.Threading;
@@ -83,7 +82,7 @@ public class Async<TError extends Exception> implements IAsync<TError>, Future<V
 			listeners = listenersInline;
 			listenersInline = new ArrayList<>(2);
 		}
-		Logger log = LCCore.getApplication().getLoggerFactory().getLogger(Async.class);
+		Logger log = Threading.getLogger();
 		do {
 			if (!log.debug())
 				for (int i = 0; i < listeners.size(); ++i)
@@ -91,12 +90,11 @@ public class Async<TError extends Exception> implements IAsync<TError>, Future<V
 					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
 			else
 				for (int i = 0; i < listeners.size(); ++i) {
+					Runnable listener = listeners.get(i);
 					long start = System.nanoTime();
-					try { listeners.get(i).run(); }
-					catch (Exception t) { logListenerError(log, listeners.get(i), t); }
-					long time = System.nanoTime() - start;
-					if (time > 1000000) // more than 1ms
-						log.debug("Listener took " + (time / 1000000.0d) + "ms: " + listeners.get(i));
+					try { listener.run(); }
+					catch (Exception t) { logListenerError(log, listener, t); }
+					Threading.debugListenerCall(listener, System.nanoTime() - start);
 				}
 			synchronized (this) {
 				if (listenersInline.isEmpty()) {
