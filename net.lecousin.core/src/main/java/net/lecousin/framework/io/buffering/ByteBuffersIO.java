@@ -312,10 +312,9 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 		case FROM_CURRENT:
 			skipSync(move);
 			break;
-		case FROM_END:
+		default: //case FROM_END:
 			skipSync(totalSize - move - pos);
 			break;
-		default: break;
 		}
 		return pos;
 	}

@@ -68,13 +68,12 @@ class SeekFile implements Executable<Long,IOException> {
 				if (!allowAfterEnd && pos + move > size) move = size - pos;
 				file.channel.position(pos + move);
 				break;
-			case FROM_END:
+			default: //case FROM_END:
 				if (move < 0) move = 0;
 				if (size == -1) size = file.getSize();
 				if (size - move < 0) move = size;
 				file.channel.position(size - move);
 				break;
-			default: break;
 			}
 			if (returnNewPosition)
 				return Long.valueOf(file.channel.position());

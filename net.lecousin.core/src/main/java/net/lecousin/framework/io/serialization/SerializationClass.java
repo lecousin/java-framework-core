@@ -25,7 +25,7 @@ import net.lecousin.framework.io.serialization.rules.SerializationRule;
 public class SerializationClass {
 	
 	/** Constructor. */
-	public SerializationClass(TypeDefinition type) {
+	public SerializationClass(TypeDefinition type) throws SerializationException {
 		this.type = type;
 		populateAttributes();
 	}
@@ -260,13 +260,13 @@ public class SerializationClass {
 		}
 	}
 	
-	private void populateAttributes() {
+	private void populateAttributes() throws SerializationException {
 		populateAttributes(type.getBase(), type.getParameters());
 		filterAttributes();
 	}
 	
 	@SuppressWarnings("rawtypes")
-	private void populateAttributes(Class<?> type, List<TypeDefinition> params) {
+	private void populateAttributes(Class<?> type, List<TypeDefinition> params) throws SerializationException {
 		if (Object.class.equals(type))
 			return;
 		for (Field f : type.getDeclaredFields()) {
@@ -282,6 +282,9 @@ public class SerializationClass {
 				for (Type arg : ((ParameterizedType)t).getActualTypeArguments()) {
 					if (arg instanceof TypeVariable) {
 						TypeVariable[] typeArgs = type.getTypeParameters();
+						if (typeArgs.length != params.size())
+							throw new SerializationException("Invalid number of parameter specification for type "
+								+ type + ": " + params.size() + " found, expected is " + typeArgs.length);
 						for (int i = 0; i < typeArgs.length; ++i)
 							if (typeArgs[i].getName().equals(((TypeVariable)arg).getName())) {
 								superParams.add(params.get(i));

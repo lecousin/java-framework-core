@@ -731,7 +731,6 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 	
 	protected long seekSync(SeekType type, long move) {
 		switch (type) {
-		default:
 		case FROM_BEGINNING:
 			if (move < 0) move = 0;
 			if (move > size) move = size;
@@ -742,7 +741,7 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 			if (size - move < 0) move = size;
 			pos = size - move;
 			return pos;
-		case FROM_CURRENT:
+		default: //case FROM_CURRENT:
 			if (pos + move < 0) move = -pos;
 			if (pos + move > size) move = size - pos;
 			pos += move;

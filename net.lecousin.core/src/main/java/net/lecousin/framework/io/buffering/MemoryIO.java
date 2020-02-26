@@ -241,7 +241,7 @@ public class MemoryIO extends AbstractIO
 			else if (move > size) pos = 0;
 			else pos = size - (int)move;
 			break;
-		case FROM_CURRENT: 
+		default: //case FROM_CURRENT: 
 			if (move < 0) {
 				if (pos + move < 0) pos = 0;
 				else pos += (int)move;
@@ -250,7 +250,6 @@ public class MemoryIO extends AbstractIO
 				else pos += (int)move;
 			}
 			break;
-		default: break;
 		}
 		return pos;
 	}

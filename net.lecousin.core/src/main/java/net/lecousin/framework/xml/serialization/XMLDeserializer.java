@@ -211,8 +211,8 @@ public class XMLDeserializer extends AbstractDeserializer {
 		if (input.event.isClosed)
 			return new AsyncSupplier<>(null, null);
 		
-		AsyncSupplier<String, SerializationException> result = new AsyncSupplier<>();
-		StringBuilder s = new StringBuilder();
+		AsyncSupplier<CharArrayStringBuffer, SerializationException> result = new AsyncSupplier<>();
+		CharArrayStringBuffer s = new CharArrayStringBuffer();
 		Runnable onNext = new Runnable() {
 			@Override
 			public void run() {
@@ -226,7 +226,7 @@ public class XMLDeserializer extends AbstractDeserializer {
 					return;
 				}
 				if (XMLStreamEvents.Event.Type.END_ELEMENT.equals(input.event.type)) {
-					result.unblockSuccess(s.toString());
+					result.unblockSuccess(s);
 					return;
 				}
 				input.next().onDone(this, result, xmlErrorConverter);

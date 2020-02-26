@@ -922,7 +922,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 			move += pos;
 			break;
 		case FROM_BEGINNING: break;
-		case FROM_END:
+		default: //case FROM_END:
 			long p = 0;
 			for (int i = 0; i < ios.size(); ++i) {
 				if (sizes.get(i) == null) {
@@ -933,7 +933,6 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 			}
 			move = p - move;
 			break;
-		default: break;
 		}
 		if (move < 0) move = 0;
 		pos = 0;

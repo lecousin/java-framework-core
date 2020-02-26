@@ -33,6 +33,8 @@ import net.lecousin.framework.io.buffering.ByteArrayIO;
 import net.lecousin.framework.io.buffering.MemoryIO;
 import net.lecousin.framework.io.serialization.CustomSerializer;
 import net.lecousin.framework.io.serialization.Deserializer;
+import net.lecousin.framework.io.serialization.SerializationClass;
+import net.lecousin.framework.io.serialization.SerializationContext;
 import net.lecousin.framework.io.serialization.SerializationContext.AttributeContext;
 import net.lecousin.framework.io.serialization.SerializationException;
 import net.lecousin.framework.io.serialization.SerializationSpecWriter;
@@ -49,12 +51,14 @@ import net.lecousin.framework.io.serialization.annotations.Transient;
 import net.lecousin.framework.io.serialization.annotations.TypeInstantiation;
 import net.lecousin.framework.io.serialization.annotations.TypeSerializationMethod;
 import net.lecousin.framework.io.serialization.annotations.TypeSerializer;
+import net.lecousin.framework.io.serialization.rules.SerializationRule;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.LoggerFactory;
 import net.lecousin.framework.math.IntegerUnit.Unit;
 import net.lecousin.framework.math.TimeUnit;
 import net.lecousin.framework.text.CharArrayString;
 import net.lecousin.framework.text.CharArrayStringBuffer;
+import net.lecousin.framework.text.IString;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.Factory;
 import net.lecousin.framework.util.Pair;
@@ -78,7 +82,7 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	}
 	
 	@Test
-	public void testError() {
+	public void testIOError() {
 		Deserializer des = createDeserializer();
 		AsyncSupplier<?, SerializationException> res = des.deserialize(new TypeDefinition(String.class), new TestIOError.ReadableAlwaysError(), new ArrayList<>(0));
 		res.block(15000);
@@ -312,6 +316,120 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		public String str = "1";
 	}
 	
+	public static class MyString implements CharSequence {
+
+		private CharSequence s;
+		
+		public MyString(int anotherConstructor) {
+			this.s = "error!" + anotherConstructor;
+		}
+		
+		public MyString(int anotherConstructor, long another) {
+			this.s = "error!" + anotherConstructor + " / " + another;
+		}
+		
+		public MyString(CharSequence s) {
+			this.s = s;
+		}
+		
+		@Override
+		public int length() {
+			return s.length();
+		}
+
+		@Override
+		public char charAt(int index) {
+			return s.charAt(index);
+		}
+
+		@Override
+		public CharSequence subSequence(int start, int end) {
+			return new MyString(s.subSequence(start, end));
+		}
+		
+		@Override
+		public String toString() {
+			return s.toString();
+		}
+		
+	}
+	
+	public static class MyString2 implements CharSequence {
+
+		private String s;
+		
+		public MyString2(String s) {
+			this.s = s;
+		}
+		
+		@Override
+		public int length() {
+			return s.length();
+		}
+
+		@Override
+		public char charAt(int index) {
+			return s.charAt(index);
+		}
+
+		@Override
+		public CharSequence subSequence(int start, int end) {
+			return new MyString(s.subSequence(start, end));
+		}
+		
+		@Override
+		public String toString() {
+			return s;
+		}
+		
+	}
+	
+	public static class MyStringNoConstructor implements CharSequence {
+
+		private CharSequence s;
+		
+		public MyStringNoConstructor(int anotherConstructor) {
+			this.s = "error!" + anotherConstructor;
+		}
+		
+		public MyStringNoConstructor(int anotherConstructor, long another) {
+			this.s = "error!" + anotherConstructor + " / " + another;
+		}
+		
+		@Override
+		public int length() {
+			return s.length();
+		}
+
+		@Override
+		public char charAt(int index) {
+			return s.charAt(index);
+		}
+
+		@Override
+		public CharSequence subSequence(int start, int end) {
+			return new MyString(s.subSequence(start, end));
+		}
+		
+		@Override
+		public String toString() {
+			return s.toString();
+		}
+		
+	}
+	
+	public static class TestMyString {
+		public MyString str;
+	}
+	
+	public static class TestMyString2 {
+		public MyString2 str;
+	}
+	
+	public static class TestMyStringNoConstructor {
+		public MyStringNoConstructor str;
+	}
+	
 	public void testString(String s) throws Exception {
 		TestString ts = new TestString();
 		ts.str = s;
@@ -343,6 +461,44 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testIString("a\tb\rc\nd\be\\fg\"hi\'jk&#{([-|_@)]=+}£$*%!:/;.,?<012>34");
 		testIString(null);
 		testWrongType(String.class);
+
+		MemoryIO io = serializeInMemory("Hello!", new TypeDefinition(String.class));
+		IString is = deserialize(io, new TypeDefinition(IString.class));
+		Assert.assertEquals("Hello!", is.toString());
+		
+		TestString ts = new TestString();
+		ts.str = "Hello World!";
+		io = serializeInMemory(ts, new TypeDefinition(TestString.class));
+		TestMyString tms = deserialize(io, new TypeDefinition(TestMyString.class));
+		Assert.assertEquals("Hello World!", tms.str.toString());
+
+		io = serializeInMemory("Hello!", new TypeDefinition(String.class));
+		MyString ms = deserialize(io, new TypeDefinition(MyString.class));
+		Assert.assertEquals("Hello!", ms.toString());
+
+		io = serializeInMemory(ts, new TypeDefinition(TestString.class));
+		TestMyString2 tms2 = deserialize(io, new TypeDefinition(TestMyString2.class));
+		Assert.assertEquals("Hello World!", tms2.str.toString());
+
+		io = serializeInMemory("Hello!", new TypeDefinition(String.class));
+		MyString2 ms2 = deserialize(io, new TypeDefinition(MyString2.class));
+		Assert.assertEquals("Hello!", ms2.toString());
+
+		io = serializeInMemory(ts, new TypeDefinition(TestString.class));
+		try {
+			TestMyStringNoConstructor tmsnc = deserialize(io, new TypeDefinition(TestMyStringNoConstructor.class));
+			throw new AssertionError("Error expected");
+		} catch (SerializationException e) {
+			// ok
+		}
+
+		io = serializeInMemory("Hello!", new TypeDefinition(String.class));
+		try {
+			MyStringNoConstructor msnc = deserialize(io, new TypeDefinition(MyStringNoConstructor.class));
+		} catch (SerializationException e) {
+			// ok
+		}
+
 	}
 	
 	
@@ -390,6 +546,10 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 		testPrimitiveNull(char.class, Character.class);
 		testWrongType(char.class);
 		testWrongType(Character.class);
+		
+		MemoryIO io = serializeInMemory("", new TypeDefinition(String.class));
+		Character c = deserialize(io, new TypeDefinition(Character.class));
+		Assert.assertNull(c);
 	}
 	
 	public static enum Enum1 { VAL1, VAL2, VAL3 };
@@ -421,26 +581,43 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 	
 	@Test
 	public void testSimpleObjects() throws Exception {
-		/*
-		TestSimpleObjects o = new TestSimpleObjects();
-		o.booleans = createBooleans();
-		o.i = 52;
-		o.numbers = createNumbers();
-		o.s = "world";
-		o.string = new TestString();
-		o.string.str = "a string";
-		o.ch = new TestChar();
-		o.ch.c = 'o';
-		o.ch.C = Character.valueOf('p');
-		o.e1 = Enum1.VAL3;
-		o.e2 = null;
-		test(o, TestSimpleObjects.class);
-		// test with null values
-		o = new TestSimpleObjects();
-		o.i = 53;
-		o.s = "s";
-		test(o, TestSimpleObjects.class);*/
 		testWrongType(TestSimpleObjects.class);
+	}
+	
+	@Test
+	public void testRuleError() throws Exception {
+		SerializationRule ruleError = new SerializationRule() {
+			@Override
+			public boolean apply(SerializationClass type, SerializationContext context, List<SerializationRule> rules, boolean serializing) throws SerializationException {
+				return false;
+			}
+
+			@Override
+			public boolean isEquivalent(SerializationRule rule) {
+				return false;
+			}
+			
+			@Override
+			public Object getDeserializationValue(Object value, TypeDefinition type, SerializationContext context) throws SerializationException {
+				if (value instanceof TestSimpleObjects)
+					throw new SerializationException("Test error");
+				return value;
+			}
+		};
+		
+		TestSimpleObjects toSerialize = new TestSimpleObjects();
+		MemoryIO io = serializeInMemory(toSerialize, new TypeDefinition(TestSimpleObjects.class));
+		io.seekSync(SeekType.FROM_BEGINNING, 0);
+		Deserializer d = createDeserializer();
+		AsyncSupplier<Object, SerializationException> r2 = d.deserialize(new TypeDefinition(TestSimpleObjects.class), io, Arrays.asList(ruleError));
+		try {
+			r2.blockThrow(0);
+			throw new AssertionError("Error expected when deserializing");
+		} catch (SerializationException e) {
+			// ok
+		} finally {
+			io.unlockClose();
+		}
 	}
 	
 	public static class TestLists {
@@ -483,6 +660,31 @@ public abstract class TestSerialization extends LCCoreAbstractTest {
 			t.testBooleans.add(createBooleans());
 		}
 		test(t, TestLists.class);
+		
+		MemoryIO io;
+		try {
+			ArrayList<Integer> list = new ArrayList<>();
+			list.add(Integer.valueOf(20));
+			io = serializeInMemory(list, new TypeDefinition(ArrayList.class));
+			deserialize(io, new TypeDefinition(ArrayList.class));
+			throw new AssertionError("Error expected when specifying no parameter for ArrayList");
+		} catch (SerializationException e) {
+			// ok
+		}
+		
+		io = serializeInMemory(null, new TypeDefinition(ArrayList.class, new TypeDefinition(Integer.class)));
+		ArrayList<Integer> al = deserialize(io, new TypeDefinition(ArrayList.class, new TypeDefinition(Integer.class)));
+		Assert.assertNull(al);
+		
+		try {
+			ArrayList<Integer> list = new ArrayList<>();
+			list.add(Integer.valueOf(20));
+			io = serializeInMemory(list, new TypeDefinition(ArrayList.class, new TypeDefinition(Integer.class)));
+			deserialize(io, new TypeDefinition(ArrayList.class, new TypeDefinition(TestString.class)));
+			throw new AssertionError("Error expected when specifying incompatible parameter for ArrayList");
+		} catch (SerializationException e) {
+			// ok
+		}
 	}
 	
 	public static class TestArrays {

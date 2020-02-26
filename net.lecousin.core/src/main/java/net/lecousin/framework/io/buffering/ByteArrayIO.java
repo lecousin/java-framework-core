@@ -306,12 +306,11 @@ public class ByteArrayIO extends AbstractIO
 			if (move > size) pos = 0;
 			else pos = (int)(size - move);
 			break;
-		case FROM_CURRENT:
+		default: //case FROM_CURRENT:
 			pos += (int)move;
 			if (pos < 0) pos = 0;
 			else if (pos > size) pos = size;
 			break;
-		default: break;
 		}
 		return pos;
 	}

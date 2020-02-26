@@ -680,11 +680,10 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 			pos = 0;
 			skipSync(move);
 			return pos;
-		case FROM_END:
+		default: //case FROM_END:
 			pos = (int)getSizeSync();
 			skipSync(-move);
 			return pos;
-		default: return 0;
 		}
 	}
 

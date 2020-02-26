@@ -486,7 +486,8 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 				pos = newPos;
 			break;
 		}
-		case FROM_END: {
+		default: //case FROM_END: 
+		{
 			if (move < 0) move = 0;
 			if (knownSize < 0) getSizeSync();
 			long newPos = knownSize - move;
@@ -499,7 +500,6 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 				pos = newPos;
 			break;
 		}
-		default: break;
 		}
 		return pos;
 	}

@@ -1366,10 +1366,8 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		case FROM_END:
 			position = size - move;
 			break;
-		case FROM_CURRENT:
+		default: //case FROM_CURRENT:
 			position += move;
-			break;
-		default:
 			break;
 		}
 		if (position > size) position = size;

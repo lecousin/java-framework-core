@@ -128,10 +128,9 @@ public class IOInMemoryOrFile extends AbstractIO
 		case FROM_CURRENT:
 			this.pos += move;
 			break;
-		case FROM_END:
+		default: //case FROM_END:
 			this.pos = size - move;
 			break;
-		default: break;
 		}
 		if (this.pos < 0) this.pos = 0;
 		if (this.pos > size) this.pos = this.size;

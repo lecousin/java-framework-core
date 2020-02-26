@@ -312,7 +312,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 		case FROM_CURRENT:
 			skipSync(move);
 			return readPos;
-		case FROM_END:
+		default: //case FROM_END:
 			while (!eof && !lock.hasError()) {
 				lock.lock();
 			}
@@ -322,8 +322,6 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 				return readPos;
 			}
 			throw new OutputToInputTransferException(lock.getError());
-		default:
-			throw new IOException("Unknown SeekType " + type);
 		}
 	}
 

@@ -83,7 +83,11 @@ public abstract class AbstractDeserializer implements Deserializer {
 	public <T> AsyncSupplier<T, SerializationException> deserializeValue(
 		SerializationContext context, TypeDefinition type, String path, List<SerializationRule> rules
 	) {
-		rules = addRulesForType(new SerializationClass(type), rules);
+		try {
+			rules = addRulesForType(new SerializationClass(type), rules);
+		} catch (SerializationException e) {
+			return new AsyncSupplier<>(null, e);
+		}
 		TypeDefinition newType = type;
 		List<TypeDefinition> rulesTypes = new ArrayList<>(rules.size());
 		for (SerializationRule rule : rules) {

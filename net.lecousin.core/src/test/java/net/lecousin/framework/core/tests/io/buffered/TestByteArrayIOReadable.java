@@ -2,12 +2,14 @@ package net.lecousin.framework.core.tests.io.buffered;
 
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadable;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.io.FileIO;
+import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
 
 import org.junit.runner.RunWith;
@@ -33,6 +35,12 @@ public class TestByteArrayIOReadable extends TestReadable {
 		file.close();
 		ByteArrayIO io = new ByteArrayIO(b, b.length, "Test");
 		return io;
+	}
+	
+	@Override
+	protected void basicTests(IO io) throws Exception {
+		((ByteArrayIO)io).getAsString(StandardCharsets.UTF_8);
+		super.basicTests(io);
 	}
 	
 }

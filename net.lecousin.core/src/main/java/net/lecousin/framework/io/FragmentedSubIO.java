@@ -311,10 +311,9 @@ public abstract class FragmentedSubIO extends ConcurrentCloseable<IOException> i
 		case FROM_END:
 			pos = size - move;
 			break;
-		case FROM_CURRENT:
+		default: //case FROM_CURRENT:
 			pos += move;
 			break;
-		default: break;
 		}
 		if (pos > size) pos = size;
 		if (pos < 0) pos = 0;
