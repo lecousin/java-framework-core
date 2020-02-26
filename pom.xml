@@ -12,9 +12,7 @@
   
   <modules>
     <module>net.lecousin.core</module>
-    <module>net.lecousin.framework.log.bridges</module>
     <module>core.javaee</module>
-    <module>core.loaders</module>
   </modules>
   
   <properties>
@@ -28,8 +26,7 @@
 		**/ThreadingDebugHelper*.*,
 		**/TaskMonitoring*.*,
 		**/DebugUtil*.*,
-		**/SystemEnvironment.*,
-  		**/maven/Launcher*
+		**/SystemEnvironment.*
   	</sonar.coverage.exclusions>
   	<sonar.cpd.exclusions>
   		**/framework/collections/ArrayUtil.*,
@@ -51,8 +48,7 @@
   		**/framework/io/data/SingleByteBitsBuffer.*,
   		**/framework/io/out2in/OutputToInputBuffers.*,
   		**/framework/io/util/DataUtil.*,
-  		**/framework/math/FragmentedRange*.*,
-  		**/framework/xml/XMLStreamReader.*
+  		**/framework/math/FragmentedRange*.*
   	</sonar.cpd.exclusions>
   </properties>
   
