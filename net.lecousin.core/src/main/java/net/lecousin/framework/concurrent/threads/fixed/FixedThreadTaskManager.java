@@ -187,7 +187,8 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 				for (Iterator<TaskWorker> it = spare.iterator(); it.hasNext(); ) {
 					TaskWorker t = it.next();
 					if (t.lastUsed > 5 * 60000) {
-						Threading.getLogger().info("Spare thread not used since more than 5 minutes => stop it");
+						Threading.getLogger().info("Spare thread not used since more than 5 minutes => stop it: "
+							+ t.getThread().getName());
 						t.forceStop(true);
 						spare.removeInstance(t);
 						if (++nbStop >= maxToStop)

@@ -34,7 +34,6 @@ import net.lecousin.framework.memory.MemoryManager;
 import net.lecousin.framework.text.CharArrayStringBuffer;
 import net.lecousin.framework.util.ClassUtil;
 import net.lecousin.framework.util.ObjectUtil;
-import net.lecousin.framework.xml.XMLException;
 
 /**
  * Properties loaded from localized properties files, organized by namespace.
@@ -48,7 +47,6 @@ public class LocalizedProperties implements IMemoryManageable {
 		
 		registerNamespaceFrom(LocalizedProperties.class, "b", "b");
 		registerNamespaceFrom(LocalizedProperties.class, "languages", "languages");
-		registerNamespaceFrom(XMLException.class, "lc.xml.error", "error");
 	}
 	
 	private Logger logger;

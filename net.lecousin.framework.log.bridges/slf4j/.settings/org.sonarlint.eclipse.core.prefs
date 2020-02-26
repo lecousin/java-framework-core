@@ -1,8 +1,0 @@
-autoEnabled=true
-eclipse.preferences.version=1
-extraProperties=
-fileExclusions=
-idePrefixKey=
-projectKey=lecousin_java-framework-core
-serverId=SonarCloud/lecousin
-sqPrefixKey=net.lecousin.framework.log.bridges/slf4j

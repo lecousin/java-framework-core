@@ -61,18 +61,18 @@ public class TestApplication extends LCCoreAbstractTest {
 	public void testResource() throws Exception {
 		Application app = LCCore.getApplication();
 		
-		IO.Readable io = app.getLibrariesManager().getResource("xml-test-suite/mine/001.xml", Task.Priority.NORMAL);
+		IO.Readable io = app.getLibrariesManager().getResource("log/test-logging.xml", Task.Priority.NORMAL);
 		Assert.assertFalse(null == io);
 		io.close();
 		
-		io = app.getLibrariesManager().getResource("xml-test-suite/mine/doesntexist", Task.Priority.NORMAL);
+		io = app.getLibrariesManager().getResource("log/doesntexist", Task.Priority.NORMAL);
 		Assert.assertTrue(null == io);
 		
-		io = app.getResource("xml-test-suite/mine/001.xml", Task.Priority.NORMAL);
+		io = app.getResource("log/test-logging.xml", Task.Priority.NORMAL);
 		Assert.assertFalse(null == io);
 		io.close();
 		
-		io = app.getResource("xml-test-suite/mine/doesntexist", Task.Priority.NORMAL);
+		io = app.getResource("log/doesntexist", Task.Priority.NORMAL);
 		Assert.assertTrue(null == io);
 	}
 	
