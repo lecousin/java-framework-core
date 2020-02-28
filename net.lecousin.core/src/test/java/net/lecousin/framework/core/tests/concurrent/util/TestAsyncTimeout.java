@@ -18,10 +18,20 @@ public class TestAsyncTimeout extends LCCoreAbstractTest {
 		Async<Exception> a = new Async<>();
 		MutableBoolean timedOut = new MutableBoolean(false);
 		AsyncTimeoutManager.timeout(a, 1000, () -> timedOut.set(true));
+		Async<Exception> b = new Async<>();
+		MutableBoolean timedOut2 = new MutableBoolean(false);
+		AsyncTimeoutManager.timeout(b, 1000, () -> timedOut2.set(true));
+		Async<Exception> c = new Async<>();
+		MutableBoolean timedOut3 = new MutableBoolean(false);
+		AsyncTimeoutManager.timeout(c, 900, () -> timedOut3.set(true));
 		a.unblock();
+		b.unblock();
+		c.unblock();
 		try { Thread.sleep(2000); }
 		catch (InterruptedException e) {}
 		Assert.assertFalse(timedOut.get());
+		Assert.assertFalse(timedOut2.get());
+		Assert.assertFalse(timedOut3.get());
 	}
 
 	@Test

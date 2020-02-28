@@ -3,8 +3,10 @@ package net.lecousin.framework.core.tests.plugins;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.core.tests.plugins.AnExtensionPoint.MyPlugin;
+import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.plugins.CustomExtensionPoint;
 import net.lecousin.framework.plugins.ExtensionPoint;
 import net.lecousin.framework.plugins.ExtensionPoints;
@@ -33,7 +35,11 @@ public class TestPlugins extends LCCoreAbstractTest {
 		for (ExtensionPoint<?> e : ExtensionPoints.getExtensionPoints()) {
 			e.getPluginClass();
 		}
+		LCCore.getApplication().getDefaultLogger().setLevel(Level.DEBUG);
 		ExtensionPoints.logRemainingPlugins();
+		LCCore.getApplication().getDefaultLogger().setLevel(Level.OFF);
+		ExtensionPoints.logRemainingPlugins();
+		LCCore.getApplication().getDefaultLogger().setLevel(Level.DEBUG);
 		
 		ACustomExtensionPointWithFile c = ExtensionPoints.getCustomExtensionPoint(ACustomExtensionPointWithFile.class);
 		Assert.assertNotNull(c);

@@ -35,6 +35,7 @@ public class TestTaskManager extends LCCoreAbstractTest {
 	
 	@Test
 	public void testBlockInUnmanaged() throws Exception {
+		Threading.traceBlockingTasks = true;
 		Async<NoException> a = new Async<>();
 		Async<NoException> b = new Async<>();
 		Task<?, ?> task = Task.unmanaged("Test blocking task", () -> {
@@ -46,6 +47,7 @@ public class TestTaskManager extends LCCoreAbstractTest {
 		b.blockThrow(0);
 		Thread.sleep(500);
 		a.unblock();
+		Threading.traceBlockingTasks = false;
 	}
 	
 }

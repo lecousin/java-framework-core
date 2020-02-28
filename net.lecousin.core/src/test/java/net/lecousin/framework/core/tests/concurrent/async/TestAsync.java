@@ -740,4 +740,13 @@ public class TestAsync extends LCCoreAbstractTest {
 		a.blockPause(1);
 	}
 	
+	@Test
+	public void testConvertError() {
+		Async<IOException> a = new Async<>();
+		Async<RuntimeException> b = new Async<>(a, e -> new RuntimeException("ok", e));
+		a.error(new IOException());
+		Assert.assertNotNull(b.getError());
+		Assert.assertEquals("ok", b.getError().getMessage());
+	}
+	
 }

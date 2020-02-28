@@ -12,6 +12,7 @@ import net.lecousin.framework.concurrent.util.BufferedAsyncConsumer;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.mutable.MutableInteger;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
@@ -110,6 +111,13 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 		} catch (IllegalArgumentException e) {
 			// ok
 		}
+		try {
+			buffered.end().blockThrow(0);
+		} catch (IllegalArgumentException e) {
+			// ok
+		}
+		buffered.error(new Exception());
+		Assert.assertTrue(buffered.end().getError() instanceof IllegalArgumentException);
 	}
 
 	@Test
@@ -142,6 +150,43 @@ public class TestBufferedAsyncConsumer extends LCCoreAbstractTest {
 		} catch (IllegalArgumentException e) {
 			// ok
 		}
+	}
+	
+	@Test
+	public void testErrorWhilePendingOperations() {
+		AsyncConsumer<Integer, Exception> finalConsumer = new AsyncConsumer<Integer, Exception>() {
+			@Override
+			public IAsync<Exception> consume(Integer data) {
+				try {
+					Thread.sleep(50);
+				} catch (InterruptedException e) {
+				}
+				return new Async<>(true);
+			}
+			
+			@Override
+			public IAsync<Exception> end() {
+				return new Async<>(new IllegalArgumentException());
+			}
+			
+			@Override
+			public void error(Exception error) {
+			}
+		};
+		BufferedAsyncConsumer<Integer, Exception> buffered = new BufferedAsyncConsumer<>(1, finalConsumer);
+		buffered.consume(Integer.valueOf(0));
+		buffered.consume(Integer.valueOf(0));
+		buffered.consume(Integer.valueOf(0));
+		buffered.consume(Integer.valueOf(0));
+		buffered.consume(Integer.valueOf(0));
+		buffered.consume(Integer.valueOf(0));
+		buffered.consume(Integer.valueOf(0));
+		buffered.consume(Integer.valueOf(0));
+		buffered.consume(Integer.valueOf(0));
+		buffered.consume(Integer.valueOf(0));
+		IAsync<Exception> end = buffered.end();
+		buffered.error(new Exception("ok"));
+		Assert.assertEquals("ok", end.getError().getMessage());
 	}
 	
 	@Test
