@@ -23,11 +23,10 @@ is recommended for better performances on disk operations (detection of physical
 [![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=master&metric=code_smells)](https://sonarcloud.io/dashboard?branch=master&id=lecousin_java-framework-core)
 [![Sonar](https://sonarcloud.io/api/project_badges/measure?project=lecousin_java-framework-core&branch=master&metric=coverage)](https://sonarcloud.io/dashboard?branch=master&id=lecousin_java-framework-core)
 
- - core [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.18.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.18.0)
- 
- - core.javaee [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.javaee.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core.javaee%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.18.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core.javaee/0.18.0)
+#### Version
+
+[![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.19.0-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.19.0)
 
 ### Current development - branch dev
 
@@ -132,7 +131,10 @@ The reason to provide again another logging system is to have a logging system c
 multi-threading system and asynchronous IO operations.
 
 Each time something is logged, this is done by using asynchronous operations and tasks such as the code
-logging information is not blocked to avoid reducing performance because of logging. 
+logging information is not blocked to avoid reducing performance because of logging.
+
+Bridges between other logging systems and this logging system are available in 
+[java-framework-log-bridges](https://github.com/lecousin/java-framework-log-bridges "java-framework-log-bridges")
 
 ## Memory management
 
