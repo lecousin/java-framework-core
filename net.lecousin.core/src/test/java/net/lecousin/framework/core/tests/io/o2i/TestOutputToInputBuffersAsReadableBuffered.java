@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.Collection;
 
 import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.core.test.io.TestIO;
 import net.lecousin.framework.core.test.io.TestReadableBuffered;
 import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
@@ -19,7 +20,7 @@ public class TestOutputToInputBuffersAsReadableBuffered extends TestReadableBuff
 
 	@Parameters(name = "nbBuf = {2}")
 	public static Collection<Object[]> parameters() {
-		return TestIO.UsingGeneratedTestFiles.generateTestCases(true);
+		return TestIO.UsingGeneratedTestFiles.generateTestCases(false);
 	}
 	
 	public TestOutputToInputBuffersAsReadableBuffered(File testFile, byte[] testBuf, int nbBuf) {
@@ -28,10 +29,14 @@ public class TestOutputToInputBuffersAsReadableBuffered extends TestReadableBuff
 	
 	@Override
 	protected OutputToInputBuffers createReadableBufferedFromFile(FileIO.ReadOnly file, long fileSize, int bufferingSize) throws Exception {
-		OutputToInputBuffers o2i = new OutputToInputBuffers(true, -3, Task.Priority.NORMAL);
-		IOUtil.copy(file, o2i, fileSize, false, null, 0).blockException(0);
-		o2i.endOfData();
-		file.closeAsync();
+		OutputToInputBuffers o2i = new OutputToInputBuffers(true, nbBuf > 100 ? 3 : 0, Task.Priority.NORMAL);
+		Task.cpu("Copy to o2i", Priority.NORMAL, () -> {
+			IOUtil.copy(file, o2i, fileSize, false, null, 0).onDone(() -> {
+				o2i.endOfData();
+				file.closeAsync();
+			});
+			return null;
+		}).executeIn(1000).start();
 		return o2i;
 	}
 	

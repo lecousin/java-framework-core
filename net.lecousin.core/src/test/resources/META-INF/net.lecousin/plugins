@@ -1,3 +1,5 @@
 
 net.lecousin.framework.core.tests.plugins.AnExtensionPoint:net.lecousin.framework.core.tests.plugins.APlugin
+net.lecousin.framework.core.tests.plugins.AnExtensionPointThatDoesNotExist:net.lecousin.framework.core.tests.plugins.OrphelanPlugin
+net.lecousin.framework.core.tests.plugins.AnExtensionPoint2:net.lecousin.framework.core.tests.plugins.AnExtensionPoint2$MyPlugin
 

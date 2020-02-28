@@ -1,5 +1,6 @@
 package net.lecousin.framework.core.tests.plugins;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
@@ -27,6 +28,7 @@ public class TestPlugins extends LCCoreAbstractTest {
 		custom.loadPluginConfiguration(null, null);
 		Assert.assertNull(ExtensionPoints.getCustomExtensionPoint(FakeCustom.class));
 		Assert.assertNull(ExtensionPoints.getExtensionPoint(FakePoint.class));
+		new FakePoint().printInfo(new StringBuilder());
 		// for coverage
 		for (ExtensionPoint<?> e : ExtensionPoints.getExtensionPoints()) {
 			e.getPluginClass();
@@ -36,6 +38,9 @@ public class TestPlugins extends LCCoreAbstractTest {
 		ACustomExtensionPointWithFile c = ExtensionPoints.getCustomExtensionPoint(ACustomExtensionPointWithFile.class);
 		Assert.assertNotNull(c);
 		Assert.assertEquals("The test is successful", c.pluginContent);
+		
+		ExtensionPoints.add(new AnExtensionPoint2());
+		Assert.assertEquals(1, ExtensionPoints.getExtensionPoint(AnExtensionPoint2.class).getPlugins().size());
 	}
 	
 	public static class FakeCustom implements CustomExtensionPoint {
@@ -61,7 +66,9 @@ public class TestPlugins extends LCCoreAbstractTest {
 
 		@Override
 		public Collection<Plugin> getPlugins() {
-			return null;
+			ArrayList<Plugin> list = new ArrayList<>(1);
+			list.add(null);
+			return list;
 		}
 	}
 	

@@ -86,7 +86,11 @@ public class CharacterStreamWritePool {
 
 	/** Returns the synchronization point of the latest write operation. */
 	public IAsync<IOException> flush() {
-		return lastWrite;
+		if (!(stream instanceof ICharacterStream.Writable.Buffered))
+			return lastWrite;
+		Async<IOException> result = new Async<>();
+		lastWrite.onDone(() -> ((ICharacterStream.Writable.Buffered)stream).flush().onDone(result), result);
+		return result;
 	}
 	
 }
