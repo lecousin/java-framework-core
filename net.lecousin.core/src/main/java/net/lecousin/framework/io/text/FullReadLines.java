@@ -1,5 +1,6 @@
 package net.lecousin.framework.io.text;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
@@ -38,11 +39,12 @@ public abstract class FullReadLines<T> {
 	private CharArrayStringBuffer line = null;
 	
 	private void resume(AsyncSupplier<T, Exception> result) {
-		stream.canStartReading().thenStart(Task.cpu(description, priority, () -> scan(result)), true);
+		stream.canStartReading().thenStart(Task.cpu(description, priority, t -> scan(result, t)), true);
 	}
 	
-	private Void scan(AsyncSupplier<T, Exception> result) {
+	private Void scan(AsyncSupplier<T, Exception> result, Task<?, Exception> taskContext) throws CancelException {
 		do {
+			if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 			if (line == null) line = new CharArrayStringBuffer();
 			int c;
 			try { c = stream.readAsync(); }

@@ -29,7 +29,7 @@ public class CreateDirectory implements Executable<Void,IOException> {
 	private boolean failIfExists;
 	
 	@Override
-	public Void execute() throws IOException {
+	public Void execute(Task<Void, IOException> taskContext) throws IOException {
 		boolean created;
 		if (recursive)
 			created = dir.mkdirs();

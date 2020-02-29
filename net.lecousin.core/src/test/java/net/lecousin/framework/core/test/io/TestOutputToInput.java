@@ -115,7 +115,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 	public void testWriteAsyncReadHalfAsync() throws Exception {
 		try (IO.OutputToInput o2i = createOutputToInput()) {
 			Async<IOException> spWrite = new Async<>();
-			Task.cpu("Launch write async to OutputToInput", Task.Priority.IMPORTANT, () -> {
+			Task.cpu("Launch write async to OutputToInput", Task.Priority.IMPORTANT, t -> {
 				if (nbBuf == 0) {
 					o2i.endOfData();
 					spWrite.unblock();
@@ -145,7 +145,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 				return null;
 			}).start();
 			Async<IOException> spRead = new Async<>();
-			Task.cpu("Launch read half async on OutputToInput", Task.Priority.IMPORTANT, () -> {
+			Task.cpu("Launch read half async on OutputToInput", Task.Priority.IMPORTANT, t -> {
 				MutableInteger nbRead = new MutableInteger(0);
 				Mutable<AsyncSupplier<Integer, IOException>> read = new Mutable<>(null);
 				byte[] buffer = new byte[testBuf.length];
@@ -256,7 +256,7 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 	
 	public static Async<IOException> writeBg(IO.OutputToInput o2i, int nbBuf, byte[] testBuf) {
 		Async<IOException> spWrite = new Async<>();
-		Task.cpu("Launch write async to OutputToInput", Task.Priority.IMPORTANT, () -> {
+		Task.cpu("Launch write async to OutputToInput", Task.Priority.IMPORTANT, t -> {
 			if (nbBuf == 0) {
 				o2i.endOfData();
 				spWrite.unblock();

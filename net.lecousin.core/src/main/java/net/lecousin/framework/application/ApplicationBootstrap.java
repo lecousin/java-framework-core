@@ -23,7 +23,7 @@ public interface ApplicationBootstrap {
 	static void main(Artifact artifact, String[] args, boolean debugMode, ApplicationBootstrap startup) {
 		IAsync<ApplicationBootstrapException> start = Application.start(artifact, args, debugMode);
 		Task<IAsync<Exception>, Exception> t = Task.cpu("Start application",
-			() -> startup.start(LCCore.getApplication(), new FakeWorkProgress()));
+			ctx -> startup.start(LCCore.getApplication(), new FakeWorkProgress()));
 		t.startOn(start, false);
 		start.block(0);
 		t.getOutput().block(0);

@@ -233,7 +233,7 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 				sp.unblockSuccess(null);
 				return;
 			}
-			operation(Task.cpu("Bufferize in ReadableToSeekable", io.getPriority(), () -> {
+			operation(Task.cpu("Bufferize in ReadableToSeekable", io.getPriority(), task -> {
 				synchronized (ReadableToSeekable.this) {
 					if (buffering.isDone())
 						nextBuffer();
@@ -372,7 +372,7 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		AsyncSupplier<ByteBuffer,IOException> result = new AsyncSupplier<>();
 		AsyncSupplier<Boolean,IOException> bufferize = bufferizeTo(pos);
-		Task<Void, NoException> task = Task.cpu("Read next buffer", getPriority(), () -> {
+		Task<Void, NoException> task = Task.cpu("Read next buffer", getPriority(), taskCtx -> {
 			if (bufferize != null) {
 				if (bufferize.isCancelled()) {
 					result.unblockCancel(bufferize.getCancelEvent());
@@ -460,7 +460,7 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 	@Override
 	public AsyncSupplier<Long,IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 		return operation(Task.cpu("Seeking in non-seekable", io.getPriority(),
-			() -> Long.valueOf(seekSync(type, move)), ondone)
+			task -> Long.valueOf(seekSync(type, move)), ondone)
 			.setMaxBlockingTimeInNanoBeforeToLog(Long.MAX_VALUE).start()).getOutput();
 	}
 	
@@ -525,7 +525,7 @@ public class ReadableToSeekable extends ConcurrentCloseable<IOException> impleme
 	@Override
 	public AsyncSupplier<Long,IOException> skipAsync(long move, Consumer<Pair<Long,IOException>> ondone) {
 		return operation(Task.cpu("Seeking in non-seekable", io.getPriority(),
-			() -> Long.valueOf(skipSync(move)), ondone).setMaxBlockingTimeInNanoBeforeToLog(Long.MAX_VALUE).start()).getOutput();
+			task -> Long.valueOf(skipSync(move)), ondone).setMaxBlockingTimeInNanoBeforeToLog(Long.MAX_VALUE).start()).getOutput();
 	}
 
 }

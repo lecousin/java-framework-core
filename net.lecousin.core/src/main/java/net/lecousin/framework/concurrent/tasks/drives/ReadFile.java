@@ -45,7 +45,7 @@ class ReadFile implements Executable<Integer,IOException> {
 	private boolean fully;
 	
 	@Override
-	public Integer execute() throws IOException, CancelException {
+	public Integer execute(Task<Integer, IOException> taskContext) throws IOException, CancelException {
 		if (!file.openTask.isSuccessful())
 			throw file.openTask.getOutput().getError();
 		int nbRead = 0;
@@ -61,6 +61,7 @@ class ReadFile implements Executable<Integer,IOException> {
 		} else {
 			nbRead = 0;
 			while (buffer.remaining() > 0) {
+				if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 				int nb;
 				try { nb = file.channel.read(buffer); }
 				catch (ClosedChannelException e) { throw IO.cancelClosed(); }

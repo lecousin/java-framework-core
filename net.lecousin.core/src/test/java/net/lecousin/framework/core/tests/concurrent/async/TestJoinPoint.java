@@ -56,7 +56,7 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		Assert.assertTrue(jp.hasError());
 		
 		jp = new JoinPoint<>();
-		Task<Integer, Exception> task = Task.cpu("Test", Task.Priority.NORMAL, () -> Integer.valueOf(51));
+		Task<Integer, Exception> task = Task.cpu("Test", Task.Priority.NORMAL, t -> Integer.valueOf(51));
 		jp.addToJoin(task);
 		Assert.assertEquals(1, jp.getToJoin());
 		Assert.assertFalse(jp.isDone());
@@ -117,7 +117,7 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		jp.addToJoin(as);
 		MutableInteger timedout = new MutableInteger(0);
 		jp.timeout(1, timedout::inc);
-		Task.cpu("test", Task.Priority.NORMAL, () -> {
+		Task.cpu("test", Task.Priority.NORMAL, t -> {
 			as.unblockSuccess(Integer.valueOf(11));
 			return null;
 		}).executeIn(5000).start();
@@ -134,7 +134,7 @@ public class TestJoinPoint extends LCCoreAbstractTest {
 		jp.addToJoin(as);
 		MutableInteger timedout = new MutableInteger(0);
 		jp.listenTime(1, timedout::inc);
-		Task.cpu("test", Task.Priority.NORMAL, () -> {
+		Task.cpu("test", Task.Priority.NORMAL, t -> {
 			as.unblockSuccess(Integer.valueOf(11));
 			return null;
 		}).executeIn(2500).start();

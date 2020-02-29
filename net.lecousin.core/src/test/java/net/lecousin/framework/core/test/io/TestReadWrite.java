@@ -408,7 +408,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	IAsync<IOException> writeBufferSeekAsync(T io, int bufIndex, int j, IAsync<IOException> prevWrite) {
 		Async<IOException> result = new Async<>();
 		Task<Void, NoException> taskWrite = testTask(() -> io.writeAsync(ByteBuffer.wrap(testBuf)).onDone(result));
-		Task<Void, NoException> taskSeek = testTask(() -> {
+		Task<Void, NoException> taskSeek = testTask(t -> {
 			if (prevWrite != null) {
 				if (prevWrite.hasError()) {
 					result.error(prevWrite.getError());
@@ -442,7 +442,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 	private <T extends IO.Readable.Seekable & IO.Writable.Seekable>
 	IAsync<IOException> readReverseSeekAsync(T io, int bufIndex, IAsync<IOException> prevOp) {
 		Async<IOException> result = new Async<>();
-		Task<Void, NoException> taskRead = testTask(() -> {
+		Task<Void, NoException> taskRead = testTask(t -> {
 			byte[] b = new byte[testBuf.length];
 			if (bufIndex == 0) {
 				int ii = 0;
@@ -465,7 +465,7 @@ public abstract class TestReadWrite extends TestIO.UsingTestData {
 			});
 			return null;
 		});
-		Task<Void, NoException> taskSeek = testTask(() -> {
+		Task<Void, NoException> taskSeek = testTask(t -> {
 			if (prevOp != null) {
 				if (prevOp.hasError()) {
 					result.error(prevOp.getError());

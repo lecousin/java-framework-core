@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
@@ -374,7 +375,7 @@ public class IOInMemoryOrFile extends AbstractIO
 			}
 			return operation(Task.cpu("Shrink memory of IOInMemoryOrFile", getPriority(), new Executable<Void, IOException>() {
 				@Override
-				public Void execute() {
+				public Void execute(Task<Void, IOException> taskContext) {
 					int nbBuf = (int)(newSize / BUFFER_SIZE);
 					if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
 					if (memory.length > nbBuf) {
@@ -405,7 +406,7 @@ public class IOInMemoryOrFile extends AbstractIO
 			// we need to enlarge memory
 			taskMemory = operation(Task.cpu("Enlarge memory of IOInMemoryOrFile", getPriority(), new Executable<Void, IOException>() {
 				@Override
-				public Void execute() {
+				public Void execute(Task<Void, IOException> taskContext) {
 					int nbBuf = (int)(newSize / BUFFER_SIZE);
 					if ((newSize % BUFFER_SIZE) != 0) nbBuf++;
 					if (nbBuf > memory.length) {
@@ -625,10 +626,11 @@ public class IOInMemoryOrFile extends AbstractIO
 		private ByteBuffer buf;
 		
 		@Override
-		public Integer execute() throws IOException {
+		public Integer execute(Task<Integer, IOException> taskContext) throws IOException, CancelException {
 			if (memory == null) throw new IOException("IOInMemoryOrFile is already closed: " + getSourceDescription());
 			Integer result = Integer.valueOf(len);
 			do {
+				if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 				int i = pos / BUFFER_SIZE;
 				int j = pos % BUFFER_SIZE;
 				int l = len;
@@ -661,10 +663,11 @@ public class IOInMemoryOrFile extends AbstractIO
 		private ByteBuffer buf;
 		
 		@Override
-		public Integer execute() throws IOException {
+		public Integer execute(Task<Integer, IOException> taskContext) throws IOException, CancelException {
 			if (memory == null) throw new IOException("IOInMemoryOrFile is already closed: " + getSourceDescription());
 			Integer result = Integer.valueOf(len);
 			do {
+				if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 				int i = pos / BUFFER_SIZE;
 				int j = pos % BUFFER_SIZE;
 				int l = len;

@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.IOException;
 
 import net.lecousin.framework.concurrent.async.Async;
+import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.io.text.ICharacterStream;
@@ -131,7 +133,7 @@ public abstract class TestCharacterStreamReadableBuffered extends TestIO.UsingGe
 			if (c == -2) {
 				int i = iBuf;
 				int j = iChar;
-				s.canStartReading().thenStart("readAsync", null, () -> {
+				s.canStartReading().thenStart("readAsync", null, (Task<Void, NoException> t) -> {
 					try {
 						continueReadAsync(s, i, j, sp);
 					} catch (Exception e) {

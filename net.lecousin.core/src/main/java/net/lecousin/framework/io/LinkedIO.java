@@ -1000,7 +1000,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 				if (!seek.isDone()) {
 					AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 					int ii = i;
-					seek.thenStart("LinkedIO.readAsync", getPriority(), () -> {
+					seek.thenStart("LinkedIO.readAsync", getPriority(), (Task<Void, IOException> t) -> {
 						sizes.set(ii, seek.getResult());
 						readAsync(pos, buffer, ondone).forward(result);
 						return null;
@@ -1109,7 +1109,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 		if (s == null) {
 			AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
 			if (!seek.isDone()) {
-				seek.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
+				seek.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), (Task<Void, IOException> t) -> {
 					if (seek.hasError())
 						IOUtil.error(seek.getError(), result, ondone);
 					else {
@@ -1148,7 +1148,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 		AsyncSupplier<Integer, IOException> result, Consumer<Pair<Integer, IOException>> ondone
 	) {
 		AsyncSupplier<Integer, IOException> write = io.writeAsync(buffer);
-		write.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
+		write.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), (Task<Void, IOException> t) -> {
 			buffer.limit(limit);
 			if (write.hasError()) {
 				IOUtil.error(write.getError(), result, ondone);
@@ -1177,7 +1177,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 				if (!seek.isDone()) {
 					AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 					int ii = i;
-					seek.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
+					seek.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), (Task<Void, IOException> t) -> {
 						sizes.set(ii, seek.getResult());
 						writeAsync(pos, buffer, ondone).forward(result);
 						return null;
@@ -1208,7 +1208,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 		if (s == null) {
 			AsyncSupplier<Long, IOException> seek = io.seekAsync(SeekType.FROM_END, 0);
 			if (!seek.isDone()) {
-				seek.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
+				seek.thenStart(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), (Task<Void, IOException> t) -> {
 					sizes.set(i, seek.getResult());
 					writeAsync(i, p, pos, done, buffer, result, ondone);
 					return null;
@@ -1235,7 +1235,7 @@ public abstract class LinkedIO extends ConcurrentCloseable<IOException> implemen
 				IOUtil.success(Integer.valueOf(done + nb), result, ondone);
 				return;
 			}
-			Task.cpu(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), () -> {
+			Task.cpu(WRITE_ASYNC_TASK_DESCRIPTION, getPriority(), t -> {
 				writeAsync(i + 1, p + ioSize, p + ioSize, done + nb, buffer, result, ondone);
 				return null;
 			}).start();

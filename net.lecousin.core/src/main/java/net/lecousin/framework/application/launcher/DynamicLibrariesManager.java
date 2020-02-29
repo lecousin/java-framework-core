@@ -40,6 +40,7 @@ import net.lecousin.framework.application.libraries.classpath.LoadLibraryExtensi
 import net.lecousin.framework.application.libraries.classpath.LoadLibraryPluginsFile;
 import net.lecousin.framework.collections.CollectionsUtil;
 import net.lecousin.framework.collections.Tree;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
@@ -137,12 +138,14 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	private void loadSplashFile(File splashFile) {
 		Task<byte[], IOException> read = ReadFullFile.create(splashFile, Task.Priority.URGENT);
 		read.start();
-		Task<Void,NoException> load = Task.cpu("Loading splash image", Task.Priority.URGENT, () -> {
+		Task<Void,NoException> load = Task.cpu("Loading splash image", Task.Priority.URGENT, t -> {
 			ImageIcon img = new ImageIcon(read.getOutput().getResult());
 			if (splash == null) return null;
 			synchronized (splash) {
-				while (!splash.isReady())
+				while (!splash.isReady()) {
+					if (t.isCancelling()) throw t.getCancelEvent();
 					if (!ThreadUtil.wait(splash, 0)) return null;
+				}
 			}
 			splash.setLogo(img, true);
 			return null;
@@ -164,10 +167,11 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	private AsyncSupplier<List<LibraryDescriptor>, LibraryManagementException> loadDevProjects(long stepDevProjects) {
 		JoinPoint<LibraryManagementException> jpDevProjects = new JoinPoint<>();
 		ArrayList<AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException>> devProjects = new ArrayList<>(devPaths.size());
-		Task.cpu("Load development projects", Task.Priority.IMPORTANT, () -> {
+		Task.cpu("Load development projects", Task.Priority.IMPORTANT, t -> {
 			int nb = devPaths.size();
 			long w = stepDevProjects;
 			for (File dir : devPaths) {
+				if (t.isCancelling()) throw t.getCancelEvent();
 				long step = w / nb--;
 				w -= step;
 				AsyncSupplier<? extends LibraryDescriptor, LibraryManagementException> load =
@@ -303,7 +307,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			libraries.put(descr.getGroupId() + ':' + descr.getArtifactId(), lib);
 			appLib = lib;
 			loadLibrary(lib, resolveConflicts.getOutput().getResult(), addPlugins, splash, stepLoad).start();
-			lib.load.thenStart(Task.cpu("Finishing to initialize", Task.Priority.IMPORTANT, () -> {
+			lib.load.thenStart(Task.cpu("Finishing to initialize", Task.Priority.IMPORTANT, t -> {
 				if (canStartApp.hasError()) return null;
 				app.getDefaultLogger().debug("Libraries initialized.");
 				ExtensionPoints.allPluginsLoaded();
@@ -470,12 +474,14 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		private long work;
 		
 		@Override
-		public Map<String, LibraryDescriptor> execute() throws LibraryManagementException {
+		public Map<String, LibraryDescriptor> execute(Task<Map<String, LibraryDescriptor>, LibraryManagementException> taskContext)
+		throws LibraryManagementException, CancelException {
 			if (progress != null) progress.setText("Resolving dependencies versions");
 			app.getDefaultLogger().debug("Resolving version conflicts");
 			Map<String, LibraryDescriptor> versions = new HashMap<>();
 			for (Map.Entry<String, Map<String, List<Tree.Node<DependencyNode>>>> group : artifacts.entrySet()) {
 				for (Map.Entry<String, List<Tree.Node<DependencyNode>>> artifact : group.getValue().entrySet()) {
+					if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 					// create a mapping of versions, and remove errors
 					Map<Version, List<Tree.Node<DependencyNode>>> artifactVersions = getArtifactVersions(artifact);
 					if (artifactVersions.isEmpty()) {
@@ -558,13 +564,14 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		private long work;
 		
 		@Override
-		public Void execute() {
+		public Void execute(Task<Void, NoException> taskContext) throws CancelException {
 			if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(
 				"Loading " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':' + lib.descr.getVersionString());
 			
 			JoinPoint<LibraryManagementException> jp = new JoinPoint<>();
 			int nb = lib.descr.getDependencies().size() + (addPlugins != null ? addPlugins.size() : 0);
 			for (LibraryDescriptor.Dependency dep : lib.descr.getDependencies()) {
+				if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 				String key = dep.getGroupId() + ':' + dep.getArtifactId();
 				LibraryDescriptor d = versions.get(key);
 				long step = work / nb--;
@@ -574,6 +581,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			}
 			if (addPlugins != null) {
 				for (LibraryDescriptor d : addPlugins) {
+					if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 					String key = d.getGroupId() + ':' + d.getArtifactId();
 					long step = work / nb--;
 					work -= step;
@@ -630,7 +638,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 		private IAsync<Exception> previousStep = null;
 		
 		@Override
-		public Void execute() {
+		public Void execute(Task<Void, NoException> taskContext) throws CancelException {
 			if (app.getDefaultLogger().debug()) app.getDefaultLogger().debug(
 				"Initializing " + lib.descr.getGroupId() + ':' + lib.descr.getArtifactId() + ':'
 				+ lib.descr.getVersionString());
@@ -641,9 +649,13 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 			if (!loadExtensionPoints(jp))
 				return null;
 			
+			if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
+			
 			// custom extension points
 			if (!loadCustomExtensionPoints(jp))
 				return null;
+			
+			if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 			
 			// plugins
 			if (!loadPlugins(jp))
@@ -956,7 +968,7 @@ public class DynamicLibrariesManager implements ArtifactsLibrariesManager {
 	Task<IAsync<Exception>, ApplicationBootstrapException> startApp() {
 		Task<IAsync<Exception>, ApplicationBootstrapException> task =
 			Task.cpu(app.getGroupId() + ':' + app.getArtifactId() + ':' + app.getVersion().toString(), Task.Priority.NORMAL,
-			() -> {
+			ctx -> {
 				if (splash != null) splash.setText("Starting application " + appCfg.getName());
 				@SuppressWarnings("rawtypes")
 				Class cl;

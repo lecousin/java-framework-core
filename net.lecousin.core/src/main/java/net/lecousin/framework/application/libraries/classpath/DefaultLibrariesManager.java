@@ -19,6 +19,7 @@ import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.application.libraries.LibraryManagementException;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
@@ -84,7 +85,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 	
 	private class Start implements Executable<Void, NoException> {
 		@Override
-		public Void execute() {
+		public Void execute(Task<Void, NoException> taskContext) {
 			String cp = System.getProperty("java.class.path");
 			app.getDefaultLogger().info("Starting DefaultLibrariesManager with classpath = " + cp);
 			URL[] addcp = acl.getURLs();
@@ -142,7 +143,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		private LinkedList<IAsync<Exception>> tasks;
 		
 		@Override
-		public Void execute() {
+		public Void execute(Task<Void, NoException> taskContext) {
 			for (CustomExtensionPoint custom : ExtensionPoints.getCustomExtensionPoints()) {
 				String path = custom.getPluginConfigurationFilePath();
 				if (path == null) continue;
@@ -156,7 +157,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 			Async<Exception> plugins = new Async<>();
 			tasks.getLast().thenStart("Load plugins from libraries", Task.Priority.NORMAL, () -> loadPlugins(plugins), false);
 			tasks.add(plugins);
-			tasks.getLast().thenStart("Finalize libraries loading", Task.Priority.NORMAL, () -> {
+			tasks.getLast().thenStart("Finalize libraries loading", Task.Priority.NORMAL, t -> {
 				ExtensionPoints.allPluginsLoaded();
 				started.unblock();
 				return null;
@@ -231,10 +232,11 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		private String filePath;
 		
 		@Override
-		public Void execute() throws Exception {
+		public Void execute(Task<Void, Exception> taskContext) throws Exception, CancelException {
 			app.getDefaultLogger().info("Loading plugin files for custom extension point " + ep.getClass().getName() + ": " + filePath);
 			Enumeration<URL> urls = acl.getResources(filePath);
 			while (urls.hasMoreElements()) {
+				if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 				URL url = urls.nextElement();
 				app.getDefaultLogger().info(" - Plugin file found: " + url.toString());
 				InputStream input = url.openStream();

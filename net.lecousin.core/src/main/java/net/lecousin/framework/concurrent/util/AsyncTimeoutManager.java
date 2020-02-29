@@ -91,7 +91,7 @@ public final class AsyncTimeoutManager {
 	private class TimeoutTask implements Executable<Void, NoException> {
 		
 		@Override
-		public Void execute() throws NoException, CancelException {
+		public Void execute(Task<Void, NoException> taskContext) throws NoException, CancelException {
 			long next = -1;
 			LinkedList<Runnable> toRun = new LinkedList<>();
 			long now = System.currentTimeMillis();

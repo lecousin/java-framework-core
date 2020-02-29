@@ -155,7 +155,7 @@ public class ByteBuffersIO extends AbstractIO implements IO.Readable.Buffered, I
 	@Override
 	public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		return operation(Task.cpu("readAsync on ByteBuffersIO", this.getPriority(),
-			() -> Integer.valueOf(readSync(pos, buffer)), ondone).start()).getOutput();
+			t -> Integer.valueOf(readSync(pos, buffer)), ondone).start()).getOutput();
 	}
 	
 	@Override

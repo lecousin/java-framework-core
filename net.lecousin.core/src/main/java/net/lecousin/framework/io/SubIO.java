@@ -298,7 +298,7 @@ public abstract class SubIO extends ConcurrentCloseable<IOException> implements 
 						return new AsyncSupplier<>(null, null);
 					}
 					AsyncSupplier<ByteBuffer, IOException> result = new AsyncSupplier<>();
-					Task.cpu("Read next buffer", getPriority(), () -> {
+					Task.cpu("Read next buffer", getPriority(), task -> {
 						int len = 16384;
 						if (len > size - pos) len = (int)(size - pos);
 						ByteBuffer buf = ByteBuffer.allocate(len);

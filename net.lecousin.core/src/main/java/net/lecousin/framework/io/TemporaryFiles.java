@@ -88,7 +88,8 @@ public final class TemporaryFiles {
 	
 	/** Create a temporary file. */
 	public AsyncSupplier<File, IOException> createFileAsync(String prefix, String suffix) {
-		return Task.file(tempDir, "Create temporary file", Priority.NORMAL, () -> createFileSync(prefix, suffix)).start().getOutput();
+		return Task.file(tempDir, "Create temporary file", Priority.NORMAL,
+			(Task<File, IOException> t) -> createFileSync(prefix, suffix)).start().getOutput();
 	}
 	
 	/** Create and open a temporary file. */
@@ -99,7 +100,8 @@ public final class TemporaryFiles {
 
 	/** Create and open a temporary file. */
 	public AsyncSupplier<FileIO.ReadWrite, IOException> createAndOpenFileAsync(String prefix, String suffix) {
-		return Task.file(tempDir, "Create temporary file", Priority.NORMAL, () -> createAndOpenFileSync(prefix, suffix)).start().getOutput();
+		return Task.file(tempDir, "Create temporary file", Priority.NORMAL,
+			(Task<FileIO.ReadWrite, IOException> t) -> createAndOpenFileSync(prefix, suffix)).start().getOutput();
 	}
 	
 	/** Create a temporary directory. */
@@ -112,7 +114,8 @@ public final class TemporaryFiles {
 	
 	/** Create a temporary directory. */
 	public AsyncSupplier<File, IOException> createDirectoryAsync(String prefix) {
-		return Task.file(tempDir, "Create temporary directory", Priority.NORMAL, () -> createDirectorySync(prefix)).start().getOutput();
+		return Task.file(tempDir, "Create temporary directory", Priority.NORMAL,
+			(Task<File, IOException> t) -> createDirectorySync(prefix)).start().getOutput();
 	}
 	
 }

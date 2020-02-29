@@ -109,7 +109,7 @@ public final class LCCore {
 		initEnvironment();
 		
 		instance.start();
-		Task.cpu("Initializing framework tools", () -> {
+		Task.cpu("Initializing framework tools", t -> {
 			MemoryManager.init();
 			return null;
 		}).start();

@@ -291,7 +291,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenStartOkThenCancel() {
-		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> {
+		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, t -> {
 			throw new CancelException("test");
 		}), sp2);
 		testListenersToString();
@@ -303,7 +303,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenStartOk() {
-		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
+		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, t -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
 		testListenersToString();
 		sp.unblock();
 		sp2.block(10000);
@@ -314,7 +314,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenStartError() {
-		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
+		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, t -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
 		testListenersToString();
 		sp.error(new Exception());
 		Assert.assertEquals(0, ok.get());
@@ -324,7 +324,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testThenStartCancel() {
-		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, () -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
+		sp.thenStart(Task.cpu("test", Task.Priority.NORMAL, t -> { ok.inc(); sp2.unblock(); return null; }), error::inc);
 		testListenersToString();
 		sp.cancel(new CancelException("test"));
 		Assert.assertEquals(0, ok.get());
@@ -616,7 +616,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	
 	@Test
 	public void testUnblockAsynchronously() {
-		Task.cpu("test", Task.Priority.NORMAL, () -> {
+		Task.cpu("test", Task.Priority.NORMAL, t -> {
 			sp.unblock();
 			sp2.blockPause(5000);
 			return null;
@@ -733,7 +733,7 @@ public class TestAsync extends LCCoreAbstractTest {
 	@Test
 	public void testBlockPauseWithWarning() {
 		Async<Exception> a = new Async<>();
-		Task.cpu("unblock", Priority.IMPORTANT, () -> {
+		Task.cpu("unblock", Priority.IMPORTANT, t -> {
 			a.unblock();
 			return null;
 		}).executeIn(5).start();

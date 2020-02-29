@@ -24,7 +24,7 @@ public class RemoveFile implements Executable<Void,IOException> {
 	private File file;
 	
 	@Override
-	public Void execute() throws IOException {
+	public Void execute(Task<Void, IOException> t) throws IOException {
 		Files.deleteIfExists(file.toPath());
 		return null;
 	}

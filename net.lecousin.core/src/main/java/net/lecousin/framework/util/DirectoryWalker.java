@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
@@ -13,6 +14,7 @@ import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.concurrent.threads.Threading;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.util.FileInfo;
 import net.lecousin.framework.progress.WorkProgress;
 
@@ -63,15 +65,15 @@ public abstract class DirectoryWalker<T> {
 	private void processDirectory(String path, File dir, T object, JoinPoint<IOException> jp, Priority priority, WorkProgress prog, long work) {
 		DirectoryReader reader = new DirectoryReader(dir, request, null) {
 			@Override
-			public Result execute() throws AccessDeniedException {
+			public Result execute(Task<Result, AccessDeniedException> taskContext) throws AccessDeniedException, CancelException {
 				if (prog != null) prog.setSubText(path);
-				return super.execute();
+				return super.execute(taskContext);
 			}
 		};
 		AsyncSupplier<DirectoryReader.Result, AccessDeniedException> read = 
 			new Task<>(taskManager, "Reading directory " + dir.getAbsolutePath(), priority, reader, null)
 			.start().getOutput();
-		read.thenStart("DirectoryWalker", priority, () -> {
+		read.thenStart("DirectoryWalker", priority, (Task<Void, NoException> task) -> {
 			if (read.hasError()) {
 				accessDenied(dir, path);
 				if (prog != null) prog.progress(work);
@@ -96,6 +98,7 @@ public abstract class DirectoryWalker<T> {
 			long w = work - step;
 			if (prog != null) prog.progress(step);
 			for (Triple<File, T, String> t : dirs) {
+				if (task.isCancelling()) throw task.getCancelEvent();
 				step = w / steps--;
 				w -= step;
 				processDirectory(t.getValue3(), t.getValue1(), t.getValue2(), jp, priority, prog, step);

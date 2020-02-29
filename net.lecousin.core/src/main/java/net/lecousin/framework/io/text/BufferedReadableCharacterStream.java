@@ -149,7 +149,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		
 		@Override
 		@SuppressWarnings("squid:S1696") // NullPointerException
-		public Void execute() {
+		public Void execute(Task<Void, NoException> taskContext) {
 			if (nextReady.isCancelled()) return null; // closed
 			if (readTask.isCancelled()) {
 				if (decoder == null)
@@ -397,7 +397,7 @@ public class BufferedReadableCharacterStream extends ConcurrentCloseable<IOExcep
 		private AsyncSupplier<Integer, IOException> readResult;
 		
 		@Override
-		public Void execute() {
+		public Void execute(Task<Void, NoException> taskContext) {
 			int done = 0;
 			
 			if (back != -1) {

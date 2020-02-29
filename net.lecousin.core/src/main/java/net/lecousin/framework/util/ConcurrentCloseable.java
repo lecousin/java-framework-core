@@ -13,6 +13,7 @@ import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.event.Event;
+import net.lecousin.framework.exception.NoException;
 
 /** Implement most of the functionalities expected by an IConcurrentCloseable.
  * @param <TError> type of error when closing.
@@ -134,7 +135,7 @@ public abstract class ConcurrentCloseable<TError extends Exception> implements I
 		if (underlying != null)
 			jp.addToJoinNoException(underlying);
 		jp.start();
-		jp.thenStart(Task.cpu("Closing resources", prio, () -> {
+		jp.thenStart(Task.cpu("Closing resources", prio, (Task<Void, NoException> t) -> {
 			synchronized (this) {
 				open = false;
 			}
@@ -158,12 +159,12 @@ public abstract class ConcurrentCloseable<TError extends Exception> implements I
 			s.append("Closeable still waiting for pending operations: ").append(this);
 			for (IAsync<?> op : pending)
 				if (!op.isDone()) {
-					s.append("\r\n - ").append(op);
+					s.append("\n - ").append(op);
 					for (Object o : op.getAllListeners())
-						s.append("\r\n    - ").append(o);
+						s.append("\n    - ").append(o);
 				}
 			if (underlying != null && !underlying.isDone())
-				s.append("\r\n - closeUnderlyingResources");
+				s.append("\n - closeUnderlyingResources");
 			LCCore.getApplication().getDefaultLogger().error(s.toString());
 			jp.cancel(new CancelException("Closeable still waiting for pending operations after 1 minute, close forced"));
 		});

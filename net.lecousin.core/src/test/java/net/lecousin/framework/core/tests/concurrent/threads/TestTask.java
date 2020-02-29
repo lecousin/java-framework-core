@@ -17,7 +17,7 @@ public class TestTask extends LCCoreAbstractTest {
 
 	@Test
 	public void test() throws Exception {
-		Task<Object,?> task = Task.cpu("test", Task.Priority.NORMAL, () -> null).start();
+		Task<Object,?> task = Task.cpu("test", Task.Priority.NORMAL, t -> null).start();
 		Assert.assertEquals(Threading.getCPUTaskManager(), task.getTaskManager());
 		Assert.assertEquals(LCCore.getApplication(), task.getApplication());
 
@@ -36,7 +36,7 @@ public class TestTask extends LCCoreAbstractTest {
 		Assert.assertEquals(2, i.get());
 		
 		i.set(0);
-		task = Task.cpu("test", Task.Priority.NORMAL, () -> {
+		task = Task.cpu("test", Task.Priority.NORMAL, t -> {
 			i.inc();
 			return null;
 		}, r -> {
@@ -49,7 +49,7 @@ public class TestTask extends LCCoreAbstractTest {
 		Assert.assertTrue(task.isDone());
 		Assert.assertEquals(0, i.get());
 		
-		Task<Integer, ?> unmanaged = Task.unmanaged("test", Task.Priority.NORMAL, () -> Integer.valueOf(111));
+		Task<Integer, ?> unmanaged = Task.unmanaged("test", Task.Priority.NORMAL, t -> Integer.valueOf(111));
 		unmanaged.startOn(true);
 		Assert.assertEquals(111, unmanaged.getOutput().blockResult(0).intValue());
 	}

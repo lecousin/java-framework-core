@@ -73,7 +73,7 @@ public class WritableCharacterStream extends ConcurrentCloseable<IOException> im
 	@Override
 	public IAsync<IOException> writeAsync(char[] c, int offset, int length) {
 		Async<IOException> result = new Async<>();
-		operation(Task.cpu("Encoding characters", getPriority(), () -> {
+		operation(Task.cpu("Encoding characters", getPriority(), t -> {
 			CharBuffer cb = CharBuffer.wrap(c, offset, length);
 			ByteBuffer bb;
 			try { bb = encoder.encode(cb); }

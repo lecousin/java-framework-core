@@ -141,7 +141,7 @@ public class NonBufferedReadableIOAsBuffered extends ConcurrentCloseable<IOExcep
 	@Override
 	public AsyncSupplier<ByteBuffer, IOException> readNextBufferAsync(Consumer<Pair<ByteBuffer, IOException>> ondone) {
 		AsyncSupplier<ByteBuffer, IOException> result = new AsyncSupplier<>();
-		operation(Task.cpu("Read next buffer", getPriority(), () -> {
+		operation(Task.cpu("Read next buffer", getPriority(), t -> {
 			ByteBuffer buf = ByteBuffer.allocate(4096);
 			AsyncSupplier<Integer, IOException> read = readAsync(buf);
 			read.onDone(() -> {

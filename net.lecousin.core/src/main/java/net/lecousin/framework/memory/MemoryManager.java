@@ -38,7 +38,7 @@ public class MemoryManager {
 			logMemory(Level.DEBUG);
 
 		// after 15 minutes the application is running, every 5 minutes, ask to clean expired cached data
-		Task<Void,NoException> cleanExpiredData = Task.cpu("Free memory for expired cached data", Priority.BACKGROUND, () -> {
+		Task<Void,NoException> cleanExpiredData = Task.cpu("Free memory for expired cached data", Priority.BACKGROUND, t -> {
 			if (logger.debug()) logger.debug("Free expired cached data");
 			freeMemory(FreeMemoryLevel.EXPIRED_ONLY);
 			if (logger.debug())
@@ -74,7 +74,7 @@ public class MemoryManager {
 		}
 		
 		// check memory
-		Task<Void,NoException> checkMemory = Task.cpu("Check memory", Priority.BACKGROUND, MemoryManager::checkMemory);
+		Task<Void,NoException> checkMemory = Task.cpu("Check memory", Priority.BACKGROUND, t -> checkMemory());
 		checkMemory.executeEvery(1L * 60 * 1000, 2L * 60 * 1000);
 		checkMemory.start();
 
@@ -211,7 +211,7 @@ public class MemoryManager {
 	
 	/** Log memory usage to the console at regular interval. */
 	public static void logMemory(long interval, Level level) {
-		Task<Void,NoException> task = Task.cpu("Logging memory", Priority.BACKGROUND, () -> {
+		Task<Void,NoException> task = Task.cpu("Logging memory", Priority.BACKGROUND, t -> {
 			logMemory(level);
 			return null;
 		});

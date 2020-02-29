@@ -31,7 +31,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable<IOException> i
 		io.getSizeAsync().listen(new Listener<Long, IOException>() {
 			@Override
 			public void ready(Long result) {
-				operation(Task.cpu("Read last buffer", io.getPriority(), () -> {
+				operation(Task.cpu("Read last buffer", io.getPriority(), task -> {
 					synchronized (BufferedReverseIOReading.this) {
 						fileSize = bufferPosInFile = result.longValue();
 						readBufferBack();
@@ -266,7 +266,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable<IOException> i
 		}
 		ByteBuffer buf = ByteBuffer.wrap(buffer, start, len);
 		currentRead = io.readFullyAsync(bufferPosInFile - len, buf);
-		currentRead.thenStart(operation(Task.cpu("New buffer ready", io.getPriority(), () -> {
+		currentRead.thenStart(operation(Task.cpu("New buffer ready", io.getPriority(), task -> {
 			synchronized (BufferedReverseIOReading.this) {
 				if (!currentRead.isSuccessful()) {
 					error = currentRead.getError();
@@ -310,7 +310,7 @@ public class BufferedReverseIOReading extends ConcurrentCloseable<IOException> i
 			len = (int)(fileSize - (bufferPosInFile + (maxInBuffer - minInBuffer)));
 		ByteBuffer buf = ByteBuffer.wrap(buffer, start, len);
 		currentRead = io.readFullyAsync(bufferPosInFile + (maxInBuffer - minInBuffer), buf);
-		currentRead.thenStart(operation(Task.cpu("New buffer ready", io.getPriority(), () -> {
+		currentRead.thenStart(operation(Task.cpu("New buffer ready", io.getPriority(), task -> {
 			synchronized (BufferedReverseIOReading.this) {
 				if (!currentRead.isSuccessful()) {
 					error = currentRead.getError();

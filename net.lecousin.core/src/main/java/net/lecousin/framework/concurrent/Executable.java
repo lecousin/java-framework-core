@@ -4,6 +4,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.util.Runnables;
 
@@ -15,7 +16,7 @@ import net.lecousin.framework.util.Runnables;
 public interface Executable<T, E extends Exception> {
 
 	/** Execute. */
-	T execute() throws E, CancelException;
+	T execute(Task<T, E> taskContext) throws E, CancelException;
 	
 	/** Executable from a Runnable. */
 	class FromRunnable implements Executable<Void, NoException> {
@@ -26,7 +27,7 @@ public interface Executable<T, E extends Exception> {
 		private java.lang.Runnable run;
 		
 		@Override
-		public Void execute() {
+		public Void execute(Task<Void, NoException> t) {
 			run.run();
 			return null;
 		}
@@ -50,7 +51,7 @@ public interface Executable<T, E extends Exception> {
 		}
 		
 		@Override
-		public Void execute() throws CancelException {
+		public Void execute(Task<Void, NoException> t) throws CancelException {
 			consumer.accept(input);
 			return null;
 		}
@@ -76,7 +77,7 @@ public interface Executable<T, E extends Exception> {
 		}
 		
 		@Override
-		public Void execute() throws E, CancelException {
+		public Void execute(Task<Void, E> t) throws E, CancelException {
 			consumer.accept(input);
 			return null;
 		}
@@ -102,7 +103,7 @@ public interface Executable<T, E extends Exception> {
 		}
 		
 		@Override
-		public OUT execute() throws CancelException {
+		public OUT execute(Task<OUT, NoException> t) throws CancelException {
 			return fct.apply(input);
 		}
 		
@@ -128,7 +129,7 @@ public interface Executable<T, E extends Exception> {
 		}
 		
 		@Override
-		public OUT execute() throws E, CancelException {
+		public OUT execute(Task<OUT, E> t) throws E, CancelException {
 			return fct.apply(input);
 		}
 		
@@ -147,7 +148,7 @@ public interface Executable<T, E extends Exception> {
 		private Supplier<T> supplier;
 		
 		@Override
-		public T execute() throws CancelException {
+		public T execute(Task<T, NoException> t) throws CancelException {
 			return supplier.get();
 		}
 	}
@@ -166,7 +167,7 @@ public interface Executable<T, E extends Exception> {
 		private Runnables.SupplierThrows<T, E> supplier;
 		
 		@Override
-		public T execute() throws E, CancelException {
+		public T execute(Task<T, E> t) throws E, CancelException {
 			return supplier.get();
 		}
 	}

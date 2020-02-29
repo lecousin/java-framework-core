@@ -20,6 +20,7 @@ import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.appenders.Appender;
 import net.lecousin.framework.log.appenders.ConsoleAppender;
@@ -90,7 +91,7 @@ public class LoggerFactory {
 	/** Return a synchronization point that will be unblocked as soon as all pending logs have been written. */
 	public IAsync<Exception> flush() {
 		JoinPoint<Exception> jp = new JoinPoint<>();
-		thread.flush().thenStart("Flushing log appenders", Task.Priority.IMPORTANT, () -> {
+		thread.flush().thenStart("Flushing log appenders", Task.Priority.IMPORTANT, (Task<Void, NoException> t) -> {
 			for (Appender a : appenders.values())
 				jp.addToJoin(a.flush());
 			jp.start();

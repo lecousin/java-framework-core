@@ -299,7 +299,7 @@ public final class IOUtil {
 	) {
 		byte[] buffer = cache.get(bufferSize, true);
 		AsyncSupplier<Integer, IOException> read = io.readFullyAsync(ByteBuffer.wrap(buffer));
-		read.thenStart("readFully", io.getPriority(), () -> {
+		read.thenStart("readFully", io.getPriority(), (Task<Void, NoException> t) -> {
 			int nb = read.getResult().intValue();
 			if (nb > 0)
 				bb.addBuffer(new ByteArray.Writable(buffer, 0, nb, true));
@@ -325,7 +325,7 @@ public final class IOUtil {
 		IO.Readable io, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		return Task.cpu(READING_FROM + io.getSourceDescription(), io.getPriority(),
-			() -> Integer.valueOf(io.readSync(buffer)), ondone).start().getOutput();
+			t -> Integer.valueOf(io.readSync(buffer)), ondone).start().getOutput();
 	}
 	
 	/**
@@ -341,7 +341,7 @@ public final class IOUtil {
 		IO.Readable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		return Task.cpu(READING_FROM + io.getSourceDescription(), io.getPriority(),
-			() -> Integer.valueOf(io.readSync(pos, buffer)), ondone).start().getOutput();
+			t -> Integer.valueOf(io.readSync(pos, buffer)), ondone).start().getOutput();
 	}
 	
 	/**
@@ -356,7 +356,7 @@ public final class IOUtil {
 		IO.Readable io, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		return Task.cpu(READING_FROM + io.getSourceDescription(), io.getPriority(),
-			() -> Integer.valueOf(io.readFullySync(buffer)), ondone).start().getOutput();
+			t -> Integer.valueOf(io.readFullySync(buffer)), ondone).start().getOutput();
 	}
 
 	/**
@@ -372,7 +372,7 @@ public final class IOUtil {
 		IO.Readable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		return Task.cpu(READING_FROM + io.getSourceDescription(), io.getPriority(),
-			() -> Integer.valueOf(io.readFullySync(pos, buffer)), ondone).start().getOutput();
+			t -> Integer.valueOf(io.readFullySync(pos, buffer)), ondone).start().getOutput();
 	}
 	
 	/**
@@ -399,7 +399,7 @@ public final class IOUtil {
 	 * This must be used only if the synchronous skip is using only CPU.
 	 */
 	public static AsyncSupplier<Long,IOException> skipAsyncUsingSync(IO.Readable io, long n, Consumer<Pair<Long,IOException>> ondone) {
-		return Task.cpu("Skipping bytes", io.getPriority(), () -> Long.valueOf(skipSyncByReading(io, n)), ondone).start().getOutput();
+		return Task.cpu("Skipping bytes", io.getPriority(), t -> Long.valueOf(skipSyncByReading(io, n)), ondone).start().getOutput();
 	}
 	
 	/**
@@ -548,7 +548,7 @@ public final class IOUtil {
 		IO.Writable io, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		return Task.cpu("Writing to " + io.getSourceDescription(), io.getPriority(),
-			() -> Integer.valueOf(io.writeSync(buffer)), ondone).start().getOutput();
+			t -> Integer.valueOf(io.writeSync(buffer)), ondone).start().getOutput();
 	}
 	
 	/**
@@ -559,7 +559,7 @@ public final class IOUtil {
 		IO.Writable.Seekable io, long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		return Task.cpu("Writing to " + io.getSourceDescription(), io.getPriority(),
-			() -> Integer.valueOf(io.writeSync(pos, buffer)), ondone).start().getOutput();
+			t -> Integer.valueOf(io.writeSync(pos, buffer)), ondone).start().getOutput();
 	}
 	
 	/**
@@ -569,10 +569,10 @@ public final class IOUtil {
 		AsyncSupplier<CharArrayStringBuffer,IOException> result = new AsyncSupplier<>();
 		if (io instanceof IO.KnownSize) {
 			((IO.KnownSize)io).getSizeAsync().onDone(size ->
-				Task.cpu("Prepare readFullyAsString", priority, () -> {
+				Task.cpu("Prepare readFullyAsString", priority, t -> {
 					byte[] buf = new byte[size.intValue()];
 					io.readFullyAsync(ByteBuffer.wrap(buf)).thenStart(
-					Task.cpu("readFullyAsString", priority, () -> {
+					Task.cpu("readFullyAsString", priority, t2 -> {
 						try {
 							result.unblockSuccess(new CharArrayStringBuffer(
 								charset.newDecoder().decode(ByteBuffer.wrap(buf))
@@ -587,7 +587,7 @@ public final class IOUtil {
 			result);
 			return result;
 		}
-		Task.cpu("Read file as string: " + io.getSourceDescription(), priority, () -> {
+		Task.cpu("Read file as string: " + io.getSourceDescription(), priority, t -> {
 			BufferedReadableCharacterStream stream = new BufferedReadableCharacterStream(io, charset, 1024, 128);
 			CharArrayStringBuffer str = new CharArrayStringBuffer();
 			readFullyAsString(stream, str, result, priority);
@@ -614,7 +614,7 @@ public final class IOUtil {
 				read.getResult().get(str, read.getResult().remaining());
 				continue;
 			}
-			read.thenStart("readFullyAsString: " + stream.getDescription(), priority, () -> {
+			read.thenStart("readFullyAsString: " + stream.getDescription(), priority, (Task<Void, NoException> t) -> {
 				if (read.getResult() == null) {
 					result.unblockSuccess(str);
 					return null;
@@ -694,7 +694,7 @@ public final class IOUtil {
 	public static AsyncSupplier<Long,IOException> seekAsyncUsingSync(
 		IO.Seekable io, SeekType type, long move, Consumer<Pair<Long,IOException>> ondone
 	) {
-		return Task.cpu("Seeking", io.getPriority(), () -> Long.valueOf(io.seekSync(type, move)), ondone).start().getOutput();
+		return Task.cpu("Seeking", io.getPriority(), t -> Long.valueOf(io.seekSync(type, move)), ondone).start().getOutput();
 	}
 	
 	/**
@@ -711,7 +711,7 @@ public final class IOUtil {
 	 * This must be used only if the synchronous setSize is only using CPU.
 	 */
 	public static IAsync<IOException> setSizeAsyncUsingSync(IO.Resizable io, long newSize, Priority priority) {
-		return Task.cpu("Resizing " + io.getSourceDescription(), priority, () -> {
+		return Task.cpu("Resizing " + io.getSourceDescription(), priority, (Task<Void, IOException> t) -> {
 			io.setSizeSync(newSize);
 			return null;
 		}).start().getOutput();
@@ -864,7 +864,7 @@ public final class IOUtil {
 		IO.Readable input, IO.Writable output, int bufferSize, long total, 
 		AsyncSupplier<Long,IOException> end, boolean closeIOs, WorkProgress progress, long work
 	) {
-		Task.cpu("Allocate buffers to copy IOs", input.getPriority(), () -> {
+		Task.cpu("Allocate buffers to copy IOs", input.getPriority(), t -> {
 			copySameTMStep(input, output, ByteBuffer.allocate(bufferSize), 0, total, end, closeIOs, progress, work);
 			return null;
 		}).start();
@@ -1014,7 +1014,7 @@ public final class IOUtil {
 		File src, File dst, Priority priority, long knownSize, WorkProgress progress, long work, IAsync<?> startOn
 	) {
 		AsyncSupplier<Long, IOException> sp = new AsyncSupplier<>();
-		Task<Void,NoException> task = Task.cpu("Start copying files", priority, () -> {
+		Task<Void,NoException> task = Task.cpu("Start copying files", priority, t -> {
 			FileIO.ReadOnly input = new FileIO.ReadOnly(src, priority);
 			FileIO.WriteOnly output = new FileIO.WriteOnly(dst, priority);
 			input.canStart().onDone(() -> {
@@ -1049,7 +1049,7 @@ public final class IOUtil {
 
 	/** Implement an asynchronous close using a task calling the synchronous close. */
 	public static IAsync<IOException> closeAsync(Closeable toClose) {
-		return Task.cpu("Closing resource", Task.Priority.RATHER_IMPORTANT, () -> {
+		return Task.cpu("Closing resource", Task.Priority.RATHER_IMPORTANT, (Task<Void, IOException> t) -> {
 			toClose.close();
 			return null;
 		}).start().getOutput();

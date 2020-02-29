@@ -180,7 +180,7 @@ public class SimpleBufferedWritable extends ConcurrentCloseable<IOException> imp
 	private void writeAsync(
 		ByteBuffer buf, int done, AsyncSupplier<Integer,IOException> result, Consumer<Pair<Integer,IOException>> ondone
 	) {
-		operation(Task.cpu("Write async to SimpleBufferedWritable", out.getPriority(), () -> {
+		operation(Task.cpu("Write async to SimpleBufferedWritable", out.getPriority(), task -> {
 			int d = done;
 			do {
 				int len = buf.remaining();

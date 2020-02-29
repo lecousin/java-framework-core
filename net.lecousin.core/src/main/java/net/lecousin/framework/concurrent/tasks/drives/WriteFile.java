@@ -36,7 +36,7 @@ class WriteFile implements Executable<Integer,IOException> {
 	private ByteBuffer buffer;
 	
 	@Override
-	public Integer execute() throws IOException, CancelException {
+	public Integer execute(Task<Integer, IOException> taskContext) throws IOException, CancelException {
 		try {
 			if (pos >= 0)
 				file.channel.position(pos);

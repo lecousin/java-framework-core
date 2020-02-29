@@ -103,7 +103,12 @@ public abstract class ArrayCache<T> implements IMemoryManageable {
 			}
 		}
 		if (buf == null)
-			return allocate(size);
+			try {
+				return allocate(size);
+			} catch (OutOfMemoryError e) {
+				MemoryManager.freeMemory(FreeMemoryLevel.URGENT);
+				return allocate(size);
+			}
 		totalSize -= length(buf);
 		return buf;
 	}

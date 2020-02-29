@@ -14,7 +14,7 @@ public class TestTaskManager extends LCCoreAbstractTest {
 
 	@Test
 	public void testPutAsideAndKill() {
-		Task<?, ?> task = Task.unmanaged("Test never ending task", () -> {
+		Task<?, ?> task = Task.unmanaged("Test never ending task", t -> {
 			Thread.sleep(60000);
 			return null;
 		});
@@ -38,7 +38,7 @@ public class TestTaskManager extends LCCoreAbstractTest {
 		Threading.traceBlockingTasks = true;
 		Async<NoException> a = new Async<>();
 		Async<NoException> b = new Async<>();
-		Task<?, ?> task = Task.unmanaged("Test blocking task", () -> {
+		Task<?, ?> task = Task.unmanaged("Test blocking task", t -> {
 			b.unblock();
 			a.block(0);
 			return null;

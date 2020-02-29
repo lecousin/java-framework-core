@@ -179,7 +179,7 @@ public abstract class FixedThreadTaskManager extends TaskManager {
 	
 	private class CloseOldSpare implements Executable<Void, NoException> {
 		@Override
-		public Void execute() {
+		public Void execute(Task<Void, NoException> taskContext) {
 			synchronized (spare) {
 				if (spare.size() <= nbThreads) return null;
 				int maxToStop = (spare.size() - nbThreads) / 3 + 1;

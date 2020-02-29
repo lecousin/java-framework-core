@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 
-import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
@@ -250,12 +249,8 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		@Override
 		@SuppressWarnings("java:S1604") // cannot use lambda
 		public AsyncSupplier<Integer, IOException> readAsync(char[] buf, int offset, int length) {
-			return Task.cpu("UnprotectedStringBuffer.readAsync", priority, new Executable<Integer, IOException>() {
-				@Override
-				public Integer execute() {
-					return Integer.valueOf(readSync(buf, offset, length));
-				}
-			}).start().getOutput();
+			return Task.cpu("UnprotectedStringBuffer.readAsync", priority,
+				(Task<Integer, IOException> t) -> Integer.valueOf(readSync(buf, offset, length))).start().getOutput();
 		}
 		
 		@Override
@@ -317,7 +312,7 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		@Override
 		public AsyncSupplier<Boolean, IOException> readUntilAsync(char endChar, IString string) {
 			AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
-			Task.cpu("UnprotectedStringBuffer.readUntilAsync", getPriority(), () -> {
+			Task.cpu("UnprotectedStringBuffer.readUntilAsync", getPriority(), t -> {
 				try {
 					result.unblockSuccess(Boolean.valueOf(readUntil(endChar, string)));
 				} catch (IOException e) {
@@ -360,12 +355,9 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		@Override
 		@SuppressWarnings("java:S1604") // cannot use lambda
 		public IAsync<IOException> writeAsync(char[] c, int offset, int length) {
-			return Task.cpu("UnprotectedStringBuffer.writeAsync", priority, new Executable<Void, IOException>() {
-				@Override
-				public Void execute() {
-					append(c, offset, length);
-					return null;
-				}
+			return Task.cpu("UnprotectedStringBuffer.writeAsync", priority, (Task<Void, IOException> t) -> {
+				append(c, offset, length);
+				return null;
 			}).start().getOutput();
 		}
 
@@ -395,7 +387,7 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		int index, CharsetEncoder encoder, IO.Writable output, Priority priority,
 		IAsync<IOException> prevWrite, Async<IOException> result
 	) {
-		Task.cpu("Encode string into bytes", priority, () -> {
+		Task.cpu("Encode string into bytes", priority, t -> {
 			try {
 				ByteBuffer bytes = encoder.encode(strings[index].asCharBuffer().toCharBuffer());
 				if (prevWrite == null || prevWrite.isDone()) {

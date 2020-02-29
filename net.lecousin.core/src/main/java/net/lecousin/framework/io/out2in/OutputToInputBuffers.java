@@ -176,7 +176,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable<IOException>
 	@Override
 	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		 Task<Integer, IOException> task = Task.cpu("OutputToInput.write", getPriority(),
-			() -> Integer.valueOf(writeSync(buffer)), ondone);
+			t -> Integer.valueOf(writeSync(buffer)), ondone);
 		Async<NoException> sp = null;
 		synchronized (this) {
 			lastWrite = task.getOutput();
@@ -348,7 +348,7 @@ public class OutputToInputBuffers extends ConcurrentCloseable<IOException>
 	
 	@Override
 	public AsyncSupplier<Integer, IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(Task.cpu("OutputToInput.read", getPriority(), () -> Integer.valueOf(readSync(buffer)), ondone).start()).getOutput();
+		return operation(Task.cpu("OutputToInput.read", getPriority(), t -> Integer.valueOf(readSync(buffer)), ondone).start()).getOutput();
 	}
 	
 	@Override

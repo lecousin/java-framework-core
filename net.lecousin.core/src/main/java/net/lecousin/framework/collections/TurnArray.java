@@ -339,7 +339,7 @@ public class TurnArray<T> implements Deque<T> {
 	
 	private class DecreaseSize implements Executable<Void, NoException> {
 		@Override
-		public Void execute() {
+		public Void execute(Task<Void, NoException> taskContext) {
 			synchronized (TurnArray.this) {
 				decreaseTask = null;
 				decrease();

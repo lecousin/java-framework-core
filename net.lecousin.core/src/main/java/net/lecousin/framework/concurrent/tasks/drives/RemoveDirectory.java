@@ -3,6 +3,7 @@ package net.lecousin.framework.concurrent.tasks.drives;
 import java.io.File;
 import java.io.IOException;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
@@ -40,10 +41,10 @@ public class RemoveDirectory implements Executable<Long,IOException> {
 	private boolean calculateSize;
 	
 	@Override
-	public Long execute() throws IOException {
+	public Long execute(Task<Long, IOException> taskContext) throws IOException, CancelException {
 		String prev = progress != null ? progress.getSubText() : null;
 		if (progress != null && progressSubText != null) progress.setSubText(progressSubText);
-		long removedSize = RemoveDirectoryContent.deleteDirectory(dir, progress, work, calculateSize);
+		long removedSize = RemoveDirectoryContent.deleteDirectory(dir, progress, work, calculateSize, taskContext);
 		if (progress != null) progress.setSubText(prev);
 		return Long.valueOf(removedSize);
 	}

@@ -264,7 +264,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		try (IO.Readable.Buffered io = createReadableBufferedFromFile(openFile(), getFileSize(), bufferingSize)) {
 			byte[] buf = new byte[testBuf.length];
 			Async<Exception> sp = new Async<>();
-			Task.cpu("Test readFullySyncIfPossible", Task.Priority.NORMAL, () -> {
+			Task.cpu("Test readFullySyncIfPossible", Task.Priority.NORMAL, t -> {
 				nextSyncIfPossible(io, 0, buf, sp);
 				return null;
 			}).start();
@@ -319,7 +319,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 				continue;
 			}
 			int i = index;
-			r.thenStart(Task.cpu("Test readFullySyncIfPossible", Task.Priority.NORMAL, () -> {
+			r.thenStart(Task.cpu("Test readFullySyncIfPossible", Task.Priority.NORMAL, task -> {
 				if (!ondoneCalled.get()) {
 					sp.error(new Exception("ondone not called"));
 					return null;

@@ -4,9 +4,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.memory.ByteArrayCache;
 
 /** Task to read all bytes from a file. */
 public class ReadFullFile implements Executable<byte[],IOException> {
@@ -24,11 +26,12 @@ public class ReadFullFile implements Executable<byte[],IOException> {
 	private File file;
 	
 	@Override
-	public byte[] execute() throws IOException {
+	public byte[] execute(Task<byte[], IOException> taskContext) throws IOException, CancelException {
 		try (RandomAccessFile f = new RandomAccessFile(file, "r")) {
-			byte[] content = new byte[(int)file.length()];
+			byte[] content = ByteArrayCache.getInstance().get((int)file.length(), false);
 			int pos = 0;
 			do {
+				if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 				int nb = f.read(content, pos, content.length - pos);
 				if (nb <= 0) break;
 				pos += nb;

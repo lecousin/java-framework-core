@@ -480,7 +480,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 			return;
 		}
 		T res;
-		try { res = executable.execute(); }
+		try { res = executable.execute(this); }
 		catch (CancelException e) {
 			status = STATUS_DONE;
 			cancelling = e;

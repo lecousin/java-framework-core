@@ -46,7 +46,7 @@ public class TestLockPoint extends LCCoreAbstractTest {
 		LockPoint<Exception> lp2 = new LockPoint<>();
 		lp2.lock();
 		Async<Exception> sp = new Async<>();
-		Task.cpu("test", Task.Priority.NORMAL, () -> {
+		Task.cpu("test", Task.Priority.NORMAL, t -> {
 			sp.unblock();
 			lp2.blockPause(5000);
 			return null;
@@ -58,7 +58,7 @@ public class TestLockPoint extends LCCoreAbstractTest {
 		LockPoint<Exception> lp3 = new LockPoint<>();
 		lp3.lock();
 		Async<Exception> sp3 = new Async<>();
-		Task.cpu("test", Task.Priority.NORMAL, () -> {
+		Task.cpu("test", Task.Priority.NORMAL, t -> {
 			sp3.unblock();
 			lp3.block(5000);
 			return null;

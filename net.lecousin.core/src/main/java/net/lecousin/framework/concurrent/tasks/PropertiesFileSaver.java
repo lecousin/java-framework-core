@@ -69,7 +69,7 @@ public class PropertiesFileSaver implements Executable<Void,IOException> {
 	private boolean closeStreamAtEnd;
 	
 	@Override
-	public Void execute() throws IOException, CancelException {
+	public Void execute(Task<Void, IOException> taskContext) throws IOException, CancelException {
 		try {
 			for (Map.Entry<Object,Object> p : properties.entrySet()) {
 				output.writeSync(p.getKey().toString());

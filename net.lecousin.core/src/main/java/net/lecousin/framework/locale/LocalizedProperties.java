@@ -100,7 +100,7 @@ public class LocalizedProperties implements IMemoryManageable {
 		AsyncSupplier<CharArrayStringBuffer, IOException> read = IOUtil.readFullyAsString(
 			input, StandardCharsets.US_ASCII, Task.Priority.RATHER_IMPORTANT);
 		Namespace toLoad = ns;
-		read.thenStart("Read localized properties namespace file", Task.Priority.RATHER_IMPORTANT, () -> {
+		read.thenStart("Read localized properties namespace file", Task.Priority.RATHER_IMPORTANT, (Task<Void, NoException> t) -> {
 			List<Namespace.Language> languages = parseLanguages(read.getResult());
 			languages.sort(languageComparator);
 			toLoad.languages = languages.toArray(new Namespace.Language[languages.size()]);
@@ -283,7 +283,7 @@ public class LocalizedProperties implements IMemoryManageable {
 				Serializable[] newValues = new Serializable[values.length];
 				System.arraycopy(values, 0, newValues, 0, values.length);
 				final int ii = i;
-				l.thenStart("Localization", Task.Priority.NORMAL, () -> {
+				l.thenStart("Localization", Task.Priority.NORMAL, (Task<Void, NoException> t) -> {
 					newValues[ii] = l.getResult();
 					localize(languageTag, key, content, newValues, result);
 					return null;

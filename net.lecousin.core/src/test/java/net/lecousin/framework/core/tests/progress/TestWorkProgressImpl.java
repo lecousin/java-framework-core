@@ -146,9 +146,9 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		WorkProgress.link(sub1, main, 200);
 		WorkProgress.link(sub2, main, 500);
 		WorkProgress.link(sub3, main, 250);
-		Task<?,?> task1 = Task.cpu("task1", Task.Priority.NORMAL, () -> null);
-		Task<?,?> task2 = Task.cpu("task2", Task.Priority.NORMAL, () -> null);
-		Task<?,?> task3 = Task.cpu("task3", Task.Priority.NORMAL, () -> null);
+		Task<?,?> task1 = Task.cpu("task1", Task.Priority.NORMAL, t -> null);
+		Task<?,?> task2 = Task.cpu("task2", Task.Priority.NORMAL, t -> null);
+		Task<?,?> task3 = Task.cpu("task3", Task.Priority.NORMAL, t -> null);
 		WorkProgress.linkTo(sub1, task1);
 		WorkProgress.linkTo(sub2, task2);
 		WorkProgress.linkTo(sub3, task3);
@@ -185,7 +185,7 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		main = new WorkProgressImpl(1000);
 		sub1 = new WorkProgressImpl(1000);
 		WorkProgress.link(sub1, main, 200);
-		task1 = testTask(() -> { throw new Exception("Test error"); });
+		task1 = testTask(t -> { throw new Exception("Test error"); });
 		WorkProgress.linkTo(sub1, task1);
 		Assert.assertFalse(main.getSynch().hasError());
 		Assert.assertFalse(sub1.getSynch().hasError());
@@ -198,7 +198,7 @@ public class TestWorkProgressImpl extends LCCoreAbstractTest {
 		main = new WorkProgressImpl(1000);
 		sub1 = new WorkProgressImpl(1000);
 		WorkProgress.link(sub1, main, 200);
-		task1 = testTask(() -> { throw new CancelException("Test cancel"); });
+		task1 = testTask(t -> { throw new CancelException("Test cancel"); });
 		WorkProgress.linkTo(sub1, task1);
 		Assert.assertFalse(main.getSynch().hasError());
 		Assert.assertFalse(sub1.getSynch().hasError());

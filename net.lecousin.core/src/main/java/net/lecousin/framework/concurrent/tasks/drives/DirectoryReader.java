@@ -8,6 +8,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
@@ -113,7 +114,7 @@ public class DirectoryReader implements Executable<DirectoryReader.Result,Access
 	}
 
 	@Override
-	public Result execute() throws AccessDeniedException {
+	public Result execute(Task<Result, AccessDeniedException> taskContext) throws AccessDeniedException, CancelException {
 		File[] list = dir.listFiles();
 		if (list == null)
 			throw new AccessDeniedException("Directory " + dir.getAbsolutePath());
@@ -128,6 +129,8 @@ public class DirectoryReader implements Executable<DirectoryReader.Result,Access
 		long work = progress != null ? progress.getRemainingWork() : 0;
 		int nb = list.length;
 		for (int i = 0; i < list.length; ++i) {
+			if (taskContext.isCancelling())
+				throw taskContext.getCancelEvent();
 			long step = work / nb--;
 			work -= step;
 			FileInfo f = new FileInfo();
@@ -171,7 +174,7 @@ public class DirectoryReader implements Executable<DirectoryReader.Result,Access
 	}
 	
 	/** Task to list only sub-directories. */
-	public static class ListSubDirectories implements Executable<ArrayList<File>,AccessDeniedException> {
+	public static class ListSubDirectories implements Executable<ArrayList<File>, AccessDeniedException> {
 		
 		/** Create task. */
 		public static Task<ArrayList<File>,AccessDeniedException> task(File dir, Priority priority) {
@@ -186,11 +189,13 @@ public class DirectoryReader implements Executable<DirectoryReader.Result,Access
 		private File dir;
 		
 		@Override
-		public ArrayList<File> execute() throws AccessDeniedException {
+		public ArrayList<File> execute(Task<ArrayList<File>, AccessDeniedException> taskContext)
+		throws AccessDeniedException, CancelException {
 			String[] names = dir.list();
 			if (names == null) throw new AccessDeniedException("Directory " + dir.getAbsolutePath());
 			ArrayList<File> result = new ArrayList<>();
 			for (int i = 0; i < names.length; ++i) {
+				if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 				File f = new File(dir, names[i]);
 				if (f.isDirectory())
 					result.add(f);

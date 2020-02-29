@@ -14,9 +14,9 @@ public class TestReadWriteLock extends LCCoreAbstractTest {
 		lock.startRead();
 		lock.startRead();
 		lock.endRead();
-		Task.cpu("Test", Task.Priority.IMPORTANT, () -> { lock.endRead(); return null; }).executeIn(500).start();
+		Task.cpu("Test", Task.Priority.IMPORTANT, t -> { lock.endRead(); return null; }).executeIn(500).start();
 		lock.startWrite();
-		Task.cpu("Test", Task.Priority.IMPORTANT, () -> { lock.endWrite(); return null; }).executeIn(500).start();
+		Task.cpu("Test", Task.Priority.IMPORTANT, t -> { lock.endWrite(); return null; }).executeIn(500).start();
 		lock.startRead();
 		lock.endRead();
 	}

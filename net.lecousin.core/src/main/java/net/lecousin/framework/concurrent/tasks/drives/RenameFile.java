@@ -46,7 +46,7 @@ public class RenameFile implements Executable<Void,IOException> {
 	private File destination;
 	
 	@Override
-	public Void execute() throws IOException {
+	public Void execute(Task<Void, IOException> taskContext) throws IOException {
 		if (destination.exists())
 			throw new IOException("Unable to rename file " + source.getAbsolutePath()
 				+ " into " + destination.getAbsolutePath() + " because the destination already exists");

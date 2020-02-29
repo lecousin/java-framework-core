@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
@@ -302,7 +303,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 	private <T> AsyncSupplier<T, IOException> needRead1Async(Callable<T> onReady, Consumer<Pair<T,IOException>> ondone) {
 		if (!read1.isDone()) {
 			AsyncSupplier<T, IOException> sp = new AsyncSupplier<>();
-			IOUtil.listenOnDone(read1, Task.cpu("TwoBuffersIO.needRead1Async", io.getPriority(), () -> {
+			IOUtil.listenOnDone(read1, Task.cpu("TwoBuffersIO.needRead1Async", io.getPriority(), task -> {
 				try {
 					IOUtil.success(onReady.call(), sp, ondone);
 				} catch (Exception e) {
@@ -324,7 +325,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 	private <T> AsyncSupplier<T, IOException> needRead2Async(Callable<T> onReady, Consumer<Pair<T,IOException>> ondone) {
 		if (!read1.isDone() || read2 == null) {
 			AsyncSupplier<T, IOException> sp = new AsyncSupplier<>();
-			IOUtil.listenOnDone(read1, Task.cpu("TwoBuffersIO.needRead2Async", io.getPriority(), () -> {
+			IOUtil.listenOnDone(read1, Task.cpu("TwoBuffersIO.needRead2Async", io.getPriority(), task -> {
 				try {
 					IOUtil.success(onReady.call(), sp, ondone);
 				} catch (Exception e) {
@@ -336,7 +337,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 		}
 		if (!read2.isDone()) {
 			AsyncSupplier<T, IOException> sp = new AsyncSupplier<>();
-			IOUtil.listenOnDone(read2, Task.cpu("TwoBuffersIO", io.getPriority(), () -> {
+			IOUtil.listenOnDone(read2, Task.cpu("TwoBuffersIO", io.getPriority(), task -> {
 				try {
 					IOUtil.success(onReady.call(), sp, ondone);
 				} catch (Exception e) {
@@ -393,7 +394,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 		}
 		int len = buffer.remaining();
 		if (pos < nb1) {
-			Task<Integer,IOException> task = Task.cpu("readAsync on FullyBufferedIO", this.getPriority(), () -> {
+			Task<Integer,IOException> task = Task.cpu("readAsync on FullyBufferedIO", this.getPriority(), t -> {
 				int l = nb1 - (int)pos;
 				if (l > len) l = len;
 				buffer.put(buf1, (int)pos, l);
@@ -408,7 +409,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 			if (res != null) return res;
 		}
 		if (pos >= nb1 + nb2) return IOUtil.success(Integer.valueOf(-1), ondone);
-		Task<Integer,IOException> task = Task.cpu("readAsync on TwoBuffersIO", this.getPriority(), () -> {
+		Task<Integer,IOException> task = Task.cpu("readAsync on TwoBuffersIO", this.getPriority(), t -> {
 			int l = (nb1 + nb2) - (int)pos;
 			if (l > len) l = len;
 			buffer.put(buf2, (int)pos - nb1, l);
@@ -472,7 +473,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 	private class ReadNextBuffer implements Executable<ByteBuffer, IOException> {
 		@Override
 		@SuppressWarnings("squid:S3776") // complexity
-		public ByteBuffer execute() throws IOException {
+		public ByteBuffer execute(Task<ByteBuffer, IOException> taskContext) throws IOException, CancelException {
 			if (nb1 < 0) {
 				if (read1.hasError()) throw read1.getError();
 				if (read1.isCancelled()) throw IO.errorCancelled(read1.getCancelEvent());
@@ -486,6 +487,7 @@ public class TwoBuffersIO extends ConcurrentCloseable<IOException> implements IO
 			if (nb2 < 0) {
 				if (read1.hasError()) throw read1.getError();
 				if (read1.isCancelled()) throw IO.errorCancelled(read1.getCancelEvent());
+				if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 				if (read2 == null) waitRead2();
 				if (read2.hasError()) throw read2.getError();
 				if (read2.isCancelled()) throw IO.errorCancelled(read2.getCancelEvent());

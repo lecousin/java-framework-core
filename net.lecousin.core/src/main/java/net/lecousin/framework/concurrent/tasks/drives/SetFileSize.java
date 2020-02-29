@@ -23,7 +23,7 @@ class SetFileSize implements Executable<Void,IOException> {
 	private long newSize;
 	
 	@Override
-	public Void execute() throws IOException {
+	public Void execute(Task<Void, IOException> taskContext) throws IOException {
 		file.f.setLength(newSize);
 		file.size = newSize;
 		return null;

@@ -50,7 +50,7 @@ class SeekFile implements Executable<Long,IOException> {
 	private boolean returnNewPosition;
 	
 	@Override
-	public Long execute() throws IOException, CancelException {
+	public Long execute(Task<Long, IOException> taskContext) throws IOException, CancelException {
 		try {
 			long initialPos = -1;
 			if (!returnNewPosition) initialPos = file.channel.position();

@@ -28,7 +28,7 @@ public class GetFileInfo implements Executable<FileInfo, IOException> {
 	private File file;
 	
 	@Override
-	public FileInfo execute() throws IOException {
+	public FileInfo execute(Task<FileInfo, IOException> task) throws IOException {
 		FileInfo f = new FileInfo();
 		f.file = file;
 		f.path = file.toPath();

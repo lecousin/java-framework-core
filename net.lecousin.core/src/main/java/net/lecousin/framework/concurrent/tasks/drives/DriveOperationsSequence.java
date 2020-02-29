@@ -25,10 +25,13 @@ public final class DriveOperationsSequence {
 		@SuppressWarnings("unchecked") Executable<?, IOException>... operations
 	) {
 		return new Task<>(manager, description, priority, new Executable<Void, IOException>() {
+			@SuppressWarnings({ "rawtypes", "unchecked" })
 			@Override
-			public Void execute() throws IOException, CancelException {
-				for (Executable<?, IOException> op : operations)
-					resultCollector.add(op.execute());
+			public Void execute(Task task) throws IOException, CancelException {
+				for (Executable<?, IOException> op : operations) {
+					if (task.isCancelling()) throw task.getCancelEvent();
+					resultCollector.add(op.execute(task));
+				}
 				return null;
 			}
 		}, null);

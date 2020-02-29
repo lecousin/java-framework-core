@@ -83,7 +83,7 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable<IOExcep
 	private Async<IOException> flushing = null;
 
 	private void encodeAndWrite() {
-		Task.cpu("Encoding characters", output.getPriority(), () -> {
+		Task.cpu("Encoding characters", output.getPriority(), task -> {
 			encodedBuffer.clear();
 			CoderResult result = encoder.encode(cb2, encodedBuffer, false);
 			if (result.isError()) {
@@ -112,7 +112,11 @@ public class BufferedWritableCharacterStream extends ConcurrentCloseable<IOExcep
 		CoderResult result;
 		if (!flushOnly) {
 			cb2.limit(pos);
-			result = encoder.encode(cb2, encodedBuffer, true);
+			try {
+				result = encoder.encode(cb2, encodedBuffer, true);
+			} catch (Exception e) {
+				return new Async<>(new IOException("Error finalizing encoding", e));
+			}
 			if (!result.isOverflow()) {
 				flushOnly = true;
 				result = encoder.flush(encodedBuffer);

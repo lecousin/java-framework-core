@@ -300,7 +300,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		
 		private class Background implements Executable<Void,NoException> {
 			@Override
-			public Void execute() {
+			public Void execute(Task<Void, NoException> taskContext) {
 				background.setPriority(Task.Priority.LOW);
 				long now = System.currentTimeMillis();
 				int old1 = 0;
@@ -861,7 +861,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	protected void preLoadBuffer(long pos) {
 		if (closing) return;
 		if (pos == size) return;
-		operation(Task.cpu("Pre-load next buffer in BufferedIO", io.getPriority(), () -> {
+		operation(Task.cpu("Pre-load next buffer in BufferedIO", io.getPriority(), task -> {
 			if (closing) return null;
 			long bufferIndex = getBufferIndex(pos);
 			AsyncSupplier<Buffer, NoException> b = bufferTable.needBufferAsync(bufferIndex, false);
@@ -1151,7 +1151,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	) {
 		getBuffer.onDone(() -> {
 			Buffer b = getBuffer.getResult();
-			b.loaded.thenStart("BufferedIO.readAsync", io.getPriority(), () -> {
+			b.loaded.thenStart("BufferedIO.readAsync", io.getPriority(), task -> {
 				if (!checkLoaded(b, result, ondone)) return null;
 				int off = getBufferOffset(pos);
 				int len = buffer.remaining();
@@ -1204,7 +1204,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 	) {
 		getBuffer.onDone(() -> {
 			Buffer b = getBuffer.getResult();
-			b.loaded.thenStart("BufferedIO.readNextBufferAsync", io.getPriority(), () -> {
+			b.loaded.thenStart("BufferedIO.readNextBufferAsync", io.getPriority(), task -> {
 				if (!checkLoaded(b, result, ondone)) return null;
 				ByteBuffer res = getBufferContent(b);
 				if (ondone != null) ondone.accept(new Pair<>(res, null));
@@ -1511,7 +1511,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 		) {
 			getBuffer.onDone(() -> {
 				Buffer b = getBuffer.getResult();
-				b.loaded.thenStart("BufferedIO.writeAsync", io.getPriority(), () -> {
+				b.loaded.thenStart("BufferedIO.writeAsync", io.getPriority(), task -> {
 					if (!checkLoaded(b, result, ondone)) return null;
 					int off = getBufferOffset(pos);
 					int len = buffer.remaining();
@@ -1595,7 +1595,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 			}
 			if (nbBuffersAfter > nbBuffersBefore) {
 				Async<IOException> sp = new Async<>();
-				((IO.Resizable)io).setSizeAsync(newSize).thenStart("BufferedIO.setSizeAsync", io.getPriority(), () -> {
+				((IO.Resizable)io).setSizeAsync(newSize).thenStart("BufferedIO.setSizeAsync", io.getPriority(), task -> {
 					size = newSize;
 					bufferTable.setSize(nbBuffersAfter);
 					if (position > size) position = size;
@@ -1605,7 +1605,7 @@ public class BufferedIO extends ConcurrentCloseable<IOException> implements IO.R
 				return sp;
 			}
 			Async<IOException> sp = new Async<>();
-			Task.cpu("BufferedIO.setSizeAsync", io.getPriority(), () -> {
+			Task.cpu("BufferedIO.setSizeAsync", io.getPriority(), task -> {
 				bufferTable.setSize(nbBuffersAfter);
 				((IO.Resizable)io).setSizeAsync(newSize).onDone(sp);
 				size = newSize;

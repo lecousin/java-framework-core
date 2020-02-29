@@ -22,7 +22,7 @@ class OpenFile implements Executable<Void,IOException> {
 	private FileAccess file;
 	
 	@Override
-	public Void execute() throws IOException {
+	public Void execute(Task<Void, IOException> t) throws IOException {
 		file.size = file.file.length();
 		file.f = new RandomAccessFile(file.file, mode);
 		file.channel = file.f.getChannel();

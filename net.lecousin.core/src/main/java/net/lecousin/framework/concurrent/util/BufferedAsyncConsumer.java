@@ -54,7 +54,7 @@ public class BufferedAsyncConsumer<T, TError extends Exception> implements Async
 	}
 	
 	private void nextPending() {
-		Task.cpu("Consume next buffer", Task.Priority.NORMAL, () -> {
+		Task.cpu("Consume next buffer", Task.Priority.NORMAL, t -> {
 			Async<TError> unblock = null;
 			synchronized (queue) {
 				if (error != null) {

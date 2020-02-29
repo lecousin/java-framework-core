@@ -361,7 +361,7 @@ public final class Application {
 		loading.addToJoin(loadPref);
 		
 		// init locale
-		Task<Void, NoException> loadLocale = Task.cpu("Initialize localization", Task.Priority.RATHER_IMPORTANT, () -> {
+		Task<Void, NoException> loadLocale = Task.cpu("Initialize localization", Task.Priority.RATHER_IMPORTANT, t -> {
 			String lang = app.getPreference(PROPERTY_LANGUAGE_TAG);
 			if (lang == null) lang = app.getProperty(PROPERTY_LANGUAGE_TAG);
 			if (lang != null) {

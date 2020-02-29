@@ -114,7 +114,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 	@Override
 	public AsyncSupplier<Integer, IOException> writeAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
 		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
-		operation(Task.cpu("OutputToInput.writeAsync", getPriority(), () -> {
+		operation(Task.cpu("OutputToInput.writeAsync", getPriority(), t -> {
 			lockIO.lock();
 			AsyncSupplier<Integer, IOException> write = ((IO.Writable.Seekable)io).writeAsync(writePos, buffer, param -> {
 				if (param.getValue1() != null) {
@@ -206,7 +206,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			return result;
 		}
 		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
-		Task.cpu("OutputToInput.readAsync", io.getPriority(), () -> {
+		Task.cpu("OutputToInput.readAsync", io.getPriority(), t -> {
 			lockIO.lock();
 			AsyncSupplier<Integer, IOException> read = ((IO.Readable.Seekable)io).readAsync(pos, buffer, ondone);
 			read.onDone(() -> {
@@ -221,7 +221,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 	private <T> Task<T, IOException> taskSyncToAsync(
 		String description, AsyncSupplier<T, IOException> result, Consumer<Pair<T,IOException>> ondone, SupplierThrows<T, IOException> sync
 	) {
-		return Task.cpu(description, io.getPriority(), () -> {
+		return Task.<T, IOException>cpu(description, io.getPriority(), task -> {
 			try {
 				T res = sync.get();
 				if (ondone != null) ondone.accept(new Pair<>(res, null));
@@ -354,7 +354,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 				return IOUtil.success(Long.valueOf(readPos), ondone);
 			}
 			AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
-			lock.thenStart(operation(Task.cpu("OutputToInput.seekAsync", io.getPriority(), () -> {
+			lock.thenStart(operation(Task.cpu("OutputToInput.seekAsync", io.getPriority(), t -> {
 				try {
 					Long nb = Long.valueOf(seekSync(type, move));
 					if (ondone != null) ondone.accept(new Pair<>(nb, null));

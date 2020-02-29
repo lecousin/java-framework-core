@@ -291,7 +291,7 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			JoinPoint<Exception> jp = new JoinPoint<>();
 			jp.addToJoin(nbConc);
 			for (int t = 0; t < nbConc; ++t) {
-				Task.cpu("Test Concurrent access to IO.Readable.Seekable",Task.Priority.NORMAL, () -> {
+				Task.cpu("Test Concurrent access to IO.Readable.Seekable",Task.Priority.NORMAL, task -> {
 					Async<Exception> sp = _testSeekableBufferByBufferFullyAsync(io);
 					jp.addToJoin(sp);
 					jp.joined();

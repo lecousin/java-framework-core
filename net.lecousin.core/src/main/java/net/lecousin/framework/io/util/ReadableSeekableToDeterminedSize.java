@@ -177,7 +177,7 @@ public class ReadableSeekableToDeterminedSize implements IO.Readable.Seekable, I
 	@Override
 	public AsyncSupplier<Long, IOException> getSizeAsync() {
 		return new Task<>(io.getTaskManager(), io.getSourceDescription(), io.getPriority(),
-			() -> Long.valueOf(getSizeSync()), null).start().getOutput();
+			(Task<Long, IOException> t) -> Long.valueOf(getSizeSync()), null).start().getOutput();
 	}
 	
 	

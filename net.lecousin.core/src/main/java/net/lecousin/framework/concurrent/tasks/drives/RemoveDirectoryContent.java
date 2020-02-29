@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 
+import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
@@ -37,20 +38,23 @@ public class RemoveDirectoryContent implements Executable<Long,IOException> {
 	private boolean calculateSize;
 	
 	@Override
-	public Long execute() throws IOException {
-		return Long.valueOf(removeDirectoryContent(dir, progress, work, calculateSize));
+	public Long execute(Task<Long, IOException> taskContext) throws IOException, CancelException {
+		return Long.valueOf(removeDirectoryContent(dir, progress, work, calculateSize, taskContext));
 	}
 
-	static long removeDirectoryContent(File dir, WorkProgress progress, long work, boolean calculateSize) throws IOException {
-		return remove(dir, progress, work, calculateSize, false);
+	static long removeDirectoryContent(File dir, WorkProgress progress, long work, boolean calculateSize, Task<?, ?> taskContext)
+	throws IOException, CancelException {
+		return remove(dir, progress, work, calculateSize, false, taskContext);
 	}
 	
 	/** Remove a directory with all its content. This must be called in a task OnFile. */
-	static long deleteDirectory(File dir, WorkProgress progress, long work, boolean calculateSize) throws IOException {
-		return remove(dir, progress, work, calculateSize, true);
+	static long deleteDirectory(File dir, WorkProgress progress, long work, boolean calculateSize, Task<?, ?> taskContext)
+	throws IOException, CancelException {
+		return remove(dir, progress, work, calculateSize, true, taskContext);
 	}
 	
-	private static long remove(File dir, WorkProgress progress, long work, boolean calculateSize, boolean deleteDir) throws IOException {
+	private static long remove(File dir, WorkProgress progress, long work, boolean calculateSize, boolean deleteDir, Task<?, ?> taskContext)
+	throws IOException, CancelException {
 		try {
 			if (!dir.exists())
 				return 0;
@@ -61,10 +65,11 @@ public class RemoveDirectoryContent implements Executable<Long,IOException> {
 			int nb = files.length;
 			if (deleteDir) nb++;
 			for (File f : files) {
+				if (taskContext.isCancelling()) throw taskContext.getCancelEvent();
 				long step = work / nb--;
 				work -= step;
 				if (f.isDirectory())
-					size += remove(f, progress, step, calculateSize, true);
+					size += remove(f, progress, step, calculateSize, true, taskContext);
 				else {
 					if (calculateSize) size += f.length();
 					try {

@@ -126,7 +126,7 @@ public class RollingFileAppender implements Appender, Closeable {
 		@Override
 		public AsyncSupplier<Void, IOException> execute() {
 			AsyncSupplier<Void, IOException> result = new AsyncSupplier<>();
-			Task.file(file, "Open log file", Task.Priority.RATHER_LOW, () -> {
+			Task.file(file, "Open log file", Task.Priority.RATHER_LOW, t -> {
 				if (!file.exists()) {
 					File dir = file.getParentFile();
 					if (!dir.exists() && !dir.mkdirs())
@@ -171,7 +171,7 @@ public class RollingFileAppender implements Appender, Closeable {
 				return result;
 			}
 			if (fileSize >= maxSize) {
-				output.closeAsync().thenStart(Task.file(file, "Roll log file", Task.Priority.RATHER_LOW, () -> {
+				output.closeAsync().thenStart(Task.file(file, "Roll log file", Task.Priority.RATHER_LOW, task -> {
 					File dir = file.getParentFile();
 					File f = new File(dir, file.getName() + '.' + maxFiles);
 					try {

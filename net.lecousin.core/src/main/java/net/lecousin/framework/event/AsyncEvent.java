@@ -41,7 +41,7 @@ public class AsyncEvent implements SimpleListenable {
 	public void fire() {
 		synchronized (listeners) {
 			if (next == null) {
-				next = Task.cpu("Fire AsyncEvent listeners", () -> {
+				next = Task.cpu("Fire AsyncEvent listeners", task -> {
 					ArrayList<Runnable> list;
 					synchronized (listeners) {
 						current = next;

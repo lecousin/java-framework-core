@@ -8,6 +8,7 @@ import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.data.Chars;
 import net.lecousin.framework.text.IString;
 import net.lecousin.framework.util.ConcurrentCloseable;
@@ -124,7 +125,7 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 	public AsyncSupplier<Integer, IOException> readAsync(char[] buf, int offset, int length) {
 		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 		AsyncSupplier<Integer, IOException> read = stream.readAsync(buf, offset, length);
-		read.thenStart(operation(Task.cpu("Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority(), () -> {
+		read.thenStart(operation(Task.cpu("Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority(), t -> {
 			if (read.hasError())
 				result.error(read.getError());
 			else if (read.isCancelled())
@@ -151,7 +152,7 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 		AsyncSupplier<Chars.Readable, IOException> result = new AsyncSupplier<>();
 		AsyncSupplier<Chars.Readable, IOException> read = stream.readNextBufferAsync();
 		read.thenStart(
-		Task.cpu("Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority(), () -> {
+		Task.cpu("Calculate new location of BufferedReadableCharacterStreamLocation", stream.getPriority(), t -> {
 			Chars.Readable str = read.getResult();
 			if (str == null) {
 				result.unblockSuccess(null);
@@ -213,7 +214,7 @@ implements ICharacterStream.Readable.Buffered, ICharacterStream.Readable.Positio
 		int start = string.length();
 		AsyncSupplier<Boolean, IOException> read = stream.readUntilAsync(endChar, string);
 		AsyncSupplier<Boolean, IOException> result = new AsyncSupplier<>();
-		read.thenStart("BufferedReadableCharacterStreamLocation.readUntilAsync", stream.getPriority(), () -> {
+		read.thenStart("BufferedReadableCharacterStreamLocation.readUntilAsync", stream.getPriority(), (Task<Void, NoException> t) -> {
 			processLocation(start, string);
 			result.unblockSuccess(read.getResult());
 			return null;
