@@ -114,7 +114,7 @@ public final class IOUtil {
 	/** Read fully into a byte[], and unblock the given result upon completion. */
 	public static void readFullyKnownSize(IO.Readable io, int size, AsyncSupplier<byte[], IOException> result) {
 		byte[] bytes;
-		try { bytes = new byte[size]; }
+		try { bytes = ByteArrayCache.getInstance().get(size, false); }
 		catch (Exception t) {
 			result.error(IO.error(t));
 			return;

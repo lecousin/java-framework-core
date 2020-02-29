@@ -25,6 +25,7 @@ import net.lecousin.framework.io.TemporaryFiles;
 import net.lecousin.framework.io.buffering.ByteArrayIO;
 import net.lecousin.framework.io.buffering.ByteBuffersIO;
 import net.lecousin.framework.io.buffering.SimpleBufferedReadable;
+import net.lecousin.framework.mutable.MutableBoolean;
 import net.lecousin.framework.progress.FakeWorkProgress;
 
 import org.junit.Assert;
@@ -188,6 +189,21 @@ public class TestIOUtil extends LCCoreAbstractTest {
 	}
 	
 	@Test
+	public void testReadFullyKnownSize() throws Exception {
+		ByteArrayIO io = new ByteArrayIO(new byte[] {0, 1, 2, 3, 4, 5, 6, 7}, "test");
+		AsyncSupplier<byte[], IOException> result = new AsyncSupplier<>();
+		IOUtil.readFully(io, result);
+		byte[] res = result.blockResult(15000);
+		Assert.assertEquals(8, res.length);
+		
+		// error
+		result = new AsyncSupplier<>();
+		IOUtil.readFully(new TestIOError.ReadableAlwaysError.KnownSizeAlwaysError(), result);
+		result.block(15000);
+		Assert.assertNotNull(result.getError());
+	}
+	
+	@Test
 	public void testReadFullyAsync() throws Exception {
 		ByteArrayInputStream in = new ByteArrayInputStream(new byte[] {0, 1, 2, 3, 4, 5, 6, 7});
 		IO.Readable io = new IOFromInputStream(in, "test", Threading.getCPUTaskManager(), Task.Priority.NORMAL);
@@ -195,6 +211,21 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		ByteBuffersIO bbio = result.blockResult(30000);
 		Assert.assertEquals(8, bbio.getSizeSync());
 		bbio.close();
+		
+		// error
+		AsyncSupplier<Integer, IOException> err = IOUtil.readFullyAsync(new TestIOError.ReadableAlwaysError(), ByteBuffer.allocate(16), null);
+		err.block(5000);
+		Assert.assertTrue(err.hasError());
+		MutableBoolean ondoneCalled = new MutableBoolean(false);
+		err = IOUtil.readFullyAsync(new TestIOError.ReadableAlwaysError(), ByteBuffer.allocate(16), r -> ondoneCalled.set(true));
+		err.block(5000);
+		Assert.assertTrue(err.hasError());
+		Assert.assertTrue(ondoneCalled.get());
+	}
+	
+	@Test
+	public void testReadFullyAsStringSync() throws Exception {
+		Assert.assertEquals("Hello World", IOUtil.readFullyAsStringSync(new ByteArrayInputStream("Hello World".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
 	}
 	
 	@Test
@@ -206,5 +237,5 @@ public class TestIOUtil extends LCCoreAbstractTest {
 		IOUtil.readFullyKnownSize(io, 4096, resultB);
 		resultB.block(15000);
 		Assert.assertNotNull(resultB.getError());
-	}	
+	}
 }

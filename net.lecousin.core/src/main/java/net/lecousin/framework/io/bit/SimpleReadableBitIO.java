@@ -75,8 +75,8 @@ public abstract class SimpleReadableBitIO extends AbstractBitIO<IO.Readable.Buff
 				return getNextBits(n);
 			if (n == currentNbBits) {
 				long val = getRemainingBits();
-				currentNbBits = 0;
 				currentValue = 0;
+				currentNbBits = 0;
 				return val;
 			}
 			if (eof) throw new EOFException();

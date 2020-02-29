@@ -19,7 +19,6 @@ import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.ApplicationClassLoader;
 import net.lecousin.framework.application.libraries.LibrariesManager;
 import net.lecousin.framework.application.libraries.LibraryManagementException;
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
@@ -232,7 +231,7 @@ public class DefaultLibrariesManager implements LibrariesManager {
 		private String filePath;
 		
 		@Override
-		public Void execute(Task<Void, Exception> taskContext) throws Exception, CancelException {
+		public Void execute(Task<Void, Exception> taskContext) throws Exception {
 			app.getDefaultLogger().info("Loading plugin files for custom extension point " + ep.getClass().getName() + ": " + filePath);
 			Enumeration<URL> urls = acl.getResources(filePath);
 			while (urls.hasMoreElements()) {

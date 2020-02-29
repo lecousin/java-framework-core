@@ -88,13 +88,13 @@ public class BufferedReverseIOReading extends ConcurrentCloseable<IOException> i
 	public void setPriority(Priority priority) { io.setPriority(priority); }
 	
 	@Override
-	public IO getWrappedIO() { return io; }
-	
-	@Override
 	public String getSourceDescription() { return io.getSourceDescription(); }
 	
 	@Override
 	public TaskManager getTaskManager() { return Threading.getCPUTaskManager(); }
+	
+	@Override
+	public IO getWrappedIO() { return io; }
 	
 	@Override
 	protected IAsync<IOException> closeUnderlyingResources() {

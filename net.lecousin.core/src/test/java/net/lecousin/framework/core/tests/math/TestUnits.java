@@ -1,10 +1,8 @@
 package net.lecousin.framework.core.tests.math;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
 import net.lecousin.framework.math.IntegerUnit;
+import net.lecousin.framework.math.IntegerUnit.ParserRegistry;
 import net.lecousin.framework.math.IntegerUnit.UnitConversionException;
 import net.lecousin.framework.math.TimeUnit;
 import net.lecousin.framework.math.TimeUnit.Day;
@@ -12,6 +10,9 @@ import net.lecousin.framework.math.TimeUnit.Hour;
 import net.lecousin.framework.math.TimeUnit.Millisecond;
 import net.lecousin.framework.math.TimeUnit.Minute;
 import net.lecousin.framework.math.TimeUnit.Second;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestUnits extends LCCoreAbstractTest {
 	
@@ -105,6 +106,11 @@ public class TestUnits extends LCCoreAbstractTest {
 			new TimeUnit.Converter().convertToMilliseconds(852, FakeUnit.class);
 			throw new AssertionError("conversion with FakeUnit should not be possible");
 		} catch (UnitConversionException e) {}
+	}
+	
+	@Test
+	public void testParsers() {
+		Assert.assertEquals(TimeUnit.Millisecond.class, ParserRegistry.get("ms"));
 	}
 
 }

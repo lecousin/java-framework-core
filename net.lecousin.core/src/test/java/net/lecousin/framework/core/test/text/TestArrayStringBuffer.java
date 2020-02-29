@@ -44,6 +44,7 @@ public abstract class TestArrayStringBuffer<TS extends ArrayString, T extends Ar
 		Assert.assertEquals(0, s.substring(1).length());
 		Assert.assertEquals(0, s.substring(1, 2).length());
 		Assert.assertTrue(s == s.removeEndChars(10));
+		Assert.assertTrue(s.isEmpty());
 		try {
 			s.setCharAt(0, ' ');
 			throw new AssertionError("must throw IllegalArgumentException");
@@ -65,6 +66,20 @@ public abstract class TestArrayStringBuffer<TS extends ArrayString, T extends Ar
 		cs = createString("wxcvbn");
 		check("wxcvbn7654321g", s.replace(0, 3, cs));
 		check("wxwxcvbnn7654321g", s.replace(2, 4, cs));
+		
+		s = createString("");
+		for (int i = 0; i < 100; ++i)
+			s.append("Hello");
+		Assert.assertEquals(500, s.length());
+		for (int i = 0; i < 100; ++i)
+			Assert.assertEquals("Hello", s.substring(i * 5, (i + 1) * 5).toString());
+		
+		s = createString("");
+		for (int i = 0; i < 100; ++i)
+			s.append("Hello".toCharArray(), 0, 5);
+		Assert.assertEquals(500, s.length());
+		for (int i = 0; i < 100; ++i)
+			Assert.assertEquals("Hello", s.substring(i * 5, (i + 1) * 5).toString());
 	}
 	
 }
