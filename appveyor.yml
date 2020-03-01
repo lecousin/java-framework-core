@@ -20,7 +20,7 @@ test_script:
 after_test:
  - "SET PATH=C:\\Python34;C:\\Python34\\Scripts;%PATH%"
  - pip install codecov
- - codecov
+ - codecov -f "net.lecousin.core/target/site/jacoco/jacoco.xml"
 cache:
   - C:\maven\
   - C:\Users\appveyor\.m2
