@@ -52,6 +52,15 @@ public class TestTask extends LCCoreAbstractTest {
 		Task<Integer, ?> unmanaged = Task.unmanaged("test", Task.Priority.NORMAL, t -> Integer.valueOf(111));
 		unmanaged.startOn(true);
 		Assert.assertEquals(111, unmanaged.getOutput().blockResult(0).intValue());
+		
+		Task<Integer, Exception> done;
+		done = Task.done(Integer.valueOf(1), null);
+		Assert.assertTrue(done.isDone());
+		Assert.assertTrue(done.isSuccessful());
+		Assert.assertEquals(1, done.getOutput().getResult().intValue());
+		done = Task.done(null, new Exception());
+		Assert.assertTrue(done.isDone());
+		Assert.assertFalse(done.isSuccessful());
 	}
 	
 	@Test

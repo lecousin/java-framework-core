@@ -17,7 +17,7 @@ import net.lecousin.framework.io.data.CharArray;
  */
 public class ByteArrayStringIso8859 extends ArrayString {
 
-	private byte[] chars;
+	byte[] chars;
 	
 	/** Create an empty UnprotectedString with an initial capacity. */ 
 	public ByteArrayStringIso8859(int initialCapacity) {
@@ -470,8 +470,8 @@ public class ByteArrayStringIso8859 extends ArrayString {
 		return ByteBuffer.wrap(chars, start, end - start + 1);
 	}
 	
-	/** Wrap bytes into a RawByteBuffer. */
-	public ByteArray asRawByteBuffer() {
+	/** Wrap bytes into a ByteArray. */
+	public ByteArray asByteArray() {
 		return new ByteArray(chars, start, end - start + 1);
 	}
 	

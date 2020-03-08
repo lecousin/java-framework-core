@@ -35,7 +35,7 @@ public abstract class TestCharacterStreamWritable extends LCCoreAbstractTest {
 		cs.setPriority(Task.Priority.IMPORTANT);
 		Assert.assertEquals(Task.Priority.IMPORTANT, cs.getPriority());
 		cs.getDescription();
-		Assert.assertEquals(charset, cs.getEncoding());
+		cs.getEncoding();
 		// write
 		cs.writeSync(s);
 		flush(cs);

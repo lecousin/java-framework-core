@@ -2,7 +2,6 @@ package net.lecousin.framework.concurrent.async;
 
 import java.util.ArrayList;
 
-import net.lecousin.framework.concurrent.threads.TaskExecutor;
 import net.lecousin.framework.concurrent.threads.Threading;
 
 /**
@@ -37,7 +36,7 @@ public class MutualExclusion<TError extends Exception> extends AbstractLock<TErr
 			lockedTimes++;
 			return;
 		}
-		TaskExecutor executor = null;
+		Blockable blockable = null;
 		do {
 			synchronized (this) {
 				if (lockingThread == null) {
@@ -45,15 +44,15 @@ public class MutualExclusion<TError extends Exception> extends AbstractLock<TErr
 					lockedTimes = 1;
 					return;
 				}
-				if (executor == null)
-					executor = Threading.getTaskExecutor(t);
-				if (executor == null) {
+				if (blockable == null)
+					blockable = Threading.getBlockable(t);
+				if (blockable == null) {
 					try { this.wait(0); }
 					catch (InterruptedException e) { /* ignore */ }
 					continue;
 				}
 			}
-			executor.blocked(this, 0);
+			blockable.blocked(this, 0);
 		} while (true);
 	}
 	

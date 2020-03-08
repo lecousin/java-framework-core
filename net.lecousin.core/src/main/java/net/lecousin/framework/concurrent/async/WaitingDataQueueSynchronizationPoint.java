@@ -3,7 +3,6 @@ package net.lecousin.framework.concurrent.async;
 import java.util.ArrayList;
 
 import net.lecousin.framework.collections.TurnArray;
-import net.lecousin.framework.concurrent.threads.TaskExecutor;
 import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.util.ThreadUtil;
 
@@ -29,7 +28,7 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	public DataType waitForData(long timeout) {
 		long start = System.currentTimeMillis();
 		do {
-			TaskExecutor executor;
+			Blockable blockable;
 			synchronized (this) {
 				if (cancel != null)
 					return null;
@@ -39,12 +38,12 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 					return waitingData.removeFirst();
 				if (end)
 					return null;
-				executor = Threading.getTaskExecutor();
-				if (executor == null && !ThreadUtil.wait(this, timeout))
+				blockable = Threading.getBlockable();
+				if (blockable == null && !ThreadUtil.wait(this, timeout))
 					return null;
 			}
-			if (executor != null)
-				executor.blocked(this, timeout);
+			if (blockable != null)
+				blockable.blocked(this, timeout);
 		} while (timeout <= 0 || (System.currentTimeMillis() - start) < timeout);
 		return null;
 	}
@@ -95,18 +94,18 @@ public class WaitingDataQueueSynchronizationPoint<DataType,TError extends Except
 	public void block(long timeout) {
 		long start = System.currentTimeMillis();
 		do {
-			TaskExecutor executor;
+			Blockable blockable;
 			synchronized (this) {
 				if (cancel != null) return;
 				if (error != null) return;
 				if (!waitingData.isEmpty()) return;
 				if (end) return;
-				executor = Threading.getTaskExecutor();
-				if (executor == null && !ThreadUtil.wait(this, timeout))
+				blockable = Threading.getBlockable();
+				if (blockable == null && !ThreadUtil.wait(this, timeout))
 					return;
 			}
-			if (executor != null)
-				executor.blocked(this, timeout);
+			if (blockable != null)
+				blockable.blocked(this, timeout);
 		} while (timeout <= 0 || (System.currentTimeMillis() - start) < timeout);
 	}
 	

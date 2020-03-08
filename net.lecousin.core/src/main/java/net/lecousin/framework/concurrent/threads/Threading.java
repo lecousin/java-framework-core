@@ -2,16 +2,14 @@ package net.lecousin.framework.concurrent.threads;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 
 import net.lecousin.framework.application.LCCore;
-import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.async.Async;
-import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.async.Blockable;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.threads.DrivesThreadingManager.DrivesProvider;
 import net.lecousin.framework.concurrent.threads.fixed.MultiThreadTaskManager;
@@ -216,6 +214,33 @@ public final class Threading {
 	}
 	
 	private static Map<Thread, TaskExecutor> executors = new HashMap<>();
+	private static Map<Thread, Blockable> blockables = new HashMap<>();
+	
+	/** Register the executor for the given thread. */
+	public static void registerBlockable(Blockable handler, Thread thread) {
+		synchronized (blockables) {
+			blockables.put(thread, handler);
+		}
+	}
+
+	/** Unregister the executor for the given thread. */
+	public static void unregisterBlockable(Thread thread) {
+		synchronized (blockables) {
+			blockables.remove(thread);
+		}
+	}
+	
+	/** Return the blockable for the given thread. */
+	public static Blockable getBlockable(Thread thread) {
+		Blockable b = executors.get(thread);
+		if (b != null) return b;
+		return blockables.get(thread);
+	}
+	
+	/** Return the blockable for the current thread. */
+	public static Blockable getBlockable() {
+		return getBlockable(Thread.currentThread());
+	}
 	
 	/** Register the executor for the given thread. */
 	public static void registerTaskExecutor(TaskExecutor handler, Thread thread) {
@@ -265,34 +290,6 @@ public final class Threading {
 		unmanagedManager.getMonitor().setConfiguration(config);
 	}
 	
-	/** Wait for the given tasks to be done. */
-	public static <TError extends Exception> void waitFinished(Collection<? extends Task<?,TError>> tasks) throws TError, CancelException {
-		for (Task<?,TError> t : tasks) {
-			t.getOutput().blockThrow(0);
-		}
-	}
-	
-	/** Wait for the given tasks to finish, if one has an error this error is immediately thrown without waiting for other tasks. */
-	public static <TError extends Exception> void waitUnblockedWithError(Collection<AsyncSupplier<?,TError>> tasks)
-	throws TError, CancelException {
-		for (AsyncSupplier<?,TError> t : tasks)
-			t.blockResult(0);
-	}
-	
-	/** Wait for one of the given task to be done. */
-	public static void waitOneFinished(List<? extends Task<?,?>> tasks) {
-		if (tasks.isEmpty()) return;
-		if (tasks.size() == 1)
-			try { tasks.get(0).getOutput().block(0); }
-			catch (Exception e) { /* ignore */ }
-		Async<Exception> sp = new Async<>();
-		for (Task<?,?> t : tasks) {
-			if (t.isDone()) return;
-			t.getOutput().onDone(sp::unblock);
-		}
-		sp.block(0);
-	}
-
 	/** Return a string containing multi-threading status for debugging purposes. */
 	public static String debug() {
 		StringBuilder s = new StringBuilder();

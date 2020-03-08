@@ -53,6 +53,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 			switch (this) {
 			case URGENT: return IMPORTANT;
 			case IMPORTANT: return RATHER_IMPORTANT;
+			case RATHER_IMPORTANT: return NORMAL;
 			case NORMAL: return RATHER_LOW;
 			default: return LOW;
 			}
@@ -89,7 +90,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 		this.ondone = ondone;
 		result.onDone(() -> {
 			if (result.isCancelled() && status < STATUS_RUNNING) {
-				Logger logger = app.getLoggerFactory().getLogger("Threading");
+				Logger logger = app.getDefaultLogger();
 				if (logger.debug()) {
 					CancelException reason = result.getCancelEvent();
 					logger.debug("Task cancelled: " + description + " => "
@@ -570,6 +571,13 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 		public String toString() {
 			return "Task result [" + description + "]";
 		}
+	}
+	
+	/** Create a CPU task already done. */
+	public static <T, TError extends Exception> Task<T, TError> done(T result, TError error) {
+		Task<T, TError> t = new Task<>(Threading.getCPUTaskManager(), "", Priority.NORMAL, null, null);
+		t.setDone(result, error);
+		return t;
 	}
 	
 	/** Create a CPU task. */

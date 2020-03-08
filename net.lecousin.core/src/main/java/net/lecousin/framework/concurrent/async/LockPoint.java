@@ -2,7 +2,6 @@ package net.lecousin.framework.concurrent.async;
 
 import java.util.ArrayList;
 
-import net.lecousin.framework.concurrent.threads.TaskExecutor;
 import net.lecousin.framework.concurrent.threads.Threading;
 
 /**
@@ -31,20 +30,20 @@ public class LockPoint<TError extends Exception> extends AbstractLock<TError> {
 			return;
 		if (error != null)
 			return;
-		TaskExecutor executor;
+		Blockable blockable;
 		do {
 			synchronized (this) {
 				if (!locked) {
 					locked = true;
 					return;
 				}
-				executor = Threading.getTaskExecutor();
-				if (executor != null) break;
+				blockable = Threading.getBlockable();
+				if (blockable != null) break;
 				try { this.wait(0); }
 				catch (InterruptedException e) { /* continue anyway */ }
 			}
 		} while (true);
-		executor.blocked(this, 0);
+		blockable.blocked(this, 0);
 	}
 	
 	/** Release the lock. */

@@ -166,7 +166,7 @@ public class CharArrayStringBuffer extends ArrayStringBuffer<CharArrayString, Ch
 		
 		@Override
 		public String getDescription() {
-			return "UnprotectedStringBuffer";
+			return "CharArrayStringBuffer";
 		}
 		
 		@Override

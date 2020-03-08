@@ -29,6 +29,8 @@ public interface AsyncConsumer<T, TError extends Exception> {
 	
 	/** Call the consume method for each data in the given list. */
 	default IAsync<TError> push(List<T> dataList) {
+		if (dataList.isEmpty()) return new Async<>(true);
+		if (dataList.size() == 1) return consume(dataList.get(0));
 		Iterator<T> it = dataList.iterator();
 		Async<TError> result = new Async<>();
 		Runnable pushNext = new Runnable() {

@@ -9,7 +9,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
 import net.lecousin.framework.concurrent.CancelException;
-import net.lecousin.framework.concurrent.threads.TaskExecutor;
 import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.util.ThreadUtil;
@@ -126,11 +125,11 @@ public class Async<TError extends Exception> implements IAsync<TError>, Future<V
 	@Override
 	@SuppressWarnings("squid:S2274")
 	public final void block(long timeout) {
-		TaskExecutor executor;
+		Blockable blockable;
 		synchronized (this) {
 			if (unblocked && listenersInline == null) return;
-			executor = Threading.getTaskExecutor();
-			if (executor == null) {
+			blockable = Threading.getBlockable();
+			if (blockable == null) {
 				if (timeout <= 0) {
 					while (!unblocked || listenersInline != null)
 						if (!ThreadUtil.wait(this, 0)) return;
@@ -139,8 +138,8 @@ public class Async<TError extends Exception> implements IAsync<TError>, Future<V
 				}
 			}
 		}
-		if (executor != null)
-			executor.blocked(this, timeout);
+		if (blockable != null)
+			blockable.blocked(this, timeout);
 	}
 	
 	@Override

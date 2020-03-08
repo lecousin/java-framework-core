@@ -12,7 +12,6 @@ import java.util.function.Function;
 import net.lecousin.framework.concurrent.CancelException;
 import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.threads.Task;
-import net.lecousin.framework.concurrent.threads.TaskExecutor;
 import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.util.Runnables.ConsumerThrows;
@@ -452,11 +451,11 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 	@Override
 	@SuppressWarnings("squid:S2274")
 	public final void block(long timeout) {
-		TaskExecutor executor;
+		Blockable blockable;
 		synchronized (this) {
 			if (unblocked && listenersInline == null) return;
-			executor = Threading.getTaskExecutor();
-			if (executor == null) {
+			blockable = Threading.getBlockable();
+			if (blockable == null) {
 				if (timeout <= 0) {
 					while (!unblocked || listenersInline != null)
 						if (!ThreadUtil.wait(this, 0)) return;
@@ -465,8 +464,8 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 				}
 			}
 		}
-		if (executor != null)
-			executor.blocked(this, timeout);
+		if (blockable != null)
+			blockable.blocked(this, timeout);
 	}
 	
 	/** Block until this AsyncSupplier is unblocked or the given timeout expired,
@@ -474,20 +473,20 @@ public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>
 	 * @param timeout in milliseconds. 0 or negative value means infinite.
 	 */
 	public final T blockResult(long timeout) throws TError, CancelException {
-		TaskExecutor executor;
+		Blockable blockable;
 		synchronized (this) {
 			if (unblocked && listenersInline == null) {
 				if (error != null) throw error;
 				if (cancel != null) throw cancel;
 				return result;
 			}
-			executor = Threading.getTaskExecutor();
-			if (executor == null)
+			blockable = Threading.getBlockable();
+			if (blockable == null)
 				while (!unblocked || listenersInline != null)
 					if (!ThreadUtil.wait(this, timeout < 0 ? 0 : timeout)) return null;
 		}
-		if (executor != null)
-			executor.blocked(this, timeout);
+		if (blockable != null)
+			blockable.blocked(this, timeout);
 		if (error != null) throw error;
 		if (cancel != null) throw cancel;
 		return result;

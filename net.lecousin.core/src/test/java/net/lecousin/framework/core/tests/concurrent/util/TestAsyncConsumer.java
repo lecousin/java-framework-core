@@ -1,5 +1,10 @@
 package net.lecousin.framework.core.tests.concurrent.util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.util.AsyncConsumer;
@@ -53,6 +58,44 @@ public class TestAsyncConsumer extends LCCoreAbstractTest {
 		Assert.assertEquals(51, mi.get());
 		cl.end().blockThrow(0);
 		cl.error(new Exception());
+	}
+	
+	public static class IntegerConsumer implements AsyncConsumer<Integer, Exception> {
+		
+		public List<Integer> consumed = new LinkedList<>();
+		public Async<Exception> ended = new Async<>();
+
+		@Override
+		public IAsync<Exception> consume(Integer data) {
+			consumed.add(data);
+			return new Async<>(true);
+		}
+
+		@Override
+		public IAsync<Exception> end() {
+			ended.unblock();
+			return ended;
+		}
+
+		@Override
+		public void error(Exception error) {
+			ended.error(error);
+		}
+		
+	}
+	
+	@Test
+	public void testPush() throws Exception {
+		IntegerConsumer c = new IntegerConsumer();
+		c.push(Arrays.asList(Integer.valueOf(51), Integer.valueOf(12), Integer.valueOf(1))).blockThrow(0);
+		Assert.assertEquals(3, c.consumed.size());
+		Assert.assertFalse(c.ended.isDone());
+		c.push(Arrays.asList(Integer.valueOf(13))).blockThrow(0);
+		Assert.assertEquals(4, c.consumed.size());
+		Assert.assertFalse(c.ended.isDone());
+		c.push(new ArrayList<>()).blockThrow(0);
+		Assert.assertEquals(4, c.consumed.size());
+		Assert.assertFalse(c.ended.isDone());
 	}
 	
 }

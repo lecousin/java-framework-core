@@ -4,12 +4,13 @@ import java.util.ArrayList;
 
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.CancelException;
+import net.lecousin.framework.concurrent.async.Blockable;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.util.DebugUtil;
 import net.lecousin.framework.util.ThreadUtil;
 
 /** Thread executing tasks. */
-public abstract class TaskExecutor {
+public abstract class TaskExecutor implements Blockable {
 	
 	protected TaskManager manager;
 	protected Thread thread;
@@ -34,6 +35,7 @@ public abstract class TaskExecutor {
 	}
 
 	/** Signal that the current thread is blocked by the given synchronization point. */
+	@Override
 	public final void blocked(IAsync<?> synchPoint, long timeout) {
 		long start = System.nanoTime();
 		manager.imBlocked(this);

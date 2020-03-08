@@ -26,7 +26,7 @@ public class UTF8Decoder implements CharacterDecoder {
 	private CharPusher charPusher;
 	private int val = 0;
 	private int state = 0;
-	CompositeChars.Readable result;
+	private CompositeChars.Readable result;
 	
 	public static final char INVALID_CHAR = '�';
 
