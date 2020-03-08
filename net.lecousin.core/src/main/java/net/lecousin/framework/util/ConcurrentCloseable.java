@@ -112,6 +112,7 @@ public abstract class ConcurrentCloseable<TError extends Exception> implements I
 	}
 	
 	@Override
+	@SuppressWarnings("java:S3776") // complexity
 	public IAsync<TError> closeAsync() {
 		synchronized (this) {
 			if (closeLocked > 0) {
