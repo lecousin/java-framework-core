@@ -91,7 +91,9 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 				readHalfSync(o2i, (nbRead % 2) == 0, b);
 				nbRead++;
 			}
-			if (o2i.readSync(ByteBuffer.wrap(new byte[1])) == 1)
+			if (o2i.readSync(ByteBuffer.wrap(new byte[1])) > 0)
+				throw new IOException("Data can be read after the end");
+			if (o2i.readAsync(ByteBuffer.wrap(new byte[1])).blockResult(0).intValue() > 0)
 				throw new IOException("Data can be read after the end");
 		}
 	}
@@ -192,6 +194,37 @@ public abstract class TestOutputToInput extends TestIO.UsingTestData {
 			}).start();
 			spWrite.blockThrow(0);
 			spRead.blockThrow(0);
+		}
+	}
+	
+	@Test
+	public void testWriteReadMore() throws Exception {
+		Assume.assumeTrue(nbBuf > 0);
+		try (IO.OutputToInput o2i = createOutputToInput()) {
+			int nbWrite = 0;
+			while (nbWrite < nbBuf) {
+				ByteBuffer bu = ByteBuffer.wrap(testBuf);
+				o2i.writeSync(bu);
+				Assert.assertEquals(0, bu.remaining());
+				nbWrite++;
+			}
+			Assert.assertFalse(o2i.isFullDataAvailable());
+			o2i.endOfData();
+			Assert.assertTrue(o2i.isFullDataAvailable());
+			Assert.assertEquals(nbBuf * testBuf.length, o2i.readFullySync(ByteBuffer.allocate(nbBuf * testBuf.length + 1024)));
+		}
+		try (IO.OutputToInput o2i = createOutputToInput()) {
+			int nbWrite = 0;
+			while (nbWrite < nbBuf) {
+				ByteBuffer bu = ByteBuffer.wrap(testBuf);
+				o2i.writeSync(bu);
+				Assert.assertEquals(0, bu.remaining());
+				nbWrite++;
+			}
+			Assert.assertFalse(o2i.isFullDataAvailable());
+			o2i.endOfData();
+			Assert.assertTrue(o2i.isFullDataAvailable());
+			Assert.assertEquals(nbBuf * testBuf.length, o2i.readFullyAsync(ByteBuffer.allocate(nbBuf * testBuf.length + 1024)).blockResult(0).intValue());
 		}
 	}
 	

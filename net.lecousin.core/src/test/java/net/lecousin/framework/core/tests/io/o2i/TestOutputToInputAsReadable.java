@@ -28,7 +28,6 @@ public class TestOutputToInputAsReadable extends TestReadable {
 		super(testFile, testBuf, nbBuf);
 	}
 	
-	@SuppressWarnings("resource")
 	@Override
 	protected IO.Readable createReadableFromFile(FileIO.ReadOnly file, long fileSize) throws Exception {
 		file.close();

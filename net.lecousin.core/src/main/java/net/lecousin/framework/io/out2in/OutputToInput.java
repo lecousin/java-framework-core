@@ -156,6 +156,8 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 		}
 		int nb;
 		lockIO.lock();
+		if (writePos - pos < buffer.remaining())
+			buffer.limit(buffer.position() + (int)(writePos - pos));
 		nb = ((IO.Readable.Seekable)io).readSync(pos, buffer);
 		lockIO.unlock();
 		return nb;
@@ -208,6 +210,8 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 		AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 		Task.cpu("OutputToInput.readAsync", io.getPriority(), t -> {
 			lockIO.lock();
+			if (writePos - pos < buffer.remaining())
+				buffer.limit(buffer.position() + (int)(writePos - pos));
 			AsyncSupplier<Integer, IOException> read = ((IO.Readable.Seekable)io).readAsync(pos, buffer, ondone);
 			read.onDone(() -> {
 				lockIO.unlock();
