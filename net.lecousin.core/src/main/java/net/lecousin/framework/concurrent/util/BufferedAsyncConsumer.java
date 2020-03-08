@@ -87,7 +87,7 @@ public class BufferedAsyncConsumer<T, TError extends Exception> implements Async
 		synchronized (queue) {
 			if (error != null)
 				return new Async<>(error);
-			if (queue.isEmpty())
+			if (lastOperation == null && queue.isEmpty())
 				return consumer.end();
 			end = new Async<>();
 			return end;
