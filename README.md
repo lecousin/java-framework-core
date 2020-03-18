@@ -26,7 +26,7 @@ is recommended for better performances on disk operations (detection of physical
 #### Version
 
 [![Maven Central](https://img.shields.io/maven-central/v/net.lecousin/core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22net.lecousin%22%20AND%20a%3A%22core%22)
- [![Javadoc](https://img.shields.io/badge/javadoc-0.20.3-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.20.3)
+ [![Javadoc](https://img.shields.io/badge/javadoc-0.20.4-brightgreen.svg)](https://www.javadoc.io/doc/net.lecousin/core/0.20.4)
 
 ### Current development - branch dev
 

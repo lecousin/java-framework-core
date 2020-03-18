@@ -7,7 +7,9 @@ import net.lecousin.framework.text.StringUtil;
 /** Utility methods for debugging. */
 public final class DebugUtil {
 	
-	private DebugUtil() { /* no instance */ }
+	private DebugUtil() {
+		/* no instance */
+	}
 
 	/** Return the String class#method():line of the caller. */
 	public static String getCaller() {

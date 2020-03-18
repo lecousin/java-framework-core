@@ -95,7 +95,9 @@ public interface IntegerUnit {
 	/** Registry to convert a string into an IntegerUnit. */
 	public static final class ParserRegistry {
 		
-		private ParserRegistry() { /* no instance */ }
+		private ParserRegistry() {
+			/* no instance */
+		}
 		
 		private static final Map<String, Class<? extends IntegerUnit>> units = new HashMap<>();
 		

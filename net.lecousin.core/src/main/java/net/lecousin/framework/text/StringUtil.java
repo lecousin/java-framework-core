@@ -11,7 +11,9 @@ import net.lecousin.framework.encoding.HexaDecimalEncoding;
  */
 public final class StringUtil {
 	
-	private StringUtil() { /* no instance */ }
+	private StringUtil() {
+		/* no instance */
+	}
 
 	/** Insert padding character to a StringBuilder. */
 	public static StringBuilder paddingLeft(StringBuilder s, int length, char padding) {

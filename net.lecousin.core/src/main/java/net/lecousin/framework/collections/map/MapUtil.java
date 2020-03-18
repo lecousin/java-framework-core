@@ -8,7 +8,9 @@ import java.util.Map;
  */
 public final class MapUtil {
 	
-	private MapUtil() { /* no instance */ }
+	private MapUtil() {
+		/* no instance */
+	}
 
 	/** Remove all keys associated with the given value. */
 	public static <T> void removeValue(Map<?,T> map, T value) {

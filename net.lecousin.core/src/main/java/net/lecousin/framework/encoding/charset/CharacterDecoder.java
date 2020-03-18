@@ -41,7 +41,9 @@ public interface CharacterDecoder {
 	
 	/** Decoder registry. */
 	static final class Registry {
-		private Registry() { /* no instance */ }
+		private Registry() {
+			/* no instance */
+		}
 		
 		/** Register a decoder implementation. 
 		 * @throws NoSuchMethodException in case the constructor does not exist

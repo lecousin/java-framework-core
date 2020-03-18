@@ -27,7 +27,9 @@ import net.lecousin.framework.text.StringUtil;
  */
 public class MemoryManager {
 
-	private MemoryManager() {}
+	private MemoryManager() {
+		// no instance
+	}
 	
 	private static Logger logger;
 	

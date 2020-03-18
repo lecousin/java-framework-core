@@ -14,7 +14,9 @@ import net.lecousin.framework.util.ObjectUtil;
 /** Utility methods on collections. */
 public final class CollectionsUtil {
 	
-	private CollectionsUtil() { /* no instance */ }
+	private CollectionsUtil() { 
+		/* no instance */
+	}
 
 	/** Instantiate an IteratorToEnumeration on the given iterator. */
 	public static <T> Enumeration<T> enumeration(Iterator<T> iterator) {

@@ -19,7 +19,9 @@ import net.lecousin.framework.collections.ListOfArrays;
  */
 public final class ClassUtil {
 	
-	private ClassUtil() { /* no instance */ }
+	private ClassUtil() {
+		/* no instance */
+	}
 
 	/** Get all fields from the given class and all its super classes. */
 	public static Iterable<Field> getAllFields(Class<?> cl) {

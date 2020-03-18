@@ -5,27 +5,37 @@ public interface TimeUnit extends IntegerUnit {
 
 	/** Milliseconds time unit. */
 	public static final class Millisecond implements TimeUnit {
-		private Millisecond() { /* no instance. */ }
+		private Millisecond() {
+			/* no instance. */
+		}
 	}
 	
 	/** Seconds time unit. */
 	public static final class Second implements TimeUnit {
-		private Second() { /* no instance. */ }
+		private Second() {
+			/* no instance. */
+		}
 	}
 	
 	/** Minutes time unit. */
 	public static final class Minute implements TimeUnit {
-		private Minute() { /* no instance. */ }
+		private Minute() {
+			/* no instance. */
+		}
 	}
 	
 	/** Hour time unit. */
 	public static final class Hour implements TimeUnit {
-		private Hour() { /* no instance. */ }
+		private Hour() {
+			/* no instance. */
+		}
 	}
 	
 	/** Day time unit. */
 	public static final class Day implements TimeUnit {
-		private Day() { /* no instance. */ }
+		private Day() {
+			/* no instance. */
+		}
 	}
 	
 	/** Converter between time units. */

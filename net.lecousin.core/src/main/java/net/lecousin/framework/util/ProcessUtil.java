@@ -15,7 +15,9 @@ import net.lecousin.framework.mutable.Mutable;
  */
 public final class ProcessUtil {
 
-	private ProcessUtil() { /* no instance */ }
+	private ProcessUtil() {
+		/* no instance */
+	}
 	
 	/**
 	 * Create a thread that wait for the given process to end, and call the given listener.

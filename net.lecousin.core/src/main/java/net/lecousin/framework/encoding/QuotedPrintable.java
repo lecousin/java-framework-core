@@ -12,7 +12,9 @@ import net.lecousin.framework.memory.ByteArrayCache;
 /** Encode and decode quoted-printable as defined in RFC 2045. */
 public final class QuotedPrintable {
 	
-	private QuotedPrintable() { /* no instance. */ }
+	private QuotedPrintable() {
+		/* no instance. */
+	}
 	
 	public static final int MAX_LINE_CHARACTERS = 76;
 

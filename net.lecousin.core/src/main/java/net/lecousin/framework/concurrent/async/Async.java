@@ -20,7 +20,9 @@ import net.lecousin.framework.util.ThreadUtil;
 public class Async<TError extends Exception> implements IAsync<TError>, Future<Void> {
 
 	/** Constructor. */
-	public Async() {}
+	public Async() {
+		// nothing
+	}
 	
 	/** Constructor with an initial state. */
 	public Async(boolean unblocked) {

@@ -7,6 +7,8 @@ public class NoException extends Exception {
 
 	private static final long serialVersionUID = 2904591744483153761L;
 	
-	private NoException() {} // not instantiable
+	private NoException() {
+		// not instantiable
+	}
 
 }

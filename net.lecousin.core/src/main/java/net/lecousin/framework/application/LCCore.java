@@ -15,7 +15,9 @@ import net.lecousin.framework.util.AsyncCloseable;
  */
 public final class LCCore {
 	
-	private LCCore() { /* no instance */ }
+	private LCCore() {
+		/* no instance */
+	}
 	
 	/** Interface to implement according to the environment.
 	 * For example, StandaloneLCCore can be used for a standalone application JVM.

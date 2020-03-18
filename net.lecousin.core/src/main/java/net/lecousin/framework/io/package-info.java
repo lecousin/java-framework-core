@@ -11,6 +11,7 @@
  * 
  * <h1>Interface defining capabilities</h1>
  * 
+ * <p>
  * Each implementation defines its capabilities through a set of interfaces defined in {@link net.lecousin.framework.io.IO}:<ul>
  * <li>{@link net.lecousin.framework.io.IO.Readable} is similar to an InputStream: data can be read forward</li>
  * <li>{@link net.lecousin.framework.io.IO.Writable} is similar to an OutputStream: data can be written forward</li>
@@ -31,6 +32,7 @@
  * <li>{@link net.lecousin.framework.io.IO.Writable.Buffered} defines a buffered Writable and adds some operations that are
  * efficient when buffered</li>
  * </ul>
+ * </p>
  * 
  * <p>
  * By using those interfaces to define the capabilities of the IO adds much more flexibility:<ul>
@@ -57,10 +59,12 @@
  * 
  * <h1>Asynchronous operations</h1>
  * 
+ * <p>
  * Each interface define both synchronous and asynchronous operations.<br/>
  * Synchronous operations should be avoided when not on a Buffered implementation, but are still
  * available when we want to keep an algorithm simple and synchronous, however those operations
  * may block the thread waiting for the operation to complete.<br/>
  * Asynchronous operations allow to design multi-threaded algorithms and to do not block threads.
+ * </p>
  */
 package net.lecousin.framework.io;

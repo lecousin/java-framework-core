@@ -3,7 +3,9 @@ package net.lecousin.framework.util;
 /** Utility methods for command line parameters. */
 public final class CommandLine {
 	
-	private CommandLine() { /* no instance. */ }
+	private CommandLine() {
+		/* no instance. */
+	}
 
 	/**
 	 * Search for an argument "-&lt;option&gt;=&lt;value&gt;" where option is the given option name, and return the value.

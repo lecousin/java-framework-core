@@ -5,7 +5,9 @@ import java.util.Map;
 /** Utilities for properties. */
 public final class PropertiesUtil {
 	
-	private PropertiesUtil() { /* no instance */ }
+	private PropertiesUtil() {
+		/* no instance */
+	}
 
 	/** Resolve the values of properties if any contains ${...}. */
 	public static void resolve(Map<String, String> properties) {

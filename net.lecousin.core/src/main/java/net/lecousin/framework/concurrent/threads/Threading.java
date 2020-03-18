@@ -28,7 +28,9 @@ import net.lecousin.framework.util.AsyncCloseable;
 })
 public final class Threading {
 	
-	private Threading() { /* no instance */ }
+	private Threading() {
+		/* no instance */
+	}
 	
 	private static Logger logger;
 	

@@ -13,7 +13,9 @@ import net.lecousin.framework.util.ObjectUtil;
 /** Utility methods for arrays. */
 public final class ArrayUtil {
 	
-	private ArrayUtil() { /* no instance */ }
+	private ArrayUtil() {
+		/* no instance */
+	}
 
 	/** Return true if the array contains the value.
 	 * Comparison is done using the equals method.

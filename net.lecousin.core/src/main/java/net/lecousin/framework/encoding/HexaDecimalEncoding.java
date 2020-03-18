@@ -14,7 +14,9 @@ public final class HexaDecimalEncoding implements BytesEncoder.KnownOutputSize, 
 	
 	public static final HexaDecimalEncoding instance = new HexaDecimalEncoding();
 	
-	private HexaDecimalEncoding() { /* singleton */ }
+	private HexaDecimalEncoding() {
+		/* singleton */
+	}
 	
 	private static final char[] hexaChar = new char[] { '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F' };
 	

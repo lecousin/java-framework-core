@@ -12,7 +12,9 @@ import net.lecousin.framework.properties.Property;
 /** Utility methods for localization annotations. */
 public final class LocalizableAnnotations {
 
-	private LocalizableAnnotations() {}
+	private LocalizableAnnotations() {
+		// no instance
+	}
 	
 	/** Get a localizable string from the given element. */
 	public static ILocalizableString get(AnnotatedElement element, String name) {

@@ -38,7 +38,9 @@ import net.lecousin.framework.util.Pair;
  */
 public final class IOUtil {
 	
-	private IOUtil() { /* no instance */ }
+	private IOUtil() {
+		/* no instance */
+	}
 
 	/**
 	 * Fill the remaining bytes of the given buffer.

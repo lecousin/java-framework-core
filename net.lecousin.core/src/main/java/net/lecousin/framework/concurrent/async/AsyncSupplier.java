@@ -26,7 +26,9 @@ import net.lecousin.framework.util.ThreadUtil;
 public class AsyncSupplier<T,TError extends Exception> implements IAsync<TError>, Future<T> {
 	
 	/** Constructor. */
-	public AsyncSupplier() {}
+	public AsyncSupplier() {
+		// nothing
+	}
 	
 	/** Create an unblocked point with the given result and error. */
 	public AsyncSupplier(T result, TError error) {

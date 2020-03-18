@@ -9,7 +9,9 @@ public final class SystemEnvironment {
 	
 	public static final String SYSTEM_PROPERTY_USER_HOME = "user.home";
 	
-	private SystemEnvironment() { /* no instance */ }
+	private SystemEnvironment() {
+		/* no instance */
+	}
 
 	/** Type of operating system. */
 	public enum OSFamily {

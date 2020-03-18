@@ -7,7 +7,9 @@ import net.lecousin.framework.text.StringUtil;
  */
 public final class GUIDUtil {
 	
-	private GUIDUtil() { /* no instance */ }
+	private GUIDUtil() {
+		/* no instance */
+	}
 	
 	/** Create a GUID. */
 	public static byte[] toGUID(long p1, int p2, int p3, int p4, long p5) {
