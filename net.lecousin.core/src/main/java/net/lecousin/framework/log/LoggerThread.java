@@ -66,7 +66,7 @@ class LoggerThread {
 		if (s > 5000) {
 			// pause the thread to let time to logging
 			try {
-				Thread.sleep(s > 10000 ? 400 : s > 7500 ? 200 : 100);
+				Thread.sleep(s > 10000 ? 250 : s > 7500 ? 100 : 50);
 			} catch (InterruptedException e) {
 				// ignore
 			}

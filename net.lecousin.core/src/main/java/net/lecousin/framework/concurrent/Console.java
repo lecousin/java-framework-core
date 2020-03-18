@@ -15,22 +15,22 @@ import net.lecousin.framework.concurrent.async.Async;
 public class Console implements Closeable {
 	
 	/** Print the given line. */
-	public synchronized void out(String line) {
+	public void out(String line) {
 		add(line, out);
 	}
 	
 	/** Print the given error. */
-	public synchronized void out(Throwable t) {
+	public void out(Throwable t) {
 		add(t, out);
 	}
 	
 	/** Print the given line. */
-	public synchronized void err(String line) {
+	public void err(String line) {
 		add(line, err);
 	}
 
 	/** Print the given error. */
-	public synchronized void err(Throwable t) {
+	public void err(Throwable t) {
 		add(t, err);
 	}
 	
@@ -45,7 +45,7 @@ public class Console implements Closeable {
 		if (nb > 5000) {
 			// pause the thread to let time to logging
 			try {
-				Thread.sleep(nb > 10000 ? 400 : nb > 7500 ? 200 : 100);
+				Thread.sleep(nb > 10000 ? 200 : nb > 7500 ? 100 : 25);
 			} catch (InterruptedException e) {
 				// ignore
 			}

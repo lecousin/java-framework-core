@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.collections.sort.RedBlackTreeInteger;
 import net.lecousin.framework.collections.sort.RedBlackTreeInteger.Node;
@@ -72,8 +73,10 @@ public abstract class ArrayCache<T> implements IMemoryManageable {
 	
 	private RedBlackTreeInteger<ArraysBySize<T>> arraysBySize = new RedBlackTreeInteger<>();
 	private int totalSize = 0;
+	private boolean debug;
 	
 	protected ArrayCache() {
+		debug = LCCore.getApplication().isDebugMode();
 		MemoryManager.register(this);
 	}
 	
@@ -131,6 +134,8 @@ public abstract class ArrayCache<T> implements IMemoryManageable {
 				return;
 			}
 			ArraysBySize<T> arrays = node.getElement();
+			if (debug && arrays.arrays.contains(array))
+				throw new IllegalStateException("Array already in cache!");
 			arrays.lastCachedTime = System.currentTimeMillis();
 			if (arrays.arrays.isFull()) return;
 			totalSize += len;

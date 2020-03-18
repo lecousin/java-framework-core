@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
 
 /**
  * Generic interface to navigate in a hierarchy.
@@ -49,10 +50,10 @@ public interface HierarchyProvider {
 		boolean mayHaveChildren(ElementType element);
 		
 		/** Return true if the given element has children. */
-		AsyncSupplier<Boolean,Exception> hasChildren(ElementType element, boolean refresh, byte priority);
+		AsyncSupplier<Boolean,Exception> hasChildren(ElementType element, boolean refresh, Priority priority);
 		
 		/** Return the children of the given element. */
-		AsyncSupplier<List<? extends ElementType>,Exception> getChildren(ElementType element, boolean refresh, byte priority);
+		AsyncSupplier<List<? extends ElementType>,Exception> getChildren(ElementType element, boolean refresh, Priority priority);
 	}
 	
 }
