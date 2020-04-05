@@ -215,12 +215,11 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			int lim = buffer.limit();
 			if (writePos - pos < buffer.remaining())
 				buffer.limit(buffer.position() + (int)(writePos - pos));
-			AsyncSupplier<Integer, IOException> read = ((IO.Readable.Seekable)io).readAsync(pos, buffer, ondone);
-			read.onDone(() -> {
+			((IO.Readable.Seekable)io).readAsync(pos, buffer, res -> {
 				buffer.limit(lim);
 				lockIO.unlock();
-				read.forward(result);
-			});
+				if (ondone != null) ondone.accept(res);
+			}).forward(result);
 			return null;
 		}).start();
 		return operation(result);

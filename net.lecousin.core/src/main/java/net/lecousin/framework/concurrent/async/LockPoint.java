@@ -30,20 +30,21 @@ public class LockPoint<TError extends Exception> extends AbstractLock<TError> {
 			return;
 		if (error != null)
 			return;
-		Blockable blockable;
 		do {
+			Blockable blockable;
 			synchronized (this) {
 				if (!locked) {
 					locked = true;
 					return;
 				}
 				blockable = Threading.getBlockable();
-				if (blockable != null) break;
-				try { this.wait(0); }
-				catch (InterruptedException e) { /* continue anyway */ }
+				if (blockable == null)
+					try { this.wait(0); }
+					catch (InterruptedException e) { /* continue anyway */ }
 			}
+			if (blockable != null)
+				blockable.blocked(this, 0);
 		} while (true);
-		blockable.blocked(this, 0);
 	}
 	
 	/** Release the lock. */
