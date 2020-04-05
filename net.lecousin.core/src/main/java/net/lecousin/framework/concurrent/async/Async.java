@@ -98,7 +98,7 @@ public class Async<TError extends Exception> implements IAsync<TError>, Future<V
 					Threading.debugListenerCall(listener, System.nanoTime() - start);
 				}
 			synchronized (this) {
-				if (listenersInline.isEmpty()) {
+				if (listenersInline == null || listenersInline.isEmpty()) {
 					listenersInline = null;
 					listeners = null;
 					this.notifyAll();

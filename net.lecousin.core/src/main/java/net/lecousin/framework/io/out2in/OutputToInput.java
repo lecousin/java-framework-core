@@ -32,7 +32,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 	private IO io;
 	private String sourceDescription;
 	private boolean eof = false;
-	private LockPoint<IOException> lock = new LockPoint<>();
+	private Async<IOException> waitForData = new Async<>();
 	private long writePos = 0;
 	private long readPos = 0;
 	private LockPoint<NoException> lockIO = new LockPoint<>();
@@ -40,7 +40,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 	@Override
 	protected IAsync<IOException> closeUnderlyingResources() {
 		eof = true;
-		lock.error(new EOFException());
+		waitForData.error(new EOFException());
 		return io.closeAsync();
 	}
 	
@@ -74,12 +74,12 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 	@Override
 	public void endOfData() {
 		eof = true;
-		lock.error(new EOFException());
+		waitForData.error(new EOFException());
 	}
 	
 	@Override
 	public void signalErrorBeforeEndOfData(IOException error) {
-		lock.error(error);
+		waitForData.error(error);
 		lockIO.unlock();
 	}
 	
@@ -107,7 +107,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 		nb = ((IO.Writable.Seekable)io).writeSync(writePos, buffer);
 		writePos += nb;
 		lockIO.unlock();
-		lock.unlock();
+		waitForData.unblock();
 		return nb;
 	}
 	
@@ -120,15 +120,15 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 				if (param.getValue1() != null) {
 					writePos += param.getValue1().intValue();
 					lockIO.unlock();
-					lock.unlock();
+					waitForData.unblock();
 					if (ondone != null) ondone.accept(param);
 				} else {
 					lockIO.unlock();
 					if (ondone != null) ondone.accept(param);
-					lock.error(param.getValue2());
+					waitForData.error(param.getValue2());
 				}
 			});
-			write.onCancel(lock::cancel);
+			write.onCancel(waitForData::cancel);
 			write.forward(result);
 			return null;
 		})).start();
@@ -138,21 +138,25 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 	@Override
 	public IAsync<IOException> canStartReading() {
 		if (eof) return new Async<>(true);
-		if (lock.hasError()) return lock;
+		if (waitForData.hasError()) return waitForData;
 		if (readPos < writePos) return new Async<>(true);
-		return lock;
+		return waitForData;
 	}
 	
 	@Override
 	@SuppressWarnings("squid:S2589") // eof may change in a concurrent operation
 	public int readSync(long pos, ByteBuffer buffer) throws IOException {
-		if (lock.hasError() && !eof)
-			throw new OutputToInputTransferException(lock.getError());
+		if (waitForData.hasError() && !eof)
+			throw new OutputToInputTransferException(waitForData.getError());
 		while (pos >= writePos) {
 			if (eof) return -1;
-			if (lock.hasError() && !eof)
-				throw new OutputToInputTransferException(lock.getError());
-			lock.lock();
+			if (waitForData.hasError() && !eof)
+				throw new OutputToInputTransferException(waitForData.getError());
+			synchronized (waitForData) {
+				if (pos >= writePos && waitForData.isDone())
+					waitForData.reset();
+			}
+			waitForData.block(0);
 		}
 		int nb;
 		lockIO.lock();
@@ -194,8 +198,8 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 	@Override
 	@SuppressWarnings("squid:S2589") // may change in a concurrent operation
 	public AsyncSupplier<Integer, IOException> readAsync(long pos, ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		if (lock.hasError() && !eof) {
-			IOException e = new OutputToInputTransferException(lock.getError());
+		if (waitForData.hasError() && !eof) {
+			IOException e = new OutputToInputTransferException(waitForData.getError());
 			if (ondone != null) ondone.accept(new Pair<>(null, e));
 			return new AsyncSupplier<>(null, e);
 		}
@@ -205,7 +209,11 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 				return new AsyncSupplier<>(Integer.valueOf(-1), null);
 			}
 			AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
-			lock.thenStart(operation(
+			synchronized (waitForData) {
+				if (pos >= writePos && waitForData.isDone())
+					waitForData.reset();
+			}
+			waitForData.thenStart(operation(
 				taskSyncToAsync("OutputToInput.readAsync", result, ondone, () -> Integer.valueOf(readSync(pos, buffer)))), true);
 			return result;
 		}
@@ -263,17 +271,21 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			return n;
 		}
 		if (readPos + n > writePos) {
-			if (lock.hasError() && !eof)
-				throw new OutputToInputTransferException(lock.getError());
+			if (waitForData.hasError() && !eof)
+				throw new OutputToInputTransferException(waitForData.getError());
 			while (readPos + n > writePos) {
 				if (eof) {
 					n = writePos - readPos;
 					readPos = writePos;
 					return n;
 				}
-				if (lock.hasError() && !eof)
-					throw new OutputToInputTransferException(lock.getError());
-				lock.lock();
+				if (waitForData.hasError() && !eof)
+					throw new OutputToInputTransferException(waitForData.getError());
+				synchronized (waitForData) {
+					if (readPos + n > writePos && waitForData.isDone())
+						waitForData.reset();
+				}
+				waitForData.block(0);
 			}
 		}
 		readPos += n;
@@ -300,7 +312,11 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			return new AsyncSupplier<>(Long.valueOf(m), null);
 		}
 		AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
-		lock.thenStart(operation(taskSyncToAsync("OutputToInput.skipAsync", result, ondone, () -> Long.valueOf(skipSync(n)))), true);
+		synchronized (waitForData) {
+			if (readPos + n > writePos && waitForData.isDone())
+				waitForData.reset();
+		}
+		waitForData.thenStart(operation(taskSyncToAsync("OutputToInput.skipAsync", result, ondone, () -> Long.valueOf(skipSync(n)))), true);
 		return result;
 	}	
 
@@ -320,19 +336,24 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			skipSync(move);
 			return readPos;
 		default: //case FROM_END:
-			while (!eof && !lock.hasError()) {
-				lock.lock();
+			while (!eof && !waitForData.hasError()) {
+				synchronized (waitForData) {
+					if (!eof && waitForData.isDone())
+						waitForData.reset();
+				}
+				waitForData.block(0);
 			}
 			if (eof) {
 				readPos = writePos;
 				skipSync(-move);
 				return readPos;
 			}
-			throw new OutputToInputTransferException(lock.getError());
+			throw new OutputToInputTransferException(waitForData.getError());
 		}
 	}
 
 	@Override
+	@SuppressWarnings("java:S3776") // complexity
 	public AsyncSupplier<Long, IOException> seekAsync(SeekType type, long move, Consumer<Pair<Long,IOException>> ondone) {
 		AsyncSupplier<Long, IOException> res = new AsyncSupplier<>();
 		switch (type) {
@@ -350,8 +371,8 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			}, res);
 			return res;
 		case FROM_END:
-			if (lock.hasError() && !eof)
-				return IOUtil.error(new OutputToInputTransferException(lock.getError()), ondone);
+			if (waitForData.hasError() && !eof)
+				return IOUtil.error(new OutputToInputTransferException(waitForData.getError()), ondone);
 			if (eof) {
 				if (move <= 0)
 					readPos = writePos;
@@ -361,7 +382,11 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 				return IOUtil.success(Long.valueOf(readPos), ondone);
 			}
 			AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
-			lock.thenStart(operation(Task.cpu("OutputToInput.seekAsync", io.getPriority(), t -> {
+			synchronized (waitForData) {
+				if (!eof && waitForData.isDone())
+					waitForData.reset();
+			}
+			waitForData.thenStart(operation(Task.cpu("OutputToInput.seekAsync", io.getPriority(), t -> {
 				try {
 					Long nb = Long.valueOf(seekSync(type, move));
 					if (ondone != null) ondone.accept(new Pair<>(nb, null));
