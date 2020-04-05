@@ -153,7 +153,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			if (waitForData.hasError() && !eof)
 				throw new OutputToInputTransferException(waitForData.getError());
 			synchronized (waitForData) {
-				if (pos >= writePos && waitForData.isDone())
+				if (pos >= writePos && waitForData.isSuccessful())
 					waitForData.reset();
 			}
 			waitForData.block(0);
@@ -210,7 +210,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			}
 			AsyncSupplier<Integer, IOException> result = new AsyncSupplier<>();
 			synchronized (waitForData) {
-				if (pos >= writePos && waitForData.isDone())
+				if (pos >= writePos && waitForData.isSuccessful())
 					waitForData.reset();
 			}
 			waitForData.thenStart(operation(
@@ -282,7 +282,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 				if (waitForData.hasError() && !eof)
 					throw new OutputToInputTransferException(waitForData.getError());
 				synchronized (waitForData) {
-					if (readPos + n > writePos && waitForData.isDone())
+					if (readPos + n > writePos && waitForData.isSuccessful())
 						waitForData.reset();
 				}
 				waitForData.block(0);
@@ -311,9 +311,10 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			if (ondone != null) ondone.accept(new Pair<>(Long.valueOf(m), null));
 			return new AsyncSupplier<>(Long.valueOf(m), null);
 		}
+		if (waitForData.hasError()) return IOUtil.error(waitForData.getError(), ondone);
 		AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
 		synchronized (waitForData) {
-			if (readPos + n > writePos && waitForData.isDone())
+			if (readPos + n > writePos && waitForData.isSuccessful())
 				waitForData.reset();
 		}
 		waitForData.thenStart(operation(taskSyncToAsync("OutputToInput.skipAsync", result, ondone, () -> Long.valueOf(skipSync(n)))), true);
@@ -338,7 +339,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 		default: //case FROM_END:
 			while (!eof && !waitForData.hasError()) {
 				synchronized (waitForData) {
-					if (!eof && waitForData.isDone())
+					if (!eof && waitForData.isSuccessful())
 						waitForData.reset();
 				}
 				waitForData.block(0);
@@ -383,7 +384,7 @@ public class OutputToInput extends ConcurrentCloseable<IOException> implements I
 			}
 			AsyncSupplier<Long, IOException> result = new AsyncSupplier<>();
 			synchronized (waitForData) {
-				if (!eof && waitForData.isDone())
+				if (!eof && waitForData.isSuccessful())
 					waitForData.reset();
 			}
 			waitForData.thenStart(operation(Task.cpu("OutputToInput.seekAsync", io.getPriority(), t -> {
