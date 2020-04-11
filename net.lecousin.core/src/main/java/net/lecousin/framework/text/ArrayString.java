@@ -4,7 +4,7 @@ package net.lecousin.framework.text;
  * Unprotected and mutable string using an array.
  * 
  * @see CharArrayString
- * @see ByteArrayString
+ * @see ByteArrayStringIso8859
  */
 public abstract class ArrayString implements IString {
 	

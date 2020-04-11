@@ -13,7 +13,7 @@ import net.lecousin.framework.io.util.ReadableAsURLConnection;
 
 /**
  * URL Stream Handler looking for resources in the classpath,
- * using first the method {@link Application#getResource(String, byte)},
+ * using first the method {@link Application#getResource(String, net.lecousin.framework.concurrent.threads.Task.Priority)},
  * then the getResource method on the class loader.
  */
 public class Handler extends URLStreamHandler {
