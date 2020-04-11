@@ -7,7 +7,7 @@
   </parent>
 
   <artifactId>core-parent-pom</artifactId>
-  <version>0.20.5</version>
+  <version>0.20.6</version>
   <packaging>pom</packaging>
   
   <modules>
