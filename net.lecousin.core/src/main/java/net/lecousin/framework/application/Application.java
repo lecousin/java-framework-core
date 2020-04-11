@@ -90,7 +90,7 @@ public final class Application {
 	private LocalizedProperties localizedProperties;
 	private String[] languageTag;
 	private LoggerFactory loggerFactory;
-	private Map<Class<?>, Object> instances = new HashMap<>();
+	private Map<String, Object> instances = new HashMap<>();
 	private Map<String, Object> data = new HashMap<>();
 	private LinkedList<Pair<Integer, Object>> toClose = new LinkedList<>();
 	private ArrayList<Thread> toInterrupt = new ArrayList<>();
@@ -265,7 +265,7 @@ public final class Application {
 	@SuppressWarnings("unchecked")
 	public <T> T getInstance(Class<T> clazz) {
 		synchronized (instances) {
-			return (T)instances.get(clazz);
+			return (T)instances.get(clazz.getName());
 		}
 	}
 	
@@ -273,7 +273,7 @@ public final class Application {
 	@SuppressWarnings("unchecked")
 	public <T> T setInstance(Class<T> clazz, T instance) {
 		synchronized (instances) {
-			return (T)instances.put(clazz, instance);
+			return (T)instances.put(clazz.getName(), instance);
 		}
 	}
 	
@@ -281,7 +281,7 @@ public final class Application {
 	@SuppressWarnings("unchecked")
 	public <T> T removeInstance(Class<T> clazz) {
 		synchronized (instances) {
-			return (T)instances.remove(clazz);
+			return (T)instances.remove(clazz.getName());
 		}
 	}
 	

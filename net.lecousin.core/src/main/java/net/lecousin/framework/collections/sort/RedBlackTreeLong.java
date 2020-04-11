@@ -364,7 +364,7 @@ public class RedBlackTreeLong<T> implements Sorted.AssociatedWithLong<T> {
 		} else if (value >= h.value) {
 			if (h.right == null) {
 				h.right = new Node<>(value, element, true);
-				if (value > last.value) last = h.right;
+				if (value > last.value || last == h) last = h.right;
 			} else {
 				h.right = add(value, element, h.right);
 			}

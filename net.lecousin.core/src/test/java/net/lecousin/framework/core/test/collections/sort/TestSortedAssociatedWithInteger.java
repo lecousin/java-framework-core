@@ -105,7 +105,7 @@ public abstract class TestSortedAssociatedWithInteger extends LCCoreAbstractTest
 	}
 	
 	@Test
-	public void testAddRemoveRandom() {
+	public void testAddThenRemoveRandom() {
 		Sorted.AssociatedWithInteger<Object> list = createSorted();
 		TreeSet<Integer> order = new TreeSet<>();
 		Random rand = new Random();
@@ -123,6 +123,44 @@ public abstract class TestSortedAssociatedWithInteger extends LCCoreAbstractTest
 			order.remove(Integer.valueOf(value));
 			check(list, order);
 		}
+	}
+	
+	@Test
+	public void testAddAndRemoveRandom() {
+		Sorted.AssociatedWithInteger<Object> list = createSorted();
+		Random rand = new Random();
+		LinkedList<Integer> toAdd = new LinkedList<>();
+		for (int i = 0; i < 2000; ++i) {
+			Integer value = Integer.valueOf(rand.nextInt());
+			while (toAdd.contains(value)) value = Integer.valueOf(rand.nextInt());
+			toAdd.add(value);
+		}
+		LinkedList<Integer> toRemove = new LinkedList<>();
+		TreeSet<Integer> order = new TreeSet<>();
+		do {
+			if (!toAdd.isEmpty()) {
+				int nb = rand.nextInt(toAdd.size()) + 1;
+				for (int i = 0; i < nb; ++i) {
+					Integer value = toAdd.removeFirst();
+					Assert.assertFalse(list.contains(value.intValue(), Integer.valueOf(-value.intValue())));
+					list.add(value.intValue(), Integer.valueOf(-value.intValue()));
+					Assert.assertTrue(list.contains(value.intValue(), Integer.valueOf(-value.intValue())));
+					order.add(value);
+					toRemove.add(value);
+				}
+			}
+			int nb = rand.nextInt(toRemove.size()) + 1;
+			for (int i = 0; i < nb; ++i) {
+				Integer value = toRemove.remove(rand.nextInt(toRemove.size()));
+				Assert.assertTrue(list.contains(value.intValue(), Integer.valueOf(-value.intValue())));
+				list.remove(value.intValue(), Integer.valueOf(-value.intValue()));
+				Assert.assertFalse(list.contains(value.intValue(), Integer.valueOf(-value.intValue())));
+				order.remove(value);
+			}
+			check(list, order);
+		} while (!toAdd.isEmpty() || !toRemove.isEmpty());
+		Assert.assertEquals(0, order.size());
+		Assert.assertEquals(0, list.size());
 	}
 	
 	protected void check(Sorted.AssociatedWithInteger<Object> sorted, TreeSet<Integer> order) {

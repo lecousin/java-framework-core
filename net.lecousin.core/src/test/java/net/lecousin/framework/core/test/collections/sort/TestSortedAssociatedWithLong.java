@@ -105,7 +105,7 @@ public abstract class TestSortedAssociatedWithLong extends LCCoreAbstractTest {
 	}
 	
 	@Test
-	public void testAddRemoveRandom() {
+	public void testAddThenRemoveRandom() {
 		Sorted.AssociatedWithLong<Object> list = createSorted();
 		TreeSet<Long> order = new TreeSet<>();
 		Random rand = new Random();
@@ -124,6 +124,45 @@ public abstract class TestSortedAssociatedWithLong extends LCCoreAbstractTest {
 			check(list, order);
 		}
 	}
+	
+	@Test
+	public void testAddAndRemoveRandom() {
+		Sorted.AssociatedWithLong<Object> list = createSorted();
+		Random rand = new Random();
+		LinkedList<Long> toAdd = new LinkedList<>();
+		for (int i = 0; i < 2000; ++i) {
+			Long value = Long.valueOf(rand.nextLong());
+			while (toAdd.contains(value)) value = Long.valueOf(rand.nextLong());
+			toAdd.add(value);
+		}
+		LinkedList<Long> toRemove = new LinkedList<>();
+		TreeSet<Long> order = new TreeSet<>();
+		do {
+			if (!toAdd.isEmpty()) {
+				int nb = rand.nextInt(toAdd.size()) + 1;
+				for (int i = 0; i < nb; ++i) {
+					Long value = toAdd.removeFirst();
+					Assert.assertFalse(list.contains(value.longValue(), Long.valueOf(-value.longValue())));
+					list.add(value.longValue(), Long.valueOf(-value.longValue()));
+					Assert.assertTrue(list.contains(value.longValue(), Long.valueOf(-value.longValue())));
+					order.add(value);
+					toRemove.add(value);
+				}
+			}
+			int nb = rand.nextInt(toRemove.size()) + 1;
+			for (int i = 0; i < nb; ++i) {
+				Long value = toRemove.remove(rand.nextInt(toRemove.size()));
+				Assert.assertTrue(list.contains(value.longValue(), Long.valueOf(-value.longValue())));
+				list.remove(value.longValue(), Long.valueOf(-value.longValue()));
+				Assert.assertFalse(list.contains(value.longValue(), Long.valueOf(-value.longValue())));
+				order.remove(value);
+			}
+			check(list, order);
+		} while (!toAdd.isEmpty() || !toRemove.isEmpty());
+		Assert.assertEquals(0, order.size());
+		Assert.assertEquals(0, list.size());
+	}
+	
 	
 	protected void check(Sorted.AssociatedWithLong<Object> sorted, TreeSet<Long> order) {
 		Assert.assertEquals(order.size(), sorted.size());
