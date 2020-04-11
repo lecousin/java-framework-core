@@ -472,11 +472,13 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
                 return null;
             if (h.right == null || (!h.right.red && (h.right.left == null || !h.right.left.red)))
                 h = moveRedRight(h);
-            if (node.value == h.value) {
+            if (node.value == h.value && ObjectUtil.equalsOrNull(node.element, h.element)) {
                 Node<T> x = min(h.right);
                 h.value = x.value;
                 h.element = x.element;
                 h.right = removeMin(h.right, false);
+                if (h.right == null && last == x)
+                	last = h;
             } else {
             	h.right = remove(h.right, node);
             }
