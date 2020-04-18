@@ -48,27 +48,32 @@ public final class TaskManagerMonitor {
 	TaskManagerMonitor(TaskManager manager, Configuration config) {
 		this.manager = manager;
 		this.config = config;
-		thread = new Monitor();
-		Thread t = manager.threadFactory.newThread(thread);
-		t.setName(manager.getName() + " - Task Monitoring");
-		t.start();
-		LCCore.get().toClose(thread);
+		montior = new Monitor();
+		thread = manager.threadFactory.newThread(montior);
+		thread.setName(manager.getName() + " - Task Monitoring");
+		thread.start();
+		LCCore.get().toClose(montior);
 	}
 	
 	private TaskManager manager;
 	private Configuration config;
-	private Monitor thread;
+	private Monitor montior;
+	private Thread thread;
 	
 	public Configuration getConfiguration() {
 		return config;
 	}
 	
 	void setConfiguration(Configuration config) {
-		synchronized (thread.lock) {
+		synchronized (montior.lock) {
 			this.config = config;
-			thread.wait = 0;
-			thread.lock.notify();
+			montior.wait = 0;
+			montior.lock.notify();
 		}
+	}
+	
+	public Thread getThread() {
+		return thread;
 	}
 	
 	private class Monitor implements Runnable, Closeable {

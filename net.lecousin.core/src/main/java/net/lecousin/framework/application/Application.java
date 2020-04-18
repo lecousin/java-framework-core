@@ -13,6 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -25,17 +26,18 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.tasks.PropertiesFileLoader;
 import net.lecousin.framework.concurrent.tasks.PropertiesFileSaver;
+import net.lecousin.framework.concurrent.threads.ApplicationThread;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.provider.IOProvider;
 import net.lecousin.framework.locale.LocalizedProperties;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.LoggerFactory;
-import net.lecousin.framework.log.appenders.Appender;
+import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.util.AsyncCloseable;
-import net.lecousin.framework.util.ObjectUtil;
 import net.lecousin.framework.util.Pair;
 import net.lecousin.framework.util.SystemEnvironment;
 
@@ -73,7 +75,6 @@ public final class Application {
 		this.debugMode = debugMode;
 		this.threadFactory = threadFactory;
 		this.librariesManager = librariesManager;
-		console = new Console(this);
 	}
 	
 	private long startTime;
@@ -81,7 +82,7 @@ public final class Application {
 	private String[] commandLineArguments;
 	private Hashtable<String,String> properties;
 	private boolean debugMode;
-	private ThreadFactory threadFactory;
+	ThreadFactory threadFactory;
 	private LibrariesManager librariesManager;
 	private ApplicationClassLoader appClassLoader;
 	private Console console;
@@ -93,7 +94,7 @@ public final class Application {
 	private Map<String, Object> instances = new HashMap<>();
 	private Map<String, Object> data = new HashMap<>();
 	private LinkedList<Pair<Integer, Object>> toClose = new LinkedList<>();
-	private ArrayList<Thread> toInterrupt = new ArrayList<>();
+	private ArrayList<Thread> threads = new ArrayList<>();
 	private boolean stopping = false;
 	
 	public long getStartTime() {
@@ -144,10 +145,6 @@ public final class Application {
 	
 	public Map<String,String> getApplicationSpecificProperties() {
 		return properties;
-	}
-	
-	public ThreadFactory getThreadFactory() {
-		return threadFactory;
 	}
 	
 	public Console getConsole() {
@@ -247,14 +244,33 @@ public final class Application {
 		}
 	}
 	
-	/** Register a thread that must be interrupted on application shutdown. */
-	public void toInterruptOnShutdown(Thread t) {
-		synchronized (toInterrupt) { toInterrupt.add(t); }
+	public Thread createThread(ApplicationThread appThread) {
+		Mutable<Thread> t = new Mutable<>(null);
+		t.set(threadFactory.newThread(() -> {
+			try {
+				appThread.run();
+			} finally {
+				unregisterThread(t.get());
+			}
+		}));
+		registerThread(t.get(), appThread);
+		return t.get();
+	}
+	
+	/** Register a thread owns by this application. */
+	public void registerThread(Thread t, ApplicationThread appThread) {
+		Threading.registerApplicationThread(t, appThread);
+		synchronized (threads) {
+			threads.add(t);
+		}
 	}
 
-	/** Unregister a thread that must be interrupted on application shutdown. */
-	public void interrupted(Thread t) {
-		synchronized (toInterrupt) { toInterrupt.remove(t); }
+	/** Unregister a thread. */
+	public void unregisterThread(Thread t) {
+		Threading.unregisterApplicationThread(t);
+		synchronized (threads) {
+			threads.remove(t);
+		}
 	}
 	
 	public boolean isStopping() {
@@ -300,6 +316,29 @@ public final class Application {
 		return data.remove(name);
 	}
 	
+	void init() {
+		// init logging
+		console = new Console(this);
+		loggerFactory = new LoggerFactory(this);
+
+		if (isDebugMode()) {
+			console.out("---- Application " + artifact.toString() + " ----");
+			console.out("Application arguments:");
+			for (String arg : commandLineArguments)
+				console.out(" - " + arg);
+			console.out("Environment variables:");
+			for (Map.Entry<String,String> var : System.getenv().entrySet())
+				console.out(" - " + var.getKey() + "=" + var.getValue());
+			console.out("JVM Properties:");
+			for (Map.Entry<Object,Object> prop : System.getProperties().entrySet())
+				console.out(" - " + prop.getKey() + "=" + prop.getValue());
+			console.out("Application Properties:");
+			for (Map.Entry<String,String> prop : getApplicationSpecificProperties().entrySet())
+				console.out(" - " + prop.getKey() + "=" + prop.getValue());
+			console.out("-----------------------------------------");
+		}
+	}
+	
 	/** Method to call at the beginning of the application, typically in the main method. */
 	@SuppressWarnings({
 		"squid:S3776", // complexity: we do not want to split into sub-methods
@@ -311,8 +350,7 @@ public final class Application {
 		Map<String,String> properties,
 		boolean debugMode,
 		ThreadFactory threadFactory,
-		LibrariesManager librariesManager,
-		Appender defaultLogAppender
+		LibrariesManager librariesManager
 	) {
 		Application app = new Application(artifact, commandLineArguments, properties, debugMode, threadFactory, librariesManager);
 		
@@ -327,31 +365,9 @@ public final class Application {
 			app.setProperty(PROPERTY_LOG_DIRECTORY,
 				app.getProperty(SystemEnvironment.SYSTEM_PROPERTY_USER_HOME)
 				+ "/.lc.apps/" + app.getGroupId() + "/" + app.getArtifactId() + "/log");
-
-		if (app.isDebugMode()) {
-			Console c = app.getConsole();
-			c.out("---- Application " + artifact.toString() + " ----");
-			c.out("Application arguments:");
-			for (String arg : app.commandLineArguments)
-				c.out(" - " + arg);
-			c.out("Environment variables:");
-			for (Map.Entry<String,String> var : System.getenv().entrySet())
-				c.out(" - " + var.getKey() + "=" + var.getValue());
-			c.out("JVM Properties:");
-			for (Map.Entry<Object,Object> prop : System.getProperties().entrySet())
-				c.out(" - " + prop.getKey() + "=" + prop.getValue());
-			c.out("Application Properties:");
-			for (Map.Entry<String,String> prop : app.getApplicationSpecificProperties().entrySet())
-				c.out(" - " + prop.getKey() + "=" + prop.getValue());
-			c.out("-----------------------------------------");
-		}
 		
-		LCCore.initEnvironment();
-		
-		// init logging
-		app.loggerFactory = new LoggerFactory(app, defaultLogAppender);
-
 		// init LCCore with this application
+		LCCore.initEnvironment();
 		LCCore.start(app);
 
 		JoinPoint<Exception> loading = new JoinPoint<>();
@@ -394,7 +410,7 @@ public final class Application {
 	
 	/** Method to call at the beginning of the application, typically in the main method. */
 	public static IAsync<ApplicationBootstrapException> start(Artifact artifact, String[] args, boolean debugMode) {
-		return start(artifact, args, null, debugMode, Executors.defaultThreadFactory(), new DefaultLibrariesManager(), null);
+		return start(artifact, args, null, debugMode, Executors.defaultThreadFactory(), new DefaultLibrariesManager());
 	}
 
 	/** Stop this application and release resources. */
@@ -430,7 +446,8 @@ public final class Application {
 		}
 		
 		System.out.println(" * Stopping threads");
-		for (Thread t : new ArrayList<>(toInterrupt)) {
+		Threading.unregisterApplicationThreads(this);
+		for (Thread t : new ArrayList<>(threads)) {
 			if (!t.isAlive()) continue;
 			System.out.println("     - " + t);
 			t.interrupt();
@@ -481,7 +498,7 @@ public final class Application {
 	
 	/** Set a preference. */
 	public void setPreference(String name, String value) {
-		if (preferences.containsKey(name) && ObjectUtil.equalsOrNull(value, preferences.get(name)))
+		if (preferences.containsKey(name) && Objects.equals(value, preferences.get(name)))
 			return; // no change
 		preferences.put(name, value);
 		savePreferences();

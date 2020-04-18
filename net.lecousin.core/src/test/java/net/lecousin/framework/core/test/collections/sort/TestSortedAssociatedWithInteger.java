@@ -31,6 +31,12 @@ public abstract class TestSortedAssociatedWithInteger extends LCCoreAbstractTest
 		Assert.assertFalse(list.containsInstance(12, Integer.valueOf(9)));
 		Assert.assertFalse(list.containsInstance(12, Integer.valueOf(10)));
 		Assert.assertFalse(list.containsInstance(11, Integer.valueOf(11)));
+		Assert.assertEquals(elem1, list.get(10));
+		Assert.assertEquals(elem2, list.get(12));
+		Assert.assertNull(list.get(0));
+		Assert.assertNull(list.get(1));
+		Assert.assertNull(list.get(11));
+		Assert.assertNull(list.get(13));
 		list.clear();
 		Assert.assertTrue(list.isEmpty());
 		list.add(10, elem1);

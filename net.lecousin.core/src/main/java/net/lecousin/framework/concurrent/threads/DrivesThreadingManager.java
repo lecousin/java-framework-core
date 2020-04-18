@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import net.lecousin.framework.collections.map.MapUtil;
 import net.lecousin.framework.concurrent.threads.fixed.MonoThreadTaskManager;
@@ -19,17 +20,19 @@ import net.lecousin.framework.util.Triple;
 /** Handle TaskManagers for a drives. */
 public class DrivesThreadingManager {
 	
+	public static final String TASK_CONTEXT_FILE_ATTRIBUTE = "task.file";
+	
 	private static final String DRIVE = "Drive ";
 
 	/** Constructor. */
 	DrivesThreadingManager(
 		ThreadFactory threadFactory,
-		Class<? extends TaskPriorityManager> taskPriorityManagerClass,
+		Supplier<TaskPriorityManager> taskPriorityManagerSupplier,
 		DrivesProvider drivesProvider,
 		TaskManagerMonitor.Configuration driveMonitoring
 	) {
 		this.threadFactory = threadFactory;
-		this.taskPriorityManagerClass = taskPriorityManagerClass;
+		this.taskPriorityManagerSupplier = taskPriorityManagerSupplier;
 		this.driveMonitoring = driveMonitoring;
 		rootResources = new HashMap<>();
 		rootManagers = new HashMap<>();
@@ -43,9 +46,9 @@ public class DrivesThreadingManager {
 				Object resource = root;
 				TaskPriorityManager prio;
 				try {
-					prio = taskPriorityManagerClass.newInstance();
+					prio = taskPriorityManagerSupplier.get();
 				} catch (Exception e) {
-					Threading.getLogger().error("Unable to instantiate " + taskPriorityManagerClass.getName());
+					Threading.getLogger().error("Unable to instantiate task priority manager", e);
 					prio = new SimpleTaskPriorityManager();
 				}
 				TaskManager tm = new MonoThreadTaskManager(
@@ -62,7 +65,7 @@ public class DrivesThreadingManager {
 	}
 	
 	private ThreadFactory threadFactory;
-	private Class<? extends TaskPriorityManager> taskPriorityManagerClass;
+	private Supplier<TaskPriorityManager> taskPriorityManagerSupplier;
 	private Map<String, Object> rootResources;
 	private Map<String, TaskManager> rootManagers;
 	private Map<Object, TaskManager> managers;
@@ -174,9 +177,9 @@ public class DrivesThreadingManager {
 		boolean multiThread = driveAndPartitions.getValue3() != null && driveAndPartitions.getValue3().booleanValue();
 		TaskPriorityManager prio;
 		try {
-			prio = taskPriorityManagerClass.newInstance();
+			prio = taskPriorityManagerSupplier.get();
 		} catch (Exception e) {
-			Threading.getLogger().error("Unable to instantiate " + taskPriorityManagerClass.getName());
+			Threading.getLogger().error("Unable to instantiate task priority manager", e);
 			prio = new SimpleTaskPriorityManager();
 		}
 		TaskManager tm;

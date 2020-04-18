@@ -7,8 +7,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-
-import net.lecousin.framework.util.ObjectUtil;
+import java.util.Objects;
 
 /** Utility methods for arrays. */
 public final class ArrayUtil {
@@ -146,7 +145,7 @@ public final class ArrayUtil {
 		if (a2 == null) return false;
 		if (a1.length != a2.length) return false;
 		for (int i = 0; i < a1.length; ++i)
-			if (!ObjectUtil.equalsOrNull(a1[i], a2[i])) return false;
+			if (!Objects.equals(a1[i], a2[i])) return false;
 		return true;
 	}
 	
@@ -155,7 +154,7 @@ public final class ArrayUtil {
 		if (a1 == null) return a2 == null;
 		if (a2 == null) return false;
 		for (int i = 0; i < len; ++i)
-			if (!ObjectUtil.equalsOrNull(a1[off1 + i], a2[off2 + i]))
+			if (!Objects.equals(a1[off1 + i], a2[off2 + i]))
 				return false;
 		return true;
 	}
@@ -420,7 +419,7 @@ public final class ArrayUtil {
 		int found = 0;
 		for (int i = 0; i < a.length; ++i) {
 			T e = a[i];
-			if (found == 0 && ObjectUtil.equalsOrNull(e, elem)) {
+			if (found == 0 && Objects.equals(e, elem)) {
 				found = 1;
 				continue;
 			}

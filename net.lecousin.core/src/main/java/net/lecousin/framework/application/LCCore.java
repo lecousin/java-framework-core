@@ -123,6 +123,7 @@ public final class LCCore {
 			set(env);
 		}
 		instance.add(app);
+		app.init();
 		if (!isStarted())
 			start();
 	}

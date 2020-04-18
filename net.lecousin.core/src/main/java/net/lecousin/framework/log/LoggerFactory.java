@@ -45,15 +45,13 @@ public class LoggerFactory {
 	private Map<String, Appender> appenders = new HashMap<>();
 	
 	/** Constructor. */
-	public LoggerFactory(Application app, Appender defaultAppender) {
+	public LoggerFactory(Application app) {
 		application = app;
-		thread = new LoggerThread(app);
-		if (defaultAppender == null)
-			defaultAppender = new ConsoleAppender(app.getConsole(), app.isReleaseMode() ? Level.INFO : Level.DEBUG,
-				new LogPattern("%d{HH:mm:ss.SSS} [%level] <%logger{20}> %m"));
+		thread = new LoggerThread(application);
+		ConsoleAppender defaultAppender = new ConsoleAppender(app.getConsole(), app.isReleaseMode() ? Level.INFO : Level.DEBUG,
+			new LogPattern("%d{HH:mm:ss.SSS} [%level] <%logger{20}> %m"));
 		rootLogger = new Logger(this, null, "", defaultAppender, null);
 		loggers.put("", rootLogger);
-		
 		String url = app.getProperty(Application.PROPERTY_LOGGING_CONFIGURATION_URL);
 		if (url != null)
 			configure(url);

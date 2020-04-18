@@ -20,6 +20,9 @@ public interface Sorted<T> extends Iterable<T> {
 	/** Clear this collection. */
 	void clear();
 	
+	/** Return true if the implementation supports to insert the same value several times. */
+	boolean insertSameValueSupported();
+	
 	/** Return an iterator that iterates on the correct order. */
 	Iterator<T> orderedIterator();
 	
@@ -46,6 +49,9 @@ public interface Sorted<T> extends Iterable<T> {
 		/** Remove the first occurrence of the given instance. */
 		void removeInstance(long value, T element);
 		
+		/** Get the element associated with given value or null. */
+		T get(long value);
+		
 	}
 	
 	/** Interface for sorted list where elements are associated with integer values to sort them.
@@ -68,6 +74,9 @@ public interface Sorted<T> extends Iterable<T> {
 		/** Remove the first occurrence of the given instance. */
 		void removeInstance(int value, T element);
 		
+		/** Get the element associated with given value or null. */
+		T get(int value);
+
 	}
 	
 }

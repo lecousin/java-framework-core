@@ -37,7 +37,7 @@ public class LongMapRBT<T> implements LongMap<T> {
 			size++;
 			return null;
 		}
-		RedBlackTreeLong.Node<T> node = bucket.get(key);
+		RedBlackTreeLong.Node<T> node = bucket.getNode(key);
 		if (node == null) {
 			bucket.add(key, entry);
 			size++;
@@ -54,10 +54,7 @@ public class LongMapRBT<T> implements LongMap<T> {
 		RedBlackTreeLong<T> bucket = buckets[h];
 		if (bucket == null)
 			return null;
-		RedBlackTreeLong.Node<T> node = bucket.get(key);
-		if (node == null)
-			return null;
-		return node.getElement();
+		return bucket.get(key);
 	}
 
 	@Override
@@ -66,12 +63,12 @@ public class LongMapRBT<T> implements LongMap<T> {
 		RedBlackTreeLong<T> bucket = buckets[h];
 		if (bucket == null)
 			return null;
-		RedBlackTreeLong.Node<T> node = bucket.get(key);
-		if (node == null)
+		T element = bucket.get(key);
+		if (element == null)
 			return null;
-		bucket.remove(node);
+		bucket.removeInstance(key, element);
 		size--;
-		return node.getElement();
+		return element;
 	}
 
 	@Override

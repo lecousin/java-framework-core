@@ -37,7 +37,7 @@ public class IntegerMapRBT<T> implements IntegerMap<T> {
 			size++;
 			return null;
 		}
-		RedBlackTreeInteger.Node<T> node = bucket.get(key);
+		RedBlackTreeInteger.Node<T> node = bucket.getNode(key);
 		if (node == null) {
 			bucket.add(key, entry);
 			size++;
@@ -54,10 +54,7 @@ public class IntegerMapRBT<T> implements IntegerMap<T> {
 		RedBlackTreeInteger<T> bucket = buckets[h];
 		if (bucket == null)
 			return null;
-		RedBlackTreeInteger.Node<T> node = bucket.get(key);
-		if (node == null)
-			return null;
-		return node.getElement();
+		return bucket.get(key);
 	}
 
 	@Override
@@ -66,12 +63,12 @@ public class IntegerMapRBT<T> implements IntegerMap<T> {
 		RedBlackTreeInteger<T> bucket = buckets[h];
 		if (bucket == null)
 			return null;
-		RedBlackTreeInteger.Node<T> node = bucket.get(key);
-		if (node == null)
+		T element = bucket.get(key);
+		if (element == null)
 			return null;
-		bucket.remove(node);
+		bucket.removeInstance(key, element);
 		size--;
-		return node.getElement();
+		return element;
 	}
 
 	@Override

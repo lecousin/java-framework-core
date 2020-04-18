@@ -224,14 +224,16 @@ public class MemoryManager {
 	/** Log description of memory manageable instances. */
 	public static void logManageableContent() {
 		synchronized (managed) {
-			logger.debug("Memory managed:");
+			StringBuilder s = new StringBuilder(1024);
+			s.append("Memory managed:");
 			for (IMemoryManageable m : managed) {
-				logger.debug(" - " + m.getDescription());
+				s.append("\n - ").append(m.getDescription());
 				List<String> list = m.getItemsDescription();
 				if (list != null)
-					for (String s : list)
-						logger.debug("    - " + s);
+					for (String item : list)
+						s.append("\n    - ").append(item);
 			}
+			logger.debug(s.toString());
 		}
 	}
 	

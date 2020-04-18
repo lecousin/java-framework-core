@@ -3,12 +3,13 @@ package net.lecousin.framework.collections.sort;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-
-import net.lecousin.framework.util.ObjectUtil;
+import java.util.Objects;
 
 /**
  * Sorted list, where each element is associated with an integer value used to compare elements.
- * To sort the elements, a <a href=https://en.wikipedia.org/wiki/Red%E2%80%93black_tree">red-black tree</a> is used.
+ * To sort the elements, a <a href=https://en.wikipedia.org/wiki/Red%E2%80%93black_tree">red-black tree</a> is used.<br/>
+ * <strong>Important: </strong> Same value must not be inserted several times. If you need several elements with the same value,
+ * use a Collection associated to each value.
  * @param <T> type of elements
  */
 public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
@@ -56,6 +57,11 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     public void clear() {
     	root = first = last = null;
     }
+    
+    @Override
+    public boolean insertSameValueSupported() {
+    	return false;
+    }
 
 	// ----------------
 	// ---- search ----
@@ -64,7 +70,7 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
 	/**
      * Returns the node associated to the given key, or null if no such key exists.
      */
-	public Node<T> get(int value) {
+	public Node<T> getNode(int value) {
     	if (root == null) return null;
     	if (value == first.value) return first;
     	if (value == last.value) return last;
@@ -72,6 +78,12 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     	if (value > last.value) return null;
     	return get(root, value);
     }
+	
+	@Override
+	public T get(int value) {
+		Node<T> n = getNode(value);
+		return n != null ? n.element : null;
+	}
 
     // value associated with the given key in subtree rooted at x; null if no such key
     private Node<T> get(Node<T> x, int key) {
@@ -225,8 +237,8 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     	if (root == null) return false;
     	if (value < first.value) return false;
     	if (value > last.value) return false;
-    	if (value == first.value && ObjectUtil.equalsOrNull(element, first.element)) return true;
-    	if (value == last.value && ObjectUtil.equalsOrNull(element, last.element)) return true;
+    	if (value == first.value) return Objects.equals(first.element, element);
+    	if (value == last.value) return Objects.equals(last.element, element);
     	return contains(root, value, element);
     }
     
@@ -234,7 +246,7 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
         while (x != null) {
         	if (key < x.value) x = x.left;
         	else {
-        		if (x.value == key && ObjectUtil.equalsOrNull(x.element, element)) return true;
+        		if (x.value == key) return Objects.equals(x.element, element);
         		x = x.right;
         	}
         }
@@ -250,16 +262,16 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     	if (root == null) return false;
     	if (value < first.value) return false;
     	if (value > last.value) return false;
-    	if (value == first.value && instance == first.element) return true;
-    	if (value == last.value && instance == last.element) return true;
+    	if (value == first.value) return first.element == instance;
+    	if (value == last.value) return last.element == instance;
     	return containsInstance(root, value, instance);
     }
     
-    private boolean containsInstance(Node<T> x, int key, T instance) {
+    private boolean containsInstance(Node<T> x, int key, T element) {
         while (x != null) {
         	if (key < x.value) x = x.left;
         	else {
-        		if (x.value == key && x.element == instance) return true;
+        		if (x.value == key) return x.element == element;
         		x = x.right;
         	}
         }
@@ -359,13 +371,15 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
 			} else {
 				h.left = add(value, element, h.left);
 			}
-		} else if (value >= h.value) {
+		} else if (value > h.value) {
 			if (h.right == null) {
 				h.right = new Node<>(value, element, true);
 				if (value > last.value || last == h) last = h.right;
 			} else {
 				h.right = add(value, element, h.right);
 			}
+		} else {
+			throw new IllegalStateException("Value " + value + " already exists");
 		}
 
 		if (h.right != null && h.right.red && (h.left == null || !h.left.red))
@@ -472,7 +486,7 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
                 return null;
             if (h.right == null || (!h.right.red && (h.right.left == null || !h.right.left.red)))
                 h = moveRedRight(h);
-            if (node.value == h.value && ObjectUtil.equalsOrNull(node.element, h.element)) {
+            if (node.value == h.value) {
                 Node<T> x = min(h.right);
                 h.value = x.value;
                 h.element = x.element;
@@ -491,11 +505,11 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
      */
     @Override
     public void remove(int key, T element) {
-    	if (first.value == key && ObjectUtil.equalsOrNull(element, first.element)) {
+    	if (first.value == key) {
     		removeMin();
     		return;
     	}
-    	if (last.value == key && ObjectUtil.equalsOrNull(element, last.element)) {
+    	if (last.value == key) {
     		removeMax();
     		return;
     	}
@@ -503,30 +517,32 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     	if ((root.left == null || !root.left.red) && (root.right == null || !root.right.red))
             root.red = true;
 
-        root = remove(root, key, element);
+        root = remove(root, key);
         if (root != null) root.red = false;
     }
     
     // delete the key-value pair with the given key rooted at h
-    private Node<T> remove(Node<T> h, int key, T element) { 
+    private Node<T> remove(Node<T> h, int key) { 
         if (key < h.value)  {
         	if (h.left == null || (!h.left.red && (h.left.left == null || !h.left.left.red)))
                 h = moveRedLeft(h);
-            h.left = remove(h.left, key, element);
+            h.left = remove(h.left, key);
         } else {
             if (h.left != null && h.left.red)
                 h = rotateRight(h);
-            if (key == h.value && ObjectUtil.equalsOrNull(element, h.element) && (h.right == null))
+            if (key == h.value && (h.right == null))
                 return null;
             if (h.right == null || (!h.right.red && (h.right.left == null || !h.right.left.red)))
                 h = moveRedRight(h);
-            if (key == h.value && ObjectUtil.equalsOrNull(element, h.element)) {
+            if (key == h.value) {
                 Node<T> x = min(h.right);
                 h.value = x.value;
                 h.element = x.element;
                 h.right = removeMin(h.right, false);
+                if (h.right == null && last == x)
+                	last = h;
             } else {
-            	h.right = remove(h.right, key, element);
+            	h.right = remove(h.right, key);
             }
         }
         return balance(h);
@@ -570,6 +586,8 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
                 h.value = x.value;
                 h.element = x.element;
                 h.right = removeMin(h.right, false);
+                if (h.right == null && last == x)
+                	last = h;
             } else {
             	h.right = removeKey(h.right, key);
             }
@@ -583,11 +601,11 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
      */
     @Override
     public void removeInstance(int key, T instance) {
-    	if (first.value == key && instance == first.element) {
+    	if (first.value == key) {
     		removeMin();
     		return;
     	}
-    	if (last.value == key && instance == last.element) {
+    	if (last.value == key) {
     		removeMax();
     		return;
     	}
@@ -596,29 +614,31 @@ public class RedBlackTreeInteger<T> implements Sorted.AssociatedWithInteger<T> {
     	if ((root.left == null || !root.left.red) && (root.right == null || !root.right.red))
             root.red = true;
 
-        root = removeInstance(root, key, instance);
+        root = removeInstance(root, key);
         if (root != null) root.red = false;
     }
     
-    private Node<T> removeInstance(Node<T> h, int key, T instance) { 
+    private Node<T> removeInstance(Node<T> h, int key) { 
         if (key < h.value)  {
         	if (h.left == null || (!h.left.red && (h.left.left == null || !h.left.left.red)))
                 h = moveRedLeft(h);
-            h.left = removeInstance(h.left, key, instance);
+            h.left = removeInstance(h.left, key);
         } else {
             if (h.left != null && h.left.red)
                 h = rotateRight(h);
-            if (key == h.value && instance == h.element && (h.right == null))
+            if (key == h.value && (h.right == null))
                 return null;
             if (h.right == null || (!h.right.red && (h.right.left == null || !h.right.left.red)))
                 h = moveRedRight(h);
-            if (key == h.value && instance == h.element) {
+            if (key == h.value) {
                 Node<T> x = min(h.right);
                 h.value = x.value;
                 h.element = x.element;
                 h.right = removeMin(h.right, false);
+                if (h.right == null && last == x)
+                	last = h;
             } else {
-            	h.right = removeInstance(h.right, key, instance);
+            	h.right = removeInstance(h.right, key);
             }
         }
         return balance(h);

@@ -3,8 +3,7 @@ package net.lecousin.framework.collections;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
-import net.lecousin.framework.util.ObjectUtil;
+import java.util.Objects;
 
 /**
  * Tree structure where each node contains an element of type T, and sub-nodes as a Tree.
@@ -66,7 +65,7 @@ public class Tree<T> {
 	 */
 	public boolean remove(T element) {
 		for (Iterator<Node<T>> it = nodes.iterator(); it.hasNext(); )
-			if (ObjectUtil.equalsOrNull(it.next().element, element)) {
+			if (Objects.equals(it.next().element, element)) {
 				it.remove();
 				return true;
 			}

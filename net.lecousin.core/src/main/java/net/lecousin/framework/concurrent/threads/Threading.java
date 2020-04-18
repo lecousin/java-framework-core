@@ -1,12 +1,18 @@
 package net.lecousin.framework.concurrent.threads;
 
+import java.io.Closeable;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ThreadFactory;
+import java.util.function.Supplier;
 
+import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.Blockable;
@@ -18,6 +24,8 @@ import net.lecousin.framework.concurrent.threads.priority.SimpleTaskPriorityMana
 import net.lecousin.framework.concurrent.threads.priority.TaskPriorityManager;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.util.AsyncCloseable;
+import net.lecousin.framework.util.DebugUtil;
+import net.lecousin.framework.util.ThreadUtil;
 
 /**
  * Utility class to initialize and stop multi-threading, and utiliy methods for multi-threading.
@@ -42,42 +50,62 @@ public final class Threading {
 	public static boolean traceTaskTime = System.getProperty("lc.traceTaskTime") != null;
 	public static long debugListenersTakingMoreThanMilliseconds = 20;
 	
+	private static long logThreadingInterval = 30000;
+	private static ThreadingLogger loggerThread;
+	
+	private static ArrayList<Thread> systemThreadsOnStart = new ArrayList<>();
+	
+	public static void setLogThreadingInterval(long interval) {
+		logThreadingInterval = interval;
+	}
+
 	/**
 	 * Initialize multi-threading.
 	 * This method is called by the {@link net.lecousin.framework.application.LCCore.Environment} instance on initialization.
 	 * @param threadFactory factory to use when creating threads
-	 * @param taskPriorityManagerClass the class to use to manage priority of tasks
 	 * @param nbCPUThreads number of threads to use for CPU tasks,
 	 *     0 or negative value means the number of available processors returned by {@link Runtime#availableProcessors()}
+	 * @param cpuTaskPriorityManagerSupplier the class to use to manage priority of tasks
+	 * @param cpuMonitoring monitoring configuration for CPU threads
 	 * @param drivesProvider provides physical drives and associated mount points.
 	 *     If null, {@link File#listRoots()} is used and each returned root is considered as a physical drive.
 	 *     This may be changed later on by calling {@link DrivesThreadingManager#setDrivesProvider(DrivesProvider)}.
+	 * @param drivesTaskPriorityManagerSupplier priority manager for drives task
+	 * @param driveMonitoring monitoring configuration for drives threads
 	 * @param nbUnmanagedThreads number of threads to use for unmanaged tasks.
 	 *     If 0 or negative, maximum 100 threads will be used.
+	 * @param unmanagedTaskPriorityManagerSupplier priority manager to use for unmanaged tasks
+	 * @param unmanagedMonitoring monitoring configuration for unmanaged threads
 	 */
 	@SuppressWarnings("java:S107") // number of parameters
 	public static void init(
 		ThreadFactory threadFactory,
-		Class<? extends TaskPriorityManager> taskPriorityManagerClass,
 		int nbCPUThreads,
+		Supplier<TaskPriorityManager> cpuTaskPriorityManagerSupplier,
 		TaskManagerMonitor.Configuration cpuMonitoring,
 		DrivesProvider drivesProvider,
+		Supplier<TaskPriorityManager> drivesTaskPriorityManagerSupplier,
 		TaskManagerMonitor.Configuration driveMonitoring,
 		int nbUnmanagedThreads,
+		Supplier<TaskPriorityManager> unmanagedTaskPriorityManagerSupplier,
 		TaskManagerMonitor.Configuration unmanagedMonitoring
 	) {
 		if (isInitialized()) throw new IllegalStateException("Threading has been already initialized.");
+		
+		systemThreadsOnStart.addAll(Thread.getAllStackTraces().keySet());
+		systemThreadsOnStart.trimToSize();
+		
 		logger = LCCore.get().getThreadingLogger();
 		TaskScheduler.init();
 		TaskPriorityManager prioCpu;
-		TaskPriorityManager prioDrive;
+		TaskPriorityManager prioUnmanaged;
 		try {
-			prioCpu = taskPriorityManagerClass.newInstance();
-			prioDrive = taskPriorityManagerClass.newInstance();
+			prioCpu = cpuTaskPriorityManagerSupplier.get();
+			prioUnmanaged = unmanagedTaskPriorityManagerSupplier.get();
 		} catch (Exception e) {
-			Threading.getLogger().error("Unable to instantiate " + taskPriorityManagerClass.getName());
+			Threading.getLogger().error("Unable to instantiate task priority manager", e);
 			prioCpu = new SimpleTaskPriorityManager();
-			prioDrive = new SimpleTaskPriorityManager();
+			prioUnmanaged = new SimpleTaskPriorityManager();
 		}
 		cpuManager = new MultiThreadTaskManager(
 			"CPU",
@@ -89,26 +117,60 @@ public final class Threading {
 		);
 		cpuManager.start();
 		resources.put(CPU, cpuManager);
-		drivesManager = new DrivesThreadingManager(threadFactory, taskPriorityManagerClass, drivesProvider, driveMonitoring);
+		drivesManager = new DrivesThreadingManager(threadFactory, drivesTaskPriorityManagerSupplier, drivesProvider, driveMonitoring);
 		unmanagedManager = new ThreadPoolTaskManager(
-			"Unmanaged tasks manager", UNMANAGED, nbUnmanagedThreads, threadFactory, prioDrive, unmanagedMonitoring);
+			"Unmanaged tasks manager", UNMANAGED, nbUnmanagedThreads, threadFactory, prioUnmanaged, unmanagedMonitoring);
 		resources.put(UNMANAGED, unmanagedManager);
 		LCCore.get().toClose(new StopMultiThreading());
 		synchronized (resources) {
 			for (TaskManager tm : resources.values())
 				tm.started();
 		}
+		
+		loggerThread = new ThreadingLogger();
+		loggerThread.start();
 	}
 	
 	public static boolean isInitialized() {
 		return cpuManager != null;
 	}
 	
+	private static class ThreadingLogger extends Thread implements Closeable {
+		ThreadingLogger() {
+			super("Threading logger");
+		}
+		
+		private boolean closed = false;
+		private final Object lock = new Object();
+		
+		@Override
+		public void run() {
+			do {
+				synchronized (lock) {
+					if (!ThreadUtil.wait(lock, logThreadingInterval))
+						return;
+				}
+				if (closed) return;
+				logger.debug("\n" + Threading.debug());
+			} while (true);
+		}
+		
+		@Override
+		public void close() {
+			synchronized (lock) {
+				closed = true;
+				lock.notify();
+			}
+		}
+	}
+
+	
 	@SuppressWarnings("squid:S106") // print to console
 	private static class StopMultiThreading implements AsyncCloseable<Exception> {
 		@Override
 		@SuppressWarnings({"squid:S2142", "squid:S3776"})
 		public IAsync<Exception> closeAsync() {
+			loggerThread.close();
 			Async<Exception> sp = new Async<>();
 			Thread t = new Thread("Stopping tasks managers") {
 				@Override
@@ -217,6 +279,7 @@ public final class Threading {
 	
 	private static Map<Thread, TaskExecutor> executors = new HashMap<>();
 	private static Map<Thread, Blockable> blockables = new HashMap<>();
+	private static Map<Thread, ApplicationThread> appThreads = new HashMap<>();
 	
 	/** Register the executor for the given thread. */
 	public static void registerBlockable(Blockable handler, Thread thread) {
@@ -274,6 +337,38 @@ public final class Threading {
 		return executor != null ? executor.getCurrentTask() : null;
 	}
 	
+	public static void registerApplicationThread(Thread thread, ApplicationThread app) {
+		synchronized (appThreads) {
+			if (LCCore.getApplication() != app.getApplication() ||
+				appThreads.containsKey(thread) ||
+				executors.containsKey(thread))
+				throw new IllegalStateException();
+			appThreads.put(thread, app);
+		}
+	}
+	
+	public static void unregisterApplicationThread(Thread thread) {
+		synchronized (appThreads) {
+			ApplicationThread a = appThreads.get(thread);
+			if (a == null)
+				return;
+			if (LCCore.getApplication() != a.getApplication())
+				throw new IllegalStateException();
+			appThreads.remove(thread);
+		}
+	}
+	
+	public static void unregisterApplicationThreads(Application app) {
+		synchronized (appThreads) {
+			List<Thread> threads = new LinkedList<>();
+			for (Map.Entry<Thread, ApplicationThread> e : appThreads.entrySet())
+				if (e.getValue().getApplication() == app)
+					threads.add(e.getKey());
+			for (Thread t : threads)
+				appThreads.remove(t);
+		}
+	}
+	
 	/** Set the monitoring configuration for CPU tasks. */
 	public static void setCpuMonitorConfiguration(TaskManagerMonitor.Configuration config) {
 		if (!LCCore.get().currentThreadIsSystem()) throw new IllegalThreadStateException();
@@ -298,6 +393,38 @@ public final class Threading {
 		for (TaskManager tm : resources.values()) {
 			tm.debug(s);
 			s.append("\r\n");
+		}
+		Set<Application> apps = new HashSet<>();
+		for (ApplicationThread at : appThreads.values())
+			apps.add(at.getApplication());
+		for (Application app : apps) {
+			s.append(" --- Threads status for application ").append(app.getFullName()).append(" ---\n");
+			for (ApplicationThread at : appThreads.values())
+				if (at.getApplication() == app)
+					at.debugStatus(s);
+		}
+		List<Thread> legalThreads = new LinkedList<>();
+		legalThreads.addAll(systemThreadsOnStart);
+		legalThreads.add(loggerThread); // this is us
+		legalThreads.add(TaskScheduler.get());
+		for (Map.Entry<Thread, TaskExecutor> e : executors.entrySet())
+			legalThreads.add(e.getKey());
+		for (TaskManager manager : resources.values())
+			legalThreads.add(manager.getMonitor().getThread());
+		legalThreads.addAll(appThreads.keySet());
+		Map<Thread,StackTraceElement[]> threads = Thread.getAllStackTraces();
+		boolean first = true;
+		for (Map.Entry<Thread,StackTraceElement[]> e : threads.entrySet()) {
+			Thread t = e.getKey();
+			if (legalThreads.contains(t))
+				continue;
+			if (first) {
+				s.append(" --- Threads started without being attached to an application ---\n");
+				first = false;
+			}
+			s.append(" - ").append(t.getName()).append(" [").append(t.getThreadGroup().getName()).append(']');
+			DebugUtil.createStackTrace(s, e.getValue());
+			s.append('\n');
 		}
 		return s.toString();
 	}

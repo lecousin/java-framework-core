@@ -27,6 +27,7 @@ public class TestRedBlackTreeLong extends TestSortedAssociatedWithLong {
 			Assert.assertFalse(n == null);
 			Iterator<Long> it = order.iterator();
 			Assert.assertEquals(it.next().longValue(), n.getValue());
+			Assert.assertEquals(tree.nodeIteratorOrdered().next(), n);
 			Node<Object> n2 = n;
 			while (it.hasNext()) {
 				long val = n2.getValue();
@@ -44,6 +45,7 @@ public class TestRedBlackTreeLong extends TestSortedAssociatedWithLong {
 			Assert.assertFalse(n == null);
 			it = order.descendingIterator();
 			Assert.assertEquals(it.next().longValue(), n.getValue());
+			Assert.assertEquals(tree.nodeIteratorReverse().next(), n);
 			n2 = n;
 			while (it.hasNext()) {
 				long val = n2.getValue();
@@ -74,11 +76,11 @@ public class TestRedBlackTreeLong extends TestSortedAssociatedWithLong {
 		Assert.assertNull(tree.getPrevious(51));
 		Assert.assertNull(tree.getPrevious(50));
 		Assert.assertNull(tree.getPrevious(52));
-		Assert.assertNull(tree.getPrevious(tree.get(51)));
+		Assert.assertNull(tree.getPrevious(tree.getNode(51)));
 		Assert.assertNull(tree.getNext(51));
 		Assert.assertNull(tree.getNext(50));
 		Assert.assertNull(tree.getNext(52));
-		Assert.assertNull(tree.getNext(tree.get(51)));
+		Assert.assertNull(tree.getNext(tree.getNode(51)));
 		Assert.assertTrue(tree.contains(51, o));
 		tree.removeKey(51);
 		Assert.assertEquals(0, tree.size());
@@ -178,82 +180,6 @@ public class TestRedBlackTreeLong extends TestSortedAssociatedWithLong {
 		Assert.assertEquals(10, tree.searchNearestHigher(10, true).getValue());
 		Assert.assertEquals(20, tree.searchNearestHigher(11, false).getValue());
 		Assert.assertNull(tree.searchNearestHigher(99, false));
-	}
-
-	
-	@Test
-	public void testAddAndRemoveWithCommonValues() {
-		RedBlackTreeLong<Object> tree = new RedBlackTreeLong<Object>();
-		Object o1 = new Object();
-		Object o2 = new Object();
-		Object o3 = new Object();
-		Object o4 = new Object();
-		tree.add(10, o1);
-		tree.add(10, o2);
-		tree.add(10, o3);
-		tree.add(10, o4);
-		Assert.assertEquals(4, tree.size());
-		
-		tree.remove(getNode(tree, o2));
-		Assert.assertEquals(3, tree.size());
-		Assert.assertTrue(tree.contains(10, o1));
-		Assert.assertFalse(tree.contains(10, o2));
-		Assert.assertTrue(tree.contains(10, o3));
-		Assert.assertTrue(tree.contains(10, o4));
-
-		tree.remove(getNode(tree, o4));
-		Assert.assertEquals(2, tree.size());
-		Assert.assertTrue(tree.contains(10, o1));
-		Assert.assertFalse(tree.contains(10, o2));
-		Assert.assertTrue(tree.contains(10, o3));
-		Assert.assertFalse(tree.contains(10, o4));
-		
-		tree.add(10, o2);
-		Assert.assertEquals(3, tree.size());
-		Assert.assertTrue(tree.contains(10, o1));
-		Assert.assertTrue(tree.contains(10, o2));
-		Assert.assertTrue(tree.contains(10, o3));
-		Assert.assertFalse(tree.contains(10, o4));
-		
-		tree.remove(getNode(tree, o1));
-		Assert.assertEquals(2, tree.size());
-		Assert.assertFalse(tree.contains(10, o1));
-		Assert.assertTrue(tree.contains(10, o2));
-		Assert.assertTrue(tree.contains(10, o3));
-		Assert.assertFalse(tree.contains(10, o4));
-
-		tree.add(10, o1);
-		Assert.assertEquals(3, tree.size());
-		Assert.assertTrue(tree.contains(10, o1));
-		Assert.assertTrue(tree.contains(10, o2));
-		Assert.assertTrue(tree.contains(10, o3));
-		Assert.assertFalse(tree.contains(10, o4));
-
-		tree.remove(getNode(tree, o2));
-		Assert.assertEquals(2, tree.size());
-		Assert.assertTrue(tree.contains(10, o1));
-		Assert.assertFalse(tree.contains(10, o2));
-		Assert.assertTrue(tree.contains(10, o3));
-		Assert.assertFalse(tree.contains(10, o4));
-
-		tree.remove(getNode(tree, o1));
-		Assert.assertEquals(1, tree.size());
-		Assert.assertFalse(tree.contains(10, o1));
-		Assert.assertFalse(tree.contains(10, o2));
-		Assert.assertTrue(tree.contains(10, o3));
-		Assert.assertFalse(tree.contains(10, o4));
-		
-		tree.remove(getNode(tree, o3));
-		Assert.assertEquals(0, tree.size());
-	}
-
-	private static RedBlackTreeLong.Node<Object> getNode(RedBlackTreeLong<Object> tree, Object o) {
-		for (Iterator<RedBlackTreeLong.Node<Object>> it = tree.nodeIterator(); it.hasNext(); ) {
-			RedBlackTreeLong.Node<Object> node = it.next();
-			if (node.getElement().equals(o))
-				return node;
-		}
-		throw new AssertionError("Node not found");
 	}
 
 }

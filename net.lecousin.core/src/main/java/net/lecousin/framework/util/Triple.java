@@ -4,6 +4,7 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Objects;
 
 /** Object that contains 3 objects.
  * @param <T1> type of first object
@@ -44,9 +45,9 @@ public class Triple<T1,T2,T3> {
     @Override
     public boolean equals(Object obj) {
     	return (obj instanceof Triple) &&
-    		ObjectUtil.equalsOrNull(value1, ((Triple<?,?,?>)obj).value1) &&
-    		ObjectUtil.equalsOrNull(value2, ((Triple<?,?,?>)obj).value2) &&
-    		ObjectUtil.equalsOrNull(value3, ((Triple<?,?,?>)obj).value3);
+    			Objects.equals(value1, ((Triple<?,?,?>)obj).value1) &&
+    			Objects.equals(value2, ((Triple<?,?,?>)obj).value2) &&
+    			Objects.equals(value3, ((Triple<?,?,?>)obj).value3);
     }
     
     @Override

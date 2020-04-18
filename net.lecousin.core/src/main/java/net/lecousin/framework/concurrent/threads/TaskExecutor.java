@@ -77,6 +77,10 @@ public abstract class TaskExecutor implements Blockable {
 		return aside;
 	}
 	
+	public TaskManager getTaskManager() {
+		return manager;
+	}
+	
 	protected abstract void threadLoop();
 	
 	protected abstract void unblocked(long startBlock, long startWait, long endWait, long endBlock);

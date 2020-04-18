@@ -92,7 +92,7 @@ public abstract class ArrayCache<T> implements IMemoryManageable {
 			if (acceptGreater)
 				node = arraysBySize.searchNearestHigher(size, true);
 			else
-				node = arraysBySize.get(size);
+				node = arraysBySize.getNode(size);
 			// limit to 3/2 of the size
 			if (node != null && acceptGreater && node.getValue() > size * 3 / 2)
 				node = null;
@@ -122,7 +122,7 @@ public abstract class ArrayCache<T> implements IMemoryManageable {
 		if (len < 16) return;
 		synchronized (arraysBySize) {
 			if (totalSize + len > maxTotalSize) return;
-			Node<ArraysBySize<T>> node = arraysBySize.get(len);
+			Node<ArraysBySize<T>> node = arraysBySize.getNode(len);
 			if (node == null) {
 				ArraysBySize<T> arrays = new ArraysBySize<>();
 				arrays.arrays = new TurnArray<>(

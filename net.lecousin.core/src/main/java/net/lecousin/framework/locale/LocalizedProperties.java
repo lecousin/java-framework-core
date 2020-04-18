@@ -33,7 +33,6 @@ import net.lecousin.framework.memory.IMemoryManageable;
 import net.lecousin.framework.memory.MemoryManager;
 import net.lecousin.framework.text.CharArrayStringBuffer;
 import net.lecousin.framework.util.ClassUtil;
-import net.lecousin.framework.util.ObjectUtil;
 
 /**
  * Properties loaded from localized properties files, organized by namespace.
@@ -295,7 +294,7 @@ public class LocalizedProperties implements IMemoryManageable {
 	
 	private static String replaceValues(String s, Serializable[] values) {
 		for (int i = 0; i < values.length; ++i)
-			s = s.replace("{" + i + "}", ObjectUtil.toString(values[i]));
+			s = s.replace("{" + i + "}", values[i] != null ? values[i].toString() : "null");
 		return s;
 	}
 	

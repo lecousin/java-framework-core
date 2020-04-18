@@ -44,53 +44,66 @@ public class RedBlackTreeLongByRange<T> implements Sorted.AssociatedWithLong<T> 
 	}
 	
 	@Override
+	public boolean insertSameValueSupported() {
+		return false;
+	}
+	
+	@Override
 	public void add(long value, T element) {
 		long r = value / rangeSize;
-		Node<RedBlackTreeLong<T>> e = ranges.get(r);
+		RedBlackTreeLong<T> e = ranges.get(r);
 		if (e == null) {
 			RedBlackTreeLong<T> rbt = new RedBlackTreeLong<>();
 			rbt.add(value, element);
 			ranges.add(r, rbt);
 		} else {
-			e.getElement().add(value, element);
+			e.add(value, element);
 		}
 		size++;
+	}
+	
+	@Override
+	public T get(long value) {
+		long r = value / rangeSize;
+		RedBlackTreeLong<T> e = ranges.get(r);
+		if (e == null) return null;
+		return e.get(value);
 	}
 
 	@Override
 	public boolean contains(long value, T element) {
 		long r = value / rangeSize;
-		Node<RedBlackTreeLong<T>> e = ranges.get(r);
+		RedBlackTreeLong<T> e = ranges.get(r);
 		if (e == null) return false;
-		return e.getElement().contains(value, element);
+		return e.contains(value, element);
 	}
 	
 	@Override
 	public boolean containsInstance(long value, T element) {
 		long r = value / rangeSize;
-		Node<RedBlackTreeLong<T>> e = ranges.get(r);
+		RedBlackTreeLong<T> e = ranges.get(r);
 		if (e == null) return false;
-		return e.getElement().containsInstance(value, element);
+		return e.containsInstance(value, element);
 	}
 	
 	@Override
 	public void remove(long value, T element) {
 		long r = value / rangeSize;
-		Node<RedBlackTreeLong<T>> e = ranges.get(r);
-		e.getElement().remove(value, element);
+		RedBlackTreeLong<T> e = ranges.get(r);
+		e.remove(value, element);
 		size--;
-		if (e.getElement().isEmpty())
-			ranges.removeInstance(r, e.getElement());
+		if (e.isEmpty())
+			ranges.removeInstance(r, e);
 	}
 
 	@Override
 	public void removeInstance(long value, T element) {
 		long r = value / rangeSize;
-		Node<RedBlackTreeLong<T>> e = ranges.get(r);
-		e.getElement().removeInstance(value, element);
+		RedBlackTreeLong<T> e = ranges.get(r);
+		e.removeInstance(value, element);
 		size--;
-		if (e.getElement().isEmpty())
-			ranges.removeInstance(r, e.getElement());
+		if (e.isEmpty())
+			ranges.removeInstance(r, e);
 	}
 	
 	/** Return the first node. */

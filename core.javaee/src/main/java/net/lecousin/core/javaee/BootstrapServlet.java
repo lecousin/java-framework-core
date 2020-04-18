@@ -29,7 +29,6 @@ public class BootstrapServlet extends GenericServlet {
 	@Override
 	@SuppressWarnings({
 		"squid:S2095", // input is closed
-		"squid:S106", // use System.err
 		"squid:S3776", // complexity
 	})
 	public void init() throws ServletException {
@@ -73,11 +72,11 @@ public class BootstrapServlet extends GenericServlet {
 		String threadFactoryName = getServletConfig().getInitParameter("threadFactory");
 		ThreadFactory threadFactory;
 		try {
-			threadFactory = (ManagedThreadFactory)ctx.lookup("java:comp/" + (threadFactoryName != null ? threadFactoryName : "DefaultManagedThreadFactory"));
+			threadFactory = (ManagedThreadFactory)ctx.lookup(threadFactoryName != null ? threadFactoryName : "java:comp/DefaultManagedThreadFactory");
 		} catch (Exception e) {
 			if (threadFactoryName != null)
 				throw new ServletException("Unable to lookup for ManagedThreadFactory", e);
-			System.err.println("No DefaultManagedThreadFactory found");
+			getServletContext().log("DefaultManagedThreadFactory not found", e);
 			threadFactory = Executors.defaultThreadFactory();
 		}
 
@@ -98,8 +97,7 @@ public class BootstrapServlet extends GenericServlet {
 			properties,
 			debugMode,
 			threadFactory,
-			new DefaultLibrariesManager(),
-			null
+			new DefaultLibrariesManager()
 		);
 	}
 	

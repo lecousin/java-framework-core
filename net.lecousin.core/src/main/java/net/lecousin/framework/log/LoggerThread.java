@@ -4,16 +4,44 @@ import net.lecousin.framework.application.Application;
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.concurrent.threads.ApplicationThread;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.appenders.Appender;
 import net.lecousin.framework.util.Pair;
 
 class LoggerThread {
 
-	@SuppressWarnings({"squid:S2142","squid:S106"})
 	LoggerThread(Application app) {
-		Async<Exception> stopped = new Async<>();
-		thread = app.getThreadFactory().newThread(() -> {
+		this.app = app;
+		thread = app.createThread(new Worker());
+		thread.setName("Logger for " + app.getGroupId() + "." + app.getArtifactId() + " " + app.getVersion().toString());
+		if (app.isStopping()) return;
+		thread.start();
+		app.toClose(100001, () -> {
+			stop = true;
+			synchronized (logs) {
+				logs.notify();
+			}
+			return stopped;
+		});
+	}
+	
+	private Application app;
+	private Thread thread;
+	Async<Exception> stopped = new Async<>();
+	private TurnArray<Pair<Appender,Log>> logs = new TurnArray<>(200);
+	private boolean stop = false;
+	private Async<Exception> flushing = null;
+	
+	private class Worker implements ApplicationThread {
+		@Override
+		public Application getApplication() {
+			return app;
+		}
+		
+		@Override
+		@SuppressWarnings({"squid:S2142","squid:S106"})
+		public void run() {
 			while (true) {
 				Pair<Appender,Log> log;
 				synchronized (logs) {
@@ -37,23 +65,13 @@ class LoggerThread {
 			}
 			System.out.println("Logger Thread stopped.");
 			stopped.unblock();
-		});
-		thread.setName("Logger for " + app.getGroupId() + "." + app.getArtifactId() + " " + app.getVersion().toString());
-		if (app.isStopping()) return;
-		thread.start();
-		app.toClose(100001, () -> {
-			stop = true;
-			synchronized (logs) {
-				logs.notify();
-			}
-			return stopped;
-		});
+		}
+		
+		@Override
+		public void debugStatus(StringBuilder s) {
+			s.append(" - Logging: ").append(logs.size()).append(" pending logs\r\n");
+		}
 	}
-	
-	private Thread thread;
-	private TurnArray<Pair<Appender,Log>> logs = new TurnArray<>(200);
-	private boolean stop = false;
-	private Async<Exception> flushing = null;
 
 	@SuppressWarnings({"java:S3358", "java:S2142"})
 	void log(Appender appender, Log log) {

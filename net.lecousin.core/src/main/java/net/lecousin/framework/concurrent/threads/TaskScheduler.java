@@ -1,5 +1,8 @@
 package net.lecousin.framework.concurrent.threads;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import net.lecousin.framework.collections.sort.RedBlackTreeLong;
 import net.lecousin.framework.collections.sort.RedBlackTreeLongByRange;
 
@@ -18,9 +21,13 @@ class TaskScheduler extends Thread {
 		instance.start();
 	}
 	
+	public static TaskScheduler get() {
+		return instance;
+	}
+	
 	private boolean stop = false;
 	static boolean stopping = false;
-	private RedBlackTreeLongByRange<Task<?,?>> waitingTime = new RedBlackTreeLongByRange<>(2L * 60 * 1000);
+	private RedBlackTreeLongByRange<List<Task<?,?>>> waitingTime = new RedBlackTreeLongByRange<>(2L * 60 * 1000);
 	long waitingNano = 0;
 	long busyNano = 0;
 	long nbRounds = 0;
@@ -28,7 +35,12 @@ class TaskScheduler extends Thread {
 	static void schedule(Task<?,?> task) {
 		synchronized (lock) {
 			boolean first = instance.waitingTime.isEmpty() || task.nextExecution < instance.waitingTime.getMin().getValue();
-			instance.waitingTime.add(task.nextExecution, task);
+			List<Task<?,?>> list = instance.waitingTime.get(task.nextExecution);
+			if (list == null) {
+				list = new LinkedList<>();
+				instance.waitingTime.add(task.nextExecution, list);
+			}
+			list.add(task);
 			task.status = Task.STATUS_STARTED_WAITING;
 			if (first) lock.notify();
 		}
@@ -36,12 +48,15 @@ class TaskScheduler extends Thread {
 	
 	static boolean cancel(Task<?,?> task) {
 		synchronized (lock) {
-			if (instance.waitingTime.containsInstance(task.nextExecution, task)) {
-				instance.waitingTime.removeInstance(task.nextExecution, task);
-				return true;
-			}
+			List<Task<?,?>> list = instance.waitingTime.get(task.nextExecution);
+			if (list == null)
+				return false;
+			if (!list.remove(task))
+				return false;
+			if (list.isEmpty())
+				instance.waitingTime.removeInstance(task.nextExecution, list);
+			return true;
 		}
-		return false;
 	}
 	
 	static void changeNextExecutionTime(Task<?,?> t, long time) {
@@ -49,12 +64,22 @@ class TaskScheduler extends Thread {
 		synchronized (lock) {
 			if (t.status == Task.STATUS_STARTED_WAITING) {
 				// still waiting
-				boolean needWakeUp = instance.waitingTime.getMin().getElement() == t;
-				instance.waitingTime.removeInstance(t.nextExecution, t);
+				boolean needWakeUp = !instance.waitingTime.isEmpty() && instance.waitingTime.getMin().getElement().contains(t);
+				List<Task<?, ?>> list = instance.waitingTime.get(t.nextExecution);
+				if (list != null) {
+					list.remove(t);
+					if (list.isEmpty())
+						instance.waitingTime.removeInstance(t.nextExecution, list);
+				}
 				t.nextExecution = time;
 				if (!needWakeUp && (instance.waitingTime.isEmpty() || instance.waitingTime.getMin().getValue() > time))
 					needWakeUp = true;
-				instance.waitingTime.add(time, t);
+				list = instance.waitingTime.get(time);
+				if (list == null) {
+					list = new LinkedList<>();
+					instance.waitingTime.add(time, list);
+				}
+				list.add(t);
 				if (needWakeUp)
 					lock.notify();
 				return;
@@ -67,7 +92,12 @@ class TaskScheduler extends Thread {
 					t.sendToTaskManager();
 				else {
 					boolean needWakeUp = instance.waitingTime.isEmpty() || instance.waitingTime.getMin().getValue() > time;
-					instance.waitingTime.add(time, t);
+					List<Task<?, ?>> list = instance.waitingTime.get(time);
+					if (list == null) {
+						list = new LinkedList<>();
+						instance.waitingTime.add(time, list);
+					}
+					list.add(t);
 					if (needWakeUp)
 						lock.notify();
 				}
@@ -96,20 +126,21 @@ class TaskScheduler extends Thread {
 					if (!waitingTime.isEmpty()) {
 						long now = System.currentTimeMillis();
 						do {
-							RedBlackTreeLong.Node<Task<?,?>> min = waitingTime.getMin();
+							RedBlackTreeLong.Node<List<Task<?,?>>> min = waitingTime.getMin();
 							if (min.getValue() > now) {
 								timeout = min.getValue() - now;
 								break;
 							}
-							Task<?,?> task = min.getElement();
 							waitingTime.removeMin();
-							if (task.isCancelled()) continue;
-							if (task.status != Task.STATUS_STARTED_WAITING) {
-								Threading.getLogger().debug("Scheduled task is not in a waiting status ("
-									+ task.status + "), so the scheduler does not start it");
-								continue;
+							for (Task<?,?> task : min.getElement()) {
+								if (task.isCancelled()) continue;
+								if (task.status != Task.STATUS_STARTED_WAITING) {
+									Threading.getLogger().debug("Scheduled task is not in a waiting status ("
+										+ task.status + "), so the scheduler does not start it");
+									continue;
+								}
+								task.sendToTaskManager();
 							}
-							task.sendToTaskManager();
 						} while (!waitingTime.isEmpty());
 					}
 					long now = System.nanoTime();

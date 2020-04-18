@@ -310,8 +310,7 @@ public class Launcher {
 			cfg.getProperties(),
 			debugMode,
 			Executors.defaultThreadFactory(),
-			librariesManager,
-			null
+			librariesManager
 		);
 
 		start.block(0);

@@ -3,7 +3,9 @@ package net.lecousin.framework.concurrent.threads;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.application.Application;
@@ -15,6 +17,7 @@ import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.log.Logger;
+import net.lecousin.framework.util.AttributesContainer;
 import net.lecousin.framework.util.Pair;
 
 /** Task to be executed asynchronously.
@@ -72,25 +75,72 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 		}
 	}
 	
+	public static class Context implements AttributesContainer {
+		private Application application;
+		private Map<String, Object> attributes;
+
+		public Application getApplication() {
+			return application;
+		}
+
+		@Override
+		public void setAttribute(String name, Object value) {
+			attributes.put(name, value);
+		}
+
+		@Override
+		public Object getAttribute(String name) {
+			return attributes.get(name);
+		}
+
+		@Override
+		public Object removeAttribute(String name) {
+			return attributes.remove(name);
+		}
+
+		@Override
+		public boolean hasAttribute(String name) {
+			return attributes.containsKey(name);
+		}
+	}
+	
 	/** Get the priority of the current task. */
 	public static Priority getCurrentPriority() {
 		Task<?,?> current = Threading.currentTask();
 		return current != null ? current.getPriority() : Priority.NORMAL;
 	}
 	
+	/** Get the context of the current task. */
+	public static Context getCurrentContext() {
+		Task<?,?> current = Threading.currentTask();
+		return current != null ? current.context : null;
+	}
+	
 	/** Constructor. */
 	public Task(TaskManager manager, String description, Priority priority, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone) {
 		if (manager == null) manager = Threading.getUnmanagedTaskManager();
-		this.app = LCCore.getApplication();
+		Task<?, ?> parent = Threading.currentTask();
+		if (parent != null) {
+			context = parent.context;
+			if (priority == null)
+				priority = parent.getPriority();
+		} else {
+			Application app = LCCore.getApplication();
+			if (app == null) throw new IllegalStateException("No application in the context");
+			context = new Context();
+			context.application = app;
+			context.attributes = new HashMap<>(10);
+			if (priority == null)
+				priority = Priority.NORMAL;
+		}
 		this.manager = manager;
 		this.description = description;
-		if (priority == null) priority = getCurrentPriority();
 		this.priority = priority;
 		this.executable = executable;
 		this.ondone = ondone;
 		result.onDone(() -> {
 			if (result.isCancelled() && status < STATUS_RUNNING) {
-				Logger logger = app.getDefaultLogger();
+				Logger logger = context.application.getDefaultLogger();
 				if (logger.debug()) {
 					CancelException reason = result.getCancelEvent();
 					logger.debug("Task cancelled: " + description + " => "
@@ -102,8 +152,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 		});
 	}
 	
-	// application
-	private Application app;
+	private Context context;
 	
 	// task manager
 	private TaskManager manager; 
@@ -147,13 +196,26 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	
 	// --- general info ---
 	
+	public Context getContext() {
+		return context;
+	}
+	
+	public Task<T, TError> resetContext() {
+		context.attributes = new HashMap<>(10);
+		return this;
+	}
+	
+	public Task<T, TError> setContext(String name, Object value) {
+		context.setAttribute(name, value);
+		return this;
+	}
 	
 	public String getDescription() {
 		return description;
 	}
 	
 	public Application getApplication() {
-		return app;
+		return context.application;
 	}
 	
 	public TaskManager getTaskManager() {
@@ -235,16 +297,17 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	public AsyncSupplier<T, TError> getOutput() { return result; }
 	
 	/** Set this task as done with the given result or error. */
-	public void setDone(T result, TError error) {
+	public Task<T, TError> setDone(T result, TError error) {
 		this.status = STATUS_DONE;
 		if (error == null)
 			this.result.unblockSuccess(result);
 		else
 			this.result.unblockError(error);
+		return this;
 	}
 	
 	/** Start the given task once this task is done. */
-	public void ondone(Task<?,?> todo, boolean evenIfErrorOrCancel) {
+	public Task<T, TError> ondone(Task<?,?> todo, boolean evenIfErrorOrCancel) {
 		if (result.isCancelled()) {
 			todo.cancel(result.getCancelEvent());
 		} else if (result.hasError()) {
@@ -254,6 +317,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 		} else {
 			todo.startOn(result, evenIfErrorOrCancel);
 		}
+		return this;
 	}
 	
 	
@@ -264,16 +328,17 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	public Priority getPriority() { return priority; }
 	
 	/** Change the priority of this task. */
-	public synchronized void setPriority(Priority priority) {
-		if (this.priority == priority) return;
+	public synchronized Task<T, TError> setPriority(Priority priority) {
+		if (this.priority == priority) return this;
 		if (status == STATUS_STARTED_READY && manager.remove(this)) {
 			this.priority = priority;
 			while (manager.getTransferTarget() != null)
 				manager = manager.getTransferTarget();
 			manager.addReady(this);
-			return;
+			return this;
 		}
 		this.priority = priority;
+		return this;
 	}
 	
 	/** Ensure that when this task will be done, successfully or not, the given synchronization point
@@ -331,11 +396,12 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	}
 	
 	/** Change the next execution time of scheduled or repetitive task. */
-	public synchronized void changeNextExecutionTime(long time) {
+	public synchronized Task<T, TError> changeNextExecutionTime(long time) {
 		if (status == STATUS_STARTED_WAITING)
 			TaskScheduler.changeNextExecutionTime(this, time);
 		else
 			nextExecution = time;
+		return this;
 	}
 	
 	/** Change the next execution time to now. */
@@ -383,7 +449,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	
 	
 	/** Start this task once the given synchronization point is unblocked. */
-	public void startOn(IAsync<? extends Exception> sp, boolean evenOnErrorOrCancel) {
+	public Task<T, TError> startOn(IAsync<? extends Exception> sp, boolean evenOnErrorOrCancel) {
 		sp.onDone(() -> {
 			if (evenOnErrorOrCancel) {
 				start();
@@ -403,10 +469,11 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 				start();
 			}
 		});
+		return this;
 	}
 	
 	/** Start this task once all the given synchronization points are unblocked. */
-	public void startOn(boolean evenOnErrorOrCancel, IAsync<?>... list) {
+	public Task<T, TError> startOn(boolean evenOnErrorOrCancel, IAsync<?>... list) {
 		JoinPoint<Exception> jp = new JoinPoint<>();
 		for (IAsync<? extends Exception> sp : list)
 			if (sp != null)
@@ -431,15 +498,14 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 				start();
 			}
 		});
+		return this;
 	}
 	
 	/** Start this task once the given task is done. If the given task is null or already done, the method start() is called. */
-	public void startAfter(Task<?,?> task) {
-		if (task == null || task.isDone()) {
-			start();
-			return;
-		}
-		startOn(task.getOutput(), true);
+	public Task<T, TError> startAfter(Task<?,?> task) {
+		if (task == null || task.isDone())
+			return start();
+		return startOn(task.getOutput(), true);
 	}
 	
 	/** Called by start or TaskScheduler. */
@@ -492,12 +558,13 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 			status = STATUS_DONE;
 			if (cancelling != null) {
 				if (!result.isCancelled()) result.cancelled(cancelling);
-				if (app.isDebugMode())
-					app.getDefaultLogger()
+				if (context.application.isDebugMode())
+					context.application.getDefaultLogger()
 						.warn("Task " + description + " error while trying to cancel it: " + t.getMessage()
 						+ ", cancellation reason is " + result.getCancelEvent().getMessage(), t);
 			} else if (!result.isCancelled()) {
-				if (app.isDebugMode()) app.getDefaultLogger().error("Task " + description + " error: " + t.getMessage(), t);
+				if (context.application.isDebugMode())
+					context.application.getDefaultLogger().error("Task " + description + " error: " + t.getMessage(), t);
 				try {
 					TError error = (TError)t;
 					if (ondone != null) ondone.accept(new Pair<>(null, error));
@@ -510,8 +577,8 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 					result.cancelled(cancelling);
 				}
 			} else {
-				if (app.isDebugMode())
-					app.getDefaultLogger()
+				if (context.application.isDebugMode())
+					context.application.getDefaultLogger()
 						.warn("Task " + description + " error after being cancelled: " + t.getMessage()
 						+ ", cancellation reason is " + result.getCancelEvent().getMessage(), t);
 			}
@@ -521,7 +588,7 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 		status = STATUS_DONE;
 		try { if (ondone != null) ondone.accept(new Pair<>(res, null)); }
 		catch (Exception t) {
-			app.getDefaultLogger().error("Error while calling ondone on task " + description, t);
+			context.application.getDefaultLogger().error("Error while calling ondone on task " + description, t);
 		}
 		result.unblockSuccess(res);
 		checkSP();
@@ -608,14 +675,16 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	public static <T, TError extends Exception> Task<T, TError> file(
 		File file, String description, Priority priority, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
 	) {
-		return new Task<>(Threading.getDrivesManager().getTaskManager(file), description, priority, executable, ondone);
+		return new Task<>(Threading.getDrivesManager().getTaskManager(file), description, priority, executable, ondone)
+			.setContext(DrivesThreadingManager.TASK_CONTEXT_FILE_ATTRIBUTE, file);
 	}
 	
 	/** Create a task on a file. */
 	public static <T, TError extends Exception> Task<T, TError> file(
 		File file, String description, Priority priority, Executable<T, TError> executable
 	) {
-		return new Task<>(Threading.getDrivesManager().getTaskManager(file), description, priority, executable, null);
+		return new Task<>(Threading.getDrivesManager().getTaskManager(file), description, priority, executable, null)
+			.setContext(DrivesThreadingManager.TASK_CONTEXT_FILE_ATTRIBUTE, file);
 	}
 	
 	/** Create a task using a pool of threads. */

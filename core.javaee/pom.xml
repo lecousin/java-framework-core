@@ -3,7 +3,7 @@
   <parent>
     <groupId>net.lecousin</groupId>
     <artifactId>core-parent-pom</artifactId>
-    <version>0.20.7</version>
+    <version>0.21.0-SNAPSHOT</version>
   </parent>
   <artifactId>core.javaee</artifactId>
   <dependencies>

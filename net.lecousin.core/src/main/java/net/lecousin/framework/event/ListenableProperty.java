@@ -1,9 +1,9 @@
 package net.lecousin.framework.event;
 
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import net.lecousin.framework.mutable.Mutable;
-import net.lecousin.framework.util.ObjectUtil;
 
 /**
  * Property that calls listeners when modified.
@@ -24,7 +24,7 @@ public class ListenableProperty<T> extends Mutable<T> implements Listenable<T> {
 	@Override
 	public void set(T value) {
 		T previous = get();
-		if (ObjectUtil.equalsOrNull(previous, value)) return;
+		if (Objects.equals(previous, value)) return;
 		super.set(value);
 		event.fire(previous);
 	}

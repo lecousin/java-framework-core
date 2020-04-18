@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import net.lecousin.framework.LCCoreVersion;
 import net.lecousin.framework.application.libraries.LibrariesManager;
@@ -13,7 +14,9 @@ import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.threads.DrivesThreadingManager.DrivesProvider;
 import net.lecousin.framework.concurrent.threads.TaskManagerMonitor;
 import net.lecousin.framework.concurrent.threads.Threading;
+import net.lecousin.framework.concurrent.threads.priority.SimpleDriveTaskPriorityManager;
 import net.lecousin.framework.concurrent.threads.priority.SimpleTaskPriorityManager;
+import net.lecousin.framework.concurrent.threads.priority.TaskPriorityManager;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.memory.MemoryManager;
 import net.lecousin.framework.util.AsyncCloseable;
@@ -48,6 +51,9 @@ public class StandaloneLCCore implements LCCore.Environment {
 	private int nbCPUThreads = -1;
 	private int nbUnmanagedThreads = -1;
 	private DrivesProvider drivesProvider = null;
+	private Supplier<TaskPriorityManager> cpuPriorityManagerSupplier = SimpleTaskPriorityManager::new;
+	private Supplier<TaskPriorityManager> drivePriorityManagerSupplier = SimpleDriveTaskPriorityManager::new;
+	private Supplier<TaskPriorityManager> unmanagedPriorityManagerSupplier = SimpleTaskPriorityManager::new;
 	private TaskManagerMonitor.Configuration cpuMonitorConfig = new TaskManagerMonitor.Configuration(
 		60 * 1000, // 1 minute
 		5 * 60 * 1000, // 5 minutes
@@ -94,6 +100,24 @@ public class StandaloneLCCore implements LCCore.Environment {
 		if (Threading.isInitialized()) throw new IllegalStateException(ERROR_ALREADY_INITIALIZED);
 		drivesProvider = provider;
 	}
+	
+	/** Set the priority manager for CPU tasks. */
+	public void setCpuPriorityManager(Supplier<TaskPriorityManager> supplier) {
+		if (Threading.isInitialized()) throw new IllegalStateException(ERROR_ALREADY_INITIALIZED);
+		cpuPriorityManagerSupplier = supplier;
+	}
+	
+	/** Set the priority manager for Drive tasks. */
+	public void setDrivePriorityManager(Supplier<TaskPriorityManager> supplier) {
+		if (Threading.isInitialized()) throw new IllegalStateException(ERROR_ALREADY_INITIALIZED);
+		drivePriorityManagerSupplier = supplier;
+	}
+	
+	/** Set the priority manager for Unmanaged tasks. */
+	public void setUnmanagedPriorityManager(Supplier<TaskPriorityManager> supplier) {
+		if (Threading.isInitialized()) throw new IllegalStateException(ERROR_ALREADY_INITIALIZED);
+		unmanagedPriorityManagerSupplier = supplier;
+	}
 
 	/** Set the monitoring configuration for CPU tasks. */
 	public void setCpuMonitorConfig(TaskManagerMonitor.Configuration config) {
@@ -113,65 +137,23 @@ public class StandaloneLCCore implements LCCore.Environment {
 		unmanagedMonitorConfig = config;
 	}
 	
-	private static long logThreadingInterval = 30000;
-	
-	public static void setLogThreadingInterval(long interval) {
-		logThreadingInterval = interval;
-	}
 	
 	@Override
 	@SuppressWarnings("squid:S1312") // logger is used only in debug mode, we do not want it as static
 	public void start() {
 		// start multi-threading system
 		Threading.init(
-			app.getThreadFactory(),
-			SimpleTaskPriorityManager.class,
+			app.threadFactory,
 			nbCPUThreads,
+			cpuPriorityManagerSupplier,
 			cpuMonitorConfig,
 			drivesProvider,
+			drivePriorityManagerSupplier,
 			driveMonitorConfig,
 			nbUnmanagedThreads,
+			unmanagedPriorityManagerSupplier,
 			unmanagedMonitorConfig
 		);
-		
-		// debugging
-		if (app.isDebugMode()) {
-			final Logger logger = app.getLoggerFactory().getLogger("Threading Status");
-			class ThreadingLogger extends Thread implements Closeable {
-				ThreadingLogger() {
-					super("Threading logger");
-				}
-				
-				private boolean closed = false;
-				private final Object lock = new Object();
-				
-				@Override
-				public void run() {
-					do {
-						synchronized (lock) {
-							if (!ThreadUtil.wait(lock, logThreadingInterval))
-								return;
-						}
-						if (closed) return;
-						logger.debug("\n" + Threading.debug());
-					} while (true);
-				}
-				
-				@Override
-				public void close() {
-					synchronized (lock) {
-						closed = true;
-						lock.notify();
-					}
-				}
-			}
-			
-			if (logger.debug()) {
-				ThreadingLogger t = new ThreadingLogger();
-				t.start();
-				app.toClose(0, t);
-			}
-		}
 	}
 	
 	@Override

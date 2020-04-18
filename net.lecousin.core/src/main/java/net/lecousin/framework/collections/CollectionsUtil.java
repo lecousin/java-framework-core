@@ -6,10 +6,9 @@ import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
-
-import net.lecousin.framework.util.ObjectUtil;
 
 /** Utility methods on collections. */
 public final class CollectionsUtil {
@@ -79,7 +78,7 @@ public final class CollectionsUtil {
 		Iterator<?> it1 = list1.iterator();
 		Iterator<?> it2 = list2.iterator();
 		while (it1.hasNext())
-			if (!ObjectUtil.equalsOrNull(it1.next(), it2.next()))
+			if (!Objects.equals(it1.next(), it2.next()))
 				return false;
 		return true;
 	}

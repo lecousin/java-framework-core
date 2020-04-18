@@ -1,7 +1,10 @@
 package net.lecousin.framework.concurrent.threads.priority;
 
+import java.util.Deque;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Predicate;
 
 import net.lecousin.framework.collections.TurnArray;
 import net.lecousin.framework.concurrent.threads.Task;
@@ -22,11 +25,11 @@ public class SimpleTaskPriorityManager implements TaskPriorityManager {
 		background = new TurnArray<>(32);
 	}
 
-	private TurnArray<Task<?,?>>[] ready;
-	private TurnArray<Task<?,?>> background;
-	private int nextPriority = Task.Priority.NB; 
-	private long lastIdle = -1;
-	private boolean stopping = false;
+	protected Deque<Task<?,?>>[] ready;
+	protected Deque<Task<?,?>> background;
+	protected int nextPriority = Task.Priority.NB; 
+	protected long lastIdle = -1;
+	protected boolean stopping = false;
 
 	@Override
 	public final synchronized void add(Task<?, ?> task) {
@@ -44,8 +47,8 @@ public class SimpleTaskPriorityManager implements TaskPriorityManager {
 	public final synchronized boolean remove(Task<?, ?> task) {
 		int p = task.getPriority().getValue();
 		if (p == Task.BACKGROUND_VALUE)
-			return background.removeInstance(task);
-		return ready[p].removeInstance(task);
+			return background.remove(task);
+		return ready[p].remove(task);
 	}
 	
 	@Override
@@ -53,7 +56,7 @@ public class SimpleTaskPriorityManager implements TaskPriorityManager {
 		"squid:S2273", // wait in a loop
 		"squid:S3776" // complexity
 	})
-	public final Task<?, ?> peekNextOrWait() {
+	public Task<?, ?> peekNextOrWait() {
 		while (nextPriority < Task.Priority.NB) {
 			Task<?,?> t = ready[nextPriority].pollFirst();
 			if (t != null) {
@@ -81,7 +84,7 @@ public class SimpleTaskPriorityManager implements TaskPriorityManager {
 	}
 	
 	@Override
-	public final Task<?, ?> peekNext() {
+	public Task<?, ?> peekNext() {
 		while (nextPriority < Task.Priority.NB) {
 			Task<?,?> t = ready[nextPriority].pollFirst();
 			if (t != null) {
@@ -93,6 +96,21 @@ public class SimpleTaskPriorityManager implements TaskPriorityManager {
 		}
 		if (lastIdle < 0)
 			lastIdle = System.currentTimeMillis();
+		return null;
+	}
+	
+	protected Task<?, ?> goThroughEligibles(Predicate<Task<?, ?>> chooser) {
+		for (int p = nextPriority; p < Task.Priority.NB; p++) {
+			for (Iterator<Task<?, ?>> it = ready[p].iterator(); it.hasNext(); ) {
+				Task<?, ?> t = it.next();
+				if (chooser.test(t)) {
+					it.remove();
+					return t;
+				}
+			}
+			if (!ready[p].isEmpty())
+				return null;
+		}
 		return null;
 	}
 	

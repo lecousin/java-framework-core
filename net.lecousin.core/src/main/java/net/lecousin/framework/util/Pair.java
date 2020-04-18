@@ -4,6 +4,7 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Objects;
 
 /** Object that contains 2 objects.
  * @param <T1> type of first object
@@ -36,9 +37,9 @@ public class Pair<T1,T2> {
 	@Override
     public boolean equals(Object obj) {
     	return (obj instanceof Pair) &&
-    		ObjectUtil.equalsOrNull(value1, ((Pair<?,?>)obj).value1) &&
-    		ObjectUtil.equalsOrNull(value2, ((Pair<?,?>)obj).value2)
-    	;
+    			Objects.equals(value1, ((Pair<?,?>)obj).value1) &&
+    			Objects.equals(value2, ((Pair<?,?>)obj).value2)
+    			;
     }
     
     @Override

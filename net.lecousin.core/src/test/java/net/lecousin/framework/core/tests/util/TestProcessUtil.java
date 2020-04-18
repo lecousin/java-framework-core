@@ -17,7 +17,7 @@ public class TestProcessUtil extends LCCoreAbstractTest {
 		ProcessBuilder pb = new ProcessBuilder(System.getProperty("java.home") + "/bin/java", "-version");
 		Process p = pb.start();
 		Async<Exception> sp = new Async<>();
-		ProcessUtil.onProcessExited(p, (val) -> { sp.unblock(); });
+		ProcessUtil.onProcessExited(p, (val) -> { sp.unblock(); }, pb.command().toString());
 		Console c = LCCore.getApplication().getConsole();
 		ProcessUtil.consumeProcessConsole(p, (line) -> { c.out(line); }, (line) -> { c.err(line); });
 		sp.block(0);
