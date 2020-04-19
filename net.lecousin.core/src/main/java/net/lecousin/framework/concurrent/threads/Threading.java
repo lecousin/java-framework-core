@@ -23,6 +23,7 @@ import net.lecousin.framework.concurrent.threads.pool.ThreadPoolTaskManager;
 import net.lecousin.framework.concurrent.threads.priority.SimpleTaskPriorityManager;
 import net.lecousin.framework.concurrent.threads.priority.TaskPriorityManager;
 import net.lecousin.framework.log.Logger;
+import net.lecousin.framework.mutable.Mutable;
 import net.lecousin.framework.util.AsyncCloseable;
 import net.lecousin.framework.util.DebugUtil;
 import net.lecousin.framework.util.ThreadUtil;
@@ -50,6 +51,7 @@ public final class Threading {
 	public static boolean traceTaskTime = System.getProperty("lc.traceTaskTime") != null;
 	public static long debugListenersTakingMoreThanMilliseconds = 20;
 	
+	private static ThreadFactory threadFactory;
 	private static long logThreadingInterval = 30000;
 	private static ThreadingLogger loggerThread;
 	
@@ -94,7 +96,8 @@ public final class Threading {
 		
 		systemThreadsOnStart.addAll(Thread.getAllStackTraces().keySet());
 		systemThreadsOnStart.trimToSize();
-		
+
+		Threading.threadFactory = threadFactory;
 		logger = LCCore.get().getThreadingLogger();
 		TaskScheduler.init();
 		TaskPriorityManager prioCpu;
@@ -280,6 +283,7 @@ public final class Threading {
 	private static Map<Thread, TaskExecutor> executors = new HashMap<>();
 	private static Map<Thread, Blockable> blockables = new HashMap<>();
 	private static Map<Thread, ApplicationThread> appThreads = new HashMap<>();
+	private static Map<Thread, SystemThread> systemThreads = new HashMap<>();
 	
 	/** Register the executor for the given thread. */
 	public static void registerBlockable(Blockable handler, Thread thread) {
@@ -369,6 +373,20 @@ public final class Threading {
 		}
 	}
 	
+	public static Thread createSystemThread(SystemThread sysThread) {
+		Mutable<Thread> t = new Mutable<>(null);
+		t.set(threadFactory.newThread(() -> {
+			sysThread.run();
+			synchronized (systemThreads) {
+				systemThreads.remove(t.get());
+			}
+		}));
+		synchronized (systemThreads) {
+			systemThreads.put(t.get(), sysThread);
+		}
+		return t.get();
+	}
+	
 	/** Set the monitoring configuration for CPU tasks. */
 	public static void setCpuMonitorConfiguration(TaskManagerMonitor.Configuration config) {
 		if (!LCCore.get().currentThreadIsSystem()) throw new IllegalThreadStateException();
@@ -392,7 +410,12 @@ public final class Threading {
 		StringBuilder s = new StringBuilder();
 		for (TaskManager tm : resources.values()) {
 			tm.debug(s);
-			s.append("\r\n");
+			s.append('\n');
+		}
+		for (Map.Entry<Thread, SystemThread> e : systemThreads.entrySet()) {
+			s.append(e.getKey().getName()).append(": ");
+			e.getValue().debugStatus(s);
+			s.append('\n');
 		}
 		Set<Application> apps = new HashSet<>();
 		for (ApplicationThread at : appThreads.values())
@@ -405,6 +428,7 @@ public final class Threading {
 		}
 		List<Thread> legalThreads = new LinkedList<>();
 		legalThreads.addAll(systemThreadsOnStart);
+		legalThreads.addAll(systemThreads.keySet());
 		legalThreads.add(loggerThread); // this is us
 		legalThreads.add(TaskScheduler.get());
 		for (Map.Entry<Thread, TaskExecutor> e : executors.entrySet())
