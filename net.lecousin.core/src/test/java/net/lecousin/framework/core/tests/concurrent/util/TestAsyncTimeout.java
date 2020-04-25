@@ -3,14 +3,14 @@ package net.lecousin.framework.core.tests.concurrent.util;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.util.AsyncTimeoutManager;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.core.test.runners.LCSequentialRunner;
 import net.lecousin.framework.mutable.MutableBoolean;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.BlockJUnit4ClassRunner;
 
-@RunWith(BlockJUnit4ClassRunner.class)
+@RunWith(LCSequentialRunner.class)
 public class TestAsyncTimeout extends LCCoreAbstractTest {
 
 	@Test

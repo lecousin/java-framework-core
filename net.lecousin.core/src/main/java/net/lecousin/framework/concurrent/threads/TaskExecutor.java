@@ -116,7 +116,7 @@ public abstract class TaskExecutor implements Blockable {
 		if (c == null)
 			s.append("waiting");
 		else
-			s.append("executing ").append(c.getDescription()).append(" (").append(c.getClass().getName()).append(")");
+			s.append("executing task ").append(c.getDescription());
 		if (c != null) {
 			DebugUtil.createStackTrace(s,thread.getStackTrace());
 		}
