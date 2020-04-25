@@ -1,6 +1,5 @@
 package net.lecousin.framework.log.appenders;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -10,58 +9,82 @@ import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
+import net.lecousin.framework.log.LogFilter;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.log.LoggerConfigurationException;
 import net.lecousin.framework.log.LoggerFactory;
+import net.lecousin.framework.math.RangeInteger;
 
 /** Log appender that forwards logs to multiple appenders. */
-public class MultipleAppender implements Appender {
+public class MultipleAppender extends Appender {
+	
+	private Appender[] appenders;
+	private boolean threadName = false;
+	private boolean location = false;
+	private String[] neededContexts;
+	private RangeInteger[] appendersContextsRanges;
 
 	/** Constructor. */
-	public MultipleAppender(@SuppressWarnings({"unused","squid:S1172"}) LoggerFactory factory, Appender...appenders) {
+	public MultipleAppender(List<LogFilter> filters, Appender...appenders) {
+		super(Level.OFF, filters);
 		this.appenders = appenders;
+		initEnd();
+	}
+	
+	/** Constructor. */
+	public MultipleAppender(LoggerFactory factory, XMLStreamReader reader, Map<String,Appender> appenders)
+	throws LoggerConfigurationException {
+		super(factory, reader, appenders);
+		initEnd();
+	}
+	
+	@Override
+	protected void init(LoggerFactory factory, Map<String, Appender> appenders) {
+		this.appenders = new Appender[0];
 		level = Level.OFF.ordinal();
+		super.init(factory, appenders);
+	}
+	
+	private void initEnd() {
+		level = Level.OFF.ordinal();
+		int nb = 0;
 		for (Appender a : appenders) {
 			if (a.level() < level)
 				level = a.level();
 			if (!threadName) threadName = a.needsThreadName();
 			if (!location) location = a.needsLocation();
-		}
-	}
-	
-	/** Constructor. */
-	public MultipleAppender(
-		@SuppressWarnings({"unused","squid:S1172"}) LoggerFactory factory, XMLStreamReader reader, Map<String,Appender> appenders
-	) throws LoggerConfigurationException, XMLStreamException {
-		level = Level.OFF.ordinal();
-		List<Appender> list = new ArrayList<>();
-		
-		reader.next();
-		while (reader.hasNext()) {
-			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
-				if ("AppenderRef".equals(reader.getLocalName())) {
-					parseAppenderRef(reader, list, appenders);
-				} else {
-					throw new LoggerConfigurationException("Unknown element " + reader.getLocalName()
-						+ " in MultipleAppender, only AppenderRef elements are expected");
-				}
-			} else if (reader.getEventType() == XMLStreamConstants.END_ELEMENT) {
-				break;
-			}
-			reader.next();
-		}
 
-		this.appenders = list.toArray(new Appender[list.size()]);
+			String[] ctx = a.neededContexts();
+			if (ctx != null) nb += ctx.length;
+		}
+		if (nb > 0) {
+			this.appendersContextsRanges = new RangeInteger[this.appenders.length];
+			neededContexts = new String[nb];
+			int pos = 0;
+			for (int i = 0; i < this.appenders.length; ++i) {
+				String[] ctx = this.appenders[i].neededContexts();
+				if (ctx == null)
+					continue;
+				this.appendersContextsRanges[i] = new RangeInteger(pos, pos + ctx.length - 1);
+				System.arraycopy(ctx, 0, neededContexts, pos, ctx.length);
+				pos += ctx.length;
+			}
+		}
 	}
 	
-	private Appender[] appenders;
-	private int level;
-	private boolean threadName = false;
-	private boolean location = false;
+	@Override
+	protected boolean configureInnerElement(LoggerFactory factory, XMLStreamReader reader, Map<String, Appender> appenders)
+	throws LoggerConfigurationException {
+		if ("AppenderRef".equals(reader.getLocalName())) {
+			parseAppenderRef(reader, appenders);
+			return true;
+		}
+		return super.configureInnerElement(factory, reader, appenders);
+	}
 	
-	private void parseAppenderRef(XMLStreamReader reader, List<Appender> list, Map<String,Appender> appenders)
-	throws LoggerConfigurationException, XMLStreamException {
+	private void parseAppenderRef(XMLStreamReader reader, Map<String,Appender> appenders)
+	throws LoggerConfigurationException {
 		String name = null;
 		for (int i = 0; i < reader.getAttributeCount(); ++i) {
 			String attrName = reader.getAttributeLocalName(i);
@@ -75,33 +98,41 @@ public class MultipleAppender implements Appender {
 		if (name == null) throw new LoggerConfigurationException("Missing attribute name on AppenderRef");
 		Appender appender = appenders.get(name);
 		if (appender == null) throw new LoggerConfigurationException("Unknown appender " + name);
-		list.add(appender);
-		if (appender.level() < level)
-			level = appender.level();
-		if (!threadName) threadName = appender.needsThreadName();
-		if (!location) location = appender.needsLocation();
+		Appender[] a = new Appender[this.appenders.length + 1];
+		System.arraycopy(this.appenders, 0, a, 0, this.appenders.length);
+		a[this.appenders.length] = appender;
+		this.appenders = a;
 		
-		reader.next();
-		do {
-			if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)
-				break;
-			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
-				throw new LoggerConfigurationException(
-					"Unexpected element " + reader.getLocalName() + " in AppenderRef");
-			}
+		try {
 			reader.next();
-		} while (reader.hasNext());
+			do {
+				if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)
+					break;
+				if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
+					throw new LoggerConfigurationException(
+						"Unexpected element " + reader.getLocalName() + " in AppenderRef");
+				}
+				reader.next();
+			} while (reader.hasNext());
+		} catch (XMLStreamException e) {
+			throw new LoggerConfigurationException("Invalid XML in AppenderRef", e);
+		}
 	}
 	
 	@Override
 	public void append(Log log) {
-		for (Appender a : appenders)
+		String[] originalContexts = log.contextsValues;
+		for (int i = 0; i < appenders.length; ++i) {
+			Appender a = appenders[i];
+			RangeInteger r = appendersContextsRanges != null ? appendersContextsRanges[i] : null;
+			if (r == null)
+				log.contextsValues = null;
+			else {
+				log.contextsValues = new String[r.max - r.min + 1];
+				System.arraycopy(originalContexts, r.min, log.contextsValues, 0, log.contextsValues.length);
+			}
 			a.append(log);
-	}
-
-	@Override
-	public int level() {
-		return level;
+		}
 	}
 
 	@Override
@@ -114,6 +145,11 @@ public class MultipleAppender implements Appender {
 		return location;
 	}
 	
+	@Override
+	public String[] neededContexts() {
+		return neededContexts;
+	}
+
 	@Override
 	public IAsync<Exception> flush() {
 		JoinPoint<Exception> jp = new JoinPoint<>();

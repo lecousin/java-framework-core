@@ -13,6 +13,7 @@ import net.lecousin.framework.concurrent.async.AsyncSupplier.Listener;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.core.test.TestException;
 import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.log.Logger;
 import net.lecousin.framework.log.Logger.Level;
@@ -544,17 +545,17 @@ public class TestAsyncSupplier extends LCCoreAbstractTest {
 
 			@Override
 			public void ready(Void result) {
-				throw new RuntimeException("test error");
+				throw new TestException.Runtime("test error");
 			}
 
 			@Override
 			public void error(Exception error) {
-				throw new RuntimeException("test error");
+				throw new TestException.Runtime("test error");
 			}
 
 			@Override
 			public void cancelled(CancelException event) {
-				throw new RuntimeException("test error");
+				throw new TestException.Runtime("test error");
 			}
 			
 		};

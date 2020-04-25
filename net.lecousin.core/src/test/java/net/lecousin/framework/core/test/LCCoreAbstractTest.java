@@ -12,7 +12,11 @@ import net.lecousin.framework.core.test.runners.LCConcurrentRunner;
 import net.lecousin.framework.exception.NoException;
 
 import org.junit.AfterClass;
+import org.junit.AssumptionViolatedException;
 import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 
 @RunWith(LCConcurrentRunner.class)
@@ -46,6 +50,40 @@ public abstract class LCCoreAbstractTest {
 			s.append(" - ").append(o).append("\r\n");
 		System.err.println(s.toString());
 	}
+	
+	@Rule
+	public final TestDescriptionToContext testInContext = new TestDescriptionToContext();
+	
+	public static final String CONTEXT_ATTRIBUTE_TEST_DESCRIPTION = "junit";
+		
+	public static class TestDescriptionToContext extends TestWatcher {
+			
+		@Override
+		protected void starting(Description description) {
+			Task.Context ctx = Task.getCurrentContext();
+			if (ctx != null)
+				ctx.setAttribute(CONTEXT_ATTRIBUTE_TEST_DESCRIPTION, description.getTestClass().getSimpleName() + '#' + description.getMethodName());
+		}
+			
+		@Override
+		protected void succeeded(Description description) {
+		}
+	
+		@Override
+		protected void failed(Throwable e, Description description) {
+		}
+	
+		@Override
+		protected void skipped(AssumptionViolatedException e, Description description) {
+		}
+	
+		@Override
+		protected void finished(Description description) {
+			Task.Context ctx = Task.getCurrentContext();
+			if (ctx != null)
+				ctx.removeAttribute(CONTEXT_ATTRIBUTE_TEST_DESCRIPTION);
+		}
+	};
 	
 	public static void assertException(Runnable toRun, Class<? extends Exception> expectedError) {
 		try {

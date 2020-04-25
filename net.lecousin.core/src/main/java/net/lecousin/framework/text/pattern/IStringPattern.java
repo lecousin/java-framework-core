@@ -1,4 +1,4 @@
-package net.lecousin.framework.text;
+package net.lecousin.framework.text.pattern;
 
 /** Base interface to match a string against a pattern. */
 public interface IStringPattern {

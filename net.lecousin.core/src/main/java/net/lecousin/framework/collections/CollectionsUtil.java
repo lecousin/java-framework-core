@@ -71,7 +71,7 @@ public final class CollectionsUtil {
 	
 	/** Return true of the 2 lists are identical. To be identical, the 2 lists must have the same size,
 	 * and each element must be equals and in the same order. To compare elements, the method
-	 * {@link ObjectUtil#equalsOrNull(Object, Object)} is used.
+	 * {@link Objects#equals(Object, Object)} is used.
 	 */
 	public static boolean equals(List<?> list1, List<?> list2) {
 		if (list1.size() != list2.size()) return false;

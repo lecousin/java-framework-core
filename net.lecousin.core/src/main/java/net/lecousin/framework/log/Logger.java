@@ -3,6 +3,7 @@ package net.lecousin.framework.log;
 import java.util.HashMap;
 import java.util.Map;
 
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.appenders.Appender;
 
@@ -88,6 +89,8 @@ public class Logger {
 		log.trace = t;
 		log.app = factory.application;
 		Appender appendr = getAppender();
+		if (appendr.filter(log))
+			return;
 		if (appendr.needsThreadName())
 			log.threadName = Thread.currentThread().getName();
 		if (appendr.needsLocation()) {
@@ -98,6 +101,15 @@ public class Logger {
 					log.location = stack[i];
 					break;
 				}
+			}
+		}
+		String[] neededContexts = appendr.neededContexts();
+		if (neededContexts != null) {
+			Task.Context ctx = Task.getCurrentContext(); 
+			log.contextsValues = new String[neededContexts.length];
+			for (int i = 0; i < neededContexts.length; ++i) {
+				Object o = ctx != null ? ctx.getAttribute(neededContexts[i]) : "";
+				log.contextsValues[i] = o != null ? o.toString() : "";
 			}
 		}
 		factory.thread.log(appendr, log);

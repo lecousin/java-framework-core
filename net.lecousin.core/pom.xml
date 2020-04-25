@@ -115,6 +115,7 @@
 						<configuration>
 							<includes>
 								<include>net/lecousin/framework/core/test/**</include>
+                                <include>lc-test-logging.xml</include>
 							</includes>
 						</configuration>
 					</execution>

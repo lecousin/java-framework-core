@@ -1,14 +1,14 @@
 package net.lecousin.framework.log.appenders;
 
+import java.util.List;
 import java.util.Map;
 
-import javax.xml.stream.XMLStreamConstants;
-import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.concurrent.Console;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.IAsync;
+import net.lecousin.framework.log.LogFilter;
 import net.lecousin.framework.log.LogPattern;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.Logger.Level;
@@ -16,54 +16,44 @@ import net.lecousin.framework.log.LoggerConfigurationException;
 import net.lecousin.framework.log.LoggerFactory;
 
 /** Log appender to the console. */
-public class ConsoleAppender implements Appender {
+public class ConsoleAppender extends Appender {
+	
+	private Console console;
+	private LogPattern pattern;
 
 	/** Constructor. */
-	public ConsoleAppender(Console console, Level level, LogPattern pattern) {
+	public ConsoleAppender(Console console, Level level, LogPattern pattern, List<LogFilter> filters) {
+		super(level, filters);
 		this.console = console;
-		this.level = level;
 		this.pattern = pattern;
 	}
 	
 	/** Constructor. */
-	public ConsoleAppender(
-		LoggerFactory factory, XMLStreamReader reader, @SuppressWarnings({"unused","squid:S1172"}) Map<String,Appender> appenders
-	) throws LoggerConfigurationException, XMLStreamException {
-		this.console = factory.getApplication().getConsole();
-		String levelStr = null;
-		String patternStr = null;
-		for (int i = 0; i < reader.getAttributeCount(); ++i) {
-			String attrName = reader.getAttributeLocalName(i);
-			String attrValue = reader.getAttributeValue(i);
-			if ("level".equals(attrName))
-				levelStr = attrValue;
-			else if ("pattern".equals(attrName))
-				patternStr = attrValue;
-			else if (!"name".equals(attrName) && !"class".equals(attrName))
-				throw new LoggerConfigurationException("Unknown attribute " + attrName);
-		}
-		
-		if (levelStr == null) throw new LoggerConfigurationException("Missing attribute level on console Appender");
-		try { this.level = Level.valueOf(levelStr); }
-		catch (Exception t) { throw new LoggerConfigurationException("Invalid level " + levelStr); }
-		
-		if (patternStr == null) throw new LoggerConfigurationException("Missing attribute pattern on console Appender");
-		this.pattern = new LogPattern(patternStr);
-		
-		reader.next();
-		do {
-			if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)
-				break;
-			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
-				throw new LoggerConfigurationException("Unexpected inner element " + reader.getLocalName());
-			}
-			reader.next();
-		} while (reader.hasNext());
+	public ConsoleAppender(LoggerFactory factory, XMLStreamReader reader, Map<String,Appender> appenders)
+	throws LoggerConfigurationException {
+		super(factory, reader, appenders);
 	}
 	
-	private Console console;
-	private Level level;
-	private LogPattern pattern;
+	@Override
+	protected void init(LoggerFactory factory, Map<String, Appender> appenders) {
+		this.console = factory.getApplication().getConsole();
+		super.init(factory, appenders);
+	}
+	
+	@Override
+	protected boolean configureAttribute(String name, String value) throws LoggerConfigurationException {
+		if ("pattern".equals(name)) {
+			this.pattern = new LogPattern(value);
+			return true;
+		}
+		return super.configureAttribute(name, value);
+	}
+	
+	@Override
+	protected void checkAttributes() throws LoggerConfigurationException {
+		super.checkAttributes();
+		if (pattern == null) throw new LoggerConfigurationException("Missing attribute pattern on console Appender");
+	}
 	
 	@Override
 	public void append(Log log) {
@@ -75,11 +65,6 @@ public class ConsoleAppender implements Appender {
 	}
 
 	@Override
-	public int level() {
-		return level.ordinal();
-	}
-
-	@Override
 	public boolean needsThreadName() {
 		return pattern.needsThreadName();
 	}
@@ -87,6 +72,11 @@ public class ConsoleAppender implements Appender {
 	@Override
 	public boolean needsLocation() {
 		return pattern.needsLocation();
+	}
+	
+	@Override
+	public String[] neededContexts() {
+		return pattern.neededContexts();
 	}
 	
 	@Override

@@ -1,8 +1,10 @@
-package net.lecousin.framework.text;
+package net.lecousin.framework.text.pattern.path;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+
+import net.lecousin.framework.text.pattern.IStringPattern;
 
 /**
  * Pattern to match file names, where character * and ? can be used.

@@ -184,7 +184,7 @@ public class TestLoggers extends LCCoreAbstractTest {
 		Assert.assertTrue(new File(dir, "log_small.txt.2").exists());
 		Assert.assertFalse(new File(dir, "log_small.txt.3").exists());
 		
-		new RollingFileAppender(factory, new File(dir, "toto").getAbsolutePath(), Level.DEBUG, new LogPattern("hello world"), 10, 1).close();
+		new RollingFileAppender(factory, new File(dir, "toto").getAbsolutePath(), Level.DEBUG, new LogPattern("hello world"), 10, 1, null).close();
 	}
 	
 	private static void produceLogs(Logger log) {

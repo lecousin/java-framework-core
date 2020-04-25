@@ -15,6 +15,7 @@ import net.lecousin.framework.concurrent.tasks.drives.RemoveDirectory;
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.core.test.LogInterceptor;
 import net.lecousin.framework.progress.FakeWorkProgress;
 
 public class TestDirectoryTasks extends LCCoreAbstractTest {
@@ -27,10 +28,13 @@ public class TestDirectoryTasks extends LCCoreAbstractTest {
 		CreateDirectory.task(dir, true, true, Task.Priority.NORMAL).start().getOutput().blockThrow(0);
 		Assert.assertTrue(dir.exists());
 		try {
+			LogInterceptor.intercept(log -> log.trace instanceof IOException);
 			CreateDirectory.task(dir, true, true, Task.Priority.NORMAL).start().getOutput().blockThrow(0);
 			throw new AssertionError("CreateDirectoryTask should throw an exception when the directory already exists");
 		} catch (IOException e) {
 			// ok
+		} finally {
+			LogInterceptor.intercept(null);
 		}
 		RemoveDirectory.task(dir, null, 0, null, Task.Priority.NORMAL, false).start().getOutput().blockThrow(0);
 		Assert.assertFalse(dir.exists());

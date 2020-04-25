@@ -49,7 +49,7 @@ public class LoggerFactory {
 		application = app;
 		thread = new LoggerThread(application);
 		ConsoleAppender defaultAppender = new ConsoleAppender(app.getConsole(), app.isReleaseMode() ? Level.INFO : Level.DEBUG,
-			new LogPattern("%d{HH:mm:ss.SSS} [%level] <%logger{20}> %m"));
+			new LogPattern("%{date[format=HH:mm:ss.SSS]} [%{level|fixed=5}] <%{logger|fixed=..20}> %{message}"), null);
 		rootLogger = new Logger(this, null, "", defaultAppender, null);
 		loggers.put("", rootLogger);
 		String url = app.getProperty(Application.PROPERTY_LOGGING_CONFIGURATION_URL);

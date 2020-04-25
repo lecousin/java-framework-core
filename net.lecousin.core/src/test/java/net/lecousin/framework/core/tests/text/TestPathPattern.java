@@ -3,7 +3,7 @@ package net.lecousin.framework.core.tests.text;
 import java.util.Arrays;
 
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
-import net.lecousin.framework.text.PathPattern;
+import net.lecousin.framework.text.pattern.path.PathPattern;
 
 import org.junit.Assert;
 import org.junit.Test;

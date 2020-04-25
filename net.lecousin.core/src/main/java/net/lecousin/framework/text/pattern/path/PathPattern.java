@@ -1,9 +1,11 @@
-package net.lecousin.framework.text;
+package net.lecousin.framework.text.pattern.path;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+
+import net.lecousin.framework.text.pattern.IStringPattern;
 
 /**
  * A path pattern is composed of elements separated by a / character.

@@ -166,6 +166,7 @@ public class LocalizedProperties implements IMemoryManageable {
 		return namespaces.keySet();
 	}
 	
+	@SuppressWarnings("resource")
 	private void load(Namespace ns, Namespace.Language lang) {
 		String path = ns.path + '.' + String.join("-", lang.tag);
 		IOProvider.Readable provider = new IOProviderFromPathUsingClassloader(ns.classLoader).get(path);

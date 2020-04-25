@@ -16,6 +16,8 @@ import net.lecousin.framework.mutable.MutableBoolean;
 public class LCTest {
 
 	public static synchronized void init() throws Exception {
+		if (System.getProperty(Application.PROPERTY_LOGGING_CONFIGURATION_URL) == null)
+			System.setProperty(Application.PROPERTY_LOGGING_CONFIGURATION_URL, "classpath:lc-test-logging.xml");
 		Application.start(new Artifact("net.lecousin.framework.test", "test", new Version(LCCoreVersion.VERSION)), true).blockThrow(0);
 		LCCore.getApplication().getLoggerFactory().getLogger(Async.class).setLevel(Logger.Level.INFO);
 		Threading.setLogThreadingInterval(120000);

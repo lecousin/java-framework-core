@@ -7,10 +7,9 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.ParseException;
+import java.util.List;
 import java.util.Map;
 
-import javax.xml.stream.XMLStreamConstants;
-import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
@@ -20,6 +19,7 @@ import net.lecousin.framework.concurrent.util.LimitAsyncOperations;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
+import net.lecousin.framework.log.LogFilter;
 import net.lecousin.framework.log.LogPattern;
 import net.lecousin.framework.log.LogPattern.Log;
 import net.lecousin.framework.log.Logger.Level;
@@ -32,13 +32,24 @@ import net.lecousin.framework.text.StringUtil;
  * The extension of previous log files are also incremented.
  * If the number of log files reached a maximum number, the oldest one is removed.
  */
-public class RollingFileAppender implements Appender, Closeable {
+public class RollingFileAppender extends Appender implements Closeable {
+	
+	private LoggerFactory factory;
+	private File file;
+	private FileIO.WriteOnly output = null;
+	private long maxSize;
+	private int maxFiles;
+	private LogPattern pattern;
+	private boolean closed = false;
+	private LimitAsyncOperations<FileLogOperation, Void, IOException> opStack = new LimitAsyncOperations<>(100, FileLogOperation::execute, null);
 
 	/** Constructor. */
-	public RollingFileAppender(LoggerFactory factory, String path, Level level, LogPattern pattern, long maxSize, int maxFiles) {
+	public RollingFileAppender(
+		LoggerFactory factory, String path, Level level, LogPattern pattern, long maxSize, int maxFiles, List<LogFilter> filters
+	) {
+		super(level, filters);
 		this.factory = factory;
 		this.file = new File(path);
-		this.level = level;
 		this.pattern = pattern;
 		this.maxSize = maxSize;
 		this.maxFiles = maxFiles;
@@ -47,76 +58,57 @@ public class RollingFileAppender implements Appender, Closeable {
 	
 	/** Constructor. */
 	@SuppressWarnings("squid:S2589") // false positive, path is not always null
-	public RollingFileAppender(
-		LoggerFactory factory, XMLStreamReader reader, @SuppressWarnings({"unused","squid:S1172"}) Map<String,Appender> appenders
-	) throws LoggerConfigurationException, XMLStreamException {
-		this.factory = factory;
-		String levelStr = null;
-		String patternStr = null;
-		String path = null;
-		String size = null;
-		String files = null;
-		for (int i = 0; i < reader.getAttributeCount(); ++i) {
-			String attrName = reader.getAttributeLocalName(i);
-			String attrValue = reader.getAttributeValue(i);
-			if ("level".equals(attrName))
-				levelStr = attrValue;
-			else if ("pattern".equals(attrName))
-				patternStr = attrValue;
-			else if ("path".equals(attrName))
-				path = attrValue;
-			else if ("size".equals(attrName))
-				size = attrValue;
-			else if ("files".equals(attrName))
-				files = attrValue;
-			else if (!"name".equals(attrName) && !"class".equals(attrName))
-				throw new LoggerConfigurationException("Unknown attribute " + attrName);
-		}
-
-		if (levelStr == null) throw new LoggerConfigurationException("Missing attribute level on rolling file Appender");
-		try { this.level = Level.valueOf(levelStr); }
-		catch (Exception t) { throw new LoggerConfigurationException("Invalid level " + levelStr); }
-		
-		if (patternStr == null) throw new LoggerConfigurationException("Missing attribute pattern on rolling file Appender");
-		this.pattern = new LogPattern(patternStr);
-		
-		if (path == null) throw new LoggerConfigurationException("Missing attribute path on rolling file Appender");
-		this.file = new File(path);
-
-		if (size == null) throw new LoggerConfigurationException("Missing attribute size on rolling file Appender");
-		try { maxSize = StringUtil.parseSize(size); }
-		catch (ParseException e) { throw new LoggerConfigurationException("Invalid rolling file size: " + size, e); }
-		if (maxSize <= 0)
-			throw new LoggerConfigurationException("Invalid rolling file size: " + size);
-
-		if (files == null) throw new LoggerConfigurationException("Missing attribute files on rolling file Appender");
-		try { maxFiles = Integer.parseInt(files); }
-		catch (NumberFormatException e) { throw new LoggerConfigurationException("Invalid maximum number of rolling files: " + files); }
-		if (maxFiles <= 0)
-			throw new LoggerConfigurationException("Invalid maximum number of rolling files: " + files);
-		
-		reader.next();
-		do {
-			if (reader.getEventType() == XMLStreamConstants.END_ELEMENT)
-				break;
-			if (reader.getEventType() == XMLStreamConstants.START_ELEMENT) {
-				throw new LoggerConfigurationException("Unexpected inner element " + reader.getLocalName());
-			}
-			reader.next();
-		} while (reader.hasNext());
-
+	public RollingFileAppender(LoggerFactory factory, XMLStreamReader reader, Map<String,Appender> appenders)
+	throws LoggerConfigurationException {
+		super(factory, reader, appenders);
 		factory.getApplication().toClose(100000, this);
 	}
 	
-	private LoggerFactory factory;
-	private File file;
-	private FileIO.WriteOnly output = null;
-	private long maxSize;
-	private int maxFiles;
-	private LogPattern pattern;
-	private Level level;
-	private boolean closed = false;
-	private LimitAsyncOperations<FileLogOperation, Void, IOException> opStack = new LimitAsyncOperations<>(100, FileLogOperation::execute, null);
+	@Override
+	protected void init(LoggerFactory factory, Map<String, Appender> appenders) {
+		this.factory = factory;
+		this.maxSize = -1;
+		this.maxFiles = -1;
+		super.init(factory, appenders);
+	}
+	
+	@Override
+	protected boolean configureAttribute(String name, String value) throws LoggerConfigurationException {
+		if ("pattern".equals(name)) {
+			this.pattern = new LogPattern(value);
+			return true;
+		}
+		if ("path".equals(name)) {
+			this.file = new File(value);
+			return true;
+		}
+		if ("size".equals(name)) {
+			try { maxSize = StringUtil.parseSize(value); }
+			catch (ParseException e) { throw new LoggerConfigurationException("Invalid rolling file size: " + value, e); }
+			if (maxSize <= 0)
+				throw new LoggerConfigurationException("Invalid rolling file size: " + value);
+			return true;
+		}
+		if ("files".equals(name)) {
+			try { maxFiles = Integer.parseInt(value); }
+			catch (NumberFormatException e) {
+				throw new LoggerConfigurationException("Invalid maximum number of rolling files: " + value);
+			}
+			if (maxFiles <= 0)
+				throw new LoggerConfigurationException("Invalid maximum number of rolling files: " + value);
+			return true;
+		}
+		return super.configureAttribute(name, value);
+	}
+	
+	@Override
+	protected void checkAttributes() throws LoggerConfigurationException {
+		super.checkAttributes();
+		if (pattern == null) throw new LoggerConfigurationException("Missing attribute pattern on console Appender");
+		if (file == null) throw new LoggerConfigurationException("Missing attribute path on rolling file Appender");
+		if (maxSize < 0) throw new LoggerConfigurationException("Missing attribute size on rolling file Appender");
+		if (maxFiles < 0) throw new LoggerConfigurationException("Missing attribute files on rolling file Appender");
+	}
 	
 	private static interface FileLogOperation {
 		AsyncSupplier<Void, IOException> execute();
@@ -227,11 +219,6 @@ public class RollingFileAppender implements Appender, Closeable {
 	}
 
 	@Override
-	public int level() {
-		return level.ordinal();
-	}
-
-	@Override
 	public boolean needsThreadName() {
 		return pattern.needsThreadName();
 	}
@@ -239,6 +226,11 @@ public class RollingFileAppender implements Appender, Closeable {
 	@Override
 	public boolean needsLocation() {
 		return pattern.needsLocation();
+	}
+	
+	@Override
+	public String[] neededContexts() {
+		return pattern.neededContexts();
 	}
 	
 	@Override

@@ -58,7 +58,12 @@ public class LCConcurrentRunner extends BlockJUnit4ClassRunner {
 			
 			@Override
 	        public void schedule(Runnable childStatement) {
-				jp.addToJoin(Task.cpu("Execute JUnit test", Task.Priority.LOW, new Executable.FromRunnable(childStatement)).setMaxBlockingTimeInNanoBeforeToLog(Long.MAX_VALUE).start());
+				jp.addToJoin(
+					Task.cpu("Execute JUnit test", Task.Priority.LOW, new Executable.FromRunnable(childStatement))
+					.setMaxBlockingTimeInNanoBeforeToLog(Long.MAX_VALUE)
+					.resetContext()
+					.start()
+				);
 	        }
 	
 			@Override

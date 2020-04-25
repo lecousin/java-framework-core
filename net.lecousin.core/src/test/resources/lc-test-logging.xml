@@ -1,0 +1,10 @@
+<LoggingConfiguration>
+  <Appender name="console" class="net.lecousin.framework.log.appenders.ConsoleAppender"
+    level="DEBUG"
+    pattern="%{date[format=mm:ss.SSS]} %{context[name=junit]} %{level|fixed=5} &lt;%{logger|fixed=..20}&gt; %{message}"
+  >
+    <Filter class="net.lecousin.framework.core.test.TestExceptionLogFilter"/>
+    <Filter class="net.lecousin.framework.core.test.LogInterceptor"/>
+  </Appender>
+  <Default appender="console"/>
+</LoggingConfiguration>
