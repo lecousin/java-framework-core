@@ -117,21 +117,33 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	}
 	
 	/** Constructor. */
-	public Task(TaskManager manager, String description, Priority priority, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone) {
+	@SuppressWarnings("java:S3776")
+	public Task(
+		TaskManager manager, String description,
+		Priority priority, Task.Context parentContext,
+		Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
+	) {
 		if (manager == null) manager = Threading.getUnmanagedTaskManager();
-		Task<?, ?> parent = Threading.currentTask();
-		if (parent != null) {
-			context = parent.context;
-			if (priority == null)
-				priority = parent.getPriority();
-		} else {
-			Application app = LCCore.getApplication();
-			if (app == null) throw new IllegalStateException("No application in the context");
-			context = new Context();
-			context.application = app;
-			context.attributes = new HashMap<>(10);
-			if (priority == null)
-				priority = Priority.NORMAL;
+		if (parentContext != null)
+			context = parentContext;
+		if (context == null || priority == null) {
+			Task<?, ?> parent = Threading.currentTask();
+			if (parent != null) {
+				if (context == null)
+					context = parent.context;
+				if (priority == null)
+					priority = parent.getPriority();
+			} else {
+				if (context == null) {
+					Application app = LCCore.getApplication();
+					if (app == null) throw new IllegalStateException("No application in the context");
+					context = new Context();
+					context.application = app;
+					context.attributes = new HashMap<>(10);
+				}
+				if (priority == null)
+					priority = Priority.NORMAL;
+			}
 		}
 		this.manager = manager;
 		this.description = description;
@@ -642,40 +654,69 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	
 	/** Create a CPU task already done. */
 	public static <T, TError extends Exception> Task<T, TError> done(T result, TError error) {
-		Task<T, TError> t = new Task<>(Threading.getCPUTaskManager(), "", Priority.NORMAL, null, null);
+		Task<T, TError> t = new Task<>(Threading.getCPUTaskManager(), "", Priority.NORMAL, null, null, null);
 		t.setDone(result, error);
 		return t;
 	}
 	
 	/** Create a CPU task. */
 	public static <T, TError extends Exception> Task<T, TError> cpu(
+		String description, Priority priority, Task.Context context, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
+	) {
+		return new Task<>(Threading.getCPUTaskManager(), description, priority, context, executable, ondone);
+	}
+	
+	/** Create a CPU task. */
+	public static <T, TError extends Exception> Task<T, TError> cpu(
 		String description, Priority priority, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
 	) {
-		return new Task<>(Threading.getCPUTaskManager(), description, priority, executable, ondone);
+		return new Task<>(Threading.getCPUTaskManager(), description, priority, null, executable, ondone);
+	}
+
+	/** Create a CPU task. */
+	public static <T, TError extends Exception> Task<T, TError>
+	cpu(String description, Priority priority, Context context, Executable<T, TError> executable) {
+		return new Task<>(Threading.getCPUTaskManager(), description, priority, context, executable, null);
 	}
 
 	/** Create a CPU task. */
 	public static <T, TError extends Exception> Task<T, TError> cpu(String description, Priority priority, Executable<T, TError> executable) {
-		return new Task<>(Threading.getCPUTaskManager(), description, priority, executable, null);
+		return new Task<>(Threading.getCPUTaskManager(), description, priority, null, executable, null);
 	}
 	
 	/** Create a CPU task. */
 	public static <T, TError extends Exception> Task<T, TError> cpu(
 		String description, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
 	) {
-		return new Task<>(Threading.getCPUTaskManager(), description, null, executable, ondone);
+		return new Task<>(Threading.getCPUTaskManager(), description, null, null, executable, ondone);
 	}
 
 	/** Create a CPU task. */
 	public static <T, TError extends Exception> Task<T, TError> cpu(String description, Executable<T, TError> executable) {
-		return new Task<>(Threading.getCPUTaskManager(), description, null, executable, null);
+		return new Task<>(Threading.getCPUTaskManager(), description, null, null, executable, null);
+	}
+	
+	/** Create a task on a file. */
+	public static <T, TError extends Exception> Task<T, TError> file(
+		File file, String description, Priority priority, Context context, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
+	) {
+		return new Task<>(Threading.getDrivesManager().getTaskManager(file), description, priority, context, executable, ondone)
+			.setContext(DrivesThreadingManager.TASK_CONTEXT_FILE_ATTRIBUTE, file);
 	}
 	
 	/** Create a task on a file. */
 	public static <T, TError extends Exception> Task<T, TError> file(
 		File file, String description, Priority priority, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
 	) {
-		return new Task<>(Threading.getDrivesManager().getTaskManager(file), description, priority, executable, ondone)
+		return new Task<>(Threading.getDrivesManager().getTaskManager(file), description, priority, null, executable, ondone)
+			.setContext(DrivesThreadingManager.TASK_CONTEXT_FILE_ATTRIBUTE, file);
+	}
+	
+	/** Create a task on a file. */
+	public static <T, TError extends Exception> Task<T, TError> file(
+		File file, String description, Priority priority, Context context, Executable<T, TError> executable
+	) {
+		return new Task<>(Threading.getDrivesManager().getTaskManager(file), description, priority, context, executable, null)
 			.setContext(DrivesThreadingManager.TASK_CONTEXT_FILE_ATTRIBUTE, file);
 	}
 	
@@ -683,36 +724,50 @@ public final class Task<T,TError extends Exception> implements Cancellable {
 	public static <T, TError extends Exception> Task<T, TError> file(
 		File file, String description, Priority priority, Executable<T, TError> executable
 	) {
-		return new Task<>(Threading.getDrivesManager().getTaskManager(file), description, priority, executable, null)
+		return new Task<>(Threading.getDrivesManager().getTaskManager(file), description, priority, null, executable, null)
 			.setContext(DrivesThreadingManager.TASK_CONTEXT_FILE_ATTRIBUTE, file);
+	}
+	
+	/** Create a task using a pool of threads. */
+	public static <T, TError extends Exception> Task<T, TError> unmanaged(
+		String description, Priority priority, Context context, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
+	) {
+		return new Task<>(Threading.getUnmanagedTaskManager(), description, priority, context, executable, ondone);
 	}
 	
 	/** Create a task using a pool of threads. */
 	public static <T, TError extends Exception> Task<T, TError> unmanaged(
 		String description, Priority priority, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
 	) {
-		return new Task<>(Threading.getUnmanagedTaskManager(), description, priority, executable, ondone);
+		return new Task<>(Threading.getUnmanagedTaskManager(), description, priority, null, executable, ondone);
 	}
 	
 	/** Create a task using a pool of threads. */
 	public static <T, TError extends Exception> Task<T, TError> unmanaged(
 		String description, Executable<T, TError> executable, Consumer<Pair<T,TError>> ondone
 	) {
-		return new Task<>(Threading.getUnmanagedTaskManager(), description, null, executable, ondone);
+		return new Task<>(Threading.getUnmanagedTaskManager(), description, null, null, executable, ondone);
+	}
+	
+	/** Create a task using a pool of threads. */
+	public static <T, TError extends Exception> Task<T, TError> unmanaged(
+		String description, Priority priority, Context context, Executable<T, TError> executable
+	) {
+		return new Task<>(Threading.getUnmanagedTaskManager(), description, priority, context, executable, null);
 	}
 	
 	/** Create a task using a pool of threads. */
 	public static <T, TError extends Exception> Task<T, TError> unmanaged(
 		String description, Priority priority, Executable<T, TError> executable
 	) {
-		return new Task<>(Threading.getUnmanagedTaskManager(), description, priority, executable, null);
+		return new Task<>(Threading.getUnmanagedTaskManager(), description, priority, null, executable, null);
 	}
 	
 	/** Create a task using a pool of threads. */
 	public static <T, TError extends Exception> Task<T, TError> unmanaged(
 		String description, Executable<T, TError> executable
 	) {
-		return new Task<>(Threading.getUnmanagedTaskManager(), description, null, executable, null);
+		return new Task<>(Threading.getUnmanagedTaskManager(), description, null, null, executable, null);
 	}
 	
 }

@@ -27,7 +27,7 @@ public class RenameFile implements Executable<Void,IOException> {
 		String partitionDest = Threading.getDrivesManager().getPartitionPath(destination);
 
 		if (Objects.equals(partitionSource, partitionDest))
-			return new Task<>(Threading.getDrivesManager().getTaskManager(partitionSource), "Rename file", priority,
+			return new Task<>(Threading.getDrivesManager().getTaskManager(partitionSource), "Rename file", priority, null,
 				new RenameFile(source, destination), null).start().getOutput();
 
 		AsyncSupplier<Long, IOException> copy = IOUtil.copy(source, destination, priority, source.length(), null, 0, null);

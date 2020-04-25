@@ -22,7 +22,7 @@ class ReadFile implements Executable<Integer,IOException> {
 		Priority priority, Consumer<Pair<Integer,IOException>> ondone
 	) {
 		Task<Integer, IOException> task = new Task<>(file.manager,
-			"Read from file " + file.path + (pos >= 0 ? " at " + pos : ""), priority,
+			"Read from file " + file.path + (pos >= 0 ? " at " + pos : ""), priority, null,
 			new ReadFile(file, pos, buffer, fully),
 			ondone);
 		file.openTask.ondone(task, false);

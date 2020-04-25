@@ -10,7 +10,7 @@ import net.lecousin.framework.concurrent.threads.Task.Priority;
 class OpenFile implements Executable<Void,IOException> {
 
 	public static Task<Void, IOException> launch(FileAccess file, String mode, Priority priority) {
-		return new Task<>(file.manager, "Open file " + file.path, priority, new OpenFile(file, mode), null);
+		return new Task<>(file.manager, "Open file " + file.path, priority, null, new OpenFile(file, mode), null);
 	}
 	
 	public OpenFile(FileAccess file, String mode) {

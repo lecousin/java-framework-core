@@ -28,7 +28,7 @@ public class DirectoryReader implements Executable<DirectoryReader.Result,Access
 		TaskManager taskManager, File dir, Priority priority, Request request, WorkProgress progress
 	) {
 		Task<DirectoryReader.Result,AccessDeniedException> task = new Task<>(
-			taskManager, "Reading directory " + dir.getAbsolutePath(), priority,
+			taskManager, "Reading directory " + dir.getAbsolutePath(), priority, null,
 			new DirectoryReader(dir, request, progress), null);
 		if (progress != null)
 			WorkProgress.linkTo(progress, task.getOutput());

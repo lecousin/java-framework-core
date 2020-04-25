@@ -24,7 +24,7 @@ public final class DriveOperationsSequence {
 		List<Object> resultCollector,
 		@SuppressWarnings("unchecked") Executable<?, IOException>... operations
 	) {
-		return new Task<>(manager, description, priority, new Executable<Void, IOException>() {
+		return new Task<>(manager, description, priority, null, new Executable<Void, IOException>() {
 			@SuppressWarnings({ "rawtypes", "unchecked" })
 			@Override
 			public Void execute(Task task) throws IOException, CancelException {

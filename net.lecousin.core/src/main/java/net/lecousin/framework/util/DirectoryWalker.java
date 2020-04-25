@@ -71,7 +71,7 @@ public abstract class DirectoryWalker<T> {
 			}
 		};
 		AsyncSupplier<DirectoryReader.Result, AccessDeniedException> read = 
-			new Task<>(taskManager, "Reading directory " + dir.getAbsolutePath(), priority, reader, null)
+			new Task<>(taskManager, "Reading directory " + dir.getAbsolutePath(), priority, null, reader, null)
 			.start().getOutput();
 		read.thenStart("DirectoryWalker", priority, (Task<Void, NoException> task) -> {
 			if (read.hasError()) {

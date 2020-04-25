@@ -110,7 +110,7 @@ public class IOFromInputStream extends AbstractIO implements IO.Readable {
 	
 	@Override
 	public AsyncSupplier<Integer,IOException> readAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(new Task<Integer,IOException>(manager, "Read from InputStream", priority, t -> {
+		return operation(new Task<Integer,IOException>(manager, "Read from InputStream", priority, null, t -> {
 			try {
 				int nb = stream.read(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
 				if (nb >= 0)
@@ -125,7 +125,7 @@ public class IOFromInputStream extends AbstractIO implements IO.Readable {
 	
 	@Override
 	public AsyncSupplier<Integer,IOException> readFullyAsync(ByteBuffer buffer, Consumer<Pair<Integer,IOException>> ondone) {
-		return operation(new Task<Integer,IOException>(manager, "Read from InputStream", priority, t -> {
+		return operation(new Task<Integer,IOException>(manager, "Read from InputStream", priority, null, t -> {
 			int total = 0;
 			do {
 				if (isClosing() || isClosed()) throw IO.cancelClosed();
@@ -154,7 +154,7 @@ public class IOFromInputStream extends AbstractIO implements IO.Readable {
 			return new AsyncSupplier<>(Long.valueOf(0), null);
 		}
 		// InputStream does not comply to our restrictions, and may end up after the end of the stream, so we cannot use the skip method
-		return operation(new Task<Long,IOException>(manager, "Skip from InputStream", priority, t -> {
+		return operation(new Task<Long,IOException>(manager, "Skip from InputStream", priority, null, t -> {
 			long total = 0;
 			byte[] b = new byte[n > 65536 ? 65536 : (int)n];
 			do {

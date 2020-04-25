@@ -9,7 +9,7 @@ import net.lecousin.framework.concurrent.threads.Task.Priority;
 class SetFileSize implements Executable<Void,IOException> {
 
 	public static Task<Void, IOException> launch(FileAccess file, long newSize, Priority priority) {
-		Task<Void, IOException> task = new Task<>(file.manager, "Change file size", priority, new SetFileSize(file, newSize), null);
+		Task<Void, IOException> task = new Task<>(file.manager, "Change file size", priority, null, new SetFileSize(file, newSize), null);
 		file.openTask.ondone(task, false);
 		return task;
 	}

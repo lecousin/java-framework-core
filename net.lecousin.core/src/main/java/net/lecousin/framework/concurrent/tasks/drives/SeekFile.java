@@ -27,7 +27,7 @@ class SeekFile implements Executable<Long,IOException> {
 		FileAccess file, SeekType type, long move, boolean allowAfterEnd, boolean returnNewPosition,
 		Priority priority, Consumer<Pair<Long,IOException>> ondone
 	) {
-		Task<Long, IOException> task = new Task<>(file.manager, "Seek in file", priority,
+		Task<Long, IOException> task = new Task<>(file.manager, "Seek in file", priority, null,
 			new SeekFile(file, type, move, allowAfterEnd, returnNewPosition), ondone);
 		file.openTask.ondone(task, false);
 		return task;
