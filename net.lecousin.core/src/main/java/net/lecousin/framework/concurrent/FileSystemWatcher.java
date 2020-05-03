@@ -13,6 +13,8 @@ import java.util.HashMap;
 
 import net.lecousin.framework.application.Application;
 import net.lecousin.framework.application.LCCore;
+import net.lecousin.framework.concurrent.threads.ApplicationThread;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.log.Logger;
 
 /**
@@ -48,6 +50,10 @@ public final class FileSystemWatcher {
 			if (watcher == null || watcher.stop) {
 				watcher = new Watcher(app);
 				app.setInstance(Watcher.class, watcher);
+				Thread t = new Thread(watcher);
+				t.setName("FileSystem Watcher");
+				Threading.registerApplicationThread(t, watcher);
+				t.start();
 			}
 			return watcher.watch(path, listener, kinds);
 		}
@@ -62,13 +68,11 @@ public final class FileSystemWatcher {
 			StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
 	}
 	
-	private static class Watcher extends Thread implements Closeable {
+	private static class Watcher implements ApplicationThread, Closeable {
 		public Watcher(Application app) throws IOException {
-			super("FileSystem Watcher");
 			logger = app.getLoggerFactory().getLogger(FileSystemWatcher.class);
 			service = FileSystems.getDefault().newWatchService();
 			this.app = app;
-			start();
 			app.toClose(1000, this);
 		}
 		
@@ -76,6 +80,16 @@ public final class FileSystemWatcher {
 		private WatchService service;
 		private boolean stop = false;
 		private Logger logger;
+		
+		@Override
+		public Application getApplication() {
+			return app;
+		}
+		
+		@Override
+		public void debugStatus(StringBuilder s) {
+			s.append("listening to " + keys.size() + " paths");
+		}
 		
 		private static class Listening {
 			private Path path;
@@ -85,6 +99,7 @@ public final class FileSystemWatcher {
 		private static HashMap<WatchKey, Listening> keys = new HashMap<>();
 		
 		public Runnable watch(Path path, PathEventListener listener, WatchEvent.Kind<?>[] kinds) throws IOException {
+			if (logger.debug()) logger.debug("Start watching path " + path);
 			Listening listening = new Listening();
 			listening.path = path;
 			listening.listener = listener;
@@ -95,6 +110,7 @@ public final class FileSystemWatcher {
 			}
 			return () -> {
 				key.cancel();
+				if (logger.debug()) logger.debug("Stop watching path " + path);
 				synchronized (FileSystemWatcher.class) {
 					synchronized (keys) {
 						keys.remove(key);

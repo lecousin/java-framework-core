@@ -47,7 +47,7 @@ public class TestFileSystemWatcher extends LCCoreAbstractTest {
 		Assert.assertFalse(queue.isDone());
 
 		Path file = Files.createTempFile(dir, "test", "file");
-		Triple<Path, String, Integer> event = queue.waitForData(5000);
+		Triple<Path, String, Integer> event = queue.waitForData(15000);
 		Assert.assertNotNull(event);
 		Assert.assertEquals(3, event.getValue3().intValue());
 		Assert.assertEquals(dir, event.getValue1());
@@ -57,7 +57,7 @@ public class TestFileSystemWatcher extends LCCoreAbstractTest {
 		FileOutputStream out = new FileOutputStream(file.toFile());
 		out.write(new byte[] { 1, 2, 3 });
 		out.close();
-		event = queue.waitForData(5000);
+		event = queue.waitForData(15000);
 		Assert.assertNotNull(event);
 		Assert.assertEquals(2, event.getValue3().intValue());
 		Assert.assertEquals(dir, event.getValue1());
@@ -69,7 +69,7 @@ public class TestFileSystemWatcher extends LCCoreAbstractTest {
 		
 		RemoveFile.task(file.toFile(), Task.Priority.NORMAL).start().getOutput().blockThrow(0);
 		do {
-			event = queue.waitForData(5000);
+			event = queue.waitForData(15000);
 			Assert.assertNotNull(event);
 			if (event.getValue3().intValue() == 2) continue;
 			break;
