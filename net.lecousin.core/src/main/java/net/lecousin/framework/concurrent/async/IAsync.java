@@ -151,6 +151,24 @@ public interface IAsync<TError extends Exception> extends Cancellable {
 		});
 	}
 	
+	/** Call the given runnable. */
+	default void onDone(Runnable onSuccess, Runnable onErrorOrCancel) {
+		onDone(new Runnable() {
+			@Override
+			public void run() {
+				if (isSuccessful())
+					onSuccess.run();
+				else
+					onErrorOrCancel.run();
+			}
+			
+			@Override
+			public String toString() {
+				return onSuccess + " / " + onErrorOrCancel;
+			}
+		});
+	}
+	
 	/** Call listener when unblocked (whatever the result is successful, has error or is cancelled). */
 	void onDone(Runnable listener);
 	

@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.function.Supplier;
 
 import net.lecousin.framework.LCCoreVersion;
@@ -22,6 +23,7 @@ import net.lecousin.framework.memory.MemoryManager;
 import net.lecousin.framework.util.AsyncCloseable;
 import net.lecousin.framework.util.DebugUtil;
 import net.lecousin.framework.util.Pair;
+import net.lecousin.framework.util.PropertiesUtil;
 import net.lecousin.framework.util.ThreadUtil;
 
 /**
@@ -40,6 +42,10 @@ public class StandaloneLCCore implements LCCore.Environment {
 		for (Map.Entry<Thread,StackTraceElement[]> thread : threads.entrySet())
 			threadsBeforeInit.add(thread.getKey());
 		threads = null;
+		
+		Properties props = System.getProperties();
+		nbCPUThreads = PropertiesUtil.getInt(props, "lc.threads.cpu", -1);
+		nbUnmanagedThreads = PropertiesUtil.getInt(props, "lc.threads.unmanaged", -1);
 	}
 	
 	private Application app = null;
@@ -48,8 +54,8 @@ public class StandaloneLCCore implements LCCore.Environment {
 	private List<Thread> threadsBeforeInit = new LinkedList<>();
 	private ArrayList<Closeable> toCloseSync = new ArrayList<>();
 	private ArrayList<AsyncCloseable<?>> toCloseAsync = new ArrayList<>();
-	private int nbCPUThreads = -1;
-	private int nbUnmanagedThreads = -1;
+	private int nbCPUThreads;
+	private int nbUnmanagedThreads;
 	private DrivesProvider drivesProvider = null;
 	private Supplier<TaskPriorityManager> cpuPriorityManagerSupplier = SimpleTaskPriorityManager::new;
 	private Supplier<TaskPriorityManager> drivePriorityManagerSupplier = SimpleDriveTaskPriorityManager::new;

@@ -1,6 +1,7 @@
 package net.lecousin.framework.util;
 
 import java.util.Map;
+import java.util.Properties;
 
 /** Utilities for properties. */
 public final class PropertiesUtil {
@@ -44,6 +45,17 @@ public final class PropertiesUtil {
 			if (val == null) val = "";
 			value = value.substring(0, i) + val + value.substring(j + 1);
 		} while (true);		
+	}
+	
+	public static int getInt(Properties props, String name, int defaultValue) {
+		String s = props.getProperty(name);
+		if (s == null)
+			return defaultValue;
+		try {
+			return Integer.parseInt(s);
+		} catch (Exception e) {
+			return defaultValue;
+		}
 	}
 	
 }

@@ -51,6 +51,7 @@ public class DrivesThreadingManager {
 					Threading.getLogger().error("Unable to instantiate task priority manager", e);
 					prio = new SimpleTaskPriorityManager();
 				}
+				Threading.getLogger().info("Starting drive task manager for " + path + " with 1 thread");
 				TaskManager tm = new MonoThreadTaskManager(
 					DRIVE + path, resource, threadFactory, prio, driveMonitoring);
 				tm.start();
@@ -182,6 +183,7 @@ public class DrivesThreadingManager {
 			Threading.getLogger().error("Unable to instantiate task priority manager", e);
 			prio = new SimpleTaskPriorityManager();
 		}
+		Threading.getLogger().info("Starting drive task manager for " + drive + " with " + (multiThread ? "2 threads" : "1 thread"));
 		TaskManager tm;
 		if (multiThread)
 			tm = new MultiThreadTaskManager(

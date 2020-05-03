@@ -10,6 +10,7 @@ import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.concurrent.threads.TaskExecutor;
 import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.concurrent.threads.TaskManagerMonitor;
+import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.concurrent.threads.priority.TaskPriorityManager;
 
 /**
@@ -33,6 +34,7 @@ public class ThreadPoolTaskManager extends TaskManager {
 			this.maxThreads = maxThreads;
 		else
 			this.maxThreads = 100;
+		Threading.getLogger().info("Starting " + name + " with a pool of " + this.maxThreads + " threads");
 	}
 	
 	private int maxThreads;

@@ -59,11 +59,36 @@ public final class DebugUtil {
 
 	/** Create an hexadecimal dump of the given buffer. */
 	public static void dumpHex(StringBuilder s, byte[] buffer, int offset, int length) {
-		dumpHex(s, ByteBuffer.wrap(buffer, offset, length));
+		int line = 0;
+		int pos = 0;
+		while (pos < length) {
+			s.append(StringUtil.encodeHexaPadding(16L * line)).append(' ');
+			int l = length - pos >= 16 ? 16 : length - pos;
+			for (int i = 0; i < 16; ++i) {
+				if (l <= i) s.append("   ");
+				else s.append(StringUtil.encodeHexa(buffer[offset + pos + i])).append(' ');
+			}
+			s.append("  ");
+			for (int i = 0; i < 16; ++i) {
+				if (l <= i) s.append(' ');
+				else {
+					char c = (char)(buffer[offset + pos + i] & 0xFF);
+					if (c < 0x20 || c > 0x7F) c = '.';
+					s.append(c);
+				}
+			}
+			s.append("\r\n");
+			pos += l;
+			line++;
+		}
 	}
 	
 	/** Create an hexadecimal dump of the given buffer. */
 	public static void dumpHex(StringBuilder s, ByteBuffer buffer) {
+		if (buffer.hasArray()) {
+			DebugUtil.dumpHex(s, buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
+			return;
+		}
 		int savePos = buffer.position();
 		int line = 0;
 		while (buffer.hasRemaining()) {

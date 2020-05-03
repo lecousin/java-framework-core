@@ -110,10 +110,12 @@ public final class Threading {
 			prioCpu = new SimpleTaskPriorityManager();
 			prioUnmanaged = new SimpleTaskPriorityManager();
 		}
+		nbCPUThreads = nbCPUThreads > 0 ? nbCPUThreads : Runtime.getRuntime().availableProcessors();
+		logger.info("Starting CPU task manager with " + nbCPUThreads + " threads");
 		cpuManager = new MultiThreadTaskManager(
 			"CPU",
 			Threading.CPU,
-			nbCPUThreads > 0 ? nbCPUThreads : Runtime.getRuntime().availableProcessors(),
+			nbCPUThreads,
 			threadFactory,
 			prioCpu,
 			cpuMonitoring
@@ -132,6 +134,7 @@ public final class Threading {
 		
 		loggerThread = new ThreadingLogger();
 		loggerThread.start();
+		logger.info("Threading system started");
 	}
 	
 	public static boolean isInitialized() {

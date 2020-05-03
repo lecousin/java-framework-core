@@ -399,6 +399,7 @@ public final class Application {
 			librariesManager.onLibrariesLoaded().onDone(sp,
 				error -> new ApplicationBootstrapException("Error loading libraries", error));
 		});
+		sp.onSuccess(() -> app.getDefaultLogger().info("Application started: " + app.getFullName()));
 		
 		return sp;
 	}
