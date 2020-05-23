@@ -14,6 +14,7 @@ import net.lecousin.framework.concurrent.threads.Task.Priority;
 import net.lecousin.framework.concurrent.threads.TaskManager;
 import net.lecousin.framework.concurrent.threads.Threading;
 import net.lecousin.framework.core.test.LCCoreAbstractTest;
+import net.lecousin.framework.core.test.TestException;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IOUtil;
 import net.lecousin.framework.io.data.ByteArray;
@@ -30,7 +31,7 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 	/** Return an IOException for all operations. */
 	public static class ReadableAlwaysError extends ConcurrentCloseable<IOException> implements IO.Readable, IO.Readable.Seekable, IO.Readable.Buffered {
 
-		protected IOException error = new IOException("it's normal");
+		protected IOException error = new TestException.IO("it's normal");
 		
 		@Override
 		public String getSourceDescription() {
@@ -194,7 +195,7 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 	
 	public static class WritableAlwaysError extends ConcurrentCloseable<IOException> implements IO.Writable, IO.WritableByteStream {
 		
-		protected IOException error = new IOException("It's normal");
+		protected IOException error = new TestException.IO("It's normal");
 
 		@Override
 		public String getSourceDescription() {
@@ -264,7 +265,7 @@ public abstract class TestIOError extends LCCoreAbstractTest {
 			this.beginning = beginning;
 		}
 		
-		protected IOException error = new IOException("it's normal");
+		protected IOException error = new TestException.IO("it's normal");
 		protected ByteArray beginning;
 		
 		@Override

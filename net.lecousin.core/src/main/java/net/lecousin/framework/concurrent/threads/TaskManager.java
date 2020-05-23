@@ -196,7 +196,7 @@ public abstract class TaskManager {
 	void imBlocked(TaskExecutor executor) {
 		executor.blocked = true;
 		if (Threading.traceBlockingTasks) {
-			Threading.getLogger().error("Task " + executor.getCurrentTask().getDescription() + " blocked", new Exception());
+			Threading.getLogger().error("Task " + executor.getCurrentTask().getDescription() + " blocked", new Exception("blocked here"));
 		}
 		if (transferredTo != null) {
 			// we are in the process of being transferred, we cannot launch a spare

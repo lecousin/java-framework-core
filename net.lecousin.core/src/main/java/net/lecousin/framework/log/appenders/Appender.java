@@ -24,11 +24,13 @@ public abstract class Appender {
 	
 	public Appender(Level level, List<LogFilter> filters) {
 		this.level = level.ordinal();
+		if (filters == null) filters = new LinkedList<>();
 		this.filters = filters;
 	}
 	
 	public Appender(LoggerFactory factory, XMLStreamReader reader, Map<String,Appender> appenders)
 	throws LoggerConfigurationException {
+		this.filters = new LinkedList<>();
 		init(factory, appenders);
 		for (int i = 0; i < reader.getAttributeCount(); ++i) {
 			String attrName = reader.getAttributeLocalName(i);
@@ -124,18 +126,30 @@ public abstract class Appender {
 		}
 		if (filter == null)
 			throw new LoggerConfigurationException("Missing attribute class on Filter");
-		if (this.filters == null)
-			this.filters = new LinkedList<>();
 		this.filters.add(filter);
+	}
+	
+	public void addFilter(LogFilter filter) {
+		synchronized (filters) {
+			filters.add(filter);
+		}
+	}
+	
+	public void removeFilter(LogFilter filter) {
+		synchronized (filters) {
+			filters.remove(filter);
+		}
 	}
 
 	/** Append the given log. */
 	public final boolean filter(Log log) {
-		if (filters != null)
-			for (LogFilter filter : filters)
-				if (filter.test(log))
-					return true;
-		return false;
+		synchronized (filters) {
+			if (filters != null)
+				for (LogFilter filter : filters)
+					if (filter.test(log))
+						return true;
+			return false;
+		}
 	}
 	
 	/** Append the given log. */

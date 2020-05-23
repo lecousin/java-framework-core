@@ -13,6 +13,8 @@ import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.FileIO.ReadOnly;
 import net.lecousin.framework.io.IO;
@@ -162,38 +164,38 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 			MutableBoolean onDoneBefore = new MutableBoolean(false);
 			Consumer<Pair<ByteBuffer,IOException>> ondone = param -> onDoneBefore.set(true);
 			read.set(io.readNextBufferAsync(ondone));
-			read.get().onDone(new Runnable() {
+			read.get().thenStart("testReadableBufferedNextBufferAsync", Priority.NORMAL, new Executable<Void, NoException>() {
 				@Override
-				public void run() {
+				public Void execute(Task<Void, NoException> taskContext) {
 					do {
 						if (!onDoneBefore.get()) {
 							done.error(new Exception("Method readNextBufferAsync didn't call ondone before listeners"));
-							return;
+							return null;
 						}
 						onDoneBefore.set(false);
 						AsyncSupplier<ByteBuffer,IOException> res = read.get();
 						if (res.hasError()) {
 							done.error(res.getError());
-							return;
+							return null;
 						}
 						int p = pos.get();
 						ByteBuffer buffer = res.getResult();
 						if (p == testBuf.length * nbBuf) {
 							if (buffer != null) {
 								done.error(new Exception("" + buffer.remaining() + " byte(s) read after the end of the file"));
-								return;
+								return null;
 							}
 							done.unblock();
-							return;
+							return null;
 						}
 						if (buffer == null) {
 							done.error(new Exception("Method readNextBufferAsync returned a null buffer, but this is not the end of the file: offset " + p));
-							return;
+							return null;
 						}
 						int nb = buffer.remaining();
 						if (nb == 0) {
 							done.error(new Exception("Method readNextBufferAsync returned an empty buffer at offset " + p));
-							return;
+							return null;
 						}
 						int i = 0;
 						while (i < nb) {
@@ -204,7 +206,7 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 								byte b = buffer.get();
 								if (b != testBuf[start+j]) {
 									done.error(new Exception("Invalid byte " + b + " at offset " + (p + i + start + j) + ", expected is " + testBuf[start+j]));
-									return;
+									return null;
 								}
 							}
 							i += len;
@@ -213,9 +215,10 @@ public abstract class TestReadableBuffered extends TestReadableByteStream {
 		
 						read.set(io.readNextBufferAsync(ondone));
 					} while (read.get().isDone());
-					read.get().onDone(this);
+					read.get().thenStart("testReadableBufferedNextBufferAsync", Priority.NORMAL, this, true);
+					return null;
 				}
-			});
+			}, true);
 			done.blockThrow(0);
 		}
 	}

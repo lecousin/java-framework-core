@@ -9,11 +9,14 @@ import java.util.function.Consumer;
 
 import net.lecousin.framework.collections.ArrayUtil;
 import net.lecousin.framework.collections.LinkedArrayList;
+import net.lecousin.framework.concurrent.Executable;
 import net.lecousin.framework.concurrent.async.Async;
 import net.lecousin.framework.concurrent.async.AsyncSupplier;
 import net.lecousin.framework.concurrent.async.IAsync;
 import net.lecousin.framework.concurrent.async.JoinPoint;
 import net.lecousin.framework.concurrent.threads.Task;
+import net.lecousin.framework.concurrent.threads.Task.Priority;
+import net.lecousin.framework.exception.NoException;
 import net.lecousin.framework.io.FileIO;
 import net.lecousin.framework.io.IO;
 import net.lecousin.framework.io.IO.Seekable.SeekType;
@@ -96,40 +99,40 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 			Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 			
 			Mutable<AsyncSupplier<Integer,IOException>> read = new Mutable<>(null);
-			Runnable listener = new Runnable() {
+			Executable<Void, NoException> listener = new Executable<Void, NoException>() {
 				@Override
-				public void run() {
+				public Void execute(Task<Void, NoException> taskContext) {
 					do {
 						if (read.get().hasError()) {
 							sp.error(read.get().getError());
-							return;
+							return null;
 						}
 						if (!onDoneBefore.get()) {
 							sp.error(new Exception("Method readAsync didn't call ondone before listeners"));
-							return;
+							return null;
 						}
 						
 						if (offsets.isEmpty() && j.get() == testBuf.length) {
 							if (read.get().getResult().intValue() > 0) {
 								sp.error(new Exception("Byte read after the end of the file"));
-								return;
+								return null;
 							}
 							sp.unblock();
-							return;
+							return null;
 						}
 						if (read.get().getResult().intValue() != 1) {
 							sp.error(new Exception("Unexpected end of stream at " + (offset.get()*testBuf.length+j.get()) + ": 1 byte expected, " + read.get().getResult().intValue() + " read"));
-							return;
+							return null;
 						}
 						if (b[0] != testBuf[j.get()]) {
 							sp.error(new Exception("Invalid byte "+(b[0]&0xFF)+" at "+(offset.get()*testBuf.length+j.get())));
-							return;
+							return null;
 						}
 						try {
 							Assert.assertEquals("Read at a given position should not change the IO cursor", 0, io.getPosition());
 						} catch (Throwable t) {
 							sp.error(new Exception(t));
-							return;
+							return null;
 						}
 		
 						if (j.inc() == testBuf.length) {
@@ -157,12 +160,13 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 							read.set(io.readAsync(offset.get()*testBuf.length+j.get(), buffer, ondone));
 						}
 					} while (read.get().isDone());
-					read.get().onDone(this);
+					read.get().thenStart("testSeekableByteByByteAsync", Priority.NORMAL, this, true);
+					return null;
 				}
 			};
 			
 			read.set(io.readAsync(offset.get()*testBuf.length+j.get(), buffer, ondone));
-			read.get().onDone(listener);
+			read.get().thenStart("testSeekableByteByByteAsync", Priority.NORMAL, listener, true);
 	
 			sp.blockThrow(0);
 		}		
@@ -216,44 +220,44 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 		Consumer<Pair<Integer,IOException>> ondone = param -> onDoneBefore.set(true);
 		
 		Mutable<AsyncSupplier<Integer,IOException>> read = new Mutable<>(null);
-		Runnable listener = new Runnable() {
+		Executable<Void, NoException> listener = new Executable<Void, NoException>() {
 			@Override
-			public void run() {
+			public Void execute(Task<Void, NoException> taskContext) {
 				do {
 					if (read.get().hasError()) {
 						sp.error(read.get().getError());
-						return;
+						return null;
 					}
 					if (read.get().isCancelled()) {
 						sp.cancel(read.get().getCancelEvent());
-						return;
+						return null;
 					}
 					if (!onDoneBefore.get()) {
 						sp.error(new Exception("Method readFullyAsync didn't call ondone before listeners"));
-						return;
+						return null;
 					}
 					
 					if (offset.get() == nbBuf) {
 						if (read.get().getResult().intValue() > 0) {
 							sp.error(new Exception("Bytes read after the end of the file"));
-							return;
+							return null;
 						}
 						sp.unblock();
-						return;
+						return null;
 					}
 					if (read.get().getResult().intValue() != testBuf.length) {
 						sp.error(new Exception("Unexpected end of stream at " + (offset.get()*testBuf.length) + " (" + read.get().getResult().intValue() + "/" + testBuf.length + " bytes read)"));
-						return;
+						return null;
 					}
 					if (!ArrayUtil.equals(b, testBuf)) {
 						sp.error(new Exception("Invalid data read at "+(offset.get()*testBuf.length)));
-						return;
+						return null;
 					}
 					try {
 						Assert.assertEquals("Read at a given position should not change the IO cursor", 0, io.getPosition());
 					} catch (Throwable t) {
 						sp.error(new Exception(t));
-						return;
+						return null;
 					}
 	
 					if (offsets.isEmpty()) {
@@ -272,12 +276,13 @@ public abstract class TestReadableSeekable extends TestIO.UsingGeneratedTestFile
 						read.set(io.readFullyAsync(offset.get()*testBuf.length, buffer, ondone));
 					}
 				} while (read.get().isDone());
-				read.get().onDone(this);
+				read.get().thenStart("testSeekableBufferByBufferFullyAsync", Priority.NORMAL, this, true);
+				return null;
 			}
 		};
 		
 		read.set(io.readFullyAsync(offset.get()*testBuf.length, buffer, ondone));
-		read.get().onDone(listener);
+		read.get().thenStart("testSeekableBufferByBufferFullyAsync", Priority.NORMAL, listener, true);
 		
 		return sp;
 	}

@@ -88,7 +88,7 @@ public final class FileSystemWatcher {
 		
 		@Override
 		public void debugStatus(StringBuilder s) {
-			s.append("listening to " + keys.size() + " paths");
+			s.append(" - FileSystemWatcher: listening to " + keys.size() + " paths\n");
 		}
 		
 		private static class Listening {

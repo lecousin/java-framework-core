@@ -53,7 +53,7 @@ public class Logger {
 		return parent.getLevel();
 	}
 	
-	private Appender getAppender() {
+	Appender getAppender() {
 		if (appender != null)
 			return appender;
 		return parent.getAppender();
@@ -88,6 +88,7 @@ public class Logger {
 		log.message = message;
 		log.trace = t;
 		log.app = factory.application;
+		log.context = Task.getCurrentContext();
 		Appender appendr = getAppender();
 		if (appendr.filter(log))
 			return;
@@ -105,10 +106,9 @@ public class Logger {
 		}
 		String[] neededContexts = appendr.neededContexts();
 		if (neededContexts != null) {
-			Task.Context ctx = Task.getCurrentContext(); 
 			log.contextsValues = new String[neededContexts.length];
 			for (int i = 0; i < neededContexts.length; ++i) {
-				Object o = ctx != null ? ctx.getAttribute(neededContexts[i]) : "";
+				Object o = log.context != null ? log.context.getAttribute(neededContexts[i]) : "";
 				log.contextsValues[i] = o != null ? o.toString() : "";
 			}
 		}

@@ -1,5 +1,8 @@
 package net.lecousin.framework.core.test;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.log.LogFilter;
 import net.lecousin.framework.log.LogPattern.Log;
@@ -14,19 +17,30 @@ public class LogInterceptor implements LogFilter {
 		if (ctx == null)
 			return false;
 		try {
-			LogFilter filter = (LogFilter)ctx.getAttribute(CTX_ATTRIBUTE_FILTER);
-			if (filter == null)
+			@SuppressWarnings("unchecked")
+			List<LogFilter> filters = (List<LogFilter>)ctx.getAttribute(CTX_ATTRIBUTE_FILTER);
+			if (filters == null)
 				return false;
-			return filter.test(log);
+			for (LogFilter filter : filters)
+				if (filter.test(log))
+					return true;
 		} catch (Exception e) {
-			return false;
+			// ignore
 		}
+		return false;
 	}
 	
-	public static void intercept(LogFilter filter) {
+	public static List<LogFilter> getFilters() {
 		Task.Context ctx = Task.getCurrentContext();
-		if (ctx != null)
-			ctx.setAttribute(CTX_ATTRIBUTE_FILTER, filter);
+		if (ctx == null)
+			return new LinkedList<>();
+		@SuppressWarnings("unchecked")
+		List<LogFilter> filters = (List<LogFilter>)ctx.getAttribute(CTX_ATTRIBUTE_FILTER);
+		if (filters == null) {
+			filters = new LinkedList<>();
+			ctx.setAttribute(CTX_ATTRIBUTE_FILTER, filters);
+		}
+		return filters;
 	}
 	
 }

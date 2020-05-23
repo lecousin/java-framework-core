@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import net.lecousin.framework.application.Application;
+import net.lecousin.framework.concurrent.threads.Task;
 import net.lecousin.framework.log.Logger.Level;
 import net.lecousin.framework.text.pattern.StringPattern;
 import net.lecousin.framework.text.pattern.StringPatternBuilder;
@@ -50,6 +51,7 @@ public class LogPattern {
 		public String threadName;
 		public StackTraceElement location;
 		public Application app;
+		public Task.Context context;
 		public String[] contextsValues;
 	}
 	

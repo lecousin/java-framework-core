@@ -86,6 +86,14 @@ public class LoggerFactory {
 		rootLogger.setAppender(appender);
 	}
 	
+	public void addFilter(LogFilter filter) {
+		rootLogger.getAppender().addFilter(filter);
+	}
+	
+	public void removeFilter(LogFilter filter) {
+		rootLogger.getAppender().removeFilter(filter);
+	}
+	
 	/** Return a synchronization point that will be unblocked as soon as all pending logs have been written. */
 	public IAsync<Exception> flush() {
 		JoinPoint<Exception> jp = new JoinPoint<>();
